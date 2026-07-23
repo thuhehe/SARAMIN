@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-fetch",
+      "Bash(npm -v)",
+      "Bash(git --version)",
+      "Bash(npm ping *)",
+      "Bash(npm run *)",
+      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-update-page",
+      "Bash(python3 -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "WebSearch",
+      "WebFetch(domain:faq.vietnamworks.com)",
+      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-search",
+      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-create-pages"
+    ]
+  }
+}
