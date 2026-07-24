@@ -167,6 +167,7 @@ export const NAV: NavModule[] = [
     children: [
       { id: 'admin-sales-pipeline', label: 'Pipeline' },
       { id: 'admin-customers', label: 'Customers' },
+      { id: 'admin-customer-activation', label: 'Lead → customer activation' },
       { id: 'admin-quotes', label: 'Quotes' },
       { id: 'admin-invoices', label: 'Invoices' },
       { id: 'admin-purchase-orders', label: 'Purchase orders' },

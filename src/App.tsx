@@ -17,6 +17,7 @@ import { Modules } from './pages/Modules'
 import { BuildPlan } from './pages/BuildPlan'
 import { Mockups } from './pages/Mockups'
 import { AdminWireframe } from './pages/AdminWireframe'
+import { ModuleDetail, FeatureDetail } from './pages/ModuleDetail'
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
 
@@ -150,6 +151,8 @@ function Layout() {
             <Route path="/modules" element={<Modules />} />
             <Route path="/wireframe/admin" element={<AdminWireframe />} />
             <Route path="/legend" element={<Legend />} />
+            <Route path="/m/:moduleId" element={<ModuleDetail />} />
+            <Route path="/m/:moduleId/:featureIndex" element={<FeatureDetail />} />
             <Route path="/f/:id" element={<FeaturePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

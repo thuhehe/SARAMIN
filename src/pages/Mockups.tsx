@@ -266,9 +266,275 @@ function CreateCvScreen() {
   )
 }
 
+/* ── Admin / CRM screens (HQ Admin console) ──────────────────────────────── */
+
+function AdminBar({ active }: { active?: string }) {
+  const items = ['Dashboard', 'Companies', 'Jobs', 'Sales', 'Settings']
+  return (
+    <div className="flex items-center gap-4 border-b border-line px-5 py-2.5 bg-surface">
+      <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
+      <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink"> · HQ Admin</span></span>
+      <nav className="ml-2 hidden md:flex items-center gap-4 text-[12.5px]">
+        {items.map((it) => (
+          <span key={it} className={cn(active === it ? 'font-semibold text-brand' : 'text-ink/70')}>{it}</span>
+        ))}
+      </nav>
+      <div className="ml-auto flex items-center gap-2">
+        <div className="flex rounded-md border border-line text-[11px] font-medium overflow-hidden">
+          <span className="px-1.5 py-0.5 bg-brand text-white">VI</span>
+          <span className="px-1.5 py-0.5 text-muted">EN</span>
+          <span className="px-1.5 py-0.5 text-muted">KO</span>
+        </div>
+        <span className="h-6 w-6 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+      </div>
+    </div>
+  )
+}
+
+/** Step ribbon shared across the CRM activation screens. */
+function FlowSteps({ step }: { step: number }) {
+  const labels = ['Lead', 'Won', 'Account', 'Products', 'Company page']
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line-soft bg-canvas/40 px-5 py-2">
+      {labels.map((l, i) => (
+        <div key={l} className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
+              i === step ? 'bg-brand text-white' : i < step ? 'bg-emerald-100 text-emerald-700' : 'bg-canvas text-faint',
+            )}
+          >
+            <span className={cn('grid h-3.5 w-3.5 place-items-center rounded-full text-[9px]', i === step ? 'bg-white/25' : i < step ? 'bg-emerald-500 text-white' : 'bg-line text-faint')}>
+              {i < step ? '✓' : i + 1}
+            </span>
+            {l}
+          </span>
+          {i < labels.length - 1 && <span className="text-faint">›</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const CRM_STAGES: { name: string; tone?: 'muted' | 'green' | 'blue' | 'amber' }[] = [
+  { name: 'Lead' }, { name: 'Qualified', tone: 'blue' }, { name: 'Proposal', tone: 'blue' },
+  { name: 'Negotiation', tone: 'amber' }, { name: 'Won', tone: 'green' }, { name: 'Lost' },
+]
+
+function CrmPipelineScreen() {
+  const deals: Record<string, { n: string; v: string; ind: string }[]> = {
+    Lead: [{ n: 'Cty Vạn Phát', v: '133.5M ₫', ind: 'Y tế' }, { n: 'Cty Thiên Long', v: '476.9M ₫', ind: 'Sản xuất' }],
+    Qualified: [{ n: 'Cty Hồng Đức', v: '128.0M ₫', ind: 'Bán lẻ' }],
+    Proposal: [{ n: 'Cty Hoàng Gia', v: '171.1M ₫', ind: 'BĐS' }],
+    Negotiation: [{ n: 'Cty Việt Tiến', v: '55.2M ₫', ind: 'Logistics' }],
+    Won: [{ n: 'Cty Trường Sơn', v: '231.3M ₫', ind: 'Tài chính' }],
+    Lost: [{ n: 'Cty Á Châu', v: '115.5M ₫', ind: 'Logistics' }],
+  }
+  return (
+    <div>
+      <AdminBar active="Sales" />
+      <div className="flex items-center justify-between px-5 py-3">
+        <div>
+          <p className="text-[15px] font-bold">Sales pipeline</p>
+          <p className="text-[11.5px] text-muted">Customer deals grouped by stage. Totals reflect deal value per stage.</p>
+        </div>
+        <Btn primary>+ New quote</Btn>
+      </div>
+      <div className="flex items-center gap-2 border-y border-line-soft px-5 py-2 text-[11px] text-muted">
+        <span className="rounded-md border border-line px-2 py-1">Owner: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Industry: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Has quote</span>
+        <span className="rounded-md border border-line px-2 py-1">Has invoice</span>
+      </div>
+      <div className="grid grid-cols-6 gap-2 p-4 overflow-x-auto" style={{ minWidth: 720 }}>
+        {CRM_STAGES.map((st) => (
+          <div key={st.name} className="rounded-lg border border-line bg-canvas/40 p-2 min-w-[110px]">
+            <div className="mb-2 flex items-center justify-between">
+              <Chip tone={st.tone}>{st.name}</Chip>
+              <span className="text-[11px] font-bold text-faint">{(deals[st.name] ?? []).length}</span>
+            </div>
+            {(deals[st.name] ?? []).map((d) => (
+              <div key={d.n} className={cn('mb-2 rounded-md border bg-surface p-2', st.name === 'Won' ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-line')}>
+                <p className="text-[11.5px] font-semibold text-ink truncate">{d.n}</p>
+                <p className="text-[10.5px] text-muted">{d.v}</p>
+                <span className="mt-1 inline-block rounded border border-line bg-canvas px-1 py-0.5 text-[9px] text-muted">{d.ind}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="px-5 pb-4 text-[11px] text-faint">A deal is a company you’re tracking — no login, invisible to jobseekers. Drag to <b>Won</b> to activate it as a customer.</p>
+    </div>
+  )
+}
+
+function CrmCustomerScreen() {
+  return (
+    <div>
+      <AdminBar active="Sales" />
+      <div className="p-5">
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-[16px] font-bold">Công ty TNHH Vạn Phát</p>
+              <Chip tone="green">Won</Chip>
+            </div>
+            <p className="text-[11.5px] text-muted">Healthcare · HCMC · Owner: Nguyễn Thị Lan</p>
+          </div>
+          <Btn primary>⚡ Activate customer</Btn>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-line p-4">
+            <p className="mb-2 text-[12px] font-bold">Customer record <span className="font-normal text-faint">(CRM — internal only)</span></p>
+            {[['Legal name', 'Công ty TNHH Vạn Phát'], ['Tax code', '0312xxxxxx'], ['Industry', 'Healthcare (Y tế)'], ['Address', 'Quận 1, HCMC'], ['Contact', 'Ms. Lan · 09xx xxx xxx']].map(([k, v]) => (
+              <div key={k} className="flex justify-between border-b border-line-soft py-1.5 text-[12px] last:border-0">
+                <span className="text-muted">{k}</span><span className="text-ink font-medium">{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-line p-4">
+              <p className="mb-2 text-[12px] font-bold">Lifecycle</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won'].map((s, i) => (
+                  <Chip key={s} tone={i === 4 ? 'green' : 'muted'}>{i < 4 ? '✓ ' : ''}{s}</Chip>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-muted">No login yet · not on jobseeker site. “Activate” creates the account.</p>
+            </div>
+            <div className="rounded-xl border border-line p-4">
+              <p className="mb-2 text-[12px] font-bold">Deal history</p>
+              <div className="space-y-1.5 text-[11.5px]">
+                <div className="flex justify-between"><span className="text-muted">Quote #P91…</span><Chip tone="green">Accepted</Chip></div>
+                <div className="flex justify-between"><span className="text-muted">Deal value</span><span className="font-medium">133.5M ₫</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">This company is now a real customer. Next: click <b>Activate customer</b> to create its account.</div>
+      </div>
+    </div>
+  )
+}
+
+function CrmActivateScreen() {
+  return (
+    <div>
+      <AdminBar active="Companies" />
+      <FlowSteps step={2} />
+      <div className="p-5">
+        <p className="text-[15px] font-bold">Create account & connect to the lead</p>
+        <p className="text-[11.5px] text-muted mb-4">The account is the <b>same company record</b>, pre-filled from CRM — nothing is retyped.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-line p-4 space-y-3">
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company</p>
+              <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[12px]">
+                Công ty TNHH Vạn Phát <span className="ml-auto text-[10.5px] text-violet-600">🔗 from CRM #VP-1042</span>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Account owner (login email)</p>
+              <div className="rounded-md border border-line px-3 py-2 text-[12px] text-faint">hr@vanphat.vn</div>
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Billing entity</p>
+              <div className="rounded-md border border-line px-3 py-2 text-[12px] text-faint">Vạn Phát — from Won deal (133.5M ₫)</div>
+            </div>
+            <Btn primary className="w-full">Create account →</Btn>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">🔗 The account links back to the CRM customer, so sales history and account stay in sync — one source of truth.</div>
+            <div className="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-[11.5px] text-emerald-800">✓ The company now gets a login. Next: choose what they bought.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CrmProductsScreen() {
+  return (
+    <div>
+      <AdminBar active="Companies" />
+      <FlowSteps step={3} />
+      <div className="p-5">
+        <p className="text-[15px] font-bold">What did they buy?</p>
+        <p className="text-[11.5px] text-muted mb-4">This choice decides the rest. Job Posting needs a public company page; Resume Search does not.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[20px]">📢</span>
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-brand text-[11px] text-white">✓</span>
+            </div>
+            <p className="mt-2 text-[14px] font-bold">Job Posting</p>
+            <p className="text-[11.5px] text-muted">Post jobs shown to jobseekers. Profile is public.</p>
+            <p className="mt-2 text-[11px] font-bold text-amber-600">→ Requires a Company Detail Page</p>
+          </div>
+          <div className="rounded-xl border-2 border-line p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[20px]">🔍</span>
+              <span className="grid h-5 w-5 place-items-center rounded-md border border-line text-[11px] text-transparent">✓</span>
+            </div>
+            <p className="mt-2 text-[14px] font-bold">Resume Search</p>
+            <p className="text-[11.5px] text-muted">Search &amp; contact candidates. Nothing shown to jobseekers.</p>
+            <p className="mt-2 text-[11px] font-bold text-emerald-600">→ No company page needed</p>
+          </div>
+        </div>
+        <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11.5px] text-amber-800">
+          ⚠️ Job Posting is selected → the next step is <b>required</b>: create the public Company Detail Page. (Resume Search only → activation is done, no page.)
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CrmCompanyPageScreen() {
+  return (
+    <div>
+      <AdminBar active="Companies" />
+      <FlowSteps step={4} />
+      <div className="p-5">
+        <p className="text-[15px] font-bold">Create the company detail page</p>
+        <p className="text-[11.5px] text-muted mb-4">Because they post jobs, fill the public profile jobseekers will see.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* form */}
+          <div className="rounded-xl border border-line p-4 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-faint">Public profile <span className="text-amber-600">· required</span></p>
+            {[['Display name', 'Vạn Phát Healthcare'], ['Logo · Size', 'VP · 200–500 staff'], ['About', 'Leading private healthcare group…'], ['Website · Benefits', 'vanphat.vn · Insurance, 13th salary']].map(([k, v]) => (
+              <div key={k}>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">{k}</p>
+                <div className="rounded-md border border-line px-3 py-2 text-[12px] text-faint">{v}</div>
+              </div>
+            ))}
+          </div>
+          {/* preview */}
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker view →</p>
+            <div className="overflow-hidden rounded-xl border border-line">
+              <div className="h-14 bg-gradient-to-r from-brand to-violet-500" />
+              <div className="-mt-6 px-4 pb-4">
+                <div className="grid h-12 w-12 place-items-center rounded-xl border-2 border-surface bg-surface text-[16px] font-bold text-brand shadow">VP</div>
+                <p className="mt-2 text-[13px] font-bold">Vạn Phát Healthcare</p>
+                <p className="text-[11px] text-faint">Healthcare · HCMC · 200–500 staff</p>
+                <p className="mt-2 text-[11.5px] text-muted">Leading private healthcare group in HCMC, hiring across nursing and operations.</p>
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex justify-between rounded-md border border-line px-2.5 py-1.5 text-[11px]"><span>Registered Nurse</span><span className="text-faint">HCMC</span></div>
+                  <div className="flex justify-between rounded-md border border-line px-2.5 py-1.5 text-[11px]"><span>Clinic Operations Lead</span><span className="text-faint">HCMC</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">🔗 Same record throughout: CRM #VP-1042 → account → public page. One source of truth.</div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Registry ────────────────────────────────────────────────────────────── */
 
-interface Screen {
+export interface Screen {
   id: string
   site: string
   title: string
@@ -276,14 +542,31 @@ interface Screen {
   Comp: () => JSX.Element
 }
 
-const SCREENS: Screen[] = [
+export const SCREENS: Screen[] = [
   { id: 'js-home', site: 'Jobseeker', title: 'Homepage / job list', url: 'saramin.vn', Comp: HomeScreen },
   { id: 'js-search', site: 'Jobseeker', title: 'Search results', url: 'saramin.vn/jobs?q=frontend', Comp: SearchScreen },
   { id: 'js-job-detail', site: 'Jobseeker', title: 'Job detail', url: 'saramin.vn/job/senior-frontend', Comp: JobDetailScreen },
   { id: 'js-apply', site: 'Jobseeker', title: 'Apply flow', url: 'saramin.vn/job/…/apply', Comp: ApplyScreen },
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
+  // Admin / CRM — the lead → customer activation flow
+  { id: 'crm-pipeline', site: 'Admin · CRM', title: '1 · Sales pipeline', url: 'admin/sales/customers', Comp: CrmPipelineScreen },
+  { id: 'crm-customer', site: 'Admin · CRM', title: '2 · Customer (Won) → activate', url: 'admin/sales/customers/vanphat', Comp: CrmCustomerScreen },
+  { id: 'crm-activate', site: 'Admin · CRM', title: '3 · Create account', url: 'admin/accounts/new', Comp: CrmActivateScreen },
+  { id: 'crm-products', site: 'Admin · CRM', title: '4 · Choose products', url: 'admin/accounts/vanphat/products', Comp: CrmProductsScreen },
+  { id: 'crm-company-page', site: 'Admin · CRM', title: '5 · Company detail page', url: 'admin/companies/vanphat/profile', Comp: CrmCompanyPageScreen },
 ]
+
+/** SCREENS grouped by site, preserving first-seen order. */
+const SCREEN_GROUPS: { site: string; screens: Screen[] }[] = SCREENS.reduce(
+  (acc, s) => {
+    const g = acc.find((x) => x.site === s.site)
+    if (g) g.screens.push(s)
+    else acc.push({ site: s.site, screens: [s] })
+    return acc
+  },
+  [] as { site: string; screens: Screen[] }[],
+)
 
 const PLANNED = [
   { site: 'Companies', items: ['Job list', 'Create job', 'Application list'] },
@@ -299,28 +582,32 @@ export function Mockups() {
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
-        <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — Jobseeker core flow</h1>
+        <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — core flows</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          Low-fidelity wireframes of the candidate-facing recruitment flow, laid out to VN-market standards
-          (VietnamWorks / TopCV / ITviec). Structure &amp; layout only — not final visual design.
+          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards) plus the
+          HQ Admin <b>CRM lead → customer activation</b> flow. Structure &amp; layout only — not final visual design.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-5">
         {/* screen selector */}
         <aside className="lg:sticky lg:top-3 h-max rounded-xl border border-line bg-surface p-2">
-          <p className="px-2 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker</p>
-          {SCREENS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setParams({ screen: s.id })}
-              className={cn(
-                'block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] transition-colors',
-                s.id === screen.id ? 'bg-brand-soft font-medium text-brand' : 'text-ink/75 hover:bg-canvas/70',
-              )}
-            >
-              {s.title}
-            </button>
+          {SCREEN_GROUPS.map((grp) => (
+            <div key={grp.site}>
+              <p className="px-2 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">{grp.site}</p>
+              {grp.screens.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setParams({ screen: s.id })}
+                  className={cn(
+                    'block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] transition-colors',
+                    s.id === screen.id ? 'bg-brand-soft font-medium text-brand' : 'text-ink/75 hover:bg-canvas/70',
+                  )}
+                >
+                  {s.title}
+                </button>
+              ))}
+            </div>
           ))}
           {PLANNED.map((g) => (
             <div key={g.site}>

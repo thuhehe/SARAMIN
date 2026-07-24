@@ -170,9 +170,11 @@ export const MODULES: BigModule[] = [
       { surface: 'Admin', label: 'Products, bundles, credits, promotions', featureIds: ['admin-catalog', 'admin-bundles', 'admin-credits', 'admin-promotions'] },
       { surface: 'CO', label: 'Purchase surface: catalog + the 8 paid products', featureIds: ['bill-catalog', 'bill-main-ad', 'bill-targeted-ad', 'bill-recommend-rank', 'bill-search-product', 'bill-package', 'bill-talent-pool', 'bill-events'] },
       { surface: 'Admin', label: 'Orders (billing connector)', featureIds: ['admin-orders'] },
-      { surface: 'Admin', label: 'Sales / CRM: pipeline, customers, quotes, invoices, PO, payments, contracts', featureIds: ['admin-sales-pipeline', 'admin-customers', 'admin-quotes', 'admin-invoices', 'admin-purchase-orders', 'admin-payments', 'admin-contracts'] },
+      { surface: 'Admin', label: 'Sales / CRM: pipeline, customers, activation, quotes, invoices, PO, payments, contracts', featureIds: ['admin-sales-pipeline', 'admin-customers', 'admin-customer-activation', 'admin-quotes', 'admin-invoices', 'admin-purchase-orders', 'admin-payments', 'admin-contracts'] },
     ],
     keyDecisions: [
+      'CRM is the single front door for companies: lead → won → activate (create account) → products → company page. One company record throughout (no duplicates).',
+      'Activation branch: Job Posting requires a public company detail page; Resume Search only does not.',
       'No payment gateway wired anywhere — pick the VN gateway (VNPay / MoMo / card / bank / invoice). Biggest single gap.',
       'Credits vs cash vs both; self-serve purchase vs sales-assisted (HQ-created orders).',
       'PO / payments / contracts are empty seams — in launch scope? (real svn-be build).',

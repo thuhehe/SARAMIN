@@ -19,6 +19,7 @@ import {
 import { SPECS } from '@/data'
 import { STATUS_META } from '@/lib/status'
 import { cn } from '@/lib/utils'
+import { MonetizationFlow } from '@/components/MonetizationFlow'
 
 interface NavItem {
   label: string
@@ -46,7 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Building2 className="h-4 w-4" />,
     items: [
       { label: 'Company list', specId: 'admin-company-list' },
-      { label: 'New company', specId: 'admin-company-new' },
+      { label: 'Company users', specId: 'admin-company-users' },
     ],
   },
   {
@@ -58,16 +59,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Boards', specId: 'admin-boards' },
       { label: 'Blog / articles', specId: 'admin-blog' },
-    ],
-  },
-  {
-    label: 'Notifications',
-    icon: <Bell className="h-4 w-4" />,
-    items: [
-      { label: 'Templates', specId: 'admin-notif-templates' },
-      { label: 'Events', specId: 'admin-notif-events' },
-      { label: 'Workflows', specId: 'admin-notif-workflows' },
-      { label: 'Delivery log', specId: 'admin-notif-log' },
     ],
   },
   {
@@ -87,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Pipeline', specId: 'admin-sales-pipeline' },
       { label: 'Customers', specId: 'admin-customers' },
+      { label: 'Lead → customer activation', specId: 'admin-customer-activation' },
       { label: 'Quotes', specId: 'admin-quotes' },
       { label: 'Invoices', specId: 'admin-invoices' },
       { label: 'Purchase orders', specId: 'admin-purchase-orders' },
@@ -120,6 +112,7 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 export function AdminWireframe() {
+  const [view, setView] = useState<'shell' | 'flow'>('shell')
   const [active, setActive] = useState<{ group: string; item: NavItem }>({
     group: 'Recruitment',
     item: NAV_GROUPS[0].items[0],
@@ -131,13 +124,35 @@ export function AdminWireframe() {
     <div className="max-w-[1180px] pb-16">
       <div className="mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
-        <h1 className="text-[26px] font-bold tracking-tight mt-1">HQ Admin — navigation & shell</h1>
+        <h1 className="text-[26px] font-bold tracking-tight mt-1">
+          {view === 'shell' ? 'HQ Admin — navigation & shell' : 'HQ Admin — product & purchase flow'}
+        </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules
-          B1–B9), a top bar with global search + language + account, and a standard list/detail content area.
-          Click any nav item to preview its page and jump to the spec. Status dots double as a live build-status map.
+          {view === 'shell'
+            ? 'A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9), a top bar with global search + language + account, and a standard list/detail content area. Click any nav item to preview its page and jump to the spec. Status dots double as a live build-status map.'
+            : 'Interactive walkthrough of how a company buys products and how that quota gets used. Click through: sell (Quote → PO → Invoice → Payment) → payment auto-provisions quota on the account → the company spends it posting jobs and unlocking CVs. Watch the entitlements panel update live.'}
         </p>
       </div>
+
+      {/* view switch */}
+      <div className="mb-5 inline-flex rounded-xl border border-line bg-surface p-1 text-[12.5px] font-medium">
+        <button
+          onClick={() => setView('shell')}
+          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'shell' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
+        >
+          Navigation & shell
+        </button>
+        <button
+          onClick={() => setView('flow')}
+          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'flow' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
+        >
+          Product & purchase flow ·<span className="ml-1 opacity-80">interactive</span>
+        </button>
+      </div>
+
+      {view === 'flow' && <MonetizationFlow />}
+      {view === 'shell' && (
+      <>
 
       {/* ── Wireframe frame ─────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-line bg-surface overflow-hidden shadow-sm">
@@ -273,6 +288,8 @@ export function AdminWireframe() {
           view: green = on the real backend, violet = prototype DB, red = empty seam.
         </RationaleCard>
       </div>
+      </>
+      )}
     </div>
   )
 }
