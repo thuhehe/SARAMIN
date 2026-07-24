@@ -20,6 +20,7 @@ import { SPECS } from '@/data'
 import { STATUS_META } from '@/lib/status'
 import { cn } from '@/lib/utils'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
+import { ActivationFlow } from '@/components/ActivationFlow'
 
 interface NavItem {
   label: string
@@ -112,7 +113,7 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 export function AdminWireframe() {
-  const [view, setView] = useState<'shell' | 'flow'>('shell')
+  const [view, setView] = useState<'shell' | 'activation' | 'flow'>('shell')
   const [active, setActive] = useState<{ group: string; item: NavItem }>({
     group: 'Recruitment',
     item: NAV_GROUPS[0].items[0],
@@ -125,22 +126,34 @@ export function AdminWireframe() {
       <div className="mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">
-          {view === 'shell' ? 'HQ Admin — navigation & shell' : 'HQ Admin — product & purchase flow'}
+          {view === 'shell'
+            ? 'HQ Admin — navigation & shell'
+            : view === 'activation'
+              ? 'HQ Admin — lead → customer activation'
+              : 'HQ Admin — product & purchase flow'}
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
           {view === 'shell'
             ? 'A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9), a top bar with global search + language + account, and a standard list/detail content area. Click any nav item to preview its page and jump to the spec. Status dots double as a live build-status map.'
-            : 'Interactive walkthrough of how a company buys products and how that quota gets used. Click through: sell (Quote → PO → Invoice → Payment) → payment auto-provisions quota on the account → the company spends it posting jobs and unlocking CVs. Watch the entitlements panel update live.'}
+            : view === 'activation'
+              ? 'Interactive walkthrough of turning a lead into a live customer. Click through: create a lead in CRM → win it → activate = create the account → choose products → (Job Posting only) create the public company page. Toggle the product cards to see the branch change.'
+              : 'Interactive walkthrough of how a company buys products and how that quota gets used. Click through: sell (Quote → PO → Invoice → Payment) → payment auto-provisions quota on the account → the company spends it posting jobs and unlocking CVs. Watch the entitlements panel update live.'}
         </p>
       </div>
 
       {/* view switch */}
-      <div className="mb-5 inline-flex rounded-xl border border-line bg-surface p-1 text-[12.5px] font-medium">
+      <div className="mb-5 inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 text-[12.5px] font-medium">
         <button
           onClick={() => setView('shell')}
           className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'shell' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
         >
           Navigation & shell
+        </button>
+        <button
+          onClick={() => setView('activation')}
+          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'activation' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
+        >
+          Lead → activation ·<span className="ml-1 opacity-80">interactive</span>
         </button>
         <button
           onClick={() => setView('flow')}
@@ -150,6 +163,7 @@ export function AdminWireframe() {
         </button>
       </div>
 
+      {view === 'activation' && <ActivationFlow />}
       {view === 'flow' && <MonetizationFlow />}
       {view === 'shell' && (
       <>
