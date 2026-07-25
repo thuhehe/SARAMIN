@@ -19,6 +19,7 @@ import {
 import { SPECS } from '@/data'
 import { STATUS_META } from '@/lib/status'
 import { cn } from '@/lib/utils'
+import { ADMIN_PROTOTYPES, AdminPipeline } from './adminPrototypes'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
 
@@ -78,8 +79,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Handshake className="h-4 w-4" />,
     items: [
       { label: 'Pipeline', specId: 'admin-sales-pipeline' },
-      { label: 'Customers', specId: 'admin-customers' },
-      { label: 'Lead → customer activation', specId: 'admin-customer-activation' },
       { label: 'Quotes', specId: 'admin-quotes' },
       { label: 'Invoices', specId: 'admin-invoices' },
       { label: 'Purchase orders', specId: 'admin-purchase-orders' },
@@ -113,60 +112,30 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 export function AdminWireframe() {
-  const [view, setView] = useState<'shell' | 'activation' | 'flow'>('shell')
+  const [walkthrough, setWalkthrough] = useState<null | 'activation' | 'flow'>(null)
   const [active, setActive] = useState<{ group: string; item: NavItem }>({
     group: 'Recruitment',
     item: NAV_GROUPS[0].items[0],
   })
+  const select = (group: string, item: NavItem) => {
+    setWalkthrough(null)
+    setActive({ group, item })
+  }
 
   const spec = active.item.specId ? SPECS[active.item.specId] : undefined
+  const Proto = active.item.specId ? ADMIN_PROTOTYPES[active.item.specId] : undefined
 
   return (
     <div className="max-w-[1180px] pb-16">
-      <div className="mb-4">
+      <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
-        <h1 className="text-[26px] font-bold tracking-tight mt-1">
-          {view === 'shell'
-            ? 'HQ Admin — navigation & shell'
-            : view === 'activation'
-              ? 'HQ Admin — lead → customer activation'
-              : 'HQ Admin — product & purchase flow'}
-        </h1>
+        <h1 className="text-[26px] font-bold tracking-tight mt-1">HQ Admin — navigation & shell</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          {view === 'shell'
-            ? 'A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9), a top bar with global search + language + account, and a standard list/detail content area. Click any nav item to preview its page and jump to the spec. Status dots double as a live build-status map.'
-            : view === 'activation'
-              ? 'Interactive walkthrough of turning a lead into a live customer. Click through: create a lead in CRM → win it → activate = create the account → choose products → (Job Posting only) create the public company page. Toggle the product cards to see the branch change.'
-              : 'Interactive walkthrough of how a company buys products and how that quota gets used. Click through: sell (Quote → PO → Invoice → Payment) → payment auto-provisions quota on the account → the company spends it posting jobs and unlocking CVs. Watch the entitlements panel update live.'}
+          A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9),
+          a top bar with global search + language + account, and a standard list/detail content area. Click any nav
+          item to preview its page and jump to the spec. Status dots double as a live build-status map.
         </p>
       </div>
-
-      {/* view switch */}
-      <div className="mb-5 inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 text-[12.5px] font-medium">
-        <button
-          onClick={() => setView('shell')}
-          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'shell' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
-        >
-          Navigation & shell
-        </button>
-        <button
-          onClick={() => setView('activation')}
-          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'activation' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
-        >
-          Lead → activation ·<span className="ml-1 opacity-80">interactive</span>
-        </button>
-        <button
-          onClick={() => setView('flow')}
-          className={cn('rounded-lg px-3.5 py-1.5 transition-colors', view === 'flow' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
-        >
-          Product & purchase flow ·<span className="ml-1 opacity-80">interactive</span>
-        </button>
-      </div>
-
-      {view === 'activation' && <ActivationFlow />}
-      {view === 'flow' && <MonetizationFlow />}
-      {view === 'shell' && (
-      <>
 
       {/* ── Wireframe frame ─────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-line bg-surface overflow-hidden shadow-sm">
@@ -204,9 +173,7 @@ export function AdminWireframe() {
               icon={<LayoutDashboard className="h-4 w-4" />}
               label="Dashboard"
               active={active.item.label === 'Dashboard' && active.group === 'Overview'}
-              onClick={() =>
-                setActive({ group: 'Overview', item: { label: 'Dashboard', specId: 'admin-analytics-dashboard' } })
-              }
+              onClick={() => select('Overview', { label: 'Dashboard', specId: 'admin-analytics-dashboard' })}
               single
             />
             {NAV_GROUPS.map((g) => (
@@ -214,7 +181,7 @@ export function AdminWireframe() {
                 key={g.label}
                 group={g}
                 activeItem={active.group === g.label ? active.item.label : null}
-                onSelect={(item) => setActive({ group: g.label, item })}
+                onSelect={(item) => select(g.label, item)}
               />
             ))}
           </nav>
@@ -255,29 +222,57 @@ export function AdminWireframe() {
                 </div>
               </div>
 
-              {/* generic list/table skeleton */}
-              <div className="overflow-hidden rounded-xl border border-line">
-                <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                  <span>Name</span>
-                  <span>Owner</span>
-                  <span>Updated</span>
-                  <span>Status</span>
+              {/* interactive walkthrough launched contextually from a page, else the page itself */}
+              {walkthrough ? (
+                <div>
+                  <button
+                    onClick={() => setWalkthrough(null)}
+                    className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40"
+                  >
+                    ← Back to {active.item.label}
+                  </button>
+                  {walkthrough === 'activation' ? <ActivationFlow initialPhase={2} /> : <MonetizationFlow />}
                 </div>
-                {[0, 1, 2, 3, 4].map((r) => (
-                  <div key={r} className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] items-center border-t border-line-soft px-4 py-3">
-                    <span className="flex items-center gap-2">
-                      <span className="h-6 w-6 rounded-md bg-canvas" />
-                      <span className="h-3 rounded bg-line" style={{ width: `${60 - r * 6}%` }} />
-                    </span>
-                    <span className="h-3 w-16 rounded bg-line-soft" />
-                    <span className="h-3 w-14 rounded bg-line-soft" />
-                    <span className="h-4 w-14 rounded-full bg-canvas" />
+              ) : active.item.specId === 'admin-sales-pipeline' ? (
+                <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+              ) : Proto ? (
+                <>
+                  {active.item.specId === 'admin-orders' && (
+                    <button
+                      onClick={() => setWalkthrough('flow')}
+                      className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[12px] font-medium text-brand hover:bg-brand hover:text-white"
+                    >
+                      ▶ Interactive: how an order becomes quota
+                    </button>
+                  )}
+                  <Proto />
+                </>
+              ) : (
+                <>
+                  <div className="overflow-hidden rounded-xl border border-line">
+                    <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      <span>Name</span>
+                      <span>Owner</span>
+                      <span>Updated</span>
+                      <span>Status</span>
+                    </div>
+                    {[0, 1, 2, 3, 4].map((r) => (
+                      <div key={r} className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] items-center border-t border-line-soft px-4 py-3">
+                        <span className="flex items-center gap-2">
+                          <span className="h-6 w-6 rounded-md bg-canvas" />
+                          <span className="h-3 rounded bg-line" style={{ width: `${60 - r * 6}%` }} />
+                        </span>
+                        <span className="h-3 w-16 rounded bg-line-soft" />
+                        <span className="h-3 w-14 rounded bg-line-soft" />
+                        <span className="h-4 w-14 rounded-full bg-canvas" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] text-faint">
-                Placeholder list — every module lands on a list → detail pattern with New / Filter / search.
-              </p>
+                  <p className="mt-3 text-[11px] text-faint">
+                    Placeholder list — this page’s prototype isn’t built yet. Every module lands on a list → detail pattern with New / Filter / search.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -302,8 +297,6 @@ export function AdminWireframe() {
           view: green = on the real backend, violet = prototype DB, red = empty seam.
         </RationaleCard>
       </div>
-      </>
-      )}
     </div>
   )
 }

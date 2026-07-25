@@ -50,8 +50,8 @@ export function Sidebar() {
           <PrimaryLink to="/" icon={<Home className="h-3.5 w-3.5" />} label="Overview" exact />
           <PrimaryLink to="/modules" icon={<Workflow className="h-3.5 w-3.5" />} label="Modules" />
           <PrimaryLink to="/plan" icon={<ListChecks className="h-3.5 w-3.5" />} label="Build plan" />
-          <PrimaryLink to="/mockups" icon={<PanelsTopLeft className="h-3.5 w-3.5" />} label="Mockups" />
-          <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin wireframe" />
+          <PrimaryLink to="/mockups" icon={<PanelsTopLeft className="h-3.5 w-3.5" />} label="Jobseeker mockups" />
+          <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin mockups" />
         </div>
         <div className="mx-4 my-1.5 border-t border-line-soft" />
         <p className="px-4 pt-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">

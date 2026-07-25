@@ -54,8 +54,8 @@ function Head({ title, sub, extra }: { title: string; sub: string; extra?: React
   )
 }
 
-export function ActivationFlow() {
-  const [phase, setPhase] = useState(0)
+export function ActivationFlow({ initialPhase = 0 }: { initialPhase?: number } = {}) {
+  const [phase, setPhase] = useState(initialPhase)
   const [s, setS] = useState<ActState>(INITIAL)
   const go = (n: number) => setPhase(Math.max(0, Math.min(PHASES.length - 1, n)))
   const toggle = (k: keyof ActState) => setS((prev) => {
@@ -67,22 +67,6 @@ export function ActivationFlow() {
 
   return (
     <div>
-      {/* phase bar */}
-      <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1.5 shadow-sm scroll-thin">
-        {PHASES.map((p, i) => {
-          const first = i === 0 || PHASES[i - 1].g !== p.g
-          return (
-            <div key={i} className="flex items-center">
-              {first && <span className="px-2 text-[9px] font-bold uppercase tracking-wider text-faint whitespace-nowrap">{p.g}</span>}
-              <button onClick={() => go(i)} className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors', i === phase ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-canvas/70')}>
-                <span className={cn('grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold', i === phase ? 'bg-brand text-white' : i < phase ? 'bg-emerald-500 text-white' : 'bg-line text-muted')}>{i < phase ? '✓' : i + 1}</span>
-                <span className="text-[12px] font-semibold whitespace-nowrap">{p.lab}</span>
-              </button>
-            </div>
-          )
-        })}
-      </div>
-
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
         {phase === 0 && <StageLead />}
         {phase === 1 && <StageWon activate={() => go(2)} />}
