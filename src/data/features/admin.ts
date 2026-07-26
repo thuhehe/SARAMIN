@@ -954,6 +954,15 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     title: 'Roles & permissions',
     status: 'be-migrated',
     summary: 'Role list + detail; permission grants (resource:action).',
+    description:
+      'Step 1 of the operator lifecycle — a role is defined before any operator can be assigned it. A role is a permission tree: for every page/resource, pick None, Read (view only), or Read & write (create / edit / delete). Group- and "apply to all" toggles cascade to the rows below them. Saved roles are then assigned to operators in System → Users.',
+    behaviors: [
+      'All roles are managed by the team — there is no separate locked "system" role type. Every role can be created, edited, duplicated, or deleted.',
+      'A set of sensible defaults is seeded (e.g. Super admin, Sales, Operations), but they are ordinary editable roles, not protected ones.',
+      'Duplicating an existing role is the quickest way to create a new one — copy, rename, adjust the grants.',
+      'A role cannot be deleted while operators are still assigned to it; its operator count is shown, and the operators must be reassigned first.',
+      'Lockout guard: at least one role must always retain full access (roles & operator management), so the last full-access role cannot be downgraded or deleted.',
+    ],
     bbNotes: [
       {
         heading: 'Approach',
@@ -978,10 +987,32 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     title: 'Users',
     status: 'be-migrated',
     summary: 'Admin user management + users-roles assignment.',
-    bbNotes: [
-      { heading: 'Approach', items: ['Admin user CRUD + role assignment. Confirm the auth story (SSO? shared with Common?) and user lifecycle (invite, disable).'] },
+    description:
+      'Internal HQ operators. Each operator is assigned exactly one role that controls what they can see and do (see Roles & permissions). Creating an operator emails them a one-time invite link and they set their own password — no one sets it for them. This uses the same invitation flow and statuses as the company HR Manager / HR Specialist invite, so there is one consistent pattern across the product.',
+    sections: [
+      {
+        heading: 'Setup flow (in order)',
+        items: [
+          '1. Define the role first — in Roles & permissions, set None / Read / Read & write per page. The role must exist before it can be assigned.',
+          '2. Create the operator — enter full name + work email.',
+          '3. Assign a role — pick one of the saved roles.',
+          '4. Send the invite — an activation email goes out; the operator clicks the link and sets their own password.',
+        ],
+      },
     ],
-    whatToBuild: ['Confirm admin auth (SSO vs local)', 'User lifecycle: invite / disable / reset', 'Role assignment UI'],
+    behaviors: [
+      'Status = Pending immediately after the invite is sent — the operator has not yet activated. Last-login shows "—".',
+      'Status flips to Active once the operator opens the invite link and sets a password.',
+      'Pending rows can be Resent (new link) or Cancelled (revoke the invite).',
+      'Active rows can have their role changed, or be Disabled.',
+      'Remove = Disable, never a hard delete, so the audit trail stays intact. Disabled operators can be Re-enabled.',
+      'Invite links are single-use and time-limited (confirm expiry window with client).',
+    ],
+    bbNotes: [
+      { heading: 'Approach', items: ['Admin user CRUD + role assignment. Confirm the auth story (SSO? shared with Common?) and user lifecycle (invite, disable). Mirror the company HR Manager / HR Specialist invite flow for consistency.'] },
+    ],
+    whatToBuild: ['Confirm admin auth (SSO vs local)', 'User lifecycle: invite / disable / re-enable / resend', 'Role assignment UI', 'Invite email + activation (set-own-password) link', 'Invite-link expiry window — client Q'],
+    clientQuestions: ['How long should an operator invite link stay valid before it expires?'],
     related: ['admin-roles'],
   },
   {

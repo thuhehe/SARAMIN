@@ -14,11 +14,11 @@ export const companyUser: BuildModule = {
   title: 'Account management',
   owner: 'Luong',
   requirements: [
-    'Companies are NOT created here — a company is born as a lead in CRM and appears automatically in the account/company list once activated. There is no manual "create company" step.',
-    'On activation (from CRM, when a deal is Won) the ACCOUNT is created (company level: products + billing) together with its FIRST USER (the login — usually the HR Manager). The company record already exists from the lead; more users are added under the account afterwards.',
-    'Company user model: create users on Admin and self-register on the Company site; roles + permissions — HR Manager (super admin) vs HR Specialist (job posting / resume search only).',
-    'Decide member limit per company.',
-    'Public company detail page on the Jobseeker site (profile, benefits, open jobs) — required only for Job Posting customers.',
+    'This is NOT a second company list. There is ONE company list (the CRM Companies list); this module adds the account-side sections that hang off a company record once it is a customer: account, users, products/quota, and the public page.',
+    'Companies are not created here — a company is born as a lead in CRM. On activation (deal Won → convert) the ACCOUNT is created (company level: products + billing) together with its FIRST USER (the login — the HR Manager).',
+    'Company user model: exactly 1 HR Manager + up to 3 HR Specialists (4 seats). Users self-register on the Company site or are added on Admin; the HR Manager manages them. Making someone HR Manager is a transfer (swaps the current one). HQ break-glass can reassign the manager.',
+    'Public company detail page on the Jobseeker site (profile, benefits, open jobs) — a section on the record, required only for Job Posting customers.',
+    'All users share the account’s pooled products/quota (posting slots, CV unlocks).',
   ],
   features: [
     {
@@ -116,8 +116,93 @@ export const companyUser: BuildModule = {
         ],
       },
     },
-    { name: 'Create company user (on Admin)', site: 'Admin', scope: ['BE', 'FE'], notes: 'Add users to an activated company’s account + assign roles.' },
-    { name: 'Create company user (on CO)', site: 'Companies', scope: ['BE', 'FE', 'UI'], notes: 'Member count per company, limits, and roles (HR manager = super admin; HR specialist = job posting / resume search only) — TBD.' },
+    {
+      name: 'Company users & roles (on CO)',
+      site: 'Companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes: 'The HR Manager invites and manages the company’s users, self-serve on the Company site.',
+      detail: {
+        description:
+          'Self-serve team management for the company. All users (HR Manager AND HR Specialist) are rows in one users table, each with their own email/login; role is just a flag on the user — not a special field on the account. This is what makes role changes clean (no email is ever created, moved, or replaced).',
+        userStory:
+          'As the HR Manager, I want to invite my team and set each person’s role so that the right people can post jobs / search CVs without sharing one login.',
+        uiFields: [
+          {
+            group: 'User',
+            items: [
+              { name: 'email', type: 'string', required: true, notes: 'their own login; they set their own password via the invite link' },
+              { name: 'name', type: 'string' },
+              { name: 'role', type: "enum('HR Manager'|'HR Specialist')", required: true, notes: 'a flag on the user — HR Manager = admin, HR Specialist = post jobs / search resumes only' },
+              { name: 'status', type: 'enum', notes: 'Invited → Active → Disabled' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Invite by email + role → the person receives a link and sets their own password (no one types it for them). New invites are always HR Specialists.',
+          'Making someone HR Manager is a TRANSFER: the chosen HR Specialist becomes Manager AND the current Manager becomes an HR Specialist — one atomic swap. No email/login changes for either person.',
+          'The role change is reachable from two entry points (the current Manager’s “Transfer role”, or a Specialist’s “Make manager”) but is the same single transfer action.',
+          'Remove = deactivate (Disabled), never hard-delete — keep the audit trail. The HR Manager can’t be disabled directly; transfer the role first.',
+          'A self-signup requesting to join an existing company appears here for the HR Manager to approve.',
+        ],
+        rules: [
+          'Policy: EXACTLY 1 HR Manager + up to 3 HR Specialists per account (4 seats max).',
+          'You cannot demote or disable the sole HR Manager on its own — the only way to change the Manager is to Transfer the role to a Specialist (which needs at least one Specialist to exist).',
+          'All users share the account’s pooled products/quota (posting slots, CV unlocks) — quota is account-level, not per user.',
+          'Only the HR Manager (admin) can invite / remove / transfer roles.',
+          'Break-glass: if the sole HR Manager is ever gone (left / lost access / dead email), HQ (Admin side) can reassign the HR Manager. This is what makes single-owner safe.',
+        ],
+        states: ['Invited (pending)', 'Active', 'Disabled', 'Join request pending approval', 'Seat limit reached (4)', 'No specialist to transfer to'],
+        backend: {
+          dataModel: [
+            { name: 'userId', type: 'uuid' },
+            { name: 'accountId', type: 'ref(account)', required: true },
+            { name: 'email', type: 'string', required: true, notes: 'unique per user' },
+            { name: 'role', type: 'enum', required: true, notes: 'hr_manager | hr_specialist' },
+            { name: 'status', type: 'enum', notes: 'invited | active | disabled' },
+          ],
+          endpoints: [
+            'POST /company/users/invite { email } — always a specialist',
+            'POST /company/manager/transfer { toUserId } — atomically demotes current manager, promotes target',
+            'PATCH /company/users/:id/disable — blocked for the sole manager',
+            'POST /company/join-requests/:id/approve',
+          ],
+          integrations: ['Notifications (invite / set-password link)', 'Products & quota (shared at account level)'],
+          notes: 'Role is a column on the user row — no separate "owner email" on the account. The single-manager rule is enforced by making the manager change a transfer, not a free field edit.',
+        },
+        acceptance: [
+          'Inviting a user emails a set-password link; the account never stores their password.',
+          'Transferring the manager role atomically swaps the two users’ roles; neither email/login changes.',
+          'Disabling or standalone-demoting the sole HR Manager is blocked; transfer is offered instead.',
+          'Adding a 5th user (beyond 1 + 3) is blocked.',
+          'HQ can reassign the HR Manager when the company’s manager is unavailable.',
+        ],
+        openQuestions: [
+          'Confirm seats: 1 HR Manager + 3 HR Specialists (4 total)?',
+          'Auto-approve join requests whose email domain matches the company’s verified domain?',
+          'Which HQ roles may use the break-glass reassign, and is it always audited?',
+        ],
+      },
+    },
+    {
+      name: 'Company users & roles (on Admin)',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      notes: 'HQ concierge — same users/roles model as the CO side, gated + audited. The global list is oversight/search.',
+      detail: {
+        description:
+          'HQ can add/manage a company’s users on their behalf (support / concierge) — the same users-table + role-flag model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users), scoped to one company.',
+        behaviors: [
+          'Same invite / transfer-manager / disable actions as the CO side, but performed by HQ.',
+          'Break-glass: HQ can reassign the HR Manager for a company when the sole manager is unavailable (left / lost access) — the one recovery path single-owner needs.',
+        ],
+        rules: [
+          'HQ role/user edits should be permission-gated (specific HQ roles) and written to the audit log.',
+          'Prefer the company-scoped Users section for edits; keep the global list read-oriented (find a user, see which company).',
+        ],
+        acceptance: ['HQ can resolve support cases (invite, transfer manager, disable) with every action audited.', 'HQ can reassign a stranded company’s HR Manager.'],
+        openQuestions: ['Which HQ roles may edit company users / use break-glass, and should the global list be read-only?'],
+      },
+    },
     { name: 'Company detail', site: 'Jobseekers', scope: ['BE', 'FE', 'UI'], notes: 'Public jobseeker-facing profile — required only for Job Posting customers.', mockup: 'crm-company-page' },
   ],
 }

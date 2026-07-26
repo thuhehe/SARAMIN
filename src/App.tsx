@@ -16,6 +16,7 @@ import { Legend } from './pages/Legend'
 import { Modules } from './pages/Modules'
 import { BuildPlan } from './pages/BuildPlan'
 import { Mockups } from './pages/Mockups'
+import { CompanyMockups } from './pages/CompanyMockups'
 import { AdminWireframe } from './pages/AdminWireframe'
 import { ModuleDetail, FeatureDetail } from './pages/ModuleDetail'
 import { SPECS, NAV_ORDER, NAV } from './data'
@@ -148,6 +149,7 @@ function Layout() {
             <Route path="/" element={<Overview />} />
             <Route path="/plan" element={<BuildPlan />} />
             <Route path="/mockups" element={<Mockups />} />
+            <Route path="/mockups/company" element={<CompanyMockups />} />
             <Route path="/modules" element={<Modules />} />
             <Route path="/wireframe/admin" element={<AdminWireframe />} />
             <Route path="/legend" element={<Legend />} />

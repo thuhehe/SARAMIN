@@ -10,16 +10,14 @@ import {
   Handshake,
   BarChart3,
   Settings,
-  Search,
   ChevronDown,
-  Plus,
   ExternalLink,
-  Filter,
 } from 'lucide-react'
 import { SPECS } from '@/data'
 import { STATUS_META } from '@/lib/status'
 import { cn } from '@/lib/utils'
 import { ADMIN_PROTOTYPES, AdminPipeline } from './adminPrototypes'
+import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
 
@@ -49,7 +47,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Building2 className="h-4 w-4" />,
     items: [
       { label: 'Company list', specId: 'admin-company-list' },
-      { label: 'Company users', specId: 'admin-company-users' },
     ],
   },
   {
@@ -75,9 +72,10 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Sales / CRM',
+    label: 'CRM',
     icon: <Handshake className="h-4 w-4" />,
     items: [
+      { label: 'Sign-ups', specId: 'admin-signups' },
       { label: 'Pipeline', specId: 'admin-sales-pipeline' },
       { label: 'Quotes', specId: 'admin-quotes' },
       { label: 'Invoices', specId: 'admin-invoices' },
@@ -104,6 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Users', specId: 'admin-users' },
       { label: 'Roles & permissions', specId: 'admin-roles' },
       { label: 'Master data', specId: 'admin-master-data' },
+      { label: 'Job categories & roles', specId: 'admin-job-categories' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },
       { label: 'Departments', specId: 'admin-departments' },
@@ -144,12 +143,6 @@ export function AdminWireframe() {
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
             <span className="text-[13px] font-semibold">Saramin · HQ Admin</span>
-          </div>
-          <div className="relative ml-4 hidden sm:block w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-faint" />
-            <div className="w-full rounded-lg border border-line bg-surface pl-8 pr-3 py-1.5 text-[12px] text-faint">
-              Search jobs, companies, users…
-            </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="flex rounded-md border border-line bg-surface text-[11px] font-medium overflow-hidden">
@@ -212,14 +205,7 @@ export function AdminWireframe() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">
-                    <Filter className="h-3.5 w-3.5" /> Filter
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-2.5 py-1.5 text-[12px] font-medium text-white">
-                    <Plus className="h-3.5 w-3.5" /> New
-                  </span>
-                </div>
+                <ActivityLogButton page={active.item.label} />
               </div>
 
               {/* interactive walkthrough launched contextually from a page, else the page itself */}
@@ -296,6 +282,12 @@ export function AdminWireframe() {
           The dot on each nav item is its real build status, so this doubles as an at-a-glance readiness
           view: green = on the real backend, violet = prototype DB, red = empty seam.
         </RationaleCard>
+        <RationaleCard title="Audit logging (3 layers)">
+          Everything is logged — who (user or System) changed what, when, before → after. Three scopes,
+          no overlap: <b>System → Audit log</b> = the whole firehose; the per-page <b>History</b> button = recent
+          activity in that section; a record's <b>Activity</b> tab (in its detail drawer) = that one record's trail.
+          PII-view actions (e.g. opening a resume) are always recorded.
+        </RationaleCard>
       </div>
     </div>
   )
@@ -352,7 +344,6 @@ function SidebarGroup({
       {open && (
         <ul>
           {group.items.map((it) => {
-            const spec = it.specId ? SPECS[it.specId] : undefined
             const isActive = activeItem === it.label
             return (
               <li key={it.label}>
@@ -363,7 +354,6 @@ function SidebarGroup({
                     isActive ? 'bg-brand-soft text-brand font-medium' : 'text-ink/70 hover:bg-canvas/70',
                   )}
                 >
-                  {spec && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', STATUS_META[spec.status].dot)} />}
                   <span className="truncate">{it.label}</span>
                 </button>
               </li>

@@ -95,15 +95,15 @@ export const crm: BuildModule = {
     },
     // 1 · Customers ─────────────────────────────────────────────────────────────
     {
-      name: 'Customers',
+      name: 'Companies (one list)',
       site: 'Admin',
       scope: ['BE', 'FE'],
       mockup: 'crm-customer',
       detail: {
         description:
-          'The customer master — the single source of truth for a company. A record is born here as a lead (sales-internal data only: no login, invisible to jobseekers). It moves through the pipeline with nothing provisioned; only on Won + activation does it gain an account and (if it posts jobs) a public company page. Account management is the filtered view of records that reached that stage — so there is never a duplicate company.',
+          'ONE list of every company — the single source of truth. A record is born as a cold Lead and carries a status through the whole journey: Lead → Qualified → Proposal → Won (customer) → Expired → Lost. The Pipeline is the SAME list shown as a board (grouped by status). There is no separate "account list" — Account management (users, products, public page) is just sections on this same record, shown only for customers who bought them. No duplicate company.',
         userStory:
-          'As a sales rep, I want one place that holds everything about a company — from first lead through to paying customer — so that history and account never fragment.',
+          'As a sales rep, I want one list that holds every company — from cold lead through paying customer to renewal — so history, account, and status never fragment across two lists.',
         uiFields: [
           {
             group: 'Customer record (CRM — internal only)',
@@ -113,7 +113,7 @@ export const crm: BuildModule = {
               { name: 'industry', type: 'enum' },
               { name: 'address / location', type: 'string' },
               { name: 'primaryContact', type: 'person', notes: 'name, role, phone, email' },
-              { name: 'lifecycleStatus', type: 'enum', required: true, notes: 'Lead → Qualified → … → Won → Active / Lost' },
+              { name: 'lifecycleStatus', type: 'enum', required: true, notes: 'Lead → Qualified → Proposal → Won (customer) → Expired (renewal) → Lost — one status across the whole journey' },
               { name: 'owner', type: 'ref → admin user' },
               { name: 'accountId', type: 'ref → Account', notes: 'set at activation; empty while a prospect' },
               { name: 'companyId', type: 'ref → Company', notes: 'set only if the customer posts jobs' },
@@ -121,17 +121,19 @@ export const crm: BuildModule = {
           },
         ],
         behaviors: [
-          'List searchable/filterable by owner, industry, lifecycle status and activity (has quote/PO/invoice/contract).',
-          'Row → detail: contact, deal(s), quote/PO/invoice/payment/contract history, and the linked account/company (if any).',
-          'From a Won customer, "Activate customer" launches the account-creation flow.',
+          'One list, filterable by status (Lead / Qualified / Proposal / Won / Expired / Lost), owner, industry, activity (has quote/PO/invoice/contract).',
+          'The Pipeline board is this same list grouped by status — a view, not a second dataset.',
+          'Row → the company record: contact, deal(s), quote/PO/invoice history, and — for customers — its account, products/quota, users, and public page as sections.',
+          'From a Won company, "Convert / Activate" provisions the account. Renewal loop: after the product period ends → Expired → the company re-enters the pipeline for renewal (no new record).',
         ],
         rules: [
           'A company is always created here first — the CRM is the single front door, even for a company that arrives already large.',
           'De-duplicate on tax code / legal name at creation; block or offer merge on a match.',
-          'A lead has no login and is not shown to jobseekers; those exist only after activation.',
-          'Customer ↔ account is 1:1; a public company profile exists only when the customer uses Job Posting.',
+          'A Lead has no login and is invisible to jobseekers; account + public page exist only after Won + activation.',
+          'Products and the public company page are per-record sections gated by product (Job Posting) — never a reason for a separate list.',
+          'Expired ≠ a new record — it is the same company looping back for renewal.',
         ],
-        states: ['Lead (prospect)', 'Won (activation available)', 'Active customer', 'Lost', 'Duplicate detected'],
+        states: ['Lead', 'Qualified', 'Proposal', 'Won (customer)', 'Expired (renewal candidate)', 'Lost', 'Duplicate detected'],
         backend: {
           dataModel: [
             { name: 'customerId', type: 'uuid', required: true },
@@ -143,7 +145,7 @@ export const crm: BuildModule = {
             { name: 'ownerId', type: 'uuid' },
           ],
           endpoints: ['GET /admin/crm/customers?…', 'POST /admin/crm/customers (dedup check)', 'GET /admin/crm/customers/:id'],
-          notes: 'Same underlying company entity as Account management — that module is a filtered/enriched view, not a separate table.',
+          notes: 'ONE company table. The Pipeline is a status-grouped view of it; Account management adds the account/users/products/page as related sections on the same record — never a second company list.',
         },
         acceptance: [
           'A lead can be created with internal-only data and no login.',

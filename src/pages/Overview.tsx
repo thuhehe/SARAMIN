@@ -21,6 +21,42 @@ export function Overview() {
         </p>
       </div>
 
+      {/* General requirements — cross-cutting guidelines that apply to every module */}
+      <section className="max-w-[70ch] mb-8">
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">
+          General requirements <span className="font-medium normal-case tracking-normal text-faint/80">· guideline, applies everywhere</span>
+        </h2>
+        <div className="rounded-xl border border-line divide-y divide-line-soft overflow-hidden">
+          {/* 1 · Languages per surface */}
+          <div className="px-4 py-3">
+            <p className="mb-2.5 text-[13px] font-semibold text-ink">1 · Languages per surface</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {([
+                ['Jobseeker', 'EN · VI', 'bg-emerald-500'],
+                ['Admin', 'EN · VI', 'bg-slate-400'],
+                ['Company', 'EN · VI · KR', 'bg-sky-500'],
+              ] as const).map(([surface, langs, dot]) => (
+                <div key={surface} className="rounded-lg border border-line bg-canvas/40 px-3 py-2">
+                  <p className="flex items-center gap-1.5 text-[12px] font-medium text-ink">
+                    <span className={`h-2 w-2 rounded-full ${dot}`} /> {surface}
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold tracking-wide text-ink/80">{langs}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* 2 · Change logs everywhere */}
+          <div className="px-4 py-3">
+            <p className="mb-1 text-[13px] font-semibold text-ink">2 · Change logs on every page</p>
+            <p className="text-[13px] leading-relaxed text-ink/75">
+              Every page keeps a history of changes — <strong>who</strong> (a user or the system),{' '}
+              <strong>what</strong> changed (before → after) and <strong>when</strong>. See the 3-layer audit model
+              (Audit log · page History · record Activity) in the Admin wireframe.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Shared vocabulary — keep the whole team on one set of terms */}
       <section className="max-w-[70ch]">
         <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">Glossary</h2>

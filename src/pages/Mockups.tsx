@@ -569,7 +569,7 @@ const SCREEN_GROUPS: { site: string; screens: Screen[] }[] = SCREENS.reduce(
 )
 
 const PLANNED = [
-  { site: 'Companies', items: ['Job list', 'Create job', 'Application list'] },
+  { site: 'Companies', items: ['See the Company mockups (employer portal) →'] },
   { site: 'Admin', items: ['See the Admin console wireframe →'] },
 ]
 

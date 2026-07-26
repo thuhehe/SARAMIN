@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, ChevronRight, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META, SCOPE_META } from '@/data/buildModules'
 import type { BuildFeature, Scope, FeatureDetail } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
-import { SCREENS } from '@/pages/Mockups'
+import { resolveScreen } from '@/pages/screenRegistry'
 import { Browser } from '@/components/wire'
 import { cn } from '@/lib/utils'
 
@@ -278,7 +278,7 @@ export function FeatureDetail() {
 
   const prev = idx > 0 ? { i: idx - 1, f: m.features[idx - 1] } : undefined
   const next = idx < m.features.length - 1 ? { i: idx + 1, f: m.features[idx + 1] } : undefined
-  const screen = f.mockup ? SCREENS.find((s) => s.id === f.mockup) : undefined
+  const screen = resolveScreen(f.mockup)
 
   return (
     <div className="max-w-[900px] pb-16">
@@ -301,6 +301,21 @@ export function FeatureDetail() {
         </span>
         <ScopePills scope={f.scope} />
       </div>
+
+      {/* Screen UI — on top, above the requirement detail */}
+      <section className="mt-6">
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">Screen UI</h2>
+        {screen ? (
+          <Browser url={screen.url ?? 'saramin.vn'}>
+            <screen.Comp />
+          </Browser>
+        ) : (
+          <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
+            <ImageIcon className="mx-auto h-5 w-5 text-faint" />
+            <p className="mt-2 text-[13px] text-muted">No screen mockup wired for this feature yet.</p>
+          </div>
+        )}
+      </section>
 
       {f.notes && (
         <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
@@ -325,26 +340,6 @@ export function FeatureDetail() {
             </li>
           ))}
         </ul>
-      </section>
-
-      {/* related UI mockup */}
-      <section className="mt-7">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">UI mockup</h2>
-        {screen ? (
-          <Browser url={screen.url}>
-            <screen.Comp />
-          </Browser>
-        ) : (
-          <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
-            <ImageIcon className="mx-auto h-5 w-5 text-faint" />
-            <p className="mt-2 text-[13px] text-muted">
-              No UI mockup for this feature yet.
-            </p>
-            <Link to="/mockups" className="mt-1 inline-block text-[12px] text-brand hover:underline">
-              Browse all mockups →
-            </Link>
-          </div>
-        )}
       </section>
 
       {/* prev / next within the module */}
