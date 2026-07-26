@@ -1,4 +1,3 @@
-import { useSearchParams } from 'react-router-dom'
 import { Browser, JsHeader, JobCard, Btn, Chip, Line, SectionTitle } from '@/components/wire'
 import { cn } from '@/lib/utils'
 
@@ -557,77 +556,43 @@ export const SCREENS: Screen[] = [
   { id: 'crm-company-page', site: 'Admin · CRM', title: '5 · Company detail page', url: 'admin/companies/vanphat/profile', Comp: CrmCompanyPageScreen },
 ]
 
-/** SCREENS grouped by site, preserving first-seen order. */
-const SCREEN_GROUPS: { site: string; screens: Screen[] }[] = SCREENS.reduce(
-  (acc, s) => {
-    const g = acc.find((x) => x.site === s.site)
-    if (g) g.screens.push(s)
-    else acc.push({ site: s.site, screens: [s] })
-    return acc
-  },
-  [] as { site: string; screens: Screen[] }[],
-)
-
 const PLANNED = [
   { site: 'Companies', items: ['See the Company mockups (employer portal) →'] },
   { site: 'Admin', items: ['See the Admin console wireframe →'] },
 ]
 
 export function Mockups() {
-  const [params, setParams] = useSearchParams()
-  const current = params.get('screen') ?? SCREENS[0].id
-  const screen = SCREENS.find((s) => s.id === current) ?? SCREENS[0]
-
   return (
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — core flows</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards) plus the
-          HQ Admin <b>CRM lead → customer activation</b> flow. Structure &amp; layout only — not final visual design.
+          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards), top to
+          bottom starting from the Homepage. Structure &amp; layout only — not final visual design.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-5">
-        {/* screen selector */}
-        <aside className="lg:sticky lg:top-3 h-max rounded-xl border border-line bg-surface p-2">
-          {SCREEN_GROUPS.map((grp) => (
-            <div key={grp.site}>
-              <p className="px-2 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">{grp.site}</p>
-              {grp.screens.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setParams({ screen: s.id })}
-                  className={cn(
-                    'block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] transition-colors',
-                    s.id === screen.id ? 'bg-brand-soft font-medium text-brand' : 'text-ink/75 hover:bg-canvas/70',
-                  )}
-                >
-                  {s.title}
-                </button>
-              ))}
+      <div className="space-y-8">
+        {SCREENS.map((s) => (
+          <section key={s.id} id={s.id} className="scroll-mt-4">
+            <div className="mb-2 flex items-center gap-2">
+              <h2 className="text-[15px] font-semibold">{s.title}</h2>
+              <Chip tone="green">{s.site}</Chip>
             </div>
-          ))}
-          {PLANNED.map((g) => (
-            <div key={g.site}>
-              <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">{g.site} · planned</p>
-              {g.items.map((it) => (
-                <p key={it} className="px-3 py-1.5 text-[12px] text-faint">{it}</p>
-              ))}
-            </div>
-          ))}
-        </aside>
+            <Browser url={s.url}>
+              <s.Comp />
+            </Browser>
+          </section>
+        ))}
 
-        {/* mockup */}
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold">{screen.title}</h2>
-            <Chip tone="green">{screen.site}</Chip>
-          </div>
-          <Browser url={screen.url}>
-            <screen.Comp />
-          </Browser>
+        {/* pointers to the other mockup sets */}
+        <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-4 text-[12.5px] leading-relaxed text-muted">
+          {PLANNED.map((g) => (
+            <p key={g.site}>
+              <span className="font-semibold text-ink/70">{g.site}:</span> {g.items.join(' · ')}
+            </p>
+          ))}
         </div>
       </div>
     </div>
