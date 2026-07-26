@@ -1,9 +1,11 @@
-import { Browser, JsHeader, JobCard, Btn, Chip, Line, SectionTitle } from '@/components/wire'
+import { useState } from 'react'
+import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
 import { cn } from '@/lib/utils'
 
 /* ── Jobseeker screens (VN recruitment standard) ─────────────────────────── */
 
 function HomeScreen() {
+  const go = useNav()
   return (
     <div>
       <JsHeader active="Jobs" />
@@ -14,7 +16,7 @@ function HomeScreen() {
         <div className="flex flex-col sm:flex-row gap-2 max-w-[720px]">
           <div className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">🔍 Job title, skill, company…</div>
           <div className="w-full sm:w-44 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">📍 All locations</div>
-          <Btn primary className="px-5">Search</Btn>
+          <Btn primary className="px-5" onClick={() => go('js-search')}>Search</Btn>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Chip>IT</Chip><Chip>Sales</Chip><Chip>Marketing</Chip><Chip>Finance</Chip><Chip>Remote</Chip>
@@ -28,21 +30,27 @@ function HomeScreen() {
       <div className="px-5 py-4">
         <SectionTitle more>Hot jobs</SectionTitle>
         <div className="grid gap-2.5 sm:grid-cols-2">
-          <JobCard title="Senior Frontend Engineer" company="FPT Software" salary="30 – 45 tr" />
-          <JobCard title="Digital Marketing Lead" company="Tiki" salary="Thỏa thuận" location="Hà Nội" />
-          <JobCard title="Accountant" company="VNG" salary="18 – 25 tr" />
-          <JobCard title="Product Manager" company="MoMo" salary="Up to 60 tr" />
+          <JobCard title="Senior Frontend Engineer" company="FPT Software" salary="30 – 45 tr" onClick={() => go('js-job-detail')} />
+          <JobCard title="Digital Marketing Lead" company="Tiki" salary="Thỏa thuận" location="Hà Nội" onClick={() => go('js-job-detail')} />
+          <JobCard title="Accountant" company="VNG" salary="18 – 25 tr" onClick={() => go('js-job-detail')} />
+          <JobCard title="Product Manager" company="MoMo" salary="Up to 60 tr" onClick={() => go('js-job-detail')} />
         </div>
       </div>
       {/* top companies */}
       <div className="px-5 pb-6">
         <SectionTitle more>Top companies</SectionTitle>
         <div className="flex gap-2.5 overflow-x-auto">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-32 shrink-0 rounded-lg border border-line p-3 text-center">
+          {[
+            ['FPT Software', 'IT · 30,000+'],
+            ['Shopee', 'E-commerce'],
+            ['Techcombank', 'Banking'],
+            ['VNG', 'Technology'],
+            ['Vinamilk', 'FMCG'],
+          ].map(([name, meta]) => (
+            <div key={name} className="w-32 shrink-0 rounded-lg border border-line p-3 text-center">
               <div className="mx-auto mb-2 h-10 w-10 rounded-md bg-canvas" />
-              <Line w="80%" className="mx-auto mb-1" />
-              <Line w="55%" h={6} className="mx-auto" />
+              <p className="truncate text-[12px] font-semibold text-ink">{name}</p>
+              <p className="truncate text-[10.5px] text-muted">{meta}</p>
             </div>
           ))}
         </div>
@@ -52,6 +60,7 @@ function HomeScreen() {
 }
 
 function SearchScreen() {
+  const go = useNav()
   return (
     <div>
       <JsHeader active="Jobs" />
@@ -64,11 +73,24 @@ function SearchScreen() {
         {/* filters */}
         <div className="border-b md:border-b-0 md:border-r border-line-soft p-4 space-y-4">
           <p className="text-[12px] font-bold">Filters</p>
-          {['Location', 'Category / industry', 'Salary range', 'Experience level', 'Job type', 'Work arrangement', 'Posted date'].map((f) => (
+          {([
+            ['Location', ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng']],
+            ['Category / industry', ['IT – Software', 'Marketing', 'Finance']],
+            ['Salary range', ['Under 15 tr', '15 – 30 tr', 'Over 30 tr']],
+            ['Experience level', ['Intern / Fresher', '1 – 3 years', '3+ years']],
+            ['Job type', ['Full-time', 'Part-time', 'Contract']],
+            ['Work arrangement', ['On-site', 'Hybrid', 'Remote']],
+            ['Posted date', ['Last 24 hours', 'Last 7 days', 'Last 30 days']],
+          ] as [string, string[]][]).map(([f, opts]) => (
             <div key={f}>
               <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">{f}</p>
               <div className="space-y-1">
-                <Line w="90%" h={7} /><Line w="70%" h={7} />
+                {opts.map((o) => (
+                  <label key={o} className="flex items-center gap-1.5 text-[11px] text-muted">
+                    <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />
+                    {o}
+                  </label>
+                ))}
               </div>
             </div>
           ))}
@@ -80,11 +102,11 @@ function SearchScreen() {
             <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Most recent</Chip><Chip>Relevance</Chip></div>
           </div>
           <div className="space-y-2.5">
-            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" />
-            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" />
-            <JobCard title="Frontend Intern" company="Base.vn" salary="8 – 12 tr" />
-            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" />
-            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" />
+            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" onClick={() => go('js-job-detail')} />
+            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" onClick={() => go('js-job-detail')} />
+            <JobCard title="Frontend Intern" company="Base.vn" salary="8 – 12 tr" onClick={() => go('js-job-detail')} />
+            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" onClick={() => go('js-job-detail')} />
+            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" onClick={() => go('js-job-detail')} />
           </div>
           <div className="mt-4 flex justify-center gap-1.5">
             {['1', '2', '3', '…', '25'].map((p) => (
@@ -98,6 +120,7 @@ function SearchScreen() {
 }
 
 function JobDetailScreen() {
+  const go = useNav()
   return (
     <div>
       <JsHeader active="Jobs" />
@@ -116,16 +139,36 @@ function JobDetailScreen() {
               </div>
             </div>
             <div className="mt-3 flex gap-2">
-              <Btn primary className="flex-1">Apply now</Btn>
+              <Btn primary className="flex-1" onClick={() => go('js-apply')}>Apply now</Btn>
               <Btn>♡ Save</Btn>
             </div>
             <p className="mt-2 text-[11px] text-faint">Deadline: 31/08/2026</p>
           </div>
           {/* body */}
-          {['Job description', 'Requirements', 'Benefits'].map((h) => (
+          {([
+            ['Job description', [
+              'Build and maintain high-traffic web apps with React and TypeScript.',
+              'Work with designers and PMs to ship features end-to-end.',
+              'Own performance, accessibility and code quality on the frontend.',
+            ]],
+            ['Requirements', [
+              '3+ years building production React applications.',
+              'Strong TypeScript, HTML/CSS and REST/GraphQL skills.',
+              'Good English reading & written communication.',
+            ]],
+            ['Benefits', [
+              '13th-month salary and performance bonus.',
+              'Premium health insurance for you and your family.',
+              'Hybrid working — 2 days remote per week.',
+            ]],
+          ] as [string, string[]][]).map(([h, items]) => (
             <div key={h} className="mt-4">
               <p className="mb-2 text-[13.5px] font-bold text-ink">{h}</p>
-              <div className="space-y-1.5"><Line /><Line w="95%" /><Line w="88%" /><Line w="60%" /></div>
+              <ul className="space-y-1 text-[12px] leading-relaxed text-muted">
+                {items.map((t) => (
+                  <li key={t} className="flex gap-2"><span className="text-faint">•</span><span>{t}</span></li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
@@ -134,12 +177,17 @@ function JobDetailScreen() {
           <div className="rounded-xl border border-line p-4">
             <p className="mb-2 text-[12px] font-bold">About the company</p>
             <div className="mb-2 h-10 w-10 rounded-md bg-canvas" />
-            <Line w="80%" className="mb-1.5" /><Line w="60%" h={7} />
+            <p className="text-[12px] font-semibold text-ink">FPT Software</p>
+            <p className="text-[11px] leading-relaxed text-muted">Vietnam's leading IT services &amp; software outsourcing company.</p>
             <div className="mt-2"><Chip>10,000+ staff</Chip></div>
           </div>
           <div className="rounded-xl border border-line p-4">
             <p className="mb-2 text-[12px] font-bold">Similar jobs</p>
-            <div className="space-y-2"><Line /><Line w="90%" /><Line w="80%" /></div>
+            <div className="space-y-2 text-[11.5px]">
+              <p className="text-ink">React Native Developer · MoMo</p>
+              <p className="text-ink">Frontend Lead · Tiki</p>
+              <p className="text-ink">Web Engineer · Grab</p>
+            </div>
           </div>
         </div>
       </div>
@@ -148,36 +196,78 @@ function JobDetailScreen() {
 }
 
 function ApplyScreen() {
+  const go = useNav()
   return (
     <div className="relative">
       <div className="pointer-events-none opacity-40"><JobDetailScreen /></div>
       {/* modal */}
-      <div className="absolute inset-0 bg-black/20 flex items-start justify-center pt-10">
-        <div className="w-[92%] max-w-[440px] rounded-xl border border-line bg-surface shadow-lg">
+      <div className="absolute inset-0 flex items-start justify-center bg-black/25 px-4 pt-8">
+        <div className="flex max-h-[590px] w-full max-w-[460px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+          {/* header */}
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <p className="text-[14px] font-bold">Apply · Senior Frontend Engineer</p>
-            <span className="text-faint">✕</span>
-          </div>
-          <div className="p-4 space-y-4">
             <div>
-              <p className="mb-1.5 text-[12px] font-medium">Choose your CV</p>
-              <label className="flex items-center gap-2 rounded-md border border-brand bg-brand-soft px-3 py-2 text-[12px]">
-                <span className="h-3 w-3 rounded-full border-2 border-brand bg-brand" /> Online CV — Nguyễn Văn A (default)
+              <p className="text-[14px] font-bold text-ink">Apply for this job</p>
+              <p className="text-[11px] text-muted">Senior Frontend Engineer · FPT Software</p>
+            </div>
+            <span className="cursor-pointer text-faint" onClick={() => go('js-job-detail')}>✕</span>
+          </div>
+
+          {/* body (scrolls) */}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
+            {/* A — profile is always sent (source of truth) */}
+            <div>
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-faint">What the employer receives</p>
+              <div className="rounded-lg border-2 border-brand/40 bg-brand-soft px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-semibold text-ink">Nguyễn Thị Thu · Saramin Profile</p>
+                    <p className="text-[11px] text-muted">Always included · powers recruiter matching</p>
+                  </div>
+                  <Chip tone="green">70%</Chip>
+                </div>
+              </div>
+            </div>
+
+            {/* B — optional CV attachment */}
+            <div>
+              <p className="mb-1.5 text-[12px] font-medium text-ink">Attach a CV file <span className="text-faint">(recommended)</span></p>
+              <label className="flex items-center gap-2 rounded-md border border-brand bg-surface px-3 py-2 text-[12px]">
+                <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2 border-brand"><span className="h-1.5 w-1.5 rounded-full bg-brand" /></span>
+                <span className="flex-1 truncate">📄 Portfolio.pdf <span className="text-faint">· latest</span></span>
+                <Chip tone="green">Approved</Chip>
               </label>
-              <label className="mt-1.5 flex items-center gap-2 rounded-md border border-line px-3 py-2 text-[12px] text-muted">
-                <span className="h-3 w-3 rounded-full border border-line" /> Uploaded CV — my-cv.pdf
+              <label className="mt-1.5 flex items-center gap-2 rounded-md border border-dashed border-line px-3 py-2 text-[12px] text-muted">
+                <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-line" /> ⬆ Upload a new file — .pdf, .doc · max 5 MB
               </label>
             </div>
+
+            {/* preferred location — VN standard field */}
+            <div>
+              <p className="mb-1.5 text-[12px] font-medium">Preferred work location <span className="text-rose-500">*</span></p>
+              <div className="flex items-center justify-between rounded-md border border-line px-3 py-2 text-[12px] text-ink/70">Hồ Chí Minh <span className="text-faint">▾</span></div>
+            </div>
+
+            {/* cover message */}
             <div>
               <p className="mb-1.5 text-[12px] font-medium">Cover message <span className="text-faint">(optional)</span></p>
-              <div className="h-16 rounded-md border border-line bg-canvas/40" />
+              <div className="h-14 rounded-md border border-line bg-canvas/40" />
             </div>
-            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
-              Your application is screened by Saramin before it reaches the employer.
+
+            {/* consent */}
+            <label className="flex items-start gap-2 text-[11px] leading-relaxed text-muted">
+              <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />
+              I agree to share my profile &amp; CV with this employer, per Saramin's privacy policy.
+            </label>
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+              Screened by Saramin before it reaches the employer.
             </div>
-            <div className="flex justify-end gap-2">
-              <Btn>Cancel</Btn><Btn primary>Submit application</Btn>
-            </div>
+          </div>
+
+          {/* footer */}
+          <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+            <Btn onClick={() => go('js-job-detail')}>Cancel</Btn>
+            <Btn primary onClick={() => go('js-mypage')}>Submit application</Btn>
           </div>
         </div>
       </div>
@@ -186,19 +276,27 @@ function ApplyScreen() {
 }
 
 function MyPageScreen() {
-  const menu = ['My page', 'My CVs', 'My applications', 'Saved jobs', 'Settings']
+  const go = useNav()
+  const menu: [string, string?][] = [['My page'], ['My CVs', 'js-profile-cv'], ['My applications'], ['Saved jobs'], ['Settings']]
   return (
     <div>
       <JsHeader active="CV & Profile" />
       <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-4 p-5">
         <div className="space-y-3">
           <div className="rounded-xl border border-line p-4 text-center">
-            <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-canvas" />
-            <Line w="70%" className="mx-auto mb-1" /><Line w="50%" h={6} className="mx-auto" />
+            <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+            <p className="text-[13px] font-bold text-ink">Nguyễn Thị Thu</p>
+            <p className="text-[11px] text-muted">UX/UI Design Lead</p>
           </div>
           <div className="rounded-xl border border-line p-2">
-            {menu.map((m, i) => (
-              <p key={m} className={cn('rounded px-3 py-1.5 text-[12.5px]', i === 0 ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70')}>{m}</p>
+            {menu.map(([m, target], i) => (
+              <p
+                key={m}
+                onClick={() => target && go(target)}
+                className={cn('rounded px-3 py-1.5 text-[12.5px]', target && 'cursor-pointer', i === 0 ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70')}
+              >
+                {m}
+              </p>
             ))}
           </div>
         </div>
@@ -209,18 +307,39 @@ function MyPageScreen() {
             <p className="mt-1 text-[11.5px] text-muted">70% — add work experience to improve visibility.</p>
           </div>
           <div className="rounded-xl border border-line p-4">
-            <SectionTitle>My CVs</SectionTitle>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-lg border border-line p-3"><Chip tone="green">Default</Chip><Line w="70%" className="mt-2 mb-1" /><Line w="45%" h={6} /></div>
-              <div className="grid place-items-center rounded-lg border border-dashed border-line p-3 text-[12px] text-brand">+ Create CV</div>
+            <SectionTitle more>My CV &amp; Profile</SectionTitle>
+            <div className="space-y-2">
+              {/* master — always sent, no "default" to choose */}
+              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 hover:border-brand">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface text-[13px]">🧬</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-ink">Saramin Profile</p>
+                  <p className="text-[11px] text-muted">Master CV · always sent to employers</p>
+                </div>
+                <Chip tone="green">Source of truth</Chip>
+              </div>
+              {/* optional attachment */}
+              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-ink">Portfolio.pdf</p>
+                  <p className="text-[11px] text-faint">Optional attachment · the file recruiters read</p>
+                </div>
+                <Chip>Optional</Chip>
+              </div>
             </div>
           </div>
           <div className="rounded-xl border border-line p-4">
             <SectionTitle more>Recent applications</SectionTitle>
             <div className="space-y-2">
-              {['Applied', 'Screening', 'Sent to employer'].map((s) => (
-                <div key={s} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
-                  <Line w="45%" /><Chip tone="amber">{s}</Chip>
+              {([
+                ['Senior Frontend Engineer · FPT', 'Applied'],
+                ['Product Manager · MoMo', 'Screening'],
+                ['UI Engineer · One Mount', 'Sent to employer'],
+              ] as [string, string][]).map(([job, s]) => (
+                <div key={job} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2">
+                  <span className="truncate text-[11.5px] text-ink">{job}</span>
+                  <Chip tone="amber">{s}</Chip>
                 </div>
               ))}
             </div>
@@ -231,22 +350,143 @@ function MyPageScreen() {
   )
 }
 
+function ProfileCvScreen() {
+  const go = useNav()
+  const menu: [string, string?][] = [['Dashboard', 'js-mypage'], ['My CV & Profile'], ['My applications'], ['Saved jobs'], ['Settings']]
+  const sections: [string, string, boolean][] = [
+    ['About me', 'Senior product designer · 8 yrs across B2B SaaS & fintech.', true],
+    ['Work experience', 'Design Lead · MoMo · 2021–now  ·  +2 more', true],
+    ['Education', 'Banking University of HCMC · 2008–2012', true],
+    ['Skills', 'Figma · Design systems · User research  ·  +6', true],
+    ['Languages', 'Add your languages to improve matching', false],
+  ]
+  return (
+    <div>
+      <JsHeader active="CV & Profile" />
+      <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
+        {/* left rail */}
+        <div className="space-y-3">
+          <div className="rounded-xl border border-line p-4 text-center">
+            <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+            <p className="text-[13px] font-bold text-ink">Nguyễn Thị Thu</p>
+            <p className="text-[11px] text-muted">UX/UI Design Lead</p>
+            {/* single visibility toggle */}
+            <div className="mt-3 flex items-center justify-between rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-left">
+              <span className="text-[11px] font-medium text-ink/80">Let recruiters find me</span>
+              <span className="relative h-4 w-7 shrink-0 rounded-full bg-emerald-500"><span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-white" /></span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-line p-2">
+            {menu.map(([m, target], i) => (
+              <p
+                key={m}
+                onClick={() => target && go(target)}
+                className={cn('rounded px-3 py-1.5 text-[12.5px]', target && 'cursor-pointer', i === 1 ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70')}
+              >
+                {m}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        {/* main */}
+        <div className="space-y-4">
+          {/* model explainer */}
+          <div className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-[11.5px] leading-relaxed text-brand">
+            <b>Your Saramin Profile is your master CV.</b> It powers recruiter search, job matching and 1-tap apply. An uploaded file is an <b>optional attachment</b> recruiters read alongside it — the profile is always the source of truth.
+          </div>
+
+          {/* PART A — structured profile (source of truth) */}
+          <div className="overflow-hidden rounded-xl border-2 border-brand/40">
+            <div className="flex items-center justify-between bg-brand-soft px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold text-ink">1 · Saramin Profile</span>
+                <Chip tone="green">Source of truth</Chip>
+              </div>
+              <span className="text-[11px] font-medium text-brand">Preview &amp; download CV →</span>
+            </div>
+            <div className="space-y-3 p-4">
+              <div>
+                <div className="mb-1 flex justify-between text-[11.5px]"><span className="font-semibold">Profile strength</span><span className="font-bold text-brand">70%</span></div>
+                <div className="h-2 w-full rounded-full bg-canvas"><div className="h-2 w-[70%] rounded-full bg-brand" /></div>
+                <p className="mt-1 text-[11px] text-muted">Reach 100% to unlock the generated CV template and top recruiter visibility.</p>
+              </div>
+              {sections.map(([k, v, done]) => (
+                <div key={k} className="flex items-start justify-between rounded-lg border border-line px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="mb-0.5 flex items-center gap-1.5">
+                      <p className="text-[12px] font-semibold text-ink">{k}</p>
+                      {done ? <Chip tone="green">✓</Chip> : <Chip tone="amber">Missing</Chip>}
+                    </div>
+                    <p className="truncate text-[11.5px] text-muted">{v}</p>
+                  </div>
+                  <span className="ml-2 shrink-0 text-[11px] font-medium text-brand">{done ? 'Edit' : '+ Add'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* PART B — CV attachment (optional) */}
+          <div className="overflow-hidden rounded-xl border border-line">
+            <div className="flex items-center gap-2 bg-canvas/50 px-4 py-2.5">
+              <span className="text-[13px] font-bold text-ink">2 · CV attachment</span>
+              <Chip>Optional · the document a recruiter reads</Chip>
+            </div>
+            <div className="space-y-3 p-4">
+              <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-semibold text-ink">Portfolio.pdf</p>
+                  <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
+                </div>
+                <Chip tone="green">Approved</Chip>
+                <span className="text-[11px] font-medium text-brand">Replace</span>
+              </div>
+              {/* auto-fill — the bridge between the two */}
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[11.5px] font-semibold text-brand">✨ Auto-fill my profile from this CV</p>
+                  <p className="text-[11px] text-muted">We read the file and pre-fill your Saramin Profile — you just confirm.</p>
+                </div>
+                <Btn primary>Fill profile</Btn>
+              </div>
+              <p className="text-[11px] text-faint">Supports .doc, .docx, .pdf · under 5 MB · no password protection.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CreateCvScreen() {
-  const sections = ['Contact & profile', 'Professional summary', 'Work experience', 'Education', 'Skills', 'Languages']
+  const go = useNav()
+  const sections: [string, string[]][] = [
+    ['Contact & profile', ['Nguyễn Thị Thu', 'UX/UI Design Lead', 'thu@email.com · 0382 233 670']],
+    ['Professional summary', ['Senior product designer with 8 years across B2B SaaS & fintech.']],
+    ['Work experience', ['Design Lead · MoMo · 2021–now', 'Senior Designer · Tiki · 2018–2021']],
+    ['Education', ['Banking University of HCMC · 2008–2012']],
+    ['Skills', ['Figma, Design systems, User research, Prototyping']],
+    ['Languages', ['Vietnamese (native), English (fluent)']],
+  ]
   return (
     <div>
       <JsHeader active="CV & Profile" />
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <p className="text-[14px] font-bold">Create CV — Online builder</p>
-        <div className="flex gap-2"><Btn>Save draft</Btn><Btn primary>Save & publish</Btn></div>
+        <div className="flex gap-2"><Btn>Save draft</Btn><Btn primary onClick={() => go('js-profile-cv')}>Save & publish</Btn></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
         {/* form */}
         <div className="space-y-3">
-          {sections.map((s, i) => (
+          {sections.map(([s, fields], i) => (
             <div key={s} className="rounded-lg border border-line p-3">
               <p className="mb-2 text-[12.5px] font-semibold">{i + 1}. {s}</p>
-              <div className="space-y-1.5"><Line /><Line w="85%" />{i < 3 && <Line w="60%" />}</div>
+              <div className="space-y-1.5">
+                {fields.map((f) => (
+                  <div key={f} className="rounded-md border border-line bg-canvas/40 px-2.5 py-1.5 text-[11px] text-muted">{f}</div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -254,10 +494,14 @@ function CreateCvScreen() {
         <div className="rounded-lg border border-line bg-canvas/30 p-4">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Live preview</p>
           <div className="rounded-md bg-surface border border-line p-4">
-            <Line w="55%" h={12} className="mb-2" /><Line w="40%" h={7} className="mb-3" />
-            <div className="space-y-1.5"><Line /><Line w="95%" /><Line w="90%" /><Line w="70%" /></div>
+            <p className="text-[15px] font-bold text-ink">Nguyễn Thị Thu</p>
+            <p className="mb-3 text-[11px] text-muted">UX/UI Design Lead · Hồ Chí Minh</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Summary</p>
+            <p className="mb-3 text-[11px] leading-relaxed text-muted">Senior product designer with 8 years across B2B SaaS &amp; fintech, leading design systems and 0→1 products.</p>
             <div className="my-3 h-px bg-line" />
-            <div className="space-y-1.5"><Line w="60%" /><Line /><Line w="85%" /></div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
+            <p className="text-[11px] text-ink">Design Lead · MoMo · 2021–now</p>
+            <p className="text-[11px] text-muted">Senior Designer · Tiki · 2018–2021</p>
           </div>
         </div>
       </div>
@@ -547,6 +791,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-job-detail', site: 'Jobseeker', title: 'Job detail', url: 'saramin.vn/job/senior-frontend', Comp: JobDetailScreen },
   { id: 'js-apply', site: 'Jobseeker', title: 'Apply flow', url: 'saramin.vn/job/…/apply', Comp: ApplyScreen },
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },
+  { id: 'js-profile-cv', site: 'Jobseeker', title: 'My CV & Profile (profile = source of truth)', url: 'saramin.vn/my-page/cv', Comp: ProfileCvScreen },
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
   // Admin / CRM — the lead → customer activation flow
   { id: 'crm-pipeline', site: 'Admin · CRM', title: '1 · Sales pipeline', url: 'admin/sales/customers', Comp: CrmPipelineScreen },
@@ -556,10 +801,76 @@ export const SCREENS: Screen[] = [
   { id: 'crm-company-page', site: 'Admin · CRM', title: '5 · Company detail page', url: 'admin/companies/vanphat/profile', Comp: CrmCompanyPageScreen },
 ]
 
-const PLANNED = [
-  { site: 'Companies', items: ['See the Company mockups (employer portal) →'] },
-  { site: 'Admin', items: ['See the Admin console wireframe →'] },
+/** Jobseeker screens grouped into flows (Mobbin-style). Labels override the long registry titles. */
+const JS_FLOWS: { flow: string; items: { id: string; label: string }[] }[] = [
+  {
+    flow: 'Find a job',
+    items: [
+      { id: 'js-home', label: 'Homepage / job list' },
+      { id: 'js-search', label: 'Search results' },
+      { id: 'js-job-detail', label: 'Job detail' },
+    ],
+  },
+  {
+    flow: 'Apply to a job',
+    items: [{ id: 'js-apply', label: 'Apply flow' }],
+  },
+  {
+    flow: 'My profile & CV',
+    items: [
+      { id: 'js-mypage', label: 'My page' },
+      { id: 'js-profile-cv', label: 'My CV & Profile' },
+      { id: 'js-create-cv', label: 'Create CV' },
+    ],
+  },
 ]
+
+/** One canvas that swaps screens — driven by the flow index on the left and by clicks inside each screen. */
+function InteractivePrototype() {
+  const byId = new Map(SCREENS.map((s) => [s.id, s]))
+  const [active, setActive] = useState('js-home')
+  const current = byId.get(active) ?? SCREENS[0]
+  const Comp = current.Comp
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-[210px_minmax(0,1fr)]">
+      {/* flow index sidebar */}
+      <aside className="scroll-thin self-start rounded-xl border border-line p-2 md:sticky md:top-4 md:max-h-[640px] md:overflow-y-auto">
+        <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker flows</p>
+        {JS_FLOWS.map((g) => (
+          <div key={g.flow} className="mb-2">
+            <p className="px-2 pb-1 pt-1.5 text-[11px] font-semibold text-ink/55">{g.flow}</p>
+            {g.items.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setActive(id)}
+                className={cn(
+                  'block w-full truncate rounded px-2 py-1.5 text-left text-[12px]',
+                  id === active ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </aside>
+
+      {/* live canvas */}
+      <div className="min-w-0">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <Chip tone="blue">Interactive</Chip>
+          <span className="text-[12.5px] font-semibold text-ink">{current.title}</span>
+          <span className="text-[11px] text-faint">— click buttons, job cards &amp; menu items to move between screens</span>
+        </div>
+        <NavContext.Provider value={setActive}>
+          <Browser url={current.url}>
+            <Comp />
+          </Browser>
+        </NavContext.Provider>
+      </div>
+    </div>
+  )
+}
 
 export function Mockups() {
   return (
@@ -568,33 +879,22 @@ export function Mockups() {
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — core flows</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards), top to
-          bottom starting from the Homepage. Structure &amp; layout only — not final visual design.
+          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards). Pick any
+          screen from the index on the left, or click buttons inside a screen to move through the flow.
+          Structure &amp; layout only — not final visual design.
         </p>
       </div>
 
-      <div className="space-y-8">
-        {SCREENS.map((s) => (
-          <section key={s.id} id={s.id} className="scroll-mt-4">
-            <div className="mb-2 flex items-center gap-2">
-              <h2 className="text-[15px] font-semibold">{s.title}</h2>
-              <Chip tone="green">{s.site}</Chip>
-            </div>
-            <Browser url={s.url}>
-              <s.Comp />
-            </Browser>
-          </section>
-        ))}
-
-        {/* pointers to the other mockup sets */}
-        <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-4 text-[12.5px] leading-relaxed text-muted">
-          {PLANNED.map((g) => (
-            <p key={g.site}>
-              <span className="font-semibold text-ink/70">{g.site}:</span> {g.items.join(' · ')}
-            </p>
-          ))}
+      <section>
+        <div className="mb-1 flex items-center gap-2">
+          <h2 className="text-[16px] font-bold">Interactive prototype</h2>
+          <Chip tone="blue">Clickable</Chip>
         </div>
-      </div>
+        <p className="mb-3 max-w-[72ch] text-[12.5px] text-muted">
+          Try the happy path: Home → click a job → <b>Apply now</b> → submit → My page → <b>My CV &amp; Profile</b>.
+        </p>
+        <InteractivePrototype />
+      </section>
     </div>
   )
 }

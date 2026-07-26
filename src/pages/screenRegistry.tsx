@@ -30,7 +30,8 @@ const ALIAS: Record<string, { src: 'js' | 'co' | 'admin'; id: string }> = {
   'crm-company-page': { src: 'co', id: 'co-company-page' },
   // CRM / Admin console
   'crm-pipeline': { src: 'admin', id: 'admin-sales-pipeline' },
-  // No screen built yet: crm-customer, crm-products, crm-activate (activation is a flow)
+  'crm-customer': { src: 'admin', id: 'admin-company-list' }, // the one shared company/customer list
+  // No screen built yet: crm-products (entitlements), crm-activate (activation is a flow)
 }
 
 function fromSource(src: 'js' | 'co' | 'admin', id: string): ResolvedScreen | null {
