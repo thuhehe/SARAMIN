@@ -57,6 +57,10 @@ export interface ShareSession {
  * - `gone` — link revoked or expired; no passcode will fix it.
  * - `locked` — brute-force lockout, `retryAfterSeconds` is set.
  * - `offline` — the request never reached the API; keep polling.
+ * - `throttled` — rate limited. Transient like `offline`, but the fix is
+ *   to poll *slower*, not to retry immediately. Never shown as an error:
+ *   the whole office shares one NAT address, so a busy review session
+ *   can hit the ceiling through no fault of the person reading.
  */
 export type CommentErrorKind =
   | 'auth'
@@ -64,6 +68,7 @@ export type CommentErrorKind =
   | 'locked'
   | 'forbidden'
   | 'offline'
+  | 'throttled'
   | 'server'
 
 export class CommentApiError extends Error {

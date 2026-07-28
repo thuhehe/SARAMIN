@@ -21,6 +21,14 @@ import {
 /** How often to re-read the current document while the tab is visible. */
 const POLL_MS = 5000
 
+/**
+ * Ceiling for the backoff applied after a throttled or failed poll. The
+ * API allows plenty of headroom for reads, but a whole office shares one
+ * NAT address, so a busy session can still hit the limit — backing off to
+ * half a minute keeps a crowded review readable instead of hammering.
+ */
+const MAX_POLL_MS = 30000
+
 type Status = 'locked' | 'unlocking' | 'ready' | 'unavailable'
 
 interface CommentsContextValue {
@@ -101,9 +109,12 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
         setError(null)
         return
       }
-      // `offline` is transient by definition — the next poll may well
-      // succeed, so don't shout about it.
-      setError(err.kind === 'offline' ? null : err.message)
+      // `offline` and `throttled` are transient by definition — the next
+      // poll may well succeed, and neither is the reader's fault, so don't
+      // shout about them. The poll loop slows itself down instead.
+      setError(
+        err.kind === 'offline' || err.kind === 'throttled' ? null : err.message,
+      )
       return
     }
     setError('Something went wrong loading comments')
@@ -115,6 +126,11 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     let timer: number | undefined
     let stopped = false
 
+    // Grows on a throttled or failed poll, resets on the first success.
+    // Without it a rate-limited client keeps asking at the same rate and
+    // stays rate-limited.
+    let delay = POLL_MS
+
     const load = async () => {
       try {
         const payload = await api.listComments(docKeyRef.current, controller.signal)
@@ -124,8 +140,18 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
           setThreads(payload.threads)
           setError(null)
         }
+        delay = POLL_MS
       } catch (err) {
-        if (!stopped) handleError(err)
+        if (stopped) return
+        if (err instanceof CommentApiError) {
+          if (err.kind === 'throttled' || err.kind === 'offline') {
+            const suggested = err.retryAfterSeconds
+              ? err.retryAfterSeconds * 1000
+              : delay * 2
+            delay = Math.min(MAX_POLL_MS, Math.max(POLL_MS, suggested))
+          }
+        }
+        handleError(err)
       }
     }
 
@@ -133,7 +159,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       timer = window.setTimeout(async () => {
         if (document.visibilityState === 'visible') await load()
         if (!stopped) schedule()
-      }, POLL_MS)
+      }, delay)
     }
 
     void load()
