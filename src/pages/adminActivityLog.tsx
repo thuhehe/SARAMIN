@@ -29,7 +29,7 @@ export function ActivityLogButton({ page }: { page: string }) {
         onClick={() => setOpen(true)}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:border-ink/30 hover:text-ink"
       >
-        <span aria-hidden>🕑</span> History
+        History
       </button>
       {open && <ActivityLogDrawer page={page} onClose={() => setOpen(false)} />}
     </>

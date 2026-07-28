@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 /* ── shared bits ──────────────────────────────────────────────────────────── */
-type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral'
+type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
 
 const STATUS_TONE: Record<StatusTone, string> = {
   active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -19,6 +19,10 @@ const STATUS_TONE: Record<StatusTone, string> = {
   rejected: 'bg-rose-50 text-rose-700 border-rose-200',
   draft: 'bg-slate-100 text-slate-600 border-slate-200',
   neutral: 'bg-sky-50 text-sky-700 border-sky-200',
+  // job status model: Draft → Schedule → Open → Closed
+  open: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  schedule: 'bg-violet-50 text-violet-700 border-violet-200',
+  closed: 'bg-slate-100 text-slate-500 border-slate-200',
 }
 
 function Pill({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
@@ -114,9 +118,9 @@ function ListPage({ tabs, cols, rows, footer, minW }: { tabs?: { label: string; 
   )
 }
 
-function StatCards({ cards }: { cards: { label: string; value: string; delta?: string; up?: boolean }[] }) {
+function StatCards({ cards, row }: { cards: { label: string; value: string; delta?: string; up?: boolean }[]; row?: boolean }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={cn('grid gap-3', row ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'sm:grid-cols-2 lg:grid-cols-4')}>
       {cards.map((c, i) => (
         <div key={i} className="rounded-xl border border-line p-3.5">
           <p className="text-[11px] font-medium uppercase tracking-wide text-faint">{c.label}</p>
@@ -148,15 +152,15 @@ function Bars({ data, unit }: { data: { label: string; value: number }[]; unit?:
 }
 
 /* ── Recruitment ──────────────────────────────────────────────────────────── */
-type JobRow = { title: string; category: string; company: string; source: 'Company' | 'Admin'; status: StatusTone; statusLabel: string; posted: string; deadline: string; views: number; saves: number; applicants: number }
+type JobRow = { title: string; category: string; company: string; source: 'Company' | 'Admin'; status: StatusTone; statusLabel: string; exposure: 'On' | 'Off'; posted: string; deadline: string; views: number; saves: number; applicants: number }
 const JOB_ROWS: JobRow[] = [
-  { title: 'Senior Frontend Engineer (ReactJS)', category: 'CNTT - Phần mềm', company: 'FPT Software', source: 'Company', status: 'pending', statusLabel: 'Pending approval', posted: '—', deadline: '31/08/2026', views: 0, saves: 0, applicants: 0 },
-  { title: 'Kế toán tổng hợp', category: 'Kế toán - Kiểm toán', company: 'VNG Corporation', source: 'Company', status: 'pending', statusLabel: 'Pending approval', posted: '—', deadline: '20/08/2026', views: 0, saves: 0, applicants: 0 },
-  { title: 'Digital Marketing Lead', category: 'Marketing - Truyền thông', company: 'Tiki', source: 'Admin', status: 'active', statusLabel: 'Active', posted: '15/07/2026', deadline: '15/09/2026', views: 1240, saves: 86, applicants: 42 },
-  { title: 'Product Manager', category: 'Sản phẩm - Dự án', company: 'MoMo', source: 'Company', status: 'active', statusLabel: 'Active', posted: '05/07/2026', deadline: '05/09/2026', views: 890, saves: 54, applicants: 18 },
-  { title: 'Nhân viên kinh doanh', category: 'Kinh doanh - Bán hàng', company: 'Thế Giới Di Động', source: 'Company', status: 'active', statusLabel: 'Active', posted: '20/07/2026', deadline: '28/08/2026', views: 320, saves: 12, applicants: 7 },
-  { title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', status: 'expired', statusLabel: 'Expired', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
-  { title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', status: 'rejected', statusLabel: 'Rejected', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
+  { title: 'Senior Frontend Engineer (ReactJS)', category: 'CNTT - Phần mềm', company: 'FPT Software', source: 'Company', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '31/08/2026', views: 0, saves: 0, applicants: 0 },
+  { title: 'Kế toán tổng hợp', category: 'Kế toán - Kiểm toán', company: 'VNG Corporation', source: 'Company', status: 'schedule', statusLabel: 'Schedule', exposure: 'Off', posted: '01/09/2026', deadline: '20/09/2026', views: 0, saves: 0, applicants: 0 },
+  { title: 'Digital Marketing Lead', category: 'Marketing - Truyền thông', company: 'Tiki', source: 'Admin', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '15/07/2026', deadline: '15/09/2026', views: 1240, saves: 86, applicants: 42 },
+  { title: 'Product Manager', category: 'Sản phẩm - Dự án', company: 'MoMo', source: 'Company', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '05/07/2026', deadline: '05/09/2026', views: 890, saves: 54, applicants: 18 },
+  { title: 'Nhân viên kinh doanh', category: 'Kinh doanh - Bán hàng', company: 'Thế Giới Di Động', source: 'Company', status: 'open', statusLabel: 'Open', exposure: 'Off', posted: '20/07/2026', deadline: '28/08/2026', views: 320, saves: 12, applicants: 7 },
+  { title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', status: 'closed', statusLabel: 'Closed', exposure: 'Off', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
+  { title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
 ]
 function AdminJobList() {
   const [creating, setCreating] = useState(false)
@@ -171,12 +175,13 @@ function AdminJobList() {
       </div>
     <ListPage
       minW={1100}
-      tabs={[{ label: 'All', count: 1248 }, { label: 'Pending approval', count: 2, active: true }, { label: 'Active', count: 1180 }, { label: 'Expired', count: 58 }, { label: 'Draft', count: 8 }]}
+      tabs={[{ label: 'All', count: 1248 }, { label: 'Draft', count: 8 }, { label: 'Schedule', count: 5, active: true }, { label: 'Open', count: 1180 }, { label: 'Closed', count: 58 }]}
       cols={[
         { label: 'Job title', w: '1.9fr' },
         { label: 'Company', w: '1.2fr' },
         { label: 'Created by', w: '0.8fr' },
-        { label: 'Status', w: '1fr' },
+        { label: 'Status', w: '0.9fr' },
+        { label: 'Exposure', w: '0.7fr' },
         { label: 'Posted', w: '0.8fr', align: 'r' },
         { label: 'Expires', w: '0.8fr', align: 'r' },
         { label: 'Views', w: '0.6fr', align: 'r' },
@@ -188,6 +193,9 @@ function AdminJobList() {
         <span className="truncate">{r.company}</span>,
         <Pill tone={r.source === 'Admin' ? 'neutral' : 'draft'}>{r.source}</Pill>,
         <Pill tone={r.status}>{r.statusLabel}</Pill>,
+        r.status === 'open'
+          ? <span className={cn('inline-flex items-center gap-1 text-[11.5px] font-medium', r.exposure === 'On' ? 'text-emerald-600' : 'text-slate-400')}><span className={cn('h-1.5 w-1.5 rounded-full', r.exposure === 'On' ? 'bg-emerald-500' : 'bg-slate-300')} />{r.exposure}</span>
+          : <span className="text-[11.5px] text-faint">—</span>,
         <span className="tabular-nums text-muted">{r.posted}</span>,
         <span className="tabular-nums text-muted">{r.deadline}</span>,
         <span className="tabular-nums">{r.views.toLocaleString('en-US')}</span>,
@@ -240,42 +248,114 @@ function AdminResumes() {
 }
 
 /* ── Companies ────────────────────────────────────────────────────────────── */
-type CoStatus = 'Lead' | 'Qualified' | 'Proposal' | 'Won' | 'Expired' | 'Lost'
+// Pipeline stage = the sales/document flow. Ordered Qualified → Proposal →
+// Negotiation → PO → Invoice, plus Lost. (Renewal/lapse is tracked separately by
+// the customer `account` status: New / Existing / Churn.)
+//   Qualified   = HR manager is willing to discuss the Quotation
+//   Proposal    = Quotation has been sent to the customer
+//   Negotiation = HR manager is running it through their internal approval process
+//   PO          = customer agreed to buy; Sales issued the Purchase Order (deal won)
+//   Invoice     = customer paid; Accounting issued the Invoice (deal closed)
+//   Lost        = ended without a PO (declined / lost to a competitor / budget cut / went silent)
+type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'Lost'
+// Customer-relationship health (shown on the Companies directory) — distinct from the
+// deal lifecycle above (shown on the Pipeline board). Only real customers have one;
+// a company still being sold to (no PO yet) has account = null.
+//   New = became a customer recently (onboarding)
+//   Existing = active, currently using a purchased service
+//   Churn = no new product bought for 1 year since the last PO was issued
+type Account = 'New' | 'Existing' | 'Churn'
 type Company = {
-  name: string; legalName: string; tax: string; industry: string; size: string; address: string
+  name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
   contact: string; owner: string; status: CoStatus
+  account: Account | null; lastPO: string; renewal: string; nextStep: string
+  idle: number; note: string; revenue: number
   jobPosting: boolean; resumeSearch: boolean; jobLeft: number; jobTotal: number; cvLeft: number; cvTotal: number
   hasPage: boolean; jobs: number; domain: string; since: string
 }
 const COMPANIES: Company[] = [
-  { name: 'Công ty TNHH Đại Dương', legalName: 'Công ty TNHH Đại Dương', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn', owner: 'Nguyễn Thị Lan', status: 'Lead', jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'daiduong.vn', since: '—' },
-  { name: 'Công ty CP Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Qualified', jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
-  { name: 'Công ty TNHH Sao Mai', legalName: 'Công ty TNHH Sao Mai', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Proposal', jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
-  { name: 'Công ty TNHH Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Won', jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
-  { name: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Won', jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
-  { name: 'Công ty CP Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'Won', jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
-  { name: 'Công ty TNHH Việt Tiến', legalName: 'Công ty TNHH Việt Tiến Logistics', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Expired', jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
-  { name: 'Tiki', legalName: 'Công ty TNHH TIKI', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Won', jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
+  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 4, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
+  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
+  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
+  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'New', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 3, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
+  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 9, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
+  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'New', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
+  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 21, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
+  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 5, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
+  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 4, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
+  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'New', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
+  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 8, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
+  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
+  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: null, lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
+  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
+  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 28, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
+  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
+  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
+  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'New', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 6, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
 ]
 
+const AC_STATUS: Record<Account, { tone: StatusTone; label: string }> = {
+  New: { tone: 'pending', label: 'New' },
+  Existing: { tone: 'neutral', label: 'Existing' },
+  Churn: { tone: 'rejected', label: 'Churn' },
+}
+// A company shows a pipeline step only while a deal is open (before it closes at
+// Invoice, or dies at Lost). Settled customers show "—".
+const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost'
+const revFmt = (v: number) => (v === 0 ? '—' : (v / 1e6).toFixed(0) + 'M ₫')
+
 const CO_STATUS: Record<CoStatus, { tone: StatusTone; label: string }> = {
-  Lead: { tone: 'draft', label: 'Lead' },
-  Qualified: { tone: 'neutral', label: 'Qualified' },
+  Qualified: { tone: 'draft', label: 'Qualified' },
   Proposal: { tone: 'neutral', label: 'Proposal' },
-  Won: { tone: 'active', label: 'Won · customer' },
-  Expired: { tone: 'pending', label: 'Expired · renew' },
+  Negotiation: { tone: 'pending', label: 'Negotiation' },
+  PO: { tone: 'schedule', label: 'PO' },
+  Invoice: { tone: 'active', label: 'Invoice' },
   Lost: { tone: 'rejected', label: 'Lost' },
 }
+// Board order follows the document flow: the quotation goes out (Proposal), the HR
+// manager engages with it (Qualified), then internal approval (Negotiation) → PO → Invoice.
+const CO_ORDER: CoStatus[] = ['Proposal', 'Qualified', 'Negotiation', 'PO', 'Invoice', 'Lost']
+// A company is a customer once a PO is issued (PO or Invoice stage).
+const isCustomer = (c: Company) => c.status === 'PO' || c.status === 'Invoice'
+/** Full VND — e.g. 18,000,000 ₫ (pipeline values are read exactly, not rounded to M). */
+const vnd = (v: number) => v.toLocaleString('en-US') + ' ₫'
+const CO_VALUE: Record<string, number> = {
+  'Công ty TNHH Đại Dương': 42_000_000, 'Công ty CP Bình Minh': 68_000_000, 'Công ty TNHH Sao Mai': 155_000_000,
+  'Công ty TNHH Vạn Phát': 37_800_000, 'FPT Software': 420_000_000, 'Công ty CP Hoàng Gia': 20_000_000,
+  'Công ty TNHH Việt Tiến': 90_000_000, 'Tiki': 300_000_000,
+  'VNG Corporation': 510_000_000, 'MoMo': 150_000_000, 'Thế Giới Di Động': 620_000_000,
+  'Shopee Việt Nam': 245_000_000, 'Base.vn': 18_000_000, 'Công ty CP Đông Á': 72_000_000,
+  'Công ty TNHH Minh Long': 60_000_000, 'Công ty CP Thành Đạt': 25_000_000,
+  'Công ty CP An Khang': 95_000_000, 'Công ty TNHH Phú Thịnh': 33_500_000,
+}
+const coValue = (c: Company) => CO_VALUE[c.name] ?? 0
+/** Display label: prefer the short/brand name, fall back to the legal name. */
+const coLabel = (c: Company) => c.shortName?.trim() || c.legalName
 
-function ProductChips({ c }: { c: Company }) {
-  if (!c.jobPosting && !c.resumeSearch) return <span className="text-[11px] text-faint">— none yet</span>
+function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: Company) => void; showOwner?: boolean; rows?: Company[] }) {
   return (
-    <span className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
-      {c.jobPosting && <span className="shrink-0 rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[10.5px] text-brand">📢 Job Posting</span>}
-      {c.resumeSearch && <span className="shrink-0 rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[10.5px] text-brand">🔍 Resume Search</span>}
-    </span>
+    <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, minmax(130px,1fr))' }}>
+      {CO_ORDER.map((st) => {
+        const list = rows.filter((c) => c.status === st)
+        const total = list.reduce((s, c) => s + coValue(c), 0)
+        return (
+          <div key={st} className="rounded-lg border border-line bg-canvas/40 p-2">
+            <div className="mb-1 flex items-center justify-between"><Pill tone={CO_STATUS[st].tone}>{st}</Pill><span className="text-[11px] font-bold text-faint">{list.length}</span></div>
+            <p className="mb-2 text-[10.5px] text-faint tabular-nums">{list.length ? vnd(total) : '—'}</p>
+            {list.map((c) => (
+              <button key={c.name} onClick={() => onOpen(c)} className="mb-1.5 block w-full rounded-md border border-line bg-surface p-2 text-left hover:border-brand/40">
+                <p className="truncate text-[11.5px] font-semibold text-ink">{coLabel(c)}</p>
+                <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
+                {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
+              </button>
+            ))}
+          </div>
+        )
+      })}
+    </div>
   )
 }
+
 
 function QuotaBar({ left, total }: { left: number; total: number }) {
   const pct = total ? (left / total) * 100 : 0
@@ -286,27 +366,89 @@ function QuotaBar({ left, total }: { left: number; total: number }) {
   )
 }
 
+const ME = 'Nguyễn Thị Lan' // the signed-in sales rep (mock)
+
 function AdminCompanyList() {
   const [open, setOpen] = useState<Company | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [view, setView] = useState<'me' | 'team'>('me')
   if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} />
+
+  const rows = view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
+  const stats = view === 'me'
+    ? [
+        { label: 'Revenue vs target (Q3)', value: '72%', delta: '₫720M / ₫1.0B', up: true },
+        { label: 'Activity today', value: '38 / 50', delta: '12 below target', up: false },
+        { label: 'In pipeline', value: '12', delta: '₫1.6B open', up: true },
+        { label: 'My customers', value: '84' },
+        { label: 'Churn risk', value: '5', delta: '+1 to win back', up: false },
+      ]
+    : [
+        { label: 'Revenue vs target (Q3)', value: '84%', delta: '₫12.4B / ₫14.8B', up: true },
+        { label: 'Activity today', value: '227 / 300', delta: '73 below target', up: false },
+        { label: 'In pipeline', value: '108', delta: '₫18.2B open', up: true },
+        { label: 'Total customers', value: '512' },
+        { label: 'Churned (12mo)', value: '30', delta: '5.9% of base', up: false },
+      ]
+
   return (
     <div>
-      <p className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-        <b>One list of every company</b> — from cold <b>Lead</b> → <b>Won</b> customer → <b>Expired</b> (loops back for renewal). The <b>Pipeline</b> is just this same list shown as a board. Products and the public company page are sections on each record, only for customers who bought them.
-      </p>
-      <TabBar tabs={[{ label: 'All', count: 512, active: true }, { label: 'Lead', count: 210 }, { label: 'Qualified', count: 64 }, { label: 'Proposal', count: 22 }, { label: 'Won', count: 458 }, { label: 'Expired', count: 16 }, { label: 'Lost', count: 42 }]} />
+      {/* Sales vs Sales-lead view switcher */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+          <button onClick={() => setView('me')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'me' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales view</button>
+          <button onClick={() => setView('team')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'team' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales lead view</button>
+        </div>
+        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New company</button>
+      </div>
+
+      <div className="mb-4"><StatCards cards={stats} row /></div>
+
+      {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
+
       <Table
-        cols={[{ label: 'Company', w: '1.5fr' }, { label: 'Industry', w: '0.9fr' }, { label: 'Products in use', w: '2.2fr' }, { label: 'Status', w: '1.2fr' }, { label: 'Jobs', w: '0.5fr', align: 'r' }, { label: 'Owner', w: '0.9fr', align: 'r' }]}
-        rows={COMPANIES.map((c) => [
-          <button onClick={() => setOpen(c)} className="truncate text-left font-medium text-brand hover:underline">{c.name}</button>,
+        minW={1320}
+        cols={[
+          { label: 'Company', w: '1.4fr' },
+          { label: 'Industry', w: '0.9fr' },
+          { label: 'Location', w: '0.9fr' },
+          { label: 'Status', w: '0.8fr' },
+          { label: 'Owner', w: '0.9fr' },
+          { label: 'Idle', w: '0.6fr' },
+          { label: 'Latest note', w: '1.6fr' },
+          { label: 'Total revenue', w: '0.9fr', align: 'r' },
+          { label: 'Pipeline', w: '0.9fr' },
+        ]}
+        rows={rows.map((c) => [
+          <button onClick={() => setOpen(c)} className="block min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{coLabel(c)}</button>,
           <span className="truncate">{c.industry}</span>,
-          <ProductChips c={c} />,
-          <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>,
-          <span className="tabular-nums">{c.jobs || '—'}</span>,
+          <span className="truncate">{c.address}</span>,
+          c.account ? <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill> : <span className="text-faint">—</span>,
           <span className="truncate">{c.owner}</span>,
+          <span className={cn('tabular-nums', c.idle > 14 ? 'font-medium text-rose-600' : c.idle > 7 ? 'text-amber-600' : 'text-muted')}>{c.idle > 14 ? '🔥 ' : ''}{c.idle}d</span>,
+          <span className="truncate text-muted">{c.note}</span>,
+          <span className="tabular-nums">{revFmt(c.revenue)}</span>,
+          inPipeline(c) ? <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill> : <span className="text-faint">—</span>,
         ])}
       />
-      <Footer text="Showing 8 of 512 — one record per company, tracked lead → renewal. Click to open. The Pipeline board is the same list grouped by status." />
+      <Footer text={view === 'me' ? `Showing ${rows.length} of 84 — your book of business.` : `Showing ${rows.length} of 512 — every company across the team. Filter by owner to drill into one rep.`} />
+    </div>
+  )
+}
+
+/* ── Pipeline — the same companies as a status board (opens the same record) ── */
+function AdminCompanyPipeline() {
+  const [open, setOpen] = useState<Company | null>(null)
+  const [view, setView] = useState<'me' | 'team'>('me')
+  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} />
+  const rows = view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
+  return (
+    <div>
+      <div className="mb-3 inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+        <button onClick={() => setView('me')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'me' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales view</button>
+        <button onClick={() => setView('team')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'team' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales lead view</button>
+      </div>
+      <CompaniesBoard onOpen={setOpen} rows={rows} showOwner={view === 'team'} />
     </div>
   )
 }
@@ -350,29 +492,90 @@ const MAX_SEATS = 4
 type CoJob = { title: string; status: StatusTone; statusLabel: string; applicants: number; posted: string; deadline: string }
 const COMPANY_JOBS: Record<string, CoJob[]> = {
   'Công ty TNHH Vạn Phát': [
-    { title: 'Điều dưỡng viên (Khoa Nội)', status: 'active', statusLabel: 'Active', applicants: 14, posted: '02/07/2026', deadline: '31/08/2026' },
-    { title: 'Bác sĩ Đa khoa', status: 'active', statusLabel: 'Active', applicants: 6, posted: '28/06/2026', deadline: '28/08/2026' },
-    { title: 'Kế toán viện phí', status: 'pending', statusLabel: 'Pending approval', applicants: 0, posted: '20/07/2026', deadline: '15/09/2026' },
-    { title: 'Lễ tân bệnh viện', status: 'expired', statusLabel: 'Expired', applicants: 31, posted: '01/04/2026', deadline: '30/06/2026' },
+    { title: 'Điều dưỡng viên (Khoa Nội)', status: 'open', statusLabel: 'Open', applicants: 14, posted: '02/07/2026', deadline: '31/08/2026' },
+    { title: 'Bác sĩ Đa khoa', status: 'open', statusLabel: 'Open', applicants: 6, posted: '28/06/2026', deadline: '28/08/2026' },
+    { title: 'Kế toán viện phí', status: 'open', statusLabel: 'Open', applicants: 0, posted: '20/07/2026', deadline: '15/09/2026' },
+    { title: 'Lễ tân bệnh viện', status: 'closed', statusLabel: 'Closed', applicants: 31, posted: '01/04/2026', deadline: '30/06/2026' },
   ],
   'FPT Software': [
-    { title: 'Senior Frontend Engineer (ReactJS)', status: 'pending', statusLabel: 'Pending approval', applicants: 0, posted: '24/07/2026', deadline: '31/08/2026' },
-    { title: 'Java Developer (Spring Boot)', status: 'active', statusLabel: 'Active', applicants: 52, posted: '10/07/2026', deadline: '10/09/2026' },
-    { title: 'Business Analyst', status: 'active', statusLabel: 'Active', applicants: 28, posted: '05/07/2026', deadline: '05/09/2026' },
-    { title: 'Comtor tiếng Nhật (BrSE)', status: 'active', statusLabel: 'Active', applicants: 11, posted: '01/07/2026', deadline: '31/08/2026' },
-    { title: 'DevOps Engineer', status: 'active', statusLabel: 'Active', applicants: 19, posted: '20/06/2026', deadline: '20/08/2026' },
-    { title: 'QA Automation Engineer', status: 'expired', statusLabel: 'Expired', applicants: 40, posted: '01/04/2026', deadline: '30/06/2026' },
+    { title: 'Senior Frontend Engineer (ReactJS)', status: 'open', statusLabel: 'Open', applicants: 0, posted: '24/07/2026', deadline: '31/08/2026' },
+    { title: 'Java Developer (Spring Boot)', status: 'open', statusLabel: 'Open', applicants: 52, posted: '10/07/2026', deadline: '10/09/2026' },
+    { title: 'Business Analyst', status: 'open', statusLabel: 'Open', applicants: 28, posted: '05/07/2026', deadline: '05/09/2026' },
+    { title: 'Comtor tiếng Nhật (BrSE)', status: 'open', statusLabel: 'Open', applicants: 11, posted: '01/07/2026', deadline: '31/08/2026' },
+    { title: 'DevOps Engineer', status: 'open', statusLabel: 'Open', applicants: 19, posted: '20/06/2026', deadline: '20/08/2026' },
+    { title: 'QA Automation Engineer', status: 'closed', statusLabel: 'Closed', applicants: 40, posted: '01/04/2026', deadline: '30/06/2026' },
   ],
   'Tiki': [
-    { title: 'Digital Marketing Lead', status: 'active', statusLabel: 'Active', applicants: 42, posted: '15/07/2026', deadline: '15/09/2026' },
-    { title: 'Product Manager', status: 'active', statusLabel: 'Active', applicants: 18, posted: '05/07/2026', deadline: '05/09/2026' },
-    { title: 'Backend Engineer (Go)', status: 'active', statusLabel: 'Active', applicants: 33, posted: '02/07/2026', deadline: '02/09/2026' },
-    { title: 'Data Analyst', status: 'active', statusLabel: 'Active', applicants: 25, posted: '28/06/2026', deadline: '28/08/2026' },
-    { title: 'Nhân viên Kho vận', status: 'pending', statusLabel: 'Pending approval', applicants: 0, posted: '22/07/2026', deadline: '20/09/2026' },
-    { title: 'Category Manager', status: 'expired', statusLabel: 'Expired', applicants: 47, posted: '01/04/2026', deadline: '30/06/2026' },
+    { title: 'Digital Marketing Lead', status: 'open', statusLabel: 'Open', applicants: 42, posted: '15/07/2026', deadline: '15/09/2026' },
+    { title: 'Product Manager', status: 'open', statusLabel: 'Open', applicants: 18, posted: '05/07/2026', deadline: '05/09/2026' },
+    { title: 'Backend Engineer (Go)', status: 'open', statusLabel: 'Open', applicants: 33, posted: '02/07/2026', deadline: '02/09/2026' },
+    { title: 'Data Analyst', status: 'open', statusLabel: 'Open', applicants: 25, posted: '28/06/2026', deadline: '28/08/2026' },
+    { title: 'Nhân viên Kho vận', status: 'open', statusLabel: 'Open', applicants: 0, posted: '22/07/2026', deadline: '20/09/2026' },
+    { title: 'Category Manager', status: 'closed', statusLabel: 'Closed', applicants: 47, posted: '01/04/2026', deadline: '30/06/2026' },
+  ],
+  'Công ty TNHH Đại Dương': [
+    { title: 'Nhân viên Kinh doanh Thủy sản', status: 'open', statusLabel: 'Open', applicants: 9, posted: '20/06/2026', deadline: '31/08/2026' },
+    { title: 'Kỹ sư Nuôi trồng Thủy sản', status: 'open', statusLabel: 'Open', applicants: 4, posted: '15/06/2026', deadline: '15/09/2026' },
+    { title: 'Nhân viên QC (Chế biến)', status: 'closed', statusLabel: 'Closed', applicants: 22, posted: '01/04/2026', deadline: '30/06/2026' },
+  ],
+  'VNG Corporation': [
+    { title: 'Kế toán tổng hợp', status: 'schedule', statusLabel: 'Schedule', applicants: 0, posted: '—', deadline: '20/09/2026' },
+    { title: 'Game Product Manager', status: 'open', statusLabel: 'Open', applicants: 36, posted: '12/07/2026', deadline: '12/09/2026' },
+    { title: 'Backend Engineer (Golang)', status: 'open', statusLabel: 'Open', applicants: 44, posted: '08/07/2026', deadline: '08/09/2026' },
+    { title: 'Data Engineer', status: 'open', statusLabel: 'Open', applicants: 17, posted: '30/06/2026', deadline: '31/08/2026' },
+    { title: 'UI/UX Designer', status: 'open', statusLabel: 'Open', applicants: 23, posted: '25/06/2026', deadline: '25/08/2026' },
+    { title: 'Chuyên viên Tuyển dụng', status: 'closed', statusLabel: 'Closed', applicants: 58, posted: '01/04/2026', deadline: '30/06/2026' },
+  ],
+  'MoMo': [
+    { title: 'Product Manager', status: 'open', statusLabel: 'Open', applicants: 18, posted: '05/07/2026', deadline: '05/09/2026' },
+    { title: 'Risk & Fraud Analyst', status: 'open', statusLabel: 'Open', applicants: 12, posted: '02/07/2026', deadline: '02/09/2026' },
+    { title: 'Android Engineer (Kotlin)', status: 'open', statusLabel: 'Open', applicants: 29, posted: '28/06/2026', deadline: '28/08/2026' },
+    { title: 'Nhân viên CSKH (Hotline)', status: 'open', statusLabel: 'Open', applicants: 61, posted: '20/06/2026', deadline: '20/08/2026' },
+    { title: 'Kế toán thanh toán', status: 'draft', statusLabel: 'Draft', applicants: 0, posted: '—', deadline: '—' },
+  ],
+  'Thế Giới Di Động': [
+    { title: 'Nhân viên Kinh doanh (Chuỗi cửa hàng)', status: 'open', statusLabel: 'Open', applicants: 128, posted: '22/07/2026', deadline: '30/09/2026' },
+    { title: 'Quản lý Cửa hàng — HCMC', status: 'open', statusLabel: 'Open', applicants: 47, posted: '18/07/2026', deadline: '18/09/2026' },
+    { title: 'Kỹ thuật viên Bảo hành', status: 'open', statusLabel: 'Open', applicants: 63, posted: '15/07/2026', deadline: '15/09/2026' },
+    { title: 'Nhân viên Kho vận', status: 'open', statusLabel: 'Open', applicants: 84, posted: '10/07/2026', deadline: '10/09/2026' },
+    { title: 'Chuyên viên Đào tạo Nội bộ', status: 'schedule', statusLabel: 'Schedule', applicants: 0, posted: '—', deadline: '01/10/2026' },
+    { title: 'Thu ngân (Part-time)', status: 'closed', statusLabel: 'Closed', applicants: 96, posted: '01/04/2026', deadline: '30/06/2026' },
+  ],
+  'Công ty CP Thành Đạt': [
+    { title: 'Kỹ sư Xây dựng (Giám sát công trình)', status: 'open', statusLabel: 'Open', applicants: 7, posted: '14/07/2026', deadline: '14/09/2026' },
+    { title: 'Kỹ sư Dự toán', status: 'open', statusLabel: 'Open', applicants: 3, posted: '12/07/2026', deadline: '12/09/2026' },
+    { title: 'Nhân viên An toàn Lao động', status: 'draft', statusLabel: 'Draft', applicants: 0, posted: '—', deadline: '—' },
   ],
 }
 const companyJobs = (c: Company) => COMPANY_JOBS[c.name] ?? []
+
+/* Applications received (employer view — like the Company site) */
+type CoApplicant = { name: string; job: string; applied: string; tone: StatusTone; stage: string }
+const APPLICANT_NAMES = ['Trần Văn Hùng', 'Nguyễn Thị Mai', 'Lê Hoàng Nam', 'Phạm Thu Trang', 'Đỗ Minh Quân', 'Vũ Thị Hồng', 'Bùi Đức Anh']
+const APPLICANT_STAGES: { tone: StatusTone; stage: string }[] = [
+  { tone: 'schedule', stage: 'Shortlisted' }, { tone: 'pending', stage: 'Reviewing' }, { tone: 'neutral', stage: 'New' },
+  { tone: 'active', stage: 'Interview' }, { tone: 'rejected', stage: 'Rejected' }, { tone: 'neutral', stage: 'New' }, { tone: 'pending', stage: 'Reviewing' },
+]
+const APPLICANT_WHEN = ['2 days ago', '3 days ago', '5 days ago', '1 week ago', '1 week ago', '2 weeks ago', '2 weeks ago']
+const companyApplicants = (c: Company): CoApplicant[] => {
+  const js = companyJobs(c)
+  if (!js.length) return []
+  return APPLICANT_NAMES.map((n, i) => ({ name: n, job: js[i % js.length].title, applied: APPLICANT_WHEN[i], tone: APPLICANT_STAGES[i].tone, stage: APPLICANT_STAGES[i].stage }))
+}
+
+/* Resume unlocks / opens (employer view — like the Company site) */
+type CoResumeView = { name: string; headline: string; when: string; by: string }
+const companyResumeViews = (c: Company): CoResumeView[] => {
+  if (!c.resumeSearch) return []
+  const mgr = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
+  return [
+    { name: 'Hoàng Thị Lan Anh', headline: 'Kế toán trưởng · 8 năm KN', when: '1 hour ago', by: mgr },
+    { name: 'Nguyễn Đức Thắng', headline: 'Kỹ sư Cơ khí · 5 năm KN', when: '3 hours ago', by: mgr },
+    { name: 'Trần Bảo Ngọc', headline: 'Nhân viên Marketing · 3 năm KN', when: 'Yesterday', by: 'Đỗ Thị Mai' },
+    { name: 'Lý Quốc Khánh', headline: 'Chuyên viên Nhân sự · 6 năm KN', when: '2 days ago', by: mgr },
+    { name: 'Phan Thị Hương', headline: 'Nhân viên Kinh doanh · 4 năm KN', when: '3 days ago', by: 'Đỗ Thị Mai' },
+  ]
+}
 
 type CoTeamUser = { name: string; email: string; role: 'HR Manager' | 'HR Specialist'; status: 'Active' | 'Invited'; last: string }
 function companyTeam(c: Company): CoTeamUser[] {
@@ -383,7 +586,7 @@ function companyTeam(c: Company): CoTeamUser[] {
       .replace(/đ/g, 'd').replace(/ơ/g, 'o').replace(/ư/g, 'u')
       .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
   const base: Omit<CoTeamUser, 'email'>[] = [{ name: managerName, role: 'HR Manager', status: 'Active', last: '10m ago' }]
-  if (c.status === 'Won' && !noProducts) {
+  if (isCustomer(c) && !noProducts) {
     base.push({ name: 'Đỗ Thị Mai', role: 'HR Specialist', status: 'Active', last: '2h ago' })
     if (c.size === '5000+' || c.jobs > 15) {
       base.push({ name: 'Ngô Minh Tú', role: 'HR Specialist', status: 'Active', last: '1d ago' })
@@ -415,6 +618,89 @@ function companyActivity(c: Company): CoEvent[] {
   return ev
 }
 
+/* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
+const CHAT_CHANNELS = ['Zalo', 'Facebook Messenger', 'Email', 'SMS', 'Zalo OA', 'Phone', 'Other']
+function CompanyActivities({ c }: { c: Company }) {
+  const [kind, setKind] = useState<null | 'chat' | 'call'>(null)
+  const [channel, setChannel] = useState('Zalo')
+  const [note, setNote] = useState('')
+  const [logged, setLogged] = useState<CoEvent[]>([])
+  const base = companyActivity(c)
+
+  const save = () => {
+    const entry: CoEvent = kind === 'chat'
+      ? { icon: '💬', tone: 'bg-sky-100 text-sky-700', title: `Chat · ${channel}`, time: 'just now', sub: note.trim() || 'No note added.' }
+      : { icon: '📞', tone: 'bg-emerald-100 text-emerald-700', title: 'Call · logged via Calio', time: 'just now', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.' }
+    setLogged((p) => [entry, ...p])
+    setKind(null); setNote(''); setChannel('Zalo')
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      {/* composer */}
+      <div className="rounded-xl border border-line bg-surface">
+        <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
+          <p className="text-[12.5px] font-bold">Log an activity</p>
+        </div>
+        <div className="p-3.5">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setKind('chat')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'chat' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>💬 Chat</button>
+            <button onClick={() => setKind('call')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'call' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>📞 Call</button>
+          </div>
+
+          {kind === 'chat' && (
+            <div className="mt-3 space-y-2.5">
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Channel <span className="text-rose-500">*</span></label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CHAT_CHANNELS.map((ch) => (
+                    <button key={ch} onClick={() => setChannel(ch)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', channel === ch ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{ch}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note <span className="text-rose-500">*</span></label>
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder={`What did you discuss on ${channel}?`} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setKind(null)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
+                <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Log chat</button>
+              </div>
+            </div>
+          )}
+
+          {kind === 'call' && (
+            <div className="mt-3 space-y-2.5">
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
+                <span>📞 Linked with <b>Calio</b> — place the call in Calio and it auto-logs here (duration, outcome, recording).</span>
+                <button className="shrink-0 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Call via Calio</button>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note</label>
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call summary / next step… (auto-filled from Calio when available)" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setKind(null)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
+                <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Log call</button>
+              </div>
+            </div>
+          )}
+
+          {!kind && <p className="mt-3 text-[11px] leading-relaxed text-faint">Pick <b>Chat</b> to log a Zalo / Messenger / email conversation, or <b>Call</b> to log a phone call (synced from Calio).</p>}
+        </div>
+      </div>
+
+      {/* timeline */}
+      <DetailCard title="Timeline" action={<span className="text-[11px] text-faint">newest first</span>}>
+        <div className="space-y-3">
+          {[...logged, ...base].map((e, i) => <TL key={i} icon={e.icon} title={e.title} time={e.time} sub={e.sub} tone={e.tone} />)}
+        </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-faint">Sales activities + system events in one trail. PII-view actions (resume unlocks) are always audited.</p>
+      </DetailCard>
+    </div>
+  )
+}
+
 function MiniStat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: string; tone?: 'warn' }) {
   return (
     <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
@@ -425,7 +711,7 @@ function MiniStat({ label, value, sub, tone }: { label: string; value: React.Rea
   )
 }
 
-type CoTab = 'Overview' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Activity'
+type CoTab = 'Overview' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Resume activity' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -454,13 +740,13 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
       {!compact && (
         <>
           <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Purchased</p>
-          {noProducts && c.status !== 'Expired' ? (
+          {noProducts && c.account !== 'Churn' ? (
             <p className="text-[12px] text-muted">No purchases on record yet.</p>
           ) : (
             <div className="space-y-1.5">
               {c.jobPosting && <PurchaseRow name="Job Posting — Pro" detail="10 slots · 3 months" amount="15,000,000 ₫" date={c.since} />}
               {c.resumeSearch && <PurchaseRow name="Resume Search — 6 months" detail="100 CV unlocks" amount="20,000,000 ₫" date={c.since} />}
-              {noProducts && c.status === 'Expired' && <PurchaseRow name="Job Posting — Pro" detail="lapsed 31/12/2025" amount="15,000,000 ₫" date="12/2024" expired />}
+              {noProducts && c.account === 'Churn' && <PurchaseRow name="Job Posting — Pro" detail="lapsed 31/12/2025" amount="15,000,000 ₫" date="12/2024" expired />}
             </div>
           )}
         </>
@@ -485,7 +771,7 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
           </div>
         </>
       )}
-      {noProducts && c.status === 'Expired' && <p className="mt-2 text-[11px] text-amber-700">Subscription expired — no active quota. Renew to reactivate.</p>}
+      {noProducts && c.account === 'Churn' && <p className="mt-2 text-[11px] text-amber-700">Subscription expired — no active quota. Renew to reactivate.</p>}
     </>
   )
 }
@@ -536,12 +822,17 @@ function CompanyPageEditor({ c }: { c: Company }) {
 function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
+  const [converting, setConverting] = useState(false)
+  const preWon = !isCustomer(c) && c.status !== 'Lost' // still in the pipeline, no PO yet
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
-  const activeJobs = jobs.filter((j) => j.status === 'active').length
+  const activeJobs = jobs.filter((j) => j.status === 'open').length
   const full = team.length >= MAX_SEATS
   const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
+  const contactPerson = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
+  const contactEmail = contactPerson.split(' ').pop()!.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '') + '@' + c.domain
+  const contactPhone = '090' + (c.tax.replace(/\D/g, '').slice(0, 1) || '0') + ' ' + c.tax.replace(/\D/g, '').slice(1, 4).padEnd(3, '0') + ' •••'
 
   const tabs: { key: CoTab; label: string; count?: number }[] = [
     { key: 'Overview', label: 'Overview' },
@@ -549,7 +840,8 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
     { key: 'Products & billing', label: 'Products & billing' },
     { key: 'Company page', label: 'Company page' },
     { key: 'Jobs', label: 'Jobs', count: c.jobPosting ? jobs.length : undefined },
-    { key: 'Activity', label: 'Activity' },
+    ...(c.resumeSearch ? [{ key: 'Resume activity' as CoTab, label: 'Resume activity' }] : []),
+    { key: 'Activity', label: 'Activities' },
   ]
 
   return (
@@ -562,20 +854,27 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[16px] font-bold text-white shadow-sm">{initials}</span>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Company account</p>
-            <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{c.name} <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill></h2>
+            <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
+              {c.name}
+              {c.account
+                ? <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
+                : <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+              {c.account && inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+            </h2>
             <p className="text-[11.5px] text-muted">{c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
           </div>
         </div>
         <div className="flex gap-2">
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Edit</button>
           {c.hasPage && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">View on jobseeker ↗</button>}
+          {preWon && <button onClick={() => setConverting(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Convert to customer</button>}
         </div>
       </div>
 
       {/* at-a-glance stats */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <MiniStat label="Customer since" value={c.since.slice(-4)} sub={c.since} />
-        <MiniStat label="Active jobs" value={c.jobPosting ? activeJobs : '—'} sub={c.jobPosting ? `${jobs.length} total` : 'No Job Posting'} />
+        <MiniStat label="Open jobs" value={c.jobPosting ? activeJobs : '—'} sub={c.jobPosting ? `${jobs.length} total` : 'No Job Posting'} />
         <MiniStat label="Team" value={`${team.length}/${MAX_SEATS}`} sub="seats used" tone={full ? 'warn' : undefined} />
         <MiniStat label="Job quota" value={c.jobPosting ? `${c.jobLeft}/${c.jobTotal}` : '—'} sub={c.jobPosting ? 'slots left' : 'n/a'} tone={c.jobPosting && c.jobLeft / c.jobTotal < 0.3 ? 'warn' : undefined} />
         <MiniStat label="CV unlocks" value={c.resumeSearch ? `${c.cvLeft}/${c.cvTotal}` : '—'} sub={c.resumeSearch ? 'left' : 'n/a'} tone={c.resumeSearch && c.cvLeft / c.cvTotal < 0.3 ? 'warn' : undefined} />
@@ -593,6 +892,8 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
             <KV label="Industry · size" value={`${c.industry} · ${c.size} staff`} />
             <KV label="Address" value={c.address} />
             <KV label="Primary contact" value={c.contact} />
+            <KV label="Contact email" value={contactEmail} />
+            <KV label="Contact phone" value={contactPhone} />
             <KV label="Sales owner" value={c.owner} />
             <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
           </DetailCard>
@@ -611,12 +912,6 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
                 ))}
               </div>
             </DetailCard>
-            <DetailCard title="Company page (jobseeker)" action={c.jobPosting ? <Pill tone={c.hasPage ? 'active' : 'pending'}>{c.hasPage ? 'Published' : 'Draft'}</Pill> : <Pill tone="expired">Not applicable</Pill>}>
-              <p className="text-[12px] text-muted">
-                {c.jobPosting ? (c.hasPage ? 'Public profile is live on the jobseeker site.' : 'Draft — must be published before the company can post jobs.') : 'Resume-Search-only — no public page.'}
-              </p>
-              {c.jobPosting && <button onClick={() => setTab('Company page')} className="mt-2 text-[11.5px] font-medium text-brand hover:underline">Open page editor →</button>}
-            </DetailCard>
           </div>
         </div>
       )}
@@ -624,10 +919,8 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
       {/* ── Users ────────────────────────────────────────────────────────── */}
       {tab === 'Users' && (
         <div>
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <p className="max-w-[62ch] flex-1 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-              <b>Exactly 1 HR Manager + up to {MAX_SEATS - 1} HR Specialists</b> ({MAX_SEATS} seats max). All users <b>share the account’s pooled quota</b>. Making someone Manager <b>transfers</b> the role — no email/login changes.
-            </p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] font-semibold text-ink">Team members</p>
             <div className="flex shrink-0 items-center gap-2">
               <span className={cn('text-[11px] font-medium', full ? 'text-amber-700' : 'text-faint')}>{team.length}/{MAX_SEATS} seats</span>
               <button onClick={() => setInviting(true)} disabled={full} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">+ Invite user</button>
@@ -659,7 +952,7 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
             <ProductsQuota c={c} />
           </DetailCard>
           <DetailCard title="Billing history" action={<span className="text-[11px] text-faint">from CRM · Orders</span>}>
-            {noProducts && c.status === 'Expired' ? (
+            {noProducts && c.account === 'Churn' ? (
               <p className="text-[12px] text-muted">Last order lapsed 31/12/2025. No active billing.</p>
             ) : (
               <Table
@@ -711,23 +1004,55 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
                   <RowAction>View</RowAction>,
                 ])}
               />
-              <p className="mt-2 text-[11px] text-faint">Jobs this account posted (HQ oversight). Pending-approval rows are handled from Recruitment → Jobs.</p>
+              <p className="mt-2 text-[11px] text-faint">Jobs this account posted (HQ oversight). Company posts go live directly — manage them from Recruitment → Jobs.</p>
+
+              {/* Applications — same employer view the company sees on their own site */}
+              <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[13px] font-semibold text-ink">Applications <span className="font-normal text-muted">— what the company sees on their site</span></p>
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">▽ Filter by job / stage</span>
+              </div>
+              <Table
+                cols={[{ label: 'Candidate', w: '1.4fr' }, { label: 'Applied to', w: '1.8fr' }, { label: 'Stage', w: '1fr' }, { label: 'Applied', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1fr', align: 'r' }]}
+                rows={companyApplicants(c).map((a) => [
+                  <span className="truncate font-medium text-ink">{a.name}</span>,
+                  <span className="truncate text-muted">{a.job}</span>,
+                  <Pill tone={a.tone}>{a.stage}</Pill>,
+                  <span className="text-[11.5px] text-muted">{a.applied}</span>,
+                  <RowAction>View CV</RowAction>,
+                ])}
+              />
+              <p className="mt-2 text-[11px] text-faint">Read-only for HQ — opening a candidate’s CV is written to the audit log.</p>
             </>
           )}
         </div>
       )}
 
-      {/* ── Activity ─────────────────────────────────────────────────────── */}
-      {tab === 'Activity' && (
-        <DetailCard title="Activity & audit trail" action={<span className="text-[11px] text-faint">newest first</span>}>
-          <div className="space-y-3">
-            {companyActivity(c).map((e, i) => <TL key={i} icon={e.icon} title={e.title} time={e.time} sub={e.sub} tone={e.tone} />)}
+      {/* ── Resume activity ──────────────────────────────────────────────── */}
+      {tab === 'Resume activity' && (
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11.5px] text-muted">CVs this account <b className="text-ink">unlocked from Resume Search</b> — the same list the employer sees on their site. Uses <b className="text-ink">{c.cvTotal - c.cvLeft}/{c.cvTotal}</b> unlocks.</p>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">▽ Filter by user</span>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-faint">PII-view actions (resume unlocks) are always written to the immutable audit log.</p>
-        </DetailCard>
+          <Table
+            cols={[{ label: 'Candidate', w: '1.3fr' }, { label: 'Headline', w: '1.8fr' }, { label: 'Unlocked by', w: '1fr' }, { label: 'When', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '0.9fr', align: 'r' }]}
+            rows={companyResumeViews(c).map((r) => [
+              <span className="truncate font-medium text-ink">{r.name}</span>,
+              <span className="truncate text-muted">{r.headline}</span>,
+              <span className="truncate text-[11.5px]">{r.by}</span>,
+              <span className="text-[11.5px] text-muted">{r.when}</span>,
+              <RowAction>Open CV</RowAction>,
+            ])}
+          />
+          <p className="mt-2 text-[11px] text-faint">Each unlock spends 1 from the pooled CV-unlock quota and is written to the immutable audit log.</p>
+        </div>
       )}
 
+      {/* ── Activities (log chat / call + timeline) ──────────────────────── */}
+      {tab === 'Activity' && <CompanyActivities c={c} />}
+
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
+      {converting && <ConvertLeadModal companyName={c.name} value={coValue(c)} owner={c.owner} onClose={() => setConverting(false)} />}
     </div>
   )
 }
@@ -831,10 +1156,7 @@ function AdminCompanyUsers() {
   }
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-[62ch] flex-1 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-          One company = one account. <b>Exactly 1 HR Manager + up to 3 HR Specialists</b> (4 max). All users <b>share the account’s pooled quota</b>. The HR Manager invites and manages the rest.
-        </p>
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
         <button onClick={() => setInviting(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Invite user</button>
       </div>
 
@@ -1255,55 +1577,98 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         </div>
       </div>
 
-      {converting && <ConvertLeadModal companyName={deal.company} value={deal.value} onClose={() => setConverting(false)} />}
+      {converting && <ConvertLeadModal companyName={deal.company} value={deal.value} owner={deal.owner} onClose={() => setConverting(false)} />}
     </div>
   )
 }
 
 /* ── Create-lead modal (company-first, adapted from Salesforce) ────────────── */
-function LField({ label, req, value, select }: { label: string; req?: boolean; value: string; select?: boolean }) {
+function LField({ label, req, value, select, hint }: { label: string; req?: boolean; value: string; select?: boolean; hint?: string }) {
   return (
     <div>
       <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
       <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{value}{select && <span className="ml-auto">▾</span>}</div>
+      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
     </div>
   )
 }
-function Section({ title }: { title: string }) {
-  return <p className="mt-2 rounded-md bg-canvas/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">{title}</p>
+function Section({ title, className }: { title: string; className?: string }) {
+  return <p className={cn('mt-2 rounded-md bg-canvas/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted', className)}>{title}</p>
+}
+
+/** Interactive combobox — pick a suggested option or type a custom value. */
+function ComboField({ label, req, value: initial, options, placeholder }: { label: string; req?: boolean; value?: string; options: string[]; placeholder?: string }) {
+  const [open, setOpen] = useState(false)
+  const [val, setVal] = useState(initial ?? '')
+  const isExact = options.some((o) => o.toLowerCase() === val.toLowerCase())
+  // exact selection (or empty) → show the whole list; mid-typing → filter
+  const matches = isExact || val.length === 0 ? options : options.filter((o) => o.toLowerCase().includes(val.toLowerCase()))
+  const isCustom = val.length > 0 && !isExact
+  return (
+    <div className="relative">
+      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
+      <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 focus-within:border-brand">
+        <input
+          value={val}
+          onChange={(e) => { setVal(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className="w-full bg-transparent text-[12.5px] text-ink outline-none placeholder:text-faint"
+        />
+        <button type="button" onClick={() => setOpen((o) => !o)} className="ml-2 shrink-0 text-muted">▾</button>
+      </div>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-line bg-surface py-1 shadow-lg">
+            {matches.map((o) => (
+              <button type="button" key={o} onClick={() => { setVal(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === val ? 'font-medium text-brand' : 'text-ink')}>{o}</button>
+            ))}
+            {isCustom && (
+              <button type="button" onClick={() => setOpen(false)} className="block w-full border-t border-line px-3 py-1.5 text-left text-[12px] text-brand hover:bg-canvas">Use “{val}” (custom)</button>
+            )}
+            {matches.length === 0 && !isCustom && <p className="px-3 py-1.5 text-[11px] text-faint">Type to add a custom value…</p>}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 function CreateLeadModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <p className="text-[15px] font-bold">New lead</p>
+          <p className="text-[15px] font-bold">New company</p>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
-          <p className="text-right text-[11px] text-faint"><span className="text-rose-500">*</span> = Required</p>
-          <Section title="Company (the lead)" />
           <LField label="Legal name" req value="Công ty TNHH …" />
           <div className="grid grid-cols-2 gap-3">
+            <LField label="Short name" value="e.g. FPT, Tiki, NEC" hint="Display / brand name — shown on the pipeline & company page." />
             <LField label="Tax code (MST)" value="03xxxxxxxx" />
-            <LField label="Industry" value="— Select —" select />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <LField label="Company size" value="— Select —" select />
+            <LField label="Industry" value="IT / Software" select />
+            <LField label="Company size" value="100–499 staff" select />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Location" value="Hồ Chí Minh" select hint="City / province of the head office." />
             <LField label="Website" value="company.vn" />
           </div>
-          <Section title="Primary contact" />
+          <LField label="Address" value="Số nhà, tên đường, phường/xã, quận/huyện" hint="Full head-office address — used on quotes, invoices & contracts." />
+          <Section title="Primary contact" className="!mt-6" />
           <div className="grid grid-cols-2 gap-3">
             <LField label="Contact name" req value="Họ và tên" />
-            <LField label="Title" value="HR Manager" />
+            <ComboField label="Title" value="HR Manager" placeholder="Select or type a title…" options={['HR Manager', 'HR Director', 'Talent Acquisition', 'Recruiter', 'CEO / Founder', 'Office Manager']} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <LField label="Phone" value="09xx xxx xxx" />
             <LField label="Email" value="hr@company.vn" />
           </div>
-          <Section title="Sales" />
+          <Section title="Sales" className="!mt-6" />
           <div className="grid grid-cols-2 gap-3">
-            <LField label="Lead source" value="— Select —" select />
+            <ComboField label="Lead source" value="Website sign-up" placeholder="Select or type…" options={['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']} />
             <LField label="Owner" value="Nguyễn Thị Lan" select />
           </div>
           <div>
@@ -1321,7 +1686,6 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink hover:border-ink/40">Save &amp; New</button>
           <button onClick={onClose} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Save</button>
         </div>
       </div>
@@ -1333,7 +1697,7 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
 function Radio({ on }: { on?: boolean }) {
   return <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', on ? 'border-brand' : 'border-line')}>{on && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
 }
-function ConvertLeadModal({ companyName, value, onClose }: { companyName: string; value: number; onClose: () => void }) {
+function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName: string; value: number; owner: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -1395,7 +1759,7 @@ function ConvertLeadModal({ companyName, value, onClose }: { companyName: string
 
           {/* owner + status */}
           <div className="grid gap-3 md:grid-cols-2">
-            <LField label="Record owner" req value={deal.owner} select />
+            <LField label="Record owner" req value={owner} select />
             <LField label="Converted status" req value="Active customer" select />
           </div>
         </div>
@@ -1439,7 +1803,7 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
       </div>
 
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
-      {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} onClose={() => setConvertDeal(null)} />}
+      {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} owner={convertDeal.owner} onClose={() => setConvertDeal(null)} />}
     </div>
   )
 }
@@ -1912,20 +2276,186 @@ function AdminUsers() {
     </div>
   )
 }
-function AdminMasterData() {
-  const rows = [
-    ['Industries', '38', 'vi · en · ko', '12/06/2026'],
-    ['Locations (provinces)', '63', 'vi · en', '01/05/2026'],
-    ['Job categories', '124', 'vi · en · ko', '20/07/2026'],
-    ['Career levels', '7', 'vi · en · ko', '01/05/2026'],
-    ['Education levels', '9', 'vi · en', '01/05/2026'],
-  ]
+/* ── Master data — one place for every reference list ─────────────────────────
+ * Single source of truth for the dropdown / filter vocabularies used across all
+ * three sites. One page, one left rail of domains, one detail panel. Each domain
+ * declares its shape: flat list, tag cloud, two-level taxonomy, or grouped list.
+ * Mirrors the client's master-data spec sheet (Industry, Job categories, roles,
+ * level, skills, education, languages, job types, locations, currency).
+ * ---------------------------------------------------------------------------- */
+type MDKind = 'flat' | 'tags' | 'taxonomy' | 'grouped'
+type MDDomain = {
+  key: string
+  label: string
+  i18n: string
+  used: string
+  note: string
+  kind: MDKind
+  entries?: string[]
+  groups?: { name: string; items: string[] }[]
+}
+const MD_DOMAINS: MDDomain[] = [
+  {
+    key: 'industry', label: 'Industry', i18n: 'vi · en · ko', used: 'Company profile · job form · Store filter',
+    note: 'Classifies companies (and jobs). Single-level list.', kind: 'flat',
+    entries: ['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics', 'Construction & Real Estate', 'Hospitality & Tourism', 'Media & Advertising', 'Telecommunications'],
+  },
+  {
+    key: 'job-categories', label: 'Job categories & roles', i18n: 'vi · en · ko', used: 'Job form (Category → Role) · Store filter',
+    note: 'Two-level taxonomy: each Category owns a list of Roles (job titles). Roles are children of their category — pick a category on the left to manage its roles. Distinct from System → Roles & permissions (admin RBAC).',
+    kind: 'taxonomy',
+    groups: [
+      { name: 'IT', items: ['Software Developer', 'Machine Learning / AI Engineer', 'Augmented Reality (AR) Developer', 'Internet of Things (IoT) Developer', 'Blockchain Developer', 'DevOps Engineer', 'Data Engineer / Scientist / Analyst', 'Network Engineer / Cyber Security', 'QA / Tester', 'Product Manager / Business Analyst', 'IT Support Specialist', 'IT - Hardware / Network'] },
+      { name: 'Business, Finance', items: ['Accountant', 'Financial Analyst', 'Auditor', 'Investment Analyst', 'Business Development', 'Sales Executive'] },
+      { name: 'Management', items: ['Project Manager', 'Operations Manager', 'General Manager', 'Team Lead'] },
+      { name: 'Manufacturing & Engineering', items: ['Mechanical Engineer', 'Electrical Engineer', 'QA/QC Engineer', 'Production Supervisor'] },
+      { name: 'Service', items: ['Customer Service', 'Restaurant Staff', 'Housekeeping', 'Security'] },
+      { name: 'Design, Creativity', items: ['UI/UX Designer', 'Graphic Designer', 'Copywriter', 'Video Editor'] },
+    ],
+  },
+  {
+    key: 'job-level', label: 'Job level', i18n: 'vi · en · ko', used: 'Job form · Store filter',
+    note: 'Seniority of the posting. Single-level list.', kind: 'flat',
+    entries: ['Intern/Student', 'Fresher/Entry level', 'Experienced (non-manager)', 'Manager', 'Director and above'],
+  },
+  {
+    key: 'skills', label: 'Skills', i18n: 'vi · en', used: 'Job form · resume · Store filter (tags)',
+    note: 'Free-growing tag vocabulary; can be connected to Job categories / roles. Displayed as tags on the Jobseeker site.', kind: 'tags',
+    entries: ['ASP.NET Core', '.NET', 'React', 'Vue', 'Angular', 'Node.js', 'Python', 'SQL Server', 'AWS', 'Docker', 'Kubernetes', 'Figma', 'Photoshop', 'SEO', 'Copywriting', 'Japanese N2', 'Excel'],
+  },
+  {
+    key: 'education', label: 'Education level', i18n: 'vi · en', used: 'Job form (min. education) · resume',
+    note: 'Single-level list.', kind: 'flat',
+    entries: ['High school', "Associate's degree", 'College', 'Bachelor', 'Master', 'Doctorate', 'Others'],
+  },
+  {
+    key: 'languages', label: 'Preferred languages for application', i18n: 'vi · en', used: 'Job form · resume',
+    note: 'Languages a candidate may apply / be assessed in. Single-level list.', kind: 'flat',
+    entries: ['English', 'Vietnamese', 'Japanese', 'Chinese', 'Korean', 'French', 'Spanish', 'Italian'],
+  },
+  {
+    key: 'job-types', label: 'Job types', i18n: 'vi · en · ko', used: 'Job form · Store filter',
+    note: 'Employment type. Single-level list.', kind: 'flat',
+    entries: ['Full-time', 'Part-time', 'Internship', 'Online Jobs', 'Freelancer', 'Seasonal', 'Other'],
+  },
+  {
+    key: 'locations', label: 'Locations', i18n: 'vi · en', used: 'Company profile · job form · Store filter',
+    note: 'Vietnamese provinces/cities plus an International bucket. Grouped list.', kind: 'grouped',
+    groups: [
+      { name: 'Vietnam', items: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Bình Dương', 'Đồng Nai', 'Khánh Hòa', '… 63 provinces'] },
+      { name: 'International', items: ['International (remote)', 'Japan', 'Singapore', 'Korea', 'Other'] },
+    ],
+  },
+  {
+    key: 'currency', label: 'Salary currency', i18n: '—', used: 'Job form (salary range)',
+    note: 'ISO currency codes offered in the salary field. Single-level list.', kind: 'flat',
+    entries: ['USD', 'VND', 'JPY', 'CNY', 'EUR', 'INR', 'GBP', 'RUB', 'SGD'],
+  },
+]
+
+function MDEntryRow({ label }: { label: string }) {
   return (
-    <ListPage
-      cols={[{ label: 'Domain', w: '1.6fr' }, { label: 'Entries', w: '0.8fr', align: 'r' }, { label: 'Languages', w: '1.2fr' }, { label: 'Updated', w: '1fr', align: 'r' }]}
-      rows={rows}
-      footer="Powers Store search filters + job form dropdowns · vi mandatory, en/ko optional"
-    />
+    <div className="flex items-center justify-between border-b border-line-soft px-4 py-2.5 text-[12.5px] last:border-0">
+      <span className="truncate text-ink/80">{label}</span>
+      <div className="flex shrink-0 items-center gap-3">
+        <button className="text-[11.5px] text-brand hover:underline">Edit</button>
+        <button className="text-[11.5px] text-rose-500 hover:underline">Delete</button>
+      </div>
+    </div>
+  )
+}
+
+function MDDomainDetail({ d }: { d: MDDomain }) {
+  const [cat, setCat] = useState(0)
+  const count = d.kind === 'taxonomy'
+    ? (d.groups!.length + d.groups!.reduce((n, g) => n + g.items.length, 0))
+    : d.kind === 'grouped'
+      ? d.groups!.reduce((n, g) => n + g.items.length, 0)
+      : d.entries!.length
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="text-[16px] font-bold tracking-tight text-ink">{d.label}</h3>
+          <p className="mt-0.5 text-[11px] text-muted">{count} entries · Languages: {d.i18n} · Used by: {d.used}</p>
+        </div>
+        <button className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">+ Add new</button>
+      </div>
+      <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11.5px] leading-relaxed text-sky-800">{d.note}</div>
+
+      {d.kind === 'taxonomy' && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <TaxoPane title="Job Category" items={d.groups!.map((g) => g.name)} activeIndex={cat} onSelect={setCat} />
+          <TaxoPane title={`Role — in “${d.groups![cat].name}”`} items={d.groups![cat].items} />
+        </div>
+      )}
+
+      {d.kind === 'grouped' && (
+        <div className="space-y-4">
+          {d.groups!.map((g) => (
+            <div key={g.name} className="overflow-hidden rounded-xl border border-line">
+              <div className="flex items-center gap-2 border-b border-line bg-canvas/60 px-4 py-2.5">
+                <span className="text-[12.5px] font-bold text-ink">{g.name}</span>
+                <span className="text-[11px] text-faint">· {g.items.length}</span>
+                <button className="ml-auto text-[12px] font-medium text-brand hover:underline">Add new +</button>
+              </div>
+              {g.items.map((it) => <MDEntryRow key={it} label={it} />)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d.kind === 'tags' && (
+        <div className="rounded-xl border border-line p-4">
+          <div className="flex flex-wrap gap-1.5">
+            {d.entries!.map((t) => (
+              <span key={t} className="inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11.5px] text-brand">{t}<button className="text-brand/50 hover:text-brand">×</button></span>
+            ))}
+            <button className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-[11.5px] font-medium text-brand hover:bg-brand-soft">＋ Add tag</button>
+          </div>
+        </div>
+      )}
+
+      {d.kind === 'flat' && (
+        <div className="overflow-hidden rounded-xl border border-line">
+          {d.entries!.map((e) => <MDEntryRow key={e} label={e} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdminMasterData() {
+  const [sel, setSel] = useState(0)
+  const active = MD_DOMAINS[sel]
+  return (
+    <div>
+      <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+        <b>Master data</b> — one source of truth for every reference list (dropdown / filter vocabulary) used across the Jobseeker, Company and Admin sites. Managing it here keeps the job form, resume form and Store search filters consistent. <b>vi</b> mandatory · <b>en / ko</b> optional.
+      </div>
+      <div className="grid gap-4 md:grid-cols-[240px_1fr]">
+        {/* left rail — domains */}
+        <div className="overflow-hidden rounded-xl border border-line">
+          {MD_DOMAINS.map((d, i) => (
+            <button
+              key={d.key}
+              onClick={() => setSel(i)}
+              className={cn('flex w-full items-center justify-between gap-2 border-b border-line-soft px-3.5 py-2.5 text-left last:border-0 hover:bg-canvas/50', i === sel && 'bg-brand-soft')}
+            >
+              <span className={cn('truncate text-[12.5px]', i === sel ? 'font-semibold text-brand' : 'text-ink/80')}>{d.label}</span>
+              <span className="shrink-0 rounded-full bg-canvas px-1.5 text-[10px] tabular-nums text-faint">
+                {d.kind === 'taxonomy' ? d.groups!.length : d.kind === 'grouped' ? d.groups!.reduce((n, g) => n + g.items.length, 0) : d.entries!.length}
+              </span>
+            </button>
+          ))}
+        </div>
+        {/* detail */}
+        <MDDomainDetail key={active.key} d={active} />
+      </div>
+      <p className="mt-3 text-[11px] text-faint">
+        Each domain feeds the matching form dropdown; operators can also add a new value inline from those dropdowns (＋ Create new…) — new values are saved back here.
+      </p>
+    </div>
   )
 }
 function AdminAuditLog() {
@@ -2053,49 +2583,29 @@ function AdminSignups() {
 
 /* ── registry ─────────────────────────────────────────────────────────────── */
 /* ── Reference data — Job categories & roles ─────────────────────────────── */
-function TaxoPane({ title, items, activeIndex }: { title: string; items: string[]; activeIndex?: number }) {
+function TaxoPane({ title, items, activeIndex, onSelect }: { title: string; items: string[]; activeIndex?: number; onSelect?: (i: number) => void }) {
   return (
     <div className="overflow-hidden rounded-xl border border-line">
       <div className="flex items-center gap-2 border-b border-line bg-canvas/60 px-4 py-2.5">
         <span className="text-[12.5px] font-bold text-ink">{title}</span>
         <button className="text-[12px] font-medium text-brand hover:underline">Add new +</button>
       </div>
-      {items.map((it, i) => (
-        <div
-          key={i}
-          className={cn(
-            'flex items-center justify-between border-b border-line-soft px-4 py-2.5 text-[12.5px] last:border-0',
-            i === activeIndex && 'bg-brand-soft',
-          )}
-        >
-          <span className={cn('truncate', i === activeIndex ? 'font-medium text-brand' : 'text-ink/80')}>{it}</span>
-          <button className="shrink-0 text-[11.5px] text-brand hover:underline">Edit</button>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function AdminJobCategories() {
-  const categories = ['IT', 'Business, Finance', 'Management', 'Manufacturing & Engineering', 'Service', 'Design, Creativity']
-  const rolesInIT = [
-    'Software Developer', 'Machine Learning / AI Engineer', 'Augmented Reality (AR) Developer',
-    'Internet of Things (IoT) Developer', 'Blockchain Developer', 'DevOps Engineer',
-    'Data Engineer / Scientist / Analyst', 'Network Engineer / Cyber Security Expert', 'QA / Tester',
-    'Product Manager / Business Analyst', 'IT Support Specialist', 'IT - Hardware / Network',
-  ]
-  return (
-    <div>
-      <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11.5px] text-sky-800">
-        Master data — powers the job form <b>Category → Role</b> dropdowns and the job-search filters. Pick a category to manage its roles.
+      <div className="max-h-[420px] overflow-auto">
+        {items.map((it, i) => (
+          <div
+            key={i}
+            onClick={() => onSelect?.(i)}
+            className={cn(
+              'flex items-center justify-between border-b border-line-soft px-4 py-2.5 text-[12.5px] last:border-0',
+              onSelect && 'cursor-pointer hover:bg-canvas/50',
+              i === activeIndex && 'bg-brand-soft',
+            )}
+          >
+            <span className={cn('truncate', i === activeIndex ? 'font-medium text-brand' : 'text-ink/80')}>{it}</span>
+            <button className="shrink-0 text-[11.5px] text-brand hover:underline">Edit</button>
+          </div>
+        ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <TaxoPane title="Job Category" items={categories} activeIndex={0} />
-        <TaxoPane title="Role — in “IT”" items={rolesInIT} />
-      </div>
-      <p className="mt-3 text-[11px] text-faint">
-        Two-level taxonomy: each Job Category owns a list of Roles (job titles). Distinct from System → Roles &amp; permissions (admin RBAC). vi mandatory · en / ko optional.
-      </p>
     </div>
   )
 }
@@ -2107,10 +2617,6 @@ function AdminJobCategories() {
  * `confirm` need client sign-off (legal / VN-market / commercial specifics).
  * ------------------------------------------------------------------------------ */
 
-/** amber "needs client confirmation" marker */
-function Confirm() {
-  return <span className="ml-1 rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9px] font-medium uppercase tracking-wide text-amber-700">confirm</span>
-}
 
 
 function FLabel({ children, req }: { children: React.ReactNode; req?: boolean }) {
@@ -2155,54 +2661,20 @@ function FField({ label, req, value, select, hint, extra }: { label: React.React
   )
 }
 
-/** radio group rendered as a row */
-function RadioRow({ label, req, options, value, extra }: { label: React.ReactNode; req?: boolean; options: string[]; value: string; extra?: React.ReactNode }) {
-  return (
-    <div>
-      <FLabel req={req}>{label}{extra}</FLabel>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
-        {options.map((o) => (
-          <span key={o} className="inline-flex items-center gap-1.5 text-[12.5px] text-ink/80">
-            <span className={cn('grid h-4 w-4 place-items-center rounded-full border-2', o === value ? 'border-brand' : 'border-line')}>{o === value && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
-            {o}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function FormSection({ title, note }: { title: string; note?: string }) {
-  return (
-    <div className="mt-1 border-b border-line-soft pb-1.5">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{title}</p>
-      {note && <p className="mt-0.5 text-[10.5px] text-faint">{note}</p>}
-    </div>
-  )
-}
-
 /* ── Job detail (read-only) — opened by clicking a job title ─────────────────── */
 function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
-  const pending = job.status === 'pending'
   return (
     <div className="max-w-[900px]">
       <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Jobs</button>
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Recruitment · Job</p>
           <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{job.title} <Pill tone={job.status}>{job.statusLabel}</Pill></h2>
           <p className="text-[11.5px] text-muted">{job.category} · {job.company} · Created by {job.source}</p>
         </div>
         <div className="flex gap-2">
-          {pending ? (
-            <>
-              <button className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Approve</button>
-              <button className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-[12.5px] font-semibold text-rose-600 hover:bg-rose-500 hover:text-white">Reject</button>
-            </>
-          ) : (
-            <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Edit</button>
-          )}
+          <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Edit</button>
+          {job.status === 'open' && <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Close</button>}
         </div>
       </div>
 
@@ -2213,7 +2685,7 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
         <MiniStat label="Created by" value={job.source} sub={job.source === 'Admin' ? 'HQ on behalf' : 'company HR'} />
         <MiniStat label="Posted" value={job.posted} sub="went live" />
         <MiniStat label="Expires" value={job.deadline} sub="applications close" />
-        <MiniStat label="Status" value={job.statusLabel} tone={pending ? 'warn' : undefined} />
+        <MiniStat label="Status" value={job.statusLabel} tone={job.status === 'schedule' ? 'warn' : undefined} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -2234,7 +2706,136 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
         </DetailCard>
       </div>
 
-      {pending && <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">⚠️ Pending approval — Approve to publish it live, or Reject with a reason back to the company.</p>}
+      {job.status === 'open' && <p className="mt-3 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] text-muted">This job is live on the jobseeker site. Turn Exposure off to take it down without closing it — or Close to end it.</p>}
+    </div>
+  )
+}
+
+/** A form section: a big underlined header with its fields below (VietnamWorks-style). */
+function JobGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="border-b-2 border-line pb-2 text-[18px] font-bold tracking-tight text-ink">{title}</h3>
+      <div className="space-y-4">{children}</div>
+    </section>
+  )
+}
+
+/** Inline "Show to Job Seekers" switch, shown to the right of a field label. */
+function ShowToggle({ on = true }: { on?: boolean }) {
+  const [v, setV] = useState(on)
+  return (
+    <button onClick={() => setV((x) => !x)} className="flex items-center gap-2 text-[11px] text-muted">
+      Show to Job Seekers
+      <span className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', v ? 'bg-brand' : 'bg-line')}>
+        <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', v ? 'left-[18px]' : 'left-0.5')} />
+      </span>
+    </button>
+  )
+}
+
+/** − [n] + stepper placeholder. */
+function Stepper({ value }: { value: string }) {
+  return (
+    <div className="inline-flex items-center overflow-hidden rounded-md border border-line">
+      <span className="px-3 py-2 text-[13px] text-muted">−</span>
+      <span className="min-w-[48px] border-x border-line px-3 py-2 text-center text-[12.5px] text-ink/80">{value}</span>
+      <span className="px-3 py-2 text-[13px] text-muted">+</span>
+    </div>
+  )
+}
+
+/** Field label row with an optional right-aligned control (e.g. Show-to-jobseekers). */
+function LabelRow({ label, req, right }: { label: string; req?: boolean; right?: React.ReactNode }) {
+  return (
+    <div className="mb-1 flex items-center gap-2">
+      <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
+      {right && <span className="ml-auto">{right}</span>}
+    </div>
+  )
+}
+
+/** Compact demographic row (VietnamWorks-style): label · radios · Show-toggle, kept close together. */
+function DemoRow({ label, options }: { label: string; options: string[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <label className="w-36 text-[11.5px] font-medium text-ink/80">{label}</label>
+      <RadioOpts options={options} value="Any" />
+      <ShowToggle on={false} />
+    </div>
+  )
+}
+
+/**
+ * Interactive single-select dropdown (click to open, pick one).
+ *
+ * `createLabel` turns on the inline "＋ Create new…" affordance: master-data-backed
+ * fields (category, level, industry, currency…) let an operator add a new option
+ * without leaving the form — the new value is added to Master data and selected.
+ */
+function SelectField({ label, req, value, options, extra, createLabel }: { label: string; req?: boolean; value: string; options: string[]; extra?: React.ReactNode; createLabel?: string }) {
+  const [open, setOpen] = useState(false)
+  const [sel, setSel] = useState(value)
+  const [opts, setOpts] = useState(options)
+  const [creating, setCreating] = useState(false)
+  const [draft, setDraft] = useState('')
+  const commit = () => {
+    const v = draft.trim()
+    if (v) { setOpts((o) => (o.includes(v) ? o : [...o, v])); setSel(v) }
+    setDraft(''); setCreating(false); setOpen(false)
+  }
+  return (
+    <div>
+      <FLabel req={req}>{label}{extra}</FLabel>
+      <div className="relative">
+        <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center rounded-md border border-line bg-surface px-3 py-2 text-left text-[12.5px] text-ink/80">
+          {sel}<span className="ml-auto text-faint">▾</span>
+        </button>
+        {open && (
+          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-line bg-surface shadow-lg">
+            <div className="max-h-52 overflow-auto py-1">
+              {opts.map((o) => (
+                <button key={o} onClick={() => { setSel(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === sel ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80')}>{o}</button>
+              ))}
+            </div>
+            {createLabel && (
+              <div className="border-t border-line-soft bg-canvas/50">
+                {creating ? (
+                  <div className="flex items-center gap-1.5 p-1.5">
+                    <input
+                      autoFocus
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setCreating(false); setDraft('') } }}
+                      placeholder={`New ${label.toLowerCase()}…`}
+                      className="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-[12px] outline-none focus:border-brand"
+                    />
+                    <button onClick={commit} className="shrink-0 rounded bg-brand px-2 py-1 text-[11px] font-semibold text-white hover:opacity-90">Add</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setCreating(true)} className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[12px] font-medium text-brand hover:bg-brand-soft">
+                    <span className="text-[14px] leading-none">＋</span> {createLabel}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Radio option pills without a label (label handled by LabelRow). */
+function RadioOpts({ options, value }: { options: string[]; value: string }) {
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
+      {options.map((o) => (
+        <span key={o} className="inline-flex items-center gap-1.5 text-[12.5px] text-ink/80">
+          <span className={cn('grid h-4 w-4 place-items-center rounded-full border-2', o === value ? 'border-brand' : 'border-line')}>{o === value && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
+          {o}
+        </span>
+      ))}
     </div>
   )
 }
@@ -2256,18 +2857,37 @@ function CompanyInfoCard() {
   )
 }
 
-const TITLE_I18N: Record<'VI' | 'EN' | 'KO', string> = {
+const TITLE_I18N: Record<'VI' | 'EN', string> = {
   VI: 'Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)',
   EN: 'Technical Leader / Technical Architect (.NET)',
-  KO: '기술 팀장 (.NET, 일본어 N4+)',
+}
+
+/** Bilingual textarea — VI / EN tab on the label row. */
+function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolean; vi: string; en: string; rows?: number }) {
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2">
+        <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
+        <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
+          {(['VI', 'EN'] as const).map((l) => (
+            <button key={l} onClick={() => setLang(l)} className={cn('px-2 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-faint" style={{ minHeight: rows * 20 }}>{lang === 'VI' ? vi : en}</div>
+    </div>
+  )
 }
 
 function AdminJobCreate({ onBack }: { onBack: () => void }) {
   const [exposed, setExposed] = useState(true)
-  const [schedule, setSchedule] = useState(false)
-  const [titleLang, setTitleLang] = useState<'VI' | 'EN' | 'KO'>('VI')
-  const G2 = 'grid gap-3 sm:grid-cols-2'
-  const G3 = 'grid gap-3 sm:grid-cols-3'
+  const [postMenu, setPostMenu] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
+  const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('VI')
+  const [locations, setLocations] = useState<string[]>(['Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2, HCMC'])
+  const G2 = 'grid grid-cols-2 gap-3'
+  const G3 = 'grid grid-cols-3 gap-3'
 
   return (
     <div className="max-w-[860px]">
@@ -2275,187 +2895,172 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Recruitment · Jobs</p>
           <h2 className="mt-0.5 text-[20px] font-bold tracking-tight">Create job <span className="font-medium text-muted">— draft field map</span></h2>
         </div>
-        <Pill tone="draft">Draft · fields for review</Pill>
+        <div className="flex items-center gap-2">
+          <Pill tone="draft">Draft</Pill>
+          <a className="inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand">👁 Preview draft ↗</a>
+        </div>
       </div>
-
-      <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11.5px] leading-relaxed text-sky-800">
-        Field inventory for the job-create form — <b>one scrolling page</b> (no tabs). Cross-checked against a live <b>Saramin</b> post and the <b>TopDev</b> dashboard.
-        Fields marked <Confirm /> need client sign-off. This is a structure draft, not final visual design.
-      </div>
+      <p className="mb-4 text-[11px] leading-relaxed text-faint">
+        <b>Status:</b> Draft → Schedule (publishes at a future time) → Open (live on the jobseeker site) → Closed (expired). While <b>Draft</b> or <b>Schedule</b>, the link above previews the draft; once <b>Open</b> it links to the live job post. <b>Exposure</b> (On / Off) is separate — an Open job can be hidden from jobseekers by turning Exposure Off.
+      </p>
 
       <div className="space-y-8">
-        {/* ── Company ───────────────────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Company" />
-          <FField label="Company" req value="NEC Vietnam · CO-1042" select hint="Searchable by company name or ID; links the job to the customer record & pooled quota." />
+        {/* ═══ POSTING SETUP (company · package · exposure) ═════════════════ */}
+        <JobGroup title="Posting setup">
+          <SelectField label="Company" req value="NEC Vietnam · CO-1042" createLabel="Create company" options={['NEC Vietnam · CO-1042', 'FPT Software · CO-1007', 'VNG Corporation · CO-2231', 'Tiki · CO-1890', 'MoMo · CO-3120']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— searchable by name or ID</span>} />
           <CompanyInfoCard />
-        </section>
-
-        {/* ── Package & boosts (below company) ──────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Package & boosts" note="Which paid package / add-ons this posting consumes. Ties into Billing & CRM." />
-          <div className="rounded-lg border border-line p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11.5px] font-medium text-ink/80">Package</p>
-                <p className="text-[13px] font-semibold text-ink">Free <span className="text-[11px] font-normal text-muted">· expires in 14 days</span></p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <LabelRow label="Package" />
+              <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-2">
+                <span className="text-[12.5px] text-ink/80">Free <span className="text-[11px] text-muted">· expires in 14 days</span></span>
+                <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500">from linked order</span>
               </div>
-              <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500">from linked order</span>
+            </div>
+            <div>
+              <LabelRow label="Exposure" />
+              <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
+                <span className="min-w-0 flex-1 text-[11.5px] text-muted">{exposed ? 'On — visible on the jobseeker site.' : 'Off — hidden; reversible before the deadline (does not Close).'}</span>
+                <button role="switch" aria-checked={exposed} onClick={() => setExposed((v) => !v)} className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', exposed ? 'bg-emerald-500' : 'bg-line')}>
+                  <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', exposed ? 'left-[18px]' : 'left-0.5')} />
+                </button>
+              </div>
             </div>
           </div>
-          <div>
-            <FLabel>Boosts<Confirm /></FLabel>
-            <div className="flex flex-wrap gap-2">
-              {['Hot job', 'Super hot', 'Pin to top', 'Homepage feature'].map((b) => (
-                <span key={b} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> {b}</span>
-              ))}
-            </div>
-          </div>
-        </section>
+        </JobGroup>
 
-        {/* ── Visibility (below company & packages) ─────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Visibility" note="Whether an Open job appears on the jobseeker site. Independent of the status lifecycle." />
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-line p-3">
-            <div className="min-w-0">
-              <p className="text-[12.5px] font-medium text-ink">Exposure</p>
-              <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
-                {exposed
-                  ? 'On — visible to jobseekers and open for applications (while the job is Open).'
-                  : 'Off — taken down from the jobseeker site; nobody can apply. Reversible any time before the deadline — the job does not Close.'}
-              </p>
-            </div>
-            <button
-              role="switch"
-              aria-checked={exposed}
-              onClick={() => setExposed((v) => !v)}
-              className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', exposed ? 'bg-emerald-500' : 'bg-line')}
-            >
-              <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', exposed ? 'left-[22px]' : 'left-0.5')} />
-            </button>
-          </div>
-          <p className="text-[11px] leading-relaxed text-faint">
-            Status is deadline-driven: <b className="text-ink/70">Draft → Pending → Open → Closed</b> (auto at the deadline). There is no manual “Close” — turn <b className="text-ink/70">Exposure</b> off to take a job down; it auto-Closes when the deadline passes, and can be re-exposed before then.
-          </p>
-        </section>
-
-        {/* ── Job title (single field, language tab) ────────────────────────── */}
-        <section className="space-y-3">
+        {/* ═══ JOB INFORMATION (client field list) ══════════════════════════ */}
+        <JobGroup title="Job information">
+          {/* job title — single field, VI / EN tab */}
           <div>
-            <div className="mb-1 flex items-center gap-2">
-              <label className="text-[11.5px] font-medium text-ink/80">Job title<span className="text-rose-500"> *</span></label>
-              <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-                {(['VI', 'EN', 'KO'] as const).map((l) => (
+            <LabelRow label="Job title" req right={
+              <div className="flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
+                {(['VI', 'EN'] as const).map((l) => (
                   <button key={l} onClick={() => setTitleLang(l)} className={cn('px-2 py-0.5', titleLang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
                 ))}
               </div>
-            </div>
+            } />
             <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{TITLE_I18N[titleLang]}</div>
-            <p className="mt-1 text-[10.5px] text-faint">Vietnamese is the default &amp; fallback language; English / Korean optional.</p>
+            <p className="mt-1 text-[10.5px] text-faint">Vietnamese is the default &amp; fallback language; English optional.</p>
           </div>
-        </section>
 
-        {/* ── Classification ────────────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Classification" note="Powered by System → Job categories & roles (master data)." />
-          <FField label="Job category" req value="IT" select />
-          <ChipField label="Job roles" req chips={['Software Developer']} placeholder="Add role…" />
-          <ChipField label="Job levels" req chips={['Intern', 'Fresher', 'Junior', 'Middle', 'Trưởng nhóm', 'Trưởng phòng']} placeholder="Add level…" />
-          <ChipField label="Skills" chips={['ASP.NET Core', 'SQL Server', '.NET', 'React']} placeholder="Add skill…" />
           <div className={G2}>
-            <FField label="Experiences from" value="7 years" select hint="Only the minimum year of experience is displayed publicly." />
-            <FField label="Experiences to" value="—" select />
+            <SelectField label="Job category" req value="IT" createLabel="Create category" options={['IT', 'Marketing', 'Finance & Accounting', 'Sales', 'Human Resources', 'Design', 'Engineering', 'Healthcare', 'Education']} />
+            <ChipField label="Job role" req chips={['Software Developer']} placeholder="Add role…" hint="Roles come from the selected category (Master data). Type to add a new one." />
           </div>
-          <ChipField label="Work location(s)" chips={['Hồ Chí Minh']} placeholder="Add location…" />
-        </section>
-
-        {/* ── Compensation & timeline ───────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Compensation & timeline" />
-          <RadioRow label="Salary display" value="Negotiable" options={['Negotiable', 'Fixed range', 'Up to', 'Competitive']} />
-          <div className={G3}>
-            <FField label="Salary from" value="—" />
-            <FField label="Salary to" value="—" />
-            <FField label="Currency / period" value="VND / month" select extra={<Confirm />} />
+          <div className={G2}>
+            <SelectField label="Job level" req value="Experienced (non-manager)" createLabel="Create job level" options={['Intern/Student', 'Fresher/Entry level', 'Experienced (non-manager)', 'Manager', 'Director and above']} />
+            <SelectField label="Job type" req value="Full-time" createLabel="Create job type" options={['Full-time', 'Part-time', 'Internship', 'Online Jobs', 'Freelancer', 'Seasonal', 'Other']} />
           </div>
-          <div className={G3}>
-            <FField label="Number of vacancies" value="1" />
-            <FField label="Application deadline" req value="dd/mm/yyyy" select />
-            <FField label="Expected start" value="—" />
+          <div className={G2}>
+            <SelectField label="Industry" req value="FMCG" createLabel="Create industry" options={['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics']} />
+            <ChipField label="Skill" chips={['ASP.NET Core', '.NET', 'React']} placeholder="Add skill…" />
           </div>
-          <RadioRow label="Working arrangement" value="Hybrid" options={['Onsite', 'Hybrid', 'Remote']} />
-        </section>
+          <div>
+            <LabelRow label="Working location (up to 3 locations)" req />
+            <div className="space-y-2">
+              {locations.map((loc, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex flex-1 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc}<span className="ml-auto">▾</span></div>
+                  {locations.length > 1 && (
+                    <button onClick={() => setLocations((ls) => ls.filter((_, j) => j !== i))} className="rounded-md border border-line px-2 py-2 text-[12px] text-muted">🗑</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {locations.length < 3 && (
+              <button onClick={() => setLocations((ls) => [...ls, 'Select a working location…'])} className="mt-1 text-[11px] font-medium text-brand">+ Add a working location</button>
+            )}
+          </div>
 
-        {/* ── Descriptions ──────────────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Descriptions" note="Rich-text editor in the real form. VI mandatory · EN/KO optional per field." />
-          <TArea label="Job description / Responsibilities" req value="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" rows={4} />
-          <TArea label="Requirements" req value="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" rows={4} />
-          <TArea label="Benefits / welfare" value="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" rows={3} />
-        </section>
+          <BiTArea label="Job description" req rows={4}
+            vi="Lãnh đạo nhóm phát triển; kiến trúc backend (70%) + frontend (30%); review code & mentoring…"
+            en="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" />
+          <BiTArea label="Requirements" req rows={4}
+            vi="7+ năm phát triển phần mềm; 3+ năm ở vị trí Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; tiếng Nhật N4+…"
+            en="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" />
+          <BiTArea label="Benefits" rows={3}
+            vi="Bảo hiểm đầy đủ; lương tháng 13; phụ cấp ngoại ngữ tới $500/tháng; 19+ ngày phép; Udemy; hybrid…"
+            en="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" />
 
-        {/* ── Candidate requirements ────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Candidate requirements" />
+          <div>
+            <LabelRow label="Salary range" req right={<ShowToggle />} />
+            <div className={G3}>
+              <FField label="From" value="500" />
+              <FField label="To" value="1500" />
+              <SelectField label="Currency" value="USD" createLabel="Create currency" options={['USD', 'VND', 'JPY', 'CNY', 'EUR', 'INR', 'GBP', 'RUB', 'SGD']} />
+            </div>
+          </div>
+          <div>
+            <LabelRow label="Number of headcount" right={<ShowToggle on={false} />} />
+            <Stepper value="1" />
+          </div>
+          <FField label="Application deadline" req value="dd/mm/yyyy" select />
+        </JobGroup>
+
+        {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}
+        <JobGroup title="Candidate expectation">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-            ⚠️ Demographic fields (gender / age / marital status / nationality) are legally sensitive for VN job ads — confirm with the client whether to collect / display them.
-          </div>
-          <ChipField label="Language requirements" chips={['Japanese N4+', 'English']} placeholder="Add language…" />
-          <div className={G2}>
-            <FField label="Gender preference" value="Any" select extra={<Confirm />} />
-            <FField label="Age preference" value="—" extra={<Confirm />} />
+            ⚠️ Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — confirm with the client whether to collect / display them.
           </div>
           <div className={G2}>
-            <FField label="Marital status" value="Any" select extra={<Confirm />} />
-            <FField label="Nationality" value="—" select extra={<Confirm />} />
+            <div>
+              <LabelRow label="Minimum years of experience" />
+              <Stepper value="Minimum" />
+            </div>
+            <SelectField label="Minimum education level" value="Bachelor" createLabel="Create education level" options={['High school', "Associate's degree", 'College', 'Bachelor', 'Master', 'Doctorate', 'Others']} />
           </div>
-        </section>
+          <DemoRow label="Nationality" options={['Any', 'Vietnamese', 'Foreigner']} />
+          <DemoRow label="Gender" options={['Any', 'Male', 'Female']} />
+          <DemoRow label="Marital status" options={['Any', 'Single', 'Married']} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <label className="w-36 text-[11.5px] font-medium text-ink/80">Age preference</label>
+            <div className="flex items-center gap-2 text-[12.5px] text-faint">
+              <span className="rounded-md border border-line bg-surface px-3 py-1.5">18</span>—<span className="rounded-md border border-line bg-surface px-3 py-1.5">60</span>
+            </div>
+            <ShowToggle on={false} />
+          </div>
+          <div>
+            <LabelRow label="Do you require cover letter?" />
+            <RadioOpts options={['Yes, always required', 'No, it is optional', 'No, it is never required']} value="No, it is never required" />
+          </div>
+        </JobGroup>
 
-        {/* ── Media ─────────────────────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Media" note="Optional — used on the public job detail & company page." />
-          <div className={G2}>
-            <FField label="Cover / banner image" value="Upload… (1200×400)" select />
-            <FField label="Logo override" value="Upload…" select />
-          </div>
-          <FField label="Gallery images" value="Upload multiple…" select hint="Office / team photos shown in a carousel." />
-        </section>
-
-        {/* ── Internal notes ────────────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <FormSection title="Internal notes" note="Never shown publicly — visible to HQ Admin & the owning company’s HR only." />
-          <TArea label="Notes" value="Approval context, special instructions, follow-ups…" rows={4} />
-        </section>
+        {/* ═══ INTERNAL (HQ ONLY) ═══════════════════════════════════════════ */}
+        <JobGroup title="Internal (HQ only)">
+          <TArea label="Notes" value="Approval context, special instructions, follow-ups… — never shown publicly." rows={3} />
+        </JobGroup>
       </div>
 
       {/* footer actions */}
       <div className="mt-6 border-t border-line pt-4">
-        <div className="mb-3">
-          <FLabel>Publish timing</FLabel>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setSchedule(false)}
-              className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', !schedule ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}
-            >
-              Post now
-            </button>
-            <button
-              onClick={() => setSchedule(true)}
-              className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', schedule ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}
-            >
-              Schedule
-            </button>
-            {schedule && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5 text-[12px] text-faint">📅 dd/mm/yyyy · hh:mm <span className="ml-1">▾</span></span>
-            )}
+        {scheduling && (
+          <div className="mb-3 rounded-lg border border-line bg-canvas/40 p-3">
+            <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Schedule publish time</p>
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-faint">
+              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">📅 dd/mm/yyyy</span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">🕐 hh:mm</span>
+              <span className="text-[11px] text-muted">GMT+7</span>
+              <button onClick={() => setScheduling(false)} className="ml-1 text-[11px] font-medium text-muted underline">Cancel</button>
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-faint">Job is saved with <b>Schedule</b> status and auto-publishes to <b>Open</b> at this time.</p>
           </div>
-        </div>
+        )}
         <div className="flex flex-wrap justify-end gap-2">
           <button className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Save as draft</button>
-          <button onClick={onBack} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">{schedule ? 'Schedule post' : 'Post job'}</button>
+          <div className="relative">
+            <button onClick={() => setPostMenu((o) => !o)} className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">
+              {scheduling ? 'Schedule post' : 'Post now'} <span className="text-[11px]">▾</span>
+            </button>
+            {postMenu && (
+              <div className="absolute right-0 z-10 mt-1 w-60 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+                <button onClick={() => { setScheduling(false); setPostMenu(false) }} className="block w-full px-3 py-2 text-left text-[12.5px] text-ink/80 hover:bg-canvas">Post now — publish immediately</button>
+                <button onClick={() => { setScheduling(true); setPostMenu(false) }} className="block w-full border-t border-line-soft px-3 py-2 text-left text-[12.5px] text-ink/80 hover:bg-canvas">📅 Schedule for later…</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2473,6 +3078,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-resumes': AdminResumes,
   // Companies
   'admin-company-list': AdminCompanyList,
+  'admin-company-pipeline': AdminCompanyPipeline,
   'admin-company-users': AdminCompanyUsers,
   // Content
   'admin-banners': AdminBanners,
@@ -2507,5 +3113,6 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-audit-log': AdminAuditLog,
   'admin-environment': AdminEnvironment,
   'admin-departments': AdminDepartments,
-  'admin-job-categories': AdminJobCategories,
+  // Job categories & roles now live inside Master data (one page); keep the id mapped.
+  'admin-job-categories': AdminMasterData,
 }

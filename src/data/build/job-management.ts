@@ -16,12 +16,14 @@ export const jobManagement: BuildModule = {
     'Company is selected via the Company API (company ID) on Admin; fixed to the user’s own company on the Company site.',
     'Bilingual job content (Vietnamese + English) for job title, role & responsibility, skills & qualifications and benefits, entered via a per-field language tab (VI / EN / KO on the same row as the field).',
     'Vietnamese is the default and fallback language (always required); other languages (English / Korean) are optional — if a translation is missing, the Vietnamese value is shown.',
-    'Exposure status (Exposed / Unexposed) controls whether an active job shows on the jobseeker site.',
+    'Job status model: Draft → Schedule (publishes at a future time) → Open (live on the jobseeker site) → Closed (post expired). Schedule auto-publishes to Open at the chosen time; Open auto-moves to Closed at the deadline.',
+    'Exposure status is a separate On / Off switch (independent of status): an Open job can be hidden from jobseekers by turning Exposure Off, without changing its status. Only Open + Exposure On is publicly visible.',
+    'Publish action offers "Post now" (→ Open) or "Schedule for later…" (→ Schedule, with a date/time picker).',
     'Posting package per job: Free · Basic · Basic plus · Distinction (Free + paid packages) — drives visibility / ranking.',
-    'Extra structured fields: experience range (from–to), job type (In office · Remote · Hybrid · Oversea), contract type (Full-time · Freelancer), skills (dropdown), salary as a radio (Negotiable OR from–to).',
+    'Extra structured fields: experience range, job level (Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above), job type (Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other), skills, salary (from–to + currency).',
     'Job list on Admin (all jobs) and Company (own jobs) with status + filters.',
     'Jobseeker: job lists on the Homepage and Search-result page, plus the Job detail page.',
-    'One shared Job entity + status lifecycle across all three surfaces (draft → pending → active → expired / closed).',
+    'One shared Job entity + one status lifecycle across all three surfaces: Draft → Schedule → Open → Closed. No HQ approval gate — company posts go live directly, like Admin.',
   ],
   features: [
     // 0 ──────────────────────────────────────────────────────────────────────
@@ -31,7 +33,7 @@ export const jobManagement: BuildModule = {
       scope: ['BE', 'FE'],
       detail: {
         description:
-          'Admin-side job create / edit form. HQ staff can post a job on behalf of any company (data-entry / concierge posting) and it is the same Job entity the Company site writes to. Admin posts are auto-approved (no approval gate) since they originate from HQ.',
+          'Admin-side job create / edit form. HQ staff can post a job on behalf of any company (data-entry / concierge posting) and it is the same Job entity the Company site writes to. Publishing goes straight to Open (or Schedule) — there is no approval gate on either surface.',
         userStory:
           'As an HQ operator, I want to create or edit a job for any company so that we can onboard postings on behalf of clients and fix bad data.',
         uiFields: [
@@ -40,12 +42,11 @@ export const jobManagement: BuildModule = {
             items: [
               { name: 'company', type: 'ref → Company', required: true, notes: 'searchable picker resolved via the Company API (company ID); drives branding on the JS side. Fixed to the user’s own company on the Company site.' },
               { name: 'title (vi / en)', type: 'i18n string', required: true, notes: 'bilingual — Vietnamese + English; max 120 chars each' },
-              { name: 'exposureStatus', type: 'enum', required: true, notes: 'Exposed · Unexposed — whether the job shows on the jobseeker site (hiển thị trên trang jobseeker hay không)' },
+              { name: 'exposure', type: 'toggle (On / Off)', required: true, notes: 'separate switch (not a status) — whether an Open job shows on the jobseeker site (hiển thị trên trang jobseeker hay không)' },
               { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic plus · Distinction — posting tier that drives visibility / ranking' },
-              { name: 'category / industry', type: 'enum', required: true },
-              { name: 'positionLevel', type: 'enum', notes: 'Intern · Fresher · Junior · Senior · Manager · Director' },
-              { name: 'contractType', type: 'enum', required: true, notes: 'Full-time · Freelancer' },
-              { name: 'jobType', type: 'enum', required: true, notes: 'In office · Remote · Hybrid · Oversea' },
+              { name: 'jobCategory / industry', type: 'enum', required: true, notes: 'category = the role area · industry = the company sector (two different axes)' },
+              { name: 'jobLevel', type: 'enum', notes: 'Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above' },
+              { name: 'jobType', type: 'enum', required: true, notes: 'Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other' },
             ],
           },
           {
@@ -69,12 +70,12 @@ export const jobManagement: BuildModule = {
           },
         ],
         behaviors: [
-          'Save as draft at any time; validation only runs on Publish.',
-          'On Publish from Admin → status jumps straight to "active" (no approval step).',
-          'Exposure controls jobseeker visibility independently of status: an active but "Unexposed" job stays hidden from jobseekers.',
+          'Save as draft at any time; validation only runs on publish.',
+          'Publish offers "Post now" (→ Open immediately) or "Schedule for later…" (→ Schedule, pick a date/time). A Scheduled job auto-publishes to Open at that time.',
+          'An Open job auto-moves to Closed when its deadline passes.',
+          'Exposure (On / Off) is independent of status: an Open job with Exposure Off stays hidden from jobseekers without changing its status. Only Open + Exposure On is publicly visible & applyable.',
           'Bilingual fields are entered per language via a VI / EN tab; VI is required, EN optional in Phase-1.',
-          'Salary "Negotiable" radio hides the min/max inputs and renders "Thỏa thuận" downstream.',
-          'Editing an active job keeps it active; a full audit entry is written (who / when / what).',
+          'Editing an Open job keeps it Open; a full audit entry is written (who / when / what).',
         ],
         rules: [
           'A job must belong to exactly one company.',
@@ -83,14 +84,15 @@ export const jobManagement: BuildModule = {
           'deadline must be in the future on publish.',
           'Admin can post regardless of the company’s remaining posting quota (concierge override) — flagged in the audit log.',
         ],
-        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Saved draft', 'Published (active)'],
+        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Draft', 'Scheduled', 'Open (published)', 'Closed (expired)'],
         backend: {
           dataModel: [
             { name: 'id', type: 'uuid' },
             { name: 'companyId', type: 'uuid', required: true, notes: 'from Company API' },
             { name: 'title / roleResponsibility / skillsQualifications / benefits', type: 'i18n jsonb', notes: '{ vi, en } per field' },
-            { name: 'status', type: 'enum', notes: 'draft · pending_approval · active · expired · closed · rejected' },
-            { name: 'exposureStatus', type: 'enum', notes: 'exposed · unexposed' },
+            { name: 'status', type: 'enum', notes: 'draft · schedule · open · closed' },
+            { name: 'scheduledAt', type: 'timestamp', notes: 'set when status = schedule; auto-publishes to open at this time' },
+            { name: 'exposure', type: 'bool (on/off)', notes: 'independent of status; gates public visibility of an Open job' },
             { name: 'packageType', type: 'enum', notes: 'free · basic · basic_plus · distinction' },
             { name: 'contractType / jobType', type: 'enum', notes: 'full_time|freelancer / in_office|remote|hybrid|oversea' },
             { name: 'salaryType / salaryMin / salaryMax', type: 'enum(negotiable|range) / int / int' },
@@ -130,9 +132,9 @@ export const jobManagement: BuildModule = {
       mockup: 'co-create-job',
       detail: {
         description:
-          'Self-service job posting for company (employer) users — the key new capability vs today, where companies can only save drafts. Same fields as the Admin form, but constrained by the company’s package quota and gated by an HQ approval step (Phase-1 quality gate).',
+          'Self-service job posting for company (employer) users — the key new capability vs today, where companies can only save drafts. Same fields as the Admin form, constrained by the company’s package quota. No HQ approval gate — company posts go live directly (Open / Schedule), exactly like Admin.',
         userStory:
-          'As a company HR user, I want to post a job myself so that I don’t have to wait for HQ to enter it for me.',
+          'As a company HR user, I want to post a job myself and have it go live immediately, so that I don’t have to wait for HQ.',
         uiFields: [
           {
             group: 'Same job fields as Admin',
@@ -150,34 +152,33 @@ export const jobManagement: BuildModule = {
         ],
         behaviors: [
           'Company is auto-set to the logged-in user’s company; not selectable.',
-          'On submit → status = "pending_approval"; HQ reviews before it goes live.',
-          'If no posting quota remains → block submit and deep-link to purchase a package.',
+          '"Post now" → Open immediately; "Schedule for later…" → Schedule (auto-publishes to Open at the set time). No HQ approval step.',
+          'If no posting quota remains → block publish and deep-link to purchase a package.',
           'Draft is always allowed and does not consume quota.',
-          'After HQ approval → "active"; on rejection → "rejected" with a reason shown to the company.',
+          'Exposure (On / Off) lets the company take a live job down without closing it.',
         ],
         rules: [
           'Only HR Manager / HR Specialist roles can create jobs (see Account management).',
-          'Publishing consumes exactly one posting slot on approval, not on submit.',
+          'Publishing (Open / Schedule) consumes exactly one posting slot; drafts do not.',
           'A company can only edit its own jobs.',
         ],
-        states: ['Draft', 'Submitted / pending approval', 'Rejected (with reason)', 'Active', 'Quota exhausted (blocked)'],
+        states: ['Draft', 'Scheduled', 'Open', 'Closed', 'Quota exhausted (blocked)'],
         backend: {
           endpoints: [
-            'POST /company/jobs — create draft / submit for approval',
+            'POST /company/jobs — create draft / publish (open) / schedule',
             'PUT /company/jobs/:id',
             'GET /company/quota — remaining posting slots',
           ],
-          integrations: ['Products & Packages (quota)', 'Notifications (approval / rejection to company)'],
-          notes: 'Writes the same Job entity; `source = company`, `status = pending_approval` on submit.',
+          integrations: ['Products & Packages (quota)', 'Notifications (publish / scheduled confirmation)'],
+          notes: 'Writes the same Job entity; `source = company`, `status = open` on publish (or `schedule`).',
         },
         acceptance: [
-          'A company user can submit a job and see it enter "pending approval".',
-          'Quota is decremented on HQ approval, not on submit.',
-          'Rejected jobs show the HQ reason and can be edited + resubmitted.',
+          'A company user can post a job and see it go live (Open) immediately — no approval wait.',
+          'A posting slot is consumed on publish (Open / Schedule), not on draft.',
+          'Company can take a live job down via Exposure Off and re-expose it before the deadline.',
         ],
         openQuestions: [
-          'Does every company posting require HQ approval in Phase-1, or only first-time companies?',
-          'SLA for HQ approval turnaround?',
+          'Any post-publish spam / abuse controls now that there is no pre-publish approval gate?',
         ],
       },
     },
@@ -188,8 +189,8 @@ export const jobManagement: BuildModule = {
       scope: ['BE', 'FE'],
       detail: {
         description:
-          'HQ master list of every job across all companies, with the approval queue front-and-centre. Primary tool for the Phase-1 quality gate: review, approve, reject, close or edit any posting.',
-        userStory: 'As an HQ operator, I want to see and moderate all jobs so that only quality postings go live.',
+          'HQ master list of every job across all companies for oversight: filter, view, edit, close, or take down (Exposure) any posting. No approval queue — company posts go live directly.',
+        userStory: 'As an HQ operator, I want to see and manage every job across all companies so I can oversee and fix any posting.',
         uiFields: [
           {
             group: 'Table columns',
@@ -204,37 +205,35 @@ export const jobManagement: BuildModule = {
           {
             group: 'Filters',
             items: [
-              { name: 'status', type: 'multi-select', notes: 'default filter = pending_approval first' },
+              { name: 'status', type: 'multi-select', notes: 'Draft · Schedule · Open · Closed' },
+              { name: 'exposure', type: 'toggle filter', notes: 'On / Off (for Open jobs)' },
               { name: 'company', type: 'search' },
               { name: 'date range / keyword', type: 'input' },
             ],
           },
         ],
         behaviors: [
-          'Default sort surfaces "pending_approval" at the top (the work queue).',
-          'Row actions: Approve · Reject (with reason) · Edit · Close · View applicants.',
-          'Bulk approve / reject on selected rows.',
+          'Row actions: Edit · Close · Toggle exposure (On/Off) · View applicants.',
           'Server-side pagination + filter + sort.',
         ],
         rules: [
-          'Approve is only valid from "pending_approval".',
-          'Reject requires a reason (sent to the company).',
+          'Closing a job is a manual, deliberate action (separate from auto-Close at the deadline).',
+          'Editing an Open job keeps it Open; a full audit entry is written.',
         ],
-        states: ['Loading', 'Empty (no jobs)', 'Filtered-empty', 'Approval queue non-empty'],
+        states: ['Loading', 'Empty (no jobs)', 'Filtered-empty', 'Has jobs'],
         backend: {
           endpoints: [
-            'GET /admin/jobs?status=&company=&q=&page=',
-            'POST /admin/jobs/:id/approve',
-            'POST /admin/jobs/:id/reject { reason }',
+            'GET /admin/jobs?status=&exposure=&company=&q=&page=',
+            'PATCH /admin/jobs/:id/exposure { on|off }',
             'POST /admin/jobs/:id/close',
           ],
-          notes: 'Approve/reject writes an audit entry and fires a notification to the company.',
+          notes: 'Edit / close / exposure changes write an audit entry.',
         },
         acceptance: [
-          'Pending jobs are easy to find and can be approved/rejected in one click.',
-          'Rejecting requires and stores a reason.',
+          'HQ can filter by status & exposure and act on any job (edit / close / toggle exposure).',
+          'Company-created jobs appear as Open without any approval step.',
         ],
-        openQuestions: ['Do we need a separate saved view per operator, or is one shared queue enough for Phase-1?'],
+        openQuestions: ['Any post-publish moderation / takedown workflow now that there is no pre-publish approval?'],
       },
     },
     // 3 ──────────────────────────────────────────────────────────────────────
@@ -252,7 +251,7 @@ export const jobManagement: BuildModule = {
             group: 'Cards / rows',
             items: [
               { name: 'title', type: 'text' },
-              { name: 'status', type: 'badge', notes: 'draft · pending · active · expired · rejected' },
+              { name: 'status', type: 'badge', notes: 'Draft · Schedule · Open · Closed' },
               { name: 'applicants', type: 'count → links to Application list (CO)' },
               { name: 'views', type: 'count' },
               { name: 'deadline / days left', type: 'date' },
@@ -262,10 +261,10 @@ export const jobManagement: BuildModule = {
         behaviors: [
           'Shows only the logged-in company’s jobs.',
           'Actions per job: Edit · Close · Duplicate · Upgrade (featured) · View applicants.',
-          'Status tabs / filter: All · Active · Pending · Draft · Expired.',
+          'Status tabs / filter: All · Draft · Schedule · Open · Closed.',
           'Empty state prompts "Post your first job".',
         ],
-        rules: ['Scoped strictly to the user’s company.', 'Only active/pending jobs count against quota.'],
+        rules: ['Scoped strictly to the user’s company.', 'Only Open / Scheduled jobs count against quota.'],
         states: ['Loading', 'No jobs yet (onboarding CTA)', 'Has jobs', 'Filtered-empty'],
         backend: {
           endpoints: ['GET /company/jobs?status=&page=', 'POST /company/jobs/:id/close', 'POST /company/jobs/:id/duplicate'],
@@ -300,10 +299,10 @@ export const jobManagement: BuildModule = {
         behaviors: [
           'Hero search submits into the Search-result page.',
           'Featured / boosted jobs (from Products & Packages) rank first in Hot jobs.',
-          'Only "active" and non-expired jobs are eligible.',
+          'Only Open jobs with Exposure On are eligible.',
           'Personalised rails if logged in (by preferences) — otherwise popular fallback.',
         ],
-        rules: ['Never show draft / pending / expired jobs.', 'Respect banner scheduling + targeting.'],
+        rules: ['Only show Open jobs with Exposure On (never Draft / Schedule / Closed, or Exposure Off).', 'Respect banner scheduling + targeting.'],
         states: ['Guest', 'Logged-in (personalised)', 'Loading skeleton', 'No jobs (unlikely — fallback to popular)'],
         backend: {
           endpoints: ['GET /jobs/home — curated rails', 'GET /companies/top'],
@@ -388,11 +387,11 @@ export const jobManagement: BuildModule = {
         behaviors: [
           'Apply opens the Apply flow (see Application management); prompts login if guest.',
           'Save (scrap) toggles without navigation.',
-          'Expired / closed jobs show a notice and disable Apply.',
+          'Closed jobs show a notice and disable Apply.',
           'Company block links to the public Company detail page.',
         ],
-        rules: ['Only active jobs are publicly reachable; expired/closed are read-only with a notice.', 'Increment a view count (deduped) for analytics.'],
-        states: ['Active (apply enabled)', 'Expired / closed (apply disabled)', 'Guest (apply → login)', 'Already applied (show status)'],
+        rules: ['Only Open jobs (Exposure On) are publicly reachable; Closed jobs are read-only with a notice.', 'Increment a view count (deduped) for analytics.'],
+        states: ['Open (apply enabled)', 'Closed (apply disabled)', 'Guest (apply → login)', 'Already applied (show status)'],
         backend: {
           endpoints: ['GET /jobs/:slug', 'POST /jobs/:id/view', 'GET /jobs/:id/similar'],
           integrations: ['Application management (Apply)', 'Scraps', 'Company detail'],

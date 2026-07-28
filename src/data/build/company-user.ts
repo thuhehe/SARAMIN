@@ -19,6 +19,7 @@ export const companyUser: BuildModule = {
     'Company user model: exactly 1 HR Manager + up to 3 HR Specialists (4 seats). Users self-register on the Company site or are added on Admin; the HR Manager manages them. Making someone HR Manager is a transfer (swaps the current one). HQ break-glass can reassign the manager.',
     'Public company detail page on the Jobseeker site (profile, benefits, open jobs) — a section on the record, required only for Job Posting customers.',
     'All users share the account’s pooled products/quota (posting slots, CV unlocks).',
+    'HQ can view the account’s activity the same way the employer sees it on the Company site: the list of posted Jobs and the Applications received per job (candidate, stage, applied date — read-only, CV opens audited), and the Resume activity (CVs unlocked from Resume Search — who unlocked, when — each spends 1 pooled unlock and is audited).',
   ],
   features: [
     {
