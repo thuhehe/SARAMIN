@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   LayoutDashboard,
   Briefcase,
-  Building2,
   Users,
   FileImage,
   Bell,
@@ -15,7 +14,6 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { SPECS } from '@/data'
-import { STATUS_META } from '@/lib/status'
 import { cn } from '@/lib/utils'
 import { ADMIN_PROTOTYPES, AdminPipeline } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
@@ -41,13 +39,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Jobs', specId: 'admin-job-list' },
       { label: 'Applicants', specId: 'admin-job-applicants' },
       { label: 'Resumes / candidates', specId: 'admin-resumes' },
-    ],
-  },
-  {
-    label: 'Companies',
-    icon: <Building2 className="h-4 w-4" />,
-    items: [
-      { label: 'Company list', specId: 'admin-company-list' },
     ],
   },
   {
@@ -83,8 +74,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'CRM',
     icon: <Handshake className="h-4 w-4" />,
     items: [
+      { label: 'Companies', specId: 'admin-company-list' },
+      { label: 'Pipeline', specId: 'admin-company-pipeline' },
       { label: 'Sign-ups', specId: 'admin-signups' },
-      { label: 'Pipeline', specId: 'admin-sales-pipeline' },
       { label: 'Quotes', specId: 'admin-quotes' },
       { label: 'Invoices', specId: 'admin-invoices' },
       { label: 'Purchase orders', specId: 'admin-purchase-orders' },
@@ -110,7 +102,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Users', specId: 'admin-users' },
       { label: 'Roles & permissions', specId: 'admin-roles' },
       { label: 'Master data', specId: 'admin-master-data' },
-      { label: 'Job categories & roles', specId: 'admin-job-categories' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },
       { label: 'Departments', specId: 'admin-departments' },
@@ -193,27 +184,19 @@ export function AdminWireframe() {
               <span>{active.group}</span>
               <span className="text-faint">/</span>
               <span className="text-ink font-medium">{active.item.label}</span>
+              <div className="ml-auto flex items-center gap-2">
+                <ActivityLogButton page={active.item.label} />
+                {spec && (
+                  <Link to={`/f/${spec.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
+                    View full spec <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
             </div>
 
             <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-[17px] font-semibold">{active.item.label}</h3>
-                  {spec && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <span
-                        className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_META[spec.status].pill)}
-                      >
-                        <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_META[spec.status].dot)} />
-                        {STATUS_META[spec.status].label}
-                      </span>
-                      <Link to={`/f/${spec.id}`} className="inline-flex items-center gap-1 text-[11.5px] text-brand hover:underline">
-                        View full spec <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  )}
-                </div>
-                <ActivityLogButton page={active.item.label} />
+              <div className="mb-4">
+                <h3 className="text-[17px] font-semibold">{active.item.label}</h3>
               </div>
 
               {/* interactive walkthrough launched contextually from a page, else the page itself */}

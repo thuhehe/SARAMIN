@@ -111,7 +111,7 @@ function DashboardScreen() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Active jobs" value="4" sub="1 pending approval" />
+        <Stat label="Open jobs" value="4" sub="1 scheduled" />
         <Stat label="New applicants" value="12" sub="this week" />
         <Stat label="Interviews" value="3" sub="scheduled" />
         <Stat label="CV unlocks left" value="62" sub="of 100" />
@@ -192,11 +192,11 @@ function PostJobScreen() {
     <div>
       <PageBar
         title="Post a job"
-        sub="Uses 1 of your 10 posting slots · goes to Saramin for approval before it's public."
+        sub="Uses 1 of your 10 posting slots · goes live immediately — no approval wait."
         action={
           <div className="flex gap-2">
             <Btn onClick={() => go('co-jobs')}>Save draft</Btn>
-            <Btn primary onClick={() => go('co-jobs')}>Submit for approval</Btn>
+            <Btn primary onClick={() => go('co-jobs')}>Post now</Btn>
           </div>
         }
       />
@@ -338,8 +338,8 @@ function PostJobScreen() {
           <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
             📦 Package: <b>{pkg}</b>{pkg === 'Free' ? ' — standard listing.' : ' — higher visibility & ranking.'}
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-800">
-            ⏳ After you submit, Saramin reviews the post. It becomes visible to jobseekers once <b>approved</b> (and Exposed).
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11.5px] text-emerald-800">
+            ✅ Goes live immediately — no approval wait. Visible to jobseekers while the job is <b>Open</b> and <b>Exposure is On</b>.
           </div>
           <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
             📢 Publishing consumes <b>1 posting slot</b>. You have <b>3 slots</b> left after this one.
@@ -352,30 +352,32 @@ function PostJobScreen() {
 
 function MyJobsScreen() {
   const go = useCoNav()
-  const rows: [string, string, 'Active' | 'Pending' | 'Expired', string, string][] = [
-    ['Điều dưỡng viên (Khoa Nội)', '02/07/2026', 'Active', '14', '31/08/2026'],
-    ['Bác sĩ Đa khoa', '28/06/2026', 'Active', '6', '28/08/2026'],
-    ['Kế toán viện phí', '20/07/2026', 'Pending', '0', '15/09/2026'],
-    ['Lễ tân bệnh viện', '01/04/2026', 'Expired', '31', '30/06/2026'],
+  const rows: [string, string, 'Open' | 'Schedule' | 'Closed' | 'Draft', 'On' | 'Off' | '—', string, string][] = [
+    ['Điều dưỡng viên (Khoa Nội)', '02/07/2026', 'Open', 'On', '14', '31/08/2026'],
+    ['Bác sĩ Đa khoa', '28/06/2026', 'Open', 'Off', '6', '28/08/2026'],
+    ['Kế toán viện phí', '01/09/2026', 'Schedule', '—', '0', '15/09/2026'],
+    ['Lễ tân bệnh viện', '01/04/2026', 'Closed', '—', '31', '30/06/2026'],
   ]
-  const tone = (s: string) => (s === 'Active' ? 'green' : s === 'Pending' ? 'amber' : 'muted') as 'green' | 'amber' | 'muted'
-  const label = (s: string) => (s === 'Pending' ? 'Pending approval' : s)
+  const tone = (s: string) => (s === 'Open' ? 'green' : s === 'Schedule' ? 'blue' : 'muted') as 'green' | 'blue' | 'muted'
   return (
     <div>
-      <PageBar title="My jobs" sub="Jobs your company has posted." action={<Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>} />
+      <PageBar title="My jobs" sub="Jobs your company has posted — go live instantly, no approval wait." action={<Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>} />
       <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-line-soft pb-3">
-        {['All 4', 'Active 2', 'Pending approval 1', 'Expired 1', 'Draft 0'].map((t, i) => (
+        {['All 4', 'Draft 0', 'Schedule 1', 'Open 2', 'Closed 1'].map((t, i) => (
           <span key={t} className={cn('rounded-lg px-2.5 py-1 text-[12px]', i === 0 ? 'bg-brand-soft font-medium text-brand' : 'text-muted')}>{t}</span>
         ))}
       </div>
       <div className="overflow-hidden rounded-xl border border-line">
-        <div className="grid grid-cols-[2fr_1fr_0.8fr_1fr_1.4fr] bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
-          <span>Job title</span><span>Status</span><span className="text-right">Applicants</span><span className="text-right">Deadline</span><span className="text-right">Actions</span>
+        <div className="grid grid-cols-[2fr_1fr_0.8fr_0.8fr_1fr_1.4fr] bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span>Job title</span><span>Status</span><span>Exposure</span><span className="text-right">Applicants</span><span className="text-right">Deadline</span><span className="text-right">Actions</span>
         </div>
-        {rows.map(([title, posted, status, apps, deadline]) => (
-          <div key={title} className="grid grid-cols-[2fr_1fr_0.8fr_1fr_1.4fr] items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">
+        {rows.map(([title, posted, status, exposure, apps, deadline]) => (
+          <div key={title} className="grid grid-cols-[2fr_1fr_0.8fr_0.8fr_1fr_1.4fr] items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">
             <div className="min-w-0"><p className="truncate font-medium text-ink">{title}</p><p className="text-[10.5px] text-faint">Posted {posted}</p></div>
-            <span><Chip tone={tone(status)}>{label(status)}</Chip></span>
+            <span><Chip tone={tone(status)}>{status}</Chip></span>
+            <span>{status === 'Open'
+              ? <span className={cn('inline-flex items-center gap-1 text-[11.5px] font-medium', exposure === 'On' ? 'text-emerald-600' : 'text-slate-400')}><span className={cn('h-1.5 w-1.5 rounded-full', exposure === 'On' ? 'bg-emerald-500' : 'bg-slate-300')} />{exposure}</span>
+              : <span className="text-[11.5px] text-faint">—</span>}</span>
             <span className="text-right tabular-nums">{apps === '0' ? '—' : apps}</span>
             <span className="text-right tabular-nums text-muted">{deadline}</span>
             <span className="flex justify-end gap-1.5">
@@ -385,7 +387,7 @@ function MyJobsScreen() {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-faint">Active jobs count against your 10 posting slots. Expired jobs can be reposted (uses a slot).</p>
+      <p className="mt-2 text-[11px] text-faint">Open &amp; Scheduled jobs count against your 10 posting slots. Turn Exposure off to take an Open job down without closing it.</p>
     </div>
   )
 }

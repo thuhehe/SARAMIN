@@ -147,9 +147,11 @@ function Layout() {
       </div>
       <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
 
-      <div className="flex gap-6 justify-center max-w-[1560px] mx-auto">
+      <div className="flex gap-6">
         <Sidebar />
-        <main id="scroll-main" className="flex-1 min-w-0 max-w-[1100px] pt-1">
+        {/* Width caps dropped on this branch (58d634f) so the admin
+            prototypes can use the full viewport. */}
+        <main id="scroll-main" className="flex-1 min-w-0 pt-1">
           {/* Everything inside is commentable; the nav and rails are not. */}
           <CommentableRoot>
             <Routes>

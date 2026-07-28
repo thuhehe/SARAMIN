@@ -57,9 +57,51 @@ export function Overview() {
         </div>
       </section>
 
+      {/* Sites & roles — confirmed shared terminology (who's who) */}
+      <section className="max-w-[70ch] mb-8">
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">
+          Sites &amp; roles <span className="font-medium normal-case tracking-normal text-faint/80">· shared terminology</span>
+        </h2>
+        <div className="mb-3 grid gap-2 sm:grid-cols-3">
+          {([
+            ['Jobseeker site', 'JS', 'bg-emerald-500'],
+            ['Company site', 'CO', 'bg-sky-500'],
+            ['Admin site', 'Admin', 'bg-slate-400'],
+          ] as const).map(([site, abbr, dot]) => (
+            <div key={site} className="rounded-lg border border-line bg-canvas/40 px-3 py-2">
+              <p className="flex items-center gap-1.5 text-[12px] font-medium text-ink">
+                <span className={`h-2 w-2 rounded-full ${dot}`} /> {site}
+              </p>
+              <p className="mt-0.5 font-mono text-[12px] text-muted">{abbr}</p>
+            </div>
+          ))}
+        </div>
+        <dl className="rounded-xl border border-line divide-y divide-line-soft overflow-hidden">
+          {[
+            ['Employer', 'The hiring party — umbrella term. Either a Company (organization) or an Individual.'],
+            ['Company', 'An employer that is an organization (tax code / MST, HR staff).'],
+            ['Individual employer', 'An employer that is a single person hiring directly.'],
+            ['Employer user', 'A person who logs into the Company (CO) site. Company → HR Manager / HR Specialist; individual → the person themselves.'],
+            ['HR Manager', 'Company user with super-admin rights — 1 per company.'],
+            ['HR Specialist', 'Company user with limited rights (job posting / CV search) — up to 3.'],
+            ['Jobseeker', 'A person on the JS site looking for work → Candidate once they apply.'],
+            ['Admin user (HQ)', 'Internal Saramin staff on the Admin site.'],
+          ].map(([term, def]) => (
+            <div key={term} className="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:gap-4">
+              <dt className="w-36 shrink-0 text-[13px] font-semibold text-ink">{term}</dt>
+              <dd className="text-[13px] leading-relaxed text-ink/75">{def}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 text-[13px] leading-relaxed text-ink/70">
+          <span className="font-semibold text-ink">Avoid ambiguity:</span> “employer” alone can mean the organization
+          or the person — say <strong>Company</strong> (the org) or <strong>Employer user</strong> (the person).
+        </p>
+      </section>
+
       {/* Shared vocabulary — keep the whole team on one set of terms */}
       <section className="max-w-[70ch]">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">Glossary</h2>
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">CRM lifecycle glossary</h2>
         <dl className="rounded-xl border border-line divide-y divide-line-soft overflow-hidden">
           {[
             ['Lead', 'A company we’re tracking in CRM. Not activated, not shown to jobseekers yet.'],
