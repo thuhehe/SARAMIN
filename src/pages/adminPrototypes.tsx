@@ -1255,7 +1255,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         </div>
       </div>
 
-      {converting && <ConvertLeadModal companyName={deal.company} value={deal.value} onClose={() => setConverting(false)} />}
+      {converting && <ConvertLeadModal companyName={deal.company} value={deal.value} owner={deal.owner} onClose={() => setConverting(false)} />}
     </div>
   )
 }
@@ -1333,7 +1333,7 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
 function Radio({ on }: { on?: boolean }) {
   return <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', on ? 'border-brand' : 'border-line')}>{on && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
 }
-function ConvertLeadModal({ companyName, value, onClose }: { companyName: string; value: number; onClose: () => void }) {
+function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName: string; value: number; owner: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -1395,7 +1395,7 @@ function ConvertLeadModal({ companyName, value, onClose }: { companyName: string
 
           {/* owner + status */}
           <div className="grid gap-3 md:grid-cols-2">
-            <LField label="Record owner" req value={deal.owner} select />
+            <LField label="Record owner" req value={owner} select />
             <LField label="Converted status" req value="Active customer" select />
           </div>
         </div>
@@ -1439,7 +1439,7 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
       </div>
 
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
-      {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} onClose={() => setConvertDeal(null)} />}
+      {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} owner={convertDeal.owner} onClose={() => setConvertDeal(null)} />}
     </div>
   )
 }
