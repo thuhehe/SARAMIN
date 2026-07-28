@@ -16,10 +16,11 @@ import {
   Briefcase,
   Search,
   Settings,
+  CreditCard,
   Bell,
   ChevronDown,
 } from 'lucide-react'
-import { Btn, Chip, Line } from '@/components/wire'
+import { Btn, Chip } from '@/components/wire'
 import { cn } from '@/lib/utils'
 
 /** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
@@ -431,10 +432,10 @@ function ApplicantsScreen() {
 
 function ResumeSearchScreen() {
   const cvs = [
-    { title: 'Điều dưỡng viên · 4 năm KN', loc: 'Hồ Chí Minh', unlocked: true, name: 'Nguyễn Thị H.' },
-    { title: 'Điều dưỡng trưởng · 7 năm KN', loc: 'Hồ Chí Minh', unlocked: false },
-    { title: 'Kỹ thuật viên xét nghiệm · 3 năm', loc: 'Bình Dương', unlocked: false },
-    { title: 'Bác sĩ đa khoa · 6 năm KN', loc: 'Hồ Chí Minh', unlocked: false },
+    { title: 'Điều dưỡng viên · 4 năm KN', loc: 'Hồ Chí Minh', updated: '2 days ago', unlocked: true, name: 'Nguyễn Thị H.' },
+    { title: 'Điều dưỡng trưởng · 7 năm KN', loc: 'Hồ Chí Minh', updated: '1 week ago', unlocked: false },
+    { title: 'Kỹ thuật viên xét nghiệm · 3 năm', loc: 'Bình Dương', updated: '3 weeks ago', unlocked: false },
+    { title: 'Bác sĩ đa khoa · 6 năm KN', loc: 'Hồ Chí Minh', updated: '1 month ago', unlocked: false },
   ]
   return (
     <div>
@@ -447,8 +448,24 @@ function ResumeSearchScreen() {
       <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
         <div className="space-y-3">
           <p className="text-[12px] font-bold">Filters</p>
-          {['Industry', 'Experience', 'Location', 'Education', 'Salary expectation'].map((f) => (
-            <div key={f}><p className="mb-1.5 text-[11.5px] font-medium text-ink/80">{f}</p><div className="space-y-1"><Line w="90%" h={7} /><Line w="65%" h={7} /></div></div>
+          {([
+            ['Industry', ['Healthcare', 'IT – Software', 'Finance']],
+            ['Experience', ['1 – 3 years', '3 – 5 years', '5+ years']],
+            ['Location', ['Hồ Chí Minh', 'Hà Nội', 'Bình Dương']],
+            ['Education', ['College', 'Bachelor', 'Master']],
+            ['Salary expectation', ['Under 15 tr', '15 – 30 tr', 'Over 30 tr']],
+          ] as [string, string[]][]).map(([f, opts]) => (
+            <div key={f}>
+              <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">{f}</p>
+              <div className="space-y-1">
+                {opts.map((o) => (
+                  <label key={o} className="flex items-center gap-1.5 text-[11px] text-muted">
+                    <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />
+                    {o}
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
         <div>
@@ -460,7 +477,7 @@ function ResumeSearchScreen() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12.5px] font-semibold text-ink">{cv.unlocked ? cv.name : '••••••• (locked)'}</p>
                   <p className="truncate text-[11.5px] text-muted">{cv.title}</p>
-                  <div className="mt-1 flex gap-1.5"><Chip>{cv.loc}</Chip>{cv.unlocked && <Chip tone="green">Contact visible</Chip>}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5"><Chip>{cv.loc}</Chip><span className="text-[11px] text-faint">Updated {cv.updated}</span>{cv.unlocked && <Chip tone="green">Contact visible</Chip>}</div>
                 </div>
                 {cv.unlocked ? <Btn>View CV</Btn> : <Btn primary>🔓 Unlock · 1 CV</Btn>}
               </div>
@@ -518,7 +535,7 @@ function CompanyPageScreen() {
   )
 }
 
-function TeamBillingScreen() {
+function TeamScreen() {
   const team = [
     ['Vũ Thanh Linh', 'linh@vanphat.vn', 'HR Manager', 'green', 'Active'],
     ['Đỗ Thị Mai', 'mai@vanphat.vn', 'HR Specialist', 'muted', 'Active'],
@@ -526,51 +543,90 @@ function TeamBillingScreen() {
   ] as const
   return (
     <div>
-      <PageBar title="Team & billing" sub="Manage your users and see what you've bought." />
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <div className="rounded-xl border border-line p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-[12.5px] font-bold">Users</p>
-            <div className="flex items-center gap-2"><span className="text-[11px] text-faint">3 / 4 seats</span><Btn primary>+ Invite user</Btn></div>
-          </div>
-          <div className="space-y-1.5">
-            {team.map(([name, email, role, tone, status]) => (
-              <div key={email} className="flex items-center gap-2 rounded-md border border-line px-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
-                  <p className="truncate font-mono text-[10.5px] text-faint">{email}</p>
-                </div>
-                <Chip tone={tone as 'green' | 'muted' | 'amber'}>{role}</Chip>
-                <Chip tone={status === 'Active' ? 'green' : 'amber'}>{status}</Chip>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-faint">Exactly 1 HR Manager + up to 3 HR Specialists. All share the account's pooled quota. Only the Manager can invite / remove / transfer the role.</p>
+      <PageBar title="Team" sub="The people who can log in for your company." />
+      <div className="max-w-[760px] rounded-xl border border-line p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[12.5px] font-bold">Users</p>
+          <div className="flex items-center gap-2"><span className="text-[11px] text-faint">3 / 4 seats</span><Btn primary>+ Invite user</Btn></div>
         </div>
+        <div className="space-y-1.5">
+          {team.map(([name, email, role, tone, status]) => (
+            <div key={email} className="flex items-center gap-2 rounded-md border border-line px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
+                <p className="truncate font-mono text-[10.5px] text-faint">{email}</p>
+              </div>
+              <Chip tone={tone as 'green' | 'muted' | 'amber'}>{role}</Chip>
+              <Chip tone={status === 'Active' ? 'green' : 'amber'}>{status}</Chip>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-faint">Exactly 1 HR Manager + up to 3 HR Specialists. All share the account's pooled quota. Only the Manager can invite / remove / transfer the role.</p>
+      </div>
+    </div>
+  )
+}
 
-        <div className="space-y-3">
-          <div className="rounded-xl border border-line p-4">
-            <p className="mb-2 text-[12.5px] font-bold">Products & quota</p>
-            <div className="mb-3">
-              <div className="flex justify-between text-[11.5px]"><span>📢 Job posting</span><b className="tabular-nums">7/10 slots</b></div>
-              <Bar pct={70} />
-            </div>
-            <div>
-              <div className="flex justify-between text-[11.5px]"><span>🔍 Resume search</span><b className="tabular-nums">62/100 unlocks</b></div>
-              <Bar pct={62} />
-            </div>
-            <p className="mt-2 text-[10.5px] text-faint">Valid until 31/12/2026 · <span className="text-brand">Buy more →</span></p>
+function ProductsQuotaScreen() {
+  const go = useCoNav()
+  return (
+    <div>
+      <PageBar title="Products & quota" sub="What you bought and how much is left." />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-line p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[12.5px] font-bold">📢 Job Posting — Pro</p>
+            <Chip tone="green">Active</Chip>
           </div>
-          <div className="rounded-xl border border-line p-4">
-            <p className="mb-2 text-[12.5px] font-bold">Order history</p>
-            <div className="space-y-1.5 text-[11.5px]">
-              <div className="flex items-center justify-between"><span className="text-muted">ORD-5521 · Recruit Growth</span><Chip tone="green">Paid</Chip></div>
-              <div className="flex items-center justify-between"><span className="text-muted">INV-3390 · 37,800,000 ₫</span><span className="text-brand">Invoice ↓</span></div>
-            </div>
-            <p className="mt-2 text-[10.5px] text-faint">Provisioned automatically once payment is confirmed by Saramin.</p>
+          <div className="flex justify-between text-[11.5px]"><span className="text-muted">Posting slots left</span><b className="tabular-nums">7 / 10</b></div>
+          <Bar pct={70} />
+          <p className="mt-2 text-[10.5px] text-faint">One slot is spent each time a job goes Open. Valid until 31/12/2026.</p>
+          <div className="mt-3 flex gap-2"><Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn><Btn>Buy more slots</Btn></div>
+        </div>
+        <div className="rounded-xl border border-line p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[12.5px] font-bold">🔍 Resume Search — 6 months</p>
+            <Chip tone="green">Active</Chip>
           </div>
+          <div className="flex justify-between text-[11.5px]"><span className="text-muted">CV unlocks left</span><b className="tabular-nums">62 / 100</b></div>
+          <Bar pct={62} />
+          <p className="mt-2 text-[10.5px] text-faint">One unlock reveals a candidate's full CV + contact. Valid until 31/12/2026.</p>
+          <div className="mt-3 flex gap-2"><Btn primary onClick={() => go('co-resume-search')}>Search resumes</Btn><Btn>Buy more unlocks</Btn></div>
         </div>
       </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-faint">
+        Quota is shared by everyone on your team. Products appear here automatically once Saramin confirms your payment — you never pick them by hand.
+      </p>
+    </div>
+  )
+}
+
+function OrdersInvoicesScreen() {
+  const orders = [
+    ['ORD-5521', 'Recruit Growth (Job Posting Pro + Resume Search)', '37,800,000 ₫', 'Paid', 'green', '26/05/2026'],
+    ['ORD-5498', 'Job Posting — Pro', '15,000,000 ₫', 'Paid', 'green', '12/01/2026'],
+    ['ORD-5602', 'Resume Search — top-up 50 unlocks', '9,000,000 ₫', 'Pending payment', 'amber', '24/07/2026'],
+  ] as const
+  return (
+    <div>
+      <PageBar title="Orders & invoices" sub="Your purchase history and VAT e-invoices." />
+      <div className="overflow-hidden rounded-xl border border-line">
+        <div className="grid grid-cols-[0.9fr_2fr_1fr_1fr_0.9fr] bg-canvas/60 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+          <span>Order</span><span>Items</span><span className="text-right">Amount</span><span>Status</span><span className="text-right">Invoice</span>
+        </div>
+        {orders.map(([id, items, amount, status, tone, date]) => (
+          <div key={id} className="grid grid-cols-[0.9fr_2fr_1fr_1fr_0.9fr] items-center border-t border-line-soft px-4 py-2.5 text-[12px]">
+            <div className="min-w-0"><p className="truncate font-medium text-ink">{id}</p><p className="text-[10.5px] text-faint">{date}</p></div>
+            <span className="truncate pr-2 text-muted">{items}</span>
+            <span className="text-right tabular-nums text-ink/80">{amount}</span>
+            <span><Chip tone={tone as 'green' | 'amber'}>{status}</Chip></span>
+            <span className="text-right text-[11.5px] text-brand">{status === 'Paid' ? 'Download ↓' : '—'}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-faint">
+        Saramin issues the VAT e-invoice after payment is confirmed; the products are provisioned at the same moment.
+      </p>
     </div>
   )
 }
@@ -588,13 +644,14 @@ interface NavGroup {
 }
 
 const DASHBOARD: NavItem = { id: 'co-dashboard', label: 'Dashboard', Comp: DashboardScreen }
+/** Post-a-job isn't in the sidebar — it opens from the "+ Post a job" button inside My jobs. */
+const POST_JOB: NavItem = { id: 'co-post-job', label: 'Post a job', Comp: PostJobScreen }
 const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Recruiting',
     icon: <Briefcase className="h-4 w-4" />,
     items: [
       { id: 'co-jobs', label: 'My jobs', Comp: MyJobsScreen },
-      { id: 'co-post-job', label: 'Post a job', Comp: PostJobScreen },
       { id: 'co-applicants', label: 'Applicants', Comp: ApplicantsScreen },
     ],
   },
@@ -608,13 +665,23 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Settings className="h-4 w-4" />,
     items: [
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
-      { id: 'co-team', label: 'Team & billing', Comp: TeamBillingScreen },
+      { id: 'co-team', label: 'Team', Comp: TeamScreen },
+    ],
+  },
+  {
+    // Split out of "Team & billing": what the company bought is its own concern,
+    // separate from managing who can log in.
+    label: 'Products & billing',
+    icon: <CreditCard className="h-4 w-4" />,
+    items: [
+      { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
+      { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
     ],
   },
 ]
 
 /** flat registry of company screens, for embedding in feature detail pages */
-export const CO_SCREENS: NavItem[] = [DASHBOARD, ...NAV_GROUPS.flatMap((g) => g.items)]
+export const CO_SCREENS: NavItem[] = [DASHBOARD, POST_JOB, ...NAV_GROUPS.flatMap((g) => g.items)]
 
 export function CompanyMockups() {
   const [active, setActive] = useState<{ group: string; item: NavItem }>({ group: 'Home', item: DASHBOARD })
@@ -623,6 +690,7 @@ export function CompanyMockups() {
   /** jump to a screen by id (used by in-screen buttons like "+ Post a job") */
   const go = (id: string) => {
     if (id === DASHBOARD.id) return setActive({ group: 'Home', item: DASHBOARD })
+    if (id === POST_JOB.id) return setActive({ group: 'Recruiting', item: POST_JOB })
     for (const g of NAV_GROUPS) {
       const item = g.items.find((i) => i.id === id)
       if (item) return setActive({ group: g.label, item })

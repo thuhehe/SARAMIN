@@ -94,13 +94,12 @@ export const NAV: NavModule[] = [
   },
   {
     code: 'B2',
-    label: 'Products & billing',
+    label: 'Product setting',
     app: 'HQ Admin',
+    // Catalogue side only — the selling documents live under Sales (CRM).
     children: [
-      { id: 'admin-catalog', label: 'Catalog' },
-      { id: 'admin-bundles', label: 'Bundles' },
-      { id: 'admin-credits', label: 'Credits' },
-      { id: 'admin-orders', label: 'Orders' },
+      { id: 'admin-catalog', label: 'Products' },
+      { id: 'admin-bundles', label: 'Packages' },
       { id: 'admin-promotions', label: 'Promotions' },
     ],
   },
@@ -168,10 +167,12 @@ export const NAV: NavModule[] = [
       { id: 'admin-sales-pipeline', label: 'Pipeline' },
       { id: 'admin-customers', label: 'Customers' },
       { id: 'admin-customer-activation', label: 'Lead → customer activation' },
-      { id: 'admin-quotes', label: 'Quotes' },
-      { id: 'admin-invoices', label: 'Invoices' },
-      { id: 'admin-purchase-orders', label: 'Purchase orders' },
+      // ordered as the quote-to-cash chain runs — Payments before Invoices,
+      // because the customer pays first and the VAT e-invoice is issued after.
+      { id: 'admin-quotes', label: 'Quotations' },
+      { id: 'admin-purchase-orders', label: 'Sales orders / PO' },
       { id: 'admin-payments', label: 'Payments' },
+      { id: 'admin-invoices', label: 'Invoices (VAT)' },
       { id: 'admin-contracts', label: 'Contracts' },
     ],
   },

@@ -197,6 +197,7 @@ function JobDetailScreen() {
 
 function ApplyScreen() {
   const go = useNav()
+  const [cv, setCv] = useState<'saramin' | 'portfolio' | 'meet' | 'new'>('saramin')
   return (
     <div className="relative">
       <div className="pointer-events-none opacity-40"><JobDetailScreen /></div>
@@ -214,32 +215,39 @@ function ApplyScreen() {
 
           {/* body (scrolls) */}
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
-            {/* A — profile is always sent (source of truth) */}
+            {/* Your CV — choose which CV to send (Saramin CV or an uploaded CV) */}
             <div>
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-faint">What the employer receives</p>
-              <div className="rounded-lg border-2 border-brand/40 bg-brand-soft px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-brand to-violet-500" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold text-ink">Nguyễn Thị Thu · Saramin Profile</p>
-                    <p className="text-[11px] text-muted">Always included · powers recruiter matching</p>
-                  </div>
-                  <Chip tone="green">70%</Chip>
-                </div>
+              <p className="mb-1.5 text-[12px] font-medium text-ink">Your CV <span className="text-rose-500">*</span></p>
+              <div className="space-y-1.5">
+                {([
+                  ['saramin', 'Saramin CV', 'Structured profile · 70% complete'],
+                  ['portfolio', '📄 Portfolio.pdf', 'Uploaded 26/07/2026 · 1.2 MB'],
+                  ['meet', '📄 Meet Thu Nguyen.pdf', 'Uploaded 12/01/2024'],
+                ] as const).map(([id, label, sub]) => (
+                  <label
+                    key={id}
+                    onClick={() => setCv(id)}
+                    className={cn('flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2', cv === id ? 'border-brand bg-brand-soft' : 'border-line')}
+                  >
+                    <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', cv === id ? 'border-brand' : 'border-line')}>{cv === id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12px] font-medium text-ink">{label}</span>
+                      <span className="block truncate text-[11px] text-faint">{sub}</span>
+                    </span>
+                    {id === 'saramin' && <Chip tone="green">Saramin</Chip>}
+                  </label>
+                ))}
+                {/* upload a new CV */}
+                <label
+                  onClick={() => setCv('new')}
+                  className={cn('flex cursor-pointer items-center gap-2.5 rounded-md border border-dashed px-3 py-2', cv === 'new' ? 'border-brand bg-brand-soft' : 'border-line')}
+                >
+                  <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', cv === 'new' ? 'border-brand' : 'border-line')}>{cv === 'new' && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}</span>
+                  <span className="flex-1 text-[12px] text-muted">⬆ Upload a new CV</span>
+                  <span className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand">Choose file</span>
+                </label>
               </div>
-            </div>
-
-            {/* B — optional CV attachment */}
-            <div>
-              <p className="mb-1.5 text-[12px] font-medium text-ink">Attach a CV file <span className="text-faint">(recommended)</span></p>
-              <label className="flex items-center gap-2 rounded-md border border-brand bg-surface px-3 py-2 text-[12px]">
-                <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2 border-brand"><span className="h-1.5 w-1.5 rounded-full bg-brand" /></span>
-                <span className="flex-1 truncate">📄 Portfolio.pdf <span className="text-faint">· latest</span></span>
-                <Chip tone="green">Approved</Chip>
-              </label>
-              <label className="mt-1.5 flex items-center gap-2 rounded-md border border-dashed border-line px-3 py-2 text-[12px] text-muted">
-                <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-line" /> ⬆ Upload a new file — .pdf, .doc · max 5 MB
-              </label>
+              <p className="mt-1.5 text-[11px] text-faint">.doc, .docx, .pdf · max 5 MB · no password protection.</p>
             </div>
 
             {/* preferred location — VN standard field */}
@@ -352,6 +360,7 @@ function MyPageScreen() {
 
 function ProfileCvScreen() {
   const go = useNav()
+  const [cvTab, setCvTab] = useState<'saramin' | 'upload'>('saramin')
   const menu: [string, string?][] = [['Dashboard', 'js-mypage'], ['My CV & Profile'], ['My applications'], ['Saved jobs'], ['Settings']]
   const sections: [string, string, boolean][] = [
     ['About me', 'Senior product designer · 8 yrs across B2B SaaS & fintech.', true],
@@ -391,21 +400,52 @@ function ProfileCvScreen() {
 
         {/* main */}
         <div className="space-y-4">
-          {/* model explainer */}
-          <div className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-[11.5px] leading-relaxed text-brand">
-            <b>Your Saramin Profile is your master CV.</b> It powers recruiter search, job matching and 1-tap apply. An uploaded file is an <b>optional attachment</b> recruiters read alongside it — the profile is always the source of truth.
+          {/* CV tabs — like VietnamWorks */}
+          <div className="flex gap-1 border-b border-line">
+            {([['saramin', 'Saramin CV'], ['upload', 'Uploaded CV']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setCvTab(id)}
+                className={cn(
+                  'relative -mb-px border-b-2 px-4 py-2 text-[13px] font-medium transition-colors',
+                  cvTab === id ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink',
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* PART A — structured profile (source of truth) */}
-          <div className="overflow-hidden rounded-xl border-2 border-brand/40">
-            <div className="flex items-center justify-between bg-brand-soft px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-ink">1 · Saramin Profile</span>
-                <Chip tone="green">Source of truth</Chip>
+          {/* Uploaded CV — the file recruiters read (primary) */}
+          {cvTab === 'upload' && (
+            <div className="space-y-3">
+              <p className="text-[12px] text-muted">Your own CV file — what recruiters read. <span className="font-medium text-brand">Recommended.</span></p>
+              <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-semibold text-ink">Portfolio.pdf</p>
+                  <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
+                </div>
+                <Chip tone="green">Approved</Chip>
+                <span className="text-[11px] font-medium text-brand">Replace</span>
               </div>
-              <span className="text-[11px] font-medium text-brand">Preview &amp; download CV →</span>
+              <div className="grid place-items-center rounded-lg border border-dashed border-line py-6 text-[12px] text-brand">⬆ Upload a new CV</div>
+              <p className="text-[11px] text-faint">Supports .doc, .docx, .pdf · under 5 MB · no password protection.</p>
+              {/* auto-fill bridge — Phase 2 */}
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[11.5px] font-semibold text-brand">✨ Auto-fill my Saramin CV from this file</p>
+                  <p className="text-[11px] text-muted">We read the file and pre-fill your Saramin CV — you just confirm. <span className="text-faint">(Phase 2)</span></p>
+                </div>
+                <Btn primary>Fill profile</Btn>
+              </div>
             </div>
-            <div className="space-y-3 p-4">
+          )}
+
+          {/* Saramin CV — structured profile (optional) */}
+          {cvTab === 'saramin' && (
+            <div className="space-y-3">
+              <p className="text-[12px] text-muted">Structured profile — powers recruiter search &amp; matching. <span className="text-faint">Optional.</span></p>
               <div>
                 <div className="mb-1 flex justify-between text-[11.5px]"><span className="font-semibold">Profile strength</span><span className="font-bold text-brand">70%</span></div>
                 <div className="h-2 w-full rounded-full bg-canvas"><div className="h-2 w-[70%] rounded-full bg-brand" /></div>
@@ -424,35 +464,7 @@ function ProfileCvScreen() {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* PART B — CV attachment (optional) */}
-          <div className="overflow-hidden rounded-xl border border-line">
-            <div className="flex items-center gap-2 bg-canvas/50 px-4 py-2.5">
-              <span className="text-[13px] font-bold text-ink">2 · CV attachment</span>
-              <Chip>Optional · the document a recruiter reads</Chip>
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-semibold text-ink">Portfolio.pdf</p>
-                  <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
-                </div>
-                <Chip tone="green">Approved</Chip>
-                <span className="text-[11px] font-medium text-brand">Replace</span>
-              </div>
-              {/* auto-fill — the bridge between the two */}
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-[11.5px] font-semibold text-brand">✨ Auto-fill my profile from this CV</p>
-                  <p className="text-[11px] text-muted">We read the file and pre-fill your Saramin Profile — you just confirm.</p>
-                </div>
-                <Btn primary>Fill profile</Btn>
-              </div>
-              <p className="text-[11px] text-faint">Supports .doc, .docx, .pdf · under 5 MB · no password protection.</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -820,7 +832,6 @@ const JS_FLOWS: { flow: string; items: { id: string; label: string }[] }[] = [
     items: [
       { id: 'js-mypage', label: 'My page' },
       { id: 'js-profile-cv', label: 'My CV & Profile' },
-      { id: 'js-create-cv', label: 'Create CV' },
     ],
   },
 ]
@@ -835,16 +846,19 @@ function InteractivePrototype() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[210px_minmax(0,1fr)]">
       {/* flow index sidebar */}
       <aside className="scroll-thin self-start rounded-xl border border-line p-2 md:sticky md:top-4 md:max-h-[640px] md:overflow-y-auto">
-        <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker flows</p>
-        {JS_FLOWS.map((g) => (
-          <div key={g.flow} className="mb-2">
-            <p className="px-2 pb-1 pt-1.5 text-[11px] font-semibold text-ink/55">{g.flow}</p>
+        <p className="mb-1 border-b border-line-soft px-2 pb-2 pt-1 text-[11px] font-bold text-ink">Jobseeker flows</p>
+        {JS_FLOWS.map((g, gi) => (
+          <div key={g.flow} className={cn(gi > 0 && 'mt-2.5')}>
+            {/* section label — uppercase micro-caps so it never reads as a clickable screen */}
+            <p className="px-2 pb-1 pt-1 text-[9.5px] font-bold uppercase tracking-[0.12em] text-faint">
+              {g.flow}
+            </p>
             {g.items.map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => setActive(id)}
                 className={cn(
-                  'block w-full truncate rounded px-2 py-1.5 text-left text-[12px]',
+                  'block w-full truncate rounded px-2 py-1.5 pl-3.5 text-left text-[12px]',
                   id === active ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas',
                 )}
               >

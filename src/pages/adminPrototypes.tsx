@@ -174,11 +174,12 @@ function AdminJobList() {
         <button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ New job</button>
       </div>
     <ListPage
-      minW={1100}
+      minW={1200}
       tabs={[{ label: 'All', count: 1248 }, { label: 'Draft', count: 8 }, { label: 'Schedule', count: 5, active: true }, { label: 'Open', count: 1180 }, { label: 'Closed', count: 58 }]}
       cols={[
-        { label: 'Job title', w: '1.9fr' },
-        { label: 'Company', w: '1.2fr' },
+        { label: 'Job title', w: '1.7fr' },
+        { label: 'Category', w: '1fr' },
+        { label: 'Company', w: '1.1fr' },
         { label: 'Created by', w: '0.8fr' },
         { label: 'Status', w: '0.9fr' },
         { label: 'Exposure', w: '0.7fr' },
@@ -189,7 +190,8 @@ function AdminJobList() {
         { label: 'Applied', w: '0.7fr', align: 'r' },
       ]}
       rows={JOB_ROWS.map((r) => [
-        <button onClick={() => setDetail(r)} className="min-w-0 text-left"><p className="truncate font-medium text-brand hover:underline">{r.title}</p><p className="truncate text-[11px] text-faint">{r.category}</p></button>,
+        <button onClick={() => setDetail(r)} className="min-w-0 text-left"><p className="truncate font-medium text-brand hover:underline">{r.title}</p></button>,
+        <span className="truncate text-muted">{r.category}</span>,
         <span className="truncate">{r.company}</span>,
         <Pill tone={r.source === 'Admin' ? 'neutral' : 'draft'}>{r.source}</Pill>,
         <Pill tone={r.status}>{r.statusLabel}</Pill>,
@@ -208,20 +210,73 @@ function AdminJobList() {
   )
 }
 
+/** Text that opens a detail page in a new tab (wireframe affordance). */
+function ExtLink({ children }: { children: React.ReactNode }) {
+  return (
+    <a target="_blank" rel="noopener noreferrer" title="Opens in a new tab" className="min-w-0 truncate text-brand hover:underline">
+      {children}
+    </a>
+  )
+}
+
+function CvCell({ label, kind }: { label: string; kind: 'saramin' | 'upload' }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {kind === 'saramin'
+        ? <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-medium text-emerald-700">Saramin CV</span>
+        : <span className="truncate text-ink/80">📄 {label}</span>}
+      <a target="_blank" rel="noopener noreferrer" className="shrink-0 text-brand hover:underline">View</a>
+    </span>
+  )
+}
+
+type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; stage: React.ReactNode; when: string }
+
 function AdminApplicants() {
-  const rows = [
-    ['Nguyễn Văn An', 'Senior Frontend Engineer', 'FPT Software', <Pill tone="neutral">Screening</Pill>, '2h ago'],
-    ['Trần Thị Bích', 'Digital Marketing Lead', 'Tiki', <Pill tone="pending">Interview</Pill>, '5h ago'],
-    ['Lê Hoàng Cường', 'Product Manager', 'MoMo', <Pill tone="active">Offer</Pill>, '1d ago'],
-    ['Phạm Thu Dung', 'Kế toán tổng hợp', 'VNG', <Pill tone="neutral">New</Pill>, '1d ago'],
-    ['Vũ Minh Đức', 'Backend Engineer (Go)', 'Shopee', <Pill tone="rejected">Rejected</Pill>, '3d ago'],
+  const raw: Applicant[] = [
+    { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">Screening</Pill>, when: '2h ago' },
+    { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '5h ago' },
+    { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="active">Offer</Pill>, when: '1d ago' },
+    { name: 'Phạm Thu Dung', role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], stage: <Pill tone="neutral">New</Pill>, when: '1d ago' },
+    { name: 'Vũ Minh Đức', role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="rejected">Rejected</Pill>, when: '3d ago' },
+    { name: 'Đặng Thị Hoa', role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], stage: <Pill tone="neutral">New</Pill>, when: '3d ago' },
+    { name: 'Bùi Quang Huy', role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">Screening</Pill>, when: '4d ago' },
+    { name: 'Ngô Thị Lan', role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '4d ago' },
+    { name: 'Hoàng Văn Nam', role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '5d ago' },
+    { name: 'Trịnh Mỹ Linh', role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], stage: <Pill tone="neutral">Screening</Pill>, when: '5d ago' },
+    { name: 'Đỗ Anh Tú', role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '6d ago' },
+    { name: 'Lý Thu Trang', role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '6d ago' },
+    { name: 'Phan Văn Kiên', role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '1w ago' },
+    { name: 'Võ Thị Ngọc', role: 'Business Analyst', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · IS', job: 'Business Analyst', company: 'Shopee', cv: ['ngoc-cv.pdf', 'upload'], stage: <Pill tone="neutral">Screening</Pill>, when: '1w ago' },
+    { name: 'Mai Đức Thắng', role: 'Solution Architect', years: '10 yrs', loc: 'Hồ Chí Minh', edu: 'Master · CS', job: 'Solution Architect', company: 'Techcombank', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="active">Offer</Pill>, when: '1w ago' },
   ]
+  const rows = raw.map((a) => [
+    <ExtLink>{a.name}</ExtLink>,
+    <div className="min-w-0">
+      <p className="truncate text-ink/80">{a.role} · {a.years}</p>
+      <p className="truncate text-[11px] text-faint">{a.loc} · {a.edu}</p>
+    </div>,
+    <ExtLink>{a.job}</ExtLink>,
+    <ExtLink>{a.company}</ExtLink>,
+    <CvCell label={a.cv[0]} kind={a.cv[1]} />,
+    a.stage,
+    <span className="text-muted">{a.when}</span>,
+  ])
   return (
     <ListPage
+      minW={1360}
       tabs={[{ label: 'All', count: 342 }, { label: 'New', count: 12, active: true }, { label: 'Screening', count: 88 }, { label: 'Interview', count: 40 }, { label: 'Hired', count: 21 }]}
-      cols={[{ label: 'Candidate', w: '1.3fr' }, { label: 'Applied to', w: '1.5fr' }, { label: 'Company', w: '1fr' }, { label: 'Stage', w: '1fr' }, { label: 'Applied', w: '0.8fr', align: 'r' }]}
+      cols={[
+        { label: 'Candidate', w: '1.1fr' },
+        { label: 'Snapshot', w: '1.7fr' },
+        { label: 'Applied to', w: '1.3fr' },
+        { label: 'Company', w: '1fr' },
+        { label: 'CV', w: '1.2fr' },
+        { label: 'Stage', w: '0.9fr' },
+        { label: 'Applied', w: '0.8fr', align: 'r' },
+      ]}
       rows={rows}
-      footer="Showing 5 of 342 applicants — HQ oversight view across all jobs"
+      footer="Showing 15 of 342 applicants — HQ oversight view across all jobs"
     />
   )
 }
@@ -636,7 +691,7 @@ function CompanyActivities({ c }: { c: Company }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+    <div className="space-y-4">
       {/* composer */}
       <div className="rounded-xl border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
@@ -690,13 +745,25 @@ function CompanyActivities({ c }: { c: Company }) {
         </div>
       </div>
 
-      {/* timeline */}
-      <DetailCard title="Timeline" action={<span className="text-[11px] text-faint">newest first</span>}>
-        <div className="space-y-3">
-          {[...logged, ...base].map((e, i) => <TL key={i} icon={e.icon} title={e.title} time={e.time} sub={e.sub} tone={e.tone} />)}
+      {/* history — table so the whole trail is scannable at a glance */}
+      <div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] font-semibold text-ink">History <span className="font-normal text-muted">— sales activities + system events</span></p>
+          <span className="text-[11px] text-faint">newest first</span>
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-faint">Sales activities + system events in one trail. PII-view actions (resume unlocks) are always audited.</p>
-      </DetailCard>
+        <Table
+          cols={[{ label: 'When', w: '0.8fr' }, { label: 'Activity', w: '1.3fr' }, { label: 'Details', w: '2.6fr' }]}
+          rows={[...logged, ...base].map((e) => [
+            <span className="text-[11.5px] text-muted">{e.time}</span>,
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]', e.tone)}>{e.icon}</span>
+              <span className="truncate font-medium text-ink">{e.title}</span>
+            </span>,
+            <span className="text-muted">{e.sub}</span>,
+          ])}
+        />
+        <p className="mt-2 text-[11px] leading-relaxed text-faint">One trail for the account. PII-view actions (resume unlocks) are always audited.</p>
+      </div>
     </div>
   )
 }
@@ -841,7 +908,6 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
     { key: 'Company page', label: 'Company page' },
     { key: 'Jobs', label: 'Jobs', count: c.jobPosting ? jobs.length : undefined },
     ...(c.resumeSearch ? [{ key: 'Resume activity' as CoTab, label: 'Resume activity' }] : []),
-    { key: 'Activity', label: 'Activities' },
   ]
 
   return (
@@ -885,6 +951,7 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
 
       {/* ── Overview ─────────────────────────────────────────────────────── */}
       {tab === 'Overview' && (
+        <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
           <DetailCard title="Basic info — from CRM">
             <KV label="Legal name" value={c.legalName} />
@@ -913,6 +980,10 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
               </div>
             </DetailCard>
           </div>
+        </div>
+
+        {/* activity log + full history — the account’s trail, on the first tab */}
+        <CompanyActivities c={c} />
         </div>
       )}
 
@@ -1049,7 +1120,6 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
       )}
 
       {/* ── Activities (log chat / call + timeline) ──────────────────────── */}
-      {tab === 'Activity' && <CompanyActivities c={c} />}
 
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
       {converting && <ConvertLeadModal companyName={c.name} value={coValue(c)} owner={c.owner} onClose={() => setConverting(false)} />}
@@ -1196,6 +1266,313 @@ function AdminCompanyUsers() {
   )
 }
 
+/* ── User — jobseeker accounts ────────────────────────────────────────────────
+ * HQ view of the seeker side of the marketplace (module: Job seeker user
+ * management). Accounts are born on the Jobseeker site — email + password or one
+ * of the 4 social logins — so HQ's job here is search → inspect → activate /
+ * deactivate, never "type someone's password". Sign-up method and email
+ * verification are first-class columns because they explain most support cases.
+ * -------------------------------------------------------------------------- */
+type JSSignup = 'Email' | 'Google' | 'Facebook' | 'LinkedIn' | 'GitHub'
+type JSStatus = 'Active' | 'Unverified' | 'Deactivated' | 'Withdrawn'
+type JSUser = {
+  id: number
+  name: string
+  email: string
+  phone: string
+  location: string
+  headline: string
+  signup: JSSignup
+  status: JSStatus
+  complete: number
+  resumes: number
+  applications: number
+  joined: string
+  last: string
+}
+const JS_STATUS: Record<JSStatus, StatusTone> = { Active: 'active', Unverified: 'pending', Deactivated: 'expired', Withdrawn: 'rejected' }
+const JS_USERS: JSUser[] = [
+  { id: 1, name: 'Nguyễn Văn An', email: 'an.nguyen@gmail.com', phone: '0903 112 445', location: 'Hồ Chí Minh', headline: 'Frontend Engineer · 4 yrs', signup: 'Email', status: 'Active', complete: 92, resumes: 2, applications: 14, joined: '12/03/2025', last: '10m ago' },
+  { id: 2, name: 'Trần Thị Bích', email: 'bich.tran@gmail.com', phone: '0912 668 201', location: 'Hà Nội', headline: 'Digital Marketing · 6 yrs', signup: 'Google', status: 'Active', complete: 78, resumes: 1, applications: 8, joined: '04/01/2026', last: '3h ago' },
+  { id: 3, name: 'Lê Hoàng Cường', email: 'cuong.le@outlook.com', phone: '0977 340 118', location: 'Hồ Chí Minh', headline: 'Product Manager · 8 yrs', signup: 'LinkedIn', status: 'Active', complete: 100, resumes: 3, applications: 27, joined: '22/08/2024', last: '1d ago' },
+  { id: 4, name: 'Phạm Thu Dung', email: 'dung.pham@gmail.com', phone: '—', location: 'Đà Nẵng', headline: 'Kế toán tổng hợp · 3 yrs', signup: 'Email', status: 'Unverified', complete: 24, resumes: 0, applications: 0, joined: '26/07/2026', last: '—' },
+  { id: 5, name: 'Vũ Minh Đức', email: 'duc.vu@gmail.com', phone: '0908 771 903', location: 'Hồ Chí Minh', headline: 'Backend Engineer · 5 yrs', signup: 'Facebook', status: 'Active', complete: 61, resumes: 1, applications: 3, joined: '15/05/2026', last: '2 weeks ago' },
+  { id: 6, name: 'Đặng Thu Trang', email: 'trang.dang@gmail.com', phone: '0356 220 447', location: 'Hải Phòng', headline: 'QA Engineer · 2 yrs', signup: 'GitHub', status: 'Deactivated', complete: 46, resumes: 1, applications: 5, joined: '03/02/2025', last: '3 months ago' },
+  { id: 7, name: 'Hoàng Bảo Ngọc', email: 'ngoc.hoang@gmail.com', phone: '0938 015 662', location: 'Hà Nội', headline: 'HR Specialist · 3 yrs', signup: 'Email', status: 'Withdrawn', complete: 88, resumes: 0, applications: 11, joined: '19/09/2024', last: '1 month ago' },
+]
+
+/** Sign-up channel as a compact chip — email vs one of the 4 social providers. */
+function SignupChip({ via }: { via: JSSignup }) {
+  const dot: Record<JSSignup, string> = { Email: 'bg-slate-400', Google: 'bg-rose-500', Facebook: 'bg-blue-600', LinkedIn: 'bg-sky-600', GitHub: 'bg-slate-800' }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] text-ink/75">
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot[via])} />
+      {via}
+    </span>
+  )
+}
+
+/** Profile-completeness bar — the number My page shows the seeker. */
+function Meter({ pct }: { pct: number }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {/* fixed width, not w-full — the cell is shrink-to-fit, so a percentage width collapses */}
+      <span className="h-1.5 w-[58px] shrink-0 overflow-hidden rounded-full bg-line">
+        <span className={cn('block h-full rounded-full', pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-400')} style={{ width: `${pct}%` }} />
+      </span>
+      <span className="shrink-0 text-[11px] tabular-nums text-muted">{pct}%</span>
+    </span>
+  )
+}
+
+function AdminJobseekers() {
+  const [users, setUsers] = useState<JSUser[]>(JS_USERS)
+  const [detail, setDetail] = useState<JSUser | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const setStatus = (id: number, status: JSStatus) => setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, status } : u)))
+  const create = (name: string, email: string) => {
+    setUsers((prev) => [
+      { id: Math.max(0, ...prev.map((u) => u.id)) + 1, name, email, phone: '—', location: '—', headline: '—', signup: 'Email', status: 'Unverified', complete: 10, resumes: 0, applications: 0, joined: '28/07/2026', last: '—' },
+      ...prev,
+    ])
+    setCreating(false)
+    setToast(`Set-password link sent to ${email} — the account stays Unverified until they open it.`)
+  }
+
+  if (detail) {
+    const live = users.find((u) => u.id === detail.id) ?? detail
+    return <JobseekerDetail u={live} onBack={() => setDetail(null)} onStatus={(s) => setStatus(live.id, s)} />
+  }
+
+  const n = (s: JSStatus) => users.filter((u) => u.status === s).length
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-[62ch] text-[11.5px] text-muted">
+          Every jobseeker account on the Store site. Seekers sign themselves up (email + password or 1 of 4 social logins) — HQ searches, inspects and activates / deactivates. Click a name to open the account.
+        </p>
+        <button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ New user</button>
+      </div>
+
+      {toast && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
+          <span>✅ {toast}</span>
+          <button onClick={() => setToast(null)} className="text-emerald-700 hover:underline">Dismiss</button>
+        </div>
+      )}
+
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <MiniStat label="Accounts" value="128,412" sub="all time" />
+        <MiniStat label="Active" value="121,006" sub="verified + usable" />
+        <MiniStat label="Unverified" value="4,318" sub="email not confirmed" tone="warn" />
+        <MiniStat label="Deactivated" value="1,942" sub="blocked by HQ" />
+        <MiniStat label="Withdrawn" value="1,146" sub="seeker-initiated" />
+        <MiniStat label="New this month" value="3,204" sub="▲ 12% vs Jun" />
+      </div>
+
+      <TabBar
+        tabs={[
+          { label: 'All', count: users.length, active: true },
+          { label: 'Active', count: n('Active') },
+          { label: 'Unverified', count: n('Unverified') },
+          { label: 'Deactivated', count: n('Deactivated') },
+          { label: 'Withdrawn', count: n('Withdrawn') },
+        ]}
+      />
+      <Table
+        minW={1120}
+        cols={[
+          { label: 'Jobseeker', w: '1.6fr' },
+          { label: 'Signed up via', w: '0.9fr' },
+          { label: 'Profile', w: '0.9fr' },
+          { label: 'CVs', w: '0.5fr', align: 'r' },
+          { label: 'Applied', w: '0.6fr', align: 'r' },
+          { label: 'Status', w: '0.9fr' },
+          { label: 'Joined', w: '0.8fr', align: 'r' },
+          { label: 'Last login', w: '0.9fr', align: 'r' },
+          { label: 'Actions', w: '1.7fr', align: 'r' },
+        ]}
+        rows={users.map((u) => [
+          <button onClick={() => setDetail(u)} className="min-w-0 text-left">
+            <p className="truncate text-[12.5px] font-medium text-brand hover:underline">{u.name}</p>
+            <p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p>
+          </button>,
+          <SignupChip via={u.signup} />,
+          <Meter pct={u.complete} />,
+          <span className="tabular-nums">{u.resumes || '—'}</span>,
+          <span className="tabular-nums font-medium text-brand">{u.applications || '—'}</span>,
+          <Pill tone={JS_STATUS[u.status]}>{u.status}</Pill>,
+          <span className="tabular-nums text-muted">{u.joined}</span>,
+          <span className="text-[11.5px] text-muted">{u.last}</span>,
+          <div className="flex items-center justify-end gap-1.5">
+            {u.status === 'Unverified' ? (
+              <>
+                <button onClick={() => setToast(`Verification email re-sent to ${u.email}.`)} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Resend</button>
+                <button onClick={() => setStatus(u.id, 'Active')} title="Demo: simulate the seeker clicking their verification link" className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Simulate verify</button>
+              </>
+            ) : u.status === 'Deactivated' ? (
+              <button onClick={() => setStatus(u.id, 'Active')} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Reactivate</button>
+            ) : u.status === 'Withdrawn' ? (
+              <span className="text-[10.5px] text-faint">seeker-initiated · restore on request</span>
+            ) : (
+              <>
+                <button onClick={() => setDetail(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">View</button>
+                <button onClick={() => setStatus(u.id, 'Deactivated')} className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-500 hover:text-white">Deactivate</button>
+              </>
+            )}
+          </div>,
+        ])}
+      />
+      <Footer text="Showing 7 of 128,412 — search by name / email / phone · filter by status, sign-up method, location, joined date" />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Interactive prototype — <b>Simulate verify</b> flips an Unverified row to Active; <b>Deactivate</b> / <b>Reactivate</b> toggle a row. <b>Deactivated</b> is an HQ block (login refused, resumes hidden from Resume Search); <b>Withdrawn</b> is the seeker deactivating their own account from My page. Opening an account or its CV is PII access — always written to the audit log.
+      </p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
+        Open questions for the client: retention for withdrawn accounts (grace period before hard delete) · whether HQ may create seeker accounts at all · merge policy when the same email arrives by email sign-up and by social login.
+      </p>
+
+      {creating && <NewJobseekerModal onCreate={create} onClose={() => setCreating(false)} />}
+    </div>
+  )
+}
+
+function NewJobseekerModal({ onCreate, onClose }: { onCreate: (name: string, email: string) => void; onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const valid = name.trim() && /.+@.+\..+/.test(email)
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">New jobseeker user</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3.5 p-5">
+          <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+            <span>⚠️</span><span>The normal path is self sign-up on the Store site. Use this only for support cases (e.g. a seeker who can't complete sign-up) — it does not replace registration.</span>
+          </p>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Nguyễn Thị Hà" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Email <span className="text-rose-500">*</span></label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@gmail.com" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          </div>
+          <LField label="Phone" value="optional — seeker completes it on My page" />
+          <LField label="Location" value="Hồ Chí Minh" select hint="From Master data → Locations. Everything else (headline, CV, job preferences) is filled in by the seeker." />
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
+            <span>🔑</span><span>We email a set-password link. The seeker <b>sets their own password</b> — no one types it for them. The account stays <b>Unverified</b> until they open the link, then flips to <b>Active</b>.</span>
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => valid && onCreate(name.trim(), email.trim())} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send link</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** One seeker account — what My page holds, plus their CVs and applications. */
+function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => void; onStatus: (s: JSStatus) => void }) {
+  const CVS: [string, 'public' | 'private', string, number][] = [
+    ['CV_NguyenVanAn_Frontend_EN.pdf', 'public', 'Updated 2 days ago', 6],
+    ['CV tiếng Việt — Frontend', 'private', 'Updated 3 weeks ago', 0],
+  ]
+  const APPS: [string, string, StatusTone, string, string][] = [
+    ['Senior Frontend Engineer (ReactJS)', 'FPT Software', 'pending', 'Interview', '2h ago'],
+    ['Product Manager', 'MoMo', 'neutral', 'Screening', '5d ago'],
+    ['Backend Engineer (Go)', 'Shopee', 'rejected', 'Rejected', '2 months ago'],
+  ]
+  return (
+    <div className="max-w-[960px]">
+      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Jobseeker users</button>
+
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{u.name} <Pill tone={JS_STATUS[u.status]}>{u.status}</Pill></h2>
+          <p className="text-[11.5px] text-muted">{u.headline} · {u.location} · <span className="font-mono">{u.email}</span></p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {u.status === 'Unverified' && <button className="rounded-lg border border-brand/30 bg-brand-soft px-3.5 py-2 text-[12.5px] font-medium text-brand hover:bg-brand hover:text-white">Resend verification</button>}
+          {u.status === 'Deactivated' || u.status === 'Withdrawn'
+            ? <button onClick={() => onStatus('Active')} className="rounded-lg border border-brand/30 bg-brand-soft px-3.5 py-2 text-[12.5px] font-medium text-brand hover:bg-brand hover:text-white">Reactivate</button>
+            : <button onClick={() => onStatus('Deactivated')} className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-[12.5px] font-medium text-rose-600 hover:bg-rose-500 hover:text-white">Deactivate</button>}
+        </div>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <MiniStat label="Profile" value={`${u.complete}%`} sub="completeness" tone={u.complete < 50 ? 'warn' : undefined} />
+        <MiniStat label="CVs" value={u.resumes || '—'} sub={`${CVS.filter((c) => c[1] === 'public').length} public`} />
+        <MiniStat label="Applications" value={u.applications || '—'} sub="all time" />
+        <MiniStat label="CV unlocks" value="6" sub="by employers" />
+        <MiniStat label="Joined" value={u.joined} sub={`via ${u.signup}`} />
+        <MiniStat label="Last login" value={u.last} sub="web · Chrome" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DetailCard title="Account">
+          <KV label="Full name" value={u.name} />
+          <KV label="Email (login)" value={u.email} />
+          <KV label="Email verified" value={u.status === 'Unverified' ? 'No — verification pending' : 'Yes'} />
+          <KV label="Sign-up method" value={u.signup === 'Email' ? 'Email + password' : `${u.signup} (social login)`} />
+          <KV label="Phone" value={u.phone} />
+          <KV label="Location" value={u.location} />
+          <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+            HQ never sees or sets a password. Password reset is a self-service email link; social-login accounts have no password at all.
+          </p>
+        </DetailCard>
+
+        <DetailCard title="My page — profile & job preferences">
+          <div className="mb-2"><Meter pct={u.complete} /></div>
+          <KV label="Headline" value={u.headline} />
+          <KV label="Desired role" value="Software Developer · IT" />
+          <KV label="Job type" value="Full-time" />
+          <KV label="Expected salary" value="35 – 45 tr VND / month" />
+          <KV label="Preferred locations" value="Hồ Chí Minh · Remote" />
+          <KV label="Open to offers" value="Yes — visible in Resume Search" />
+          <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+            Read-only for HQ. The seeker edits these on My page; the vocabularies come from Master data.
+          </p>
+        </DetailCard>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-[12.5px] font-bold">CVs / resumes</p>
+        <Table
+          minW={640}
+          cols={[{ label: 'CV', w: '2fr' }, { label: 'Visibility', w: '0.9fr' }, { label: 'Updated', w: '1fr' }, { label: 'Unlocked by', w: '0.9fr', align: 'r' }, { label: '', w: '0.7fr', align: 'r' }]}
+          rows={CVS.map((c) => [
+            <span className="truncate text-[12.5px] text-ink/85">{c[0]}</span>,
+            <Pill tone={c[1] === 'public' ? 'active' : 'draft'}>{c[1] === 'public' ? 'Public' : 'Private'}</Pill>,
+            <span className="text-[11.5px] text-muted">{c[2]}</span>,
+            <span className="tabular-nums">{c[3] ? `${c[3]} employers` : '—'}</span>,
+            <RowAction>Open CV</RowAction>,
+          ])}
+        />
+        <p className="mt-2 text-[11px] text-faint">🔒 Opening a CV is a PII view — logged with the operator, the record and the timestamp. Private CVs never appear in Resume Search.</p>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-[12.5px] font-bold">Applications</p>
+        <Table
+          minW={640}
+          cols={[{ label: 'Job', w: '1.9fr' }, { label: 'Company', w: '1fr' }, { label: 'Stage', w: '0.9fr' }, { label: 'Applied', w: '0.8fr', align: 'r' }]}
+          rows={APPS.map((a) => [
+            <span className="truncate text-[12.5px] text-ink/85">{a[0]}</span>,
+            <span className="truncate">{a[1]}</span>,
+            <Pill tone={a[2]}>{a[3]}</Pill>,
+            <span className="text-[11.5px] text-muted">{a[4]}</span>,
+          ])}
+        />
+        <p className="mt-2 text-[11px] text-faint">Read-only mirror of what the seeker sees under “Applied jobs” — HQ never moves a candidate's stage; that is the employer's call.</p>
+      </div>
+    </div>
+  )
+}
+
 /* ── Content ──────────────────────────────────────────────────────────────── */
 function AdminBanners() {
   const rows = [
@@ -1272,20 +1649,198 @@ function AdminBlog() {
 }
 
 /* ── Billing & products ───────────────────────────────────────────────────── */
+/* The five product TYPES, derived from the client Products deck. The type is the
+   discriminator that decides what "fulfilment" means, so it drives which fields
+   the create form asks for — see NewProductModal. */
+const PRODUCT_TYPES = [
+  { id: 'tier', label: 'Posting tier', blurb: 'Buy N posting slots; publishing a job spends one', eg: 'Basic · Basic Plus · Distinction · Top Job' },
+  { id: 'placement', label: 'Placement booking', blurb: 'A time window on a slot, capacity-capped', eg: 'Main banner · Feature company · Adsense · Popup' },
+  { id: 'credit', label: 'Credit pack', blurb: 'Quota + validity, spent per unlock', eg: 'COMBO 30 / 50 / 100 / 300 CV unlocks' },
+  { id: 'addon', label: 'Add-on (attach-only)', blurb: 'Rides on a parent tier, never sold alone', eg: 'Premium fixed slots · “HOT” label' },
+  { id: 'service', label: 'Manual service', blurb: 'Ops fulfils it — creates a task, not an entitlement', eg: 'Fanpage post · Email / Job Alert banner' },
+] as const
+type ProductTypeId = (typeof PRODUCT_TYPES)[number]['id']
+
 function AdminCatalog() {
   const rows = [
-    ['Job Posting — Pro', 'Posting quota', '15,000,000 ₫', '10 posts · 3 months', <Pill tone="active">Active</Pill>],
-    ['Resume Search — 6 months', 'Subscription', '20,000,000 ₫', '100 CV unlocks', <Pill tone="active">Active</Pill>],
-    ['Main ad (Home hero)', 'Advertising', '8,000,000 ₫', 'Per week', <Pill tone="active">Active</Pill>],
-    ['Recommend rank boost', 'Boost', '3,000,000 ₫', 'Per job · 14 days', <Pill tone="active">Active</Pill>],
-    ['Talent pool access', 'Subscription', '30,000,000 ₫', '12 months', <Pill tone="draft">Draft</Pill>],
+    ['Tin Top Job', 'Posting tier', '15,000,000 ₫', '10 slots · 30 days each', <Pill tone="active">Active</Pill>],
+    ['COMBO 50 — CV unlocks', 'Credit pack', '3,700,000 ₫', '50 unlocks · 30 days', <Pill tone="active">Active</Pill>],
+    ['Main Banner (Home hero)', 'Placement booking', '8,000,000 ₫', 'Per week · 1 of 6 slots', <Pill tone="active">Active</Pill>],
+    ['Popular Jobs — premium slot', 'Add-on (attach-only)', '3,000,000 ₫', 'Per job · 4 positions', <Pill tone="active">Active</Pill>],
+    ['TopDev fanpage post', 'Manual service', '5,000,000 ₫', '1 post · SLA 3 days', <Pill tone="draft">Draft</Pill>],
   ]
+  // The "+ New product" button lives on the page title row in the shell
+  // (PRIMARY_ACTION in AdminWireframe), which also opens NewProductModal.
   return (
     <ListPage
-      cols={[{ label: 'Product', w: '1.8fr' }, { label: 'Type', w: '1fr' }, { label: 'Price', w: '1fr', align: 'r' }, { label: 'Fulfilment', w: '1.2fr' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
+      cols={[{ label: 'Product', w: '1.8fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Price', w: '1fr', align: 'r' }, { label: 'Fulfilment', w: '1.3fr' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
       rows={rows}
-      footer="These are what the Store billing catalog sells — each product maps to an entitlement/quota"
+      minW={820}
+      footer="Every product maps to an entitlement (product + remaining quota + validity) — the record downstream screens read and decrement"
     />
+  )
+}
+
+/* Create product. The type picker is step 1 because it changes the rest of the
+   form — a placement needs a slot + calendar, a credit pack needs an amount, a
+   manual service needs an SLA and an owner. One flat form can't express that. */
+export function NewProductModal({ onClose }: { onClose: () => void }) {
+  const [type, setType] = useState<ProductTypeId>('tier')
+  const [nameVi, setNameVi] = useState('')
+  const [nameEn, setNameEn] = useState('')
+  const [sku, setSku] = useState('')
+  const [price, setPrice] = useState('')
+  const [amount, setAmount] = useState('50')
+  const valid = nameVi.trim().length > 0 && sku.trim().length > 0
+
+  const priceNum = Number(price.replace(/\D/g, ''))
+  const amountNum = Number(amount.replace(/\D/g, ''))
+  const perCv = priceNum > 0 && amountNum > 0 ? Math.round(priceNum / amountNum) : null
+  const vnd = (n: number) => n.toLocaleString('vi-VN')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[620px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">New product</p>
+            <p className="text-[11px] text-muted">A product is the sellable SKU — price + terms. What it grants comes from its type.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          <Section title="1 · Type" className="mt-0" />
+          <div className="grid gap-1.5">
+            {PRODUCT_TYPES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setType(t.id)}
+                className={cn(
+                  'flex items-start gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors',
+                  type === t.id ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30',
+                )}
+              >
+                <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', type === t.id ? 'border-brand' : 'border-line')}>
+                  {type === t.id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                </span>
+                <span className="min-w-0">
+                  <span className={cn('block text-[12.5px] font-semibold', type === t.id ? 'text-brand' : 'text-ink')}>{t.label}</span>
+                  <span className="block text-[11px] leading-relaxed text-muted">{t.blurb}</span>
+                  <span className="block text-[10.5px] text-faint">e.g. {t.eg}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <Section title="2 · Identity" />
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>Name (VN)</FLabel>
+              <input value={nameVi} onChange={(e) => setNameVi(e.target.value)} placeholder="e.g. Tin Top Job" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+            <div>
+              <FLabel>Name (EN)</FLabel>
+              <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. Top Job posting" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          </div>
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>SKU code</FLabel>
+              <input value={sku} onChange={(e) => setSku(e.target.value.toUpperCase())} placeholder="TOPJOB-10" className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+            <SelectField label="Sales category" req value="Đăng tin tuyển dụng" options={['Dịch vụ Trang chủ', 'Dịch vụ Trang Tìm kiếm', 'Đăng tin tuyển dụng', 'Tìm kiếm CV', 'Nâng cao — thương hiệu']} />
+          </div>
+          <TArea label="Sales description" value="Bilingual blurb shown on the quotation and the company Store." rows={2} />
+
+          <Section title="3 · Fulfilment" />
+          {type === 'tier' && (
+            <>
+              <SelectField label="Tier" req value="Top Job" options={['Basic', 'Basic Plus', 'Distinction', 'Top Job']} extra={<span className="ml-1 font-normal text-faint">— benefits come from tier config, not typed here</span>} />
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Posting slots" req value="10 slots" hint="Publishing a job spends one slot of this tier." />
+                <LField label="Slots must be used within" value="12 months from activation" select />
+              </div>
+              <LField label="Publishes to" value="TopDev.vn + Saramin.vn" select />
+              <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <b className="text-ink/70">Top Job grants (read-only):</b> 30 days display · refresh daily for 7 days then every 5 · green title + background · 3 benefits in search · highest search rank · “HOT JOB” label 10 days · Super Hot Jobs 10 days · Popular Jobs.
+              </p>
+            </>
+          )}
+          {type === 'placement' && (
+            <>
+              <SelectField label="Placement slot" req value="Main Banner — Home hero (1536×371)" options={['Main Banner — Home hero (1536×371)', 'Banner adsense — Home (1260×120)', 'Banner adsense — Search (425×160)', 'Feature company logo — Home', 'Top Companies Hiring Now — Home', 'Highlight Company — Search', 'Homepage popup']} />
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Booking unit" req value="Per week" select />
+                <LField label="Slots consumed" value="1 of 6 in rotation" hint="Pool is capped — sales must check the calendar before quoting." />
+              </div>
+              <LField label="Creative source" value="Client-supplied image + redirect link" select />
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+                ⚠️ Inherited from the slot: 1 banner shown at a time, rotates every 3s, max 6 · title ≤ 50 chars, description ≤ 100, CTA ≤ 10. <b>Availability calendar</b> needed — this slot is sold out for weeks where 6 bookings already overlap.
+              </p>
+            </>
+          )}
+          {type === 'credit' && (
+            <>
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Credit type" req value="CV unlock" select />
+                <div>
+                  <FLabel req>Amount</FLabel>
+                  <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" placeholder="50" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+                </div>
+              </div>
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Validity" req value="30 days" select hint="Deck sells 30-day and 90-day packs." />
+                <LField label="Unused credits on repurchase" value="Roll over" select />
+              </div>
+            </>
+          )}
+          {type === 'addon' && (
+            <>
+              <LField label="Attaches to" req value="Distinction · Top Job" select hint="Never sold standalone — it only appears on a quotation line under its parent tier." />
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Capacity" req value="4 fixed positions" hint="Shared, finite inventory — needs the same availability check as a placement." />
+                <LField label="Duration" value="10 days from job publish" select />
+              </div>
+            </>
+          )}
+          {type === 'service' && (
+            <>
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Fulfilment SLA" req value="3 working days" select />
+                <LField label="Owning team" req value="Marketing — TopDev" select />
+              </div>
+              <TArea label="Inputs required from the buyer" value="Post copy · image · target audience · preferred publish date" rows={2} />
+              <p className="rounded-md bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
+                🛠 Paying this does <b>not</b> auto-provision quota. It opens a fulfilment task (Requested → Scheduled → Delivered) and needs proof-of-delivery before the line counts as fulfilled.
+              </p>
+            </>
+          )}
+
+          <Section title="4 · Pricing" />
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>Price (₫)</FLabel>
+              <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" placeholder="3700000" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+              {priceNum > 0 && <p className="mt-1 text-[10.5px] text-faint">{vnd(priceNum)} ₫</p>}
+            </div>
+            <LField label="Floor price" value="Lowest a sales rep may discount to" hint="Below this needs manager approval on the quotation." />
+          </div>
+          {type === 'credit' && (
+            <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] text-muted">
+              Average per CV: <b className="text-ink/80">{perCv ? `~${vnd(perCv)} ₫ / CV` : '— enter price and amount'}</b> — computed, never typed. This is the number the deck sells on.
+            </p>
+          )}
+          <LField label="Visibility" value="Sales-quote only" select hint="Public self-serve · Sales-quote only · Package-only." />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={onClose} disabled={!valid} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink/80 hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40">Save as draft</button>
+          <button onClick={onClose} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create &amp; activate</button>
+        </div>
+      </div>
+    </div>
   )
 }
 function AdminBundles() {
@@ -1296,9 +1851,9 @@ function AdminBundles() {
   ]
   return (
     <ListPage
-      cols={[{ label: 'Bundle', w: '1.2fr' }, { label: 'Includes', w: '2fr' }, { label: 'Package price', w: '1.1fr', align: 'r' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
+      cols={[{ label: 'Package', w: '1.2fr' }, { label: 'Includes', w: '2fr' }, { label: 'Package price', w: '1.1fr', align: 'r' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
       rows={rows}
-      footer="Bundles = several catalog products at a package price (maps to Store “Recruit package”)"
+      footer="Packages = several products at one package price (maps to Store “Recruit package”)"
     />
   )
 }
@@ -1807,64 +2362,82 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
     </div>
   )
 }
+/* Quote-to-cash, in the order it actually happens:
+   Quotation (1–3 options) → Sales order / PO (confirm = won) → Payment
+   (Accounting confirms) → VAT e-invoice (issue = closed + provisioning released). */
 function AdminQuotes() {
   const rows = [
-    ['Q-2041', 'Công ty Vạn Phát', '37,800,000 ₫', <Pill tone="active">Accepted</Pill>, '13/06/2026'],
-    ['Q-2042', 'Việt Tiến Logistics', '28,536,925 ₫', <Pill tone="pending">Sent</Pill>, '13/06/2026'],
-    ['Q-2043', 'Hoàng Gia', '131,429,662 ₫', <Pill tone="rejected">Rejected</Pill>, '14/06/2026'],
-    ['Q-2044', 'Tinh Hoa', '60,206,698 ₫', <Pill tone="draft">Draft</Pill>, '—'],
+    ['EST-009909-07-2026', 'AM Software Việt Nam', '2 options', '6,588,000 ₫', <Pill tone="pending">Sent</Pill>, '03/08/2026'],
+    ['EST-009908-07-2026', 'Công ty Vạn Phát', '3 options', '37,800,000 ₫', <Pill tone="active">Accepted · Opt 2</Pill>, '28/07/2026'],
+    ['EST-009907-07-2026', 'Hoàng Gia', '1 option', '131,429,662 ₫', <Pill tone="rejected">Rejected</Pill>, '14/07/2026'],
+    ['EST-009906-06-2026', 'Việt Tiến Logistics', '2 options', '28,536,925 ₫', <Pill tone="expired">Superseded · v2</Pill>, '30/06/2026'],
+    ['EST-009905-06-2026', 'Tinh Hoa', '2 options', '60,206,698 ₫', <Pill tone="draft">Draft</Pill>, '—'],
   ]
   return (
-    <ListPage
-      tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft' }, { label: 'Sent' }, { label: 'Accepted' }, { label: 'Rejected' }, { label: 'Expired' }]}
-      cols={[{ label: 'Quote', w: '1fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'Total', w: '1.2fr', align: 'r' }, { label: 'Status', w: '1fr' }, { label: 'Valid until', w: '1fr', align: 'r' }]}
-      rows={rows}
-      footer="Draft → Sent → Accepted → (Rejected / Expired) · accepted quote → PO"
-    />
+    <div>
+      {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
+      <p className="mb-3 max-w-[60ch] text-[11.5px] text-muted">
+        Bilingual VN/EN proposal (BÁO GIÁ), 1–3 priced options per document. Creating one asks for the company
+        first — a quotation is always attached to a company and a deal, never floating.
+      </p>
+      <ListPage
+        tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft' }, { label: 'Pending approval', count: 3 }, { label: 'Sent' }, { label: 'Accepted' }, { label: 'Rejected' }, { label: 'Expired' }]}
+        cols={[{ label: 'Quotation', w: '1.5fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Options', w: '0.8fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Expires', w: '0.9fr', align: 'r' }]}
+        rows={rows}
+        minW={760}
+        footer="Value = the accepted option, else the recommended one — options are alternatives, never summed · accepted option → Sales order"
+      />
+    </div>
   )
 }
 function AdminInvoices() {
   const rows = [
-    ['INV-3390', 'Công ty Vạn Phát', '37,800,000 ₫', '37,800,000 ₫', <Pill tone="active">Paid</Pill>, '09/06/2026'],
-    ['INV-3391', 'Hồng Đức', '139,609,357 ₫', '0 ₫', <Pill tone="pending">Issued</Pill>, '06/06/2026'],
-    ['INV-3392', 'Phương Đông', '177,304,898 ₫', '80,000,000 ₫', <Pill tone="pending">Partially paid</Pill>, '16/06/2026'],
-    ['INV-3393', 'Hoàng Gia', '38,267,008 ₫', '0 ₫', <Pill tone="rejected">Overdue</Pill>, '28/05/2026'],
+    ['INV-3390 · 1C26TAA/0041', 'Công ty Vạn Phát', 'PAY-1042', '37,800,000 ₫', <Pill tone="active">Issued</Pill>, '26/07/2026', '26/07/2027'],
+    ['INV-3389 · 1C26TAA/0040', 'Trường Sơn', 'PAY-1044', '73,929,353 ₫', <Pill tone="active">Issued</Pill>, '24/07/2026', '24/07/2027'],
+    ['INV-3388 · 1C26TAA/0039', 'Hồng Đức', 'PAY-1039', '139,609,357 ₫', <Pill tone="expired">Cancelled · replaced</Pill>, '06/07/2026', '—'],
+    ['— not issued yet', 'AM Software Việt Nam', 'PAY-1043', '6,588,000 ₫', <Pill tone="draft">Blocked · payment unconfirmed</Pill>, '—', '—'],
   ]
   return (
     <ListPage
-      tabs={[{ label: 'All', count: 210, active: true }, { label: 'Issued' }, { label: 'Paid' }, { label: 'Overdue', count: 18 }]}
-      cols={[{ label: 'Invoice', w: '1fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Collected', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.1fr' }, { label: 'Due', w: '0.9fr', align: 'r' }]}
+      tabs={[{ label: 'All', count: 210, active: true }, { label: 'To issue', count: 2 }, { label: 'Issued' }, { label: 'Cancelled / replaced' }, { label: 'Activation expiring', count: 6 }]}
+      cols={[{ label: 'Invoice · legal no.', w: '1.7fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Payment', w: '0.9fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.6fr' }, { label: 'Issued', w: '0.9fr', align: 'r' }, { label: 'Activate by', w: '0.9fr', align: 'r' }]}
       rows={rows}
-      footer="Status derived from payments + due date · VN VAT e-invoice issued on payment"
+      minW={900}
+      footer="Issued only after a confirmed payment (T&C clause 3) — so no Overdue state here · issuing closes the deal, flips the company Prospect → New and releases provisioning · activate-by = issued + 12 months (clause 4)"
     />
   )
 }
 function AdminPOs() {
   const rows = [
-    ['PO-1188', 'Công ty Vạn Phát', '37,800,000 ₫', <Pill tone="active">Accepted</Pill>, '1', '07/05/2026'],
-    ['PO-1189', 'Hoàng Gia', '87,505,977 ₫', <Pill tone="pending">Sent</Pill>, '0', '22/04/2026'],
-    ['PO-1190', 'Sao Mai', '126,360,120 ₫', <Pill tone="draft">Draft</Pill>, '0', '—'],
+    ['SO-1188', 'Công ty Vạn Phát', 'PO-VP/2026/044', '37,800,000 ₫', <Pill tone="active">Paid → invoiced</Pill>, '07/07/2026'],
+    ['SO-1189', 'AM Software Việt Nam', '—', '6,588,000 ₫', <Pill tone="pending">Awaiting payment</Pill>, '22/07/2026'],
+    ['SO-1190', 'Hoàng Gia', '—', '87,505,977 ₫', <Pill tone="neutral">Sent</Pill>, '18/07/2026'],
+    ['SO-1191', 'Sao Mai', '—', '126,360,120 ₫', <Pill tone="draft">Draft</Pill>, '—'],
   ]
   return (
     <ListPage
-      cols={[{ label: 'PO code', w: '1fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'Total', w: '1.2fr', align: 'r' }, { label: 'Status', w: '1fr' }, { label: 'Invoices', w: '0.7fr', align: 'r' }, { label: 'Issued', w: '1fr', align: 'r' }]}
+      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Sent' }, { label: 'Confirmed' }, { label: 'Awaiting payment', count: 9 }, { label: 'Invoiced' }]}
+      cols={[{ label: 'Order', w: '1fr' }, { label: 'Customer', w: '1.5fr' }, { label: 'Customer PO', w: '1.2fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.9fr', align: 'r' }]}
       rows={rows}
-      footer="Created from accepted quote → invoices raised against it (needs BE build if in launch scope)"
+      minW={760}
+      footer="From ONE accepted quotation option · Confirmed = won (deal → PO) · holds the customer’s own PO number when their procurement issues one · provisions nothing yet"
     />
   )
 }
 function AdminPayments() {
   const rows = [
-    ['PAY-1042', 'Công ty Vạn Phát', '37,800,000 ₫', 'Bank transfer', 'INV-3390', '26/05/2026'],
-    ['PAY-1043', 'Bình Minh', '52,412,282 ₫', 'Credit card', 'INV-3388', '26/05/2026'],
-    ['PAY-1044', 'Trường Sơn', '73,929,353 ₫', 'Bank transfer', 'INV-3385', '26/05/2026'],
-    ['PAY-1045', 'Á Châu', '19,934,148 ₫', 'Cash', 'INV-3380', '26/05/2026'],
+    ['PAY-1042', 'Công ty Vạn Phát', 'SO-1188', '37,800,000 ₫', 'Bank transfer', <Pill tone="active">Confirmed · Kế toán</Pill>, '26/07/2026'],
+    ['PAY-1043', 'AM Software Việt Nam', 'SO-1189', '6,588,000 ₫', 'Bank transfer', <Pill tone="pending">Recorded — to confirm</Pill>, '27/07/2026'],
+    ['PAY-1044', 'Trường Sơn', 'SO-1185', '73,929,353 ₫', 'Bank transfer', <Pill tone="active">Confirmed · Kế toán</Pill>, '24/07/2026'],
+    ['PAY-1045', 'Á Châu', 'SO-1182', '19,934,148 ₫', 'Cash', <Pill tone="rejected">Unmatched</Pill>, '20/07/2026'],
   ]
   return (
     <ListPage
-      cols={[{ label: 'Reference', w: '1fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Amount', w: '1.1fr', align: 'r' }, { label: 'Method', w: '1.1fr' }, { label: 'Invoice', w: '0.9fr' }, { label: 'Date', w: '1fr', align: 'r' }]}
+      tabs={[{ label: 'Awaiting payment', count: 9 }, { label: 'To confirm', count: 4, active: true }, { label: 'Confirmed' }, { label: 'To invoice', count: 2 }, { label: 'Unmatched', count: 1 }]}
+      cols={[{ label: 'Reference', w: '1fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Order', w: '0.9fr' }, { label: 'Amount', w: '1.1fr', align: 'r' }, { label: 'Method', w: '1.1fr' }, { label: 'Status', w: '1.6fr' }, { label: 'Paid', w: '0.9fr', align: 'r' }]}
       rows={rows}
-      footer="Applying a payment updates the linked invoice’s collected total + status"
+      minW={860}
+      footer="Money lands against the ORDER, not an invoice · Recorded ≠ Confirmed — only Accounting confirms it against the bank, and that click is what unlocks invoicing"
     />
   )
 }
@@ -3079,6 +3652,8 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // Companies
   'admin-company-list': AdminCompanyList,
   'admin-company-pipeline': AdminCompanyPipeline,
+  // User — both sides of the marketplace's people accounts
+  'admin-jobseekers': AdminJobseekers,
   'admin-company-users': AdminCompanyUsers,
   // Content
   'admin-banners': AdminBanners,

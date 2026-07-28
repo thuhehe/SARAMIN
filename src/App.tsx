@@ -142,9 +142,9 @@ function Layout() {
       </div>
       <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
 
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         <Sidebar />
-        <main id="scroll-main" className="flex-1 min-w-0 pt-1">
+        <main id="scroll-main" className="flex-1 min-w-0">
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/plan" element={<BuildPlan />} />

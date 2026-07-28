@@ -9,8 +9,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <App />
-      {/* Dev-only visual-feedback overlay; compiled out of production builds. */}
-      {import.meta.env.DEV && <Agentation />}
+      {/* Visual-feedback / comment overlay — rendered in all builds so reviewers can comment on the deployed site. */}
+      <Agentation />
     </BrowserRouter>
   </StrictMode>,
 )

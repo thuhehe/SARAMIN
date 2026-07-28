@@ -25,6 +25,10 @@ export const adminAccess: BuildModule = {
     'Statuses & invite flow are the SAME as the company HR Manager / HR Specialist invite: Pending (invited, not yet activated) → Active (link clicked, password set). One consistent pattern across the product.',
     'Roles are fully team-managed — there is no locked "system" role type. Sensible defaults are seeded but are ordinary editable roles. A role cannot be deleted while operators are still assigned to it, and at least one role must always keep full access so no one is locked out.',
     'Remove = disable, never a hard delete, so the audit trail stays intact. Every role/operator change is written to the audit log.',
+    'AUDIT LOGGING — everything is logged platform-wide: who (an operator, a company user, a jobseeker, or the System) changed what, when, and the before → after value. Applies to every create / update / delete / status change and to system actions (auto-expiry, auto-publish, provisioning, notifications).',
+    'The log is exposed at three scopes, no overlap: (1) System → Audit log = the whole firehose, searchable and filterable; (2) a per-page History drawer = recent activity in that section, reachable from any admin page; (3) a record’s Activity / History = that one record’s trail, shown on the record itself (e.g. the company account’s Overview tab).',
+    'The log is immutable and exportable — entries are never edited or deleted, including when the actor is disabled.',
+    'PII-view actions are always audited even though nothing changed — opening a resume / unlocking a CV is recorded with the actor, the candidate and the timestamp.',
   ],
   features: [
     {

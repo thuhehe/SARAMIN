@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  LayoutDashboard,
   Briefcase,
   Users,
   FileImage,
@@ -15,7 +14,7 @@ import {
 } from 'lucide-react'
 import { SPECS } from '@/data'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline } from './adminPrototypes'
+import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
@@ -33,6 +32,16 @@ interface NavGroup {
 /** Proposed HQ Admin console navigation (grouped by domain, mirrors modules B1–B9). */
 const NAV_GROUPS: NavGroup[] = [
   {
+    label: 'Analytics',
+    icon: <BarChart3 className="h-4 w-4" />,
+    items: [
+      { label: 'Dashboard', specId: 'admin-analytics-dashboard' },
+      { label: 'Sales report', specId: 'admin-sales-report' },
+      { label: 'Recruit report', specId: 'admin-recruit-report' },
+      { label: 'Revenue report', specId: 'admin-revenue-report' },
+    ],
+  },
+  {
     label: 'Recruitment',
     icon: <Briefcase className="h-4 w-4" />,
     items: [
@@ -42,10 +51,42 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Jobseekers',
+    // Both sides of the marketplace's people accounts in one group: the seekers
+    // who apply, and the employer-side logins that hang off a company account.
+    label: 'User',
     icon: <Users className="h-4 w-4" />,
     items: [
-      { label: 'Jobseeker accounts', specId: 'admin-jobseekers' },
+      { label: 'Jobseeker users', specId: 'admin-jobseekers' },
+      { label: 'Company users', specId: 'admin-company-users' },
+    ],
+  },
+  {
+    label: 'Product setting',
+    icon: <CreditCard className="h-4 w-4" />,
+    // Selling documents (quotation → sales order → payment → invoice) all live in
+    // CRM. This group is the catalogue side only: what is sellable and at what price.
+    items: [
+      { label: 'Products', specId: 'admin-catalog' },
+      { label: 'Packages', specId: 'admin-bundles' },
+      { label: 'Promotions', specId: 'admin-promotions' },
+    ],
+  },
+  {
+    label: 'CRM',
+    icon: <Handshake className="h-4 w-4" />,
+    // The five document pages are ordered as the quote-to-cash chain runs, so the
+    // nav itself teaches the flow: Quotation → Sales order/PO → Payment →
+    // VAT e-invoice → Contract. Payments sit BEFORE Invoices on purpose — the
+    // customer pays first and the e-invoice is issued after (T&C clause 3).
+    items: [
+      { label: 'Companies', specId: 'admin-company-list' },
+      { label: 'Pipeline', specId: 'admin-company-pipeline' },
+      { label: 'Sign-ups', specId: 'admin-signups' },
+      { label: 'Quotations', specId: 'admin-quotes' },
+      { label: 'Sales orders / PO', specId: 'admin-purchase-orders' },
+      { label: 'Payments', specId: 'admin-payments' },
+      { label: 'Invoices (VAT)', specId: 'admin-invoices' },
+      { label: 'Contracts', specId: 'admin-contracts' },
     ],
   },
   {
@@ -57,42 +98,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Boards', specId: 'admin-boards' },
       { label: 'Blog / articles', specId: 'admin-blog' },
-    ],
-  },
-  {
-    label: 'Billing & products',
-    icon: <CreditCard className="h-4 w-4" />,
-    items: [
-      { label: 'Catalog', specId: 'admin-catalog' },
-      { label: 'Bundles', specId: 'admin-bundles' },
-      { label: 'Credits', specId: 'admin-credits' },
-      { label: 'Orders', specId: 'admin-orders' },
-      { label: 'Promotions', specId: 'admin-promotions' },
-    ],
-  },
-  {
-    label: 'CRM',
-    icon: <Handshake className="h-4 w-4" />,
-    items: [
-      { label: 'Companies', specId: 'admin-company-list' },
-      { label: 'Pipeline', specId: 'admin-company-pipeline' },
-      { label: 'Sign-ups', specId: 'admin-signups' },
-      { label: 'Quotes', specId: 'admin-quotes' },
-      { label: 'Invoices', specId: 'admin-invoices' },
-      { label: 'Purchase orders', specId: 'admin-purchase-orders' },
-      { label: 'Payments', specId: 'admin-payments' },
-      { label: 'Contracts', specId: 'admin-contracts' },
-    ],
-  },
-  {
-    label: 'Analytics',
-    icon: <BarChart3 className="h-4 w-4" />,
-    items: [
-      { label: 'Dashboard', specId: 'admin-analytics-dashboard' },
-      { label: 'Sales report', specId: 'admin-sales-report' },
-      { label: 'Recruit report', specId: 'admin-recruit-report' },
-      { label: 'Revenue report', specId: 'admin-revenue-report' },
-      { label: 'User behavior', specId: 'admin-user-behavior' },
     ],
   },
   {
@@ -109,11 +114,23 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
+/* Primary create action per page, rendered on the page title row — the
+   conventional spot for it, so the page's main verb is visible before the
+   reader gets past the explainer copy. Pages absent from this map have no
+   single create action (reports, logs, boards). */
+const PRIMARY_ACTION: Record<string, string> = {
+  'admin-catalog': '+ New product',
+  'admin-quotes': '+ New quotation',
+}
+
 export function AdminWireframe() {
   const [walkthrough, setWalkthrough] = useState<null | 'activation' | 'flow'>(null)
-  const [active, setActive] = useState<{ group: string; item: NavItem }>({
-    group: 'Recruitment',
-    item: NAV_GROUPS[0].items[0],
+  /** specId whose create modal is open — the title-row button opens it. */
+  const [creating, setCreating] = useState<string | null>(null)
+  /** default landing page — looked up by label so nav reordering can't desync it */
+  const [active, setActive] = useState<{ group: string; item: NavItem }>(() => {
+    const g = NAV_GROUPS.find((x) => x.label === 'Recruitment') ?? NAV_GROUPS[0]
+    return { group: g.label, item: g.items[0] }
   })
   const select = (group: string, item: NavItem) => {
     setWalkthrough(null)
@@ -124,7 +141,7 @@ export function AdminWireframe() {
   const Proto = active.item.specId ? ADMIN_PROTOTYPES[active.item.specId] : undefined
 
   return (
-    <div className="max-w-[1180px] pb-16">
+    <div className="pb-16">
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">HQ Admin — navigation & shell</h1>
@@ -161,13 +178,6 @@ export function AdminWireframe() {
         <div className="grid grid-cols-1 md:grid-cols-[236px_minmax(0,1fr)]">
           {/* Sidebar */}
           <nav className="border-r border-line bg-canvas/30 py-2 max-h-[640px] overflow-y-auto scroll-thin">
-            <SidebarItem
-              icon={<LayoutDashboard className="h-4 w-4" />}
-              label="Dashboard"
-              active={active.item.label === 'Dashboard' && active.group === 'Overview'}
-              onClick={() => select('Overview', { label: 'Dashboard', specId: 'admin-analytics-dashboard' })}
-              single
-            />
             {NAV_GROUPS.map((g) => (
               <SidebarGroup
                 key={g.label}
@@ -195,8 +205,16 @@ export function AdminWireframe() {
             </div>
 
             <div className="p-5">
-              <div className="mb-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-[17px] font-semibold">{active.item.label}</h3>
+                {!walkthrough && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
+                  <button
+                    onClick={() => setCreating(active.item.specId!)}
+                    className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
+                  >
+                    {PRIMARY_ACTION[active.item.specId]}
+                  </button>
+                )}
               </div>
 
               {/* interactive walkthrough launched contextually from a page, else the page itself */}
@@ -214,7 +232,9 @@ export function AdminWireframe() {
                 <AdminPipeline onActivate={() => setWalkthrough('activation')} />
               ) : Proto ? (
                 <>
-                  {active.item.specId === 'admin-orders' && (
+                  {/* Rehomed from the removed Products → Orders page: a paid sales
+                      order is what provisions quota, so the walkthrough belongs here. */}
+                  {active.item.specId === 'admin-purchase-orders' && (
                     <button
                       onClick={() => setWalkthrough('flow')}
                       className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[12px] font-medium text-brand hover:bg-brand hover:text-white"
@@ -252,6 +272,8 @@ export function AdminWireframe() {
               )}
             </div>
           </div>
+
+          {creating === 'admin-catalog' && <NewProductModal onClose={() => setCreating(null)} />}
         </div>
       </div>
 
@@ -281,34 +303,6 @@ export function AdminWireframe() {
         </RationaleCard>
       </div>
     </div>
-  )
-}
-
-function SidebarItem({
-  icon,
-  label,
-  active,
-  onClick,
-  single,
-}: {
-  icon?: React.ReactNode
-  label: string
-  active: boolean
-  onClick: () => void
-  single?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] transition-colors',
-        single ? 'font-medium' : '',
-        active ? 'bg-brand-soft text-brand font-medium' : 'text-ink/80 hover:bg-canvas/70',
-      )}
-    >
-      {icon && <span className={cn(active ? 'text-brand' : 'text-faint')}>{icon}</span>}
-      <span className="truncate">{label}</span>
-    </button>
   )
 }
 

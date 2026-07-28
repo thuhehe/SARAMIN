@@ -21,6 +21,7 @@ export const jobManagement: BuildModule = {
     'Publish action offers "Post now" (→ Open) or "Schedule for later…" (→ Schedule, with a date/time picker).',
     'Posting package per job: Free · Basic · Basic plus · Distinction (Free + paid packages) — drives visibility / ranking.',
     'Extra structured fields: experience range, job level (Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above), job type (Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other), skills, salary (from–to + currency).',
+    'Job taxonomy is MASTER DATA, not free text: a two-level Job Category → Role (job title) list, maintained on Admin (System → Job categories & roles). The job form’s Category and Role dropdowns and the jobseeker search filters both read this list, so adding a role is a data change, not a code change. Note: a job "Role" (e.g. Software Developer) is a job title — unrelated to the admin RBAC roles in Admin roles & operators.',
     'Job list on Admin (all jobs) and Company (own jobs) with status + filters.',
     'Jobseeker: job lists on the Homepage and Search-result page, plus the Job detail page.',
     'One shared Job entity + one status lifecycle across all three surfaces: Draft → Schedule → Open → Closed. No HQ approval gate — company posts go live directly, like Admin.',
