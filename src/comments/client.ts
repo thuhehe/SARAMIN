@@ -4,25 +4,33 @@ import {
   type CommentAnchor,
   type DocCommentCount,
   type DocCommentsPayload,
+  type MemberShareSession,
   type ShareSession,
 } from './types'
 import * as session from './session'
 
 /**
- * Thin client for the BB PM public share surface. Two behaviours worth
+ * Thin client for the BB PM public share surface. Three behaviours worth
  * knowing about:
  *
- * 1. **Silent renewal.** The share JWT lives 2h. On a 401 we re-unlock
- *    once with the stored passcode and replay the request, so a long
- *    review never gets interrupted by a passcode prompt mid-sentence.
- *    If that renewal also fails, the error surfaces as `auth` and the
- *    UI re-prompts.
- * 2. **Every response is `{ success, data }`.** The API wraps all
+ * 1. **Silent renewal, for guests.** The guest share JWT lives 2h. On a
+ *    401 we re-unlock once with the stored passcode and replay the
+ *    request, so a long review never gets interrupted by a passcode
+ *    prompt mid-sentence. A *member* session can't do this — we
+ *    deliberately kept no OAuth token to renew with — so its 401
+ *    surfaces as `auth` and the UI asks them to sign in again. Their JWT
+ *    is longer-lived to compensate.
+ * 2. **Two ways in, one credential out.** Passcode or BB PM sign-in,
+ *    both end at a share JWT; every call after that looks identical.
+ * 3. **Every response is `{ success, data }`.** The API wraps all
  *    non-RFC routes in that envelope (TransformInterceptor), so unwrap
  *    in exactly one place.
  */
 
-const API_BASE = (import.meta.env.VITE_BBPM_API_BASE ?? '').replace(/\/$/, '')
+export const API_BASE = (import.meta.env.VITE_BBPM_API_BASE ?? '').replace(
+  /\/$/,
+  '',
+)
 const SHARE_TOKEN = import.meta.env.VITE_BBPM_SHARE_TOKEN ?? ''
 
 /**
@@ -112,7 +120,10 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   if (res.status === 401 && !opts.isRetry) {
-    const stored = session.passcode.get()
+    // Only a guest can be renewed from storage. A member's credential
+    // was spent on purpose, so their lapsed session has to go back
+    // through BB PM.
+    const stored = session.member.get() ? null : session.passcode.get()
     if (stored) {
       try {
         await unlock(stored)
@@ -152,6 +163,43 @@ export async function unlock(code: string): Promise<ShareSession> {
   >
   session.shareJwt.set(data.shareJwt)
   session.passcode.set(code)
+  session.member.set(null)
+  return data
+}
+
+/**
+ * The member half of unlock: spend a BB PM access token on a share JWT
+ * that carries the account behind it. The token is passed in rather than
+ * read from storage because it is never stored — see `oauth.ts`.
+ *
+ * A 403 here is the interesting case: the credential was fine, but the
+ * person isn't a member of this project. That is not an error to retry,
+ * it is a signal to offer the passcode instead, so it keeps the
+ * `forbidden` kind and the dialog says so.
+ */
+export async function unlockMember(
+  accessToken: string,
+): Promise<MemberShareSession> {
+  let res: Response
+  try {
+    res = await fetch(`${base()}/unlock-member`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+  } catch {
+    throw new CommentApiError('offline', 'Could not reach the comment server')
+  }
+  if (!res.ok) throw await toError(res)
+
+  const { data } = (await res.json()) as Envelope<
+    MemberShareSession & { shareJwt: string }
+  >
+  session.shareJwt.set(data.shareJwt)
+  session.member.set(data.member)
+  // A member's name comes from their BB PM account; drop any passcode
+  // this browser was holding so the renewal path can't quietly demote
+  // them back to a guest mid-session.
+  session.passcode.set(null)
   return data
 }
 

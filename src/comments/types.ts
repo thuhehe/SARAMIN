@@ -51,6 +51,18 @@ export interface ShareSession {
   expiresAt: string | null
 }
 
+/** The BB PM account behind a member session. */
+export interface ShareMember {
+  id: string
+  name: string
+  avatar: string | null
+}
+
+/** `POST /unlock-member` returns the session plus who we signed in as. */
+export interface MemberShareSession extends ShareSession {
+  member: ShareMember
+}
+
 /**
  * Errors the UI reacts to differently:
  * - `auth` — passcode wrong, or our JWT lapsed and a silent retry failed.
