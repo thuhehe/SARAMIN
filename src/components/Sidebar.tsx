@@ -4,6 +4,26 @@ import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, Mon
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
+import { useComments } from '@/comments/CommentsProvider'
+
+/**
+ * Unresolved-thread count for a route. Lets a reviewer see at a glance
+ * which features still have open questions without opening each one.
+ * Renders nothing when comments are off or the page is clean.
+ */
+function OpenComments({ path }: { path: string }) {
+  const { counts } = useComments()
+  const open = counts.get(path)?.open ?? 0
+  if (open === 0) return null
+  return (
+    <span
+      title={`${open} open comment${open === 1 ? '' : 's'}`}
+      className="shrink-0 rounded-full bg-amber-100 px-1.5 text-[9px] font-semibold leading-[15px] text-amber-800"
+    >
+      {open}
+    </span>
+  )
+}
 
 export function Sidebar() {
   const location = useLocation()
@@ -172,6 +192,9 @@ function ModuleRow({
                   <span className={cn('h-2 w-2 shrink-0 rounded-full', SITE_META[f.site].dot)} />
                   <span className="font-mono text-[10px] text-faint shrink-0">[{SITE_META[f.site].tag}]</span>
                   <span className="truncate">{f.name}</span>
+                  <span className="ml-auto">
+                    <OpenComments path={to} />
+                  </span>
                 </Link>
               </li>
             )

@@ -21,6 +21,11 @@ import { AdminWireframe } from './pages/AdminWireframe'
 import { ModuleDetail, FeatureDetail } from './pages/ModuleDetail'
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
+import { CommentsProvider } from './comments/CommentsProvider'
+import { CommentableRoot } from './comments/CommentableRoot'
+import { CommentsLayer } from './comments/CommentsLayer'
+import { OAuthCallback } from './comments/OAuthCallback'
+import { CALLBACK_PATH } from './comments/oauth'
 
 function useScrollTopOnRoute() {
   const { pathname } = useLocation()
@@ -144,26 +149,40 @@ function Layout() {
 
       <div className="flex gap-6">
         <Sidebar />
+        {/* Width caps dropped on this branch (58d634f) so the admin
+            prototypes can use the full viewport. */}
         <main id="scroll-main" className="flex-1 min-w-0 pt-1">
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/plan" element={<BuildPlan />} />
-            <Route path="/mockups" element={<Mockups />} />
-            <Route path="/mockups/company" element={<CompanyMockups />} />
-            <Route path="/modules" element={<Modules />} />
-            <Route path="/wireframe/admin" element={<AdminWireframe />} />
-            <Route path="/legend" element={<Legend />} />
-            <Route path="/m/:moduleId" element={<ModuleDetail />} />
-            <Route path="/m/:moduleId/:featureIndex" element={<FeatureDetail />} />
-            <Route path="/f/:id" element={<FeaturePage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          {/* Everything inside is commentable; the nav and rails are not. */}
+          <CommentableRoot>
+            <Routes>
+              <Route path="/" element={<Overview />} />
+              <Route path="/plan" element={<BuildPlan />} />
+              <Route path="/mockups" element={<Mockups />} />
+              <Route path="/mockups/company" element={<CompanyMockups />} />
+              <Route path="/modules" element={<Modules />} />
+              <Route path="/wireframe/admin" element={<AdminWireframe />} />
+              <Route path="/legend" element={<Legend />} />
+              <Route path="/m/:moduleId" element={<ModuleDetail />} />
+              <Route path="/m/:moduleId/:featureIndex" element={<FeatureDetail />} />
+              <Route path="/f/:id" element={<FeaturePage />} />
+              {/* Landing strip for the BB PM sign-in round trip. It
+                  redirects onward as soon as the code is exchanged. */}
+              <Route path={CALLBACK_PATH} element={<OAuthCallback />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </CommentableRoot>
         </main>
       </div>
+
+      <CommentsLayer />
     </div>
   )
 }
 
 export default function App() {
-  return <Layout />
+  return (
+    <CommentsProvider>
+      <Layout />
+    </CommentsProvider>
+  )
 }
