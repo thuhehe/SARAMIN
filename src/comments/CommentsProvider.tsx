@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import * as api from './client'
 import * as oauth from './oauth'
 import * as session from './session'
@@ -36,7 +36,12 @@ type Status = 'locked' | 'unlocking' | 'ready' | 'unavailable'
 interface CommentsContextValue {
   status: Status
   share: ShareSession | null
+  /** Threads anchored in the page being read. Derived from `allThreads`. */
   threads: CommentThread[]
+  /** Every thread in the project, each carrying its own `docKey`. */
+  allThreads: CommentThread[]
+  /** True when the project holds more comments than the server returned. */
+  truncated: boolean
   counts: Map<string, DocCommentCount>
   docKey: string
   /** Signed-in BB PM account, or null for a passcode guest. */
@@ -50,6 +55,11 @@ interface CommentsContextValue {
   /** Thread the reader is focused on — the rail and the highlights agree on it. */
   activeId: string | null
   setActiveId: (id: string | null) => void
+  /**
+   * Focus a thread wherever it lives: same page, select it; another page,
+   * navigate there first and select it once that page is up.
+   */
+  jumpTo: (thread: { id: string; docKey: string }) => void
   error: string | null
   unlock: (passcode: string) => Promise<void>
   /** Leaves the site for BB PM's login/consent screens. */
@@ -84,6 +94,7 @@ const CommentsContext = createContext<CommentsContextValue | null>(null)
  */
 export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const [status, setStatus] = useState<Status>(
     api.commentsConfigured
       ? session.shareJwt.get()
@@ -92,8 +103,8 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       : 'unavailable',
   )
   const [share, setShare] = useState<ShareSession | null>(null)
-  const [threads, setThreads] = useState<CommentThread[]>([])
-  const [counts, setCounts] = useState<Map<string, DocCommentCount>>(new Map())
+  const [allThreads, setAllThreads] = useState<CommentThread[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [member, setMember] = useState<ShareMember | null>(session.member.get())
   const [name, setNameState] = useState<string | null>(session.displayName.get())
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -111,8 +122,59 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const docKeyRef = useRef(docKey)
   docKeyRef.current = docKey
 
-  // A thread selected on the previous page has no anchor on this one.
-  useEffect(() => setActiveId(null), [docKey])
+  /**
+   * The page being read is one filter over the project-wide list, so a
+   * navigation needs no refetch — the thread you jumped to is already
+   * loaded, and its highlight can paint in the first frame of the new page.
+   */
+  const threads = useMemo(
+    () => allThreads.filter((t) => t.docKey === docKey),
+    [allThreads, docKey],
+  )
+
+  /**
+   * Nav badges, derived rather than fetched. `GET /doc-comments/counts`
+   * would say the same thing one request later; counting what we already
+   * hold keeps the badge and the rail from ever disagreeing.
+   */
+  const counts = useMemo(() => {
+    const byDoc = new Map<string, DocCommentCount>()
+    for (const thread of allThreads) {
+      const entry =
+        byDoc.get(thread.docKey) ??
+        { docKey: thread.docKey, open: 0, resolved: 0 }
+      if (thread.resolvedAt === null) entry.open += 1
+      else entry.resolved += 1
+      byDoc.set(thread.docKey, entry)
+    }
+    return byDoc
+  }, [allThreads])
+
+  /**
+   * Set when a jump asked for a thread on another page: the route change
+   * below hands it to `activeId` once we're there. Without it the effect
+   * would clear the selection we navigated specifically to make.
+   */
+  const pendingJump = useRef<string | null>(null)
+
+  // A thread selected on the previous page has no anchor on this one —
+  // unless arriving here *was* the point.
+  useEffect(() => {
+    setActiveId(pendingJump.current)
+    pendingJump.current = null
+  }, [docKey])
+
+  const jumpTo = useCallback<CommentsContextValue['jumpTo']>(
+    (thread) => {
+      if (thread.docKey === docKeyRef.current) {
+        setActiveId(thread.id)
+        return
+      }
+      pendingJump.current = thread.id
+      navigate(thread.docKey)
+    },
+    [navigate],
+  )
 
   const handleError = useCallback((err: unknown) => {
     if (err instanceof DOMException && err.name === 'AbortError') return
@@ -148,11 +210,10 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
 
     const load = async () => {
       try {
-        const payload = await api.listComments(docKeyRef.current, controller.signal)
-        // A slow response that landed after the user navigated away
-        // must not paint another page's threads.
-        if (!stopped && payload.docKey === docKeyRef.current) {
-          setThreads(payload.threads)
+        const payload = await api.listAllComments(controller.signal)
+        if (!stopped) {
+          setAllThreads(payload.threads)
+          setTruncated(payload.truncated)
           setError(null)
         }
         delay = POLL_MS
@@ -193,21 +254,19 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [status, docKey, tick, handleError])
+    // The poll no longer depends on the route: one project-wide read
+    // serves every page, so navigating doesn't restart the loop.
+  }, [status, tick, handleError])
 
-  // Session details and nav badges are project-wide, so they refresh on
-  // unlock and after mutations, not on every route change.
+  // Which project this link opens, and who shared it. Fixed for the life
+  // of the session, so it's read on unlock and after mutations rather
+  // than on every poll.
   useEffect(() => {
     if (status !== 'ready') return
     const controller = new AbortController()
     void (async () => {
       try {
-        const [detail, tallies] = await Promise.all([
-          api.fetchSession(controller.signal),
-          api.fetchCounts(controller.signal),
-        ])
-        setShare(detail)
-        setCounts(new Map(tallies.map((c) => [c.docKey, c])))
+        setShare(await api.fetchSession(controller.signal))
       } catch (err) {
         handleError(err)
       }
@@ -314,7 +373,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       // For a member the server stamps their account name and ignores
       // what we send, so guess the same thing to avoid a visible flip.
       const signature = session.member.get()?.name ?? session.displayName.get()
-      setThreads((prev) =>
+      setAllThreads((prev) =>
         prev.map((t) =>
           t.id === commentId
             ? {
@@ -353,8 +412,8 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     session.signOut()
     setShare(null)
     setMember(null)
-    setThreads([])
-    setCounts(new Map())
+    setAllThreads([])
+    setTruncated(false)
     setStatus('locked')
   }, [])
 
@@ -363,6 +422,8 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       status,
       share,
       threads,
+      allThreads,
+      truncated,
       counts,
       docKey,
       member,
@@ -371,6 +432,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       setName,
       activeId,
       setActiveId,
+      jumpTo,
       error,
       unlock,
       signInAsMember,
@@ -386,12 +448,15 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       status,
       share,
       threads,
+      allThreads,
+      truncated,
       counts,
       docKey,
       member,
       name,
       setName,
       activeId,
+      jumpTo,
       error,
       unlock,
       signInAsMember,

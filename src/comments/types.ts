@@ -37,6 +37,17 @@ export interface DocCommentsPayload {
   threads: CommentThread[]
 }
 
+/**
+ * Every thread in the project, each carrying its own `docKey`. `truncated`
+ * is the server admitting it hit its ceiling — surfaced rather than
+ * swallowed, because a rail that silently drops comments is worse than one
+ * that says it did.
+ */
+export interface AllCommentsPayload {
+  threads: CommentThread[]
+  truncated: boolean
+}
+
 export interface DocCommentCount {
   docKey: string
   open: number

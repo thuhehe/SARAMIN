@@ -12,7 +12,7 @@ import { UnlockDialog } from './UnlockDialog'
  * turned comments on.
  */
 export function CommentsLayer() {
-  const { status, threads, activeId } = useComments()
+  const { status, allThreads, activeId } = useComments()
   const [railOpen, setRailOpen] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
 
@@ -39,7 +39,9 @@ export function CommentsLayer() {
 
   if (status === 'unavailable') return null
 
-  const openCount = threads.filter((t) => t.resolvedAt === null).length
+  // Site-wide, matching what the rail lists: the number on the button and
+  // the number of threads you find after clicking it should agree.
+  const openCount = allThreads.filter((t) => t.resolvedAt === null).length
 
   return (
     <>
