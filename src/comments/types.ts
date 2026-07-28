@@ -20,8 +20,14 @@ export interface Comment {
   body: string
   anchor: CommentAnchor
   author: { name: string; avatar: string | null; isGuest: boolean }
-  /** True when this browser's author key posted it — gates the delete UI. */
+  /** True when this session wrote it — own account, or own browser key. */
   mine: boolean
+  /**
+   * Whether to offer deletion: own comment, or PM/ADMIN moderating. Comes
+   * from the server rather than being inferred here, so the button and the
+   * rule behind it can't drift apart.
+   */
+  canDelete: boolean
   resolvedAt: string | null
   resolvedBy: string | null
   createdAt: string
