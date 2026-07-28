@@ -21,6 +21,7 @@ import type { BuildModule } from './build/types'
 import { crm } from './build/crm'
 import { jobseekerUser } from './build/jobseeker-user'
 import { companyUser } from './build/company-user'
+import { adminAccess } from './build/admin-access'
 import { productsPackages } from './build/products-packages'
 import { jobManagement } from './build/job-management'
 import { applicationManagement } from './build/application-management'
@@ -32,6 +33,7 @@ export const BUILD_MODULES: BuildModule[] = [
   crm,
   jobseekerUser,
   companyUser,
+  adminAccess,
   productsPackages,
   jobManagement,
   applicationManagement,

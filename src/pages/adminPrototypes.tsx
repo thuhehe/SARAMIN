@@ -1255,7 +1255,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         </div>
       </div>
 
-      {converting && <ConvertLeadModal deal={deal} onClose={() => setConverting(false)} />}
+      {converting && <ConvertLeadModal companyName={deal.company} value={deal.value} onClose={() => setConverting(false)} />}
     </div>
   )
 }
@@ -1333,12 +1333,12 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
 function Radio({ on }: { on?: boolean }) {
   return <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', on ? 'border-brand' : 'border-line')}>{on && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
 }
-function ConvertLeadModal({ deal, onClose }: { deal: Deal; onClose: () => void }) {
+function ConvertLeadModal({ companyName, value, onClose }: { companyName: string; value: number; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <p className="text-[15px] font-bold">Convert lead — {deal.company}</p>
+          <p className="text-[15px] font-bold">Convert to customer — {companyName}</p>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="max-h-[72vh] space-y-3 overflow-y-auto p-5">
@@ -1353,7 +1353,7 @@ function ConvertLeadModal({ deal, onClose }: { deal: Deal; onClose: () => void }
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
               <div className="rounded-lg border border-brand bg-brand-soft/40 p-3">
                 <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-brand"><Radio on /> Create new account</div>
-                <LField label="Account name" req value={deal.company} />
+                <LField label="Account name" req value={companyName} />
               </div>
               <div className="flex items-center justify-center text-[11px] font-semibold text-faint">— OR —</div>
               <div className="rounded-lg border border-line p-3">
@@ -1390,7 +1390,7 @@ function ConvertLeadModal({ deal, onClose }: { deal: Deal; onClose: () => void }
             </div>
             <label className="mt-2.5 flex items-center gap-2 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Don’t provision yet (activate later)</label>
             <p className="mt-2 text-[11px] text-amber-700">⚠️ Job Posting is selected → a public company page will be required after convert.</p>
-            <p className="mt-1 text-[11px] text-faint">From deal <b className="text-ink/70">{deal.company}</b> · {money(deal.value)} · Quote Q-2042</p>
+            <p className="mt-1 text-[11px] text-faint">From <b className="text-ink/70">{companyName}</b> · {money(value)} · Quote Q-2042</p>
           </div>
 
           {/* owner + status */}
@@ -1439,7 +1439,7 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
       </div>
 
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
-      {convertDeal && <ConvertLeadModal deal={convertDeal} onClose={() => setConvertDeal(null)} />}
+      {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} onClose={() => setConvertDeal(null)} />}
     </div>
   )
 }
@@ -2112,12 +2112,6 @@ function Confirm() {
   return <span className="ml-1 rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9px] font-medium uppercase tracking-wide text-amber-700">confirm</span>
 }
 
-/** short provenance tag — where the field came from */
-function Src({ from }: { from: 'saramin' | 'topdev' | 'both' | 'new' }) {
-  const map = { saramin: 'Saramin', topdev: 'TopDev', both: 'Both', new: 'Proposed' }
-  const tone = from === 'new' ? 'text-violet-500 border-violet-200 bg-violet-50' : 'text-slate-500 border-slate-200 bg-slate-50'
-  return <span className={cn('ml-1 rounded border px-1 py-px text-[9px] font-medium', tone)}>{map[from]}</span>
-}
 
 function FLabel({ children, req }: { children: React.ReactNode; req?: boolean }) {
   return <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{children}{req && <span className="text-rose-500"> *</span>}</label>
@@ -2245,11 +2239,33 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
   )
 }
 
-type JobTab = 'Basic info' | 'Company' | 'Taxonomy' | 'Media' | 'Extra info' | 'Features' | 'Notes' | 'SEO'
-const JOB_TABS: JobTab[] = ['Basic info', 'Company', 'Taxonomy', 'Media', 'Extra info', 'Features', 'Notes', 'SEO']
+/** Company summary chip — click to open the company detail page on Admin. */
+function CompanyInfoCard() {
+  return (
+    <button className="flex w-full items-center gap-3 rounded-lg border border-line bg-canvas/40 p-3 text-left transition-colors hover:border-brand/40">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-surface text-[12px] font-bold text-brand">NEC</span>
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-ink">NEC Vietnam <span className="text-[11px] font-normal text-muted">· ID CO-1042</span></p>
+        <p className="text-[11px] text-muted">IT / Software · 100–499 staff · Head office: Hồ Chí Minh</p>
+      </div>
+      <span className="ml-auto flex items-center gap-2">
+        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">✓ Job-Posting quota</span>
+        <span className="text-[15px] text-muted">→</span>
+      </span>
+    </button>
+  )
+}
+
+const TITLE_I18N: Record<'VI' | 'EN' | 'KO', string> = {
+  VI: 'Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)',
+  EN: 'Technical Leader / Technical Architect (.NET)',
+  KO: '기술 팀장 (.NET, 일본어 N4+)',
+}
 
 function AdminJobCreate({ onBack }: { onBack: () => void }) {
-  const [tab, setTab] = useState<JobTab>('Basic info')
+  const [exposed, setExposed] = useState(true)
+  const [schedule, setSchedule] = useState(false)
+  const [titleLang, setTitleLang] = useState<'VI' | 'EN' | 'KO'>('VI')
   const G2 = 'grid gap-3 sm:grid-cols-2'
   const G3 = 'grid gap-3 sm:grid-cols-3'
 
@@ -2266,231 +2282,185 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11.5px] leading-relaxed text-sky-800">
-        Field inventory for the job-create form — tab structure adapted from the <b>TopDev</b> job dashboard and cross-checked against a live <b>Saramin</b> post.
-        Tags show each field’s origin (<Src from="saramin" /> <Src from="topdev" /> <Src from="both" /> <Src from="new" />); fields marked <Confirm /> need client sign-off. This is a structure draft, not final visual design.
+        Field inventory for the job-create form — <b>one scrolling page</b> (no tabs). Cross-checked against a live <b>Saramin</b> post and the <b>TopDev</b> dashboard.
+        Fields marked <Confirm /> need client sign-off. This is a structure draft, not final visual design.
       </div>
 
-      {/* tab bar (mirrors TopDev’s tabbed create form) */}
-      <div className="mb-4 flex flex-wrap gap-0.5 border-b border-line-soft">
-        {JOB_TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              'relative -mb-px inline-flex items-center border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors',
-              tab === t ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink',
-            )}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <div className="space-y-8">
+        {/* ── Company ───────────────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Company" />
+          <FField label="Company" req value="NEC Vietnam · CO-1042" select hint="Searchable by company name or ID; links the job to the customer record & pooled quota." />
+          <CompanyInfoCard />
+        </section>
 
-      {/* ── Basic info ──────────────────────────────────────────────────────── */}
-      {tab === 'Basic info' && (
-        <div className="space-y-4">
-          <FormSection title="Title & identity" />
-          <div className={G2}>
-            <FField label="Job title (VI)" req value="Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)" extra={<Src from="both" />} />
-            <FField label="Job title (EN)" value="Technical Leader / Technical Architect (.NET)" extra={<Src from="new" />} hint="Bilingual title — VI mandatory · EN/KO optional." />
+        {/* ── Package & boosts (below company) ──────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Package & boosts" note="Which paid package / add-ons this posting consumes. Ties into Billing & CRM." />
+          <div className="rounded-lg border border-line p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11.5px] font-medium text-ink/80">Package</p>
+                <p className="text-[13px] font-semibold text-ink">Free <span className="text-[11px] font-normal text-muted">· expires in 14 days</span></p>
+              </div>
+              <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500">from linked order</span>
+            </div>
           </div>
+          <div>
+            <FLabel>Boosts<Confirm /></FLabel>
+            <div className="flex flex-wrap gap-2">
+              {['Hot job', 'Super hot', 'Pin to top', 'Homepage feature'].map((b) => (
+                <span key={b} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> {b}</span>
+              ))}
+            </div>
+          </div>
+        </section>
 
-          <FormSection title="Compensation" />
-          <RadioRow label="Salary display" value="Negotiable" options={['Negotiable', 'Fixed range', 'Up to', 'Competitive']} extra={<Src from="both" />} />
+        {/* ── Visibility (below company & packages) ─────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Visibility" note="Whether an Open job appears on the jobseeker site. Independent of the status lifecycle." />
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-line p-3">
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-medium text-ink">Exposure</p>
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
+                {exposed
+                  ? 'On — visible to jobseekers and open for applications (while the job is Open).'
+                  : 'Off — taken down from the jobseeker site; nobody can apply. Reversible any time before the deadline — the job does not Close.'}
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={exposed}
+              onClick={() => setExposed((v) => !v)}
+              className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', exposed ? 'bg-emerald-500' : 'bg-line')}
+            >
+              <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', exposed ? 'left-[22px]' : 'left-0.5')} />
+            </button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-faint">
+            Status is deadline-driven: <b className="text-ink/70">Draft → Pending → Open → Closed</b> (auto at the deadline). There is no manual “Close” — turn <b className="text-ink/70">Exposure</b> off to take a job down; it auto-Closes when the deadline passes, and can be re-exposed before then.
+          </p>
+        </section>
+
+        {/* ── Job title (single field, language tab) ────────────────────────── */}
+        <section className="space-y-3">
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <label className="text-[11.5px] font-medium text-ink/80">Job title<span className="text-rose-500"> *</span></label>
+              <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
+                {(['VI', 'EN', 'KO'] as const).map((l) => (
+                  <button key={l} onClick={() => setTitleLang(l)} className={cn('px-2 py-0.5', titleLang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{TITLE_I18N[titleLang]}</div>
+            <p className="mt-1 text-[10.5px] text-faint">Vietnamese is the default &amp; fallback language; English / Korean optional.</p>
+          </div>
+        </section>
+
+        {/* ── Classification ────────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Classification" note="Powered by System → Job categories & roles (master data)." />
+          <FField label="Job category" req value="IT" select />
+          <ChipField label="Job roles" req chips={['Software Developer']} placeholder="Add role…" />
+          <ChipField label="Job levels" req chips={['Intern', 'Fresher', 'Junior', 'Middle', 'Trưởng nhóm', 'Trưởng phòng']} placeholder="Add level…" />
+          <ChipField label="Skills" chips={['ASP.NET Core', 'SQL Server', '.NET', 'React']} placeholder="Add skill…" />
+          <div className={G2}>
+            <FField label="Experiences from" value="7 years" select hint="Only the minimum year of experience is displayed publicly." />
+            <FField label="Experiences to" value="—" select />
+          </div>
+          <ChipField label="Work location(s)" chips={['Hồ Chí Minh']} placeholder="Add location…" />
+        </section>
+
+        {/* ── Compensation & timeline ───────────────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Compensation & timeline" />
+          <RadioRow label="Salary display" value="Negotiable" options={['Negotiable', 'Fixed range', 'Up to', 'Competitive']} />
           <div className={G3}>
-            <FField label="Salary from" value="—" extra={<Src from="saramin" />} />
+            <FField label="Salary from" value="—" />
             <FField label="Salary to" value="—" />
             <FField label="Currency / period" value="VND / month" select extra={<Confirm />} />
           </div>
-
-          <FormSection title="Headcount & timeline" />
           <div className={G3}>
-            <FField label="Number of vacancies" value="1" extra={<Src from="saramin" />} />
-            <FField label="Application deadline" req value="dd/mm/yyyy" select extra={<Src from="both" />} />
-            <FField label="Expected start" value="—" extra={<Src from="new" />} />
+            <FField label="Number of vacancies" value="1" />
+            <FField label="Application deadline" req value="dd/mm/yyyy" select />
+            <FField label="Expected start" value="—" />
           </div>
-          <RadioRow label="Working arrangement" value="Hybrid" options={['Onsite', 'Hybrid', 'Remote']} extra={<Src from="saramin" />} />
+          <RadioRow label="Working arrangement" value="Hybrid" options={['Onsite', 'Hybrid', 'Remote']} />
+        </section>
 
+        {/* ── Descriptions ──────────────────────────────────────────────────── */}
+        <section className="space-y-3">
           <FormSection title="Descriptions" note="Rich-text editor in the real form. VI mandatory · EN/KO optional per field." />
-          <TArea label="Job summary (short)" value="One- or two-line teaser shown on job cards / search results…" rows={2} extra={<Src from="new" />} />
-          <TArea label="Job description / Responsibilities" req value="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" rows={4} extra={<Src from="both" />} />
-          <TArea label="Requirements" req value="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" rows={4} extra={<Src from="both" />} />
-          <TArea label="Benefits / welfare" value="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" rows={3} extra={<Src from="saramin" />} />
-        </div>
-      )}
+          <TArea label="Job description / Responsibilities" req value="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" rows={4} />
+          <TArea label="Requirements" req value="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" rows={4} />
+          <TArea label="Benefits / welfare" value="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" rows={3} />
+        </section>
 
-      {/* ── Company ─────────────────────────────────────────────────────────── */}
-      {tab === 'Company' && (
-        <div className="space-y-4">
-          <div className="rounded-md bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
-            🔗 Company is picked from an existing <b>CRM customer account</b> — posting checks that account’s Job-Posting quota. Industry / size / logo auto-fill from the company record.
-          </div>
-          <FormSection title="Owning account" />
-          <FField label="Company (account)" req value="NEC Vietnam" select extra={<Src from="both" />} hint="Searchable — links the job to the customer record & pooled quota." />
-          <div className={G2}>
-            <FField label="Display name override" value="NEC Vietnam" extra={<Src from="topdev" />} hint="Only if the public name differs from the legal account name." />
-            <FField label="Company logo" value="Auto from company page" select extra={<Src from="topdev" />} />
-          </div>
-          <FormSection title="Read-only from account" />
-          <div className={G3}>
-            <FField label="Industry" value="IT / Software" extra={<Src from="saramin" />} />
-            <FField label="Company size" value="100–499" extra={<Src from="saramin" />} />
-            <FField label="Head office" value="Hồ Chí Minh" extra={<Src from="saramin" />} />
-          </div>
-          <FormSection title="Recruiter contact" />
-          <div className={G3}>
-            <FField label="Contact person" value="Select company user…" select extra={<Src from="new" />} />
-            <FField label="Contact email" value="hr@nec.vn" extra={<Confirm />} />
-            <FField label="Contact phone" value="—" extra={<Confirm />} />
-          </div>
-        </div>
-      )}
-
-      {/* ── Taxonomy (mirrors the screenshot 1:1) ───────────────────────────── */}
-      {tab === 'Taxonomy' && (
-        <div className="space-y-4">
-          <FormSection title="Classification" note="Powered by System → Job categories & roles (master data)." />
-          <FField label="Job category" req value="IT" select extra={<Src from="both" />} />
-          <ChipField label="Job roles" req chips={['Software Developer']} placeholder="Add role…" extra={<Src from="both" />} />
-          <ChipField label="Job levels" req chips={['Team Lead', 'Manager']} placeholder="Add level…" extra={<Src from="both" />} hint="Saramin post label: “Trưởng phòng, Trưởng nhóm”." />
-
-          <FormSection title="Experience" />
-          <div className={G2}>
-            <FField label="Experiences from" value="7 years" select extra={<Src from="both" />} hint="Only the minimum year of experience is displayed publicly." />
-            <FField label="Experiences to" value="—" select extra={<Src from="topdev" />} />
-          </div>
-
-          <FormSection title="Type & category" />
-          <div className={G3}>
-            <ChipField label="Job types" chips={['Full-time']} placeholder="Add…" extra={<Src from="both" />} />
-            <ChipField label="Contract types" chips={['Permanent']} placeholder="Add…" extra={<Src from="topdev" />} />
-            <ChipField label="Categories" chips={[]} placeholder="Add…" extra={<Src from="topdev" />} />
-          </div>
-
-          <FormSection title="Skills" />
-          <div className={G2}>
-            <ChipField label="Best skills" chips={['ASP.NET Core', 'SQL Server']} placeholder="Add best skill…" extra={<Src from="both" />} />
-            <ChipField label="Main skills" chips={['.NET', 'Web API', 'React']} placeholder="Add main skill…" extra={<Src from="both" />} />
-          </div>
-          <div className={G2}>
-            <ChipField label="Required skills (best match)" chips={['ASP.NET Core', 'RESTful API']} placeholder="Add required…" extra={<Src from="topdev" />} />
-            <ChipField label="Optional skills (best match)" chips={['AWS', 'Azure', 'TypeScript']} placeholder="Add optional…" extra={<Src from="topdev" />} />
-          </div>
-
-          <FormSection title="Location" />
-          <RadioRow label="Job location" value="Same as company location(s)" options={['Same as company location(s)', 'Other']} extra={<Src from="both" />} />
-          <ChipField label="Work location(s)" chips={['Hồ Chí Minh']} placeholder="Add location…" extra={<Src from="saramin" />} />
-        </div>
-      )}
-
-      {/* ── Media ───────────────────────────────────────────────────────────── */}
-      {tab === 'Media' && (
-        <div className="space-y-4">
-          <FormSection title="Visuals" note="Optional — used on the public job detail & company page." />
-          <div className={G2}>
-            <FField label="Cover / banner image" value="Upload… (1200×400)" select extra={<Src from="topdev" />} />
-            <FField label="Logo override" value="Upload…" select extra={<Src from="topdev" />} />
-          </div>
-          <FField label="Gallery images" value="Upload multiple…" select extra={<Src from="topdev" />} hint="Office / team photos shown in a carousel." />
-          <FField label="Intro video URL" value="https://youtube.com/…" extra={<Src from="new" />} />
-        </div>
-      )}
-
-      {/* ── Extra info ──────────────────────────────────────────────────────── */}
-      {tab === 'Extra info' && (
-        <div className="space-y-4">
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-            ⚠️ Demographic fields (gender / age / nationality) are legally sensitive for VN job ads — confirm with the client whether to collect/display them at all.
-          </div>
+        {/* ── Candidate requirements ────────────────────────────────────────── */}
+        <section className="space-y-3">
           <FormSection title="Candidate requirements" />
-          <div className={G2}>
-            <FField label="Education level" value="Bachelor’s (CS / IT)" select extra={<Src from="saramin" />} />
-            <FField label="Position label" value="Trưởng phòng, Trưởng nhóm" extra={<Src from="saramin" />} hint="Saramin displays a position-rank label." />
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            ⚠️ Demographic fields (gender / age / marital status / nationality) are legally sensitive for VN job ads — confirm with the client whether to collect / display them.
           </div>
-          <ChipField label="Language requirements" chips={['Japanese N4+', 'English']} placeholder="Add language…" extra={<Src from="saramin" />} />
-          <div className={G3}>
+          <ChipField label="Language requirements" chips={['Japanese N4+', 'English']} placeholder="Add language…" />
+          <div className={G2}>
             <FField label="Gender preference" value="Any" select extra={<Confirm />} />
-            <FField label="Age range" value="—" extra={<Confirm />} />
-            <FField label="Nationality / work permit" value="—" select extra={<Confirm />} />
+            <FField label="Age preference" value="—" extra={<Confirm />} />
           </div>
-          <TArea label="Probation / onboarding notes" value="e.g. 2-month probation at 85% salary…" rows={2} extra={<Src from="new" />} />
-        </div>
-      )}
-
-      {/* ── Features (mirrors the screenshot: Invoice · Packages · Services) ── */}
-      {tab === 'Features' && (
-        <div className="space-y-4">
-          <div className="rounded-md bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
-            Commercial attachment — which paid package / add-on services this posting consumes. Ties into Billing & CRM (quota + invoice).
-          </div>
-          <FormSection title="Billing" />
-          <FField label="Invoice" value="Link to invoice… (optional)" select extra={<Src from="topdev" />} />
-
-          <FormSection title="Packages" />
-          <div className="rounded-lg border border-line p-3">
-            <div className="grid grid-cols-[1.4fr_1fr_auto] items-end gap-3">
-              <FField label="Package" value="Free" select extra={<Src from="topdev" />} />
-              <FField label="Expires in (days)" value="14" extra={<Src from="topdev" />} hint="0 = expired · empty = unlimited." />
-              <button className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11.5px] font-medium text-amber-700">Remove</button>
-            </div>
-            <button className="mt-3 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11.5px] font-medium text-white">+ New package</button>
-          </div>
-
-          <FormSection title="Services" />
-          <div className="rounded-lg border border-line p-3">
-            <div className="grid grid-cols-2 gap-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
-              <span>Service</span><span>Expires in (days)</span>
-            </div>
-            <p className="mt-2 text-[11.5px] text-faint">No services added.</p>
-            <button className="mt-3 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11.5px] font-medium text-white">+ New service</button>
-          </div>
-
-          <FormSection title="Boosts" />
-          <div className="flex flex-wrap gap-2">
-            {['Hot job', 'Super hot', 'Pin to top', 'Homepage feature'].map((b) => (
-              <span key={b} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> {b}<Confirm /></span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Notes ───────────────────────────────────────────────────────────── */}
-      {tab === 'Notes' && (
-        <div className="space-y-4">
-          <FormSection title="Internal notes" note="Never shown publicly — visible to HQ Admin & the owning company’s HR only." />
-          <TArea label="Notes" value="Approval context, special instructions, follow-ups…" rows={5} extra={<Src from="topdev" />} />
-        </div>
-      )}
-
-      {/* ── SEO ─────────────────────────────────────────────────────────────── */}
-      {tab === 'SEO' && (
-        <div className="space-y-4">
-          <FormSection title="Search / social metadata" note="Auto-derived from the job fields; override for search & social sharing." />
-          <FField label="Meta title" value="Technical Leader (.NET, Japanese N4+) — NEC Vietnam | Saramin" extra={<Src from="topdev" />} />
-          <TArea label="Meta description" value="NEC Vietnam is hiring a Technical Leader / Architect (.NET, Japanese N4+) in HCMC…" rows={2} extra={<Src from="topdev" />} />
           <div className={G2}>
-            <ChipField label="Focus keywords" chips={['.NET', 'Technical Leader', 'BrSE']} placeholder="Add keyword…" extra={<Src from="topdev" />} />
-            <FField label="Canonical URL" value="https://saramin.vn/viec-lam/…" extra={<Src from="new" />} />
+            <FField label="Marital status" value="Any" select extra={<Confirm />} />
+            <FField label="Nationality" value="—" select extra={<Confirm />} />
           </div>
-          <FField label="Open Graph image" value="Upload… (falls back to cover image)" select extra={<Src from="topdev" />} />
-        </div>
-      )}
+        </section>
 
-      {/* footer actions (mirrors TopDev Reset / View / Continue / Submit) */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <div className="flex flex-wrap items-center gap-4 text-[11.5px] text-muted">
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded border border-line" /> View after save</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded border border-line" /> Continue creating</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded border border-line" /> Continue editing</span>
+        {/* ── Media ─────────────────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Media" note="Optional — used on the public job detail & company page." />
+          <div className={G2}>
+            <FField label="Cover / banner image" value="Upload… (1200×400)" select />
+            <FField label="Logo override" value="Upload…" select />
+          </div>
+          <FField label="Gallery images" value="Upload multiple…" select hint="Office / team photos shown in a carousel." />
+        </section>
+
+        {/* ── Internal notes ────────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <FormSection title="Internal notes" note="Never shown publicly — visible to HQ Admin & the owning company’s HR only." />
+          <TArea label="Notes" value="Approval context, special instructions, follow-ups…" rows={4} />
+        </section>
+      </div>
+
+      {/* footer actions */}
+      <div className="mt-6 border-t border-line pt-4">
+        <div className="mb-3">
+          <FLabel>Publish timing</FLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setSchedule(false)}
+              className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', !schedule ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}
+            >
+              Post now
+            </button>
+            <button
+              onClick={() => setSchedule(true)}
+              className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', schedule ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}
+            >
+              Schedule
+            </button>
+            {schedule && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5 text-[12px] text-faint">📅 dd/mm/yyyy · hh:mm <span className="ml-1">▾</span></span>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <button className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Save as draft</button>
-          <button onClick={onBack} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Submit for approval</button>
+          <button onClick={onBack} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">{schedule ? 'Schedule post' : 'Post job'}</button>
         </div>
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-faint">
-        Open questions for the client: bilingual coverage per field (VI/EN/KO) · whether demographic fields are collected at all · salary-display policy · which package/boost SKUs exist · approval workflow (auto vs manual). The <b>Blog</b> tab from TopDev is omitted pending a decision on job↔article linking.
+        Open questions for the client: bilingual coverage per field (VI/EN/KO) · whether demographic fields are collected at all · salary-display policy · which package/boost SKUs exist · approval workflow (auto vs manual).
       </p>
     </div>
   )

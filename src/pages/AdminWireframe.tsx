@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Briefcase,
   Building2,
+  Users,
   FileImage,
   Bell,
   CreditCard,
@@ -47,6 +48,13 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Building2 className="h-4 w-4" />,
     items: [
       { label: 'Company list', specId: 'admin-company-list' },
+    ],
+  },
+  {
+    label: 'Jobseekers',
+    icon: <Users className="h-4 w-4" />,
+    items: [
+      { label: 'Jobseeker accounts', specId: 'admin-jobseekers' },
     ],
   },
   {

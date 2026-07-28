@@ -10,7 +10,7 @@
  * Logged-in employer throughout: "Vạn Phát Healthcare" (Job Posting + Resume
  * Search customer), matching the CRM activation flow in Mockups.tsx.
  */
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 import {
   LayoutDashboard,
   Briefcase,
@@ -21,6 +21,30 @@ import {
 } from 'lucide-react'
 import { Btn, Chip, Line } from '@/components/wire'
 import { cn } from '@/lib/utils'
+
+/** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
+const CoNav = createContext<(id: string) => void>(() => {})
+const useCoNav = () => useContext(CoNav)
+
+/** Small segmented / pill selector used across the Post-a-job form. */
+function Seg({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <button
+          key={o}
+          onClick={() => onChange(o)}
+          className={cn(
+            'rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
+            value === o ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-brand/40',
+          )}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 /* ── shared bits ─────────────────────────────────────────────────────────── */
 function PageBar({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
@@ -68,6 +92,7 @@ const STAGE_TONE: Record<string, 'muted' | 'blue' | 'amber' | 'green'> = {
 
 /* ── screen bodies (no chrome — the shell provides top bar + sidebar) ─────── */
 function DashboardScreen() {
+  const go = useCoNav()
   const recent = [
     ['Nguyễn Thị Hoa', 'Điều dưỡng viên (Khoa Nội)', 'New', '10m'],
     ['Trần Văn Bình', 'Bác sĩ Đa khoa', 'Screening', '2h'],
@@ -126,9 +151,9 @@ function DashboardScreen() {
           <div className="rounded-xl border border-line p-4">
             <p className="mb-2 text-[12.5px] font-bold">Quick actions</p>
             <div className="flex flex-col gap-2">
-              <Btn primary>+ Post a job</Btn>
-              <Btn>🔍 Search resumes</Btn>
-              <Btn>✎ Edit company page</Btn>
+              <Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>
+              <Btn onClick={() => go('co-resume-search')}>🔍 Search resumes</Btn>
+              <Btn onClick={() => go('co-company-page')}>✎ Edit company page</Btn>
             </div>
           </div>
         </div>
@@ -137,52 +162,184 @@ function DashboardScreen() {
   )
 }
 
+/** Bilingual copy for the demo posting — swapped by the VI / EN tab. */
+const JOB_I18N = {
+  vi: {
+    title: 'Điều dưỡng viên (Khoa Nội)',
+    role: 'Chăm sóc bệnh nhân nội trú, theo dõi dấu hiệu sinh tồn, phối hợp với bác sĩ trong điều trị…',
+    quals: 'Bằng cao đẳng/đại học điều dưỡng, chứng chỉ hành nghề, tối thiểu 1 năm kinh nghiệm…',
+    benefits: 'Bảo hiểm sức khỏe, thưởng tháng 13, phụ cấp ca đêm…',
+  },
+  en: {
+    title: 'Registered Nurse (Internal Medicine)',
+    role: 'Care for inpatients, monitor vital signs, coordinate with treating physicians…',
+    quals: 'Nursing college/university degree, valid practice certificate, 1+ year experience…',
+    benefits: 'Health insurance, 13th-month bonus, night-shift allowance…',
+  },
+}
+
 function PostJobScreen() {
+  const go = useCoNav()
+  const [lang, setLang] = useState<'vi' | 'en'>('vi')
+  const [salaryMode, setSalaryMode] = useState('From – to')
+  const [exposure, setExposure] = useState('Exposed')
+  const [pkg, setPkg] = useState('Basic')
+  const [jobType, setJobType] = useState('In office')
+  const [contract, setContract] = useState('Full-time')
+  const t = JOB_I18N[lang]
+
   return (
     <div>
       <PageBar
         title="Post a job"
         sub="Uses 1 of your 10 posting slots · goes to Saramin for approval before it's public."
-        action={<div className="flex gap-2"><Btn>Save draft</Btn><Btn primary>Submit for approval</Btn></div>}
+        action={
+          <div className="flex gap-2">
+            <Btn onClick={() => go('co-jobs')}>Save draft</Btn>
+            <Btn primary onClick={() => go('co-jobs')}>Submit for approval</Btn>
+          </div>
+        }
       />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <Field label="Job title" req value="Điều dưỡng viên (Khoa Nội)" />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Category" req value="Healthcare ▾" />
-            <Field label="Role" req value="Registered Nurse ▾" />
+        {/* form */}
+        <div className="space-y-4">
+          {/* language tab — controls all bilingual fields */}
+          <div className="flex items-center justify-between rounded-lg border border-line bg-canvas/40 px-3 py-2">
+            <span className="text-[11px] font-medium text-ink/70">Content language</span>
+            <div className="flex overflow-hidden rounded-md border border-line text-[11px] font-medium">
+              {(['vi', 'en'] as const).map((l) => (
+                <button key={l} onClick={() => setLang(l)} className={cn('px-2.5 py-1 uppercase', lang === l ? 'bg-brand text-white' : 'text-muted')}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Location" req value="Quận 1, HCMC ▾" />
-            <Field label="Job type" value="Full-time ▾" />
+
+          {/* Basics */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Basics</p>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company <span className="text-rose-500">*</span></p>
+              <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[12px] text-ink/70">
+                🔒 Vạn Phát Healthcare
+                <span className="ml-auto text-[10.5px] text-violet-600">from Company API · ID VP-1042</span>
+              </div>
+            </div>
+            <Field label={`Job title · ${lang.toUpperCase()} 🌐`} req value={t.title} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Category / industry" req value="Healthcare ▾" />
+              <Field label="Position level" value="Junior ▾" />
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Contract type <span className="text-rose-500">*</span></p>
+              <Seg options={['Full-time', 'Freelancer']} value={contract} onChange={setContract} />
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Job type <span className="text-rose-500">*</span></p>
+              <Seg options={['In office', 'Remote', 'Hybrid', 'Oversea']} value={jobType} onChange={setJobType} />
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Exposure status <span className="text-rose-500">*</span></p>
+              <Seg options={['Exposed', 'Unexposed']} value={exposure} onChange={setExposure} />
+              <p className="mt-1 text-[10.5px] text-faint">Whether this job shows on the jobseeker site (hiển thị trên trang jobseeker hay không).</p>
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Package <span className="text-rose-500">*</span></p>
+              <Seg options={['Free', 'Basic', 'Basic plus', 'Distinction']} value={pkg} onChange={setPkg} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Salary range" value="12 – 18 triệu" />
-            <Field label="Experience" value="1–3 years ▾" />
+
+          {/* Location, experience & salary */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Location, experience & salary</p>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Location (city) <span className="text-rose-500">*</span></p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Chip tone="blue">Hồ Chí Minh ✕</Chip>
+                <Chip tone="blue">Hà Nội ✕</Chip>
+                <span className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] text-brand">+ Add city</span>
+              </div>
+              <p className="mt-1 text-[10.5px] text-faint">Multiple cities — pending client confirmation.</p>
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Years of experience</p>
+              <div className="flex items-center gap-2 text-[12px] text-faint">
+                <span className="rounded-md border border-line bg-surface px-3 py-2">From 1</span>
+                <span className="text-muted">—</span>
+                <span className="rounded-md border border-line bg-surface px-3 py-2">To 3</span>
+                <span className="text-[11px] text-faint">years</span>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Salary <span className="text-rose-500">*</span></p>
+              <div className="flex gap-4 text-[12px]">
+                {['Negotiable', 'From – to'].map((m) => (
+                  <label key={m} onClick={() => setSalaryMode(m)} className="flex cursor-pointer items-center gap-1.5 text-ink/80">
+                    <span className={cn('grid h-3.5 w-3.5 place-items-center rounded-full border-2', salaryMode === m ? 'border-brand' : 'border-line')}>
+                      {salaryMode === m && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                    </span>
+                    {m}
+                  </label>
+                ))}
+              </div>
+              {salaryMode === 'From – to' ? (
+                <div className="mt-2 flex items-center gap-2 text-[12px] text-faint">
+                  <span className="rounded-md border border-line bg-surface px-3 py-2">12,000,000</span>
+                  <span className="text-muted">—</span>
+                  <span className="rounded-md border border-line bg-surface px-3 py-2">18,000,000</span>
+                  <span className="text-[11px] text-faint">VND</span>
+                </div>
+              ) : (
+                <p className="mt-2 rounded-md border border-line bg-canvas/40 px-3 py-2 text-[12px] text-muted">Shown as “Thỏa thuận” to jobseekers.</p>
+              )}
+            </div>
           </div>
-          <Field label="Job description" req area value="Chăm sóc bệnh nhân nội trú, theo dõi dấu hiệu sinh tồn…" />
-          <Field label="Requirements" req area value="Bằng cao đẳng/đại học điều dưỡng, chứng chỉ hành nghề…" />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Benefits / welfare" value="Bảo hiểm · thưởng tháng 13" />
-            <Field label="Application deadline" value="31/08/2026" />
+
+          {/* Content (bilingual) */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Content · {lang.toUpperCase()} 🌐</p>
+            <Field label="Your role & responsibility" req area value={t.role} />
+            <Field label="Your skills & qualifications" req area value={t.quals} />
+            <Field label="Benefits" area value={t.benefits} />
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Skills</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Chip>Điều dưỡng ✕</Chip><Chip>Chăm sóc bệnh nhân ✕</Chip><Chip>Sơ cấp cứu ✕</Chip>
+                <span className="rounded-md border border-line px-2 py-1 text-[11px] text-muted">Select skills ▾</span>
+              </div>
+            </div>
+            <Field label="Application deadline" req value="31/08/2026" />
           </div>
         </div>
+
+        {/* preview + notes */}
         <div className="space-y-3">
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker view →</p>
-            <div className="rounded-lg border border-line p-3">
+            <div className={cn('rounded-lg border border-line p-3', exposure === 'Unexposed' && 'opacity-50')}>
               <div className="flex gap-3">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-canvas text-[11px] font-bold text-brand">VP</div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-ink">Điều dưỡng viên (Khoa Nội)</p>
+                  <p className="text-[13px] font-semibold text-ink">{t.title}</p>
                   <p className="text-[12px] text-muted">Vạn Phát Healthcare</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="green">12 – 18 tr</Chip><Chip>Hồ Chí Minh</Chip><Chip>Full-time</Chip></div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <Chip tone="green">{salaryMode === 'From – to' ? '12 – 18 tr' : 'Thỏa thuận'}</Chip>
+                    <Chip>Hồ Chí Minh</Chip>
+                    <Chip>{jobType}</Chip>
+                    <Chip>{contract}</Chip>
+                  </div>
                 </div>
               </div>
             </div>
+            {exposure === 'Unexposed' && (
+              <p className="mt-1.5 rounded-md border border-line bg-canvas/50 px-3 py-1.5 text-[11px] text-muted">🚫 Unexposed — hidden from the jobseeker site until you set it to Exposed.</p>
+            )}
+          </div>
+          <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
+            📦 Package: <b>{pkg}</b>{pkg === 'Free' ? ' — standard listing.' : ' — higher visibility & ranking.'}
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-800">
-            ⏳ After you submit, Saramin reviews the post. It becomes visible to jobseekers once <b>approved</b>.
+            ⏳ After you submit, Saramin reviews the post. It becomes visible to jobseekers once <b>approved</b> (and Exposed).
           </div>
           <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
             📢 Publishing consumes <b>1 posting slot</b>. You have <b>3 slots</b> left after this one.
@@ -194,6 +351,7 @@ function PostJobScreen() {
 }
 
 function MyJobsScreen() {
+  const go = useCoNav()
   const rows: [string, string, 'Active' | 'Pending' | 'Expired', string, string][] = [
     ['Điều dưỡng viên (Khoa Nội)', '02/07/2026', 'Active', '14', '31/08/2026'],
     ['Bác sĩ Đa khoa', '28/06/2026', 'Active', '6', '28/08/2026'],
@@ -204,7 +362,7 @@ function MyJobsScreen() {
   const label = (s: string) => (s === 'Pending' ? 'Pending approval' : s)
   return (
     <div>
-      <PageBar title="My jobs" sub="Jobs your company has posted." action={<Btn primary>+ Post a job</Btn>} />
+      <PageBar title="My jobs" sub="Jobs your company has posted." action={<Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>} />
       <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-line-soft pb-3">
         {['All 4', 'Active 2', 'Pending approval 1', 'Expired 1', 'Draft 0'].map((t, i) => (
           <span key={t} className={cn('rounded-lg px-2.5 py-1 text-[12px]', i === 0 ? 'bg-brand-soft font-medium text-brand' : 'text-muted')}>{t}</span>
@@ -221,8 +379,8 @@ function MyJobsScreen() {
             <span className="text-right tabular-nums">{apps === '0' ? '—' : apps}</span>
             <span className="text-right tabular-nums text-muted">{deadline}</span>
             <span className="flex justify-end gap-1.5">
-              <span className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand">View applicants</span>
-              <span className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted">Edit</span>
+              <span onClick={() => go('co-applicants')} className="cursor-pointer rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand">View applicants</span>
+              <span onClick={() => go('co-post-job')} className="cursor-pointer rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted">Edit</span>
             </span>
           </div>
         ))}
@@ -460,6 +618,15 @@ export function CompanyMockups() {
   const [active, setActive] = useState<{ group: string; item: NavItem }>({ group: 'Home', item: DASHBOARD })
   const Body = active.item.Comp
 
+  /** jump to a screen by id (used by in-screen buttons like "+ Post a job") */
+  const go = (id: string) => {
+    if (id === DASHBOARD.id) return setActive({ group: 'Home', item: DASHBOARD })
+    for (const g of NAV_GROUPS) {
+      const item = g.items.find((i) => i.id === id)
+      if (item) return setActive({ group: g.label, item })
+    }
+  }
+
   return (
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5">
@@ -525,7 +692,9 @@ export function CompanyMockups() {
               <span className="font-medium text-ink">{active.item.label}</span>
             </div>
             <div className="p-5">
-              <Body />
+              <CoNav.Provider value={go}>
+                <Body />
+              </CoNav.Provider>
             </div>
           </div>
         </div>
