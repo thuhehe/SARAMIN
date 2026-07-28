@@ -43,6 +43,26 @@ export const commentsConfigured = Boolean(API_BASE && SHARE_TOKEN)
 
 const base = () => `${API_BASE}/public/share/${SHARE_TOKEN}`
 
+/**
+ * BB PM stores an avatar as a root-relative path (`/api/upload/avatar/<id>`),
+ * which is correct inside its own app and wrong everywhere else: on this
+ * origin it resolves against the spec site, where the SPA rewrite answers
+ * with `index.html` and the browser shows a broken image. Resolve it
+ * against the API's origin instead — the endpoint is public, so the `<img>`
+ * needs no credential.
+ *
+ * Applied at render time rather than when the session is stored, so a
+ * browser already holding a relative path is fixed without signing in again.
+ */
+export function resolveAvatarUrl(raw: string | null): string | null {
+  if (!raw) return null
+  try {
+    return new URL(raw, new URL(API_BASE).origin).toString()
+  } catch {
+    return null
+  }
+}
+
 interface Envelope<T> {
   success: boolean
   data: T

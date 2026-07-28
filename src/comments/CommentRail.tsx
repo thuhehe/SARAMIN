@@ -9,9 +9,10 @@ import {
   X,
 } from 'lucide-react'
 import { useComments } from './CommentsProvider'
+import { resolveAvatarUrl } from './client'
 import { COMMENT_ROOT_ID, NO_COMMENT_ATTR, resolveAnchor } from './anchor'
 import { NameField } from './NameField'
-import type { Comment, CommentThread } from './types'
+import type { Comment, CommentThread, ShareMember } from './types'
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -21,6 +22,36 @@ function relativeTime(iso: string): string {
   const hours = Math.round(mins / 60)
   if (hours < 24) return `${hours}h`
   return `${Math.round(hours / 24)}d`
+}
+
+/**
+ * Who you're signed in as. The avatar falls back to an initial on error
+ * as well as on absence — BB PM serves these itself, and a broken image
+ * icon next to your own name reads as "something is wrong with your
+ * session" when nothing is.
+ */
+function MemberBadge({ member }: { member: ShareMember }) {
+  const src = resolveAvatarUrl(member.avatar)
+  const [broken, setBroken] = useState(false)
+
+  return (
+    <div className="flex items-center gap-2">
+      {src && !broken ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setBroken(true)}
+          className="h-5 w-5 rounded-full object-cover"
+        />
+      ) : (
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[9px] font-semibold text-white">
+          {member.name.slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      <span className="text-[11.5px] font-medium">{member.name}</span>
+      <span className="text-[10px] text-faint">signed in</span>
+    </div>
+  )
 }
 
 function Bubble({
@@ -296,25 +327,7 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         </label>
         {/* A member is already named by their account — asking again
             would invite two names for one person. */}
-        {member ? (
-          <div className="flex items-center gap-2">
-            {member.avatar ? (
-              <img
-                src={member.avatar}
-                alt=""
-                className="h-5 w-5 rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[9px] font-semibold text-white">
-                {member.name.slice(0, 1).toUpperCase()}
-              </span>
-            )}
-            <span className="text-[11.5px] font-medium">{member.name}</span>
-            <span className="text-[10px] text-faint">signed in</span>
-          </div>
-        ) : (
-          <NameField />
-        )}
+        {member ? <MemberBadge member={member} /> : <NameField />}
         <div className="flex items-center justify-between text-[10px] text-faint">
           <span>{share ? `${share.projectKey} · BB PM` : 'BB PM'}</span>
           <span className="flex gap-2">
