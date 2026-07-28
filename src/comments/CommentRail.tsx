@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   CornerDownRight,
@@ -65,8 +65,29 @@ function ThreadCard({
   const { activeId, setActiveId, post, setResolved, remove, name } = useComments()
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const active = activeId === thread.id
   const resolved = thread.resolvedAt !== null
+
+  /**
+   * When a thread is selected from the page (clicking its highlight),
+   * bring its card into view inside the rail. Scrolls the rail's own
+   * container rather than calling `scrollIntoView`, which walks up and
+   * would also scroll the document — fighting the page-scroll effect in
+   * CommentableRoot that runs on the same state change.
+   */
+  useEffect(() => {
+    if (!active) return
+    const card = cardRef.current
+    const scroller = card?.closest<HTMLElement>('[data-comment-scroll]')
+    if (!card || !scroller) return
+    const cardTop = card.offsetTop - scroller.offsetTop
+    const cardBottom = cardTop + card.offsetHeight
+    const viewTop = scroller.scrollTop
+    const viewBottom = viewTop + scroller.clientHeight
+    if (cardTop >= viewTop && cardBottom <= viewBottom) return
+    scroller.scrollTo({ top: cardTop - 12, behavior: 'smooth' })
+  }, [active])
 
   const submitReply = async () => {
     if (!reply.trim() || busy) return
@@ -83,6 +104,7 @@ function ThreadCard({
 
   return (
     <div
+      ref={cardRef}
       onClick={() => setActiveId(thread.id)}
       className={[
         'rounded-xl border p-3 transition-colors cursor-default',
@@ -241,7 +263,10 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         </p>
       )}
 
-      <div className="flex-1 space-y-2.5 overflow-y-auto scroll-thin p-3">
+      <div
+        data-comment-scroll
+        className="flex-1 space-y-2.5 overflow-y-auto scroll-thin p-3"
+      >
         {visible.length === 0 ? (
           <p className="px-1 py-8 text-center text-[12px] leading-relaxed text-faint">
             No {showResolved ? '' : 'open '}comments on this page.
