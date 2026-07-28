@@ -77,12 +77,12 @@ function Bubble({
         <span className="text-[10px] text-faint">
           {relativeTime(comment.createdAt)}
         </span>
-        {comment.mine && (
+        {comment.canDelete && (
           <button
             type="button"
             onClick={() => onDelete(comment.id)}
             className="ml-auto text-faint opacity-0 transition-opacity group-hover/bubble:opacity-100 hover:text-red-600"
-            aria-label="Delete comment"
+            aria-label={comment.mine ? 'Delete comment' : 'Delete as moderator'}
           >
             <Trash2 className="h-3 w-3" />
           </button>
