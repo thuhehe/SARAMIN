@@ -74,6 +74,50 @@ export function CommentableRoot({ children }: { children: React.ReactNode }) {
   }, [repaint])
 
   /**
+   * Selecting a thread scrolls its quote into view — the rail is useless
+   * for a long page if you have to hunt for the sentence yourself.
+   *
+   * Only scrolls when the quote is actually outside a comfortable band,
+   * so clicking a highlight that's already on screen (or a thread you
+   * just replied to) doesn't yank the page around. Threads with no
+   * resolvable anchor — orphaned or page-level — have nowhere to go and
+   * are skipped.
+   *
+   * Fires once per *selection*, not once per render. `threads` is a fresh
+   * array on every 5s poll, so without this guard a reader who scrolls
+   * away from a thread that is still selected gets dragged back every
+   * five seconds.
+   */
+  const scrolledTo = useRef<string | null>(null)
+  useEffect(() => {
+    if (!activeId) {
+      scrolledTo.current = null
+      return
+    }
+    if (status !== 'ready' || scrolledTo.current === activeId) return
+    const root = rootRef.current
+    if (!root) return
+    const thread = threads.find((t) => t.id === activeId)
+    if (!thread) return
+    scrolledTo.current = activeId
+    const range = resolveAnchor(root, thread.anchor)
+    if (!range) return
+
+    const rect = range.getBoundingClientRect()
+    if (rect.height === 0 && rect.width === 0) return
+
+    // Keep clear of the sticky page chrome at the top, and leave the
+    // quote well above the fold rather than flush against the edge.
+    const topMargin = 120
+    const bottomMargin = 80
+    const comfortable =
+      rect.top >= topMargin && rect.bottom <= window.innerHeight - bottomMargin
+    if (comfortable) return
+
+    window.scrollBy({ top: rect.top - topMargin, behavior: 'smooth' })
+  }, [activeId, threads, status])
+
+  /**
    * Clicking highlighted text focuses its thread. Done by hit-testing
    * the click against the painted boxes rather than by making the boxes
    * clickable: the boxes sit *under* the text so it stays selectable,

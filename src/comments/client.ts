@@ -64,6 +64,16 @@ async function toError(res: Response): Promise<CommentApiError> {
     )
   if (res.status === 423)
     return new CommentApiError('locked', message, retryAfterSeconds)
+  if (res.status === 429) {
+    // Honour Retry-After when the server sends one; otherwise let the
+    // caller pick a backoff.
+    const header = Number(res.headers.get('retry-after'))
+    return new CommentApiError(
+      'throttled',
+      'Too many requests — slowing down.',
+      Number.isFinite(header) && header > 0 ? header : undefined,
+    )
+  }
   if (res.status === 403) return new CommentApiError('forbidden', message)
   return new CommentApiError('server', message)
 }
