@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useComments } from './CommentsProvider'
 import { resolveAvatarUrl } from './client'
+import { docOrder, docTitle } from './docTitle'
 import { COMMENT_ROOT_ID, NO_COMMENT_ATTR, resolveAnchor } from './anchor'
 import { NameField } from './NameField'
 import type { Comment, CommentThread, ShareMember } from './types'
@@ -54,6 +55,14 @@ function MemberBadge({ member }: { member: ShareMember }) {
   )
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="sticky top-0 z-[1] -mx-3 bg-canvas/95 px-3 pb-1.5 pt-0.5 text-[10px] font-bold uppercase tracking-widest text-faint backdrop-blur">
+      {children}
+    </p>
+  )
+}
+
 function Bubble({
   comment,
   onDelete,
@@ -83,6 +92,51 @@ function Bubble({
         {comment.body}
       </p>
     </div>
+  )
+}
+
+/**
+ * A thread that lives on another page. Read-only on purpose: the useful
+ * action from here is "take me there", and a reply box on a quote you
+ * can't see is an invitation to answer the wrong question.
+ */
+function RemoteThreadCard({ thread }: { thread: CommentThread }) {
+  const { jumpTo } = useComments()
+  const resolved = thread.resolvedAt !== null
+
+  return (
+    <button
+      type="button"
+      onClick={() => jumpTo(thread)}
+      className={[
+        'w-full rounded-xl border border-line bg-surface p-2.5 text-left transition-colors hover:border-brand',
+        resolved ? 'opacity-60' : '',
+      ].join(' ')}
+    >
+      {thread.anchor.quote && (
+        <p className="mb-1.5 line-clamp-1 border-l-2 border-amber-400 pl-2 text-[11px] italic text-muted">
+          {thread.anchor.quote}
+        </p>
+      )}
+      <div className="flex items-baseline gap-2">
+        <span className="text-[12px] font-semibold">{thread.author.name}</span>
+        <span className="text-[10px] text-faint">
+          {relativeTime(thread.createdAt)}
+        </span>
+        {resolved && (
+          <Check className="ml-auto h-3 w-3 shrink-0 text-emerald-700" />
+        )}
+      </div>
+      <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-ink/85">
+        {thread.body}
+      </p>
+      {thread.replies.length > 0 && (
+        <p className="mt-1 text-[10px] text-faint">
+          {thread.replies.length}{' '}
+          {thread.replies.length === 1 ? 'reply' : 'replies'}
+        </p>
+      )}
+    </button>
   )
 }
 
@@ -228,13 +282,30 @@ function ThreadCard({
 }
 
 /**
- * The right-hand thread list. Threads are ordered by where their anchor
- * sits in the page — reading the rail top-to-bottom matches reading the
- * document — with orphaned and page-level threads collected at the end
- * so they can't silently disappear.
+ * The right-hand thread list, in two parts.
+ *
+ * **This page** is ordered by where each anchor sits in the document, so
+ * reading the rail top-to-bottom matches reading the page; orphaned and
+ * page-level threads collect at the end where they can't disappear.
+ *
+ * **Elsewhere** is every other thread in the project, grouped by page in
+ * left-nav order. Without it a question sits unread on a page nobody
+ * thinks to revisit — the badge in the nav says a number, and finding out
+ * what it says means opening each feature in turn. Clicking one navigates
+ * there and scrolls to the quote.
  */
 export function CommentRail({ onClose }: { onClose: () => void }) {
-  const { threads, share, member, error, signOut, refresh } = useComments()
+  const {
+    threads,
+    allThreads,
+    truncated,
+    docKey,
+    share,
+    member,
+    error,
+    signOut,
+    refresh,
+  } = useComments()
   const [showResolved, setShowResolved] = useState(false)
 
   const { ordered, orphanIds } = useMemo(() => {
@@ -245,7 +316,10 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       const range = root ? resolveAnchor(root, thread.anchor) : null
       if (range) {
         positions.set(thread.id, range.getBoundingClientRect().top)
-      } else {
+      } else if (thread.anchor.quote) {
+        // Only a thread that *had* a quote can have lost it. A page-level
+        // comment never had one, and telling its author their text changed
+        // is a lie about a comment that is working exactly as intended.
         orphans.add(thread.id)
       }
     }
@@ -264,8 +338,29 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
   const visible = showResolved
     ? ordered
     : ordered.filter((t) => t.resolvedAt === null)
-  const openCount = threads.filter((t) => t.resolvedAt === null).length
-  const resolvedCount = threads.length - openCount
+
+  // Every other page that has something to say, in nav order.
+  const elsewhere = useMemo(() => {
+    const byDoc = new Map<string, CommentThread[]>()
+    for (const thread of allThreads) {
+      if (thread.docKey === docKey) continue
+      if (!showResolved && thread.resolvedAt !== null) continue
+      const list = byDoc.get(thread.docKey) ?? []
+      list.push(thread)
+      byDoc.set(thread.docKey, list)
+    }
+    return [...byDoc.entries()]
+      .sort(([a], [b]) => docOrder(a) - docOrder(b))
+      .map(([key, list]) => ({
+        key,
+        label: docTitle(key),
+        threads: list.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      }))
+  }, [allThreads, docKey, showResolved])
+
+  const openCount = allThreads.filter((t) => t.resolvedAt === null).length
+  const resolvedCount = allThreads.length - openCount
+  const elsewhereCount = elsewhere.reduce((n, g) => n + g.threads.length, 0)
 
   return (
     <aside
@@ -299,9 +394,10 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         data-comment-scroll
         className="flex-1 space-y-2.5 overflow-y-auto scroll-thin p-3"
       >
+        <SectionLabel>This page</SectionLabel>
         {visible.length === 0 ? (
-          <p className="px-1 py-8 text-center text-[12px] leading-relaxed text-faint">
-            No {showResolved ? '' : 'open '}comments on this page.
+          <p className="px-1 pb-2 pt-1 text-center text-[11.5px] leading-relaxed text-faint">
+            No {showResolved ? '' : 'open '}comments here.
             <br />
             Select any text to start a thread.
           </p>
@@ -313,6 +409,37 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
               orphaned={orphanIds.has(thread.id)}
             />
           ))
+        )}
+
+        {elsewhereCount > 0 && (
+          <>
+            <SectionLabel>
+              Elsewhere on the site · {elsewhereCount}
+            </SectionLabel>
+            {elsewhere.map((group) => (
+              <div key={group.key} className="space-y-1.5">
+                <p
+                  title={group.key}
+                  className="flex items-baseline gap-1.5 px-0.5 pt-1 text-[11px] font-medium text-muted"
+                >
+                  <span className="truncate">{group.label}</span>
+                  <span className="ml-auto shrink-0 text-[10px] text-faint">
+                    {group.threads.length}
+                  </span>
+                </p>
+                {group.threads.map((thread) => (
+                  <RemoteThreadCard key={thread.id} thread={thread} />
+                ))}
+              </div>
+            ))}
+          </>
+        )}
+
+        {truncated && (
+          <p className="px-1 pt-2 text-center text-[10px] leading-relaxed text-faint">
+            Showing the first {allThreads.length} threads — this project has
+            more than the rail can load at once.
+          </p>
         )}
       </div>
 

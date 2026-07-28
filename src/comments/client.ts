@@ -1,5 +1,6 @@
 import {
   CommentApiError,
+  type AllCommentsPayload,
   type Comment,
   type CommentAnchor,
   type DocCommentCount,
@@ -239,6 +240,18 @@ export function listComments(
 
 export function fetchCounts(signal?: AbortSignal): Promise<DocCommentCount[]> {
   return request<DocCommentCount[]>('/doc-comments/counts', { signal })
+}
+
+/**
+ * Every thread in the project. This is what the poll loop reads: one
+ * request answers both "what is on this page" (filter locally) and "what
+ * is open anywhere", so the rail can list the whole review without the
+ * reader opening each page to discover it.
+ */
+export function listAllComments(
+  signal?: AbortSignal,
+): Promise<AllCommentsPayload> {
+  return request<AllCommentsPayload>('/doc-comments/all', { signal })
 }
 
 export interface CreateCommentInput {
