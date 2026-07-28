@@ -9,12 +9,14 @@ import {
 } from 'react'
 import { useLocation } from 'react-router-dom'
 import * as api from './client'
+import * as oauth from './oauth'
 import * as session from './session'
 import {
   CommentApiError,
   type CommentAnchor,
   type CommentThread,
   type DocCommentCount,
+  type ShareMember,
   type ShareSession,
 } from './types'
 
@@ -37,7 +39,12 @@ interface CommentsContextValue {
   threads: CommentThread[]
   counts: Map<string, DocCommentCount>
   docKey: string
-  /** Name shown on this browser's comments; null until first prompt. */
+  /** Signed-in BB PM account, or null for a passcode guest. */
+  member: ShareMember | null
+  /**
+   * Name shown on this browser's comments. For a member it is their BB PM
+   * name and is not editable here; for a guest, null until first prompt.
+   */
   name: string | null
   setName: (value: string) => void
   /** Thread the reader is focused on — the rail and the highlights agree on it. */
@@ -45,6 +52,12 @@ interface CommentsContextValue {
   setActiveId: (id: string | null) => void
   error: string | null
   unlock: (passcode: string) => Promise<void>
+  /** Leaves the site for BB PM's login/consent screens. */
+  signInAsMember: () => Promise<void>
+  /** Finishes that round trip from the callback route's query string. */
+  completeMemberSignIn: (search: string) => Promise<string>
+  /** False when this build has no OAuth client id — passcode only. */
+  memberSignInAvailable: boolean
   signOut: () => void
   post: (input: {
     body: string
@@ -81,6 +94,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const [share, setShare] = useState<ShareSession | null>(null)
   const [threads, setThreads] = useState<CommentThread[]>([])
   const [counts, setCounts] = useState<Map<string, DocCommentCount>>(new Map())
+  const [member, setMember] = useState<ShareMember | null>(session.member.get())
   const [name, setNameState] = useState<string | null>(session.displayName.get())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -105,6 +119,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     if (err instanceof CommentApiError) {
       if (err.kind === 'auth') {
         session.signOut()
+        setMember(null)
         setStatus('locked')
         setError(null)
         return
@@ -206,6 +221,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     try {
       const detail = await api.unlock(passcode)
       setShare(detail)
+      setMember(null)
       setStatus('ready')
     } catch (err) {
       setStatus('locked')
@@ -216,6 +232,47 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
             : err.message,
         )
       } else setError('Could not unlock comments')
+      throw err
+    }
+  }, [])
+
+  const signInAsMember = useCallback(async () => {
+    setError(null)
+    try {
+      // Resolves only if the redirect didn't happen; on success the page
+      // is already on its way to BB PM.
+      await oauth.beginSignIn(`${window.location.pathname}${window.location.search}`)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Could not start BB PM sign-in',
+      )
+      throw err
+    }
+  }, [])
+
+  /**
+   * The other end of the redirect. Runs on the callback route, and
+   * returns where to send the reader back to so the route component
+   * doesn't have to know how the flow stored it.
+   */
+  const completeMemberSignIn = useCallback(async (search: string) => {
+    setStatus('unlocking')
+    setError(null)
+    try {
+      const { accessToken, returnTo } = await oauth.completeSignIn(search)
+      const detail = await api.unlockMember(accessToken)
+      setShare(detail)
+      setMember(detail.member)
+      setStatus('ready')
+      return returnTo
+    } catch (err) {
+      setStatus('locked')
+      if (err instanceof CommentApiError && err.kind === 'forbidden') {
+        setError(
+          'Your BB PM account is not a member of this project — use the passcode instead.',
+        )
+      } else if (err instanceof Error) setError(err.message)
+      else setError('Could not finish signing in')
       throw err
     }
   }, [])
@@ -234,7 +291,9 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
           body,
           anchor: anchor ?? null,
           parentId: parentId ?? null,
-          guestName: session.displayName.get(),
+          // A member is named by their account; sending a local display
+          // name alongside would be a second name for the same person.
+          guestName: session.member.get() ? null : session.displayName.get(),
         })
         // Refetch rather than splice the response in: the list is small,
         // and a refetch also picks up whatever anyone else posted in the
@@ -252,19 +311,22 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     async (commentId: string, resolved: boolean) => {
       // Optimistic: resolving is a single boolean with an obvious
       // outcome, and the poll will correct us within 5s if it failed.
+      // For a member the server stamps their account name and ignores
+      // what we send, so guess the same thing to avoid a visible flip.
+      const signature = session.member.get()?.name ?? session.displayName.get()
       setThreads((prev) =>
         prev.map((t) =>
           t.id === commentId
             ? {
                 ...t,
                 resolvedAt: resolved ? new Date().toISOString() : null,
-                resolvedBy: resolved ? session.displayName.get() : null,
+                resolvedBy: resolved ? signature : null,
               }
             : t,
         ),
       )
       try {
-        await api.resolveComment(commentId, resolved, session.displayName.get())
+        await api.resolveComment(commentId, resolved, signature)
       } catch (err) {
         handleError(err)
       } finally {
@@ -290,6 +352,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const signOutAll = useCallback(() => {
     session.signOut()
     setShare(null)
+    setMember(null)
     setThreads([])
     setCounts(new Map())
     setStatus('locked')
@@ -302,12 +365,17 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       threads,
       counts,
       docKey,
-      name,
+      member,
+      // A member's name is their account's; a guest's is what they typed.
+      name: member?.name ?? name,
       setName,
       activeId,
       setActiveId,
       error,
       unlock,
+      signInAsMember,
+      completeMemberSignIn,
+      memberSignInAvailable: oauth.memberSignInConfigured,
       signOut: signOutAll,
       post,
       setResolved,
@@ -320,11 +388,14 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       threads,
       counts,
       docKey,
+      member,
       name,
       setName,
       activeId,
       error,
       unlock,
+      signInAsMember,
+      completeMemberSignIn,
       signOutAll,
       post,
       setResolved,

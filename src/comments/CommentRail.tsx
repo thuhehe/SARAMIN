@@ -62,7 +62,8 @@ function ThreadCard({
   thread: CommentThread
   orphaned: boolean
 }) {
-  const { activeId, setActiveId, post, setResolved, remove, name } = useComments()
+  const { activeId, setActiveId, post, setResolved, remove, name, member } =
+    useComments()
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -141,7 +142,7 @@ function ThreadCard({
 
       {active && (
         <div className="mt-3 border-t border-line-soft pt-2.5">
-          {!name && <NameField className="mb-2" />}
+          {!member && !name && <NameField className="mb-2" />}
           <div className="flex items-start gap-1.5">
             <CornerDownRight className="mt-2 h-3 w-3 shrink-0 text-faint" />
             <textarea
@@ -202,7 +203,7 @@ function ThreadCard({
  * so they can't silently disappear.
  */
 export function CommentRail({ onClose }: { onClose: () => void }) {
-  const { threads, share, error, signOut, refresh } = useComments()
+  const { threads, share, member, error, signOut, refresh } = useComments()
   const [showResolved, setShowResolved] = useState(false)
 
   const { ordered, orphanIds } = useMemo(() => {
@@ -293,7 +294,27 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
           />
           Show resolved
         </label>
-        <NameField />
+        {/* A member is already named by their account — asking again
+            would invite two names for one person. */}
+        {member ? (
+          <div className="flex items-center gap-2">
+            {member.avatar ? (
+              <img
+                src={member.avatar}
+                alt=""
+                className="h-5 w-5 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[9px] font-semibold text-white">
+                {member.name.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <span className="text-[11.5px] font-medium">{member.name}</span>
+            <span className="text-[10px] text-faint">signed in</span>
+          </div>
+        ) : (
+          <NameField />
+        )}
         <div className="flex items-center justify-between text-[10px] text-faint">
           <span>{share ? `${share.projectKey} · BB PM` : 'BB PM'}</span>
           <span className="flex gap-2">

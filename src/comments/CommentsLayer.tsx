@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { useComments } from './CommentsProvider'
 import { NO_COMMENT_ATTR } from './anchor'
@@ -20,6 +20,22 @@ export function CommentsLayer() {
   useEffect(() => {
     if (activeId) setRailOpen(true)
   }, [activeId])
+
+  /**
+   * A member coming back from BB PM lands on the page they left, with a
+   * session that arrived while this component was unmounted — nothing
+   * would show for it. Opening the rail on the locked → ready edge gives
+   * the round trip a visible result, and matches what the passcode path
+   * does through `onUnlocked`. A returning reader whose JWT was already
+   * in storage starts *at* `ready`, so there is no edge and no surprise
+   * rail on load.
+   */
+  const previousStatus = useRef(status)
+  useEffect(() => {
+    if (previousStatus.current !== 'ready' && status === 'ready')
+      setRailOpen(true)
+    previousStatus.current = status
+  }, [status])
 
   if (status === 'unavailable') return null
 

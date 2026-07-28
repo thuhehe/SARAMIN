@@ -24,6 +24,8 @@ import { StatusDot } from './components/StatusBadge'
 import { CommentsProvider } from './comments/CommentsProvider'
 import { CommentableRoot } from './comments/CommentableRoot'
 import { CommentsLayer } from './comments/CommentsLayer'
+import { OAuthCallback } from './comments/OAuthCallback'
+import { CALLBACK_PATH } from './comments/oauth'
 
 function useScrollTopOnRoute() {
   const { pathname } = useLocation()
@@ -161,6 +163,9 @@ function Layout() {
               <Route path="/m/:moduleId" element={<ModuleDetail />} />
               <Route path="/m/:moduleId/:featureIndex" element={<FeatureDetail />} />
               <Route path="/f/:id" element={<FeaturePage />} />
+              {/* Landing strip for the BB PM sign-in round trip. It
+                  redirects onward as soon as the code is exchanged. */}
+              <Route path={CALLBACK_PATH} element={<OAuthCallback />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </CommentableRoot>
