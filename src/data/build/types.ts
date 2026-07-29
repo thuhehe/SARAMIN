@@ -25,6 +25,18 @@ export const SCOPE_META: Record<Scope, { pill: string }> = {
   UI: { pill: 'bg-orange-100 text-orange-700 border-orange-200' },
 }
 
+/*
+ * BA readiness — the dot next to each feature in the left nav.
+ *
+ * Green = the requirement is written up and ready for the BA to work from.
+ * Grey  = not ready yet. Set MANUALLY per feature via `ready: true`; this is a
+ * human judgement about the spec, not something derived from the data.
+ */
+export const READY_META = {
+  ready: { dot: 'bg-emerald-500', label: 'Ready for BA' },
+  notReady: { dot: 'bg-slate-300', label: 'Not ready yet' },
+} as const
+
 /** Deep per-feature spec — authored to be "as detailed as possible". All optional. */
 export interface FeatureDetail {
   /** 1–2 paragraph overview: what this screen/feature is and does. */
@@ -56,6 +68,11 @@ export interface BuildFeature {
   notes?: string
   /** id of a wireframe on the Mockups page, if one exists */
   mockup?: string
+  /**
+   * Is this requirement ready for the BA to pick up? Drives the nav dot:
+   * green when true, grey otherwise. Set by hand — see READY_META.
+   */
+  ready?: boolean
   /** deep spec — rendered on the feature detail page when present */
   detail?: FeatureDetail
 }

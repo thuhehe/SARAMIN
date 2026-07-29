@@ -390,6 +390,7 @@ export const applicationManagement: BuildModule = {
       name: 'My application',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
+      mockup: 'js-mypage',
       detail: {
         description:
           'The candidate’s list of everything they applied to, with the date applied and where it stands. The status shown here is DERIVED from the two internal dimensions (HQ screening + employer stage) — a label, not a third status column — so a candidate can never see something the recruiter disagrees with.',

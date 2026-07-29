@@ -1,10 +1,9 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronRight, ImageIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META, SCOPE_META } from '@/data/buildModules'
 import type { BuildFeature, Scope, FeatureDetail, Requirement, ReqTable } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
-import { resolveScreen } from '@/pages/screenRegistry'
-import { Browser } from '@/components/wire'
+import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { cn } from '@/lib/utils'
 
 /* ── Requirements ─────────────────────────────────────────────────────────────
@@ -74,10 +73,6 @@ function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean 
   )
 }
 
-function SiteDot({ site }: { site: BuildFeature['site'] }) {
-  return <span className={cn('h-2 w-2 shrink-0 rounded-full', SITE_META[site].dot)} />
-}
-
 function SiteTag({ site }: { site: BuildFeature['site'] }) {
   return (
     <span className={cn('rounded border px-1 py-0.5 font-mono text-[10px] font-medium', SITE_META[site].pill)}>
@@ -110,7 +105,7 @@ function ScopePills({ scope }: { scope: Scope[] }) {
 /* Every feature-detail section is one CARD with a titled header — the same shape as
    the requirement blocks, so a long spec reads as a stack of labelled groups
    instead of an undifferentiated wall of headings and text. */
-function SpecBlock({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) {
+function SpecBlock({ title, children, note }: { title: string; children: React.ReactNode; note?: React.ReactNode }) {
   return (
     <section className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/40 px-4 py-2">
@@ -214,7 +209,15 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
     <>
       {(d.description || d.userStory) && (
         <SpecBlock title="Overview">
-          {d.description && <p className="text-[13.5px] leading-relaxed text-ink/80">{d.description}</p>}
+          {/* A description may carry blank-line breaks; render them as real paragraphs
+              so a long overview reads as prose instead of one dense block. */}
+          {d.description && (
+            <div className="space-y-2.5">
+              {d.description.split('\n\n').map((para, i) => (
+                <p key={i} className="text-[13.5px] leading-relaxed text-ink/80">{para.trim()}</p>
+              ))}
+            </div>
+          )}
           {d.userStory && (
             <p className={cn('rounded-r-lg border-l-2 border-brand bg-brand-soft/50 px-3 py-2 text-[13px] italic text-ink/75', d.description && 'mt-3')}>
               {d.userStory}
@@ -335,30 +338,9 @@ export function ModuleDetail() {
         <Requirements items={m.requirements} />
       </section>
 
-      {/* feature flow */}
-      <section className="mt-8">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">Flow · features</h2>
-        <div className="space-y-2">
-          {m.features.map((f, i) => (
-            <Link
-              key={i}
-              to={`/m/${m.id}/${i}`}
-              className="group block rounded-xl border border-line bg-surface p-3.5 transition-all hover:border-brand hover:shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <SiteDot site={f.site} />
-                <SiteTag site={f.site} />
-                <span className="text-[14px] font-semibold group-hover:text-brand">{f.name}</span>
-                <span className="ml-auto flex items-center gap-2">
-                  <ScopePills scope={f.scope} />
-                  <ChevronRight className="h-3.5 w-3.5 text-faint group-hover:text-brand group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </div>
-              {f.notes && <p className="mt-1.5 pl-4 text-[12px] leading-relaxed text-muted">{f.notes}</p>}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* The "Flow · features" list used to sit here. Removed: the sidebar already
+          lists every feature in this module, so the section was a second copy of the
+          same navigation. Feature pages are still routed at /m/:moduleId/:index. */}
     </div>
   )
 }
@@ -375,6 +357,7 @@ export function FeatureDetail() {
   const prev = idx > 0 ? { i: idx - 1, f: m.features[idx - 1] } : undefined
   const next = idx < m.features.length - 1 ? { i: idx + 1, f: m.features[idx + 1] } : undefined
   const screen = resolveScreen(f.mockup)
+  const href = screen ? mockupHref(screen) : null
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 pb-16 sm:px-8">
@@ -398,12 +381,38 @@ export function FeatureDetail() {
         <ScopePills scope={f.scope} />
       </div>
 
-      {/* Screen UI — on top, above the requirement detail */}
-      <SpecBlock title="Screen UI" note={screen ? undefined : 'not wired yet'}>
+      {/* Screen UI — on top, above the requirement detail.
+          This is NOT a second copy of the screen: resolveScreen returns the very
+          component the mockup gallery renders, so there is only ever one place a
+          screen is built. The link opens it in that gallery. */}
+      <SpecBlock
+        title="Screen UI"
+        note={
+          screen ? (
+            <span className="flex items-center gap-3">
+              {/* the route, as plain text — it was the only real information the
+                  fake browser chrome carried */}
+              {screen.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{screen.url}</span>}
+              {href && (
+                <Link to={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
+                  Open in {screen.src === 'admin' ? 'Admin' : screen.src === 'co' ? 'Company' : 'Jobseeker'} mockups
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
+            </span>
+          ) : (
+            'not wired yet'
+          )
+        }
+      >
         {screen ? (
-          <Browser url={screen.url ?? 'saramin.vn'}>
+          /* No <Browser> frame here. The SpecBlock card is already a frame, so the
+             chrome was a second border around the first plus a fake URL bar; the
+             URL now sits in the block header. The gallery keeps its chrome, where
+             it is the only frame. */
+          <div className="max-h-[640px] overflow-y-auto scroll-thin">
             <screen.Comp />
-          </Browser>
+          </div>
         ) : (
           <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
             <ImageIcon className="mx-auto h-5 w-5 text-faint" />

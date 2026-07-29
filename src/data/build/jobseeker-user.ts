@@ -89,6 +89,7 @@ export const jobseekerUser: BuildModule = {
       name: 'Sign up / Sign in',
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
+      ready: true,
       notes: '4 social login (Facebook, Gmail, LinkedIn, Github)',
       detail: {
         description:
@@ -234,6 +235,7 @@ export const jobseekerUser: BuildModule = {
       name: 'User management',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'admin-jobseekers',
       detail: {
         description:
@@ -351,6 +353,7 @@ export const jobseekerUser: BuildModule = {
       name: 'My page',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
+      ready: true,
       mockup: 'js-mypage',
       detail: {
         description:
@@ -494,6 +497,8 @@ export const jobseekerUser: BuildModule = {
       name: 'Deactivate account',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
+      ready: true,
+      mockup: 'js-mypage',
       detail: {
         description:
           'The candidate’s way out, with a confirm step. Deactivation is a WITHDRAWAL, not a deletion: the account stops working and the CV leaves employer CV search immediately, but applications already sent stay with those employers, and data retention follows the legal period rather than the button press. The screen has to say all of that plainly, because a user pressing this is making a decision about their own data.',

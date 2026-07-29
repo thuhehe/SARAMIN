@@ -8,7 +8,8 @@ import type { BuildModule } from './types'
  * → Negotiation → PO → Invoice (+ Lost). A PO is the "won" moment — the rep then
  * hands off to Account management, which activates the customer (creates the
  * account, provisions products/quota, and — for Job Posting — the public company
- * page). One company record is born here as a prospect and grows up.
+ * page). One company record is born here as New — a company that has never bought
+ * anything from us yet — and grows up.
  *
  * Also here: the sales back office (Quotations → Sales order/PO → Payments →
  * VAT e-invoice, plus Contracts). One document chain, each step created from the
@@ -23,7 +24,7 @@ import type { BuildModule } from './types'
  *   Payment  ── Accounting CONFIRMS against the bank ──▶ unlocks invoicing
  *        │
  *        ▼
- *   VAT e-invoice issued ──▶ deal = Invoice (closed) · customer status Prospect→New
+ *   VAT e-invoice issued ──▶ deal = Invoice (closed) · customer status New→Existing
  *                            · 12-month activation window starts
  *                            · Account management provisions products + gifts
  *
@@ -50,7 +51,6 @@ export const crm: BuildModule = {
     },
   ],
   requirements: [
-    'A CRM separate from the jobseeker flow: sales manage companies as customers and move deals through the sales/document flow. Connects to Account management (the activated customer) and Products & packages (what they bought).',
     {
       label: 'Pipeline stages (the kanban)',
       text: 'The board mirrors the document chain. A card carries deal value + owner. Stage lives on the DEAL, never on the company.',
@@ -71,29 +71,66 @@ export const crm: BuildModule = {
       ],
     },
     {
+      label: 'Company ID — format JW-XXXXXXX',
+      text: 'Every company gets a permanent public identifier the moment it is created: the prefix JW- plus 7 characters. It is assigned by the system, never typed, and never changes for the life of the company (lead → customer → churn → win-back). It is NOT the database key — the database keeps its own bigint primary key and the ID is a reversible encoding of it.',
+      table: {
+        cols: ['Part', 'Length', 'What it is'],
+        rows: [
+          ['JW-', '3', 'Fixed prefix, so an ID is self-describing in a log, an export or a support ticket'],
+          ['Payload', '6 chars', 'The internal key, scrambled then encoded in Crockford Base32'],
+          ['Check character', '1 char', 'Rejects a mistyped ID instead of opening the wrong company'],
+        ],
+      },
+      items: [
+        'Alphabet is Crockford Base32 — 0-9 and A-Z minus I, L, O and U — so no “was that a 1 or an l” support calls, and no ID can accidentally spell something rude.',
+        'CAPACITY: 32^6 − 1 = 1,073,741,823 companies (~1.07 billion). For scale, Vietnam has roughly 1 million active registered enterprises, so this is about 1,000× the entire national market.',
+        'Uniqueness is by CONSTRUCTION, not by luck: the encoding is a bijection over the key space, so two different keys can never produce the same ID. There is no collision check to get wrong and no retry loop.',
+        'The payload is scrambled (multiply by an odd constant mod 2^30) so consecutive companies land far apart. An ID therefore does not reveal how many companies exist, and nobody can guess the next one.',
+        'Input is tolerant, output is strict: lookups are case-insensitive, the JW- prefix is optional, and I/L→1, O→0, U→V are folded — but a bad check character is REJECTED, never resolved to a different company. Stored and displayed always uppercase.',
+        'Shown on the company detail header, in the record URL (/companies/JW-7K2M9PQ), on exports and in support tooling. The tax code (MST) stays a separate field and remains the business de-duplication key — it is a government identifier we do not control, so it is never the primary ID.',
+      ],
+      warn: 'The ID is immutable. Never re-issue, re-sequence or “tidy up” company IDs — quotations, orders, invoices, contracts and audit-log entries all reference it, so changing one silently breaks the paper trail.',
+    },
+    {
+      label: 'Company NAME — what is displayed vs what is stored',
+      text: 'A company stores a legal name and an optional short (brand) name. Every list and card shows the SHORT name, falling back to the legal name when it is empty — one rule, so the same company never reads two different ways on two screens.',
+      table: {
+        cols: ['Surface', 'Shows', 'Falls back to'],
+        rows: [
+          ['Companies list', 'Short name', 'Legal name'],
+          ['Pipeline board card', 'Short name', 'Legal name'],
+          ['Company detail header', 'Short name', 'Legal name'],
+          ['Quotation / order / invoice', 'LEGAL name always', '— (never the short name)'],
+        ],
+      },
+      warn: 'Documents are the exception and must use the LEGAL name: a quotation, order or VAT invoice is a legal instrument, so “Tiki” is never acceptable where “Công ty TNHH TIKI” is required.',
+    },
+    {
       label: 'A company has TWO statuses — they answer different questions',
       table: {
         cols: ['Axis', 'Question it answers', 'Values', 'Stored?'],
         rows: [
           ['Pipeline status', '“Is there a live opportunity right now, and where is it?”', 'Not in pipeline · Proposal · Qualified · Negotiation · PO · Invoice', 'Derived from the open deal'],
-          ['Customer status', '“Have they ever paid us, and are they still current?”', 'Prospect · New · Existing · Churn', 'Stored on the company'],
+          ['Customer status', '“Have they ever paid us, and are they still current?”', 'New · Existing · Churn', 'Stored on the company'],
         ],
       },
       warn: 'The two axes are independent and must never be wired to each other. Losing a deal does NOT change customer status; winning one does NOT by itself make them Existing (the invoice does). A company can be Existing AND in Negotiation at the same time — that is a healthy account.',
     },
     {
-      label: 'Customer status values (four, not three)',
-      text: 'Driven by the INVOICE, not the order. Prospect is required — a company you are quoting for the first time cannot be called “New”, because New must mean “newly PAYING” for the status to be useful to CS.',
+      label: 'Customer status values — exactly three',
+      text: 'Driven by the INVOICE, not the order. New means “has never bought anything from us”, so every company starts there the moment it is created — there is no separate Prospect status.',
       table: {
         cols: ['Status', 'Means', 'Moves in when'],
         rows: [
-          ['Prospect', 'Never invoiced', 'Created in the CRM'],
-          ['New', 'Newly paying — needs onboarding', 'First VAT e-invoice issued'],
-          ['Existing', 'Active paid service, or a repeat order', '2nd paid order, or service activated / onboarding window passes'],
+          ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM'],
+          ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued'],
           ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice'],
         ],
       },
-      items: ['Churn is the SAME record looping back for win-back, never a new company.'],
+      items: [
+        'Churn is the SAME record looping back for win-back, never a new company. A won win-back returns it to Existing, never to New — “never bought” can only ever be true once.',
+        'New is not a synonym for “no login”. Whether an account exists is a separate fact (accountId), driven by activation; a company can be New for years while being quoted repeatedly.',
+      ],
     },
     {
       label: 'A deal is its own record',
@@ -104,8 +141,8 @@ export const crm: BuildModule = {
       table: {
         cols: ['Way out', 'Trigger', 'Where the company lands'],
         rows: [
-          ['Closed-won', 'VAT e-invoice issued', 'Customer status New (then Existing)'],
-          ['Closed-lost', 'A human marks it, with a reason', 'NURTURE list — still Prospect (or still Existing if they had bought), no open deal, with a re-engage date'],
+          ['Closed-won', 'VAT e-invoice issued', 'Customer status Existing'],
+          ['Closed-lost', 'A human marks it, with a reason', 'NURTURE list — customer status unchanged (still New if they never bought, still Existing if they had), no open deal, with a re-engage date'],
         ],
       },
       warn: 'Inactivity alone never removes a company from the pipeline and a deal is NEVER auto-closed as Lost — it only gets flagged so a human is forced to decide.',
@@ -119,7 +156,7 @@ export const crm: BuildModule = {
           ['Quotation', 'Sales', 'Bilingual PDF, 1–3 options, EST-xxxxxx-MM-YYYY', 'Deal → Proposal'],
           ['Sales order / PO', 'Sales', 'Order confirmation; can hold the customer’s own PO no. + file', 'Deal → PO (won)'],
           ['Payment', 'Accounting', 'Confirmation against the bank', 'Unlocks invoicing'],
-          ['VAT e-invoice', 'Accounting', 'Invoice issued', 'Deal closed · Prospect → New · provisioning released'],
+          ['VAT e-invoice', 'Accounting', 'Invoice issued', 'Deal closed · New → Existing · provisioning released'],
         ],
       },
       items: [
@@ -127,6 +164,45 @@ export const crm: BuildModule = {
         'A quotation’s deal value is ONE option’s total-after-VAT: the accepted option, or the recommended one while still open.',
         '“Sent” is a state a human declares, not something only our mailer can produce — reps routinely send a PDF by Zalo or from their own mail client.',
         'Separation of duties: Sales creates/sends quotations and confirms orders; Accounting ALONE confirms money landed and issues the VAT e-invoice. That confirmation is the control that stops provisioning against an unverified payment.',
+      ],
+    },
+    {
+      label: 'Issuer identity — one setting, every document (System → Company information)',
+      text: 'Everything about US that prints on a selling document is configured in one place, never typed per document and never hard-coded in a template. That covers the letterhead the customer sees first — logo, VN + EN legal name, VN + EN address, website — plus the issuer tax code, the VAT rate, the numbering formats and the bank details. Retyping any of it per quotation guarantees the same company eventually appears three different ways across three documents, and a change of office means editing every template.',
+      table: {
+        cols: ['Setting', 'Prints on', 'Why it must be central'],
+        rows: [
+          ['Logo + VN/EN legal name + VN/EN address + website', 'Letterhead of quotation, sales order, invoice', 'The block the customer reads first. Both languages always print, exactly as on EST-009909-07-2026.'],
+          ['Issuer tax code (MST)', 'Sales order, VAT e-invoice', 'Ours, not the customer’s — the two are adjacent on the page and easy to confuse.'],
+          ['VAT rate (currently 8%)', 'Every option total, every invoice', 'A State rate change (T&C clause 6) is then one edit, not a code release.'],
+          ['Quotation validity (14 days) · discount-approval threshold (20%)', 'Expiry date · the Send gate', 'Sales policy, so it belongs to sales ops rather than to engineering.'],
+          ['Numbering formats — EST-{seq}-{MM}-{YYYY}, SO-…', 'Document numbers', 'The sequence must stay gapless and concurrency-safe; the format is configurable, the counter is not.'],
+          ['Bank details', 'Sales order', 'Sent with the order because payment comes before the invoice (clause 3).'],
+        ],
+      },
+      items: [
+        'Changes are VERSIONED, not retroactive. A quotation already sent keeps the letterhead, VAT rate and bank details it was issued with — reprinting a year-old document must produce the identical page. This is the same snapshot rule the quotation applies to prices and terms.',
+        'The rep’s own name and email ("Báo giá bởi / Proposed by") is NOT a setting — it comes from the signed-in user.',
+        'The customer-side billing block (their legal name, Địa chỉ ĐKKD, MST) is not here either: it is read from the company record. Issuer data is central; customer data is per-company.',
+      ],
+    },
+    {
+      label: 'Where each document is created — two buttons, two homes',
+      text: 'The two create-actions live in different places on purpose, and the reason is that one is always valid and the other almost never is. A quotation can be raised for ANY company at any time; a sales order can only ever come from an accepted quotation option. Putting each button where it is always meaningful removes the need for a disabled button that has to explain itself.',
+      table: {
+        cols: ['Action', 'Lives on', 'Availability', 'Why there'],
+        rows: [
+          ['Tạo báo giá / Create quotation', 'Company detail header (+ the Quotations list title row)', 'ALWAYS — every company, every status', 'A first quote for a Prospect, a renewal for an Existing customer, a win-back for a Churn — all legitimate. There is no company you may not quote.'],
+          ['Tạo PO / Create sales order', 'The ACCEPTED row of the Quotations list', 'Only on a quotation with an accepted option that has not lapsed', 'An order copies ONE accepted option forward. The accepted quotation is the only context where that is possible, so the action belongs on it.'],
+        ],
+      },
+      items: [
+        'The company detail header therefore carries exactly one create action — Create quotation — and no Create-PO or Convert-to-customer button. Convert/activation is driven by the invoice, not by a rep pressing a button on the company record.',
+        'Opening Create quotation from a company pre-selects that company; opening it from the Quotations list asks for one. Either way the quotation is attached to a company and its deal — never floating.',
+        'The order modal copies the accepted option forward: line items (gifts included at 0 ₫), quantities, unit prices, VAT and total-after-VAT, plus the billing data read from the company record — legal name, registered address, tax code. Nothing is retyped, because these are the values the e-invoice must eventually match.',
+        'It captures what the quotation cannot: payment terms (100% in advance by default, per clause 3), and the customer’s OWN PO number + file for customers whose procurement issues one. Customers without a procurement process simply confirm the order we send.',
+        'It states the two things reps most often get wrong: confirming the order is the “won” moment (deal → PO), and it provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Customer status is unchanged at this step.',
+        'A lapsed quotation cannot produce an order even if an option was accepted — extend validity or re-issue as v2 first (T&C clause 2). Enforced server-side on POST /orders, not just by hiding the button.',
       ],
     },
     {
@@ -145,9 +221,9 @@ export const crm: BuildModule = {
         cols: ['Relationship type', 'Expected cadence', 'Amber (needs a touch)', 'Red (at risk / escalate)'],
         rows: [
           ['Open deal — any stage', 'Weekly', '7 days', '14 days'],
-          ['New customer — onboarding, first 90 days', 'Fortnightly', '14 days', '30 days'],
-          ['Existing customer — active paid service', 'Monthly', '30 days', '60 days'],
-          ['Prospect, no open deal (nurture)', 'Monthly', '30 days', '60 days'],
+          ['Existing — onboarding, first 90 days after the first invoice', 'Fortnightly', '14 days', '30 days'],
+          ['Existing — active paid service', 'Monthly', '30 days', '60 days'],
+          ['New (never bought), no open deal — nurture', 'Monthly', '30 days', '60 days'],
           ['Churn / win-back', 'Quarterly', '60 days', '90 days'],
         ],
       },
@@ -194,7 +270,7 @@ export const crm: BuildModule = {
       table: {
         cols: ['Case', 'Action', 'Result'],
         rows: [
-          ['New company — no match', 'Create lead', 'Enters the pipeline as a prospect'],
+          ['New company — no match', 'Create lead', 'Enters the pipeline with customer status New'],
           ['Matches an existing lead', 'Merge into that lead + notify its owner', 'Never a duplicate record'],
           ['Existing customer', 'Send a join request to that company’s admin', 'Person becomes a user under the existing account — never a second company'],
           ['Spam', 'Dismiss', 'Row cleared'],
@@ -203,21 +279,29 @@ export const crm: BuildModule = {
       items: ['Matching key order, strongest first: tax code (MST) → email domain → company name. A public domain (gmail, yahoo…) can NEVER auto-match and always needs manual verification — this is the guard against merging two unrelated companies on a shared free-mail domain.'],
     },
     {
-      label: 'Activities on the company record',
-      text: 'One timeline merges sales activities with system events (payments, provisioning, page publish).',
+      label: 'Activities on the company record — SALES activity only',
+      text: 'The activity panel holds contact with the client and nothing else: chats, calls, and documents actually sent to or confirmed by them. It is NOT a merged “everything that happened” feed.',
       table: {
         cols: ['Type', 'Sales must provide', 'Integration'],
         rows: [
           ['Chat', 'Channel (Zalo · Facebook Messenger · Email · SMS · Zalo OA · Phone) + a note', '—'],
           ['Call', 'A note; duration / outcome / recording arrive automatically', 'Placed & auto-logged via Calio'],
+          ['Document sent / confirmed', 'Nothing — written when the rep sends a quotation or confirms an order', 'From the document chain'],
         ],
       },
+      items: [
+        'System and usage events are EXCLUDED: CV unlocked, job published, company page published, payment received, products provisioned, account activated. Each already has its own tab on the record (Resume activity · Jobs · Company page · Products & billing), so nothing is lost by keeping them out.',
+        'The newest row in this panel is what idle counts from. That is the whole reason for the exclusion — if a nightly provisioning job or a customer’s own CV unlock could land here, a client nobody has spoken to in two months would read as freshly touched.',
+        'A company with no logged activity shows “Never contacted” — an explicit state and the highest-priority follow-up, never an empty table.',
+        'Not to be confused with the DEAL timeline, which is a different surface: that one does carry decay markers (quotation auto-expired, escalation, rot-state changes) because the sales lead needs to see them. Company-level sales activity stays clean; deal-level keeps its markers. Do not merge the two.',
+      ],
+      warn: 'Do not “fix” this later by merging system events back in for a fuller timeline. The merged feed is the version that was removed, and it silently breaks idle, the follow-up queue and the churn early-warning that all read from it.',
     },
     {
       label: 'Pipeline hygiene',
       text: 'Each stage has its own inactivity threshold (days since the last meaningful activity). Past it the deal is flagged rotting — amber then red — lands in a “Needs attention” filter, then escalates to the sales lead. Thresholds live in settings, not in code.',
     },
-    'One company record throughout: created in the CRM as a prospect. It has no login and is invisible to jobseekers until it is activated. No duplicate company records.',
+    'One company record throughout: created in the CRM with customer status New. It has no login and is invisible to jobseekers until it is activated. No duplicate company records.',
     'On PO (won), hand off to Account management for activation (create account → provision products/quota → company page for Job Posting). Activation itself lives in the Account management module, not here.',
   ],
   features: [
@@ -226,43 +310,74 @@ export const crm: BuildModule = {
       name: 'Companies',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'crm-customer',
       detail: {
         description:
-          'ONE list of every company — the single source of truth. Each record carries TWO status dimensions: a pipeline stage (the current deal: Proposal → Qualified → Negotiation → PO → Invoice / Lost) shown on the Pipeline board, and a customer status (account health: Prospect → New → Existing → Churn) shown on this directory. The Pipeline board is the SAME list grouped by stage. There is no separate "account list" — Account management (users, products, public page) is just sections on this same record, shown only for customers who bought them. No duplicate company. Corporate groups are modelled INSIDE this list, not beside it: every company — parent, subsidiary, sub-subsidiary — is its own record with its own tax code, its own account, its own billing and its own owner, linked upward by a single parentCompanyId. The link is navigation and context only; nothing is shared or inherited down the tree.',
+          'ONE list of every company — the single source of truth. Each record carries TWO status dimensions: a pipeline stage (the current deal: Proposal → Qualified → Negotiation → PO → Invoice / Lost) shown on the Pipeline board, and a customer status (account health: New → Existing → Churn) shown on this directory. The Pipeline board is the SAME list grouped by stage. There is no separate "account list" — Account management (users, products, public page) is just sections on this same record, shown only for customers who bought them. No duplicate company. Corporate groups are modelled INSIDE this list, not beside it: every company — parent, subsidiary, sub-subsidiary — is its own record with its own tax code, its own account, its own billing and its own owner, linked upward by a single parentCompanyId. The link is navigation and context only; nothing is shared or inherited down the tree.',
         userStory:
           'As a sales rep, I want one list that holds every company — from cold lead through paying customer to renewal — so history, account, and status never fragment across two lists.',
         uiFields: [
           {
-            group: 'Customer record (CRM — internal only)',
+            group: 'Identity & legal — the “New company” form, top block',
             items: [
-              { name: 'legalName', type: 'string', required: true },
+              { name: 'legalName', type: 'string', required: true, notes: 'the registered name. Documents (quotation, order, VAT invoice) always print THIS, never the short name.' },
+              { name: 'shortName', type: 'string', notes: 'display / brand name — “Tiki”, “FPT Software”. Every list, board card and detail header shows it and falls back to legalName when empty.' },
               { name: 'taxCode (MST)', type: 'string', notes: 'de-dup key + VAT invoicing. Stored as the FULL string — 10 digits for a company, 10 + "-" + 3 for a branch (0301234567-001). 0301234567 and 0301234567-001 are two different, both-valid values.' },
-              { name: 'parentCompanyId', type: 'ref → Company?', notes: 'the direct parent in the corporate tree; null = a root (a top parent, or a company that stands alone). At most ONE direct parent — a tree, not a graph — with unlimited depth (parent → subsidiary → sub-subsidiary), the way a Jira subtask chain nests.' },
+              { name: 'parentCompanyId', type: 'ref → Company?', notes: 'the direct parent in the corporate tree; null = a root (a top parent, or a company that stands alone). At most ONE direct parent — a tree, not a graph — with unlimited depth (parent → subsidiary → sub-subsidiary), the way a Jira subtask chain nests. Picker searches by name or tax code.' },
               { name: 'affiliates', type: 'derived', notes: 'not stored — read from the tree: the ancestor chain up to the root plus the direct children. This is what the "Công ty liên kết / Affiliated companies" block renders.' },
-              { name: 'industry', type: 'enum' },
-              { name: 'address / location', type: 'string' },
-              { name: 'primaryContact', type: 'person', notes: 'name, role, phone, email' },
+              { name: 'industry', type: 'enum', notes: 'single select from master data — also a list filter and the basis for a sector play' },
+              { name: 'companySize', type: 'enum', notes: 'headcount band: 1–49 · 50–200 · 200–500 · 500–1000 · 1000–5000 · 5000+' },
+              { name: 'location', type: 'enum', notes: 'city / province of the head office, picked from the master-data list — a SELECT, not free text, because it is a list column and a filter' },
+              { name: 'address', type: 'string', notes: 'full head-office address (số nhà, đường, phường/xã, quận/huyện). Free text, printed on quotations, invoices and contracts — distinct from location, which is only the province' },
+              { name: 'website', type: 'string', notes: 'domain; also the seed for contact-email addresses' },
+            ],
+          },
+          {
+            group: 'Primary contact',
+            items: [
+              { name: 'contactName', type: 'string', required: true },
+              { name: 'contactTitle', type: 'combo', notes: 'select-or-type: HR Manager · HR Director · Talent Acquisition · Recruiter · CEO / Founder · Office Manager — free text allowed, so the list never blocks a real title' },
+              { name: 'contactPhone', type: 'string' },
+              { name: 'contactEmail', type: 'string' },
+            ],
+          },
+          {
+            group: 'Sales qualification — captured at creation, editable after',
+            items: [
+              { name: 'owner', type: 'ref → admin user', notes: 'assigned by hand, per company. The parent/subsidiary link never propagates it — a parent and its subsidiary can be owned by two different reps.' },
+              { name: 'leadSource', type: 'combo', notes: 'select-or-type: Website sign-up · Inbound call · Referral · Event / job fair · Outbound · Partner. Drives the “where do deals come from” report, so it must be a controlled list with an escape hatch.' },
+              { name: 'productsInterested', type: 'multi-select', notes: 'Job Posting · Resume Search. Intent only — it provisions nothing; entitlements come from a paid order.' },
+              { name: 'estimatedDealValue', type: 'currency (₫)', notes: 'the rep’s first guess, before any quotation exists. Once a quotation is sent, the deal value comes from the quotation and this stops being used.' },
+              { name: 'description', type: 'text', notes: 'free-form: how we heard about them, what they need, the next step. The one place for context that has no field of its own.' },
+              { name: 'nextStep', type: 'string', notes: 'the single action this company is waiting on — shown on the board card and in the follow-up queue' },
+            ],
+          },
+          {
+            group: 'Lifecycle & activity — system-maintained, not typed',
+            items: [
               { name: 'pipelineStatus', type: 'derived', required: true, notes: 'NOT stored on the company — read from its open deal: Not in pipeline (no open deal, OR an open deal whose quotation has not been sent yet) · Proposal · Qualified · Negotiation · PO · Invoice. "Lost" never appears here; a lost deal just leaves the company with no open deal.' },
               { name: 'openDeal', type: 'ref → Deal?', notes: 'at most one open deal at a time (see rules); null = not in pipeline. A deal still at draft-quotation stage exists but does not put the company in the pipeline.' },
               { name: 'dealHistory', type: 'list → Deal[]', notes: 'every past deal, won and lost, with its reason — the account’s sales history' },
-              { name: 'customerStatus', type: 'enum', required: true, notes: 'account health: Prospect (never invoiced) → New (first VAT invoice issued, in onboarding window) → Existing (active paid service or repeat order) → Churn (no new order 12 months after the last invoice)' },
-              { name: 'firstInvoicedAt / lastInvoicedAt', type: 'derived', notes: 'the two dates that drive Prospect→New and Existing→Churn' },
-              { name: 'owner', type: 'ref → admin user', notes: 'assigned by hand, per company. The parent/subsidiary link never propagates it — a parent and its subsidiary can be owned by two different reps.' },
-              { name: 'accountId', type: 'ref → Account', notes: 'set at activation; empty while a prospect' },
+              { name: 'customerStatus', type: 'enum', required: true, notes: 'account health, exactly three values: New (has never bought — no VAT invoice ever issued) → Existing (first VAT invoice issued; active paid service or a past order) → Churn (no new order 12 months after the last invoice)' },
+              { name: 'firstInvoicedAt / lastInvoicedAt', type: 'derived', notes: 'the two dates that drive New→Existing and Existing→Churn' },
+              { name: 'lastContactAt → idle', type: 'derived', notes: 'days since the last human contact, rendered with the adaptive display rule (3d · 1m 18d · “Never contacted”) and coloured against the cadence table' },
+              { name: 'latestNote', type: 'derived', notes: 'the most recent activity note, shown as a list column so a rep can scan the book without opening records' },
+              { name: 'totalRevenue', type: 'derived', notes: 'sum of issued VAT invoices for THIS company only — never rolled up across a corporate group' },
+              { name: 'accountId', type: 'ref → Account', notes: 'set at activation; empty until then — independent of customerStatus' },
               { name: 'companyId', type: 'ref → Company', notes: 'set only if the customer posts jobs' },
             ],
           },
         ],
         behaviors: [
-          'The directory filters by customer status (Prospect / New / Existing / Churn), owner, industry, activity (has quote/PO/invoice/contract); Sales sees their own book, Sales-lead sees the whole team.',
+          'The directory filters by customer status (New / Existing / Churn), owner, industry, activity (has quote/PO/invoice/contract); Sales sees their own book, Sales-lead sees the whole team.',
           'The Pipeline board is this same list grouped by pipeline stage — a view, not a second dataset.',
           'Row → the company record: contact, deal(s), quote/PO/invoice history, and — for customers — its account, products/quota, users, and public page as sections.',
           'The company record carries a "Công ty liên kết / Affiliated companies" block: a breadcrumb of the ancestor chain (Tập đoàn A › Tổng cty B › this company) plus the list of direct children — every row showing that company’s own tax code and linking through to its record. One level up and one level down only; "Xem sơ đồ tập đoàn / View group tree" opens the full tree for the rare deep group.',
           'Each affiliate row carries a badge derived automatically from the tax codes, never typed by hand: same 10-digit root as the parent → "Chi nhánh / Branch"; a different tax code → "Công ty con / Subsidiary".',
           'The directory can filter by corporate group — every company under a chosen root — so a rep can pull up a whole group at once. Grouping is a view; ownership stays per company.',
           'On PO, "Convert / Activate" provisions the account. Renewal loop: when no new PO is issued within a year of the last PO, customer status flips to Churn and the company re-enters the pipeline for a win-back (no new record).',
-          'Customer status is recomputed by the system, not set by hand: invoice.issued on a company with no prior invoice → New; a second paid order (or the first service activated / the onboarding window elapsed) → Existing; 12 months past lastInvoicedAt with no new order → Churn. Sales can only override with a reason, and the override is logged.',
+          'Customer status is recomputed by the system, not set by hand: a company is created New; the first invoice.issued flips it to Existing; 12 months past lastInvoicedAt with no new order → Churn; a win-back invoice returns it to Existing. Sales can only override with a reason, and the override is logged.',
         ],
         rules: [
           'A company is always created here first — the CRM is the single front door, even for a company that arrives already large.',
@@ -270,23 +385,33 @@ export const crm: BuildModule = {
           'The parent/subsidiary link inherits NOTHING. Packages/quota, contracts, quotations, VAT invoices, users, the public company page, deals and pipeline are all per company, on that company’s own tax code. A subsidiary can never spend its parent’s quota, and vice versa — the link exists for information, navigation and reporting only.',
           'Corporate-tree integrity: at most one direct parent per company; a company can never be its own ancestor (reject cycles, including indirect ones); depth is soft-capped (≈5 levels) to keep junk data out.',
           'Owner is per company and set by hand — the tree never propagates it. A parent and its subsidiary may belong to different reps.',
-          'A Prospect has no login and is invisible to jobseekers; account + public page exist only after PO + activation.',
+          'A company with no account has no login and is invisible to jobseekers; account + public page exist only after PO + activation. That is independent of customer status — New is about buying history, not about having a login.',
           'Products and the public company page are per-record sections gated by product (Job Posting) — never a reason for a separate list.',
           'Churn ≠ a new record — it is the same company looping back for a win-back / renewal.',
-          'A company leaves Prospect only when a VAT e-invoice is issued — never on a sent quotation or a confirmed order alone.',
-          'Prospect → New → Existing never skips New: a first-time paying customer is always New first, so onboarding is visible.',
+          'A company leaves New only when a VAT e-invoice is issued — never on a sent quotation or a confirmed order alone.',
+          'New → Existing is one-way. A win-back after Churn goes back to Existing, never to New: “has never bought from us” can only be true once in a company’s life.',
         ],
-        states: ['Prospect', 'New (customer)', 'Existing (customer)', 'Churn (win-back candidate)', 'Duplicate detected (full tax code match — blocked)', 'Possible affiliate detected (shared tax root or similar name — offered as a link, not blocked)', 'Standalone company (no parent, no children)'],
+        states: ['New (never bought)', 'Existing (customer)', 'Churn (win-back candidate)', 'Duplicate detected (full tax code match — blocked)', 'Possible affiliate detected (shared tax root or similar name — offered as a link, not blocked)', 'Standalone company (no parent, no children)'],
         backend: {
           dataModel: [
             { name: 'customerId', type: 'uuid', required: true },
             { name: 'legalName', type: 'string', required: true },
+            { name: 'shortName', type: 'string?', notes: 'brand name; nullable — every read path falls back to legalName, so no backfill is needed' },
             { name: 'taxCode', type: 'string', notes: 'UNIQUE on the full string — 10 digits, or 10 + "-" + 3 for a branch. Validate both formats. Index the 10-digit root separately: that index is what powers the "is this a branch of…" prompt.' },
             { name: 'parentCompanyId', type: 'uuid?', notes: 'self-reference, nullable; null = root. Unlimited depth. Enforce no-cycle on write by walking the ancestors — an FK constraint alone will not catch an indirect cycle.' },
             { name: '— NO pipelineStage column on this table —', type: 'note', notes: 'pipeline status is a JOIN to the open deal, not a company field. Storing it here is the mistake that makes the two axes drift out of sync.' },
-            { name: 'customerStatus', type: 'enum', required: true, notes: 'prospect|new|existing|churn — the only status actually stored on the company' },
-            { name: 'firstInvoicedAt / lastInvoicedAt', type: 'timestamp?', notes: 'drive Prospect→New and Existing→Churn' },
+            { name: 'customerStatus', type: 'enum', required: true, notes: 'new|existing|churn — exactly three; the only status actually stored on the company' },
+            { name: 'firstInvoicedAt / lastInvoicedAt', type: 'timestamp?', notes: 'drive New→Existing and Existing→Churn' },
             { name: 'nurtureUntil', type: 'date?', notes: 'set when a deal closes lost — the re-engage date' },
+            { name: 'industryId / companySize / locationId', type: 'ref / enum / ref', notes: 'all three come from master data and are list filters — enums or FKs, never free text' },
+            { name: 'address', type: 'string', notes: 'full head-office address, free text; separate from locationId, which is only the province' },
+            { name: 'website', type: 'string?' },
+            { name: 'contactName / contactTitle / contactPhone / contactEmail', type: 'string', notes: 'the primary contact, denormalised onto the company; contactTitle is free text with a suggested list' },
+            { name: 'leadSource', type: 'string', notes: 'controlled list + free text — the “where do deals come from” report reads this' },
+            { name: 'productsInterested', type: 'enum[]', notes: 'intent only; grants nothing' },
+            { name: 'estimatedDealValue', type: 'bigint?', notes: 'VND minor units; superseded by the quotation total once one is sent' },
+            { name: 'description / nextStep', type: 'text? / string?' },
+            { name: 'lastContactAt', type: 'timestamp?', notes: 'drives idle — computed at read time, never stored as a day counter. null = “Never contacted”' },
             { name: 'accountId', type: 'uuid?', notes: 'nullable until activation' },
             { name: 'companyId', type: 'uuid?', notes: 'nullable; set when Job Posting enabled' },
             { name: 'ownerId', type: 'uuid' },
@@ -323,6 +448,7 @@ export const crm: BuildModule = {
       name: 'Sales pipeline',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'crm-pipeline',
       detail: {
         description:
@@ -389,18 +515,18 @@ export const crm: BuildModule = {
           {
             heading: 'The full event walkthrough — what changes, and who/what triggers it',
             items: [
-              '1 · Company created (Sales adds a lead, or a sign-up is triaged) → no deal · pipeline "Not in pipeline" · customer status Prospect.',
-              '2 · Deal opened and a quotation drafted (Sales decides to work it) → Deal #1 exists but is NOT on the board: pipeline still reads "Not in pipeline", no deal value, no rot clock · still Prospect. A draft is not an opportunity.',
-              '3 · Quotation sent — the rep clicks Send, or clicks "Mark as sent" after emailing the PDF from their own mailbox; either writes quote.sent → the card appears on the board at Proposal, valued at the highest option · rot clock starts from sentAt · still Prospect.',
-              '4 · HR manager willing to discuss (rep moves the card) → stage Qualified · still Prospect.',
-              '5 · HR manager in internal approval (rep moves the card) → stage Negotiation · still Prospect.',
+              '1 · Company created (Sales adds a lead, or a sign-up is triaged) → no deal · pipeline "Not in pipeline" · customer status New (they have never bought).',
+              '2 · Deal opened and a quotation drafted (Sales decides to work it) → Deal #1 exists but is NOT on the board: pipeline still reads "Not in pipeline", no deal value, no rot clock · still New. A draft is not an opportunity.',
+              '3 · Quotation sent — the rep clicks Send, or clicks "Mark as sent" after emailing the PDF from their own mailbox; either writes quote.sent → the card appears on the board at Proposal, valued at the highest option · rot clock starts from sentAt · still New.',
+              '4 · HR manager willing to discuss (rep moves the card) → stage Qualified · still New.',
+              '5 · HR manager in internal approval (rep moves the card) → stage Negotiation · still New.',
               '6 · 21 days with no meaningful activity in Proposal (nightly job) → card turns RED and joins "Needs attention". Stage does NOT change. Company does NOT leave the pipeline. Customer status untouched.',
               '7 · A further 14 days untouched (nightly job) → the deal enters the sales lead’s review queue. Still Proposal. Still in the pipeline. This is a forcing function to make a human decide — nothing more.',
-              '8a · Sales gives up, or the customer says no (HUMAN clicks "Close as Lost" + picks a reason) → Deal #1 becomes CLOSED-LOST · the company now has no open deal, so pipeline reads "Not in pipeline" and it moves to the Nurture list with a re-engage date · customer status UNCHANGED (Prospect stays Prospect; an Existing customer stays Existing).',
-              '8b · Customer accepts an option and confirms the order → stage PO (won the commitment) · still Prospect — they have not paid yet.',
-              '9 · Accounting confirms the payment against the bank → stage still PO · still Prospect.',
-              '10 · Accounting issues the VAT e-invoice (invoice.issued) → Deal #1 becomes CLOSED-WON · the company has no open deal, so pipeline reads "Not in pipeline" · customer status flips Prospect → NEW · provisioning is released.',
-              '11 · Onboarding window elapses, or a second paid order lands (nightly job) → customer status New → EXISTING. No deal involved.',
+              '8a · Sales gives up, or the customer says no (HUMAN clicks "Close as Lost" + picks a reason) → Deal #1 becomes CLOSED-LOST · the company now has no open deal, so pipeline reads "Not in pipeline" and it moves to the Nurture list with a re-engage date · customer status UNCHANGED (New stays New; an Existing customer stays Existing).',
+              '8b · Customer accepts an option and confirms the order → stage PO (won the commitment) · still New — they have not paid yet.',
+              '9 · Accounting confirms the payment against the bank → stage still PO · still New.',
+              '10 · Accounting issues the VAT e-invoice (invoice.issued) → Deal #1 becomes CLOSED-WON · the company has no open deal, so pipeline reads "Not in pipeline" · customer status flips New → EXISTING · provisioning is released. This is the ONLY event that writes it.',
+              '11 · Onboarding runs for the first 90 days after that first invoice — a tighter contact cadence, not a status. The company is already Existing.',
               '12 · Sales opens a renewal deal months later → Deal #2 opens · pipeline reads Proposal again · customer status stays Existing throughout. This is the normal healthy state: Existing customer, live deal.',
               '13 · 12 months after the last invoice with no new order (nightly job) → customer status → CHURN. The company appears in the win-back list. Still one record, still all its history.',
               'Read steps 6–8 together: rotting flags, escalation forces a decision, and ONLY step 8a — a human click — removes the company from the pipeline. There is no step where time alone does it.',
@@ -420,11 +546,11 @@ export const crm: BuildModule = {
             heading: 'The two status axes — how they interact (and how they must not)',
             items: [
               'Axis 1 · Pipeline status (DERIVED from the open deal): Not in pipeline · Proposal · Qualified · Negotiation · PO · Invoice.',
-              'Axis 2 · Customer status (STORED on the company): Prospect · New · Existing · Churn.',
-              'Only invoice.issued and the two nightly clocks (onboarding window, 12-month churn) ever write axis 2. Nothing a rep does on the board writes it.',
-              'Legal combinations that must all work: Prospect + Not in pipeline (cold lead / nurture) · Prospect + Proposal (first-time quote out) · New + Not in pipeline (just bought, onboarding) · Existing + Negotiation (renewal in flight — very common) · Churn + Proposal (win-back attempt underway).',
-              'Illegal by construction: any company showing "Lost" as a pipeline status, and any rule that changes customer status because a deal was lost.',
-              'Naming caution: "New" is ambiguous in Vietnamese-English usage — it can read as "new company in our system" or "new paying customer". It means the SECOND here. If that risks confusion with the sales team, rename the value to "New customer" rather than redefining it.',
+              'Axis 2 · Customer status (STORED on the company): New · Existing · Churn. Exactly three.',
+              'Only invoice.issued and the nightly 12-month churn clock ever write axis 2. Nothing a rep does on the board writes it.',
+              'Legal combinations that must all work: New + Not in pipeline (cold lead / nurture) · New + Proposal (first-time quote out) · New + PO (order confirmed but not yet invoiced — they still have not paid) · Existing + Not in pipeline (bought, nothing live) · Existing + Negotiation (renewal in flight — very common) · Churn + Proposal (win-back attempt underway).',
+              'Illegal by construction: any company showing "Lost" as a pipeline status; any rule that changes customer status because a deal was lost; and any transition back INTO New — it is the one status a company can never return to.',
+              'Naming: "New" means "has never bought from us", NOT "recently signed up" and NOT "newly paying". A company can sit at New for years while being quoted repeatedly. If the sales team reads it the other way, relabel it in the UI ("Chưa từng mua") rather than redefining it.',
             ],
           },
           {
@@ -547,10 +673,11 @@ export const crm: BuildModule = {
       name: 'Quotations',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'Field-for-field modelled on the client’s live PDF (EST-009909-07-2026). Bilingual VN/EN, multi-option (1–3 options per document), one option accepted.',
+      ready: true,
+      mockup: 'admin-quotes',
       detail: {
         description:
-          'The first document in quote-to-cash and the only one the customer sees before committing. A rep builds it in five steps — (1) pick the company, (2) fill the client + VAT-billing block, (3) build 1–3 priced OPTIONS, (4) review the auto-composed T&C / features / signature block, (5) generate the bilingual PDF and send. The output must reproduce the client’s existing PDF exactly: vendor letterhead, "BÁO GIÁ / PROPOSAL", proposal + expiry date, client information, VAT billing information, one line-item table per option (STT · Dịch vụ · Đơn vị tính · Số lượng · Đơn giá · Giảm giá · Tổng giá), VAT 8% row, total-after-VAT, amount in words (VN + EN), the package features ("Quyền lợi gói … trên TopDev.vn"), 6 numbered Terms & Conditions, and the TopDev authorized-signature block.',
+          'The first document in quote-to-cash, and the only one the customer sees before committing. Field-for-field modelled on the client’s live PDF EST-009909-07-2026.\n\nA rep builds it in five steps: pick the company → confirm its client + VAT-billing details → build 1–3 priced options → review the auto-composed terms and benefit lists → generate the bilingual PDF and send.\n\nThe printed output must reproduce the existing PDF exactly. See “What prints on the page” below for the block-by-block list.',
         userStory:
           'As a sales rep, I want to build one quotation that offers the customer 2–3 priced alternatives and send it as the same bilingual PDF we send today, so that the customer can pick a package without me re-quoting.',
         uiFields: [
@@ -559,7 +686,7 @@ export const crm: BuildModule = {
             items: [
               { name: 'quoteCode', type: 'string', required: true, notes: 'auto — EST-{seq6}-{MM}-{YYYY}, e.g. EST-009909-07-2026. Never editable.' },
               { name: 'version', type: 'int', required: true, notes: 'v1, v2… a re-issue after negotiation bumps the version; code stays the same' },
-              { name: 'vendorBlock', type: 'derived', notes: 'fixed letterhead: CÔNG TY TNHH DAOUKIWOOM INNOVATION / DAOUKIWOOM INNOVATION COMPANY LIMITED · Tầng 12, 13 & 14, Tòa nhà AP, 518B Điện Biên Phủ, Phường Thạnh Mỹ Tây, TP. Hồ Chí Minh · https://topdev.vn — from settings, not typed' },
+              { name: 'vendorBlock', type: 'ref → Settings', required: true, notes: 'The issuer letterhead — logo, VN + EN legal name, VN + EN address, website. NEVER typed per quotation and never hard-coded: it comes from System → Company information (issuer). One place to change it when the entity, address or logo changes, and every past quotation keeps the version it was sent with.' },
               { name: 'proposedBy', type: 'derived', notes: '"Báo giá bởi / Proposed by: {rep name} | {rep email}" — the signed-in rep' },
               { name: 'proposalDate', type: 'date', required: true, notes: 'Ngày báo giá / Proposal Date — defaults today' },
               { name: 'expiryDate', type: 'date', required: true, notes: 'Ngày hết hạn / Expiry Date — defaults proposal + 14 days (PDF: 20/07 → 03/08); editable, must be > proposalDate' },
@@ -630,7 +757,7 @@ export const crm: BuildModule = {
               { name: 'company', type: 'ref → Customer', required: true },
               { name: 'options', type: 'count', notes: 'e.g. "2 options" — with the accepted one named once decided' },
               { name: 'value', type: 'money (₫)', notes: 'accepted option if decided, else the HIGHEST option — one option’s total-after-VAT, never the sum of the options' },
-              { name: 'status', type: 'enum', notes: 'Draft · Pending approval · Sent · Accepted · Rejected · Expired · Superseded — Draft and Pending approval are the only ones with no pipeline presence' },
+              { name: 'status', type: 'enum', notes: 'Draft · Sent · Issued to PO · Expired — FOUR statuses, deliberately. Draft is the only one with no pipeline presence' },
               { name: 'sentVia / sentAt', type: 'derived', notes: 'blank while Draft; shows e.g. "Zalo · 22/07" so the lead can see which quotes went out off-platform' },
               { name: 'expiryDate', type: 'date', notes: 'with a "expires in N days" warning inside 3 days' },
               { name: 'owner', type: 'ref → admin user' },
@@ -647,15 +774,15 @@ export const crm: BuildModule = {
           'Live bilingual PDF preview beside the form, page-for-page identical to the sent file.',
           '"Send via platform" → generates the PDF, emails the client contact (cc the rep), sets the quotation Sent, logs it on the company timeline, and puts the deal on the pipeline board at Proposal.',
           '"Mark as sent" → the same state change for a quotation the rep delivered themselves: pick the channel, confirm the date and the recipient, and the quotation becomes Sent with identical downstream effects (board entry at Proposal, deal value, rot clock, immutability, idle reset). This is the normal path whenever the PDF leaves through the rep’s own mailbox or Zalo — without it the deal would never reach the pipeline at all.',
-          'A Draft or Pending-approval quotation is private working material: it renders, it can be previewed and downloaded, and it sits on the Quotations list — but it produces no pipeline card, no deal value, no rot clock and no customer-facing timeline entry. A rep can abandon it with no trace on the forecast.',
+          'A Draft quotation is private working material: it renders, it can be previewed and downloaded, and it sits on the Quotations list — but it produces no pipeline card, no deal value, no rot clock and no customer-facing timeline entry. A rep can abandon it with no trace on the forecast.',
           'The quotation screen states plainly which of the two it is — an unsent draft carries a "not in pipeline yet" hint next to the Send / Mark-as-sent buttons, so nobody assumes a built quote is a working opportunity.',
-          'Customer replies picking an option → the rep marks that option Accepted (recording who agreed and how — email / Zalo / call). The other options are marked Not chosen and the quotation becomes read-only.',
-          'Negotiation → "Revise" clones the quotation as v2 with a revision reason; v1 becomes Superseded. Both stay in history.',
-          'Auto-flips to Expired past the expiry date (nightly job, no one touches it); "Extend validity" re-dates and re-sends as a new version.',
+          'Customer replies picking an option → the rep records WHICH option was accepted and how it was agreed (email / Zalo / call); the others are marked Not chosen. Acceptance is recorded ON the quotation but is NOT a status of its own — the status moves to Issued to PO the moment the Sales order is created from that option, which is the very next click.',
+          'Negotiation → Revise clones the quotation as v2 with a revision reason. v1 stays in history marked by its VERSION, not by a separate status — the list shows v1 greyed with "replaced by v2".',
+          'Expiry is DERIVED from the date, never typed: a nightly job flags a Sent quotation as offer-lapsed the day it passes its expiry date, and Expired once it is closed out with no PO. Extend validity re-dates and re-sends as a new version.',
           'Expiring does NOT touch the deal: it never changes the stage, never closes it, and never resets the rotting clock — it is a decay marker, the system noting that the offer lapsed.',
           'An expired quotation cannot be converted to a Sales order. The rep must Extend validity or Revise to v2 first; the convert action is disabled with that reason shown.',
-          'A deal sitting in Qualified or Negotiation whose quotation has expired shows an "offer lapsed" flag — the customer is deliberating on terms we are no longer committed to, and the order cannot be built until it is re-issued.',
-          'Accepting an option is the single entry point to "Create Sales Order / PO" — the accepted option’s lines are copied into it.',
+          'The lapse is surfaced in THREE places so it cannot be missed: the Quotations list (status), the pipeline CARD (an offer-lapsed marker), and the company record — and the company lands in the "Needs attention" filter.',
+          'Accepting an option is the single entry point to Create Sales Order / PO — the accepted option’s lines are copied into it and the quotation becomes Issued to PO.',
         ],
         rules: [
           'A quotation has 1–3 options. Options are ALTERNATIVES, not add-ons: exactly one may be accepted, and reporting must never sum them.',
@@ -664,28 +791,41 @@ export const crm: BuildModule = {
           'Exactly two actions put a quotation into SENT — "Send via platform" and "Mark as sent" — and SENT is the single fact everything downstream reads: immutability, pipeline entry, the Proposal stage, deal value, the rot clock. We never infer it from a mail log or a delivery webhook, because most quotations are sent by the rep outside this system and those deals must still show up.',
           '"Mark as sent" is subject to every pre-send gate that Send is: mandatory tax code, billing name and billing address, and sales-lead approval when the discount is over the threshold. It is an alternative channel, not a way around the controls.',
           'sentAt may be back-dated (a rep records Monday’s send on Wednesday) but never future-dated. The back-dated timestamp is what the Proposal rot clock, the idle reset and the expiry warning all use — so recording a send late does not hand the rep a fresh week of silence.',
-          'A Draft or Pending-approval quotation has NO pipeline effect whatsoever: it never creates a card, never sets a deal value, never starts a rot clock and never resets idle. A company with only draft quotations reads "Not in pipeline". Deleting or abandoning a draft leaves the forecast untouched.',
+          'A Draft quotation has NO pipeline effect whatsoever: it never creates a card, never sets a deal value, never starts a rot clock and never resets idle. A company with only draft quotations reads "Not in pipeline". Deleting or abandoning a draft leaves the forecast untouched.',
           'Every option needs at least one paid line item — an option cannot be gifts only.',
           'Gift ("Tặng") lines are always 0₫ at 0% discount and are excluded from revenue, but are provisioned as real quota on activation.',
           'Tax code, billing name and billing address are mandatory before Send — they flow verbatim to the VAT e-invoice and cannot be fixed later without re-issuing it.',
-          'Discount above the configured threshold blocks Send until a sales lead approves (Pending approval).',
+          'Discount above the configured threshold blocks Send until a sales lead approves. That is a GATE on the Draft, not a status of its own — the row shows Draft with an "awaiting approval" flag, so the status list stays four values long.',
           'Only Draft is editable. A Sent quotation is immutable — changes create a new version.',
           'Amount-in-words is always machine-generated in VN and EN; it is never an input field.',
+          'Quotation expiry NEVER moves the company in the pipeline. The deal stays where it is and a HUMAN decides: reissue (Extend validity or Revise to v2, which returns it to Sent) or close the deal as Lost with a reason. Consistent with the rule that a deal is never auto-closed.',
           'An Expired quotation is terminal for conversion: no Sales order may be created from it, and no option may be accepted against it. Per T&C clause 2 the discounts, incentives and gifts are only committed until the expiry date, so converting an expired quote would issue an order on pricing we no longer stand behind.',
           'Extending validity or revising to v2 re-opens the path — the extended/revised version carries a fresh expiry date and, if the catalogue price has moved since, the current price.',
           'VAT rate comes from settings so a State rate change (T&C clause 6) does not require a code change; a sent quotation keeps the rate it was sent with.',
           'The quotation states the commercial terms the whole chain inherits: service activates only after payment + invoice (clause 3), must be activated within 12 months of the invoice date (clause 4), and runs 30 days once activated (clause 5).',
         ],
         states: [
-          'Draft (editable)',
-          'Pending approval (discount over threshold)',
-          'Sent (immutable, awaiting the customer — reached via platform Send or "Mark as sent"; this is the state that puts the deal on the pipeline)',
-          'Accepted (one option chosen)',
-          'Rejected',
-          'Expired (past expiry date)',
-          'Superseded (replaced by a newer version)',
-        ],
-        sections: [
+          'Draft (editable · no pipeline presence · may carry an "awaiting discount approval" flag)',
+          'Sent (immutable, awaiting the customer — via platform Send or "Mark as sent"; this is what puts the deal on the board at Proposal)',
+          'Sent + offer lapsed (past the expiry date — the flag that forces a human decision)',
+          'Issued to PO (an option was accepted and the Sales order was created from it — terminal success)',
+          'Expired (lapsed and closed out with no PO — terminal until extended or revised)',
+        ],        sections: [
+          {
+            heading: 'What prints on the page — block by block, top to bottom',
+            items: [
+              '1 · Issuer letterhead + logo — CÔNG TY TNHH DAOUKIWOOM INNOVATION / DAOUKIWOOM INNOVATION COMPANY LIMITED, the VN and EN address, https://topdev.vn, and the Saramin logo. From System → Company information (issuer), never typed here.',
+              '2 · "Báo giá bởi / Proposed by" — the signed-in rep’s name + email.',
+              '3 · Title band — "BÁO GIÁ / PROPOSAL" with Ngày báo giá / Proposal Date and Ngày hết hạn / Expiry Date.',
+              '4 · Thông tin khách hàng / Client information — client name, email, phone.',
+              '5 · Thông tin xuất hóa đơn VAT / Billing information — company legal name, Địa chỉ ĐKKD, Mã số thuế. Read from the company record.',
+              '6 · One line-item table PER OPTION — STT · Dịch vụ · Đơn vị tính · Số lượng · Đơn giá · Giảm giá · Tổng giá.',
+              '7 · Per option: Thuế GTGT (8%), Tổng đơn hàng sau thuế VAT, and Bằng chữ / In words in both languages.',
+              '8 · Per option: "Quyền lợi gói … trên TopDev.vn" — the numbered benefit list, composed from the catalog.',
+              '9 · Điều khoản và điều kiện / Terms & Conditions — the 6 numbered bilingual clauses below.',
+              '10 · Signature block — "Đại diện TopDev", the date in VN + EN, and Authorized Signature.',
+            ],
+          },
           {
             heading: 'Terms & Conditions printed on every quotation (bilingual, from the client’s PDF)',
             items: [
@@ -723,7 +863,7 @@ export const crm: BuildModule = {
             { name: 'proposalDate / expiryDate', type: 'date', required: true },
             { name: 'clientName / clientEmail / clientPhone', type: 'string' },
             { name: 'billingName / billingAddress / taxCode', type: 'string', required: true, notes: 'snapshot at send time — the e-invoice must match what the customer signed off' },
-            { name: 'status', type: 'enum', required: true, notes: 'draft|pending_approval|sent|accepted|rejected|expired|superseded' },
+            { name: 'status', type: 'enum', required: true, notes: 'draft|sent|issued_to_po|expired' },
             { name: 'acceptedOptionId', type: 'uuid?', notes: 'null until the customer picks' },
             { name: 'termsVersion', type: 'string', required: true },
             { name: 'vatRate', type: 'decimal', required: true, notes: 'snapshot, e.g. 0.08' },
@@ -807,6 +947,7 @@ export const crm: BuildModule = {
       name: 'Purchase order',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      mockup: 'admin-purchase-orders',
       notes: 'PO → payment → invoice → contract cluster needs backend build together if in launch scope. NAMING: in standard B2B the customer issues the PO to us; the document WE send back is an Order Confirmation / Sales Order. Modelled here as one Sales Order record that can also hold the customer’s own PO number + file, so both practices are covered.',
       detail: {
         description:
@@ -899,6 +1040,80 @@ export const crm: BuildModule = {
           'Do we send an Order Confirmation document, or do we only ever wait for the customer’s PO?',
           'Is an internal approval needed before an order is sent, or is quotation approval enough?',
           'Standard payment term — always 100% in advance, or are instalments real?',
+        ],
+      },
+    },
+    // 4 · Sign-ups ────────────────────────────────────────────────────────────
+    {
+      name: 'Sign-ups (inbound triage)',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      notes: 'Inbound self-registrations from the Company site are LEAD CAPTURE, not provisioning. Every row must be resolved against the existing company list before anything is created.',
+      mockup: 'crm-signups',
+      detail: {
+        description:
+          'A triage inbox for people who register themselves on the Company site. Nothing is provisioned and no account is created from a sign-up — each row is matched against the existing company list and then resolved into exactly one of four outcomes. This is the guard that stops the company list filling with duplicates and stops a stranger being handed an existing customer’s account.',
+        userStory:
+          'As a sales/ops user, I want every inbound sign-up matched against the companies we already have, so that a new one becomes a lead, a known one is merged, and someone from an existing customer becomes a user of that account instead of a second company.',
+        uiFields: [
+          {
+            group: 'Sign-up row',
+            items: [
+              { name: 'personName', type: 'string', required: true },
+              { name: 'email', type: 'email', required: true, notes: 'the matching key after tax code — a public domain can never auto-match' },
+              { name: 'phone', type: 'string' },
+              { name: 'companyNameTyped', type: 'string', required: true, notes: 'what the person typed — NOT yet a company record' },
+              { name: 'taxCode (MST)', type: 'string', notes: 'strongest matching key when supplied' },
+              { name: 'matchResult', type: 'derived', notes: 'No match · Matches lead · Matches customer — with the matched record + confidence' },
+              { name: 'receivedAt', type: 'timestamp' },
+              { name: 'status', type: 'enum', notes: 'New → Resolved (with the outcome) / Dismissed' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Matching runs automatically on arrival, in a fixed key order — tax code (MST) → email domain → company name — and the row shows which key matched.',
+          'A public email domain (gmail, yahoo…) never auto-matches; the row is flagged for manual verification.',
+          'The operator resolves each row with one action; the row then shows what it became and links to that record.',
+          'Nothing is provisioned and no login is created by triage itself — a created lead has no account until the normal PO → activation flow runs.',
+        ],
+        rules: [
+          'Exactly four dispositions, one action each: New company → Create lead · Matches an existing lead → Merge into it + notify its owner · Existing customer → Send a join request to that company’s admin · Spam → Dismiss.',
+          'Merge NEVER creates a second company record; the sign-up is attached to the matched lead.',
+          '“Existing customer” must never create a company or an account — the person becomes a user under the existing account, and only that company’s HR Manager (or HQ break-glass) can approve them.',
+          'A row cannot be left half-resolved: it is New until an outcome is recorded.',
+        ],
+        states: ['New (unresolved)', 'No match found', 'Matches a lead', 'Matches a customer', 'Public-domain email — needs manual check', 'Resolved', 'Dismissed as spam'],
+        backend: {
+          dataModel: [
+            { name: 'signupId', type: 'uuid', required: true },
+            { name: 'email', type: 'string', required: true },
+            { name: 'companyNameTyped', type: 'string', required: true },
+            { name: 'taxCode', type: 'string?' },
+            { name: 'matchedCompanyId', type: 'uuid?', notes: 'set by matching, confirmed by a human' },
+            { name: 'outcome', type: 'enum?', notes: 'lead_created | merged | join_requested | dismissed' },
+            { name: 'status', type: 'enum', required: true },
+          ],
+          endpoints: [
+            'GET /admin/crm/signups?status=',
+            'POST /admin/crm/signups/:id/create-lead',
+            'POST /admin/crm/signups/:id/merge { companyId }',
+            'POST /admin/crm/signups/:id/join-request { companyId }',
+            'POST /admin/crm/signups/:id/dismiss { reason }',
+          ],
+          integrations: ['Company site sign-up form (source)', 'CRM Companies (match + create)', 'Account management (join request → company users)', 'Notifications (owner notice / join request)'],
+          notes: 'Matching is server-side and returns the key that matched plus a confidence, so the operator can see WHY a row was matched before accepting it.',
+        },
+        acceptance: [
+          'An inbound sign-up with no match can be turned into a lead that enters the pipeline with customer status New.',
+          'A sign-up matching an existing lead merges into it and notifies that lead’s owner — no duplicate company is created.',
+          'A sign-up from an existing customer produces a join request to that company’s admin, never a second company or account.',
+          'A gmail/yahoo sign-up is never auto-matched and is flagged for manual verification.',
+          'Every resolution is written to the audit log with the actor and the outcome.',
+        ],
+        openQuestions: [
+          'Who owns the triage inbox day to day — a named ops person, or the rep who owns the matched company?',
+          'Should a join request expire if the company’s HR Manager never responds?',
+          'Do we auto-approve a join request when the email domain matches the company’s verified domain?',
         ],
       },
     },

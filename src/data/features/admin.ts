@@ -715,7 +715,7 @@ export const ADMIN_SPECS: FeatureSpec[] = [
           { name: 'Primary contact', type: 'person', notes: 'Name, role, phone, email' },
           { name: 'Lifecycle status', type: 'enum', required: true, notes: 'Lead → Qualified → … → Won → Active customer / Lost' },
           { name: 'Owner', type: 'ref(admin user)', notes: 'Assigned by hand, per company — the corporate tree never propagates it; a parent and its subsidiary may belong to different reps' },
-          { name: 'Linked account', type: 'ref(account)', notes: 'Set at activation; empty while still a prospect' },
+          { name: 'Linked account', type: 'ref(account)', notes: 'Set at activation; empty until then — independent of customer status' },
           { name: 'Linked company profile', type: 'ref(company)', notes: 'Set only if the customer posts jobs' },
         ],
       },

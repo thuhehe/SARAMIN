@@ -457,6 +457,7 @@ export const bannersPopups: BuildModule = {
       name: 'Display popup',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
+      mockup: 'js-home',
       detail: {
         description:
           'The jobseeker-site delivery of at most one popup per page view. The client asks the server "is there a popup for me here?" and renders whatever single popup comes back — the audience match, the frequency cap and the priority contest are all decided server-side, so the cap cannot be defeated by clearing local state alone.',

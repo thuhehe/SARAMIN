@@ -87,6 +87,7 @@ export const adminAccess: BuildModule = {
       name: 'Roles & permissions',
       site: 'Admin',
       scope: ['BE', 'FE', 'UI'],
+      ready: true,
       notes: 'Step 1 of the operator flow — a role must exist before it can be assigned. A role is a permission tree over every admin page, grouped by module.',
       mockup: 'admin-roles',
       detail: {
@@ -159,6 +160,7 @@ export const adminAccess: BuildModule = {
       name: 'Operators (users)',
       site: 'Admin',
       scope: ['BE', 'FE', 'UI'],
+      ready: true,
       notes: 'HQ staff logins. Create → assign a role → send invite → the operator sets their own password. Pending until activated, then Active.',
       mockup: 'admin-users',
       detail: {

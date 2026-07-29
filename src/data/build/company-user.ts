@@ -328,7 +328,7 @@ export const companyUser: BuildModule = {
           'The page renders and reads correctly with zero open jobs — companies between campaigns are the normal case, not an edge case.',
         ],
         rules: [
-          'One public page per company, and only for activated customers — a CRM prospect is never publicly visible.',
+          'One public page per company, and only for activated customers — a company that has not been activated is never publicly visible.',
           'A Job Posting customer must have a Published page before any of its jobs can go live.',
           'Publishing requires logo, display name, industry, at least one location and a VI introduction.',
           'Only Open + Exposure On jobs appear; Draft, Scheduled, Closed and hidden jobs never do.',

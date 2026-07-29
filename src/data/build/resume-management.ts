@@ -506,6 +506,7 @@ export const resumeManagement: BuildModule = {
       name: 'Resume list',
       site: 'Companies',
       scope: ['BE', 'FE', 'UI'],
+      mockup: 'co-resume-search',
       detail: {
         description:
           'The paid CV-search feature (Phase-1 flow #3): an employer buys a package, searches our pool of CVs by criteria, sees matching results with details LOCKED, then unlocks a candidate to view the full CV and contact them. ' +

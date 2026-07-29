@@ -701,7 +701,7 @@ export const productsPackages: BuildModule = {
           'A percent discount must have either a max discount amount or an explicit sign-off, so it cannot be unbounded.',
           'Promotions are not stackable unless explicitly marked so; the default is one per order.',
           'A code that has ever been redeemed cannot be renamed or have its discount changed — issue a new code instead.',
-          '"New customers only" resolves against the CRM customer status (never invoiced = Prospect), not against the account creation date.',
+          '"New customers only" resolves against the CRM customer status — New means never invoiced — not against the account creation date.',
           'Only Draft promotions can be deleted; anything redeemed is kept for reporting.',
         ],
         states: [

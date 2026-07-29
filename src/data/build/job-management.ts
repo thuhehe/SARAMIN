@@ -78,6 +78,8 @@ export const jobManagement: BuildModule = {
       name: 'Create job',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-job-create',
       detail: {
         description:
           'Admin-side job create / edit form. HQ staff can post a job on behalf of any company (data-entry / concierge posting) and it is the same Job entity the Company site writes to. Publishing goes straight to Open (or Schedule) — there is no approval gate on either surface.',
@@ -234,6 +236,7 @@ export const jobManagement: BuildModule = {
       name: 'Job list',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      mockup: 'admin-job-list',
       detail: {
         description:
           'HQ master list of every job across all companies for oversight: filter, view, edit, close, or take down (Exposure) any posting. No approval queue — company posts go live directly.',
