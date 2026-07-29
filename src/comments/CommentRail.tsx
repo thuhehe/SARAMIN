@@ -365,7 +365,9 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
   return (
     <aside
       {...{ [NO_COMMENT_ATTR]: true }}
-      className="fixed right-0 top-0 z-40 flex h-full w-[340px] flex-col border-l border-line bg-canvas shadow-2xl"
+      // Width comes from `--comment-rail-w` in index.css because the page
+      // reserves exactly this much room while the rail is open.
+      className="fixed right-0 top-0 z-40 flex h-full w-[var(--comment-rail-w)] flex-col border-l border-line bg-canvas shadow-2xl"
     >
       <header className="flex items-center gap-2 border-b border-line bg-surface px-4 py-3">
         <MessageSquare className="h-4 w-4 text-brand" />

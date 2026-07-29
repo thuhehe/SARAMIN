@@ -18,6 +18,14 @@
 
 :root {
   color-scheme: light;
+
+  /*
+   * Width of the comment rail. Declared here because two places need to
+   * agree on it: the rail sets its own width, and the page reserves the
+   * same amount of room on the right while it's open (see `Layout` in
+   * App.tsx). Change it here and both follow.
+   */
+  --comment-rail-w: 340px;
 }
 
 html,

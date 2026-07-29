@@ -68,6 +68,17 @@ interface CommentsContextValue {
   completeMemberSignIn: (search: string) => Promise<string>
   /** False when this build has no OAuth client id — passcode only. */
   memberSignInAvailable: boolean
+  /** Whether the reader has asked for the rail. */
+  railOpen: boolean
+  setRailOpen: (open: boolean) => void
+  /**
+   * Whether the rail is actually on screen. Lives here rather than in the
+   * rail because the *page* needs it too: the rail is fixed-position, so
+   * without the page reserving room for it, it covers the right edge of
+   * whatever you were reading. One value, so the room and the rail can
+   * never disagree.
+   */
+  railVisible: boolean
   signOut: () => void
   post: (input: {
     body: string
@@ -108,6 +119,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<ShareMember | null>(session.member.get())
   const [name, setNameState] = useState<string | null>(session.displayName.get())
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [railOpen, setRailOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Bumping this forces the effect below to re-run — used after every
@@ -438,6 +450,11 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       signInAsMember,
       completeMemberSignIn,
       memberSignInAvailable: oauth.memberSignInConfigured,
+      railOpen,
+      setRailOpen,
+      // The dialog stands in for the rail until there's a session, so the
+      // page shouldn't reserve room for a rail that isn't there yet.
+      railVisible: railOpen && status === 'ready',
       signOut: signOutAll,
       post,
       setResolved,
@@ -457,6 +474,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       setName,
       activeId,
       jumpTo,
+      railOpen,
       error,
       unlock,
       signInAsMember,
