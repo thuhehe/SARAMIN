@@ -12,8 +12,10 @@ import { UnlockDialog } from './UnlockDialog'
  * turned comments on.
  */
 export function CommentsLayer() {
-  const { status, allThreads, activeId } = useComments()
-  const [railOpen, setRailOpen] = useState(false)
+  // `railOpen` lives in the provider: the page reads it too, so it can
+  // reserve room instead of letting the fixed rail cover the content.
+  const { status, allThreads, activeId, railOpen, setRailOpen, railVisible } =
+    useComments()
   const [unlocking, setUnlocking] = useState(false)
 
   // Clicking a highlight in the page opens the rail on that thread.
@@ -64,9 +66,7 @@ export function CommentsLayer() {
         </button>
       )}
 
-      {railOpen && status === 'ready' && (
-        <CommentRail onClose={() => setRailOpen(false)} />
-      )}
+      {railVisible && <CommentRail onClose={() => setRailOpen(false)} />}
 
       {(unlocking || (railOpen && status !== 'ready')) && (
         <UnlockDialog

@@ -21,7 +21,7 @@ import { AdminWireframe } from './pages/AdminWireframe'
 import { ModuleDetail, FeatureDetail } from './pages/ModuleDetail'
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
-import { CommentsProvider } from './comments/CommentsProvider'
+import { CommentsProvider, useComments } from './comments/CommentsProvider'
 import { CommentableRoot } from './comments/CommentableRoot'
 import { CommentsLayer } from './comments/CommentsLayer'
 import { OAuthCallback } from './comments/OAuthCallback'
@@ -133,9 +133,22 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
 function Layout() {
   useScrollTopOnRoute()
   const [navOpen, setNavOpen] = useState(false)
+  const { railVisible } = useComments()
 
   return (
-    <div className="min-h-screen p-3">
+    /*
+     * The comment rail is fixed to the right edge, so the page has to give
+     * back that width or the rail simply covers whatever is under it — on a
+     * wide admin table that means losing the last four columns and the
+     * primary action. Only from `lg` up: below that the rail is most of the
+     * viewport and there is no room to reflow into, so it stays an overlay.
+     */
+    <div
+      className={[
+        'min-h-screen p-3 transition-[padding] duration-150',
+        railVisible ? 'lg:pr-[calc(var(--comment-rail-w)+0.75rem)]' : '',
+      ].join(' ')}
+    >
       {/* mobile top bar */}
       <div className="lg:hidden flex items-center gap-3 mb-3 rounded-xl border border-line bg-surface px-4 py-2.5">
         <button onClick={() => setNavOpen(true)} className="text-ink">
