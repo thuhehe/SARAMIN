@@ -4541,13 +4541,23 @@ function AdminMembership() {
             ]}
             rows={TIER_BENEFITS.map((b) => [
               <span className="min-w-0 truncate text-[12px] text-ink/80" title={b.name}>{b.name}</span>,
+              // Every cell is an input, including the not-granted ones. An EMPTY input is
+              // how "this tier does not get this benefit" is expressed — the same encoding
+              // as the absent MembershipBenefitGrant row — so it can never be confused
+              // with a zero-value benefit.
               ...TIERS.map((t) => (
-                <span className={cn('tabular-nums', b.by[t.key] === '—' ? 'text-faint' : 'text-ink')}>{b.by[t.key]}</span>
+                <input
+                  readOnly
+                  value={b.by[t.key] === '—' ? '' : b.by[t.key]}
+                  placeholder="—"
+                  className="w-full rounded-md border border-line bg-surface px-2 py-1 text-right text-[11.5px] tabular-nums text-ink placeholder:text-faint"
+                />
               )),
             ])}
           />
           <p className="text-[10.5px] leading-relaxed text-faint">
-            Ô <b>“—”</b> nghĩa là hạng đó <b>không có</b> quyền lợi này — là một câu trả lời, không phải dữ liệu còn thiếu.
+            Ô <b>để trống</b> nghĩa là hạng đó <b>không có</b> quyền lợi này — là một câu trả lời, không phải dữ liệu còn thiếu,
+            và không bao giờ được hiểu thành “quyền lợi trị giá 0”.
           </p>
         </JobGroup>
       </div>

@@ -1,7 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
-import { BUILD_MODULES, SITE_META, SCOPE_META } from '@/data/buildModules'
-import type { BuildFeature, Scope, FeatureDetail, Requirement, ReqTable } from '@/data/buildModules'
+import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
+import type { BuildFeature, FeatureDetail, Requirement, ReqTable } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { cn } from '@/lib/utils'
@@ -81,25 +81,9 @@ function SiteTag({ site }: { site: BuildFeature['site'] }) {
   )
 }
 
-/* BE and FE are deliberately not rendered: every feature needs both, so the pills
-   carried no information and only added noise to each row. UI still does — it marks
-   the features that need design work before they can be built. */
-function ScopePills({ scope }: { scope: Scope[] }) {
-  const shown = scope.filter((s) => s !== 'BE' && s !== 'FE')
-  if (!shown.length) return null
-  return (
-    <span className="flex gap-1">
-      {shown.map((s) => (
-        <span
-          key={s}
-          className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold', SCOPE_META[s].pill)}
-        >
-          {s}
-        </span>
-      ))}
-    </span>
-  )
-}
+/* No scope pills anywhere: BE and FE carried no information (every feature needs
+   both), and the UI pill duplicated what the header already said. Scope still lives
+   on the data — it is just not rendered on these pages. */
 
 /* ── Rich per-feature detail renderers ────────────────────────────────────── */
 /* Every feature-detail section is one CARD with a titled header — the same shape as
@@ -374,12 +358,6 @@ export function FeatureDetail() {
         <SiteTag site={f.site} />
         <h1 className="text-[24px] font-bold tracking-tight">{f.name}</h1>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className={cn('rounded-md border px-2 py-0.5 text-[11.5px] font-medium', SITE_META[f.site].pill)}>
-          {SITE_META[f.site].label}
-        </span>
-        <ScopePills scope={f.scope} />
-      </div>
 
       {/* Screen UI — on top, above the requirement detail.
           This is NOT a second copy of the screen: resolveScreen returns the very
@@ -431,10 +409,10 @@ export function FeatureDetail() {
       {/* rich per-feature detail */}
       {f.detail && <FeatureDetailBlocks d={f.detail} />}
 
-      {/* module context */}
-      <SpecBlock title={`Module context · ${m.title}`} note="rules that apply to every feature here">
-        <Requirements items={m.requirements} dense />
-      </SpecBlock>
+      {/* The "Module context" block used to repeat m.requirements at the foot of
+          every feature page. Removed: the module page is where those rules live, and
+          a copy on each of its features meant the same text was read (and reviewed)
+          N times. The breadcrumb at the top links straight back to it. */}
 
       {/* prev / next within the module */}
       <div className="mt-10 flex items-stretch justify-between gap-3 border-t border-line pt-5">
