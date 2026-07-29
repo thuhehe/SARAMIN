@@ -19,16 +19,68 @@ export const adminAccess: BuildModule = {
   title: 'Admin roles & operators',
   owner: 'Luong',
   requirements: [
-    'Internal HQ operators only — distinct from company (employer) users. An operator is a Saramin staff member with access to the admin console; a company user is an employer’s HR. The two share the same invite pattern but are separate populations.',
-    'Access model: a ROLE defines permissions per admin page — None / Read (view) / Read & write (create · edit · delete). Each operator is assigned exactly one role. A user only sees the nav items and actions their role allows.',
-    'Setup order (enforced): 1) define the role first, 2) create the operator (name + email), 3) assign a saved role, 4) send the invite. The operator clicks the link and sets their OWN password — no one types it for them.',
-    'Statuses & invite flow are the SAME as the company HR Manager / HR Specialist invite: Pending (invited, not yet activated) → Active (link clicked, password set). One consistent pattern across the product.',
-    'Roles are fully team-managed — there is no locked "system" role type. Sensible defaults are seeded but are ordinary editable roles. A role cannot be deleted while operators are still assigned to it, and at least one role must always keep full access so no one is locked out.',
-    'Remove = disable, never a hard delete, so the audit trail stays intact. Every role/operator change is written to the audit log.',
-    'AUDIT LOGGING — everything is logged platform-wide: who (an operator, a company user, a jobseeker, or the System) changed what, when, and the before → after value. Applies to every create / update / delete / status change and to system actions (auto-expiry, auto-publish, provisioning, notifications).',
-    'The log is exposed at three scopes, no overlap: (1) System → Audit log = the whole firehose, searchable and filterable; (2) a per-page History drawer = recent activity in that section, reachable from any admin page; (3) a record’s Activity / History = that one record’s trail, shown on the record itself (e.g. the company account’s Overview tab).',
-    'The log is immutable and exportable — entries are never edited or deleted, including when the actor is disabled.',
-    'PII-view actions are always audited even though nothing changed — opening a resume / unlocking a CV is recorded with the actor, the candidate and the timestamp.',
+    {
+      label: 'Operators vs company users — two separate populations',
+      table: {
+        cols: ['Population', 'Who they are', 'Where they work'],
+        rows: [
+          ['Operator', 'Saramin staff (internal HQ)', 'Admin console'],
+          ['Company user', 'An employer’s HR', 'Company site'],
+        ],
+      },
+      items: ['They share the same invite pattern, but are never the same list.'],
+    },
+    {
+      label: 'Access model — role per admin page',
+      text: 'A ROLE defines permissions per admin page. Each operator is assigned exactly one role, and only ever sees the nav items and actions that role allows.',
+      table: {
+        cols: ['Permission', 'Means'],
+        rows: [
+          ['None', 'The page is not even in the nav'],
+          ['Read', 'View only'],
+          ['Read & write', 'Create · edit · delete'],
+        ],
+      },
+    },
+    {
+      label: 'Setup order (enforced)',
+      table: {
+        cols: ['Step', 'Action'],
+        rows: [
+          ['1', 'Define the role first'],
+          ['2', 'Create the operator (name + email)'],
+          ['3', 'Assign a saved role'],
+          ['4', 'Send the invite'],
+        ],
+      },
+      warn: 'The operator clicks the link and sets their OWN password — no one types a password for them. Statuses match the company HR invite exactly: Pending (invited) → Active (link clicked, password set).',
+    },
+    {
+      label: 'Roles are team-managed',
+      text: 'There is no locked “system” role type — sensible defaults are seeded but are ordinary editable roles.',
+      items: [
+        'A role cannot be deleted while operators are still assigned to it.',
+        'At least one role must always keep full access, so no one can be locked out.',
+        'Remove = disable, never a hard delete, so the audit trail stays intact. Every role/operator change is logged.',
+      ],
+    },
+    {
+      label: 'Audit logging — everything, platform-wide',
+      text: 'Who (operator · company user · jobseeker · System) changed what, when, and the before → after value. Covers every create / update / delete / status change and system actions (auto-expiry, auto-publish, provisioning, notifications).',
+      table: {
+        cols: ['Scope', 'Shows', 'Reached from'],
+        rows: [
+          ['System → Audit log', 'The whole firehose — searchable, filterable', 'System menu'],
+          ['Per-page History drawer', 'Recent activity in that section', 'Any admin page'],
+          ['Record Activity / History', 'That one record’s trail', 'The record itself (e.g. company Overview)'],
+        ],
+      },
+      items: [
+        'The three scopes must not overlap.',
+        'The log is immutable and exportable — entries are never edited or deleted, including when the actor is disabled.',
+        'PII-view actions are audited even though nothing changed: opening a resume / unlocking a CV records actor + candidate + timestamp.',
+      ],
+    },
   ],
   features: [
     {

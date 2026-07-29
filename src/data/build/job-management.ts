@@ -12,19 +12,65 @@ export const jobManagement: BuildModule = {
   title: 'Job management',
   owner: 'Luan',
   requirements: [
-    'Create a job on Admin AND on the Company site — company users can now post jobs themselves (previously draft-only).',
-    'Company is selected via the Company API (company ID) on Admin; fixed to the user’s own company on the Company site.',
-    'Bilingual job content (Vietnamese + English) for job title, role & responsibility, skills & qualifications and benefits, entered via a per-field language tab (VI / EN / KO on the same row as the field).',
-    'Vietnamese is the default and fallback language (always required); other languages (English / Korean) are optional — if a translation is missing, the Vietnamese value is shown.',
-    'Job status model: Draft → Schedule (publishes at a future time) → Open (live on the jobseeker site) → Closed (post expired). Schedule auto-publishes to Open at the chosen time; Open auto-moves to Closed at the deadline.',
-    'Exposure status is a separate On / Off switch (independent of status): an Open job can be hidden from jobseekers by turning Exposure Off, without changing its status. Only Open + Exposure On is publicly visible.',
-    'Publish action offers "Post now" (→ Open) or "Schedule for later…" (→ Schedule, with a date/time picker).',
-    'Posting package per job: Free · Basic · Basic plus · Distinction (Free + paid packages) — drives visibility / ranking.',
-    'Extra structured fields: experience range, job level (Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above), job type (Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other), skills, salary (from–to + currency).',
-    'Job taxonomy is MASTER DATA, not free text: a two-level Job Category → Role (job title) list, maintained on Admin (System → Job categories & roles). The job form’s Category and Role dropdowns and the jobseeker search filters both read this list, so adding a role is a data change, not a code change. Note: a job "Role" (e.g. Software Developer) is a job title — unrelated to the admin RBAC roles in Admin roles & operators.',
-    'Job list on Admin (all jobs) and Company (own jobs) with status + filters.',
-    'Jobseeker: job lists on the Homepage and Search-result page, plus the Job detail page.',
-    'One shared Job entity + one status lifecycle across all three surfaces: Draft → Schedule → Open → Closed. No HQ approval gate — company posts go live directly, like Admin.',
+    {
+      label: 'Jobs are posted from Admin AND the Company site',
+      text: 'Company users can now post jobs themselves (previously draft-only). One shared Job entity and one status lifecycle across all three surfaces.',
+      table: {
+        cols: ['Surface', 'Company field', 'Sees'],
+        rows: [
+          ['Admin', 'Selected via the Company API (company ID)', 'All jobs'],
+          ['Company site', 'Fixed to the user’s own company', 'Own jobs only'],
+          ['Jobseeker', '—', 'Homepage + search results + job detail'],
+        ],
+      },
+      warn: 'No HQ approval gate — company posts go live directly, exactly like Admin posts.',
+    },
+    {
+      label: 'Job status lifecycle',
+      table: {
+        cols: ['Status', 'Means', 'Moves on when'],
+        rows: [
+          ['Draft', 'Not published', 'Publish is pressed'],
+          ['Schedule', 'Will publish at a future time', 'Auto-publishes to Open at the chosen time'],
+          ['Open', 'Live on the jobseeker site', 'Auto-moves to Closed at the deadline'],
+          ['Closed', 'Post expired', '—'],
+        ],
+      },
+      items: ['The Publish action offers “Post now” (→ Open) or “Schedule for later…” (→ Schedule, with a date/time picker).'],
+    },
+    {
+      label: 'Exposure is a SEPARATE On / Off switch',
+      text: 'Independent of status: an Open job can be hidden from jobseekers by turning Exposure Off, without changing its status.',
+      warn: 'Only Open + Exposure On is publicly visible.',
+    },
+    {
+      label: 'Bilingual content, per-field language tab',
+      text: 'VI / EN / KO tabs sit on the same row as the field, for job title, role & responsibility, skills & qualifications and benefits.',
+      table: {
+        cols: ['Language', 'Required?', 'Behaviour'],
+        rows: [
+          ['Vietnamese', 'Always required', 'The default AND the fallback'],
+          ['English / Korean', 'Optional', 'If a translation is missing, the Vietnamese value is shown'],
+        ],
+      },
+    },
+    {
+      label: 'Structured job fields',
+      table: {
+        cols: ['Field', 'Values'],
+        rows: [
+          ['Posting package', 'Free · Basic · Basic plus · Distinction — drives visibility / ranking'],
+          ['Job level', 'Intern/Student · Fresher/Entry · Experienced (non-manager) · Manager · Director and above'],
+          ['Job type', 'Full-time · Part-time · Internship · Online · Freelancer · Seasonal · Other'],
+          ['Other', 'Experience range · skills · salary (from–to + currency)'],
+        ],
+      },
+    },
+    {
+      label: 'Job taxonomy is MASTER DATA, not free text',
+      text: 'A two-level Job Category → Role (job title) list, maintained on Admin (System → Job categories & roles). The job form’s dropdowns and the jobseeker search filters both read this list, so adding a role is a data change, not a code change.',
+      warn: 'A job “Role” (e.g. Software Developer) is a job TITLE — unrelated to the admin RBAC roles in Admin roles & operators.',
+    },
   ],
   features: [
     // 0 ──────────────────────────────────────────────────────────────────────

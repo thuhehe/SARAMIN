@@ -61,6 +61,25 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'CRM',
+    icon: <Handshake className="h-4 w-4" />,
+    // Only the two documents sales itself works as a queue get a global list:
+    // Quotation (drives the Proposal stage) and Purchase order (the "won" record
+    // + the anchor for the churn clock). Payments, VAT e-invoices and Contracts
+    // are per-company paperwork — reached from the company record, not the nav.
+    items: [
+      { label: 'Companies', specId: 'admin-company-list' },
+      { label: 'Pipeline', specId: 'admin-company-pipeline' },
+      { label: 'Quotations', specId: 'admin-quotes' },
+      { label: 'Purchase order', specId: 'admin-purchase-orders' },
+      // Last in the group: inbound self-registrations are a triage inbox that
+      // feeds the pipeline, not a step in the document flow above it.
+      { label: 'Sign-ups', specId: 'admin-signups' },
+    ],
+  },
+  {
+    // Sits below CRM: the catalogue is the reference data the CRM's selling
+    // documents draw on, so it reads after the flow that consumes it.
     label: 'Product setting',
     icon: <CreditCard className="h-4 w-4" />,
     // Selling documents (quotation → sales order → payment → invoice) all live in
@@ -69,24 +88,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Products', specId: 'admin-catalog' },
       { label: 'Packages', specId: 'admin-bundles' },
       { label: 'Promotions', specId: 'admin-promotions' },
-    ],
-  },
-  {
-    label: 'CRM',
-    icon: <Handshake className="h-4 w-4" />,
-    // The five document pages are ordered as the quote-to-cash chain runs, so the
-    // nav itself teaches the flow: Quotation → Sales order/PO → Payment →
-    // VAT e-invoice → Contract. Payments sit BEFORE Invoices on purpose — the
-    // customer pays first and the e-invoice is issued after (T&C clause 3).
-    items: [
-      { label: 'Companies', specId: 'admin-company-list' },
-      { label: 'Pipeline', specId: 'admin-company-pipeline' },
-      { label: 'Sign-ups', specId: 'admin-signups' },
-      { label: 'Quotations', specId: 'admin-quotes' },
-      { label: 'Sales orders / PO', specId: 'admin-purchase-orders' },
-      { label: 'Payments', specId: 'admin-payments' },
-      { label: 'Invoices (VAT)', specId: 'admin-invoices' },
-      { label: 'Contracts', specId: 'admin-contracts' },
     ],
   },
   {
@@ -145,11 +146,6 @@ export function AdminWireframe() {
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">HQ Admin — navigation & shell</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9),
-          a top bar with global search + language + account, and a standard list/detail content area. Click any nav
-          item to preview its page and jump to the spec. Status dots double as a live build-status map.
-        </p>
       </div>
 
       {/* ── Wireframe frame ─────────────────────────────────────────────── */}
@@ -278,30 +274,6 @@ export function AdminWireframe() {
       </div>
 
       {/* Rationale */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <RationaleCard title="Why grouped this way">
-          Eight domain groups map 1:1 to admin modules B1–B9. Recruitment (Jobs · Applicants · Resumes) is
-          lifted to the top because it is the daily-use core; System settings sinks to the bottom.
-        </RationaleCard>
-        <RationaleCard title="Shell conventions">
-          Persistent top bar (global search, VI/EN/KO switch, notifications, account). Every module is a
-          list → detail → create flow with a consistent New / Filter / search toolbar.
-        </RationaleCard>
-        <RationaleCard title="Permission-aware">
-          Groups and items are gated by the role’s resource:action grants — a user only sees what their
-          role allows. Needs the role matrix signed off (see System → Roles).
-        </RationaleCard>
-        <RationaleCard title="Status as a map">
-          The dot on each nav item is its real build status, so this doubles as an at-a-glance readiness
-          view: green = on the real backend, violet = prototype DB, red = empty seam.
-        </RationaleCard>
-        <RationaleCard title="Audit logging (3 layers)">
-          Everything is logged — who (user or System) changed what, when, before → after. Three scopes,
-          no overlap: <b>System → Audit log</b> = the whole firehose; the per-page <b>History</b> button = recent
-          activity in that section; a record's <b>Activity</b> tab (in its detail drawer) = that one record's trail.
-          PII-view actions (e.g. opening a resume) are always recorded.
-        </RationaleCard>
-      </div>
     </div>
   )
 }
@@ -350,11 +322,3 @@ function SidebarGroup({
   )
 }
 
-function RationaleCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-[12.5px] font-semibold mb-1">{title}</p>
-      <p className="text-[12.5px] leading-relaxed text-ink/70">{children}</p>
-    </div>
-  )
-}

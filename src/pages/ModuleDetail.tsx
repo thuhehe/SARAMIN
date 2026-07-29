@@ -1,11 +1,78 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META, SCOPE_META } from '@/data/buildModules'
-import type { BuildFeature, Scope, FeatureDetail } from '@/data/buildModules'
+import type { BuildFeature, Scope, FeatureDetail, Requirement, ReqTable } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen } from '@/pages/screenRegistry'
 import { Browser } from '@/components/wire'
 import { cn } from '@/lib/utils'
+
+/* ── Requirements ─────────────────────────────────────────────────────────────
+   A requirement renders either as one bullet (plain string) or as a labelled
+   card with an optional table / sub-points. Tables are the point: a rule set with
+   more than three entries is far faster to read as rows than as a paragraph. */
+function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
+  const tmpl = `minmax(120px, 0.9fr) ${t.cols.slice(1).map(() => '1fr').join(' ')}`
+  return (
+    <div className="mt-2 overflow-x-auto rounded-lg border border-line">
+      <div
+        style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+        className={cn('grid gap-x-4 bg-canvas/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted', dense && 'text-[10px]')}
+      >
+        {t.cols.map((c, i) => <span key={i}>{c}</span>)}
+      </div>
+      {t.rows.map((r, ri) => (
+        <div
+          key={ri}
+          style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+          className={cn('grid gap-x-4 border-t border-line-soft px-3 py-1.5', dense ? 'text-[11.5px]' : 'text-[12.5px]')}
+        >
+          {r.map((cell, ci) => (
+            <span key={ci} className={ci === 0 ? 'font-medium text-ink' : 'text-ink/75'}>{cell}</span>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean }) {
+  return (
+    <div className={dense ? 'space-y-2' : 'space-y-2.5'}>
+      {items.map((r, i) =>
+        typeof r === 'string' ? (
+          <div key={i} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12.5px] text-muted' : 'text-[13.5px] text-ink/80')}>
+            <span className={cn('mt-2 h-1 w-1 shrink-0 rounded-full', dense ? 'bg-faint' : 'bg-brand')} />
+            {r}
+          </div>
+        ) : (
+          <div key={i} className={cn('rounded-xl border border-line bg-surface', dense ? 'px-3 py-2.5' : 'px-4 py-3')}>
+            <p className={cn('font-semibold text-ink', dense ? 'text-[12px]' : 'text-[13px]')}>{r.label}</p>
+            {r.text && (
+              <p className={cn('mt-1 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}>{r.text}</p>
+            )}
+            {r.table && <ReqTableView t={r.table} dense={dense} />}
+            {r.items && (
+              <ul className="mt-2 space-y-1">
+                {r.items.map((it, j) => (
+                  <li key={j} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[12.5px] text-ink/75')}>
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-faint" />
+                    {it}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {r.warn && (
+              <p className={cn('mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 leading-relaxed text-amber-800', dense ? 'text-[11.5px]' : 'text-[12px]')}>
+                ⚠️ {r.warn}
+              </p>
+            )}
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
 
 function SiteDot({ site }: { site: BuildFeature['site'] }) {
   return <span className={cn('h-2 w-2 shrink-0 rounded-full', SITE_META[site].dot)} />
@@ -19,10 +86,15 @@ function SiteTag({ site }: { site: BuildFeature['site'] }) {
   )
 }
 
+/* BE and FE are deliberately not rendered: every feature needs both, so the pills
+   carried no information and only added noise to each row. UI still does — it marks
+   the features that need design work before they can be built. */
 function ScopePills({ scope }: { scope: Scope[] }) {
+  const shown = scope.filter((s) => s !== 'BE' && s !== 'FE')
+  if (!shown.length) return null
   return (
     <span className="flex gap-1">
-      {scope.map((s) => (
+      {shown.map((s) => (
         <span
           key={s}
           className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold', SCOPE_META[s].pill)}
@@ -35,11 +107,17 @@ function ScopePills({ scope }: { scope: Scope[] }) {
 }
 
 /* ── Rich per-feature detail renderers ────────────────────────────────────── */
-function SpecBlock({ title, children }: { title: string; children: React.ReactNode }) {
+/* Every feature-detail section is one CARD with a titled header — the same shape as
+   the requirement blocks, so a long spec reads as a stack of labelled groups
+   instead of an undifferentiated wall of headings and text. */
+function SpecBlock({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) {
   return (
-    <section className="mt-6">
-      <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-2.5">{title}</h2>
-      {children}
+    <section className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/40 px-4 py-2">
+        <h2 className="text-[12px] font-bold uppercase tracking-widest text-muted">{title}</h2>
+        {note && <span className="text-[11px] text-faint">{note}</span>}
+      </div>
+      <div className="px-4 py-3">{children}</div>
     </section>
   )
 }
@@ -134,11 +212,15 @@ function BackendBlock({ b }: { b: BackendSpec }) {
 function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
   return (
     <>
-      {d.description && <p className="mt-5 text-[14px] leading-relaxed text-ink/80">{d.description}</p>}
-      {d.userStory && (
-        <p className="mt-3 rounded-r-lg border-l-2 border-brand bg-brand-soft/50 px-3 py-2 text-[13px] italic text-ink/75">
-          {d.userStory}
-        </p>
+      {(d.description || d.userStory) && (
+        <SpecBlock title="Overview">
+          {d.description && <p className="text-[13.5px] leading-relaxed text-ink/80">{d.description}</p>}
+          {d.userStory && (
+            <p className={cn('rounded-r-lg border-l-2 border-brand bg-brand-soft/50 px-3 py-2 text-[13px] italic text-ink/75', d.description && 'mt-3')}>
+              {d.userStory}
+            </p>
+          )}
+        </SpecBlock>
       )}
       {d.uiFields && (
         <SpecBlock title="UI fields">
@@ -211,7 +293,7 @@ export function ModuleDetail() {
   if (!m) return <Navigate to="/" replace />
 
   return (
-    <div className="max-w-[900px] pb-16">
+    <div className="mx-auto w-full max-w-[1200px] px-6 pb-16 sm:px-8">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Module</p>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <h1 className="text-[26px] font-bold tracking-tight">{m.title}</h1>
@@ -221,17 +303,36 @@ export function ModuleDetail() {
         <span className="text-[11.5px] text-faint">{m.features.length} features</span>
       </div>
 
+      {/* Edge cases first — the awkward real-world shapes this module answers. Pinned
+          above the requirements because it is what a client checks to see whether we
+          understood their business before reading how we built for it. */}
+      {m.edgeCases && m.edgeCases.length > 0 && (
+        <section className="mt-7 overflow-hidden rounded-xl border border-amber-200 bg-amber-50/60">
+          <div className="border-b border-amber-200/70 px-4 py-2">
+            <h2 className="text-[12px] font-bold uppercase tracking-widest text-amber-800">
+              Edge cases covered · trường hợp đặc biệt đã xử lý
+            </h2>
+          </div>
+          <ol className="divide-y divide-amber-200/60">
+            {m.edgeCases.map((e, i) => (
+              <li key={i} className="flex gap-3 px-4 py-3">
+                <span className="mt-[1px] grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-200/80 text-[11px] font-bold text-amber-900">
+                  {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-amber-950">{e.label}</p>
+                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-900/85">{e.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {/* what it delivers */}
       <section className="mt-7">
         <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">What it delivers</h2>
-        <ul className="space-y-2">
-          {m.requirements.map((r, i) => (
-            <li key={i} className="flex gap-2 text-[13.5px] leading-relaxed text-ink/80">
-              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-brand" />
-              {r}
-            </li>
-          ))}
-        </ul>
+        <Requirements items={m.requirements} />
       </section>
 
       {/* feature flow */}
@@ -254,11 +355,6 @@ export function ModuleDetail() {
                 </span>
               </div>
               {f.notes && <p className="mt-1.5 pl-4 text-[12px] leading-relaxed text-muted">{f.notes}</p>}
-              {f.mockup && (
-                <p className="mt-1.5 pl-4 flex items-center gap-1 text-[11px] text-brand">
-                  <ImageIcon className="h-3 w-3" /> UI mockup available
-                </p>
-              )}
             </Link>
           ))}
         </div>
@@ -281,7 +377,7 @@ export function FeatureDetail() {
   const screen = resolveScreen(f.mockup)
 
   return (
-    <div className="max-w-[900px] pb-16">
+    <div className="mx-auto w-full max-w-[1200px] px-6 pb-16 sm:px-8">
       {/* breadcrumb */}
       <div className="mb-4 flex items-center gap-1.5 text-[12px] text-muted">
         <Link to={`/m/${m.id}`} className="inline-flex items-center gap-1 hover:text-brand">
@@ -303,8 +399,7 @@ export function FeatureDetail() {
       </div>
 
       {/* Screen UI — on top, above the requirement detail */}
-      <section className="mt-6">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-3">Screen UI</h2>
+      <SpecBlock title="Screen UI" note={screen ? undefined : 'not wired yet'}>
         {screen ? (
           <Browser url={screen.url ?? 'saramin.vn'}>
             <screen.Comp />
@@ -315,7 +410,7 @@ export function FeatureDetail() {
             <p className="mt-2 text-[13px] text-muted">No screen mockup wired for this feature yet.</p>
           </div>
         )}
-      </section>
+      </SpecBlock>
 
       {f.notes && (
         <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
@@ -328,19 +423,9 @@ export function FeatureDetail() {
       {f.detail && <FeatureDetailBlocks d={f.detail} />}
 
       {/* module context */}
-      <section className="mt-6">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-faint mb-2">
-          Module context · {m.title}
-        </h2>
-        <ul className="space-y-1.5">
-          {m.requirements.map((r, i) => (
-            <li key={i} className="flex gap-2 text-[12.5px] leading-relaxed text-muted">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-faint" />
-              {r}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <SpecBlock title={`Module context · ${m.title}`} note="rules that apply to every feature here">
+        <Requirements items={m.requirements} dense />
+      </SpecBlock>
 
       {/* prev / next within the module */}
       <div className="mt-10 flex items-stretch justify-between gap-3 border-t border-line pt-5">

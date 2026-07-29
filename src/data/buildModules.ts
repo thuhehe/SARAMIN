@@ -14,13 +14,12 @@
  * depth template.
  */
 
-export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail } from './build/types'
+export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail, Requirement, RequirementBlock, ReqTable } from './build/types'
 export { SITE_META, SCOPE_META } from './build/types'
 
 import type { BuildModule } from './build/types'
 import { crm } from './build/crm'
 import { jobseekerUser } from './build/jobseeker-user'
-import { companyUser } from './build/company-user'
 import { adminAccess } from './build/admin-access'
 import { productsPackages } from './build/products-packages'
 import { jobManagement } from './build/job-management'
@@ -32,7 +31,6 @@ import { tools } from './build/tools'
 export const BUILD_MODULES: BuildModule[] = [
   crm,
   jobseekerUser,
-  companyUser,
   adminAccess,
   productsPackages,
   jobManagement,

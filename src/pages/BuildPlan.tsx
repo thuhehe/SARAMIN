@@ -74,7 +74,10 @@ export function BuildPlan() {
                   {m.requirements.map((r, j) => (
                     <li key={j} className="flex gap-2 text-[12.5px] leading-relaxed text-ink/80">
                       <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-faint" />
-                      {r}
+                      {/* blocks collapse to label (+ lead line) in this overview list */}
+                      {typeof r === 'string' ? r : (
+                        <span><b className="font-semibold">{r.label}</b>{r.text ? ` — ${r.text}` : ''}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

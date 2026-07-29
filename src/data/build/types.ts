@@ -60,11 +60,42 @@ export interface BuildFeature {
   detail?: FeatureDetail
 }
 
+/** A small table inside a requirement — the fastest way to read a rule set. */
+export interface ReqTable {
+  cols: string[]
+  rows: string[][]
+}
+
+/**
+ * A requirement is either a plain sentence, or a LABELLED BLOCK — a short title
+ * plus any of: one lead sentence, a table, and a list of sub-points. Blocks exist
+ * so a dense rule (stage meanings, status values, thresholds) can be read as a
+ * table instead of a paragraph. Prefer a block whenever a requirement is longer
+ * than ~2 lines or enumerates more than 3 things.
+ */
+export interface RequirementBlock {
+  label: string
+  text?: string
+  table?: ReqTable
+  items?: string[]
+  /** rendered as a warning-toned callout — for "must never" rules. */
+  warn?: string
+}
+
+export type Requirement = string | RequirementBlock
+
 export interface BuildModule {
   id: string
   title: string
   owner: string
+  /**
+   * The awkward real-world cases this module has an answer for — pinned above the
+   * requirements. This is the section a client scans first to check we understood
+   * their business, so keep each entry to the case and the resolution, not the
+   * mechanism. Omit rather than pad: an empty highlight reads worse than none.
+   */
+  edgeCases?: { label: string; text: string }[]
   /** authored — what the module must deliver (VN-standard). */
-  requirements: string[]
+  requirements: Requirement[]
   features: BuildFeature[]
 }
