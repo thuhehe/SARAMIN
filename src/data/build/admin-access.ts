@@ -81,6 +81,71 @@ export const adminAccess: BuildModule = {
         'PII-view actions are audited even though nothing changed: opening a resume / unlocking a CV records actor + candidate + timestamp.',
       ],
     },
+    {
+      label: 'What the System menu contains',
+      text: 'Everything under System is HQ-only configuration — it changes how the rest of the platform behaves, so it sits behind the strictest role grants.',
+      table: {
+        cols: ['Page', 'What it configures', 'Who needs it'],
+        rows: [
+          ['Users', 'Operator logins + assigned role', 'Super admin'],
+          ['Roles & permissions', 'The permission tree per admin page', 'Super admin'],
+          ['Company information', 'Our own issuer identity on every sales document', 'Finance / super admin'],
+          ['Master data', 'Every reference list (dropdowns + search filters)', 'Operations'],
+          ['Audit log', 'The platform-wide change trail', 'Super admin / compliance'],
+          ['Environment', 'Feature flags', 'Engineering'],
+          ['Departments', 'Internal org reference data', 'Operations'],
+        ],
+      },
+    },
+    {
+      label: 'Company information — the issuer identity (Saramin, not a customer)',
+      text: 'Our own legal identity, set ONCE here and read by every quotation, sales order and VAT invoice. Nobody retypes it per document, and a sent document keeps the version it was sent with.',
+      table: {
+        cols: ['Group', 'Fields'],
+        rows: [
+          ['Legal identity', 'Company name (VI + EN), tax code (MST), address (VI + EN), website'],
+          ['Brand', 'Logo used on the letterhead'],
+          ['Document defaults', 'VAT rate, quotation validity, discount threshold needing approval, quotation / sales-order number formats, support email'],
+          ['Bank details', 'Bank, account number, account name — printed on the order so the customer can pay'],
+        ],
+      },
+      items: [
+        'Bilingual by design: VI and EN both print on the letterhead, so one document serves local and foreign customers.',
+        'The "proposed by" line is the SIGNED-IN rep, not a setting here.',
+        'Changing these values must not retroactively alter documents already issued — documents store a snapshot.',
+      ],
+    },
+    {
+      label: 'Master data — one source of truth for every reference list',
+      text: 'All dropdown / filter vocabularies live here, so the job form, the CV form and the Store search filters can never drift apart. Vietnamese is mandatory; English and Korean are optional.',
+      table: {
+        cols: ['Domain', 'Shape'],
+        rows: [
+          ['Job categories & roles', 'Two-level taxonomy (Category → Role)'],
+          ['Locations', 'Grouped (region → province / city)'],
+          ['Skills', 'Tag set — the canonical list CV extraction and search must resolve to'],
+          ['Industry · Job level · Job type · Education level · Application language · Salary currency', 'Flat lists'],
+        ],
+      },
+      items: [
+        'Each domain feeds the matching form dropdown; an operator can also add a value inline from that dropdown (＋ Create new…) and it is saved back here.',
+        'Adding a value is a DATA change, never a release — this is the same principle as the job taxonomy (see Job management) and the tool rate tables (see Tools).',
+        'A value in use cannot simply vanish: renaming is safe, removing needs a merge/replace path so existing records keep resolving.',
+      ],
+    },
+    {
+      label: 'Environment — feature flags',
+      text: 'Flags gate which surfaces are live and which still read mock data, so a half-finished area can ship dark instead of blocking a release (e.g. store.jobs.realData, store.companies.reviews, crm.purchaseOrders, notifications.zaloZNS).',
+      items: [
+        'Some flags are UI-editable here; others are environment-only and read-only in the console — the page must show which is which.',
+        'Every flag change is audited: a flag flip changes behaviour for real users.',
+      ],
+    },
+    {
+      label: 'Departments — internal org reference data',
+      text: 'The HQ department list (name, member count, lead) used to group operators and to route work.',
+      warn: 'Prototype only — no backend counterpart yet. Confirm with the client whether departments are actually needed in Phase 1, or whether the role on each operator is enough.',
+    },
   ],
   features: [
     {

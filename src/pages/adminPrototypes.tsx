@@ -3755,21 +3755,26 @@ function AdminRoles() {
 }
 
 /* ── System · Users (HQ operators) — create → assign role → invite → status ── */
-type OpUser = { id: number; name: string; email: string; role: string; status: 'Active' | 'Pending' | 'Disabled'; last: string }
+/* Department is the org unit (who they sit with, from System → Departments);
+   role is the RBAC grant set. The two are orthogonal — same department, different
+   roles is normal — so they get their own columns. */
+const OP_DEPTS = ['Sales', 'Operations', 'Content', 'Engineering'] as const
+type OpUser = { id: number; name: string; email: string; dept: string; role: string; status: 'Active' | 'Pending' | 'Disabled'; last: string }
 const OPERATORS: OpUser[] = [
-  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', role: 'Super admin', status: 'Active', last: '5m ago' },
-  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', role: 'Operations', status: 'Active', last: '1h ago' },
-  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', role: 'Sales', status: 'Active', last: '2h ago' },
-  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', role: 'Sales', status: 'Pending', last: '—' },
-  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', role: 'Content editor', status: 'Disabled', last: '2 months ago' },
+  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', dept: 'Content', role: 'Super admin', status: 'Active', last: '5m ago' },
+  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', dept: 'Operations', role: 'Operations', status: 'Active', last: '1h ago' },
+  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Active', last: '2h ago' },
+  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Pending', last: '—' },
+  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', dept: 'Content', role: 'Content editor', status: 'Disabled', last: '2 months ago' },
 ]
 const OP_STATUS: Record<OpUser['status'], StatusTone> = { Active: 'active', Pending: 'pending', Disabled: 'expired' }
 
-function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, role: string) => void; onClose: () => void }) {
+function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, dept: string, role: string) => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [dept, setDept] = useState<string>(OP_DEPTS[0])
   const [role, setRole] = useState('')
-  const valid = name.trim() && /.+@.+\..+/.test(email) && role
+  const valid = name.trim() && /.+@.+\..+/.test(email) && dept && role
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -3793,6 +3798,13 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@saramin.vn" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
           </div>
           <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Department <span className="text-rose-500">*</span></label>
+            <select value={dept} onChange={(e) => setDept(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+              {OP_DEPTS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <p className="mt-1.5 text-[11px] text-faint">Org unit only — it grants nothing. Reference list lives in <b className="text-ink/70">System → Departments</b>.</p>
+          </div>
+          <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Role <span className="text-rose-500">*</span></label>
             <div className="grid gap-1.5">
               {ROLES.map((r) => (
@@ -3809,7 +3821,7 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => valid && onCreate(name.trim(), email.trim(), role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
+          <button onClick={() => valid && onCreate(name.trim(), email.trim(), dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
         </div>
       </div>
     </div>
@@ -3821,8 +3833,8 @@ function AdminUsers() {
   const [creating, setCreating] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => setToast(m)
-  const create = (name: string, email: string, role: string) => {
-    setUsers((prev) => [{ id: Math.max(0, ...prev.map((u) => u.id)) + 1, name, email, role, status: 'Pending', last: '—' }, ...prev])
+  const create = (name: string, email: string, dept: string, role: string) => {
+    setUsers((prev) => [{ id: Math.max(0, ...prev.map((u) => u.id)) + 1, name, email, dept, role, status: 'Pending', last: '—' }, ...prev])
     setCreating(false)
     flash(`Invitation sent to ${email} — waiting for them to activate the link.`)
   }
@@ -3843,9 +3855,12 @@ function AdminUsers() {
 
       <TabBar tabs={[{ label: 'All', count: users.length, active: true }, { label: 'Active', count: users.filter((u) => u.status === 'Active').length }, { label: 'Pending', count: users.filter((u) => u.status === 'Pending').length }, { label: 'Disabled', count: users.filter((u) => u.status === 'Disabled').length }]} />
       <Table
-        cols={[{ label: 'Operator', w: '1.5fr' }, { label: 'Role', w: '1.1fr' }, { label: 'Status', w: '1fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.6fr', align: 'r' }]}
+        minW={1060}
+        cols={[{ label: 'Operator', w: '1.1fr' }, { label: 'Email (login)', w: '1.4fr' }, { label: 'Department', w: '0.9fr' }, { label: 'Role', w: '1.1fr' }, { label: 'Status', w: '1fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.6fr', align: 'r' }]}
         rows={users.map((u) => [
-          <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p><p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p></div>,
+          <span className="truncate text-[12.5px] font-medium text-ink">{u.name}</span>,
+          <span className="truncate font-mono text-[11px] text-muted">{u.email}</span>,
+          <span className="truncate text-[12px] text-ink/75">{u.dept}</span>,
           <Pill tone={u.role === 'Super admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
           u.status === 'Pending'
             ? <span className="inline-flex items-center gap-1.5"><Pill tone="pending">Pending</Pill><span className="text-[10.5px] text-faint">invite sent</span></span>

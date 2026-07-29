@@ -28,12 +28,22 @@ import { resumeManagement } from './build/resume-management'
 import { bannersPopups } from './build/banners-popups'
 import { tools } from './build/tools'
 
+/*
+ * Order matters — this is the reading order of the whole spec, in the left nav, on
+ * /modules and in the build plan. It follows the commercial chain: define what is
+ * SELLABLE, sell it, then deliver it.
+ *
+ *   Products & Packages  what we sell — the catalogue the CRM's documents draw on
+ *   CRM                  selling it — quotation → order → payment → invoice
+ *   Job management       delivering the thing they bought
+ *   …then the supporting domains.
+ */
 export const BUILD_MODULES: BuildModule[] = [
+  productsPackages,
   crm,
+  jobManagement,
   jobseekerUser,
   adminAccess,
-  productsPackages,
-  jobManagement,
   applicationManagement,
   resumeManagement,
   bannersPopups,
