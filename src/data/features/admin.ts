@@ -976,6 +976,45 @@ export const ADMIN_SPECS: FeatureSpec[] = [
 
   // ── B9 · System settings ─────────────────────────────────────────────────
   {
+    id: 'admin-staff',
+    code: 'ADM-SYS-00',
+    surface: `${S} · System settings`,
+    title: 'Staff directory',
+    status: 'be-migrated',
+    summary: 'Master list of HQ people (name · email · phone · department).',
+    description:
+      'The single registry of Saramin HQ staff. A person is added once here — name, email, phone, department — and that record is reused everywhere: creating an operator (console login) picks a staff member from this list, and CRM assigns companies to a sales staff member as their owner. Adding someone here grants no access on its own.',
+    uiFields: [
+      {
+        group: 'Staff member',
+        items: [
+          { name: 'name', type: 'string', required: true },
+          { name: 'email', type: 'email', required: true, notes: 'unique; becomes the login if they are later made an operator' },
+          { name: 'phone', type: 'string', notes: 'contact number' },
+          { name: 'department', type: 'ref → Department', notes: 'org unit (System → Departments)' },
+          { name: 'title', type: 'string', notes: 'job title, e.g. Account executive' },
+        ],
+      },
+    ],
+    behaviors: [
+      'Add a staff member with name + email (phone / department / title optional).',
+      'A staff row is the source for two things: Users → “Create operator” selects a staff member from a dropdown, and CRM company ownership assigns a company to a sales staff member.',
+      'Console access is shown per row (their operator role, or “No access”) but is granted in Users, not here.',
+      'For Sales staff, the number of CRM companies they own is shown.',
+      'Remove = deactivate, never a hard delete — historical CRM ownership and the audit trail must survive.',
+    ],
+    rules: [
+      'Email is unique across staff and is the login identity if the person becomes an operator.',
+      'Being in the directory ≠ having console access — an operator record (with a role) is separate.',
+      'A staff member with owned companies or an active operator login cannot be hard-deleted; deactivate instead.',
+    ],
+    related: ['admin-users', 'admin-roles', 'admin-departments'],
+    clientQuestions: [
+      'Is staff created manually here, or synced from an HR system / directory (e.g. Google Workspace)?',
+      'Can a staff member belong to more than one department?',
+    ],
+  },
+  {
     id: 'admin-roles',
     code: 'ADM-SYS-01',
     surface: `${S} · System settings`,

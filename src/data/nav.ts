@@ -181,6 +181,7 @@ export const NAV: NavModule[] = [
     label: 'System settings',
     app: 'HQ Admin',
     children: [
+      { id: 'admin-staff', label: 'Staff directory' },
       { id: 'admin-roles', label: 'Roles & permissions' },
       { id: 'admin-users', label: 'Users' },
       { id: 'admin-master-data', label: 'Master data' },

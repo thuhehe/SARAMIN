@@ -5,7 +5,6 @@ import {
   Users,
   FileImage,
   Bell,
-  CreditCard,
   Handshake,
   BarChart3,
   Settings,
@@ -43,20 +42,25 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-popups': { module: 'banners-popups', feature: 'Create popup + Popup list' },
   // Billing & products
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
-  'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
-  'admin-credits': { module: 'products-packages', feature: 'Credits (balance ledger)' },
-  'admin-orders': { module: 'products-packages', feature: 'Orders' },
-  'admin-promotions': { module: 'products-packages', feature: 'Promotions' },
+  // NOTE: no targets for 'admin-bundles' / 'admin-credits' / 'admin-orders' /
+  // 'admin-promotions' — all four features were removed from the Products &
+  // Packages module. A package is expressed as quotation lines, discounting
+  // happens on the quotation, orders are CRM → Purchase order, and the credit
+  // balance is the entitlement ledger on the company account.
   // CRM
   'admin-company-list': { module: 'crm', feature: 'Companies' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
   'admin-signups': { module: 'crm', feature: 'Sign-ups (inbound triage)' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
+  // The loyalty programme is a CRM concept (earned from orders, shown on the company
+  // record); only its configuration screen lives under the System menu.
+  'admin-membership': { module: 'crm', feature: 'Membership tiers (loyalty programme)' },
   // NOTE: 'admin-company-users' has no target on purpose — the Account management
   // module was trimmed out of the build plan (buildModules.ts), so there is no
   // authored feature page to link to. Re-add it there to make this page linkable.
   // System
+  'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
   'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
 }
@@ -126,19 +130,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // Sits below CRM: the catalogue is the reference data the CRM's selling
-    // documents draw on, so it reads after the flow that consumes it.
-    label: 'Product setting',
-    icon: <CreditCard className="h-4 w-4" />,
-    // Selling documents (quotation → sales order → payment → invoice) all live in
-    // CRM. This group is the catalogue side only: what is sellable and at what price.
-    items: [
-      { label: 'Products', specId: 'admin-catalog' },
-      { label: 'Packages', specId: 'admin-bundles' },
-      { label: 'Promotions', specId: 'admin-promotions' },
-    ],
-  },
-  {
     label: 'Content',
     icon: <FileImage className="h-4 w-4" />,
     items: [
@@ -153,10 +144,20 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'System',
     icon: <Settings className="h-4 w-4" />,
     items: [
+      // People first: the staff directory is the source Users & CRM ownership pick from.
+      { label: 'Staff directory', specId: 'admin-staff' },
       { label: 'Users', specId: 'admin-users' },
       { label: 'Roles & permissions', specId: 'admin-roles' },
       // The issuer identity that prints on every quotation / order / invoice.
       { label: 'Company information', specId: 'admin-issuer' },
+      // The catalogue: what is sellable and at what price. HQ configuration, so it
+      // sits here rather than in its own menu — Packages and Promotions were dropped
+      // (a package is quotation lines; discounting happens on the quotation).
+      { label: 'Products', specId: 'admin-catalog' },
+      // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.
+      // Here rather than under CRM for the same reason as Products — it is HQ-only
+      // configuration that changes how another module behaves.
+      { label: 'Membership tiers', specId: 'admin-membership' },
       { label: 'Master data', specId: 'admin-master-data' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },

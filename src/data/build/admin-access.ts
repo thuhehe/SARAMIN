@@ -5,13 +5,14 @@ import type { BuildModule } from './types'
  *
  * Internal-staff counterpart to Account management's company users: this module
  * governs who inside Saramin HQ can use the admin console and what they can do.
- * Two features — the ROLE (a permission tree) and the OPERATOR (a staff login
- * assigned a role). The operator invite flow deliberately mirrors the company
- * HR Manager / HR Specialist invite so there is one consistent pattern.
+ * Three features — the STAFF directory (the master people list), the ROLE (a
+ * permission tree) and the OPERATOR (a staff login assigned a role). The operator
+ * invite flow deliberately mirrors the company HR Manager / HR Specialist invite
+ * so there is one consistent pattern.
  *
- * The interactive prototype lives on the Admin wireframe (System → Roles &
- * permissions / Users); each feature's "Screen UI" panel embeds that same
- * live prototype (AdminRoles / AdminUsers).
+ * The interactive prototype lives on the Admin wireframe (System → Staff / Roles
+ * & permissions / Users); each feature's "Screen UI" panel embeds that same
+ * live prototype (AdminStaff / AdminRoles / AdminUsers).
  */
 
 export const adminAccess: BuildModule = {
@@ -31,6 +32,18 @@ export const adminAccess: BuildModule = {
       items: ['They share the same invite pattern, but are never the same list.'],
     },
     {
+      label: 'Staff directory — the master people list',
+      text: 'Every HQ person is added once to the Staff directory (name · email · phone · department). That record is the single source two other places draw from, so an email / department is never retyped.',
+      table: {
+        cols: ['Used by', 'How'],
+        rows: [
+          ['Users (operators)', 'Create-operator picks a staff member from a dropdown, then assigns a role'],
+          ['CRM ownership', 'A company is assigned to a SALES staff member as its owner'],
+        ],
+      },
+      items: ['Being in the directory grants no access on its own — an operator record (login + role) is a separate step in Users.'],
+    },
+    {
       label: 'Access model — role per admin page',
       text: 'A ROLE defines permissions per admin page. Each operator is assigned exactly one role, and only ever sees the nav items and actions that role allows.',
       table: {
@@ -47,10 +60,11 @@ export const adminAccess: BuildModule = {
       table: {
         cols: ['Step', 'Action'],
         rows: [
-          ['1', 'Define the role first'],
-          ['2', 'Create the operator (name + email)'],
-          ['3', 'Assign a saved role'],
-          ['4', 'Send the invite'],
+          ['1', 'Add the person to the Staff directory (once)'],
+          ['2', 'Define the role'],
+          ['3', 'Create the operator — pick the staff member'],
+          ['4', 'Assign a saved role'],
+          ['5', 'Send the invite'],
         ],
       },
       warn: 'The operator clicks the link and sets their OWN password — no one types a password for them. Statuses match the company HR invite exactly: Pending (invited) → Active (link clicked, password set).',
@@ -87,9 +101,12 @@ export const adminAccess: BuildModule = {
       table: {
         cols: ['Page', 'What it configures', 'Who needs it'],
         rows: [
+          ['Staff', 'The master people list (name · email · phone · dept)', 'Super admin / ops'],
           ['Users', 'Operator logins + assigned role', 'Super admin'],
           ['Roles & permissions', 'The permission tree per admin page', 'Super admin'],
           ['Company information', 'Our own issuer identity on every sales document', 'Finance / super admin'],
+          ['Products', 'The catalogue — what is sellable and at what price (see Products & Packages)', 'Finance / super admin'],
+          ['Membership tiers', 'The loyalty programme — tier thresholds + reward catalogue, per year (see CRM)', 'Sales lead / marketing'],
           ['Master data', 'Every reference list (dropdowns + search filters)', 'Operations'],
           ['Audit log', 'The platform-wide change trail', 'Super admin / compliance'],
           ['Environment', 'Feature flags', 'Engineering'],
@@ -148,6 +165,66 @@ export const adminAccess: BuildModule = {
     },
   ],
   features: [
+    {
+      name: 'Staff directory',
+      site: 'Admin',
+      scope: ['BE', 'FE', 'UI'],
+      ready: true,
+      notes: 'The master people list. A person is added here once (name · email · phone · department); Users and CRM ownership both draw from it.',
+      mockup: 'admin-staff',
+      detail: {
+        description:
+          'A single registry of HQ staff. Adding someone captures name, email, phone and department, and that record is then reused: creating an operator (a console login) picks a staff member from this list, and CRM assigns companies to a sales staff member as their owner. Being in the directory grants no access on its own — the operator record (login + role) is a separate step in Users.',
+        userStory:
+          'As an HQ admin, I want one place that holds every colleague’s name / email / phone / department, so that granting console access or assigning a company owner is just picking a person, never re-typing them.',
+        uiFields: [
+          {
+            group: 'Staff member',
+            items: [
+              { name: 'name', type: 'string', required: true },
+              { name: 'email', type: 'email', required: true, notes: 'unique; becomes the login if the person is later made an operator' },
+              { name: 'phone', type: 'string', notes: 'contact number' },
+              { name: 'department', type: 'ref → Department', notes: 'org unit (System → Departments)' },
+              { name: 'title', type: 'string', notes: 'e.g. Account executive' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Add a staff member with name + email (phone / department / title optional).',
+          'Each row shows console access (their operator role, or “No access”) and, for Sales staff, how many CRM companies they own.',
+          'Console access is granted in Users, not here — this page is only the people record.',
+          'Remove = deactivate, never a hard delete, so historical CRM ownership and the audit trail survive.',
+        ],
+        rules: [
+          'Email is unique across staff and is the login identity if the person becomes an operator.',
+          'Directory membership ≠ console access — the two are deliberately separate.',
+          'A staff member who owns companies or holds an active operator login can’t be hard-deleted; deactivate instead.',
+        ],
+        states: ['In directory (no access)', 'In directory + operator', 'In directory + CRM owner', 'Deactivated'],
+        backend: {
+          dataModel: [
+            { name: 'staffId', type: 'uuid' },
+            { name: 'name', type: 'string', required: true },
+            { name: 'email', type: 'string', required: true, notes: 'unique' },
+            { name: 'phone', type: 'string' },
+            { name: 'departmentId', type: 'ref(department)' },
+            { name: 'title', type: 'string' },
+          ],
+          endpoints: ['GET /admin/staff', 'POST /admin/staff', 'PATCH /admin/staff/:id', 'PATCH /admin/staff/:id/deactivate'],
+          integrations: ['Operators (staff → operator selection)', 'CRM (staff → company owner)', 'Departments', 'Audit log'],
+          notes: 'The person entity. An operator row references a staffId; a CRM company’s owner references a staffId. One person, one record.',
+        },
+        acceptance: [
+          'A staff member added here appears in the Users “create operator” dropdown and the CRM owner picker.',
+          'Granting console access in Users reflects back here as the person’s role.',
+          'A staff member with owned companies cannot be hard-deleted.',
+        ],
+        openQuestions: [
+          'Is staff created manually here, or synced from an HR system / directory (e.g. Google Workspace)?',
+          'Can a staff member belong to more than one department?',
+        ],
+      },
+    },
     {
       name: 'Roles & permissions',
       site: 'Admin',
@@ -230,15 +307,15 @@ export const adminAccess: BuildModule = {
       mockup: 'admin-users',
       detail: {
         description:
-          'The operator list plus the create → assign-role → invite → activate lifecycle. Creating an operator captures their name + email and a role, then sends a one-time invite link; the operator sets their own password. Until they activate, the row is Pending; once they do, it flips to Active. This is the identical invite flow and status set used for company HR Manager / HR Specialist users.',
+          'The operator list plus the create → assign-role → invite → activate lifecycle. Creating an operator picks a person from the Staff directory (their name / email / department come from that record — you do not re-type them) and assigns a role, then sends a one-time invite link; the operator sets their own password. Until they activate, the row is Pending; once they do, it flips to Active. This is the identical invite flow and status set used for company HR Manager / HR Specialist users.',
         userStory:
           'As an HQ super admin, I want to invite a colleague and assign their role so that access is provisioned securely (they set their own password) and I can see who has activated.',
         uiFields: [
           {
             group: 'Operator',
             items: [
-              { name: 'name', type: 'string', required: true },
-              { name: 'email', type: 'email', required: true, notes: 'their login; they set their own password via the invite link' },
+              { name: 'staff', type: 'ref → Staff', required: true, notes: 'picked from the Staff directory — supplies name / email / department' },
+              { name: 'email', type: 'email', notes: 'read-only; from the staff record — becomes the login they set a password for' },
               { name: 'role', type: 'ref → Role', required: true, notes: 'exactly one role per operator (from Roles & permissions)' },
               { name: 'status', type: "enum('Pending'|'Active'|'Disabled')", notes: 'Pending = invited; Active = activated; Disabled = access removed' },
               { name: 'lastLogin', type: 'datetime', notes: 'read-only; “—” while Pending' },
@@ -246,7 +323,7 @@ export const adminAccess: BuildModule = {
           },
         ],
         behaviors: [
-          'Create operator → fill name + email → pick a saved role → “Create & send invite”. The row appears immediately as Pending with last-login “—”.',
+          'Create operator → pick a staff member from the directory (name / email / department auto-fill) → pick a saved role → “Create & send invite”. The row appears immediately as Pending with last-login “—”.',
           'The invite emails a one-time activation link; the operator sets their own password (no one types it for them).',
           'Status flips Pending → Active once the operator activates the link.',
           'Pending rows can be Resent (new link) or Cancelled (revoke the invite).',
@@ -263,13 +340,12 @@ export const adminAccess: BuildModule = {
         backend: {
           dataModel: [
             { name: 'operatorId', type: 'uuid' },
-            { name: 'name', type: 'string', required: true },
-            { name: 'email', type: 'string', required: true, notes: 'unique' },
+            { name: 'staffId', type: 'ref(staff)', required: true, notes: 'the person — name / email come from the staff record' },
             { name: 'roleId', type: 'ref(role)', required: true },
             { name: 'status', type: 'enum', notes: 'pending | active | disabled' },
           ],
           endpoints: [
-            'POST /admin/operators/invite { name, email, roleId } → creates a Pending operator + sends the link',
+            'POST /admin/operators/invite { staffId, roleId } → creates a Pending operator + sends the link',
             'POST /admin/operators/:id/resend',
             'POST /admin/operators/:id/cancel',
             'PATCH /admin/operators/:id/role { roleId }',

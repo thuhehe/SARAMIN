@@ -640,6 +640,146 @@ const coLeadSource = (c: Company) => {
   return LEAD_SOURCES[h % LEAD_SOURCES.length]
 }
 
+/* ── Membership tier — Chương trình Khách hàng Thân thiết ───────────────────
+   A THIRD status axis on the company, and the only one that is purely arithmetic:
+   the tier is a function of ONE number — the cumulative value of the orders the
+   company paid for inside the current programme year. It is never typed, never
+   granted by a rep, and it is not account health (customerStatus) nor a live deal
+   (pipeline).
+
+   The rule that shapes everything: the accumulator RESETS on 1 January. Nothing
+   carries over — a Diamond customer starts the new year with 0 ₫ accumulated and
+   no tier, and climbs again from scratch. That is why the tier can never be stored
+   as a plain column and forgotten: it has to be recomputed against a year window.
+
+   Thresholds and the reward catalogue are SETTINGS (System → Membership tiers),
+   not code — the programme is re-issued every year and the bands move. */
+type Tier = 'Member' | 'Bronze' | 'Silver' | 'Gold' | 'Diamond'
+/** Ascending by threshold — the order every lookup below depends on. */
+const TIERS: { key: Tier; vi: string; from: number; pill: string }[] = [
+  { key: 'Member', vi: 'Thành viên', from: 30_000_000, pill: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { key: 'Bronze', vi: 'Đồng', from: 50_000_000, pill: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { key: 'Silver', vi: 'Bạc', from: 100_000_000, pill: 'bg-slate-200/70 text-slate-700 border-slate-300' },
+  { key: 'Gold', vi: 'Vàng', from: 200_000_000, pill: 'bg-amber-50 text-amber-700 border-amber-300' },
+  { key: 'Diamond', vi: 'Kim Cương', from: 300_000_000, pill: 'bg-sky-50 text-sky-700 border-sky-300' },
+]
+type TierRow = (typeof TIERS)[number]
+/** The programme year the mock sits in, and the date the accumulator zeroes. */
+const TIER_YEAR = 2026
+const TIER_RESET = '01/01/2027'
+
+/* The reward catalogue. One row per benefit, one cell per tier; a blank cell means
+   the tier does NOT get that benefit — it is a real answer, not missing data. Every
+   figure here is a setting, editable per programme year without a release. */
+const TIER_BENEFITS: { name: string; by: Record<Tier, string> }[] = [
+  { name: 'Voucher giảm giá — áp cho 01 đơn hàng tiếp theo', by: { Member: '1.000.000 ₫', Bronze: 'tối đa 3.000.000 ₫', Silver: 'tối đa 5.000.000 ₫', Gold: 'tối đa 10.000.000 ₫', Diamond: 'tối đa 15.000.000 ₫' } },
+  { name: 'Top Companies — trang Thị trường IT Việt Nam', by: { Member: '30 ngày', Bronze: '90 ngày', Silver: '180 ngày', Gold: '270 ngày', Diamond: '365 ngày' } },
+  { name: 'Bài đăng truyền thông Facebook', by: { Member: '—', Bronze: '1 bài', Silver: '2 bài', Gold: '3 bài', Diamond: '4 bài' } },
+  { name: 'Banner trang kết quả tìm kiếm', by: { Member: '—', Bronze: '—', Silver: '1 banner', Gold: '1 banner', Diamond: '1 banner' } },
+]
+
+/** Cumulative paid-order value inside the CURRENT programme year — the only input to
+    the tier. Demo-only derivation: a company whose first invoice landed this year has
+    all of its revenue in-year; an older account keeps a stable share of its lifetime;
+    a churned account has booked nothing this year, which is exactly why it holds no
+    tier. The real build sums paid orders whose paid date falls inside the year. */
+const tierRevenue = (c: Company) => {
+  if (!c.revenue || c.account === 'Churn') return 0
+  if (c.since.endsWith(String(TIER_YEAR))) return c.revenue
+  let h = 0
+  for (const ch of c.name) h = (h * 37 + ch.codePointAt(0)!) % 6151
+  const share = 0.3 + (h % 60) / 100 // 30% – 89% of lifetime, stable per company
+  return Math.round((c.revenue * share) / 1_000_000) * 1_000_000
+}
+/** The tier an amount earns — null below the first threshold, which is a real state
+    ("chưa có hạng"), not an error: most of the book sits there in January. */
+const tierAt = (v: number): TierRow | null => {
+  let hit: TierRow | null = null
+  for (const t of TIERS) if (v >= t.from) hit = t
+  return hit
+}
+const tierOf = (c: Company) => tierAt(tierRevenue(c))
+/** The next band up and therefore the gap to sell against — null once at Diamond. */
+const nextTierAt = (v: number): TierRow | null => TIERS.find((t) => v < t.from) ?? null
+
+function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
+  if (!tier) {
+    return (
+      <span className="text-[10.5px] text-faint" title={`Chưa đạt mốc ${revFmt(TIERS[0].from)} tích lũy trong năm ${TIER_YEAR} — chưa có hạng.`}>
+        Chưa có hạng
+      </span>
+    )
+  }
+  return (
+    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium', tier.pill)}>
+      <span aria-hidden>◆</span>
+      {tier.vi}
+      {en && <span className="text-[9.5px] opacity-70">({tier.key})</span>}
+    </span>
+  )
+}
+
+/* Membership block on the company record. Deliberately shows the ARITHMETIC, not
+   just the badge: accumulated-in-year, the gap to the next band, and the reset date.
+   The gap is the reason a rep opens this — it is the only upsell number the loyalty
+   programme produces. */
+function MembershipCard({ c }: { c: Company }) {
+  const acc = tierRevenue(c)
+  const tier = tierAt(acc)
+  const next = nextTierAt(acc)
+  const floor = tier?.from ?? 0
+  const ceil = next?.from ?? TIERS[TIERS.length - 1].from
+  const pct = Math.min(100, Math.max(2, ((acc - floor) / (ceil - floor)) * 100))
+  return (
+    <DetailCard title={`Hạng thành viên ${TIER_YEAR}`} action={<span className="text-[11px] text-brand">Ngưỡng &amp; quyền lợi: System →</span>}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <TierPill tier={tier} en />
+        <span className="text-[11.5px] text-muted">
+          Tích lũy trong năm: <b className="tabular-nums text-ink">{acc ? vnd(acc) : '0 ₫'}</b>
+        </span>
+      </div>
+
+      {/* progress toward the next band — the gap is the point, so it is stated in ₫ */}
+      <div className="h-[6px] overflow-hidden rounded-full bg-line">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1 text-[11px] text-muted">
+        {next ? (
+          <>
+            Còn <b className="tabular-nums text-ink">{vnd(next.from - acc)}</b> nữa để lên hạng <b>{next.vi}</b> ({next.key}).
+          </>
+        ) : (
+          <>Đã ở hạng cao nhất — không còn mốc nào phía trên.</>
+        )}
+      </p>
+
+      {/* Entitlement for the CURRENT tier only. A company with no tier gets nothing,
+          and saying so plainly is more useful than hiding the block. */}
+      <div className="mt-3 space-y-1">
+        {tier ? (
+          TIER_BENEFITS.map((b) => (
+            <div key={b.name} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
+              <p className="min-w-0 truncate text-[11.5px] text-ink/80">{b.name}</p>
+              <span className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', b.by[tier.key] === '—' ? 'text-faint' : 'text-ink')}>
+                {b.by[tier.key]}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-md border border-line bg-canvas/40 px-2.5 py-2 text-[11.5px] text-muted">
+            Chưa đạt mốc {vnd(TIERS[0].from)} nên chưa có quyền lợi nào.
+          </p>
+        )}
+      </div>
+
+      <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+        ♻️ Tích lũy <b>reset về 0 ngày {TIER_RESET}</b> — hạng {TIER_YEAR} không mang sang năm sau. Chưa chốt:
+        quyền lợi chưa dùng khi reset thì mất hay bảo lưu, và ai bấm dùng (KH tự chọn hay sales đăng ký hộ).
+      </p>
+    </DetailCard>
+  )
+}
+
 /* ── Corporate tree ────────────────────────────────────────────────────────
    Parent and subsidiary are separate legal entities: separate records, separate
    tax codes, separate accounts, separate billing, separate sales owners. The
@@ -774,12 +914,15 @@ function AdminCompanyList() {
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
 
       <Table
-        minW={showOwner ? 1360 : 1220}
+        minW={showOwner ? 1520 : 1380}
         cols={[
           { label: 'Company', w: '1.4fr' },
           { label: 'Industry', w: '0.9fr' },
           { label: 'Location', w: '0.9fr' },
           { label: 'Status', w: '0.8fr' },
+          // The third axis, next to customer status because that is what a rep
+          // compares it against: status says whether they buy, tier says how much.
+          { label: `Tier ${TIER_YEAR}`, w: '1fr' },
           { label: 'Pipeline', w: '0.9fr' },
           // Owner is only meaningful when looking across the team — in Sales view
           // every row is yours, so the column would repeat the same name. A group
@@ -807,6 +950,12 @@ function AdminCompanyList() {
           <span className="truncate">{c.industry}</span>,
           <span className="truncate">{c.address}</span>,
           <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>,
+          // Badge + the number it was earned on. The accumulated figure has to sit
+          // next to the badge: without it the tier looks like something a rep set.
+          <div className="min-w-0">
+            <TierPill tier={tierOf(c)} />
+            <p className="mt-0.5 text-[10px] text-faint tabular-nums">{tierRevenue(c) ? `${revFmt(tierRevenue(c))} tích lũy` : '—'}</p>
+          </div>,
           inPipeline(c) ? (
             <span className="flex min-w-0 flex-wrap items-center gap-1">
               <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>
@@ -1366,6 +1515,9 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                   while a deal is live, the pipeline stage. */}
               <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
               {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+              {/* third axis — only rendered once a tier is actually earned, so the
+                  header never carries a "chưa có hạng" non-fact. */}
+              {tierOf(c) && <TierPill tier={tierOf(c)} en />}
             </h2>
             <p className="text-[11.5px] text-muted"><span className="font-mono font-medium text-ink/70">{companyId(coKey(c))}</span> · {c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
           </div>
@@ -1425,6 +1577,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <KV label="Description" value={c.note} />
               <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
             </DetailCard>
+            <MembershipCard c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
 
@@ -3769,12 +3922,180 @@ const OPERATORS: OpUser[] = [
 ]
 const OP_STATUS: Record<OpUser['status'], StatusTone> = { Active: 'active', Pending: 'pending', Disabled: 'expired' }
 
-function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, dept: string, role: string) => void; onClose: () => void }) {
+/* ── System · Staff directory ─────────────────────────────────────────────────
+ * The master people list for HQ — name · email · phone · department. It is the
+ * single source that two other places draw from:
+ *   • Operators (console logins) — you create an operator by PICKING a staff
+ *     member here, then assigning a role. Not every staff member is an operator.
+ *   • CRM ownership — a company is assigned to a SALES staff member (its owner).
+ * A person's email / department is entered once, here, then reused everywhere.
+ */
+type Staff = { id: number; name: string; email: string; phone: string; dept: string; title: string }
+const STAFF: Staff[] = [
+  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', phone: '0901 234 567', dept: 'Content', title: 'Founder / Super admin' },
+  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', phone: '0902 345 678', dept: 'Operations', title: 'Operations lead' },
+  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', phone: '0903 456 789', dept: 'Sales', title: 'Account executive' },
+  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', phone: '0904 567 890', dept: 'Sales', title: 'Account executive' },
+  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', phone: '0905 678 901', dept: 'Content', title: 'Content editor' },
+  { id: 6, name: 'Ngô Minh Tú', email: 'tu@saramin.vn', phone: '0906 789 012', dept: 'Operations', title: 'Moderator' },
+  { id: 7, name: 'Vũ Thanh Hải', email: 'hai@saramin.vn', phone: '0907 890 123', dept: 'Sales', title: 'Sales rep' },
+  { id: 8, name: 'Seonguk Park', email: 'seonguk@saramin.vn', phone: '0908 901 234', dept: 'Engineering', title: 'Engineering lead' },
+]
+/** which staff already have a console login (seed operators), by email → role. */
+const OPERATOR_ROLE_BY_EMAIL: Record<string, string> = Object.fromEntries(OPERATORS.map((o) => [o.email, o.role]))
+/** how many CRM companies a staff member owns (drawn from the CRM company list). */
+const companiesOwnedBy = (name: string) => COMPANIES.filter((c) => c.owner === name).length
+
+function AddStaffModal({ onAdd, onClose }: { onAdd: (s: Omit<Staff, 'id'>) => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [dept, setDept] = useState<string>(OP_DEPTS[0])
+  const [phone, setPhone] = useState('')
+  const [dept, setDept] = useState<string>('Sales')
+  const [title, setTitle] = useState('')
+  const valid = name.trim() && /.+@.+\..+/.test(email)
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Add staff member</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3.5 p-5">
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Vũ Thanh Hải" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Email <span className="text-rose-500">*</span></label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@saramin.vn" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Phone</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09xx xxx xxx" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Department</label>
+              <select value={dept} onChange={(e) => setDept(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand">
+                {OP_DEPTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Account executive" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          </div>
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>ℹ️</span><span>This only adds the person to the directory. It does <b>not</b> grant console access — do that in <b>Users</b> (pick this staff member, assign a role, send the invite).</span></p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => valid && onAdd({ name: name.trim(), email: email.trim(), phone: phone.trim(), dept, title: title.trim() })} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Add to directory</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StaffDetail({ s, onBack }: { s: Staff; onBack: () => void }) {
+  const role = OPERATOR_ROLE_BY_EMAIL[s.email]
+  const owned = COMPANIES.filter((c) => c.owner === s.name)
+  const initials = s.name.split(' ').slice(-2).map((w) => w[0]).join('').toUpperCase()
+  return (
+    <div>
+      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to staff directory</button>
+      <div className="mb-4 flex items-start gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[16px] font-bold text-white shadow-sm">{initials}</span>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Staff member</p>
+          <h2 className="mt-0.5 text-[20px] font-bold tracking-tight">{s.name}</h2>
+          <p className="text-[11.5px] text-muted">{s.title || '—'} · {s.dept}</p>
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <DetailCard title="Contact & org">
+          <KV label="Full name" value={s.name} />
+          <KV label="Email" value={s.email} />
+          <KV label="Phone" value={s.phone || '—'} />
+          <KV label="Department" value={s.dept} />
+          <KV label="Title" value={s.title || '—'} />
+        </DetailCard>
+        <div className="space-y-4">
+          <DetailCard title="Console access" action={<span className="text-[11px] text-brand">Manage in Users →</span>}>
+            {role
+              ? <p className="flex items-center gap-2 text-[12.5px]">Operator <Pill tone={role === 'Super admin' ? 'neutral' : 'draft'}>{role}</Pill></p>
+              : <p className="text-[12px] text-muted">No console access. Grant it in <b className="text-ink/70">Users</b> — pick this person and assign a role.</p>}
+          </DetailCard>
+          <DetailCard title="CRM ownership">
+            {owned.length
+              ? <div className="space-y-1.5">{owned.map((c) => (
+                  <div key={c.name} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 text-[12px]"><span className="truncate">{c.name}</span><Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill></div>
+                ))}</div>
+              : <p className="text-[12px] text-muted">{s.dept === 'Sales' ? 'No companies assigned yet.' : 'Not a sales role — no company ownership.'}</p>}
+          </DetailCard>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdminStaff() {
+  const [staff, setStaff] = useState<Staff[]>(STAFF)
+  const [adding, setAdding] = useState(false)
+  const [open, setOpen] = useState<Staff | null>(null)
+  const add = (s: Omit<Staff, 'id'>) => {
+    setStaff((prev) => [{ id: Math.max(0, ...prev.map((x) => x.id)) + 1, ...s }, ...prev])
+    setAdding(false)
+  }
+  if (open) return <StaffDetail s={open} onBack={() => setOpen(null)} />
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-[64ch] flex-1 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+          The master people list for HQ. Add someone <b>once</b> (name · email · phone · department) and the record is reused elsewhere — <b>Users</b> picks a staff member to grant console access, and <b>CRM</b> assigns companies to a sales staff member as their owner. Adding staff here grants no access on its own.
+        </p>
+        <button onClick={() => setAdding(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Add staff</button>
+      </div>
+      <Table
+        minW={1180}
+        cols={[
+          { label: 'Staff', w: '1.1fr' }, { label: 'Title', w: '1.2fr' }, { label: 'Email', w: '1.3fr' }, { label: 'Phone', w: '0.9fr' },
+          { label: 'Department', w: '0.8fr' }, { label: 'Console access', w: '1fr' }, { label: 'CRM ownership', w: '1fr' },
+        ]}
+        rows={staff.map((s) => {
+          const role = OPERATOR_ROLE_BY_EMAIL[s.email]
+          const owned = companiesOwnedBy(s.name)
+          return [
+            <button onClick={() => setOpen(s)} className="min-w-0 truncate text-left text-[12.5px] font-medium text-brand hover:underline">{s.name}</button>,
+            <span className="truncate text-[12px] text-ink/75">{s.title || '—'}</span>,
+            <span className="truncate font-mono text-[11px] text-muted">{s.email}</span>,
+            <span className="truncate text-[12px] text-ink/75 tabular-nums">{s.phone}</span>,
+            <span className="truncate text-[12px] text-ink/75">{s.dept}</span>,
+            role ? <Pill tone={role === 'Super admin' ? 'neutral' : 'draft'}>{role}</Pill> : <span className="text-[11px] text-faint">No access</span>,
+            s.dept === 'Sales'
+              ? (owned > 0 ? <span className="text-[12px] text-ink/75">{owned} {owned > 1 ? 'companies' : 'company'}</span> : <span className="text-[11px] text-faint">Unassigned</span>)
+              : <span className="text-[11px] text-faint">—</span>,
+          ]
+        })}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Click a name to open the staff record. <b>Console access</b> = whether this person is an operator (and their role) — granted in <b>Users</b>, not here. <b>CRM ownership</b> = companies assigned to a sales staff member. Remove = deactivate (never hard-delete) so historical ownership &amp; the audit trail survive.
+      </p>
+      {adding && <AddStaffModal onAdd={add} onClose={() => setAdding(false)} />}
+    </div>
+  )
+}
+
+function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, dept: string, role: string) => void; onClose: () => void }) {
+  const [staffId, setStaffId] = useState<number | null>(null)
   const [role, setRole] = useState('')
-  const valid = name.trim() && /.+@.+\..+/.test(email) && dept && role
+  // Only staff who aren't already operators can be invited (name/email come from
+  // the Staff directory — you don't re-type them here).
+  const takenEmails = new Set(OPERATORS.map((o) => o.email))
+  const options = STAFF.filter((s) => !takenEmails.has(s.email))
+  const picked = STAFF.find((s) => s.id === staffId) ?? null
+  const valid = picked && role
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -3785,25 +4106,26 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
         <div className="space-y-3.5 p-5">
           {/* step markers */}
           <div className="flex items-center gap-1 text-[10.5px] font-medium text-faint">
-            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-brand">2 · Details</span><span>→</span>
-            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-brand">3 · Assign role</span><span>→</span>
-            <span className="rounded-full bg-canvas px-2 py-0.5">4 · Send invite</span>
+            <span className={cn('rounded-full px-2 py-0.5', picked ? 'bg-brand-soft text-brand' : 'bg-brand text-white')}>1 · Pick staff</span><span>→</span>
+            <span className={cn('rounded-full px-2 py-0.5', role ? 'bg-brand-soft text-brand' : picked ? 'bg-brand text-white' : 'bg-canvas')}>2 · Assign role</span><span>→</span>
+            <span className="rounded-full bg-canvas px-2 py-0.5">3 · Send invite</span>
           </div>
           <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Vũ Thanh Hải" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Work email <span className="text-rose-500">*</span></label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@saramin.vn" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Department <span className="text-rose-500">*</span></label>
-            <select value={dept} onChange={(e) => setDept(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-              {OP_DEPTS.map((d) => <option key={d} value={d}>{d}</option>)}
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Staff member <span className="text-rose-500">*</span></label>
+            <select value={staffId ?? ''} onChange={(e) => setStaffId(e.target.value ? Number(e.target.value) : null)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand">
+              <option value="">Select a staff member…</option>
+              {options.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.dept} · {s.email}</option>)}
             </select>
-            <p className="mt-1.5 text-[11px] text-faint">Org unit only — it grants nothing. Reference list lives in <b className="text-ink/70">System → Departments</b>.</p>
+            <p className="mt-1.5 text-[11px] text-faint">From the <b className="text-ink/70">Staff directory</b> — name, email &amp; department come from their record. Not listed? Add them in <b className="text-ink/70">System → Staff</b> first.</p>
           </div>
+          {picked && (
+            <div className="grid grid-cols-3 gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2.5 text-[11.5px]">
+              <div className="col-span-2 min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Email (login)</p><p className="truncate font-mono text-[11px] text-ink/80">{picked.email}</p></div>
+              <div className="min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Dept</p><p className="truncate text-ink/80">{picked.dept}</p></div>
+              <div className="min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Phone</p><p className="truncate text-ink/80 tabular-nums">{picked.phone || '—'}</p></div>
+              <div className="col-span-2 min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Title</p><p className="truncate text-ink/80">{picked.title || '—'}</p></div>
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Role <span className="text-rose-500">*</span></label>
             <div className="grid gap-1.5">
@@ -3821,7 +4143,7 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => valid && onCreate(name.trim(), email.trim(), dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
+          <button onClick={() => picked && role && onCreate(picked.name, picked.email, picked.dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
         </div>
       </div>
     </div>
@@ -4134,6 +4456,119 @@ function AdminIssuer() {
         <p className="text-[11px] leading-relaxed text-amber-900">
           Editing these values is <b>versioned, not retroactive</b>. Documents already sent keep the letterhead, VAT rate and
           bank details they were issued with — reprinting a year-old quotation must produce the identical page.
+        </p>
+        <button className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
+      </div>
+    </div>
+  )
+}
+
+/* ── System → Membership tiers ─────────────────────────────────────────────────
+   The settings page behind the loyalty programme. Two tables and nothing else:
+   the thresholds that earn a tier, and the reward catalogue each tier unlocks.
+   Both are data, because the programme is re-issued every year — 2025's bands are
+   already different from 2026's, and that must never be a code change.
+
+   Only ONE number per tier is stored (the lower bound). The "đến dưới" column is
+   derived from the next band up, so the bands can never overlap or leave a gap. */
+function AdminMembership() {
+  const noTier = COMPANIES.filter((c) => !tierOf(c)).length
+  const countOf = (k: Tier) => COMPANIES.filter((c) => tierOf(c)?.key === k).length
+  return (
+    <div>
+      <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+        <b>Chương trình Khách hàng Thân thiết {TIER_YEAR}</b> — hạng thành viên được <b>tính tự động</b> từ tổng giá trị đơn hàng
+        tích lũy của công ty <b>trong một năm</b>. Sales không set hạng bằng tay. Tích lũy <b>reset về 0 vào {TIER_RESET}</b>;
+        hạng năm nay không mang sang năm sau.
+      </div>
+
+      <div className="space-y-4">
+        <JobGroup title="Chương trình">
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Tên chương trình" req value={`Chương trình Khách hàng Thân thiết ${TIER_YEAR}`} />
+            <LField label="Chu kỳ tích lũy" req value="Năm dương lịch (01/01 – 31/12)" select hint={`Reset về 0 ₫ ngày ${TIER_RESET}. Đổi chu kỳ ở đây, không sửa code.`} />
+            <LField label="Căn cứ tính tích lũy" req value="Tổng giá trị đơn hàng đã thanh toán" select hint="Các phương án khác: theo hóa đơn VAT đã xuất · theo giá trị PO. Cần chốt với business." />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Cộng dồn theo tập đoàn" req value="Không — tính riêng từng pháp nhân" select hint="Công ty con KHÔNG cộng doanh thu vào công ty mẹ, đúng nguyên tắc “link không kế thừa gì”." />
+            <LField label="Đơn bị hủy / hoàn tiền" req value="Trừ khỏi tích lũy" select hint="Trừ ra có thể làm công ty TỤT hạng giữa năm — cần chốt có cho tụt hay giữ hạng đến hết năm." />
+            <LField label="Thời điểm cập nhật hạng" req value="Ngay khi đơn được ghi nhận thanh toán" select hint="Phương án khác: chốt định kỳ đầu tháng. Ảnh hưởng trực tiếp tới lúc KH thấy quyền lợi mới." />
+          </div>
+        </JobGroup>
+
+        {/* ── Thresholds ───────────────────────────────────────────────────── */}
+        <JobGroup title="Ngưỡng xếp hạng — chỉ lưu mốc dưới, mốc trên tự suy ra">
+          <Table
+            minW={720}
+            cols={[
+              { label: 'Danh hiệu', w: '1.2fr' },
+              { label: 'Từ (tích lũy ≥)', w: '1.1fr' },
+              { label: 'Đến dưới', w: '1.1fr' },
+              { label: 'Công ty đang ở hạng này', w: '1fr', align: 'r' },
+            ]}
+            rows={[
+              [
+                <span className="text-[11.5px] text-faint">Chưa có hạng</span>,
+                <span className="tabular-nums text-faint">0 ₫</span>,
+                <span className="tabular-nums text-faint">{vnd(TIERS[0].from)}</span>,
+                <span className="tabular-nums text-muted">{noTier}</span>,
+              ],
+              ...TIERS.map((t, i) => [
+                <span className="flex items-center gap-2"><TierPill tier={t} en /></span>,
+                <input
+                  readOnly
+                  value={t.from.toLocaleString('en-US')}
+                  className="w-full rounded-md border border-line bg-surface px-2 py-1 text-right text-[12px] tabular-nums text-ink"
+                />,
+                <span className="tabular-nums text-muted">{TIERS[i + 1] ? vnd(TIERS[i + 1].from) : 'không giới hạn'}</span>,
+                <span className="tabular-nums font-medium text-ink">{countOf(t.key)}</span>,
+              ]),
+            ]}
+          />
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Chỉ ô <b>“Từ”</b> là dữ liệu thật — <b>“Đến dưới”</b> lấy từ mốc của hạng kế tiếp, nên các khoảng không bao giờ chồng
+            nhau hay hở. Thêm / bớt một hạng là thêm / bớt một dòng ở đây.
+          </p>
+        </JobGroup>
+
+        {/* ── Reward catalogue ─────────────────────────────────────────────── */}
+        <JobGroup title="Danh mục quyền lợi theo hạng">
+          <Table
+            minW={880}
+            cols={[
+              { label: 'Quyền lợi', w: '1.8fr' },
+              ...TIERS.map((t) => ({ label: t.vi, w: '1fr', align: 'r' as const })),
+            ]}
+            rows={TIER_BENEFITS.map((b) => [
+              <span className="min-w-0 truncate text-[12px] text-ink/80" title={b.name}>{b.name}</span>,
+              ...TIERS.map((t) => (
+                <span className={cn('tabular-nums', b.by[t.key] === '—' ? 'text-faint' : 'text-ink')}>{b.by[t.key]}</span>
+              )),
+            ])}
+          />
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Ô <b>“—”</b> nghĩa là hạng đó <b>không có</b> quyền lợi này — là một câu trả lời, không phải dữ liệu còn thiếu.
+          </p>
+        </JobGroup>
+      </div>
+
+      {/* The unresolved policy questions, kept ON the page they belong to so they
+          cannot be lost in a chat thread. Each one changes what gets built. */}
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-[11.5px] font-semibold text-amber-900">Chưa chốt với business — 5 câu chặn việc build</p>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[11px] leading-relaxed text-amber-900">
+          <li><b>Quyền lợi chưa dùng khi reset</b> — mất hết ngày {TIER_RESET}, hay bảo lưu / có hạn riêng dài hơn chu kỳ?</li>
+          <li><b>Ai bấm dùng quyền lợi</b> — KH tự chọn thời điểm trên tài khoản, hay gửi yêu cầu cho sales đăng ký hộ?</li>
+          <li><b>Voucher</b> — trị giá cố định hay giảm theo % với mức trần? Có cộng với chiết khấu số lượng (Existing) và ưu đãi Churn &amp; New 50% không?</li>
+          <li><b>Top Companies &amp; Banner</b> — trang có giới hạn số slot không? Nếu có, cam kết cho mọi KH Bạc/Vàng/Kim Cương sẽ <b>oversell</b>: cần booking + kiểm tra chỗ trống, không chỉ bật/tắt một cờ.</li>
+          <li><b>Tụt hạng giữa năm</b> — nếu một đơn bị hoàn khiến tích lũy xuống dưới mốc, KH có bị tụt hạng ngay, hay giữ hạng đến hết chu kỳ?</li>
+        </ol>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
+        <p className="text-[11px] leading-relaxed text-muted">
+          Mọi thay đổi ở trang này được <b>ghi log</b> và <b>không hồi tố</b>: một quyền lợi KH đã nhận vẫn giữ nguyên điều kiện
+          lúc được cấp, kể cả khi ngưỡng hay danh mục sau đó bị sửa.
         </p>
         <button className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
       </div>
@@ -4826,7 +5261,9 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // System
   'admin-users': AdminUsers,
   'admin-roles': AdminRoles,
+  'admin-staff': AdminStaff,
   'admin-issuer': AdminIssuer,
+  'admin-membership': AdminMembership,
   'admin-master-data': AdminMasterData,
   'admin-audit-log': AdminAuditLog,
   'admin-environment': AdminEnvironment,
