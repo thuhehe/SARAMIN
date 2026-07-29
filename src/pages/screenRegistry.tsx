@@ -44,7 +44,8 @@ const ADMIN_NAV_PAGES = new Set([
   'admin-catalog',
   'admin-banners', 'admin-popups', 'admin-pages', 'admin-boards', 'admin-blog',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
-  'admin-users', 'admin-roles', 'admin-master-data', 'admin-audit-log', 'admin-environment', 'admin-departments',
+  'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
+  'admin-master-data', 'admin-audit-log', 'admin-environment', 'admin-departments',
 ])
 
 /** Deep link to the gallery that owns this screen, so the spec page never becomes a

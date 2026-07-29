@@ -53,9 +53,6 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-signups': { module: 'crm', feature: 'Sign-ups (inbound triage)' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
-  // The loyalty programme is a CRM concept (earned from orders, shown on the company
-  // record); only its configuration screen lives under the System menu.
-  'admin-membership': { module: 'crm', feature: 'Membership tiers (loyalty programme)' },
   // NOTE: 'admin-company-users' has no target on purpose — the Account management
   // module was trimmed out of the build plan (buildModules.ts), so there is no
   // authored feature page to link to. Re-add it there to make this page linkable.
@@ -63,6 +60,14 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
   'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
+  'admin-issuer': { module: 'admin-access', feature: 'Company information' },
+  // Configuration page → System module, like every other System nav item. The tier it
+  // configures is displayed by CRM → Companies, which cross-references back to here.
+  'admin-membership': { module: 'admin-access', feature: 'Membership tiers' },
+  'admin-master-data': { module: 'admin-access', feature: 'Master data' },
+  'admin-audit-log': { module: 'admin-access', feature: 'Audit log' },
+  'admin-environment': { module: 'admin-access', feature: 'Environment' },
+  'admin-departments': { module: 'admin-access', feature: 'Departments' },
 }
 
 /** Resolve an admin page to its authored spec page, or null if none exists yet. */
