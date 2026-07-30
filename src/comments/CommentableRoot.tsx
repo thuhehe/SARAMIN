@@ -29,7 +29,8 @@ interface Painted {
  * resize all funnel through the ResizeObserver).
  */
 export function CommentableRoot({ children }: { children: React.ReactNode }) {
-  const { threads, docKey, activeId, setActiveId, status } = useComments()
+  const { threads, docKey, activeId, activeSeq, setActiveId, status } =
+    useComments()
   const rootRef = useRef<HTMLDivElement>(null)
   const [painted, setPainted] = useState<Painted[]>([])
 
@@ -81,41 +82,79 @@ export function CommentableRoot({ children }: { children: React.ReactNode }) {
    * so clicking a highlight that's already on screen (or a thread you
    * just replied to) doesn't yank the page around. Threads with no
    * resolvable anchor — orphaned or page-level — have nowhere to go and
-   * are skipped.
+   * are skipped, and are left unmarked so the jump still happens if their
+   * text arrives on a later render.
    *
-   * Fires once per *selection*, not once per render. `threads` is a fresh
-   * array on every 5s poll, so without this guard a reader who scrolls
-   * away from a thread that is still selected gets dragged back every
-   * five seconds.
+   * Keyed on `activeSeq`, not on `activeId`. Once per *selection* is the
+   * right rate — `threads` is a fresh array on every 5s poll, and without
+   * a guard a reader who scrolls away from a still-selected thread gets
+   * dragged back every five seconds — but "selection" means the act, not
+   * the value. Clicking the same card again leaves `activeId` untouched,
+   * so an id-keyed guard swallowed exactly the click that means "take me
+   * back there", which is what you press after reading somewhere else.
    */
-  const scrolledTo = useRef<string | null>(null)
+  const scrolledSeq = useRef(-1)
   useEffect(() => {
-    if (!activeId) {
-      scrolledTo.current = null
-      return
-    }
-    if (status !== 'ready' || scrolledTo.current === activeId) return
+    if (!activeId || status !== 'ready') return
+    if (scrolledSeq.current === activeSeq) return
     const root = rootRef.current
     if (!root) return
     const thread = threads.find((t) => t.id === activeId)
     if (!thread) return
-    scrolledTo.current = activeId
-    const range = resolveAnchor(root, thread.anchor)
-    if (!range) return
-
-    const rect = range.getBoundingClientRect()
-    if (rect.height === 0 && rect.width === 0) return
 
     // Keep clear of the sticky page chrome at the top, and leave the
     // quote well above the fold rather than flush against the edge.
     const topMargin = 120
     const bottomMargin = 80
-    const comfortable =
-      rect.top >= topMargin && rect.bottom <= window.innerHeight - bottomMargin
-    if (comfortable) return
 
-    window.scrollBy({ top: rect.top - topMargin, behavior: 'smooth' })
-  }, [activeId, threads, status])
+    /*
+     * Measure only once the layout has stopped moving. A selection often
+     * *opens* the rail, and the page then gives back the rail's width over
+     * 150ms — which reflows the column and walks the quote down by up to a
+     * few hundred px on a spec page. Scrolling to where the quote was
+     * before that reflow lands somewhere near it but not on it, which
+     * reads as "it didn't jump to my comment".
+     *
+     * Watching the rect settle rather than waiting out a hard-coded 150ms
+     * keeps this honest if the transition changes, and covers the other
+     * reason a rect moves late (a font or image landing above the quote).
+     */
+    let cancelled = false
+    let frame = 0
+    let lastTop = NaN
+    let stableFrames = 0
+    const deadline = performance.now() + 400
+
+    const align = () => {
+      if (cancelled) return
+      const range = resolveAnchor(root, thread.anchor)
+      if (!range) return
+      const rect = range.getBoundingClientRect()
+      if (rect.height === 0 && rect.width === 0) return
+
+      if (rect.top === lastTop) stableFrames += 1
+      else {
+        stableFrames = 0
+        lastTop = rect.top
+      }
+      if (stableFrames < 2 && performance.now() < deadline) {
+        frame = requestAnimationFrame(align)
+        return
+      }
+
+      scrolledSeq.current = activeSeq
+      const comfortable =
+        rect.top >= topMargin && rect.bottom <= window.innerHeight - bottomMargin
+      if (comfortable) return
+      window.scrollBy({ top: rect.top - topMargin, behavior: 'smooth' })
+    }
+
+    frame = requestAnimationFrame(align)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [activeId, activeSeq, threads, status])
 
   /**
    * Clicking highlighted text focuses its thread. Done by hit-testing
@@ -141,10 +180,22 @@ export function CommentableRoot({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div id={COMMENT_ROOT_ID} ref={rootRef} className="relative">
+    <div id={COMMENT_ROOT_ID} ref={rootRef} className="relative isolate">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+        /*
+         * Over the text, not behind it. This site's content is a stack of
+         * opaque cards (`bg-surface`), so a box painted underneath one is
+         * a box nobody ever sees — which is every highlight outside the
+         * few paragraphs that sit on the bare canvas.
+         *
+         * `mix-blend-multiply` is what makes being on top safe: like a
+         * marker on paper it darkens the white card to amber and leaves
+         * the glyphs alone, so the quote stays as readable as it was.
+         * `isolate` on the root confines that blend to this subtree, and
+         * `pointer-events-none` keeps the text selectable through it.
+         */
+        className="pointer-events-none absolute inset-0 z-10 overflow-hidden mix-blend-multiply"
       >
         {painted.map((thread) =>
           thread.boxes.map((box, i) => (
@@ -153,10 +204,10 @@ export function CommentableRoot({ children }: { children: React.ReactNode }) {
               className={[
                 'absolute rounded-[3px] transition-colors',
                 thread.resolved
-                  ? 'bg-emerald-200/35'
+                  ? 'bg-emerald-200/60'
                   : activeId === thread.id
-                    ? 'bg-amber-300/70 ring-1 ring-amber-500/50'
-                    : 'bg-amber-200/50',
+                    ? 'bg-amber-300 ring-1 ring-amber-500/60'
+                    : 'bg-amber-200/70',
               ].join(' ')}
               style={{
                 top: box.top,
