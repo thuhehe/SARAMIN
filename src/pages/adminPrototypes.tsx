@@ -3767,13 +3767,33 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Hóa đơn GTGT / VAT e-invoice</p>
           <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
             <span className="font-mono">{inv.legal}</span>
-            <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled · replaced' : 'Issued'}</Pill>
+            <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled' : 'Issued'}</Pill>
           </h2>
           <p className="text-[11.5px] text-muted">Số nội bộ {inv.code} · {inv.customer}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Tải PDF</button>
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">Xem PO nguồn</button>
+          {inv.cancelled && (
+            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xem hóa đơn thay thế →</button>
+          )}
         </div>
+      </div>
+
+      {/* One row, one status, and the actions that status actually permits. An
+          issued invoice has no forward action at all — that is the rule, not a
+          gap, so the row states it instead of showing an empty space. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-wide text-faint">Trạng thái</span>
+          <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled' : 'Issued'}</Pill>
+          <span className="text-[11px] text-muted">{inv.cancelled ? 'Đã hủy — đã có hóa đơn thay thế' : 'Đã xuất hóa đơn'}</span>
+        </div>
+        <span className="text-[11.5px] font-medium text-emerald-700">
+          {inv.cancelled
+            ? '✓ Đã xử lý xong — không còn hành động nào trên hóa đơn này'
+            : '✓ Terminal — hóa đơn hợp lệ, không sửa và không có bước tiếp theo'}
+        </span>
       </div>
 
       <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
@@ -3846,7 +3866,7 @@ function AdminInvoices() {
         <span className="truncate">{i.customer}</span>,
         <span className="truncate font-mono text-[11px] text-muted">{i.po}</span>,
         <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
-        <Pill tone={i.cancelled ? 'expired' : 'active'}>{i.cancelled ? 'Cancelled · replaced' : 'Issued'}</Pill>,
+        <Pill tone={i.cancelled ? 'expired' : 'active'}>{i.cancelled ? 'Cancelled' : 'Issued'}</Pill>,
         <span className="tabular-nums text-muted">{i.issued}</span>,
         <span className="tabular-nums text-muted">{i.activateBy}</span>,
       ])}
@@ -3873,15 +3893,21 @@ function AdminInvoices() {
    Where a customer's procurement does issue a formal PO, that is captured as
    evidence (customerPoNumber / confirmedAt), not as a status.
    SENDING the PO is the "won" moment — the deal moves to the PO stage there. */
-type PoStep = 'draft' | 'sent' | 'paid' | 'invoiced'
+type PoStep = 'draft' | 'sent' | 'paid' | 'invoiced' | 'cancelled'
 const PO_FLOW: { key: PoStep; vi: string; en: string; by: string }[] = [
   { key: 'draft', vi: 'Nháp', en: 'Draft', by: 'Sales' },
   { key: 'sent', vi: 'Đã gửi khách', en: 'Sent', by: 'Sales' },
-  { key: 'paid', vi: 'Đã thanh toán', en: 'Payment confirmed', by: 'Kế toán' },
-  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Invoice issued', by: 'Kế toán' },
+  { key: 'paid', vi: 'Đã thanh toán', en: 'Paid', by: 'Kế toán' },
+  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Invoiced', by: 'Kế toán' },
 ]
+/* Cancelled is an EXIT, not a step: it can be reached from Draft or Sent, never
+   after a payment is confirmed, so it is deliberately not part of the ordered
+   PO_FLOW above. */
+const PO_CANCELLED = { key: 'cancelled' as PoStep, vi: 'Đã hủy', en: 'Cancelled', by: 'Sales' }
+const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_CANCELLED
 /** The single next action, and who may click it. null once fully invoiced. */
 function poNext(step: PoStep) {
+  if (step === 'cancelled') return null
   const i = PO_FLOW.findIndex((s) => s.key === step)
   const n = PO_FLOW[i + 1]
   if (!n) return null
@@ -3898,12 +3924,14 @@ const POS: Po[] = [
   { code: 'INV-005862/07/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'EST-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
   { code: 'INV-005861/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'EST-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
   { code: 'INV-005860/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'EST-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  { code: 'INV-005859/07/2026', customer: 'Công ty TNHH Minh Long', quote: 'EST-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
+  { code: 'INV-005858/07/2026', customer: 'Công ty CP Đông Á', quote: 'EST-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
-const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active' }
+const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active', cancelled: 'rejected' }
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
-  const cur = PO_FLOW.find((s) => s.key === po.step)!
+  const cur = poStage(po.step)
   const next = poNext(po.step)
   const pack = QUOTE_CATALOG[po.product]
   const sub = Math.round(po.total / (1 + VAT_RATE / 100))
@@ -3927,7 +3955,9 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
               {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
             </button>
           )
-          : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
+          : po.step === 'cancelled'
+            ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — không còn hành động nào</span>
+            : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
       </div>
 
       {/* document */}
@@ -4000,14 +4030,14 @@ function AdminPOs() {
       tabs={[{ label: 'All', count: 64, active: true }, { label: 'Sent' }, { label: 'Confirmed' }, { label: 'Awaiting payment', count: 9 }, { label: 'Invoiced' }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
-        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Due', w: '0.8fr' },
+        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Payment due', w: '0.9fr' },
       ]}
       rows={POS.map((p) => [
         <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
         <span className="truncate">{p.customer}</span>,
         <button onClick={() => setQuote(p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
-        <Pill tone={PO_TONE[p.step]}>{PO_FLOW.find((s) => s.key === p.step)!.en}</Pill>,
+        <Pill tone={PO_TONE[p.step]}>{poStage(p.step).en}</Pill>,
         <span className="tabular-nums text-muted">{p.issued}</span>,
         <span className="tabular-nums text-muted">{p.due}</span>,
       ])}
@@ -5068,16 +5098,25 @@ function AdminDepartments() {
 }
 
 /* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
+type SignupStatus = 'New' | 'Resolved' | 'Dismissed'
 type Signup = {
   person: string; email: string; company: string; via: string; when: string
   match: 'new' | 'lead' | 'customer' | 'spam'; matchName?: string
+  status: SignupStatus
+  /** what the row became once resolved — the link back the spec requires */
+  became?: string
 }
+/* MATCH is what the system found (new company / lead / customer / spam).
+   STATUS is whether a human has dispositioned the row yet — New until Sales
+   records an outcome, then Resolved with a link to whatever it became, or
+   Dismissed as spam. The two are independent: a matched row is still New. */
+const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Dismissed: 'expired' }
 const SIGNUPS: Signup[] = [
-  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', company: 'Công ty TNHH Đại Dương', via: 'no match on tax code / domain', when: '15m ago', match: 'new' },
-  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', company: 'Việt Tiến Logistics', via: 'tax code 0314xxxxxx', when: '1h ago', match: 'lead', matchName: 'Cty TNHH Việt Tiến' },
-  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', company: 'FPT Software', via: 'email domain @fpt.com.vn', when: '3h ago', match: 'customer', matchName: 'FPT Software' },
-  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', company: 'Startup ABC', via: 'public email domain — verify manually', when: '5h ago', match: 'new' },
-  { person: 'asdf qwer', email: 'x@spam.io', company: 'zzz', via: 'flagged by spam filter', when: '6h ago', match: 'spam' },
+  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', company: 'Công ty TNHH Đại Dương', via: 'no match on tax code / domain', when: '15m ago', match: 'new', status: 'New' },
+  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', company: 'Việt Tiến Logistics', via: 'tax code 0314xxxxxx', when: '1h ago', match: 'lead', matchName: 'Cty TNHH Việt Tiến', status: 'New' },
+  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', company: 'FPT Software', via: 'email domain @fpt.com.vn', when: '3h ago', match: 'customer', matchName: 'FPT Software', status: 'Resolved', became: 'Join request → FPT Software' },
+  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', company: 'Startup ABC', via: 'public email domain — verify manually', when: '5h ago', match: 'new', status: 'New' },
+  { person: 'asdf qwer', email: 'x@spam.io', company: 'zzz', via: 'flagged by spam filter', when: '6h ago', match: 'spam', status: 'Dismissed' },
 ]
 const MATCH_META: Record<Signup['match'], { tone: StatusTone; label: string; action: string }> = {
   new: { tone: 'neutral', label: 'New company', action: 'Create lead →' },
@@ -5089,7 +5128,10 @@ function AdminSignups() {
   return (
     <div>
       <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-        Inbound self-registrations from the company site — this is lead capture. Triage each one: match it to a company already in the CRM, or create a new lead. Nothing is provisioned here.
+        Inbound self-registrations from the company site — this is lead capture. Nothing is provisioned here.
+        <b> Match</b> is what the system found; <b>Status</b> is whether a human has dispositioned the row — <b>New</b> until Sales
+        records an outcome, then <b>Resolved</b> (with a link to what it became) or <b>Dismissed</b> as spam. A row can never be
+        left half-resolved.
       </div>
 
       {/* the 3 cases + their action */}
@@ -5099,11 +5141,11 @@ function AdminSignups() {
         <div className="rounded-lg border border-line p-2.5"><Pill tone="active">Existing customer</Pill><p className="mt-1.5 text-[11px] text-muted">Already a customer → <b className="text-ink">Send join request</b> to their admin.</p></div>
       </div>
 
-      <TabBar tabs={[{ label: 'All', count: 34, active: true }, { label: 'New company', count: 19 }, { label: 'Matched', count: 12 }, { label: 'Spam', count: 3 }]} />
+      <TabBar tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Dismissed', count: 3 }]} />
       <Table
         cols={[
-          { label: 'Person', w: '1.5fr' }, { label: 'Company entered', w: '1.4fr' }, { label: 'Match', w: '1.7fr' },
-          { label: 'When', w: '0.7fr', align: 'r' }, { label: 'Action', w: '1.5fr', align: 'r' },
+          { label: 'Person', w: '1.4fr' }, { label: 'Company entered', w: '1.2fr' }, { label: 'Match', w: '1.6fr' },
+          { label: 'Status', w: '1.3fr' }, { label: 'When', w: '0.6fr' }, { label: 'Action', w: '1.4fr', align: 'r' },
         ]}
         rows={SIGNUPS.map((s) => {
           const m = MATCH_META[s.match]
@@ -5114,14 +5156,20 @@ function AdminSignups() {
               <Pill tone={m.tone}>{m.label}{s.matchName ? `: ${s.matchName}` : ''}</Pill>
               <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.via}</p>
             </div>,
+            <div className="min-w-0">
+              <Pill tone={SIGNUP_STATUS[s.status]}>{s.status}</Pill>
+              {s.became && <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.became}</p>}
+            </div>,
             <span className="text-[11.5px] text-muted">{s.when}</span>,
             <div className="flex items-center justify-end gap-1.5">
-              {s.match === 'spam'
-                ? <RowAction tone="rose">Dismiss</RowAction>
-                : <>
-                    <button className={cn('rounded-md px-2.5 py-1 text-[11px] font-semibold text-white', s.match === 'new' ? 'bg-brand hover:opacity-90' : s.match === 'customer' ? 'bg-emerald-600 hover:opacity-90' : 'bg-amber-600 hover:opacity-90')}>{m.action}</button>
-                    <RowAction tone="rose">Spam</RowAction>
-                  </>}
+              {s.status !== 'New'
+                ? <span className="text-[11px] text-faint">—</span>
+                : s.match === 'spam'
+                  ? <RowAction tone="rose">Dismiss</RowAction>
+                  : <>
+                      <button className={cn('rounded-md px-2.5 py-1 text-[11px] font-semibold text-white', s.match === 'new' ? 'bg-brand hover:opacity-90' : s.match === 'customer' ? 'bg-emerald-600 hover:opacity-90' : 'bg-amber-600 hover:opacity-90')}>{m.action}</button>
+                      <RowAction tone="rose">Spam</RowAction>
+                    </>}
             </div>,
           ]
         })}

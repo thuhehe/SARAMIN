@@ -215,6 +215,11 @@ export const adminAccess: BuildModule = {
       text: 'The HQ department list (name, member count, lead) used to group operators and to route work.',
       warn: 'Prototype only — no backend counterpart yet. Confirm with the client whether departments are actually needed in Phase 1, or whether the role on each operator is enough.',
     },
+    {
+      label: 'Full name — one field, no first/last split',
+      text: 'An HQ staff member’s name is stored and captured in a SINGLE "Full name" field — same platform-wide standard as jobseekers and company (employer) users.',
+      warn: 'Do NOT split any person’s name into first name / last name anywhere. One field: Full name.',
+    },
   ],
   features: [
     {
@@ -233,7 +238,7 @@ export const adminAccess: BuildModule = {
           {
             group: 'Staff member',
             items: [
-              { name: 'name', type: 'string', required: true },
+              { name: 'fullName', type: 'string', required: true, notes: 'ONE field — no first/last split' },
               { name: 'email', type: 'email', required: true, notes: 'unique; becomes the login if the person is later made an operator' },
               { name: 'phone', type: 'string', notes: 'contact number' },
               { name: 'department', type: 'ref → Department', notes: 'org unit (System → Departments)' },
@@ -256,7 +261,7 @@ export const adminAccess: BuildModule = {
         backend: {
           dataModel: [
             { name: 'staffId', type: 'uuid' },
-            { name: 'name', type: 'string', required: true },
+            { name: 'fullName', type: 'string', required: true, notes: 'single field — no first/last split' },
             { name: 'email', type: 'string', required: true, notes: 'unique' },
             { name: 'phone', type: 'string' },
             { name: 'departmentId', type: 'ref(department)' },

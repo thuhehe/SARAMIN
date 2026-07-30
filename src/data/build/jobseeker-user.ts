@@ -82,6 +82,11 @@ export const jobseekerUser: BuildModule = {
       label: 'Jobseeker surfaces',
       text: 'My page — profile info, avatar, contact, job preferences, profile completeness. Deactivate (withdraw) with a confirm step.',
     },
+    {
+      label: 'Full name — one field, no first/last split',
+      text: 'A jobseeker’s name is stored and captured in a SINGLE "Full name" field — the only profile field asked at sign-up — the same platform-wide standard as HQ staff and company (employer) users.',
+      warn: 'Do NOT split any person’s name into first name / last name anywhere. One field: Full name.',
+    },
   ],
   features: [
     // 0 · Identity ────────────────────────────────────────────────────────────

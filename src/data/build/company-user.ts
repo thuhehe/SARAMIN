@@ -82,6 +82,11 @@ export const companyUser: BuildModule = {
         ],
       },
     },
+    {
+      label: 'Full name — one field, no first/last split',
+      text: 'A company (employer) user’s name is stored and captured in a SINGLE "Full name" field — same platform-wide standard as jobseekers and HQ staff.',
+      warn: 'Do NOT split any person’s name into first name / last name anywhere. One field: Full name.',
+    },
   ],
   features: [
     {
@@ -194,7 +199,7 @@ export const companyUser: BuildModule = {
             group: 'User',
             items: [
               { name: 'email', type: 'string', required: true, notes: 'their own login; they set their own password via the invite link' },
-              { name: 'name', type: 'string' },
+              { name: 'fullName', type: 'string', notes: 'ONE field — no first/last split' },
               { name: 'role', type: "enum('HR Manager'|'HR Specialist')", required: true, notes: 'a flag on the user — HR Manager = admin, HR Specialist = post jobs / search resumes only' },
               { name: 'status', type: 'enum', notes: 'Invited → Active → Disabled' },
             ],

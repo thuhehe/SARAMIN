@@ -23,8 +23,7 @@ export const JOBSEEKER_SPECS: FeatureSpec[] = [
       {
         group: 'Sign-up form (email)',
         items: [
-          { name: 'First name', type: 'text', required: true, notes: 'Split from a single "name" so we can greet / personalise and sort properly.' },
-          { name: 'Last name', type: 'text', required: true },
+          { name: 'Full name', type: 'text', required: true, notes: 'Stored as ONE field. We do NOT split into first name / last name.' },
           { name: 'Email', type: 'email', required: true, notes: 'Validated format, must be unique.' },
           { name: 'Password', type: 'password', required: true, notes: 'Live rule checklist below the field, each rule flips red→green as satisfied.' },
           { name: 'Show / hide password', type: 'toggle (eye icon)', notes: 'Reveals the password value.' },
@@ -54,8 +53,7 @@ export const JOBSEEKER_SPECS: FeatureSpec[] = [
     backend: {
       dataModel: [
         { name: 'id', type: 'uuid', required: true },
-        { name: 'firstName', type: 'string', required: true },
-        { name: 'lastName', type: 'string', required: true },
+        { name: 'fullName', type: 'string', required: true, notes: 'single field — no first/last split' },
         { name: 'email', type: 'string (unique)', required: true },
         { name: 'passwordHash', type: 'string', notes: 'Null for social-only accounts.' },
         { name: 'authProvider', type: "enum('email','google','facebook','zalo')", required: true },
@@ -83,13 +81,13 @@ export const JOBSEEKER_SPECS: FeatureSpec[] = [
     },
     known: [
       'Email/password sign-in + Google button are present and live-wired today.',
-      'Sign-up splits name into first + last name (change from a single field).',
+      'Sign-up collects a single Full name field — no first/last split.',
       'A join-detail step collects profile basics after first sign-up.',
       'Withdrawal has a confirm dialog and deactivates the account.',
     ],
     unknown: [
       'On success: does the user get email/password login only, or auto-login + a verification email?',
-      'On first Google sign-up, do we still collect first/last name separately, or split Google\'s display name?',
+      'On first Google sign-up, do we take the provider\'s display name straight into the single Full name field?',
       'Password-reset flow (email link? OTP?) is not specced.',
       'Session model: who issues/refreshes the JWT and how long it lives.',
     ],

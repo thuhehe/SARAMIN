@@ -26,6 +26,23 @@ export const resumeManagement: BuildModule = {
       text: 'Unlike VietnamWorks, the structured data needed for matching and CV search is EXTRACTED from the uploaded CV by AI — not typed by the user. See “CV data & matching architecture”.',
     },
     {
+      label: 'Why we parse the CV into a structured database (not just store the PDF)',
+      text: 'A PDF is opaque to software — you cannot search, filter, rank or match on it. Parsing every CV into one structured Candidate Profile is the foundation that unlocks the whole employer side.',
+      table: {
+        cols: ['Capability', 'Needs structured data because…'],
+        rows: [
+          ['CV search (the paid feature)', 'Recruiters search by facets — title, skills, years, location. A PDF has no facets.'],
+          ['CV ↔ JD match score', 'A % fit is computed by comparing profile fields to the job’s fields — impossible on raw text.'],
+          ['Filter & rank a large pool', 'Narrow thousands of CVs and order them by relevance / recency / completeness.'],
+          ['Recommendations & alerts', 'Suggest jobs to candidates, surface new matching CVs to recruiters.'],
+          ['Quick-apply autofill', 'Pre-fill the application from the profile so applying is one tap.'],
+          ['Pool quality & dedup', 'Completeness scoring, spotting duplicate / thin CVs.'],
+          ['Market analytics', 'What skills the pool holds vs. what employers demand.'],
+        ],
+      },
+      warn: 'This is the foundation feature: CV search, matching and recommendations ALL depend on it. It is the first thing to assign — see “CV data & matching architecture” → Kick-off.',
+    },
+    {
       label: 'CV visibility (candidate-owned)',
       table: {
         cols: ['Status', 'Means', 'Rule'],
@@ -425,6 +442,59 @@ export const resumeManagement: BuildModule = {
           'The plan for getting the structured data that matching and CV-search need WITHOUT asking candidates to fill long forms. Instead of VietnamWorks-style manual profiles, the candidate just uploads their CV and AI extracts a structured Candidate Profile from it. That one profile powers both (a) the CV↔JD match score and (b) employer CV search — so we never ask the user for data the CV already contains.',
         userStory:
           'As a candidate, I want to just upload my CV and be discoverable & matched, without filling in dozens of fields — so that applying is effortless while recruiters still get searchable, rankable data.',
+        uiFields: [
+          {
+            group: 'Candidate Profile — the canonical schema (the contract everything builds on)',
+            items: [
+              { name: 'headline / currentTitle', type: 'string → Title taxonomy', notes: 'from CV; the primary keyword field for search' },
+              { name: 'location', type: 'enum (province/city)', notes: 'from CV; a core search facet' },
+              { name: 'totalYearsExperience', type: 'number (derived)', notes: 'computed from work history — a core filter' },
+              { name: 'seniorityLevel', type: 'enum', notes: 'Intern · Fresher · Junior · Senior · Manager · Director — derived from titles/years' },
+              { name: 'industry', type: 'enum → Industry taxonomy', notes: 'from CV' },
+            ],
+          },
+          {
+            group: 'Work experience (repeatable)',
+            items: [
+              { name: 'company / title', type: 'string', notes: 'title normalises to the Title taxonomy' },
+              { name: 'startDate / endDate / isCurrent', type: 'date / date / bool', notes: 'drives totalYearsExperience and "currently employed"' },
+              { name: 'description', type: 'text', notes: 'free text — a source for skill extraction' },
+            ],
+          },
+          {
+            group: 'Education (repeatable)',
+            items: [
+              { name: 'school / degree / major', type: 'string', notes: 'degree maps to a level enum' },
+              { name: 'startDate / endDate', type: 'date', notes: 'derives highestEducationLevel' },
+            ],
+          },
+          {
+            group: 'Skills & languages',
+            items: [
+              { name: 'skills', type: 'ref[] → Skill taxonomy', notes: 'THE key facet — must be normalised, never free strings (see “The join”)' },
+              { name: 'skill.yearsUsed / proficiency', type: 'number / enum', notes: 'optional — richer ranking when present' },
+              { name: 'languages', type: '{ language, proficiency }[]', notes: 'e.g. English — Professional; a search facet' },
+              { name: 'certifications', type: '{ name, issuer, date }[]', notes: 'optional' },
+            ],
+          },
+          {
+            group: 'Candidate asks — the ~5 fields AI cannot read (user input, optional)',
+            items: [
+              { name: 'desiredSalary', type: 'int (VND) / negotiable', notes: 'CVs rarely state this — ask, do not infer' },
+              { name: 'desiredRole / desiredLocation', type: 'string / enum', notes: 'preferences for matching & recommendations' },
+              { name: 'availability / noticePeriod', type: 'enum', notes: 'Immediate · 1 month · … — a recruiter filter' },
+              { name: 'visibility', type: 'enum (discoverable|hidden)', required: true, notes: 'explicit consent — NEVER inferred' },
+            ],
+          },
+          {
+            group: 'System / derived (not shown as inputs)',
+            items: [
+              { name: 'fieldSource / fieldConfidence', type: 'enum / 0–1', notes: 'per field: parsed vs user-confirmed, and how sure the parser was' },
+              { name: 'lastUpdatedAt', type: 'timestamp', notes: 'recency — a ranking signal' },
+              { name: 'completenessScore', type: 'number', notes: 'how filled-in the profile is — a ranking signal' },
+            ],
+          },
+        ],
         sections: [
           {
             heading: 'Principle — extract, don’t ask',
@@ -490,6 +560,19 @@ export const resumeManagement: BuildModule = {
             items: [
               'Phase 1 — launch without AI: upload CV + capture ~5 fields; keyword search + field-overlap matching. Ships fast, gathers CV volume.',
               'Phase 2 — turn on AI: parse each CV → auto-fill the Candidate Profile → real match % + rich CV search. Removes the user-input burden entirely.',
+            ],
+          },
+          {
+            heading: 'Kick-off — what the developer starts NOW (a research spike, before any build)',
+            items: [
+              '1. GATHER SAMPLE CVs — 10–20 real ones: Vietnamese + English, mixed formats (clean PDF, exported-from-Word, scanned). The 2–3 client test CVs are the seed. (PM/BA supplies.)',
+              '2. LOCK THE SCHEMA — turn the Candidate Profile above into a concrete JSON contract. Everything (search, matching, storage) builds on it, so it is decided first. Deliverable: schema doc + example JSON.',
+              '3. DECIDE THE TAXONOMY — where the canonical Skill / Title / Industry lists come from (adopt an existing set vs. curate our own). This is the linchpin that lets CV and JD data connect.',
+              '4. PARSER SPIKE — run 2–3 approaches (LLM prompt vs. a resume-parsing vendor e.g. Affinda / Daxtra) over the sample CVs and MEASURE per-field accuracy, especially Vietnamese. Deliverable: comparison table + a build-vs-buy recommendation.',
+              '5. STORAGE DESIGN — RawCV (file) + CandidateProfile (structured, with per-field source & confidence) + how the search index is fed from it.',
+              '6. PHASE-1 FALLBACK — define the ≤5 fields to ask when AI is off, and the light review screen, so we can ship before the parser is ready.',
+              '7. CONFIDENCE & REVIEW RULE — the confidence threshold below which a field is shown to the candidate to confirm (human-in-the-loop).',
+              'Output: the living design doc + a recommendation reviewed with PM/BA BEFORE the build starts. Do not build the parser into production until step 4 has a verdict.',
             ],
           },
         ],
