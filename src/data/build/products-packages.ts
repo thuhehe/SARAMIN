@@ -96,6 +96,7 @@ export const productsPackages: BuildModule = {
       name: 'Products management',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'admin-catalog',
       detail: {
         description:
