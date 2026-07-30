@@ -317,23 +317,21 @@ function MyPageScreen() {
           <div className="rounded-xl border border-line p-4">
             <SectionTitle more>My CV &amp; Profile</SectionTitle>
             <div className="space-y-2">
-              {/* master — always sent, no "default" to choose */}
-              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 hover:border-brand">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface text-[13px]">🧬</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-ink">Saramin Profile</p>
-                  <p className="text-[11px] text-muted">Master CV · always sent to employers</p>
-                </div>
-                <Chip tone="green">Source of truth</Chip>
-              </div>
-              {/* optional attachment */}
+              {/* uploaded CV — the file recruiters read */}
               <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] font-semibold text-ink">Portfolio.pdf</p>
-                  <p className="text-[11px] text-faint">Optional attachment · the file recruiters read</p>
+                  <p className="text-[11px] text-muted">Your uploaded CV · what recruiters read</p>
                 </div>
-                <Chip>Optional</Chip>
+              </div>
+              {/* saramin CV — optional structured profile */}
+              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🧬</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-ink">Saramin CV</p>
+                  <p className="text-[11px] text-muted">Structured profile · optional</p>
+                </div>
               </div>
             </div>
           </div>
@@ -803,7 +801,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-job-detail', site: 'Jobseeker', title: 'Job detail', url: 'saramin.vn/job/senior-frontend', Comp: JobDetailScreen },
   { id: 'js-apply', site: 'Jobseeker', title: 'Apply flow', url: 'saramin.vn/job/…/apply', Comp: ApplyScreen },
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },
-  { id: 'js-profile-cv', site: 'Jobseeker', title: 'My CV & Profile (profile = source of truth)', url: 'saramin.vn/my-page/cv', Comp: ProfileCvScreen },
+  { id: 'js-profile-cv', site: 'Jobseeker', title: 'My CV & Profile', url: 'saramin.vn/my-page/cv', Comp: ProfileCvScreen },
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
   // Admin / CRM — the lead → customer activation flow
   { id: 'crm-pipeline', site: 'Admin · CRM', title: '1 · Sales pipeline', url: 'admin/sales/customers', Comp: CrmPipelineScreen },

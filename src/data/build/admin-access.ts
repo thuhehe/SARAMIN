@@ -55,11 +55,11 @@ export const adminAccess: BuildModule = {
       label: 'Access model — role per admin page',
       text: 'A ROLE defines permissions per admin page. Each operator is assigned exactly one role, and only ever sees the nav items and actions that role allows.',
       table: {
-        cols: ['Permission', 'Means'],
+        cols: ['Permission', 'Means', 'Rule'],
         rows: [
-          ['None', 'The page is not even in the nav'],
-          ['Read', 'View only'],
-          ['Read & write', 'Create · edit · delete'],
+          ['None', 'The page is not even in the nav', 'Not granted — the page is hidden entirely'],
+          ['Read', 'View only', 'Can view, never change'],
+          ['Read & write', 'Create · edit · delete', 'Write implies read — includes everything Read allows'],
         ],
       },
     },
@@ -76,6 +76,18 @@ export const adminAccess: BuildModule = {
         ],
       },
       warn: 'The operator clicks the link and sets their OWN password — no one types a password for them. Statuses match the company HR invite exactly: Pending (invited) → Active (link clicked, password set).',
+    },
+    {
+      label: 'Operator (admin user) status',
+      text: 'The same enum as the company HR invite — Invited → Active → Disabled — because the operator invite deliberately mirrors it.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Pending', 'Invited, awaiting activation', 'An invite can expire and be resent'],
+          ['Active', 'Link clicked & password set', 'The person sets their OWN password via the invite link — no one types it for them'],
+          ['Disabled', 'Access removed', 'Re-enableable — remove = disable, never a hard delete'],
+        ],
+      },
     },
     {
       label: 'Roles are team-managed',
@@ -179,6 +191,16 @@ export const adminAccess: BuildModule = {
         'Adding a value is a DATA change, never a release — this is the same principle as the job taxonomy (see Job management) and the tool rate tables (see Tools).',
         'A value in use cannot simply vanish: renaming is safe, removing needs a merge/replace path so existing records keep resolving.',
       ],
+    },
+    {
+      label: 'Master-data entry status',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Active', 'Usable / selectable in every picker', 'Renaming is safe — records store the id, not the label'],
+          ['Retired', 'No longer offered, but stays resolvable for existing records', 'A value in use is retired or merged, never hard-deleted'],
+        ],
+      },
     },
     {
       label: 'Environment — feature flags',
@@ -404,6 +426,7 @@ export const adminAccess: BuildModule = {
       name: 'Company information',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       notes: 'Our OWN issuer identity — not a customer record. Set once; every sales document reads it.',
       mockup: 'admin-issuer',
       detail: {

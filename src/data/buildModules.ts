@@ -31,21 +31,27 @@ import { tools } from './build/tools'
 /*
  * Order matters — this is the reading order of the whole spec, in the left nav, on
  * /modules and in the build plan. It follows the commercial chain: define what is
- * SELLABLE, sell it, then deliver it.
+ * SELLABLE, sell it, then deliver it — and within delivery, the order the
+ * marketplace itself runs in.
  *
  *   Products & Packages  what we sell — the catalogue the CRM's documents draw on
  *   CRM                  selling it — quotation → order → payment → invoice
  *   Job management       delivering the thing they bought
- *   …then the supporting domains.
+ *   Job seeker user      the other side of the marketplace: who applies
+ *   Resume management    the CV they build — the input to an application
+ *   Application          the CV meeting the job — so it reads after both halves
+ *   System               HQ configuration behind all of the above
+ *   Banners & Popups     content laid over the site
+ *   Tools                supporting utilities
  */
 export const BUILD_MODULES: BuildModule[] = [
   productsPackages,
   crm,
   jobManagement,
   jobseekerUser,
-  adminAccess,
-  applicationManagement,
   resumeManagement,
+  applicationManagement,
+  adminAccess,
   bannersPopups,
   tools,
 ]

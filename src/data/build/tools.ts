@@ -61,6 +61,17 @@ export const tools: BuildModule = {
         ],
       },
     },
+    {
+      label: 'Personality question-bank status',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'Being edited, not yet in use', 'Editing a live bank creates a new version rather than mutating the one existing results were scored against'],
+          ['Active', 'The live bank used by new submissions', 'Only one Active bank at a time'],
+          ['Archived', 'A retired bank version', 'A submission stores the bank version it was scored against, so old results stay reproducible'],
+        ],
+      },
+    },
   ],
   features: [
     // 0 · Personality testing ─────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import type { BuildModule } from './types'
  *
  * A module separate from the jobseeker flow: the sales team manages companies
  * as customers and moves each deal through the document flow Proposal → Qualified
- * → Negotiation → PO → Invoice (+ Lost). A PO is the "won" moment — the rep then
+ * → Negotiation → PO → Invoice (+ Lost). SENDING the PO is the "won" moment — the rep then
  * hands off to Account management, which activates the customer (creates the
  * account, provisions products/quota, and — for Job Posting — the public company
  * page). One company record is born here as New — a company that has never bought
@@ -18,7 +18,7 @@ import type { BuildModule } from './types'
  *   Quotation (Báo giá, 1–3 OPTIONS)   Sales, EST-xxxxxx-MM-YYYY
  *        │ customer picks ONE option
  *        ▼
- *   Sales order / PO  ── customer confirms ──▶ deal = PO (won)
+ *   Sales order / PO  ── SENT to the customer ──▶ deal = PO (won)
  *        │ Accounting: awaiting payment
  *        ▼
  *   Payment  ── Accounting CONFIRMS against the bank ──▶ unlocks invoicing
@@ -55,14 +55,14 @@ export const crm: BuildModule = {
       label: 'Pipeline stages (the kanban)',
       text: 'The board mirrors the document chain. A card carries deal value + owner. Stage lives on the DEAL, never on the company.',
       table: {
-        cols: ['Stage', 'What it means', 'Entered when'],
+        cols: ['Stage', 'What it means', 'Entered when', 'Rule'],
         rows: [
-          ['Proposal', 'Quotation has been sent to the customer', 'Rep marks the quotation Sent'],
-          ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies'],
-          ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts'],
-          ['PO', 'Customer agreed to buy — Sales issued the Purchase Order. This is “won”.', 'Order confirmed'],
-          ['Invoice', 'Customer paid and Accounting issued the VAT e-invoice — closed', 'Payment confirmed + invoice issued'],
-          ['Lost', 'Ended without a PO — declined / competitor / budget cut / went silent', 'A human closes it and picks a reason'],
+          ['Proposal', 'Quotation has been sent to the customer', 'Rep marks the quotation Sent', 'SYSTEM puts the card here the moment SALES marks the quotation Sent — the stage is a consequence, never a manual drag. Requires a quotation in Sent state or later; a Draft or Pending-approval quotation never lands here. → Next action: SALES chases the customer for a reply.'],
+          ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies', 'SALES moves the card when the customer engages. May be skipped entirely — Proposal → Negotiation is legal. → Next action: SALES agrees the option and the price.'],
+          ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', 'SALES moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: SALES creates the Sales order from the option the customer accepted.'],
+          ['PO', 'The Sales order has been SENT to the customer — this is “won”.', 'PO sent', 'SALES reaches this by sending the Sales order (with bank details). The “won” moment — but it provisions NOTHING yet, and the customer has neither agreed nor paid. → Next action: KẾ TOÁN ONLY confirms the payment against the bank statement.'],
+          ['Invoice', 'Customer paid and Accounting issued the VAT e-invoice — closed', 'Payment confirmed + invoice issued', 'KẾ TOÁN ONLY reaches this, by issuing the VAT e-invoice after confirming payment. SYSTEM then closes the deal won, flips customer status to Existing, starts the 12-month clock and releases provisioning. Terminal — no further action on the deal.'],
+          ['Lost', 'Ended without a PO — declined / competitor / budget cut / went silent', 'A human closes it and picks a reason', 'SALES ONLY, by hand, with a reason — SYSTEM never auto-closes a deal however long it sits (a stale deal is flagged rotting, not lost). → To re-open: SALES moves it back to an earlier stage; a win-back is a NEW deal on the same company.'],
         ],
       },
       items: [
@@ -120,11 +120,11 @@ export const crm: BuildModule = {
       label: 'Customer status values — exactly three',
       text: 'Driven by the INVOICE, not the order. New means “has never bought anything from us”, so every company starts there the moment it is created — there is no separate Prospect status.',
       table: {
-        cols: ['Status', 'Means', 'Moves in when'],
+        cols: ['Status', 'Means', 'Moves in when', 'Rule'],
         rows: [
-          ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM'],
-          ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued'],
-          ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice'],
+          ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM', 'SYSTEM sets this at creation — SALES never picks it, and there is no field to. Leaves only when KẾ TOÁN issues the first VAT e-invoice; never on a sent quotation or a confirmed order alone. → Next action: SALES quotes them.'],
+          ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued', 'SYSTEM flips it on invoice.issued. One-way: a win-back after Churn returns here, never to New. SALES may override only with a reason, and SYSTEM logs the override. → Next action: SALES works the renewal before the 12-month clock runs out.'],
+          ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice', 'SYSTEM sets this 12 months past lastInvoicedAt with no new order — nobody clicks it. The same record looping back; a won win-back returns it to Existing, never a new record. → Next action: SALES runs the win-back on the quarterly churn cadence.'],
         ],
       },
       items: [
@@ -176,7 +176,7 @@ export const crm: BuildModule = {
         cols: ['Step', 'Who', 'Produces', 'Effect'],
         rows: [
           ['Quotation', 'Sales', 'Bilingual PDF, 1–3 options, EST-xxxxxx-MM-YYYY', 'Deal → Proposal'],
-          ['Sales order / PO', 'Sales', 'Order confirmation; can hold the customer’s own PO no. + file', 'Deal → PO (won)'],
+          ['Sales order / PO', 'Sales', 'Order + payment request; can hold the customer’s own PO no. + file', 'Deal → PO (won) when SENT'],
           ['Payment', 'Accounting', 'Confirmation against the bank', 'Unlocks invoicing'],
           ['VAT e-invoice', 'Accounting', 'Invoice issued', 'Deal closed · New → Existing · provisioning released'],
         ],
@@ -187,6 +187,49 @@ export const crm: BuildModule = {
         '“Sent” is a state a human declares, not something only our mailer can produce — reps routinely send a PDF by Zalo or from their own mail client.',
         'Separation of duties: Sales creates/sends quotations and confirms orders; Accounting ALONE confirms money landed and issues the VAT e-invoice. That confirmation is the control that stops provisioning against an unverified payment.',
       ],
+    },
+    {
+      label: 'Quotation status — exactly four',
+      text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the Sales order is created from the accepted option.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'Private working material — editable, not yet out', 'SALES builds and edits it. The only editable status and the only one with no pipeline presence; abandoning it leaves the forecast untouched. → Next action: SALES clicks “Mark as sent”.'],
+          ['Sent', 'Delivered to the customer, awaiting their pick', 'SALES declares this by clicking “Mark as sent” — reps routinely deliver the PDF by Zalo or from their own mailbox, so the status cannot depend on our mailer firing. Immutable from here; this is what puts the deal on the board at Proposal. → Next action: SALES clicks “Issue PO” and picks the option the customer chose.'],
+          ['Issued to PO', 'An option was accepted and the Sales order was created from it', 'Reached automatically the moment SALES creates the Sales order. Terminal success — no further action on the quotation.'],
+          ['Expired', 'Offer lapsed past its expiry date and closed out with no PO', 'SYSTEM sets this on the expiry date — nobody clicks it, and expiring never moves the deal in the pipeline. → To re-open: SALES extends validity or revises to v2.'],
+        ],
+      },
+      warn: 'Only Draft is editable. A Sent quotation is immutable — a change is a new version, never an edit.',
+    },
+    {
+      label: 'Sales order / PO status',
+      text: 'The status carried on the Sales order record and the Order list. An order is created from exactly one accepted quotation option and carries that option’s lines forward unchanged.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'The order copied from the accepted option, not yet sent', 'SALES creates and edits it. Editable only while Draft; the source quotation must be accepted and NOT expired. → Next action: SALES clicks “Gửi khách xác nhận”.'],
+          ['Sent', 'Order PDF + payment request sent to the customer', 'SALES sent it, with bank details, because payment comes first. THIS IS THE “WON” MOMENT — the deal moves to the PO stage here. It provisions NOTHING (clause 3), and the customer has not paid yet; if they never pay it goes to collections, not Lost. Optional evidence — customerPoNumber / confirmedAt — is recorded here when a customer’s procurement issues a formal PO. → Next action: KẾ TOÁN ONLY clicks “Xác nhận đã thanh toán”.'],
+          ['Paid', 'Accounting confirmed the payment against the bank statement', 'KẾ TOÁN ONLY may set this — Sales can record a receipt, but only Accounting confirms the money landed. The PO enters Accounting’s To-invoice queue automatically. → Next action: KẾ TOÁN ONLY clicks “Xuất hóa đơn”.'],
+          ['Invoiced', 'A VAT e-invoice has been issued against the order', 'KẾ TOÁN issued it. Terminal — the deal closes, customer status leaves Prospect, the 12-month clock starts and provisioning is released. One order may carry more than one invoice under a 50/50 term.'],
+          ['Cancelled', 'The order was cancelled with a reason', 'SALES cancels, and only until a payment is confirmed. After that the correction is a credit note by KẾ TOÁN, never a cancellation.'],
+        ],
+      },
+      warn: 'SENDING the PO is the “won” moment but provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Trade-off accepted here: a deal counts as won before the customer has agreed or paid, so the PO column will always hold some deals that never convert.',
+    },
+    {
+      label: 'Invoice (VAT e-invoice) status',
+      text: 'The status on the Invoice list. The VAT e-invoice is the only fiscal document in the chain, issued from a PO only AFTER Accounting has confirmed the payment (T&C clause 3), and issuing it is the event that closes the deal and releases provisioning.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Issued', 'The provider signed it and returned the legal number', 'KẾ TOÁN ONLY issues it, and only from a PO with a confirmed payment (clause 3, enforced server-side). Immutable. This is the event that closes the deal, moves the company out of Prospect, starts the 12-month clock and releases provisioning.'],
+          ['Cancelled / replaced', 'A wrong invoice was cancelled and superseded', 'KẾ TOÁN ONLY. Corrections go through cancel + biên bản + re-issue, never an edit (VN regulation). Both invoices stay on record, linked.'],
+          ['— Issuing (transient)', 'The provider call is in flight — seconds, not a state anyone browses', 'SYSTEM. invoice.issued must be idempotent on the invoice ID: a timeout + retry must never produce two legal numbers nor grant double quota.'],
+          ['— Provider error (transient)', 'The provider call failed', 'SYSTEM surfaces it to KẾ TOÁN to retry. Retry must be safe for the same reason.'],
+        ],
+      },
+      warn: 'Issued invoices are immutable. A correction is always cancel + credit note + re-issue — never an edit.',
     },
     {
       label: 'Issuer identity — one setting, every document (System → Company information)',
@@ -223,8 +266,75 @@ export const crm: BuildModule = {
         'Opening Create quotation from a company pre-selects that company; opening it from the Quotations list asks for one. Either way the quotation is attached to a company and its deal — never floating.',
         'The order modal copies the accepted option forward: line items (gifts included at 0 ₫), quantities, unit prices, VAT and total-after-VAT, plus the billing data read from the company record — legal name, registered address, tax code. Nothing is retyped, because these are the values the e-invoice must eventually match.',
         'It captures what the quotation cannot: payment terms (100% in advance by default, per clause 3), and the customer’s OWN PO number + file for customers whose procurement issues one. Customers without a procurement process simply confirm the order we send.',
-        'It states the two things reps most often get wrong: confirming the order is the “won” moment (deal → PO), and it provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Customer status is unchanged at this step.',
+        'It states the two things reps most often get wrong: SENDING the order is the “won” moment (deal → PO), and it provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Customer status is unchanged at this step.',
         'A lapsed quotation cannot produce an order even if an option was accepted — extend validity or re-issue as v2 first (T&C clause 2). Enforced server-side on POST /orders, not just by hiding the button.',
+      ],
+    },
+    {
+      label: 'PO vs VAT invoice — two different documents, not two names for one',
+      text: 'A PO is a COMMERCIAL document: it records the commitment and asks for money. A VAT e-invoice (hóa đơn GTGT) is a FISCAL document: it is legal proof to the tax authority that a taxable sale happened. Conflating them is the most expensive mistake available here — a customer who is sent a PO believing it is the tax invoice cannot claim VAT against it.',
+      table: {
+        cols: ['', 'PO / Đơn hàng', 'Hóa đơn GTGT / VAT invoice'],
+        rows: [
+          ['What it is', 'The commitment + the request for payment', 'Legal proof of a taxable sale'],
+          ['Binds', 'Us and the customer', 'Us and the TAX AUTHORITY'],
+          ['Numbering', 'Our own series — INV-005864/07/2026', 'The provider’s legal series — e.g. 1C26TAA/0041, gapless, government-controlled'],
+          ['Editable', 'Yes, while Draft', 'NEVER — fix by cancel + credit note + re-issue (VN regulation)'],
+          ['Timing', 'BEFORE payment', 'AFTER payment (T&C clause 3)'],
+          ['Owner', 'Sales', 'Accounting only'],
+          ['Effect', 'Deal = won', 'Deal closed · customer status → New · provisioning released · 12-month activation clock starts'],
+        ],
+      },
+      items: [
+        'One line: the PO says “you agreed to buy this, please pay”. The invoice says “you paid, and here is the document the tax office recognises”.',
+        'NAMING RISK in the current system: the PO record is numbered INV-… and shows “Ngày xuất hóa đơn” + “Hạn trả”, which means it is really acting as a PROFORMA (payment request), not a pure purchase order. That is a legitimate VN pattern, but the proforma and the tax invoice must never be mistakable for each other. Two fixes, pick one: rename the record to PO-{seq}/{MM}/{YYYY} and reserve INV- for the tax invoice (cleanest), OR keep INV- but print “Phiếu báo thanh toán / Proforma” on the page and never send it as the tax invoice.',
+        'The PO’s “Ngày xuất hóa đơn” is a PLANNED date. The VAT invoice’s issue date is a FACT — and it is the one that starts the 12-month activation window (clause 4). Reports must read the invoice date, never the PO’s.',
+      ],
+    },
+    {
+      label: 'Who acts at each step — Sales vs Kế toán',
+      text: 'Sales owns everything up to the commitment. Accounting owns everything about money and tax. The handover is exactly at step 7, and it is a control, not an inconvenience.',
+      table: {
+        cols: ['#', 'Who', 'Action', 'What it unlocks'],
+        rows: [
+          ['1', 'Sales', 'Send the quotation (1–3 options)', 'Deal → Proposal'],
+          ['2', 'Sales', 'Record which option the customer accepted', 'Enables Create PO'],
+          ['3', 'Sales', 'Create the PO from that ONE option', 'The PO exists'],
+          ['4', 'Sales', 'Attach the customer’s own PO number / file, if their procurement issues one', 'Evidence only — never a status'],
+          ['5', 'Sales', 'Send the PO + bank details to the customer', 'Deal = WON (deal → PO stage)'],
+          ['6', 'Sales or Kế toán', 'Record the payment when a receipt arrives', 'NOTHING — this is the trap'],
+          ['7', 'Kế toán ONLY', 'Confirm the payment against the bank statement', 'Unlocks invoicing'],
+          ['8', 'Kế toán ONLY', 'Issue the VAT e-invoice', 'Deal closed · status → New · provisioning released'],
+          ['9', 'System', 'Provision the purchased AND gift services', '—'],
+        ],
+      },
+      items: [
+        'Step 6 ≠ step 7. Someone seeing a transfer receipt is not the money being in the bank. Recording is anyone; CONFIRMING is Accounting matching the bank statement. Without that split a service is provisioned against a payment nobody verified, and it surfaces at month-end reconciliation.',
+        'Steps 7 and 8 are Accounting-only — not because Sales is untrusted, but because the person whose target depends on the deal closing must not be the person who declares the money arrived.',
+        'The milestones run in ORDER. A PO cannot be marked invoiced before payment is confirmed; the UI offers exactly one primary action at a time rather than a row of independent toggles.',
+        'Exception — customer never pays: the PO stays at Sent and goes to COLLECTIONS. It is not “Lost” — the deal was won; this is a receivables problem, and it belongs to Accounting.',
+        'Exception — customer cancels before paying: Sales cancels the PO with a reason. Allowed only while no payment is confirmed.',
+        'Exception — wrong invoice: Accounting cancels + issues a credit note + re-issues. Never an edit.',
+      ],
+    },
+    {
+      label: 'Provisioning — what actually happens when the invoice is issued',
+      text: 'Provisioning is the moment a paid line item becomes usable BALANCE on the customer’s account. It is the only step where money turns into product, it runs on invoice.issued, and it lives in Account management — CRM never writes quota directly.',
+      table: {
+        cols: ['Line item on the PO', 'What provisioning grants'],
+        rows: [
+          ['Dịch vụ tin đăng (Basic / Basic Plus / Premium Job) × N', '+N job-posting slots at that tier → jobTotal'],
+          ['Dịch vụ tin đăng … (Tặng) × N', '+N slots as well — GIFT LINES PROVISION IDENTICALLY despite being 0 ₫'],
+          ['Dịch vụ tìm kiếm hồ sơ (30 / 90 ngày)', '+N CV unlocks → cvTotal, with the 30- or 90-day usage window'],
+          ['Employer Branding Page', 'Enables the public company page → hasPage'],
+          ['First purchase only', 'Creates the Account · creates the first login (HR Manager, exactly 1) · creates the public company page for Job Posting customers'],
+        ],
+      },
+      items: [
+        'PROVISIONING ≠ ACTIVATION — two events, two clocks, and T&C separates them. Provisioning (clause 3): quota lands in the account when the invoice is issued; nothing is running yet. Activation (clause 4): the customer USES a slot, which must happen within 12 months of the invoice date or the unused quota expires. Usage (clause 5): once activated, that posting runs 30 days.',
+        'So a customer can buy 10 slots today, use one next week and one in eight months. Provisioning granted all ten at once; each activates separately and burns its own 30-day window. The Invoice list’s “Activate by” column is exactly invoice date + 12 months.',
+        'IDEMPOTENCY (the most likely production bug in the whole chain): invoice.issued can fire twice — an e-invoice provider timeout followed by a retry is normal. Provisioning must be keyed on the invoice ID, or the customer silently receives double quota.',
+        'REVERSAL — unanswered, and it blocks build: if an invoice is cancelled and replaced, what happens to quota already granted, especially once partly consumed? Options: claw back the unused portion · leave it and reconcile on the credit note · block cancellation once any quota is consumed.',
       ],
     },
     {
@@ -299,6 +409,19 @@ export const crm: BuildModule = {
         ],
       },
       items: ['Matching key order, strongest first: tax code (MST) → email domain → company name. A public domain (gmail, yahoo…) can NEVER auto-match and always needs manual verification — this is the guard against merging two unrelated companies on a shared free-mail domain.'],
+    },
+    {
+      label: 'Sign-ups status',
+      text: 'The status of a row in the Sign-ups triage inbox. Each inbound self-registration is matched against the existing company list first, then resolved into exactly one of the dispositions below.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['New', 'Unresolved — just arrived and matched, awaiting a disposition', 'SYSTEM creates the row and runs the match; SALES must disposition it. A row cannot be left half-resolved — it stays New until an outcome is recorded.'],
+          ['Resolved', 'An outcome was recorded, with a link to what the row became', 'SALES picks one of three: New company → Create lead · Matches a lead → Merge + notify that lead’s owner · Existing customer → Send a join request to that company’s admin. SYSTEM records the link to whatever the row became.'],
+          ['Dismissed', 'Cleared as spam', 'SALES dismisses it. No record is created and nothing is provisioned.'],
+        ],
+      },
+      warn: 'Triage provisions nothing and creates no account or company — a merge never creates a second company record.',
     },
     {
       label: 'Activities on the company record — SALES activity only',
@@ -973,6 +1096,7 @@ export const crm: BuildModule = {
       name: 'Purchase order',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'admin-purchase-orders',
       notes: 'PO → payment → invoice → contract cluster needs backend build together if in launch scope. NAMING: in standard B2B the customer issues the PO to us; the document WE send back is an Order Confirmation / Sales Order. Modelled here as one Sales Order record that can also hold the customer’s own PO number + file, so both practices are covered.',
       detail: {
@@ -994,7 +1118,7 @@ export const crm: BuildModule = {
               { name: 'subtotal / vatAmount / totalAfterVat', type: 'derived', notes: 'recomputed from the lines; must equal the accepted option unless the order was edited' },
               { name: 'paymentTerms', type: 'enum', notes: '100% in advance (default — T&C clause 3) · 50/50 · net 30 after invoice' },
               { name: 'issueDate', type: 'date', required: true },
-              { name: 'status', type: 'enum', required: true, notes: 'Draft · Sent · Confirmed · Awaiting payment · Paid · Invoiced · Cancelled' },
+              { name: 'status', type: 'enum', required: true, notes: 'Draft · Sent (won) · Paid · Invoiced · Cancelled' },
             ],
           },
           {
@@ -1013,8 +1137,9 @@ export const crm: BuildModule = {
         behaviors: [
           'Created only from an accepted quotation option — the "Convert" action on the quotation. Lines, totals, VAT and billing details are copied, not retyped.',
           'Send → the order PDF goes to the customer for confirmation, together with the payment request (bank details + amount) since the default term is payment in advance.',
-          'Customer confirms (their PO, a signed order, or an email) → the rep sets Confirmed and attaches the evidence. This is the "won" moment for the pipeline: the deal moves to the PO stage.',
-          'Confirmed → Accounting sees it in their queue as awaiting payment.',
+          'Send → the order PDF goes out WITH the payment request (bank details + amount), since the default term is payment in advance. Sending is the "won" moment: the deal moves to the PO stage.',
+          'Where a customer\u2019s procurement issues its own PO, the rep attaches that number and file to the order. It is evidence, not a status — the order does not wait for it.',
+          'Sent → Accounting sees it in their queue as awaiting payment.',
           'Payment recorded and confirmed by Accounting → the order flips to Paid and Accounting can issue the VAT e-invoice against it.',
           'Cancel with a reason — allowed until a payment is confirmed; after that it needs a credit note, not a cancellation.',
         ],
@@ -1022,12 +1147,32 @@ export const crm: BuildModule = {
           'An order comes from exactly ONE accepted quotation option. The alternatives the customer did not choose never become orders.',
           'The source quotation must be Accepted and NOT expired. POST /orders rejects an expired quotation server-side, not just in the UI — the commercial terms lapsed with it (T&C clause 2).',
           'An order belongs to one customer; the billing details are the ones snapshotted on the quotation.',
-          'Reaching Confirmed is what counts as won — not the invoice. The invoice closes the deal financially, but commitment happens here.',
-          'Editing lines after Confirmed requires a new version of the order (and, if the price changes, a re-issued quotation) so the paper trail stays intact.',
-          'Per T&C clause 3, nothing is provisioned at this stage — Confirmed alone provisions nothing. Payment + invoice do.',
+          'SENDING the order is what counts as won — not the invoice. The invoice closes the deal financially; the commitment is claimed when the order goes out. Accepted trade-off: the customer has not agreed at that point, so the PO column will always hold some deals that never convert.',
+          'Editing lines after Sent requires a new version of the order (and, if the price changes, a re-issued quotation) so the paper trail stays intact.',
+          'Per T&C clause 3, nothing is provisioned at this stage — sending provisions nothing. Payment + invoice do.',
           'Invoices always link back to their order; an order may carry more than one invoice under a 50/50 term.',
         ],
-        states: ['Draft', 'Sent (awaiting customer confirmation)', 'Confirmed (won)', 'Awaiting payment', 'Paid', 'Invoiced', 'Cancelled'],
+        states: ['Nháp / Draft', 'Đã gửi khách / Sent — won', 'Đã thanh toán / Payment confirmed', 'Đã xuất hóa đơn / Invoice issued', 'Đã hủy / Cancelled'],
+        sections: [
+          {
+            heading: 'Mô tả tổng quát các trạng thái — status, next action, and who acts',
+            items: [
+              'FOUR statuses, running strictly IN ORDER. Each one names exactly one action that moves the PO on, and exactly one role allowed to take it. The screen shows only the current status and that one action; the full model below is the reference, not something restated on the page.',
+              'THE TEST for whether a status earns its place: two statuses are really one if they permit the same actions and carry the same obligations. Applying it removed TWO: “Khách đã xác nhận / Confirmed” and “Đã yêu cầu xuất hóa đơn” — see the notes at the end.',
+              '1 · Nháp / Draft — the order exists but the customer has not seen it. Lines, quantities and prices are still editable. → Action: “Gửi khách xác nhận”. → Who: SALES.',
+              '2 · Đã gửi khách / Sent — the PO + bank details have gone out. THIS IS THE “WON” MOMENT: the deal moves to the PO stage. Editing now requires a new version. The customer has not agreed or paid yet; if they never pay it goes to collections, not Lost. Their own PO number / file is attached here as evidence when their procurement issues one. → Action: “Xác nhận đã thanh toán”. → Who: KẾ TOÁN ONLY.',
+              '3 · Đã thanh toán / Payment confirmed — Accounting has matched the money against the bank statement. This is the gate: the only state an invoice can follow. The PO enters Accounting’s “To invoice” queue automatically — nobody presses “request”. → Action: “Xuất hóa đơn”. → Who: KẾ TOÁN ONLY.',
+              '4 · Đã xuất hóa đơn / Invoice issued — terminal. The VAT e-invoice exists with its legal number; the deal closes, customer status flips out of Prospect, the 12-month activation window opens and provisioning is released. → No further action.',
+              '· Đã hủy / Cancelled — an exit, not a step. Allowed only while NO payment is confirmed, and always with a reason. After a confirmed payment the correction is a credit note, never a cancellation.',
+              'RULE — the order is enforced server-side, not merely by hiding buttons. A PO cannot reach “Đã xuất hóa đơn” without passing “Đã thanh toán” (T&C clause 3).',
+              'RULE — the two money steps (2→3 confirm payment, 3→4 issue invoice) are KẾ TOÁN only. The person whose target depends on the deal closing must not be the person who declares the money arrived.',
+              'RULE — exactly ONE primary action is offered at a time. A row of independent toggles lets a PO be marked invoiced before it is paid, which is precisely the failure this ordering exists to prevent.',
+              'Not paying is NOT a status. A PO sitting unpaid stays at “Khách đã xác nhận” and goes to collections — a receivables problem owned by Accounting, never “Lost”, because the deal was already won.',
+              'REMOVED — “Khách đã xác nhận / Confirmed”. Bank details go out WITH the PO at Sent, so the normal path is send → customer transfers: paying IS the confirmation, and most POs skipped the status entirely. Where a procurement department does issue a formal PO, that is captured as EVIDENCE (customerPoNumber / confirmedAt), never as a status. Consequence: “won” moved from confirmation to SENDING.',
+              'REMOVED — “Đã yêu cầu xuất hóa đơn / Invoice requested”. Between it and Đã thanh toán nothing about the PO differed: same money received, same documents, same obligations, same role able to act. It was a TASK ASSIGNMENT, not a document state. The client’s current system has it as a button, so confirm nobody relies on it as a handoff signal; if they do, model it as a FLAG (invoiceRequestedAt + a queue filter), never as a sixth status.',
+            ],
+          },
+        ],
         backend: {
           dataModel: [
             { name: 'orderId', type: 'uuid', required: true },
@@ -1039,7 +1184,7 @@ export const crm: BuildModule = {
             { name: 'billingName / billingAddress / taxCode', type: 'string', required: true, notes: 'snapshot' },
             { name: 'subtotal / vatRate / vatAmount / totalAfterVat', type: 'money/decimal', required: true },
             { name: 'paymentTerms', type: 'enum' },
-            { name: 'status', type: 'enum', required: true, notes: 'draft|sent|confirmed|awaiting_payment|paid|invoiced|cancelled' },
+            { name: 'status', type: 'enum', required: true, notes: 'draft|sent|paid|invoiced|cancelled — strictly ordered; the transition is validated server-side, never only by the UI' },
             { name: 'confirmedAt / confirmedBy / confirmationEvidence', type: 'timestamp/uuid/string' },
             { name: 'cancelledAt / cancelReason', type: 'timestamp?/string?' },
           ],
@@ -1069,11 +1214,94 @@ export const crm: BuildModule = {
         ],
       },
     },
-    // 4 · Sign-ups ────────────────────────────────────────────────────────────
+    // 4 · Invoice ─────────────────────────────────────────────────────────────
     {
-      name: 'Sign-ups (inbound triage)',
+      name: 'Invoice (VAT e-invoice)',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-invoices',
+      detail: {
+        description:
+          'The closing document, and the only fiscal one in the chain. Issued from a PO AFTER Accounting has confirmed the payment — never before (T&C clause 3) — so it is proof of a completed sale rather than a request for one.\n\nIssuing it is the single most consequential click in the module: it closes the deal, moves the company out of Prospect, starts the 12-month activation window, and releases provisioning.',
+        userStory:
+          'As Kế toán, I want to issue the VAT e-invoice once I have confirmed the money landed, so that the customer gets a legal invoice and their service is released for activation.',
+        uiFields: [
+          {
+            group: 'Invoice list',
+            items: [
+              { name: 'invoiceCode', type: 'string', required: true, notes: 'BOTH numbers: our internal INV-{seq} and the provider’s legal series (e.g. 1C26TAA/0041). The legal one is what the tax office recognises.' },
+              { name: 'purchaseOrder', type: 'ref → PO', required: true },
+              { name: 'payment', type: 'ref → Payment', required: true, notes: 'the CONFIRMED payment this invoice follows — an invoice with no confirmed payment cannot exist' },
+              { name: 'customer', type: 'ref → Customer', required: true },
+              { name: 'total', type: 'money (₫)', notes: 'subtotal · VAT 8% · total-after-VAT, matching the PO exactly' },
+              { name: 'status', type: 'enum', notes: 'To issue · Issued · Cancelled — THREE statuses. An invoice does not exist before the payment is confirmed, so there is no Blocked or Draft; Issuing is a spinner, not a status' },
+              { name: 'issueDate', type: 'date', required: true, notes: 'a FACT, not a plan — starts the 12-month clock' },
+              { name: 'activationDeadline', type: 'derived', notes: 'issueDate + 12 months (clause 4) — the “Activate by” column' },
+            ],
+          },
+        ],
+        behaviors: [
+          '"Issue VAT invoice" is enabled only on a PO with an Accounting-CONFIRMED payment; otherwise it is disabled and says why.',
+          'Issue → call the licensed provider, which signs the invoice and returns the legal number + PDF/XML; store both and email them to the customer.',
+          'Issuing emits invoice.issued — the event Account management listens to in order to provision the purchased AND gift services.',
+          'A wrong invoice is never edited: cancel + credit note + re-issue, per VN regulation.',
+          'The 12-month activation countdown is tracked and surfaced, so paid-for-but-unused quota does not silently expire.',
+        ],
+        rules: [
+          'THREE statuses only — To issue · Issued · Cancelled. There is no Blocked and no Draft: an invoice record is not created until Accounting confirms the payment, so "cannot issue yet" is a state of the PO, not of an invoice that does not exist. There is no Issuing status either — the provider round-trip takes seconds and belongs in a spinner; if it fails the row stays To issue with the provider message and a Retry.',
+          'No confirmed payment, no invoice. This is the client’s own T&C clause 3 and it is enforced server-side, not just by disabling a button.',
+          'Only the Kế toán role may issue. The person whose target depends on the deal closing must not be the person who declares the money arrived.',
+          'Billing name, address and tax code must equal the values snapshotted on the quotation; a mismatch blocks issuing rather than being silently corrected.',
+          'Gift lines appear at 0 ₫ so the customer has legal record of what they receive, but contribute nothing to the VAT base.',
+          'Issued invoices are immutable. Corrections go through cancel/replace with a credit note.',
+          'The VAT rate printed is the rate snapshotted on the quotation, even if the State rate has since changed (clause 6).',
+          'invoice.issued must be idempotent on the invoice ID — a provider timeout followed by a retry is normal, and double-firing would grant double quota.',
+        ],
+        states: [
+          'To issue (payment confirmed, invoice not yet stamped by the provider — this is the Accounting work queue)',
+          'To issue + provider error (last attempt failed — shows the provider message and a Retry; still To issue, not a separate status)',
+          'Issued (carries the provider code and legal number — the only legally valid state)',
+          'Cancelled (cancelled, or replaced by a later invoice which is linked both ways)',
+        ],
+        backend: {
+          endpoints: [
+            'GET /admin/crm/invoices?status=&customer=&page=',
+            'POST /admin/crm/invoices (from PO + confirmed payment) — 403 unless role = accounting',
+            'POST /admin/crm/invoices/:id/issue — calls the provider; emits invoice.issued',
+            'POST /admin/crm/invoices/:id/cancel { reason } → credit note',
+            'GET /admin/crm/invoices/:id/pdf | /xml',
+          ],
+          integrations: [
+            'VN e-invoice provider (licensed — Viettel / VNPT / MISA meInvoice)',
+            'Payments (the required predecessor)',
+            'Purchase orders (source)',
+            'Account management — consumes invoice.issued to provision products, quota and the company page',
+          ],
+          notes:
+            'invoice.issued is the most important event in the module: it closes the deal, flips customer status and releases provisioning. Make it transactional and replay-safe — a provider timeout must never produce two legal invoice numbers, nor two quota grants.',
+        },
+        acceptance: [
+          'Issuing is impossible until a payment is confirmed, and the UI states why.',
+          'Only an Accounting-role user can issue; the issuer and timestamp are stored and shown.',
+          'invoice.issued closes the deal, updates customer status and provisions both purchased and gift services.',
+          'activationDeadline is issueDate + 12 months and drives an expiry reminder.',
+          'A replayed invoice.issued does not grant quota twice.',
+          'A corrected invoice is a cancel/replace pair, never an edit.',
+        ],
+        openQuestions: [
+          'Which licensed VN e-invoice provider do we integrate?',
+          'For 50/50 terms — one invoice per instalment, or a single invoice on final payment?',
+          'On cancel/replace, what happens to quota already granted and partly consumed — claw back the unused portion, reconcile on the credit note, or block cancellation once any quota is used?',
+        ],
+      },
+    },
+    // 5 · Sign-ups ────────────────────────────────────────────────────────────
+    {
+      name: 'Sign-ups',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
       notes: 'Inbound self-registrations from the Company site are LEAD CAPTURE, not provisioning. Every row must be resolved against the existing company list before anything is created.',
       mockup: 'crm-signups',
       detail: {

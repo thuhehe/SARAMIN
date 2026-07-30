@@ -48,12 +48,12 @@ export const bannersPopups: BuildModule = {
       label: 'Status is DERIVED from the date range, never hand-edited',
       text: 'An operator sets the date range and publishes; the status computes itself — so nothing can sit “Live” with an end date in the past.',
       table: {
-        cols: ['Status', 'When'],
+        cols: ['Status', 'Means', 'Rule'],
         rows: [
-          ['Draft', 'Not scheduled yet'],
-          ['Scheduled', 'Before the start date'],
-          ['Live', 'Inside the date range'],
-          ['Ended', 'Past the end date'],
+          ['Draft', 'Created but not published (not scheduled yet) — the only status that can be deleted', 'Publish → Scheduled'],
+          ['Scheduled', 'Before the start date', 'Start date reached → Live, automatically · Unpublish → Draft'],
+          ['Live', 'Inside the date range — what jobseekers see', 'End date passed → Ended, automatically · Unpublish → Draft'],
+          ['Ended', 'Past the end date; kept for reporting', 'Cannot return to Live without a new date range · Unpublish → Draft'],
         ],
       },
       warn: 'Phase-1 booking rule: a slot holds at most ONE Live banner per period. Overlapping date ranges in the same slot are a booking conflict and are blocked at save — an ad slot is sold to one advertiser at a time.',
@@ -78,6 +78,20 @@ export const bannersPopups: BuildModule = {
         'Only ONE popup shows at a time. If several are eligible, priority decides which — never stack popups on a page.',
       ],
       warn: 'Eligibility (audience match + frequency cap + priority) is decided SERVER-SIDE and returns at most one popup, so the cap cannot be bypassed from the client.',
+    },
+    {
+      label: 'Popup status',
+      text: 'The banner lifecycle plus “Always on” — status is computed from (isPublished, startAt, endAt); operators set dates and publish, never a status.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'Not published; never shown — the only deletable status', 'Publish → Scheduled'],
+          ['Scheduled', 'Published, startAt in the future', 'Start reached → Live, automatically · Unpublish → Draft'],
+          ['Live', 'Inside startAt–endAt, and still eligible per audience + frequency', 'End passed → Ended, automatically · Unpublish → Draft'],
+          ['Always on', 'Published with a startAt and NO endAt; runs indefinitely — the list flags it distinctly so nobody assumes it stops on its own', 'Stays Live until “End now” · Unpublish → Draft'],
+          ['Ended', 'endAt has passed; retained with its stats', 'Needs a new date range to run again · Unpublish → Draft'],
+        ],
+      },
     },
   ],
   features: [
