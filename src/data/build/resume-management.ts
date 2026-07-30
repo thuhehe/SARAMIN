@@ -25,6 +25,28 @@ export const resumeManagement: BuildModule = {
       label: 'Do NOT burden candidates with heavy forms',
       text: 'Unlike VietnamWorks, the structured data needed for matching and CV search is EXTRACTED from the uploaded CV by AI — not typed by the user. See “CV data & matching architecture”.',
     },
+    {
+      label: 'CV visibility (candidate-owned)',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Discoverable', 'The primary CV can appear in employer CV search as a LOCKED preview; a company must spend an unlock to see the full CV.', 'Can only be changed by the candidate — no system action and no HQ action may flip it.'],
+          ['Hidden', 'The candidate does not appear in employer search at all; applying still works.', 'Candidate-set only; Hidden takes effect on the search index synchronously.'],
+        ],
+      },
+    },
+    {
+      label: 'CV moderation status (HQ-owned)',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Normal', 'Default; participates in employer search subject to the candidate’s own visibility consent.', 'Moderation can only subtract from discoverability, never add.'],
+          ['Flagged', 'Marked for review (suspected fake, spam, or offensive); still searchable in Phase-1 — a work queue, not a punishment.', 'Moderation can only subtract from discoverability, never add.'],
+          ['Removed from pool', 'Excluded from employer CV search by HQ with a mandatory reason; the candidate keeps their CV and can still apply.', 'Restore returns a Removed CV to Normal, audited.'],
+        ],
+      },
+      warn: 'The index reads one derived flag: searchExcluded = true when moderation = Removed OR visibility = Hidden.',
+    },
   ],
   features: [
     // ── CANDIDATE SIDE ────────────────────────────────────────────────────────

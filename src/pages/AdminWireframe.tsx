@@ -14,7 +14,8 @@ import {
 import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal } from './adminPrototypes'
+import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewQuotationModal , DetailCrumbCtx } from './adminPrototypes'
+import type { DetailCrumb } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
@@ -50,9 +51,10 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // CRM
   'admin-company-list': { module: 'crm', feature: 'Companies' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
-  'admin-signups': { module: 'crm', feature: 'Sign-ups (inbound triage)' },
+  'admin-signups': { module: 'crm', feature: 'Sign-ups' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
+  'admin-invoices': { module: 'crm', feature: 'Invoice (VAT e-invoice)' },
   // NOTE: 'admin-company-users' has no target on purpose — the Account management
   // module was trimmed out of the build plan (buildModules.ts), so there is no
   // authored feature page to link to. Re-add it there to make this page linkable.
@@ -129,6 +131,9 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Pipeline', specId: 'admin-company-pipeline' },
       { label: 'Quotations', specId: 'admin-quotes' },
       { label: 'Purchase order', specId: 'admin-purchase-orders' },
+      // Sits directly under PO because it is the step that follows it: the VAT
+      // e-invoice is issued from a PO once Accounting has confirmed the payment.
+      { label: 'Invoice', specId: 'admin-invoices' },
       // Last in the group: inbound self-registrations are a triage inbox that
       // feeds the pipeline, not a step in the document flow above it.
       { label: 'Sign-ups', specId: 'admin-signups' },
@@ -177,12 +182,15 @@ const NAV_GROUPS: NavGroup[] = [
    single create action (reports, logs, boards). */
 const PRIMARY_ACTION: Record<string, string> = {
   'admin-catalog': '+ New product',
+  'admin-quotes': '+ New quotation',
 }
 
 export function AdminWireframe() {
   const [walkthrough, setWalkthrough] = useState<null | 'activation' | 'flow'>(null)
   /** specId whose create modal is open — the title-row button opens it. */
   const [creating, setCreating] = useState<string | null>(null)
+  /** the crumb a detail view publishes while it is open (see useDetailCrumb) */
+  const [detail, setDetail] = useState<DetailCrumb | null>(null)
   /** Landing page: `?screen=<specId>` when a spec page linked here (so the feature
       spec never has to carry its own copy of the screen), else the default. Looked
       up by label so nav reordering can't desync it. */
@@ -200,6 +208,7 @@ export function AdminWireframe() {
   })
   const select = (group: string, item: NavItem) => {
     setWalkthrough(null)
+    setDetail(null)
     setActive({ group, item })
   }
 
@@ -252,10 +261,22 @@ export function AdminWireframe() {
           {/* Content preview */}
           <div className="min-w-0 bg-surface">
             <div className="flex items-center gap-2 border-b border-line-soft px-5 py-3 text-[11.5px] text-muted">
-              <span>{active.group}</span>
-              <span className="text-faint">/</span>
-              <span className="text-ink font-medium">{active.item.label}</span>
-              <div className="ml-auto flex items-center gap-2">
+              <span className="shrink-0">{active.group}</span>
+              <span className="shrink-0 text-faint">/</span>
+              {/* On a detail view the page segment becomes the way BACK, and the record
+                  itself is the last crumb — so no page needs a "← Back to X" button. */}
+              {detail ? (
+                <button onClick={detail.onBack} className="shrink-0 text-brand hover:underline">{active.item.label}</button>
+              ) : (
+                <span className="font-medium text-ink">{active.item.label}</span>
+              )}
+              {detail && (
+                <>
+                  <span className="shrink-0 text-faint">/</span>
+                  <span className="truncate font-medium text-ink">{detail.label}</span>
+                </>
+              )}
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <ActivityLogButton page={active.item.label} />
                 {specHref && (
                   <Link to={specHref} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
@@ -290,9 +311,13 @@ export function AdminWireframe() {
                   {walkthrough === 'activation' ? <ActivationFlow initialPhase={2} /> : <MonetizationFlow />}
                 </div>
               ) : active.item.specId === 'admin-sales-pipeline' ? (
-                <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+                <DetailCrumbCtx.Provider value={setDetail}>
+                  <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+                </DetailCrumbCtx.Provider>
               ) : Proto ? (
-                <Proto />
+                <DetailCrumbCtx.Provider value={setDetail}>
+                  <Proto />
+                </DetailCrumbCtx.Provider>
               ) : (
                 <>
                   <div className="overflow-hidden rounded-xl border border-line">
@@ -323,6 +348,7 @@ export function AdminWireframe() {
           </div>
 
           {creating === 'admin-catalog' && <NewProductModal onClose={() => setCreating(null)} />}
+          {creating === 'admin-quotes' && <NewQuotationModal onClose={() => setCreating(null)} />}
         </div>
       </div>
 

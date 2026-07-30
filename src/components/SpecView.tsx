@@ -18,6 +18,7 @@ import type { FeatureSpec } from '@/data/types'
 import { SPECS } from '@/data'
 import { StatusBadge } from './StatusBadge'
 import { FieldsTable } from './FieldsTable'
+import { SpecTableView } from './SpecTableView'
 import { cn } from '@/lib/utils'
 
 function SectionHead({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -120,7 +121,9 @@ export function SpecView({ spec }: { spec: FeatureSpec }) {
           {spec.sections?.map((s, i) => (
             <section key={i}>
               <SectionHead icon={<FileText className="h-4 w-4" />}>{s.heading}</SectionHead>
-              <Bullets items={s.items} />
+              {s.text && <p className="mb-2 text-[13.5px] leading-relaxed text-ink/80">{s.text}</p>}
+              {s.table && <SpecTableView t={s.table} />}
+              {s.items && <Bullets items={s.items} />}
             </section>
           ))}
 
@@ -221,7 +224,8 @@ export function SpecView({ spec }: { spec: FeatureSpec }) {
                     {s.heading && (
                       <p className="text-[12px] font-semibold text-ink/80 mb-1.5">{s.heading}</p>
                     )}
-                    <Bullets items={s.items} />
+                    {s.table && <SpecTableView t={s.table} />}
+                    {s.items && <Bullets items={s.items} />}
                   </div>
                 ))}
               </div>

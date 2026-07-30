@@ -188,9 +188,42 @@ function BackendBlock({ b }: { b: BackendSpec }) {
   )
 }
 
+/* Client source documents, rendered FIRST — above the written requirement.
+   A reader who wants the original should not have to scroll past our summary of it
+   to find out one exists. Opens in a new tab; the browser decides whether to preview
+   or download, which is why this is a plain link and not a forced `download`. */
+function RefDocs({ docs }: { docs: NonNullable<FeatureDetail['refDocs']> }) {
+  return (
+    <SpecBlock title="Reference documents" note="Client source — the requirement below was written from these">
+      <div className="space-y-2">
+        {docs.map((doc) => (
+          <a
+            key={doc.href}
+            href={doc.href}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-3 rounded-xl border border-line bg-surface px-3.5 py-3 transition-colors hover:border-brand/50 hover:bg-brand-soft/30"
+          >
+            <span className="mt-0.5 shrink-0 text-[15px]" aria-hidden>📎</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-semibold text-brand underline-offset-2 group-hover:underline">
+                {doc.label}
+              </span>
+              {doc.meta && <span className="mt-0.5 block text-[11.5px] text-faint">{doc.meta}</span>}
+              {doc.note && <span className="mt-1 block text-[12.5px] leading-relaxed text-ink/70">{doc.note}</span>}
+            </span>
+            <span className="mt-0.5 shrink-0 text-[11.5px] font-medium text-brand">Open ↗</span>
+          </a>
+        ))}
+      </div>
+    </SpecBlock>
+  )
+}
+
 function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
   return (
     <>
+      {d.refDocs && <RefDocs docs={d.refDocs} />}
       {(d.description || d.userStory) && (
         <SpecBlock title="Overview">
           {/* A description may carry blank-line breaks; render them as real paragraphs
@@ -254,7 +287,9 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
       )}
       {d.sections?.map((s, i) => (
         <SpecBlock key={i} title={s.heading}>
-          <Bullets items={s.items} />
+          {s.text && <p className="mb-2 text-[13px] leading-relaxed text-ink/75">{s.text}</p>}
+          {s.table && <ReqTableView t={s.table} />}
+          {s.items && <Bullets items={s.items} />}
         </SpecBlock>
       ))}
       {d.openQuestions && (

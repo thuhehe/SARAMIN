@@ -6,9 +6,28 @@
  * Everything here is mock content laid out to VN-market recruitment standards —
  * structure & data shape only, not final visual design.
  */
-import { useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
+
+/* ── Detail breadcrumb ───────────────────────────────────────────────────────
+   A detail view publishes its own crumb (and the way back) up to the admin shell,
+   so the breadcrumb reads "CRM / Companies / Đại Dương" and IS the way back. That
+   replaces the per-page "← Back to X" button: one navigation affordance, in the
+   place every admin console puts it, instead of two that can disagree. */
+export type DetailCrumb = { label: string; onBack: () => void }
+export const DetailCrumbCtx = createContext<(c: DetailCrumb | null) => void>(() => {})
+
+/** Publish this detail view's crumb for as long as it is mounted. */
+export function useDetailCrumb(label: string, onBack: () => void) {
+  const set = useContext(DetailCrumbCtx)
+  const cb = useRef(onBack)
+  cb.current = onBack
+  useEffect(() => {
+    set({ label, onBack: () => cb.current() })
+    return () => set(null)
+  }, [label, set])
+}
 
 /* ── shared bits ──────────────────────────────────────────────────────────── */
 type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
@@ -571,6 +590,19 @@ const CO_STATUS: Record<CoStatus, { tone: StatusTone; label: string }> = {
 // Board order follows the document flow: the quotation goes out (Proposal), the HR
 // manager engages with it (Qualified), then internal approval (Negotiation) → PO → Invoice.
 const CO_ORDER: CoStatus[] = ['Proposal', 'Qualified', 'Negotiation', 'PO', 'Invoice', 'Lost']
+/* WHO moves a card out of each stage, and by doing what. Surfaced as the column
+   tooltip so the rule lives where the work happens instead of only in the spec — a
+   rep should not have to open the requirement to learn that PO waits on Accounting.
+   Mirrors the "Rule" column of "Pipeline stages" in the CRM requirement; keep the
+   two in step. */
+const STAGE_NEXT: Record<CoStatus, string> = {
+  Proposal: 'SALES chases the customer for a reply. The card landed here automatically the moment the quotation was marked Sent — it is never dragged in.',
+  Qualified: 'SALES agrees the option and the price, then moves the card on. This stage can be skipped entirely — Proposal → Negotiation is legal.',
+  Negotiation: 'SALES creates the Sales order from the option the customer accepted. Revising to v2 / v3 happens here without leaving the stage.',
+  PO: 'KẾ TOÁN ONLY confirms the payment against the bank statement. Won — but nothing is provisioned yet.',
+  Invoice: 'Closed. KẾ TOÁN issued the VAT e-invoice; the system then flipped the customer to Existing, started the 12-month clock and released provisioning.',
+  Lost: 'SALES set this by hand with a reason — the system never auto-closes a deal. Re-open by moving it back a stage; a win-back is a NEW deal.',
+}
 // A company is a customer once a PO is issued (PO or Invoice stage).
 const isCustomer = (c: Company) => c.status === 'PO' || c.status === 'Invoice'
 /** Full VND — e.g. 18,000,000 ₫ (pipeline values are read exactly, not rounded to M). */
@@ -731,7 +763,7 @@ function MembershipCard({ c }: { c: Company }) {
   const ceil = next?.from ?? TIERS[TIERS.length - 1].from
   const pct = Math.min(100, Math.max(2, ((acc - floor) / (ceil - floor)) * 100))
   return (
-    <DetailCard title={`Hạng thành viên ${TIER_YEAR}`} action={<span className="text-[11px] text-brand">Ngưỡng &amp; quyền lợi: System →</span>}>
+    <DetailCard title={`Hạng thành viên ${TIER_YEAR}`}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <TierPill tier={tier} en />
         <span className="text-[11.5px] text-muted">
@@ -823,7 +855,10 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
         const total = list.reduce((s, c) => s + coValue(c), 0)
         return (
           <div key={st} className="rounded-lg border border-line bg-canvas/40 p-2">
-            <div className="mb-1 flex items-center justify-between"><Pill tone={CO_STATUS[st].tone}>{st}</Pill><span className="text-[11px] font-bold text-faint">{list.length}</span></div>
+            <div className="mb-1 flex items-center justify-between" title={`${st} — next: ${STAGE_NEXT[st]}`}>
+              <Pill tone={CO_STATUS[st].tone}>{st}</Pill>
+              <span className="text-[11px] font-bold text-faint">{list.length}</span>
+            </div>
             <p className="mb-2 text-[10.5px] text-faint tabular-nums">{list.length ? vnd(total) : '—'}</p>
             {list.map((c) => (
               <button key={c.name} onClick={() => onOpen(c)} className="mb-1.5 block w-full rounded-md border border-line bg-surface p-2 text-left hover:border-brand/40">
@@ -837,7 +872,6 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
                   <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
                   <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} /></span>
                 </div>
-                {c.quoteLapsed && <p className="mt-1 truncate text-[10px] font-medium text-rose-600">⚠ offer lapsed — reissue or close</p>}
                 {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
               </button>
             ))}
@@ -954,7 +988,6 @@ function AdminCompanyList() {
           // next to the badge: without it the tier looks like something a rep set.
           <div className="min-w-0">
             <TierPill tier={tierOf(c)} />
-            <p className="mt-0.5 text-[10px] text-faint tabular-nums">{tierRevenue(c) ? `${revFmt(tierRevenue(c))} tích lũy` : '—'}</p>
           </div>,
           inPipeline(c) ? (
             <span className="flex min-w-0 flex-wrap items-center gap-1">
@@ -1417,7 +1450,67 @@ function CompanyPageEditor({ c }: { c: Company }) {
    the whole tree: the rep needs context and a way across, not an org chart. Every
    row shows the affiliate's OWN tax code, because that is what makes it obvious
    these are separate customers that happen to be related. */
+/* Sơ đồ tập đoàn — the whole group as an indented tree, rooted at the top-most
+   parent. Deliberately NOT a revenue roll-up: the point of the chart is to show
+   that the link is for lookup only, so every node carries its own MST, its own
+   tier and its own sales owner. */
+function GroupChart({ root, current, onClose, onOpen }: { root: Company; current: Company; onClose: () => void; onOpen?: (x: Company) => void }) {
+  const rows: { c: Company; depth: number }[] = []
+  const walk = (n: Company, depth: number) => {
+    rows.push({ c: n, depth })
+    childrenOf(n).forEach((k) => walk(k, depth + 1))
+  }
+  walk(root, 0)
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Sơ đồ tập đoàn — {coLabel(root)}</p>
+            <p className="text-[11px] text-muted">{rows.length} công ty · liên kết chỉ để tra cứu, không kế thừa quota, hợp đồng hay doanh thu.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="max-h-[64vh] overflow-y-auto p-3">
+          <div className="grid gap-x-3 border-b border-line px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '2.4fr 1.1fr 1fr 1.1fr' }}>
+            <span>Công ty</span><span>MST</span><span>Hạng</span><span>Sales phụ trách</span>
+          </div>
+          {rows.map(({ c, depth }) => {
+            const t = tierOf(c)
+            const isCurrent = c.name === current.name
+            return (
+              <button
+                key={c.name}
+                onClick={() => { onClose(); onOpen?.(c) }}
+                className={cn('grid w-full items-center gap-x-3 border-b border-line-soft px-2 py-2 text-left text-[12px] transition-colors hover:bg-canvas/70', isCurrent && 'bg-brand-soft/50')}
+                style={{ gridTemplateColumns: '2.4fr 1.1fr 1fr 1.1fr' }}
+              >
+                <span className="flex min-w-0 items-center" style={{ paddingLeft: depth * 18 }}>
+                  {depth > 0 && <span className="mr-1.5 shrink-0 text-faint">└</span>}
+                  <span className={cn('min-w-0 truncate', isCurrent ? 'font-semibold text-brand' : 'text-ink/80')}>{coLabel(c)}</span>
+                  {depth === 0 && <span className="ml-1.5 shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted">Công ty mẹ</span>}
+                  {depth > 0 && <span className="ml-1.5 shrink-0"><Pill tone={affiliateKind(root, c) === 'Chi nhánh' ? 'draft' : 'neutral'}>{affiliateKind(root, c)}</Pill></span>}
+                </span>
+                <span className="truncate font-mono text-[11px] text-muted">{c.tax}</span>
+                <span className="min-w-0 truncate">{t ? <TierPill tier={t} en /> : <span className="text-[11px] text-faint">Chưa có hạng</span>}</span>
+                <span className="truncate text-[11.5px] text-muted">{c.owner}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="border-t border-line bg-canvas/40 px-5 py-2.5 text-[10.5px] leading-relaxed text-muted">
+          Mỗi công ty giữ <b className="text-ink/70">MST, gói/quota, hợp đồng, hoá đơn và sales phụ trách riêng</b>. Hạng thành viên
+          cũng tính riêng từng pháp nhân — doanh thu công ty con <b className="text-ink/70">không</b> cộng lên công ty mẹ.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
+  const [chart, setChart] = useState(false)
   const chain = ancestorsOf(c)
   const kids = childrenOf(c)
   if (!chain.length && !kids.length) return null
@@ -1462,9 +1555,11 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
       )}
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <button className="text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>
+        <button onClick={() => setChart(true)} className="text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>
         <button className="text-[11px] text-muted hover:text-ink hover:underline">+ Gán công ty mẹ</button>
       </div>
+
+      {chart && <GroupChart root={root} current={c} onClose={() => setChart(false)} onOpen={onOpen} />}
       <p className="mt-2 rounded-md bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted">
         Liên kết chỉ để tra cứu và điều hướng — <b>không kế thừa gì</b>. Gói/quota, hợp đồng, báo giá, hoá đơn VAT, user và sales phụ trách đều riêng theo MST của từng công ty.
         <span className="text-faint"> Chi nhánh = cùng 10 số gốc MST (đuôi -001); công ty con = MST hoàn toàn khác.</span>
@@ -1473,7 +1568,51 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
   )
 }
 
+/**
+ * Company tags — a multi-select of editorial labels from Master data → Company tag.
+ * Click to open the option list; tick any number (Korean company, Big company, …).
+ * Options are read from MD_DOMAINS so this stays in sync with Master data.
+ */
+function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
+  const options = MD_DOMAINS.find((d) => d.key === 'company-tag')?.entries ?? ['Korean company', 'Big company']
+  const [open, setOpen] = useState(false)
+  const [sel, setSel] = useState<string[]>(initial)
+  const toggle = (t: string) => setSel((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]))
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-[38px] w-full flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5 text-left"
+      >
+        {sel.length === 0 && <span className="px-1 text-[12px] text-faint">Select tags…</span>}
+        {sel.map((t) => (
+          <span key={t} className="inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand">
+            {t}
+            <span role="button" onClick={(e) => { e.stopPropagation(); toggle(t) }} className="cursor-pointer text-brand/50 hover:text-brand">×</span>
+          </span>
+        ))}
+        <span className="ml-auto pl-1 text-faint">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-line bg-surface py-1 shadow-lg">
+          {options.map((t) => {
+            const on = sel.includes(t)
+            return (
+              <button key={t} onClick={() => toggle(t)} className={cn('flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-canvas', on ? 'font-medium text-brand' : 'text-ink/80')}>
+                <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded border text-[10px]', on ? 'border-brand bg-brand text-white' : 'border-line')}>{on ? '✓' : ''}</span>
+                {t}
+              </button>
+            )
+          })}
+          <p className="mt-1 border-t border-line-soft px-3 pt-1.5 text-[10.5px] leading-snug text-faint">Multi-select · manage options in System → Master data → Company tag</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
+  useDetailCrumb(coLabel(c), onBack)
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
   const [quoting, setQuoting] = useState(false)
@@ -1501,7 +1640,6 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
 
   return (
     <div>
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Company list</button>
 
       {/* header */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -1576,6 +1714,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <KV label="Estimated deal value" value={vnd(coValue(c))} />
               <KV label="Description" value={c.note} />
               <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
+            </DetailCard>
+            <DetailCard title="Company tags" action={<span className="text-[11px] text-faint">editorial · admin-applied</span>}>
+              <CompanyTagPicker initial={['Korean company']} />
+              <p className="mt-2 text-[11px] leading-relaxed text-faint">Editorial labels for this company (a company can carry several). Click to pick from Master data → Company tag. Shown as tags on the Company site &amp; usable as a Store filter.</p>
             </DetailCard>
             <MembershipCard c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} />
@@ -2080,6 +2222,7 @@ function NewJobseekerModal({ onCreate, onClose }: { onCreate: (name: string, ema
 
 /** One seeker account — what My page holds, plus their CVs and applications. */
 function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => void; onStatus: (s: JSStatus) => void }) {
+  useDetailCrumb(u.name, onBack)
   const CVS: [string, 'public' | 'private', string, number][] = [
     ['CV_NguyenVanAn_Frontend_EN.pdf', 'public', 'Updated 2 days ago', 6],
     ['CV tiếng Việt — Frontend', 'private', 'Updated 3 weeks ago', 0],
@@ -2091,7 +2234,6 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
   ]
   return (
     <div className="max-w-[960px]">
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Jobseeker users</button>
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -2638,11 +2780,11 @@ function TL({ icon, title, time, sub, tone }: { icon: string; title: string; tim
 }
 
 function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
+  useDetailCrumb(deal.company, onBack)
   const ci = PATH.indexOf(deal.stage)
   const [converting, setConverting] = useState(false)
   return (
     <div>
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to pipeline</button>
 
       {/* header */}
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -3418,12 +3560,18 @@ function ProductCell({ ids }: { ids: number[] }) {
    customer actually accepted. Read-only — changes go through Edit, which reopens
    the builder, because a Sent quotation is immutable and revising it makes a v2. */
 function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => void; onCreatePO: (c: Company) => void }) {
+  useDetailCrumb(q.code, onBack)
   const co = COMPANIES.find((x) => x.name === q.co)
   /* Issue PO shows on every SENT quotation — that is the only state where an order
      can follow. It is disabled on a lapsed offer: the discounts and gifts expired
      with the validity date (T&C clause 2), so extend or re-issue as v2 first. */
   const canPO = q.status === 'Sent' && !q.lapsed
   // One option per product listed, priced off the catalog so the arithmetic is real.
+  /* Which option the customer bought is decided HERE, when the PO is raised —
+     the quotation itself carries no per-option status. With one option there is
+     nothing to ask; with several the rep must pick one, because an order copies
+     exactly ONE option forward. */
+  const [picking, setPicking] = useState(false)
   const opts = q.products.map((p, i) => {
     const qty = Math.max(1, Math.round(q.value / (1 + VAT_RATE / 100) / QUOTE_CATALOG[p].price))
     const sub = qty * QUOTE_CATALOG[p].price
@@ -3432,7 +3580,6 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
   })
   return (
     <div>
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Quotations</button>
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -3453,9 +3600,9 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
           )}
           {q.status === 'Sent' && (
             <button
-              onClick={() => canPO && co && onCreatePO(co)}
+              onClick={() => { if (!canPO || !co) return; if (q.products.length > 1) setPicking(true); else onCreatePO(co) }}
               disabled={!canPO}
-              title={canPO ? 'Raise the sales order from the accepted option' : `Offer lapsed ${q.expires} — extend validity or re-issue as v2 first`}
+              title={canPO ? (q.products.length > 1 ? 'Chọn option khách đã chốt, rồi tạo PO' : 'Raise the sales order from this option') : `Offer lapsed ${q.expires} — extend validity or re-issue as v2 first`}
               className={cn('rounded-lg px-3 py-1.5 text-[12px] font-semibold', canPO ? 'bg-brand text-white hover:opacity-90' : 'border border-line bg-canvas text-faint')}
             >
               Issue PO →
@@ -3483,12 +3630,9 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
       <p className="mb-2 text-[12.5px] font-semibold">Options</p>
       <div className="space-y-2">
         {opts.map((o) => (
-          <div key={o.n} className={cn('rounded-xl border p-3', q.acceptedOpt === o.n ? 'border-emerald-300 bg-emerald-50/40' : 'border-line')}>
+          <div key={o.n} className="rounded-xl border border-line p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[12.5px] font-semibold">Option {o.n} <span className="font-normal text-muted">{QUOTE_CATALOG[o.p].vi}</span></p>
-              {q.acceptedOpt === o.n
-                ? <Pill tone="active">Accepted</Pill>
-                : q.acceptedOpt ? <Pill tone="draft">Not chosen</Pill> : null}
             </div>
             <div className="overflow-x-auto rounded-lg border border-line">
               <div className="grid min-w-[520px] gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
@@ -3512,6 +3656,42 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
         ))}
       </div>
       <p className="mt-2 text-[11px] text-faint">Options are alternatives — no grand total exists, and reporting never sums them.</p>
+
+      {picking && co && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+          <div className="my-4 w-full max-w-[620px] rounded-2xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+              <div>
+                <p className="text-[15px] font-bold">Khách đã chốt option nào?</p>
+                <p className="text-[11px] text-muted">Một PO chỉ lấy được MỘT option. Các option còn lại không trở thành đơn hàng.</p>
+              </div>
+              <button onClick={() => setPicking(false)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+            </div>
+            <div className="space-y-2 p-5">
+              {opts.map((o) => (
+                <button
+                  key={o.n}
+                  onClick={() => { setPicking(false); onCreatePO(co) }}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5 text-left transition-colors hover:border-brand hover:bg-brand-soft/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-semibold text-ink">Option {o.n}</span>
+                    <span className="block truncate text-[11.5px] text-muted">{QUOTE_CATALOG[o.p].vi} · {o.qty} {QUOTE_CATALOG[o.p].unitVi}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-[12.5px] font-semibold tabular-nums text-ink">{o.total.toLocaleString('en-US')} ₫</span>
+                    <span className="block text-[10.5px] text-faint">đã gồm VAT {VAT_RATE}%</span>
+                  </span>
+                </button>
+              ))}
+              <p className="text-[10.5px] leading-relaxed text-faint">
+                Option được chọn sẽ được sao nguyên sang PO — dòng hàng, số lượng, đơn giá, VAT và thông tin xuất hóa đơn.
+                Không nhập lại gì.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -3562,37 +3742,276 @@ function AdminQuotes() {
     </div>
   )
 }
+/* An invoice only EXISTS once it has been issued — before that there is a PO
+   awaiting one, which is the PO list's job. So this list carries no "blocked"
+   or "draft" rows: every row here is a real fiscal document with a legal number.
+   That is why there are only two statuses. */
+type Inv = { code: string; legal: string; customer: string; co?: string; po: string; payment: string; total: number; issued: string; activateBy: string; cancelled?: boolean; replacedBy?: string; product: number; qty: number; issuer: string }
+const INVOICES: Inv[] = [
+  { code: 'INV-3390', legal: '1C26TAA/0041', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', po: 'INV-005863/07/2026', payment: 'PAY-1042', total: 37_800_000, issued: '26/07/2026', activateBy: '26/07/2027', product: 1, qty: 5, issuer: 'Lê Thị Kế Toán' },
+  { code: 'INV-3389', legal: '1C26TAA/0040', customer: 'Công ty CP Trường Sơn', co: 'Công ty CP Trường Sơn', po: 'INV-005859/07/2026', payment: 'PAY-1044', total: 73_929_353, issued: '24/07/2026', activateBy: '24/07/2027', product: 2, qty: 7, issuer: 'Lê Thị Kế Toán' },
+  { code: 'INV-3388', legal: '1C26TAA/0039', customer: 'Hồng Đức', po: 'INV-005855/07/2026', payment: 'PAY-1039', total: 139_609_357, issued: '06/07/2026', activateBy: '—', cancelled: true, replacedBy: 'INV-3391 · 1C26TAA/0042', product: 2, qty: 14, issuer: 'Lê Thị Kế Toán' },
+]
+
+function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
+  useDetailCrumb(inv.code, onBack)
+  const pack = QUOTE_CATALOG[inv.product]
+  const sub = Math.round(inv.total / (1 + VAT_RATE / 100))
+  const vat = inv.total - sub
+  const unit = Math.round(sub / inv.qty)
+  return (
+    <div>
+
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Hóa đơn GTGT / VAT e-invoice</p>
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
+            <span className="font-mono">{inv.legal}</span>
+            <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled · replaced' : 'Issued'}</Pill>
+          </h2>
+          <p className="text-[11.5px] text-muted">Số nội bộ {inv.code} · {inv.customer}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Tải PDF</button>
+        </div>
+      </div>
+
+      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+        Hóa đơn đã xuất là <b>bất biến</b> — không sửa được. Sai sót xử lý bằng <b>hủy + xuất hóa đơn thay thế kèm biên bản</b> theo
+        quy định. Chỉ <b>Kế toán</b> được thực hiện.
+      </div>
+      {inv.cancelled && (
+        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11.5px] text-rose-900">
+          Hóa đơn này đã bị hủy và thay thế bởi <b className="font-mono">{inv.replacedBy}</b>.
+        </div>
+      )}
+
+      <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-5">
+        <InfoBit label="Số hóa đơn hợp lệ" value={inv.legal} mono hint="do nhà cung cấp cấp" />
+        <InfoBit label="Ngày xuất / Issued" value={inv.issued} hint="một SỰ KIỆN, không phải kế hoạch" />
+        <InfoBit label="Kích hoạt trước / Activate by" value={inv.activateBy} hint="ngày xuất + 12 tháng" />
+        <InfoBit label="Từ PO" value={inv.po} mono />
+        <InfoBit label="Thanh toán đã xác nhận" value={inv.payment} mono hint={`bởi ${inv.issuer}`} />
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="text-[11.5px] leading-relaxed">
+            <p className="text-muted">Đơn vị bán hàng:</p>
+            <p className="font-bold text-ink">DAOUKIWOOM INNOVATION COMPANY LIMITED</p>
+            <p className="text-ink/80">Level 12, 13 &amp; 14, AP Tower, 518B Dien Bien Phu, Thanh My Tay Ward, HCMC</p>
+            <p className="mt-0.5 text-ink/80">Mã số thuế: <span className="tabular-nums">0315421202</span></p>
+          </div>
+          <div className="text-right text-[11.5px] leading-relaxed">
+            <p className="text-muted">Đơn vị mua hàng:</p>
+            <p className="font-bold text-brand">{inv.customer}</p>
+            <p className="mt-0.5 text-ink/80">Mã số thuế: <span className="tabular-nums">{COMPANIES.find((c) => c.name === inv.co)?.tax ?? '0318705749'}</span></p>
+            <p className="mt-1 text-[10.5px] text-faint">Khớp chính xác với thông tin trên báo giá — lệch là phải hủy &amp; xuất lại</p>
+          </div>
+        </div>
+
+        <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+          <div className="grid min-w-[620px] gap-x-3 bg-ink px-3 py-2 text-[11px] font-semibold text-white" style={{ gridTemplateColumns: '28px 2.6fr 0.7fr 0.6fr 1fr 1fr' }}>
+            <span>#</span><span>Tên hàng hóa, dịch vụ</span><span className="text-right">ĐVT</span><span className="text-right">SL</span><span className="text-right">Đơn giá</span><span className="text-right">Thành tiền</span>
+          </div>
+          <div className="grid min-w-[620px] gap-x-3 border-t border-line px-3 py-2 text-[12px]" style={{ gridTemplateColumns: '28px 2.6fr 0.7fr 0.6fr 1fr 1fr' }}>
+            <span className="text-faint">1</span><span className="truncate">{pack.vi}</span>
+            <span className="text-right text-[11px] text-muted">{pack.unitVi}</span>
+            <span className="text-right tabular-nums">{inv.qty}</span>
+            <span className="text-right tabular-nums">{unit.toLocaleString('en-US')}</span>
+            <span className="text-right tabular-nums">{sub.toLocaleString('en-US')}</span>
+          </div>
+        </div>
+
+        <div className="mt-3 ml-auto w-full max-w-[320px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+          <div className="flex justify-between"><span className="text-muted">Cộng tiền hàng</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
+          <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
+          <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng tiền thanh toán</span><span className="tabular-nums">{inv.total.toLocaleString('en-US')} ₫</span></div>
+          <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Số tiền viết bằng chữ: {vnWords(inv.total)}.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminInvoices() {
-  const rows = [
-    ['INV-3390 · 1C26TAA/0041', 'Công ty Vạn Phát', 'PAY-1042', '37,800,000 ₫', <Pill tone="active">Issued</Pill>, '26/07/2026', '26/07/2027'],
-    ['INV-3389 · 1C26TAA/0040', 'Trường Sơn', 'PAY-1044', '73,929,353 ₫', <Pill tone="active">Issued</Pill>, '24/07/2026', '24/07/2027'],
-    ['INV-3388 · 1C26TAA/0039', 'Hồng Đức', 'PAY-1039', '139,609,357 ₫', <Pill tone="expired">Cancelled · replaced</Pill>, '06/07/2026', '—'],
-    ['— not issued yet', 'AM Software Việt Nam', 'PAY-1043', '6,588,000 ₫', <Pill tone="draft">Blocked · payment unconfirmed</Pill>, '—', '—'],
-  ]
+  const [open, setOpen] = useState<Inv | null>(null)
+  if (open) return <InvoiceDetail inv={open} onBack={() => setOpen(null)} />
   return (
     <ListPage
-      tabs={[{ label: 'All', count: 210, active: true }, { label: 'To issue', count: 2 }, { label: 'Issued' }, { label: 'Cancelled / replaced' }, { label: 'Activation expiring', count: 6 }]}
-      cols={[{ label: 'Invoice · legal no.', w: '1.7fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Payment', w: '0.9fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.6fr' }, { label: 'Issued', w: '0.9fr', align: 'r' }, { label: 'Activate by', w: '0.9fr', align: 'r' }]}
-      rows={rows}
-      minW={900}
-      footer="Issued only after a confirmed payment (T&C clause 3) — so no Overdue state here · issuing closes the deal, flips the company New → Existing and releases provisioning · activate-by = issued + 12 months (clause 4)"
+      tabs={[{ label: 'All', count: 210, active: true }, { label: 'Issued' }, { label: 'Cancelled / replaced' }, { label: 'Activation expiring', count: 6 }]}
+      cols={[{ label: 'Invoice · legal no.', w: '1.7fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.2fr' }, { label: 'Issued', w: '0.9fr' }, { label: 'Activate by', w: '0.9fr' }]}
+      rows={INVOICES.map((i) => [
+        <button onClick={() => setOpen(i)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{i.code} · {i.legal}</button>,
+        <span className="truncate">{i.customer}</span>,
+        <span className="truncate font-mono text-[11px] text-muted">{i.po}</span>,
+        <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
+        <Pill tone={i.cancelled ? 'expired' : 'active'}>{i.cancelled ? 'Cancelled · replaced' : 'Issued'}</Pill>,
+        <span className="tabular-nums text-muted">{i.issued}</span>,
+        <span className="tabular-nums text-muted">{i.activateBy}</span>,
+      ])}
+      minW={1040}
     />
   )
 }
+/* ── Purchase order ───────────────────────────────────────────────────────────
+   Code format and page layout follow the client's live system: INV-{seq6}/{MM}/
+   {YYYY}, issuer block on the left, recipient + dates on the right, line items
+   with the package benefits printed inline.
+
+   The three accounting milestones from that screen — ĐÃ THANH TOÁN · ĐÃ YÊU CẦU
+   XUẤT HÓA ĐƠN · ĐÃ XUẤT HÓA ĐƠN — are modelled as an ordered STATE here rather
+   than a row of independent toggles, so a PO cannot be marked invoiced before the
+   money is confirmed (T&C clause 3). Exactly one primary action is offered at a
+   time, and the two money steps are Accounting-only. */
+/* FOUR states. Two were removed for the same reason — they changed nothing about
+   what was allowed or who acted:
+     · "Invoice requested" — a task assignment, not a document state. A confirmed
+       payment now puts the PO into Accounting's To-invoice queue on its own.
+     · "Confirmed" — bank details go out WITH the PO at Sent, so the normal path is
+       send → customer transfers. Paying IS the confirmation; most POs skipped it.
+   Where a customer's procurement does issue a formal PO, that is captured as
+   evidence (customerPoNumber / confirmedAt), not as a status.
+   SENDING the PO is the "won" moment — the deal moves to the PO stage there. */
+type PoStep = 'draft' | 'sent' | 'paid' | 'invoiced'
+const PO_FLOW: { key: PoStep; vi: string; en: string; by: string }[] = [
+  { key: 'draft', vi: 'Nháp', en: 'Draft', by: 'Sales' },
+  { key: 'sent', vi: 'Đã gửi khách', en: 'Sent', by: 'Sales' },
+  { key: 'paid', vi: 'Đã thanh toán', en: 'Payment confirmed', by: 'Kế toán' },
+  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Invoice issued', by: 'Kế toán' },
+]
+/** The single next action, and who may click it. null once fully invoiced. */
+function poNext(step: PoStep) {
+  const i = PO_FLOW.findIndex((s) => s.key === step)
+  const n = PO_FLOW[i + 1]
+  if (!n) return null
+  const label: Record<string, string> = {
+    sent: 'Gửi khách + thông tin thanh toán', paid: 'Xác nhận đã thanh toán',
+    invoiced: 'Xuất hóa đơn',
+  }
+  return { label: label[n.key], by: n.by, accounting: n.by === 'Kế toán' }
+}
+type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; due: string; seller: string; product: number; qty: number }
+const POS: Po[] = [
+  { code: 'INV-005864/07/2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'EST-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
+  { code: 'INV-005863/07/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'EST-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
+  { code: 'INV-005862/07/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'EST-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
+  { code: 'INV-005861/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'EST-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  { code: 'INV-005860/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'EST-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+]
+const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active' }
+
+function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
+  useDetailCrumb(po.code, onBack)
+  const cur = PO_FLOW.find((s) => s.key === po.step)!
+  const next = poNext(po.step)
+  const pack = QUOTE_CATALOG[po.product]
+  const sub = Math.round(po.total / (1 + VAT_RATE / 100))
+  const vat = po.total - sub
+  const unit = Math.round(sub / po.qty)
+  return (
+    <div>
+
+      {/* One status, one action. The full six-state model — what each status means,
+          what moves it on and who may act — is documented in the requirement, not
+          restated on screen every time a rep opens a PO. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-wide text-faint">Trạng thái</span>
+          <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
+          <span className="text-[11px] text-muted">{cur.vi}</span>
+        </div>
+        {next
+          ? (
+            <button className={cn('rounded-lg px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90', next.accounting ? 'bg-amber-600' : 'bg-brand')}>
+              {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
+            </button>
+          )
+          : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
+      </div>
+
+      {/* document */}
+      <div className="mt-4 rounded-xl border border-line bg-surface p-4">
+        <p className="text-[18px] font-bold tracking-tight">{po.code}</p>
+        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+          <div className="text-[11.5px] leading-relaxed">
+            <p className="font-bold text-ink">DAOUKIWOOM INNOVATION COMPANY LIMITED</p>
+            <p className="text-ink/80">Level 12, 13 &amp; 14, AP Tower, 518B Dien Bien Phu,<br />Thanh My Tay Ward, HCMC<br />Ho Chi Minh City<br />Vietnam 700000</p>
+            <p className="mt-0.5 text-ink/80">Mã số thuế: <span className="tabular-nums">0315421202</span></p>
+            <p className="mt-1 text-[10.5px] text-faint">Từ System → Company information</p>
+          </div>
+          <div className="text-right text-[11.5px] leading-relaxed">
+            <p className="text-muted">Người nhận:</p>
+            <p className="font-bold text-brand">{po.customer}</p>
+            <p className="mt-1 text-ink/80">Mã số thuế: <span className="tabular-nums">{COMPANIES.find((c) => c.name === po.co)?.tax ?? '0318705749'}</span></p>
+            {po.poNo && <p className="text-ink/80">Số PO của khách: <span className="font-mono">{po.poNo}</span></p>}
+            <p className="mt-1 text-ink/80">Ngày xuất hóa đơn: <b>{po.issued}</b></p>
+            <p className="text-ink/80">Hạn trả: <b>{po.due}</b></p>
+            <p className="text-ink/80">Người bán: <b>{po.seller}</b></p>
+          </div>
+        </div>
+
+        <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+          <div className="grid min-w-[760px] gap-x-3 bg-ink px-3 py-2 text-[11px] font-semibold text-white" style={{ gridTemplateColumns: '28px 3fr 0.7fr 1fr 0.7fr 0.9fr 1fr' }}>
+            <span>#</span><span>Sản phẩm</span><span className="text-right">Số lượng</span><span className="text-right">Giá</span><span className="text-right">Chiết khấu</span><span className="text-right">Thuế</span><span className="text-right">Tổng</span>
+          </div>
+          <div className="grid min-w-[760px] gap-x-3 border-t border-line px-3 py-2.5 text-[12px]" style={{ gridTemplateColumns: '28px 3fr 0.7fr 1fr 0.7fr 0.9fr 1fr' }}>
+            <span className="text-faint">1</span>
+            <span className="min-w-0">
+              <p className="font-medium text-ink">{pack.vi}</p>
+              <ol className="mt-1 ml-4 list-decimal text-[11px] leading-relaxed text-muted">
+                {pack.feats.map((f) => <li key={f}>{f}</li>)}
+              </ol>
+            </span>
+            <span className="text-right tabular-nums">{po.qty} {pack.unitVi}</span>
+            <span className="text-right tabular-nums">{unit.toLocaleString('en-US')}</span>
+            <span className="text-right tabular-nums">0%</span>
+            <span className="text-right text-[11px] text-muted">Thuế GTGT {VAT_RATE}%</span>
+            <span className="text-right tabular-nums">{sub.toLocaleString('en-US')}</span>
+          </div>
+        </div>
+
+        {/* the client's screen stops at a pre-VAT line total; spelling the tax out
+            removes the ambiguity about what the customer actually owes */}
+        <div className="mt-3 ml-auto w-full max-w-[320px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+          <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
+          <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
+          <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng phải trả</span><span className="tabular-nums">{po.total.toLocaleString('en-US')} ₫</span></div>
+          <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(po.total)}.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminPOs() {
-  const rows = [
-    ['SO-1188', 'Công ty Vạn Phát', 'PO-VP/2026/044', '37,800,000 ₫', <Pill tone="active">Paid → invoiced</Pill>, '07/07/2026'],
-    ['SO-1189', 'AM Software Việt Nam', '—', '6,588,000 ₫', <Pill tone="pending">Awaiting payment</Pill>, '22/07/2026'],
-    ['SO-1190', 'Hoàng Gia', '—', '87,505,977 ₫', <Pill tone="neutral">Sent</Pill>, '18/07/2026'],
-    ['SO-1191', 'Sao Mai', '—', '126,360,120 ₫', <Pill tone="draft">Draft</Pill>, '—'],
-  ]
+  const [open, setOpen] = useState<Po | null>(null)
+  /* The PO's source quotation, opened read-only — every PO traces back to the ONE
+     accepted option it was built from, so the link is always resolvable. */
+  const [quote, setQuote] = useState<string | null>(null)
+  if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
+  if (quote) {
+    const q = QUOTES.find((x) => x.code === quote)
+      ?? { code: quote, customer: POS.find((p) => p.quote === quote)!.customer, products: [1], options: 2, value: POS.find((p) => p.quote === quote)!.total, status: 'Issued to PO' as QuoteStatus, created: '—', expires: '—', acceptedOpt: 1 }
+    return <QuotationDetail q={q} onBack={() => setQuote(null)} onCreatePO={() => {}} />
+  }
   return (
     <ListPage
       tabs={[{ label: 'All', count: 64, active: true }, { label: 'Sent' }, { label: 'Confirmed' }, { label: 'Awaiting payment', count: 9 }, { label: 'Invoiced' }]}
-      cols={[{ label: 'Order', w: '1fr' }, { label: 'Customer', w: '1.5fr' }, { label: 'Customer PO', w: '1.2fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.9fr', align: 'r' }]}
-      rows={rows}
-      minW={760}
-      footer="From ONE accepted quotation option · Confirmed = won (deal → PO) · holds the customer’s own PO number when their procurement issues one · provisions nothing yet"
+      cols={[
+        { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
+        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Due', w: '0.8fr' },
+      ]}
+      rows={POS.map((p) => [
+        <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
+        <span className="truncate">{p.customer}</span>,
+        <button onClick={() => setQuote(p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
+        <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
+        <Pill tone={PO_TONE[p.step]}>{PO_FLOW.find((s) => s.key === p.step)!.en}</Pill>,
+        <span className="tabular-nums text-muted">{p.issued}</span>,
+        <span className="tabular-nums text-muted">{p.due}</span>,
+      ])}
+      minW={1080}
     />
   )
 }
@@ -3775,6 +4194,7 @@ function PermSeg({ value, onChange }: { value: PermLevel | null; onChange: (l: P
 
 /* ── Step 1 · the permission-tree editor (mirrors the Customer-permissions screen) */
 function RoleEditor({ role, onClose }: { role: Role | null; onClose: () => void }) {
+  useDetailCrumb(role ? role.name : 'New role', onClose)
   const [name, setName] = useState(role?.name ?? '')
   const [desc, setDesc] = useState(role?.desc ?? '')
   const [perms, setPerms] = useState<Record<string, PermLevel>>(role ? expandGrants(role.grants) : expandGrants({}))
@@ -3794,7 +4214,6 @@ function RoleEditor({ role, onClose }: { role: Role | null; onClose: () => void 
 
   return (
     <div>
-      <button onClick={onClose} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to roles</button>
 
       {/* header — name + granted counter + bulk + save */}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -3999,12 +4418,12 @@ function AddStaffModal({ onAdd, onClose }: { onAdd: (s: Omit<Staff, 'id'>) => vo
 }
 
 function StaffDetail({ s, onBack }: { s: Staff; onBack: () => void }) {
+  useDetailCrumb(s.name, onBack)
   const role = OPERATOR_ROLE_BY_EMAIL[s.email]
   const owned = COMPANIES.filter((c) => c.owner === s.name)
   const initials = s.name.split(' ').slice(-2).map((w) => w[0]).join('').toUpperCase()
   return (
     <div>
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to staff directory</button>
       <div className="mb-4 flex items-start gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[16px] font-bold text-white shadow-sm">{initials}</span>
         <div>
@@ -4280,6 +4699,11 @@ const MD_DOMAINS: MDDomain[] = [
     note: 'ISO currency codes offered in the salary field. Single-level list.', kind: 'flat',
     entries: ['USD', 'VND', 'JPY', 'CNY', 'EUR', 'INR', 'GBP', 'RUB', 'SGD'],
   },
+  {
+    key: 'company-tag', label: 'Company tag', i18n: 'vi · en', used: 'Company profile · Store filter (tags)',
+    note: 'Editorial labels applied to a company (a company can carry several). Displayed as tags on the Company site. Free-growing list — start with the two below.', kind: 'tags',
+    entries: ['Korean company', 'Big company'],
+  },
 ]
 
 function MDEntryRow({ label }: { label: string }) {
@@ -4483,21 +4907,8 @@ function AdminMembership() {
       </div>
 
       <div className="space-y-4">
-        <JobGroup title="Chương trình">
-          <div className="grid grid-cols-3 gap-3">
-            <LField label="Tên chương trình" req value={`Chương trình Khách hàng Thân thiết ${TIER_YEAR}`} />
-            <LField label="Chu kỳ tích lũy" req value="Năm dương lịch (01/01 – 31/12)" select hint={`Reset về 0 ₫ ngày ${TIER_RESET}. Đổi chu kỳ ở đây, không sửa code.`} />
-            <LField label="Căn cứ tính tích lũy" req value="Tổng giá trị đơn hàng đã thanh toán" select hint="Các phương án khác: theo hóa đơn VAT đã xuất · theo giá trị PO. Cần chốt với business." />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <LField label="Cộng dồn theo tập đoàn" req value="Không — tính riêng từng pháp nhân" select hint="Công ty con KHÔNG cộng doanh thu vào công ty mẹ, đúng nguyên tắc “link không kế thừa gì”." />
-            <LField label="Đơn bị hủy / hoàn tiền" req value="Trừ khỏi tích lũy" select hint="Trừ ra có thể làm công ty TỤT hạng giữa năm — cần chốt có cho tụt hay giữ hạng đến hết năm." />
-            <LField label="Thời điểm cập nhật hạng" req value="Ngay khi đơn được ghi nhận thanh toán" select hint="Phương án khác: chốt định kỳ đầu tháng. Ảnh hưởng trực tiếp tới lúc KH thấy quyền lợi mới." />
-          </div>
-        </JobGroup>
-
         {/* ── Thresholds ───────────────────────────────────────────────────── */}
-        <JobGroup title="Ngưỡng xếp hạng — chỉ lưu mốc dưới, mốc trên tự suy ra">
+        <JobGroup title="Tier thresholds">
           <Table
             minW={720}
             cols={[
@@ -4525,10 +4936,6 @@ function AdminMembership() {
               ]),
             ]}
           />
-          <p className="text-[10.5px] leading-relaxed text-faint">
-            Chỉ ô <b>“Từ”</b> là dữ liệu thật — <b>“Đến dưới”</b> lấy từ mốc của hạng kế tiếp, nên các khoảng không bao giờ chồng
-            nhau hay hở. Thêm / bớt một hạng là thêm / bớt một dòng ở đây.
-          </p>
         </JobGroup>
 
         {/* ── Reward catalogue ─────────────────────────────────────────────── */}
@@ -4562,24 +4969,7 @@ function AdminMembership() {
         </JobGroup>
       </div>
 
-      {/* The unresolved policy questions, kept ON the page they belong to so they
-          cannot be lost in a chat thread. Each one changes what gets built. */}
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-        <p className="text-[11.5px] font-semibold text-amber-900">Chưa chốt với business — 5 câu chặn việc build</p>
-        <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[11px] leading-relaxed text-amber-900">
-          <li><b>Quyền lợi chưa dùng khi reset</b> — mất hết ngày {TIER_RESET}, hay bảo lưu / có hạn riêng dài hơn chu kỳ?</li>
-          <li><b>Ai bấm dùng quyền lợi</b> — KH tự chọn thời điểm trên tài khoản, hay gửi yêu cầu cho sales đăng ký hộ?</li>
-          <li><b>Voucher</b> — trị giá cố định hay giảm theo % với mức trần? Có cộng với chiết khấu số lượng (Existing) và ưu đãi Churn &amp; New 50% không?</li>
-          <li><b>Top Companies &amp; Banner</b> — trang có giới hạn số slot không? Nếu có, cam kết cho mọi KH Bạc/Vàng/Kim Cương sẽ <b>oversell</b>: cần booking + kiểm tra chỗ trống, không chỉ bật/tắt một cờ.</li>
-          <li><b>Tụt hạng giữa năm</b> — nếu một đơn bị hoàn khiến tích lũy xuống dưới mốc, KH có bị tụt hạng ngay, hay giữ hạng đến hết chu kỳ?</li>
-        </ol>
-      </div>
-
       <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
-        <p className="text-[11px] leading-relaxed text-muted">
-          Mọi thay đổi ở trang này được <b>ghi log</b> và <b>không hồi tố</b>: một quyền lợi KH đã nhận vẫn giữ nguyên điều kiện
-          lúc được cấp, kể cả khi ngưỡng hay danh mục sau đó bị sửa.
-        </p>
         <button className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
       </div>
     </div>
@@ -4822,9 +5212,9 @@ function FField({ label, req, value, select, hint, extra }: { label: React.React
 
 /* ── Job detail (read-only) — opened by clicking a job title ─────────────────── */
 function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
+  useDetailCrumb(job.title, onBack)
   return (
     <div className="max-w-[900px]">
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Jobs</button>
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -5040,6 +5430,7 @@ function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolea
 }
 
 function AdminJobCreate({ onBack }: { onBack: () => void }) {
+  useDetailCrumb('New job', onBack)
   const [exposed, setExposed] = useState(true)
   const [postMenu, setPostMenu] = useState(false)
   const [scheduling, setScheduling] = useState(false)
@@ -5050,7 +5441,6 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="max-w-[860px]">
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Jobs</button>
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -5061,9 +5451,6 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <a className="inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand">👁 Preview draft ↗</a>
         </div>
       </div>
-      <p className="mb-4 text-[11px] leading-relaxed text-faint">
-        <b>Status:</b> Draft → Schedule (publishes at a future time) → Open (live on the jobseeker site) → Closed (expired). While <b>Draft</b> or <b>Schedule</b>, the link above previews the draft; once <b>Open</b> it links to the live job post. <b>Exposure</b> (On / Off) is separate — an Open job can be hidden from jobseekers by turning Exposure Off.
-      </p>
 
       <div className="space-y-8">
         {/* ═══ POSTING SETUP (company · package · exposure) ═════════════════ */}

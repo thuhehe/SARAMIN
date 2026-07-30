@@ -48,11 +48,24 @@ export interface BackendSpec {
   notes?: string
 }
 
+/** A simple header-row + rows table. Shared by requirement blocks (as `ReqTable`)
+    and by spec sections, so an enum's values can be read as a grid instead of a
+    sentence — the format the team actually reviews from. */
+export interface SpecTable {
+  cols: string[]
+  rows: string[][]
+}
+
 export interface SpecSection {
   /** short heading, e.g. "Fields", "Behaviours", "Validation" */
   heading: string
+  /** optional lead sentence above the table / bullets. */
+  text?: string
+  /** value grid — use it for enums (status, exposure, stage) where each value has
+      a meaning and a consequence; a table beats four bullets every time. */
+  table?: SpecTable
   /** bullet lines */
-  items: string[]
+  items?: string[]
 }
 
 export interface FeatureSpec {

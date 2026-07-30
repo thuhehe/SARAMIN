@@ -44,12 +44,12 @@ export const jobseekerUser: BuildModule = {
     {
       label: 'Account status model',
       table: {
-        cols: ['Status', 'Means', 'Reversible?'],
+        cols: ['Status', 'Means', 'Reversible?', 'Rule'],
         rows: [
-          ['Pending verification', 'Signed up, email not confirmed — cannot apply', 'Yes, by verifying'],
-          ['Active', 'Verified, full use', '—'],
-          ['Suspended', 'Blocked by HQ — a reason is required', 'Yes, by HQ'],
-          ['Deactivated', 'Withdrawn by the user', 'Yes, on sign-in within the grace window'],
+          ['Pending verification', 'Signed up, email not confirmed — cannot apply', 'Yes, by verifying', 'Can sign in and browse, but cannot apply or be discovered in CV search'],
+          ['Active', 'Verified, full use', '—', 'Full use of the site; a social sign-up lands here directly'],
+          ['Suspended', 'Blocked by HQ — a reason is required', 'Yes, by HQ', 'Sign-in is refused with a support contact, never the reason text'],
+          ['Deactivated', 'Withdrawn by the user', 'Yes, on sign-in within the grace window', 'Reinstate returns to the previous status, not blindly Active'],
         ],
       },
       items: ['An unverified account can BROWSE jobs but cannot APPLY — verification gates writing, not reading.'],

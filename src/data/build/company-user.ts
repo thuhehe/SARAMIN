@@ -60,6 +60,28 @@ export const companyUser: BuildModule = {
         ],
       },
     },
+    {
+      label: 'Company user account status',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Invited', 'Invite sent, awaiting activation', 'Person sets their own password via the invite link — no one types it for them.'],
+          ['Active', 'Link clicked / password set — full use', 'Shares the account’s pooled products/quota; role is just a flag on the user.'],
+          ['Disabled', 'Access removed', 'Remove = deactivate, never hard-delete (keep the audit trail); the sole HR Manager can’t be disabled directly — transfer the manager role first.'],
+        ],
+      },
+    },
+    {
+      label: 'Public company page status',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'Created, not public — the URL 404s', 'Created as Draft when a Job Posting customer is activated, so it is never public by accident; the slug can still change while Draft.'],
+          ['Published', 'Publicly visible & indexable — requires logo + display name + industry + ≥1 location + a VI introduction', 'The company can publish and edit its own page; a Job Posting customer must have a Published page before any job can go live.'],
+          ['Unpublished', 'Deliberately taken down — the URL stops resolving', 'HQ can unpublish for moderation with a required, audited reason; HQ cannot delete a page a customer still owns.'],
+        ],
+      },
+    },
   ],
   features: [
     {

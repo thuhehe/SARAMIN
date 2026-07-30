@@ -54,6 +54,50 @@ export const applicationManagement: BuildModule = {
       items: ['Stage changes are logged: who moved it, when, from → to.'],
     },
     {
+      label: 'Screening status (HQ gate)',
+      text: 'screeningStatus is HQ-owned — the only status HQ can write. Every value carries its own rule.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Pending', 'The default on submit — the application exists but the company cannot see it.', 'This is the queue; it carries no stage yet.'],
+          ['Forwarded', 'HQ passed it.', 'Sets stage = New and hands ownership to the company. Irreversible except by an audited re-open.'],
+          ['Rejected by HQ', 'HQ stopped it — it never reaches the company and never gets a stage.', 'A reason code is mandatory.'],
+        ],
+      },
+    },
+    {
+      label: 'Employer pipeline stage',
+      text: 'stage is company-owned and read-only for HQ. It is null until HQ forwards; every value carries its own rule.',
+      table: {
+        cols: ['Stage', 'Means', 'Rule'],
+        rows: [
+          ['New', 'Just forwarded by HQ, nobody has looked yet.', 'The default landing stage; stage is null until HQ forwards.'],
+          ['Reviewing', 'A recruiter has picked it up and is reading the CV.', 'Moves need not be sequential — New → Interview is legal.'],
+          ['Shortlisted', 'Kept for the next round — the “yes for now” bucket.', 'Company-owned; HQ shows the badge read-only.'],
+          ['Interview', 'Interviewing.', 'The employer contacts the candidate off-platform; no scheduling in Phase-1.'],
+          ['Hired', 'Terminal — the successful outcome that ends the pipeline.', 'Confirmed on set; can be re-opened to an earlier stage, logged as a re-open.'],
+          ['Rejected', 'Terminal — the employer declined the candidate.', 'Employer-side, distinct from Rejected by HQ. An optional reason is captured; can be re-opened, logged as a re-open.'],
+        ],
+      },
+    },
+    {
+      label: 'Candidate-facing status (derived displayStatus)',
+      text: 'The label in “My application” is DERIVED from (screeningStatus, stage) on read — never stored as a third status.',
+      table: {
+        cols: ['Label', 'Derived from'],
+        rows: [
+          ['Screening', 'screeningStatus = Pending'],
+          ['Sent to employer', 'screeningStatus = Forwarded, stage = New'],
+          ['Reviewing', 'stage = Reviewing'],
+          ['Shortlisted', 'stage = Shortlisted'],
+          ['Interview', 'stage = Interview'],
+          ['Hired', 'stage = Hired'],
+          ['Not selected', 'stage = Rejected'],
+        ],
+      },
+      warn: 'An HQ rejection (screeningStatus = Rejected) has NO distinct label — pending a client decision it also renders as “Not selected”, so a candidate is never told “Saramin blocked you”.',
+    },
+    {
       label: 'Who sees what',
       table: {
         cols: ['Surface', 'Sees', 'Can do'],

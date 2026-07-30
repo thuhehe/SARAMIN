@@ -236,6 +236,7 @@ export const jobManagement: BuildModule = {
       name: 'Job list',
       site: 'Admin',
       scope: ['BE', 'FE'],
+      ready: true,
       mockup: 'admin-job-list',
       detail: {
         description:
@@ -243,47 +244,126 @@ export const jobManagement: BuildModule = {
         userStory: 'As an HQ operator, I want to see and manage every job across all companies so I can oversee and fix any posting.',
         uiFields: [
           {
+            // In screen order, left to right — the list is the oversight view, so
+            // every column is either an identity, a state, or a performance number.
             group: 'Table columns',
             items: [
-              { name: 'title / company', type: 'text' },
-              { name: 'status', type: 'badge' },
-              { name: 'source', type: 'badge', notes: 'admin vs company-created' },
-              { name: 'created / deadline', type: 'date' },
-              { name: 'applicants', type: 'count' },
+              { name: 'job title', type: 'text link', required: true, notes: 'opens the job detail; shows the Vietnamese title (EN/KO fall back to VI)' },
+              { name: 'category', type: 'ref → master data', notes: 'the Job Category half of the Category → Role taxonomy (System → Master data)' },
+              { name: 'company', type: 'ref → Company', required: true, notes: 'the account the posting belongs to' },
+              { name: 'created by', type: 'badge', required: true, notes: 'Company (their own HR user) · Admin (HQ posted on their behalf) — neither goes through an approval gate' },
+              { name: 'status', type: 'enum badge', required: true, notes: 'Draft · Schedule · Open · Closed — see the “Status values” table below; also drives the tabs above the table' },
+              { name: 'exposure', type: 'enum indicator', required: true, notes: 'On · Off · — (not applicable) — see the “Exposure values” table below. A separate switch, NOT a status' },
+              { name: 'posted', type: 'date', notes: 'when it went (or will go) live — “—” while Draft' },
+              { name: 'expires', type: 'date', notes: 'the application deadline; the job auto-moves to Closed at this date' },
+              { name: 'views', type: 'count', notes: 'job-detail views on the jobseeker site' },
+              { name: 'saves', type: 'count', notes: 'how many jobseekers saved it — the demand signal next to views' },
+              { name: 'applied', type: 'count → link', notes: 'applications received; opens the Applicants board filtered to this job' },
+            ],
+          },
+          {
+            group: 'Status tabs',
+            items: [
+              { name: 'All · Draft · Schedule · Open · Closed', type: 'tabs with counts', required: true, notes: 'the status filter, shown as counted tabs so the size of each bucket is visible before filtering' },
             ],
           },
           {
             group: 'Filters',
             items: [
-              { name: 'status', type: 'multi-select', notes: 'Draft · Schedule · Open · Closed' },
-              { name: 'exposure', type: 'toggle filter', notes: 'On / Off (for Open jobs)' },
-              { name: 'company', type: 'search' },
-              { name: 'date range / keyword', type: 'input' },
+              { name: 'keyword', type: 'search', notes: 'job title' },
+              { name: 'company', type: 'search / ref' },
+              { name: 'category', type: 'select', notes: 'from the same master-data taxonomy as the column' },
+              { name: 'created by', type: 'enum', notes: 'Company · Admin' },
+              { name: 'status', type: 'multi-select', notes: 'Draft · Schedule · Open · Closed (same as the tabs)' },
+              { name: 'exposure', type: 'toggle filter', notes: 'On / Off — only narrows Open jobs, since exposure is undefined for the rest' },
+              { name: 'date range', type: 'date range', notes: 'against posted or expires — which one is the open question below' },
+            ],
+          },
+          {
+            group: 'Page actions',
+            items: [
+              { name: '+ New job', type: 'button', notes: 'HQ posts on a company’s behalf — the company is chosen on the form (see Create job, Admin)' },
             ],
           },
         ],
         behaviors: [
+          'Clicking the job title opens the job detail (same record the company sees, with HQ actions).',
           'Row actions: Edit · Close · Toggle exposure (On/Off) · View applicants.',
+          'The Exposure toggle is enabled only on Open jobs; on any other status the cell is inert.',
+          'Sortable on posted, expires, views, saves and applied — the ranking questions HQ actually asks.',
           'Server-side pagination + filter + sort.',
         ],
         rules: [
+          'Status and Exposure are two independent fields and are never merged into one column: status is the lifecycle (Draft → Schedule → Open → Closed), exposure is public visibility. Only Open + Exposure On is live and applyable on the jobseeker site.',
+          'Exposure Off takes a live job down without closing it — reversible any time before the deadline, and it does not change the status.',
           'Closing a job is a manual, deliberate action (separate from auto-Close at the deadline).',
           'Editing an Open job keeps it Open; a full audit entry is written.',
+          'Views / saves / applied are read-only counters here — they are never editable from this screen.',
         ],
         states: ['Loading', 'Empty (no jobs)', 'Filtered-empty', 'Has jobs'],
         backend: {
+          dataModel: [
+            { name: 'row', type: 'projection', notes: 'jobId, title(vi), categoryId + label, companyId + name, createdBySource(company|admin), status, exposure, postedAt, expiresAt, viewCount, saveCount, applicationCount' },
+            { name: 'status', type: 'enum', required: true, notes: 'draft | schedule | open | closed — auto-transitions (schedule → open at publishAt, open → closed at expiresAt) are jobs, not user actions' },
+            { name: 'exposure', type: 'bool', required: true, notes: 'independent of status; gates public visibility of an Open job' },
+            { name: 'viewCount / saveCount / applicationCount', type: 'derived', notes: 'aggregates — never written from this screen' },
+          ],
           endpoints: [
-            'GET /admin/jobs?status=&exposure=&company=&q=&page=',
+            'GET /admin/jobs?q=&status=&exposure=&company=&category=&createdBy=&from=&to=&sort=&page= → rows + per-status counts for the tabs',
             'PATCH /admin/jobs/:id/exposure { on|off }',
             'POST /admin/jobs/:id/close',
           ],
-          notes: 'Edit / close / exposure changes write an audit entry.',
+          integrations: ['Master data (Job categories & roles)', 'Application management (applied count → Applicants board)', 'Audit log'],
+          notes: 'Edit / close / exposure changes write an audit entry. The tab counts come back with the list so they cannot disagree with the rows.',
         },
         acceptance: [
           'HQ can filter by status & exposure and act on any job (edit / close / toggle exposure).',
           'Company-created jobs appear as Open without any approval step.',
+          'Every column in the list is populated from one request: title, category, company, created by, status, exposure, posted, expires, views, saves, applied.',
+          'Exposure shows On / Off only for Open jobs and “—” for Draft / Schedule / Closed, and turning it Off hides the job from the jobseeker site without changing its status.',
+          'The status tab counts match the number of rows each tab returns.',
         ],
-        openQuestions: ['Any post-publish moderation / takedown workflow now that there is no pre-publish approval?'],
+        sections: [
+          {
+            heading: 'Status values',
+            text: 'One field, four values, set by the lifecycle — never by hand except via Publish / Close.',
+            table: {
+              cols: ['Value', 'Means', 'On the jobseeker site', 'Leaves this value when', 'Exposure column shows'],
+              rows: [
+                ['Draft', 'Saved but never published', 'Not present', 'Publish is pressed → Open, or scheduled → Schedule', '—'],
+                ['Schedule', 'Will publish at a chosen future time', 'Not present yet', 'The scheduled time arrives → Open (automatic)', '—'],
+                ['Open', 'Published and within the deadline', 'Live — listed, searchable, applyable (only if Exposure On)', 'The deadline passes → Closed (automatic), or Close is pressed', 'On / Off'],
+                ['Closed', 'Deadline passed, or closed by hand', 'Read-only notice, no apply', 'Terminal — a new posting means duplicating the job', '—'],
+              ],
+            },
+            items: [
+              'The tabs above the list are exactly these four values plus All, each with a count.',
+              'Draft → Schedule → Open → Closed only moves forward; there is no re-open (that is a duplicate).',
+            ],
+          },
+          {
+            heading: 'Exposure values',
+            text: 'A second, independent field: whether an already-published job is visible. It never changes the status, and the status never changes it.',
+            table: {
+              cols: ['Value', 'Applies when status is', 'On the jobseeker site', 'What HQ uses it for'],
+              rows: [
+                ['On', 'Open', 'Visible — listed, searchable, applyable', 'The normal state after publishing (default)'],
+                ['Off', 'Open', 'Hidden everywhere — not listed, not searchable, not applyable', 'Take a live job down without closing it; reversible any time before the deadline'],
+                ['— (n/a)', 'Draft · Schedule · Closed', 'Not public in any case', 'Nothing — the toggle is inert, the cell shows “—”'],
+              ],
+            },
+            items: [
+              'Public visibility is the AND of both fields: status = Open AND exposure = On. Any other combination is invisible to jobseekers.',
+              'Turning Exposure Off does not pause the deadline — the job still auto-Closes on its expiry date.',
+            ],
+          },
+        ],
+        openQuestions: [
+          'Any post-publish moderation / takedown workflow now that there is no pre-publish approval?',
+          'Does the date-range filter apply to “posted” or to “expires”? (Or is it two separate filters — HQ asks both questions.)',
+          'Are views / saves live counters or refreshed nightly? Live counters on a 1,200-row list is a real cost decision.',
+          'Should Exposure Off pause the expiry clock? As specified it does not, so a job hidden for two weeks still expires on time.',
+        ],
       },
     },
     // 3 ──────────────────────────────────────────────────────────────────────
@@ -411,6 +491,7 @@ export const jobManagement: BuildModule = {
       name: 'Job detail',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
+      ready: true,
       mockup: 'js-job-detail',
       detail: {
         description:

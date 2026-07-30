@@ -89,6 +89,30 @@ export const productsPackages: BuildModule = {
         'Credits are a LEDGER, not a number: every grant, consumption, expiry and correction is an append-only entry and the balance is their sum. A balance is never overwritten, because it must reconcile against paid orders.',
       ],
     },
+    {
+      label: 'Product catalogue status',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'Being defined — invisible to quotations, orders and the company purchasing surface, freely editable, and the only status that can be deleted.', 'Draft → Active requires a complete fulfilment definition. A product that has ever been sold can never go back to Draft.'],
+          ['Active', 'Sellable — it can be quoted, ordered and provisioned; price and fulfilment are versioned from here on, not edited in place.', 'Active → Archived to retire.'],
+          ['Archived', 'No longer sold, but every past order, entitlement and report that references it still resolves — the replacement for deleting a product.', 'Archived → Active to re-list.'],
+        ],
+      },
+    },
+    {
+      label: 'Order lifecycle',
+      text: 'The order/payment object is owned by CRM → Purchase order; this module only references it.',
+      table: {
+        cols: ['Status', 'Means', 'Rule'],
+        rows: [
+          ['Draft', 'The order is still being assembled.', 'Nothing is entitled without a paid order — a Draft order grants no entitlement.'],
+          ['Pending payment', 'Awaiting payment.', 'Still no entitlement until the order is Paid.'],
+          ['Paid', 'Payment confirmed by Accounting (CRM).', 'Provisioning is automatic on payment — an admin never hand-picks products for an account.'],
+          ['Fulfilled', 'The entitlement has been provisioned.', 'Each product on the order maps to an entitlement of product + remaining quota + validity.'],
+        ],
+      },
+    },
   ],
   features: [
     // 0 · Catalog ─────────────────────────────────────────────────────────────
@@ -99,6 +123,15 @@ export const productsPackages: BuildModule = {
       ready: true,
       mockup: 'admin-catalog',
       detail: {
+        refDocs: [
+          {
+            label: 'Products.pptx — TopDev × Saramin, “New look new era”',
+            href: '/docs/Products.pptx',
+            meta: 'PPTX · 26 slides · 20 MB · client deck, received 24/07/2026',
+            note:
+              'The client’s own catalogue of every sellable service, and the authoritative source for product names, display counts, sizes and durations. Six sections: (1) Homepage services — main banner 1536×371, Feature company logos, Super Hot Jobs, Top Companies Hiring Now, Popular Jobs, Highlight Company, Job Basic, adsense banner 1260×120, Jobs Tailored For You, homepage pop-up · (2) Search-page services — Highlight Company, Highlight Jobs, adsense banner 425×160 · (3) Job-posting tiers — Basic, Basic Plus, Distinction, Top Job (30-day display, differing auto-refresh cadences) · (4) CV search — COMBO 30 at 2.400.000 ₫, COMBO 50 at 3.700.000 ₫ · (5) Brand-boost add-ons — “HOT” label, Công việc HOT hôm nay, Facebook post · (6) Company Page. NOTE: the deck spans far more than this screen — sections 1, 2 and 5 are placement/banner inventory (see Banners & popups) and section 6 is the company page. Read it as the product catalogue for the whole platform, not just for this page.',
+          },
+        ],
         description:
           'The catalogue: every sellable product with its price, its fulfilment (what the buyer actually receives) and its status. Four product types cover the business — Posting quota, Subscription, Advertising and Boost — and each one declares the entitlement it grants when an order is paid. This screen is the definition; it never touches a customer’s balance.',
         userStory:

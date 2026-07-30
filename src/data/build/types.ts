@@ -8,7 +8,7 @@
  * Detail reuses the small building blocks from ../types (FieldGroup, BackendSpec,
  * SpecSection) so the two systems stay consistent.
  */
-import type { FieldGroup, BackendSpec, SpecSection } from '../types'
+import type { FieldGroup, BackendSpec, SpecSection, SpecTable } from '../types'
 
 export type Site = 'Jobseekers' | 'Companies' | 'Admin'
 export type Scope = 'BE' | 'FE' | 'UI'
@@ -37,8 +37,27 @@ export const READY_META = {
   notReady: { dot: 'bg-slate-300', label: 'Not ready yet' },
 } as const
 
+/**
+ * A client-supplied source document this requirement was written from, rendered as
+ * a clickable card so a reader can open the ORIGINAL instead of trusting a summary
+ * of it. Files live under `public/docs/` and are served by the site itself, so a
+ * link never depends on someone's Drive permissions.
+ */
+export interface RefDoc {
+  /** file name as the reader should see it, e.g. "Products.pptx" */
+  label: string
+  /** href — a path under public (`/docs/Products.pptx`) or an external URL */
+  href: string
+  /** shape of the file, e.g. "PPTX · 26 slides · 20 MB" */
+  meta?: string
+  /** one line: what it covers, and who / when it came from */
+  note?: string
+}
+
 /** Deep per-feature spec — authored to be "as detailed as possible". All optional. */
 export interface FeatureDetail {
+  /** client source documents this requirement was written from. */
+  refDocs?: RefDoc[]
   /** 1–2 paragraph overview: what this screen/feature is and does. */
   description?: string
   /** "As a … I want … so that …" */
@@ -77,11 +96,9 @@ export interface BuildFeature {
   detail?: FeatureDetail
 }
 
-/** A small table inside a requirement — the fastest way to read a rule set. */
-export interface ReqTable {
-  cols: string[]
-  rows: string[][]
-}
+/** A small table inside a requirement — the fastest way to read a rule set.
+    Same shape as a spec-section table, so one renderer serves both. */
+export type ReqTable = SpecTable
 
 /**
  * A requirement is either a plain sentence, or a LABELLED BLOCK — a short title
