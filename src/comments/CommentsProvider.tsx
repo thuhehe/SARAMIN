@@ -56,6 +56,15 @@ interface CommentsContextValue {
   activeId: string | null
   setActiveId: (id: string | null) => void
   /**
+   * Bumped on every *act* of selecting, even when it lands on the thread
+   * that was already selected. `activeId` alone can't carry that: clicking
+   * the same card twice leaves it unchanged, so anything keyed on it can't
+   * tell "the reader asked again" from "React re-rendered" — and the poll
+   * re-renders every 5s. Consumers that should fire per request (jumping
+   * the page to the quote, opening the rail) watch this instead.
+   */
+  activeSeq: number
+  /**
    * Focus a thread wherever it lives: same page, select it; another page,
    * navigate there first and select it once that page is up.
    */
@@ -118,7 +127,15 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const [truncated, setTruncated] = useState(false)
   const [member, setMember] = useState<ShareMember | null>(session.member.get())
   const [name, setNameState] = useState<string | null>(session.displayName.get())
-  const [activeId, setActiveId] = useState<string | null>(null)
+  // Selection and its request counter move together, so a consumer can
+  // never read a new id against a stale sequence.
+  const [active, setActive] = useState<{ id: string | null; seq: number }>({
+    id: null,
+    seq: 0,
+  })
+  const setActiveId = useCallback((id: string | null) => {
+    setActive((prev) => ({ id, seq: prev.seq + 1 }))
+  }, [])
   const [railOpen, setRailOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -174,7 +191,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setActiveId(pendingJump.current)
     pendingJump.current = null
-  }, [docKey])
+  }, [docKey, setActiveId])
 
   const jumpTo = useCallback<CommentsContextValue['jumpTo']>(
     (thread) => {
@@ -185,7 +202,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       pendingJump.current = thread.id
       navigate(thread.docKey)
     },
-    [navigate],
+    [navigate, setActiveId],
   )
 
   const handleError = useCallback((err: unknown) => {
@@ -442,8 +459,9 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       // A member's name is their account's; a guest's is what they typed.
       name: member?.name ?? name,
       setName,
-      activeId,
+      activeId: active.id,
       setActiveId,
+      activeSeq: active.seq,
       jumpTo,
       error,
       unlock,
@@ -472,7 +490,8 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
       member,
       name,
       setName,
-      activeId,
+      active,
+      setActiveId,
       jumpTo,
       railOpen,
       error,

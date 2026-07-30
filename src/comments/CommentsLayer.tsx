@@ -14,14 +14,23 @@ import { UnlockDialog } from './UnlockDialog'
 export function CommentsLayer() {
   // `railOpen` lives in the provider: the page reads it too, so it can
   // reserve room instead of letting the fixed rail cover the content.
-  const { status, allThreads, activeId, railOpen, setRailOpen, railVisible } =
-    useComments()
+  const {
+    status,
+    allThreads,
+    activeId,
+    activeSeq,
+    railOpen,
+    setRailOpen,
+    railVisible,
+  } = useComments()
   const [unlocking, setUnlocking] = useState(false)
 
-  // Clicking a highlight in the page opens the rail on that thread.
+  // Clicking a highlight in the page opens the rail on that thread. Keyed on
+  // the request rather than the id, so closing the rail and clicking that
+  // same highlight again brings it back instead of doing nothing.
   useEffect(() => {
     if (activeId) setRailOpen(true)
-  }, [activeId])
+  }, [activeId, activeSeq])
 
   /**
    * A member coming back from BB PM lands on the page they left, with a
