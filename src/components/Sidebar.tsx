@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, Monitor, Building2 } from 'lucide-react'
-import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
+import { BUILD_MODULES, SITE_META, READY_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
 import { useComments } from '@/comments/CommentsProvider'
@@ -189,7 +189,11 @@ function ModuleRow({
                     active ? 'bg-brand-soft text-brand font-medium' : 'text-ink/80 hover:bg-canvas/70',
                   )}
                 >
-                  <span className={cn('h-2 w-2 shrink-0 rounded-full', SITE_META[f.site].dot)} />
+                  {/* BA readiness, not site — the [JS]/[CO]/[Admin] tag beside it carries the site. */}
+                  <span
+                    title={f.ready ? READY_META.ready.label : READY_META.notReady.label}
+                    className={cn('h-2 w-2 shrink-0 rounded-full', (f.ready ? READY_META.ready : READY_META.notReady).dot)}
+                  />
                   <span className="font-mono text-[10px] text-faint shrink-0">[{SITE_META[f.site].tag}]</span>
                   <span className="truncate">{f.name}</span>
                   <span className="ml-auto">

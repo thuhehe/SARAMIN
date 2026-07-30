@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
   Users,
   FileImage,
   Bell,
-  CreditCard,
   Handshake,
   BarChart3,
   Settings,
   ChevronDown,
   ExternalLink,
 } from 'lucide-react'
-import { SPECS } from '@/data'
+import { BUILD_MODULES } from '@/data/buildModules'
+import type { Site } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
 import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
@@ -22,6 +22,63 @@ import { ActivationFlow } from '@/components/ActivationFlow'
 interface NavItem {
   label: string
   specId?: string
+}
+
+/* ── "View full spec" target ──────────────────────────────────────────────────
+   The button used to link to /f/:id (the LEGACY FeatureSpec route), which is not
+   where the authored spec lives any more — that is BUILD_MODULES at
+   /m/:moduleId/:featureIndex. Map each admin page to its build feature by NAME +
+   SITE (never by index, which shifts whenever a feature is added or reordered).
+   A page with no authored feature yet simply shows no button. */
+const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site }> = {
+  // Recruitment
+  'admin-job-list': { module: 'job-management', feature: 'Job list', site: 'Admin' },
+  'admin-job-applicants': { module: 'application-management', feature: 'Application list', site: 'Admin' },
+  'admin-resumes': { module: 'resume-management', feature: 'Resume list', site: 'Admin' },
+  // Jobseekers
+  'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
+  // Content
+  'admin-banners': { module: 'banners-popups', feature: 'Create banner + Banner list' },
+  'admin-popups': { module: 'banners-popups', feature: 'Create popup + Popup list' },
+  // Billing & products
+  'admin-catalog': { module: 'products-packages', feature: 'Products management' },
+  // NOTE: no targets for 'admin-bundles' / 'admin-credits' / 'admin-orders' /
+  // 'admin-promotions' — all four features were removed from the Products &
+  // Packages module. A package is expressed as quotation lines, discounting
+  // happens on the quotation, orders are CRM → Purchase order, and the credit
+  // balance is the entitlement ledger on the company account.
+  // CRM
+  'admin-company-list': { module: 'crm', feature: 'Companies' },
+  'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
+  'admin-signups': { module: 'crm', feature: 'Sign-ups (inbound triage)' },
+  'admin-quotes': { module: 'crm', feature: 'Quotations' },
+  'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
+  // NOTE: 'admin-company-users' has no target on purpose — the Account management
+  // module was trimmed out of the build plan (buildModules.ts), so there is no
+  // authored feature page to link to. Re-add it there to make this page linkable.
+  // System
+  'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
+  'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
+  'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
+  'admin-issuer': { module: 'admin-access', feature: 'Company information' },
+  // Configuration page → System module, like every other System nav item. The tier it
+  // configures is displayed by CRM → Companies, which cross-references back to here.
+  'admin-membership': { module: 'admin-access', feature: 'Membership tiers' },
+  'admin-master-data': { module: 'admin-access', feature: 'Master data' },
+  'admin-audit-log': { module: 'admin-access', feature: 'Audit log' },
+  'admin-environment': { module: 'admin-access', feature: 'Environment' },
+  'admin-departments': { module: 'admin-access', feature: 'Departments' },
+}
+
+/** Resolve an admin page to its authored spec page, or null if none exists yet. */
+function specPath(specId?: string): string | null {
+  if (!specId) return null
+  const t = SPEC_TARGET[specId]
+  if (!t) return null
+  const m = BUILD_MODULES.find((x) => x.id === t.module)
+  if (!m) return null
+  const i = m.features.findIndex((f) => f.name === t.feature && (!t.site || f.site === t.site))
+  return i < 0 ? null : `/m/${m.id}/${i}`
 }
 interface NavGroup {
   label: string
@@ -61,32 +118,20 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Product setting',
-    icon: <CreditCard className="h-4 w-4" />,
-    // Selling documents (quotation → sales order → payment → invoice) all live in
-    // CRM. This group is the catalogue side only: what is sellable and at what price.
-    items: [
-      { label: 'Products', specId: 'admin-catalog' },
-      { label: 'Packages', specId: 'admin-bundles' },
-      { label: 'Promotions', specId: 'admin-promotions' },
-    ],
-  },
-  {
     label: 'CRM',
     icon: <Handshake className="h-4 w-4" />,
-    // The five document pages are ordered as the quote-to-cash chain runs, so the
-    // nav itself teaches the flow: Quotation → Sales order/PO → Payment →
-    // VAT e-invoice → Contract. Payments sit BEFORE Invoices on purpose — the
-    // customer pays first and the e-invoice is issued after (T&C clause 3).
+    // Only the two documents sales itself works as a queue get a global list:
+    // Quotation (drives the Proposal stage) and Purchase order (the "won" record
+    // + the anchor for the churn clock). Payments, VAT e-invoices and Contracts
+    // are per-company paperwork — reached from the company record, not the nav.
     items: [
       { label: 'Companies', specId: 'admin-company-list' },
       { label: 'Pipeline', specId: 'admin-company-pipeline' },
-      { label: 'Sign-ups', specId: 'admin-signups' },
       { label: 'Quotations', specId: 'admin-quotes' },
-      { label: 'Sales orders / PO', specId: 'admin-purchase-orders' },
-      { label: 'Payments', specId: 'admin-payments' },
-      { label: 'Invoices (VAT)', specId: 'admin-invoices' },
-      { label: 'Contracts', specId: 'admin-contracts' },
+      { label: 'Purchase order', specId: 'admin-purchase-orders' },
+      // Last in the group: inbound self-registrations are a triage inbox that
+      // feeds the pipeline, not a step in the document flow above it.
+      { label: 'Sign-ups', specId: 'admin-signups' },
     ],
   },
   {
@@ -104,8 +149,20 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'System',
     icon: <Settings className="h-4 w-4" />,
     items: [
+      // People first: the staff directory is the source Users & CRM ownership pick from.
+      { label: 'Staff directory', specId: 'admin-staff' },
       { label: 'Users', specId: 'admin-users' },
       { label: 'Roles & permissions', specId: 'admin-roles' },
+      // The issuer identity that prints on every quotation / order / invoice.
+      { label: 'Company information', specId: 'admin-issuer' },
+      // The catalogue: what is sellable and at what price. HQ configuration, so it
+      // sits here rather than in its own menu — Packages and Promotions were dropped
+      // (a package is quotation lines; discounting happens on the quotation).
+      { label: 'Products', specId: 'admin-catalog' },
+      // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.
+      // Here rather than under CRM for the same reason as Products — it is HQ-only
+      // configuration that changes how another module behaves.
+      { label: 'Membership tiers', specId: 'admin-membership' },
       { label: 'Master data', specId: 'admin-master-data' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },
@@ -120,15 +177,24 @@ const NAV_GROUPS: NavGroup[] = [
    single create action (reports, logs, boards). */
 const PRIMARY_ACTION: Record<string, string> = {
   'admin-catalog': '+ New product',
-  'admin-quotes': '+ New quotation',
 }
 
 export function AdminWireframe() {
   const [walkthrough, setWalkthrough] = useState<null | 'activation' | 'flow'>(null)
   /** specId whose create modal is open — the title-row button opens it. */
   const [creating, setCreating] = useState<string | null>(null)
-  /** default landing page — looked up by label so nav reordering can't desync it */
+  /** Landing page: `?screen=<specId>` when a spec page linked here (so the feature
+      spec never has to carry its own copy of the screen), else the default. Looked
+      up by label so nav reordering can't desync it. */
+  const [searchParams] = useSearchParams()
+  const wanted = searchParams.get('screen')
   const [active, setActive] = useState<{ group: string; item: NavItem }>(() => {
+    if (wanted) {
+      for (const g of NAV_GROUPS) {
+        const item = g.items.find((x) => x.specId === wanted)
+        if (item) return { group: g.label, item }
+      }
+    }
     const g = NAV_GROUPS.find((x) => x.label === 'Recruitment') ?? NAV_GROUPS[0]
     return { group: g.label, item: g.items[0] }
   })
@@ -137,7 +203,7 @@ export function AdminWireframe() {
     setActive({ group, item })
   }
 
-  const spec = active.item.specId ? SPECS[active.item.specId] : undefined
+  const specHref = specPath(active.item.specId)
   const Proto = active.item.specId ? ADMIN_PROTOTYPES[active.item.specId] : undefined
 
   return (
@@ -145,11 +211,6 @@ export function AdminWireframe() {
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">HQ Admin — navigation & shell</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          A proposed layout for the internal admin console: a domain-grouped left sidebar (mapped to modules B1–B9),
-          a top bar with global search + language + account, and a standard list/detail content area. Click any nav
-          item to preview its page and jump to the spec. Status dots double as a live build-status map.
-        </p>
       </div>
 
       {/* ── Wireframe frame ─────────────────────────────────────────────── */}
@@ -196,8 +257,8 @@ export function AdminWireframe() {
               <span className="text-ink font-medium">{active.item.label}</span>
               <div className="ml-auto flex items-center gap-2">
                 <ActivityLogButton page={active.item.label} />
-                {spec && (
-                  <Link to={`/f/${spec.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
+                {specHref && (
+                  <Link to={specHref} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
                     View full spec <ExternalLink className="h-3 w-3" />
                   </Link>
                 )}
@@ -231,19 +292,7 @@ export function AdminWireframe() {
               ) : active.item.specId === 'admin-sales-pipeline' ? (
                 <AdminPipeline onActivate={() => setWalkthrough('activation')} />
               ) : Proto ? (
-                <>
-                  {/* Rehomed from the removed Products → Orders page: a paid sales
-                      order is what provisions quota, so the walkthrough belongs here. */}
-                  {active.item.specId === 'admin-purchase-orders' && (
-                    <button
-                      onClick={() => setWalkthrough('flow')}
-                      className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[12px] font-medium text-brand hover:bg-brand hover:text-white"
-                    >
-                      ▶ Interactive: how an order becomes quota
-                    </button>
-                  )}
-                  <Proto />
-                </>
+                <Proto />
               ) : (
                 <>
                   <div className="overflow-hidden rounded-xl border border-line">
@@ -278,30 +327,6 @@ export function AdminWireframe() {
       </div>
 
       {/* Rationale */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <RationaleCard title="Why grouped this way">
-          Eight domain groups map 1:1 to admin modules B1–B9. Recruitment (Jobs · Applicants · Resumes) is
-          lifted to the top because it is the daily-use core; System settings sinks to the bottom.
-        </RationaleCard>
-        <RationaleCard title="Shell conventions">
-          Persistent top bar (global search, VI/EN/KO switch, notifications, account). Every module is a
-          list → detail → create flow with a consistent New / Filter / search toolbar.
-        </RationaleCard>
-        <RationaleCard title="Permission-aware">
-          Groups and items are gated by the role’s resource:action grants — a user only sees what their
-          role allows. Needs the role matrix signed off (see System → Roles).
-        </RationaleCard>
-        <RationaleCard title="Status as a map">
-          The dot on each nav item is its real build status, so this doubles as an at-a-glance readiness
-          view: green = on the real backend, violet = prototype DB, red = empty seam.
-        </RationaleCard>
-        <RationaleCard title="Audit logging (3 layers)">
-          Everything is logged — who (user or System) changed what, when, before → after. Three scopes,
-          no overlap: <b>System → Audit log</b> = the whole firehose; the per-page <b>History</b> button = recent
-          activity in that section; a record's <b>Activity</b> tab (in its detail drawer) = that one record's trail.
-          PII-view actions (e.g. opening a resume) are always recorded.
-        </RationaleCard>
-      </div>
     </div>
   )
 }
@@ -350,11 +375,3 @@ function SidebarGroup({
   )
 }
 
-function RationaleCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-[12.5px] font-semibold mb-1">{title}</p>
-      <p className="text-[12.5px] leading-relaxed text-ink/70">{children}</p>
-    </div>
-  )
-}

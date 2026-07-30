@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { companyId } from '@/lib/companyId'
 
 /* ── shared bits ──────────────────────────────────────────────────────────── */
 type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
@@ -81,11 +82,11 @@ function Table({ cols, rows, minW = 560 }: { cols: Col[]; rows: React.ReactNode[
   const alignCls = (a?: 'r' | 'c') => (a === 'r' ? 'text-right justify-end' : a === 'c' ? 'text-center justify-center' : '')
   return (
     <div className="overflow-x-auto rounded-xl border border-line">
-      <div style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-3 bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+      <div style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
         {cols.map((c, i) => <span key={i} className={alignCls(c.align)}>{c.label}</span>)}
       </div>
       {rows.map((r, ri) => (
-        <div key={ri} style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-3 items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">
+        <div key={ri} style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">
           {r.map((cell, ci) => (
             <span key={ci} className={cn('flex min-w-0 items-center gap-1.5 text-ink/80', alignCls(cols[ci]?.align))}>{cell}</span>
           ))}
@@ -95,7 +96,8 @@ function Table({ cols, rows, minW = 560 }: { cols: Col[]; rows: React.ReactNode[
   )
 }
 
-function Footer({ text }: { text: string }) {
+/** `text` is optional — some lists carry no explanatory footnote, only pagination. */
+function Footer({ text }: { text?: string }) {
   return (
     <div className="mt-3 flex items-center justify-between">
       <p className="text-[11px] text-faint">{text}</p>
@@ -108,7 +110,7 @@ function Footer({ text }: { text: string }) {
   )
 }
 
-function ListPage({ tabs, cols, rows, footer, minW }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; footer: string; minW?: number }) {
+function ListPage({ tabs, cols, rows, footer, minW }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; footer?: string; minW?: number }) {
   return (
     <div>
       {tabs && <TabBar tabs={tabs} />}
@@ -162,6 +164,15 @@ const JOB_ROWS: JobRow[] = [
   { title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', status: 'closed', statusLabel: 'Closed', exposure: 'Off', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
   { title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
 ]
+/* The create form as a screen in its own right, so the "Create job (Admin)" spec
+   page can show the form instead of the list it is reached from. Back returns to
+   the list — the same thing it does inside the console. */
+function AdminJobCreateStandalone() {
+  const [backToList, setBackToList] = useState(false)
+  if (backToList) return <AdminJobList />
+  return <AdminJobCreate onBack={() => setBackToList(true)} />
+}
+
 function AdminJobList() {
   const [creating, setCreating] = useState(false)
   const [detail, setDetail] = useState<JobRow | null>(null)
@@ -319,45 +330,235 @@ type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'L
 //   New = became a customer recently (onboarding)
 //   Existing = active, currently using a purchased service
 //   Churn = no new product bought for 1 year since the last PO was issued
+/* Customer status — exactly three, and every company always has one.
+     New      = has never bought from us (no VAT e-invoice has ever been issued)
+     Existing = has paid at least once — active service or a past order
+     Churn    = no new order for 12 months since the last invoice
+   New is about BUYING HISTORY, not about having a login: a company can sit at New
+   for years while being quoted repeatedly. Whether an account exists is a separate
+   fact. New → Existing is one-way; a win-back returns a churned company to Existing,
+   never to New. */
 type Account = 'New' | 'Existing' | 'Churn'
 type Company = {
   name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
+  // Corporate tree. `parent` is the DIRECT parent's `name` — one parent only, any
+  // depth (parent → subsidiary → sub-subsidiary). Undefined = a root: either the top
+  // of a group, or a company that stands alone. Nothing is inherited down this link:
+  // quota, billing, users and deals all stay on the record that owns them.
+  parent?: string
   contact: string; owner: string; status: CoStatus
-  account: Account | null; lastPO: string; renewal: string; nextStep: string
-  idle: number; note: string; revenue: number
+  account: Account; lastPO: string; renewal: string; nextStep: string
+  idle: number | null; note: string; revenue: number
+  /** the sent quotation has passed its expiry date — the deal does NOT move, it gets flagged */
+  quoteLapsed?: boolean
   jobPosting: boolean; resumeSearch: boolean; jobLeft: number; jobTotal: number; cvLeft: number; cvTotal: number
   hasPage: boolean; jobs: number; domain: string; since: string
 }
 const COMPANIES: Company[] = [
-  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 4, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
-  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
-  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
-  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'New', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 3, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
-  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 9, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
-  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'New', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
-  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 21, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
-  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 5, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
-  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 4, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
-  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'New', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
-  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 8, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
-  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
-  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: null, lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
-  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
-  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 28, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
-  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: null, lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
-  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: null, lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
-  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'New', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 6, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
+  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 34, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
+  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
+  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
+  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 47, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
+  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 60, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
+  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
+  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 73, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
+  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 86, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
+  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 99, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
+  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
+  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 112, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
+  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
+  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
+  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
+  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
+  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
+  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
+  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
+  // ── Rot coverage: the rows below deliberately span fresh / amber / red for every
+  // open stage, and across all three reps, so the Idle column can be read at a glance
+  // in both Sales view and Sales-lead view. Thresholds are IDLE_AMBER / IDLE_RED above.
+  { name: 'Công ty CP Nam Long', shortName: 'Nam Long', legalName: 'Công ty Cổ phần Đầu tư Nam Long', tax: '0323xxxxxx', industry: 'Bất động sản', size: '500–1000', address: 'Quận 7, HCMC', contact: 'Ms. Đặng Kiều Oanh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-send quotation options', idle: 9, note: 'Asked us to circle back after Tết planning.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namlong.vn', since: '—' },
+  { name: 'Công ty TNHH Hòa Bình', shortName: 'Hòa Bình', legalName: 'Công ty TNHH Xây dựng Hòa Bình', tax: '0324xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Mr. Đinh Trọng Nghĩa · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — no reply in 2.5 weeks', idle: 18, note: 'Three follow-ups, no answer. Try the CFO.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoabinh.com.vn', since: '—' },
+  { name: 'Công ty CP Thương mại Vina', shortName: 'Vina Trading', legalName: 'Công ty Cổ phần Thương mại Vina', tax: '0325xxxxxx', industry: 'FMCG', size: '500–1000', address: 'Quận Bình Thạnh, HCMC', contact: 'Ms. Hoàng Diệu Linh · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase quotation feedback', idle: 12, note: 'Quotation sent; validity ends in 2 days.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinatrading.vn', since: '—' },
+  { name: 'Công ty TNHH An Phú Logistics', shortName: 'An Phú', legalName: 'Công ty TNHH Giao nhận An Phú', tax: '0326xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận 9, HCMC', contact: 'Mr. Lại Văn Bình', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation expired — reissue or close', idle: 26, note: 'Went silent after pricing. Decide: reissue or Lost.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'anphulog.vn', since: '—' },
+  { name: 'Công ty CP Tài chính Đại Tín', shortName: 'Đại Tín', legalName: 'Công ty Cổ phần Tài chính Đại Tín', tax: '0327xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Chu Thanh Vân · HR Director', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval timeline', idle: 30, note: 'Legal review dragging; needs a nudge.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'daitin.com.vn', since: '—' },
+  { name: 'Công ty CP Trường Sơn', shortName: 'Trường Sơn', legalName: 'Công ty Cổ phần Tập đoàn Trường Sơn', tax: '0328xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Đà Nẵng', contact: 'Mr. Tạ Quang Đạo · Giám đốc NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 52, note: 'Stalled past 45d — approval never came back.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '—' },
+  // The one BRANCH in the mock — same 10-digit tax root as its parent, only the -001
+  // suffix differs. That is what flips the affiliate badge from "Công ty con" to
+  // "Chi nhánh"; nothing else about the record behaves differently. It still buys its
+  // own package, is invoiced on its own tax code, and has its own sales owner.
+  { name: 'CN Trường Sơn — Hà Nội', shortName: 'Trường Sơn HN', legalName: 'Chi nhánh Công ty Cổ phần Tập đoàn Trường Sơn tại Hà Nội', tax: '0328xxxxxx-001', industry: 'Sản xuất', size: '200–500', address: 'Long Biên, Hà Nội', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Vân Khánh · HC-NS', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 21, note: 'Hires separately from HQ — own PO, own invoice.', revenue: 42_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '08/06/2025' },
+  { name: 'Công ty TNHH Hải Âu Travel', shortName: 'Hải Âu', legalName: 'Công ty TNHH Du lịch Hải Âu', tax: '0329xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Quận 1, HCMC', contact: 'Ms. Phùng Mỹ Hạnh · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Chase payment on PO', idle: 10, note: 'PO signed 19/07; payment not received yet.', revenue: 28_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'haiautravel.vn', since: '19/07/2026' },
+  { name: 'Công ty CP Tân Hưng Foods', shortName: 'Tân Hưng', legalName: 'Công ty Cổ phần Thực phẩm Tân Hưng', tax: '0330xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Long An', contact: 'Mr. Ngô Bá Thành · HC-NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Payment 24d overdue — escalate', idle: 24, note: 'Accounting has chased twice; no transfer.', revenue: 45_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 10, cvLeft: 50, cvTotal: 50, hasPage: false, jobs: 0, domain: 'tanhungfoods.vn', since: '05/07/2026' },
+  // More Qualified cover — idle spans fresh / amber / red (8d / 15d) across all three reps
+  { name: 'Công ty CP Dệt may Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Dệt may Phương Nam', tax: '0331xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Quận 12, HCMC', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Hồng Nhung · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 4, note: 'Wants Basic Plus vs Basic breakdown.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuongnamtex.vn', since: '—' },
+  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 11, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
+  { name: 'Galaxy Media', shortName: 'Galaxy', legalName: 'Công ty Cổ phần Truyền thông Galaxy', tax: '0333xxxxxx', industry: 'Truyền thông', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Đặng Thảo My · TA Lead', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase — 3 calls unanswered', idle: 19, note: 'Went quiet after the discovery call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'galaxymedia.vn', since: '—' },
+  // More Proposal cover — includes a quotation that has already lapsed past its 14-day validity
+  { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
+  { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
+  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 27, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
+  // More Negotiation cover — long internal-approval cycles, so the reds run deep here
+  { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
+  { name: 'Công ty CP Bán lẻ Thiên Hà', shortName: 'Thiên Hà', legalName: 'Công ty Cổ phần Bán lẻ Thiên Hà', tax: '0338xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Đỗ Nhật Trường · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send v3 quote at 12% discount', idle: 26, note: 'Board meets month-end to approve.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thienharetail.vn', since: '—' },
+  { name: 'Công ty TNHH Bảo Sơn Group', shortName: 'Bảo Sơn', legalName: 'Công ty TNHH Tập đoàn Bảo Sơn', tax: '0339xxxxxx', industry: 'Bất động sản', size: '1000–5000', address: 'Nam Từ Liêm, Hà Nội', contact: 'Ms. Cao Quỳnh Anh · HR', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — 7 weeks silent', idle: 51, note: 'Sponsor left the company; no new contact.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'baosongroup.com', since: '—' },
+  // More PO cover — order confirmed, payment outstanding by varying degrees
+  { name: 'Công ty CP Vinh Quang Logistics', shortName: 'Vinh Quang', legalName: 'Công ty Cổ phần Vinh Quang Logistics', tax: '0340xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Bùi Xuân Trường · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Awaiting transfer — due 31/07', idle: 3, note: 'Order confirmed; bank details sent.', revenue: 31_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhquanglog.vn', since: '24/07/2026' },
+  { name: 'Lazada Việt Nam', shortName: 'Lazada', legalName: 'Công ty TNHH Recess (Lazada Việt Nam)', tax: '0341xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Trương Mỹ Hạnh · TA Lead', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '15/07/2026', renewal: '15/10/2026', nextStep: 'Chase payment — 12d out', idle: 12, note: 'Their finance runs a 30-day cycle.', revenue: 195_000_000, jobPosting: true, resumeSearch: true, jobLeft: 20, jobTotal: 20, cvLeft: 150, cvTotal: 150, hasPage: false, jobs: 0, domain: 'lazada.vn', since: '15/07/2026' },
+  { name: 'Công ty CP Xây dựng Hưng Thịnh', shortName: 'Hưng Thịnh', legalName: 'Công ty Cổ phần Xây dựng Hưng Thịnh', tax: '0342xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận Bình Thạnh, HCMC', contact: 'Mr. Phan Đăng Hải · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Payment 25d overdue — escalate', idle: 25, note: 'Signed PO but no transfer; CFO on leave.', revenue: 88_000_000, jobPosting: true, resumeSearch: true, jobLeft: 15, jobTotal: 15, cvLeft: 80, cvTotal: 80, hasPage: false, jobs: 0, domain: 'hungthinhcorp.vn', since: '04/07/2026' },
+  // Lost — closed, so no rot colour at all
+  { name: 'Công ty CP Công nghệ Tân Tiến', shortName: 'Tân Tiến', legalName: 'Công ty Cổ phần Công nghệ Tân Tiến', tax: '0343xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 7, HCMC', contact: 'Mr. Hoàng Việt Dũng · CTO', owner: 'Phạm Quang Huy', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1 2027', idle: 40, note: 'Lost to competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tantien.tech', since: '—' },
+  { name: 'Công ty TNHH Đức Thành', shortName: 'Đức Thành', legalName: 'Công ty TNHH Thương mại Đức Thành', tax: '0344xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lưu Ngọc Diễm · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '20/05/2025', renewal: 'Lapsed', nextStep: 'Win-back call in August', idle: 33, note: 'Hiring frozen; no budget this year.', revenue: 18_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ducthanh.com.vn', since: '20/05/2024' },
+  // Invoice — won and closed
+  // The company behind the client's real quotation EST-009909-07-2026, so that
+  // quotation resolves to a CRM record like every other one.
+  { name: 'Công ty TNHH AM Software Việt Nam', shortName: 'AM Software', legalName: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', tax: '0317110315', industry: 'CNTT', size: '50–200', address: '115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, HCMC', contact: 'Mr. Nguyễn Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 9, note: 'Quotation sent 20/07 — 2 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'aoimirai.co.jp', since: '—' },
+  { name: 'Sacombank', shortName: 'Sacombank', legalName: 'Ngân hàng TMCP Sài Gòn Thương Tín', tax: '0345xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Quận 3, HCMC', contact: 'Ms. Nguyễn Lê Vy · Head of Talent', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 66, note: 'Renewed for a second year.', revenue: 380_000_000, jobPosting: true, resumeSearch: true, jobLeft: 25, jobTotal: 40, cvLeft: 220, cvTotal: 350, hasPage: true, jobs: 19, domain: 'sacombank.com.vn', since: '08/06/2025' },
+  { name: 'Công ty TNHH Giáo dục Sunrise', shortName: 'Sunrise Edu', legalName: 'Công ty TNHH Giáo dục Sunrise', tax: '0331xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Lưu Ngọc Hân · HR', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 2, note: 'Discovery call done; keen on Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'sunriseedu.vn', since: '—' },
+  { name: 'Công ty CP Bảo Việt Care', shortName: 'Bảo Việt Care', legalName: 'Công ty Cổ phần Bảo Việt Care', tax: '0332xxxxxx', industry: 'Y tế', size: '500–1000', address: 'Quận 5, HCMC', contact: 'Ms. Trịnh Bích Thảo · TA Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '28/05/2026', renewal: '28/11/2026', nextStep: 'Quarterly review', idle: 79, note: 'Renewal talk starts next month.', revenue: 185_000_000, jobPosting: true, resumeSearch: true, jobLeft: 14, jobTotal: 20, cvLeft: 120, cvTotal: 200, hasPage: true, jobs: 11, domain: 'baovietcare.vn', since: '14/06/2025' },
+  // ── Volume rows: enough companies for the pipeline board and the list to feel
+  // like a real book of business — every stage populated, owners rotated across
+  // the three reps, idle values spanning fresh / amber / red.
+  { name: 'Công ty CP Vĩnh Cửu', shortName: 'Vĩnh Cửu', legalName: 'Công ty Cổ phần Vĩnh Cửu', tax: '0333xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Ms. Lê Kim Chi · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up in 2 days', idle: 3, note: 'Quotation sent, awaiting review.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhcuu.vn', since: '—' },
+  { name: 'Công ty TNHH Bách Khoa Tech', shortName: 'Bách Khoa', legalName: 'Công ty TNHH Bách Khoa Technology', tax: '0334xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 10, HCMC', contact: 'Mr. Vương Tuấn Kiệt · CTO', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Call the HR manager', idle: 9, note: 'No reply since the quotation.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bachkhoatech.vn', since: '—' },
+  { name: 'Công ty CP Nội thất Sài Gòn', shortName: 'Nội thất SG', legalName: 'Công ty Cổ phần Nội thất Sài Gòn', tax: '0335xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 12, HCMC', contact: 'Ms. Trần Thảo Vy · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Reissue or close', idle: 19, note: 'Quotation validity almost up.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatsg.vn', since: '—' },
+  { name: 'Công ty TNHH Dệt may Phong Phú', shortName: 'Phong Phú', legalName: 'Công ty TNHH Dệt may Phong Phú', tax: '0336xxxxxx', industry: 'Dệt may', size: '1000–5000', address: 'Quận 9, HCMC', contact: 'Mr. Bùi Hữu Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Clarify option B', idle: 5, note: 'Comparing our 3 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phongphu.com.vn', since: '—' },
+  { name: 'Công ty CP Dược Nam Hà', shortName: 'Nam Hà', legalName: 'Công ty Cổ phần Dược Nam Hà', tax: '0337xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Ms. Nguyễn Bảo Châu · HR Director', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Decide: reissue or Lost', idle: 24, note: 'Silent for over 3 weeks.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
+  { name: 'Công ty TNHH Cơ khí Tây Đô', shortName: 'Tây Đô', legalName: 'Công ty TNHH Cơ khí Tây Đô', tax: '0338xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Hải Dương', contact: 'Mr. Hà Trọng Tín', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book the demo', idle: 2, note: 'Wants a demo next week.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'taydock.vn', since: '—' },
+  { name: 'Công ty CP Vận tải Bắc Nam', shortName: 'Bắc Nam', legalName: 'Công ty Cổ phần Vận tải Bắc Nam', tax: '0339xxxxxx', industry: 'Logistics', size: '500–1000', address: 'Đà Nẵng', contact: 'Ms. Đỗ Lan Phương · HC-NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask about budget cycle', idle: 11, note: 'Budget check in progress.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bacnamlogistics.vn', since: '—' },
+  { name: 'Công ty TNHH Kiến Á', shortName: 'Kiến Á', legalName: 'Công ty TNHH Đầu tư Kiến Á', tax: '0340xxxxxx', industry: 'Bất động sản', size: '200–500', address: 'Quận 2, HCMC', contact: 'Mr. Lâm Chí Cường · HR', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 16, note: 'Went quiet after first call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kiena.vn', since: '—' },
+  { name: 'Công ty CP Bia Sài Gòn Miền Tây', shortName: 'Bia SG MT', legalName: 'Công ty Cổ phần Bia Sài Gòn Miền Tây', tax: '0341xxxxxx', industry: 'Thực phẩm', size: '500–1000', address: 'Cần Thơ', contact: 'Ms. Phạm Ngọc Diệp', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 6, note: 'Interested in Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biasgmt.vn', since: '—' },
+  { name: 'Công ty TNHH Thiết bị Y tế Việt', shortName: 'TBYT Việt', legalName: 'Công ty TNHH Thiết bị Y tế Việt', tax: '0342xxxxxx', industry: 'Y tế', size: '50–200', address: 'Quận 5, HCMC', contact: 'Mr. Tôn Quang Vinh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Discovery call', idle: 4, note: 'Referred by an existing client.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tbytviet.vn', since: '—' },
+  { name: 'Công ty CP Xi măng Hà Tiên', shortName: 'Hà Tiên', legalName: 'Công ty Cổ phần Xi măng Hà Tiên', tax: '0343xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Kiên Giang', contact: 'Ms. Cao Thị Lệ · HR Manager', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 14, note: 'Haggling on the 6-month price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hatien.com.vn', since: '—' },
+  { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
+  { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
+  { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },
+  { name: 'Công ty CP Du lịch Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Du lịch Phương Nam', tax: '0347xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Nha Trang', contact: 'Ms. Huỳnh Mai Trâm · HR', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '16/07/2026', renewal: '16/10/2026', nextStep: 'Hand to Accounting', idle: 2, note: 'PO signed, invoice next.', revenue: 63_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 54, cvTotal: 100, hasPage: true, jobs: 7, domain: 'phuongnamtravel.vn', since: '16/07/2026' },
+  { name: 'Công ty TNHH Giấy Tân Mai', shortName: 'Tân Mai', legalName: 'Công ty TNHH Giấy Tân Mai', tax: '0348xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', contact: 'Mr. Trịnh Bá Hưng · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '17/07/2026', renewal: '17/10/2026', nextStep: 'Chase payment', idle: 12, note: 'Payment not received yet.', revenue: 80_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 8, domain: 'tanmai.vn', since: '17/07/2026' },
+  { name: 'Công ty CP Điện máy Thành Công', shortName: 'Thành Công', legalName: 'Công ty Cổ phần Điện máy Thành Công', tax: '0349xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lý Thu Trang · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Escalate to Accounting lead', idle: 23, note: 'Payment badly overdue.', revenue: 97_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 56, cvTotal: 100, hasPage: true, jobs: 9, domain: 'thanhcongdm.vn', since: '18/07/2026' },
+  { name: 'Công ty TNHH Logistics Sao Việt', shortName: 'Sao Việt', legalName: 'Công ty TNHH Logistics Sao Việt', tax: '0350xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Phan Đức Duy', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Kickoff call', idle: 92, note: 'Onboarding in progress.', revenue: 114_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 57, cvTotal: 100, hasPage: true, jobs: 10, domain: 'saovietlog.vn', since: '19/07/2026' },
+  { name: 'Công ty CP Giáo dục Én Nhỏ', shortName: 'Én Nhỏ', legalName: 'Công ty Cổ phần Giáo dục Én Nhỏ', tax: '0351xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Phú Nhuận, HCMC', contact: 'Ms. Ngô Hải Yến · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '20/07/2026', renewal: '20/10/2026', nextStep: 'Quarterly review', idle: 105, note: 'Using both products actively.', revenue: 131_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'ennho.edu.vn', since: '21/01/2025' },
+  { name: 'Công ty TNHH Sơn Đại Việt', shortName: 'Đại Việt', legalName: 'Công ty TNHH Sơn Đại Việt', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Long An', contact: 'Mr. Chu Văn Thái', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '21/07/2026', renewal: '21/10/2026', nextStep: 'Check-in — usage is low', idle: 118, note: 'Quiet since activation.', revenue: 148_000_000, jobPosting: true, resumeSearch: true, jobLeft: 5, jobTotal: 20, cvLeft: 59, cvTotal: 100, hasPage: true, jobs: 3, domain: 'sondaiviet.vn', since: '21/07/2026' },
+  { name: 'Công ty CP Nông sản Xanh', shortName: 'Nông sản Xanh', legalName: 'Công ty Cổ phần Nông sản Xanh', tax: '0353xxxxxx', industry: 'Nông nghiệp', size: '200–500', address: 'Lâm Đồng', contact: 'Ms. Trương Bích Hạnh · HR', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '22/07/2026', renewal: '22/10/2026', nextStep: 'Prepare renewal quote', idle: 46, note: 'Renewal in 2 months.', revenue: 165_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 60, cvTotal: 100, hasPage: true, jobs: 4, domain: 'nongsanxanh.vn', since: '23/03/2025' },
+  { name: 'Công ty TNHH Nhựa Bình Phát', shortName: 'Bình Phát', legalName: 'Công ty TNHH Nhựa Bình Phát', tax: '0354xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Đoàn Quốc Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '23/07/2026', renewal: '23/10/2026', nextStep: 'Re-engage before renewal', idle: 31, note: 'No contact in a month.', revenue: 182_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 5, domain: 'binhphat.vn', since: '23/07/2026' },
+  { name: 'Công ty CP Bán lẻ Vạn Xuân', shortName: 'Vạn Xuân', legalName: 'Công ty Cổ phần Bán lẻ Vạn Xuân', tax: '0355xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Tạ Mỹ Linh · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Upsell Resume Search', idle: 59, note: 'Repeat customer, 3rd order.', revenue: 199_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 6, domain: 'vanxuan.vn', since: '25/05/2025' },
+  { name: 'Công ty TNHH Kỹ thuật Nam Việt', shortName: 'Nam Việt', legalName: 'Công ty TNHH Kỹ thuật Nam Việt', tax: '0356xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Lưu Anh Tú', owner: 'Trần Quốc Trung', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-engage next quarter', idle: 35, note: 'Chose a competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namvieteng.vn', since: '—' },
+  { name: 'Công ty CP Chứng khoán Đại Nam', shortName: 'CK Đại Nam', legalName: 'Công ty Cổ phần Chứng khoán Đại Nam', tax: '0357xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Hồ Diễm Quỳnh · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1', idle: 44, note: 'Budget frozen for the year.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'cknam.vn', since: '—' },
+  { name: 'Công ty TNHH Mỹ phẩm Hương Sen', shortName: 'Hương Sen', legalName: 'Công ty TNHH Mỹ phẩm Hương Sen', tax: '0358xxxxxx', industry: 'FMCG', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Bạch Tuyết Nhi', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send discount options', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'huongsen.vn', since: '—' },
+  { name: 'Công ty CP Thép Việt Đức', shortName: 'Thép Việt Đức', legalName: 'Công ty Cổ phần Thép Việt Đức', tax: '0359xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Vĩnh Phúc', contact: 'Mr. Kiều Mạnh Hà · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Retry after 01/08', idle: 9, note: 'HR manager on leave.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thepvietduc.vn', since: '—' },
+  { name: 'Công ty TNHH Cà phê Ban Mê', shortName: 'Ban Mê', legalName: 'Công ty TNHH Cà phê Ban Mê', tax: '0360xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Đắk Lắk', contact: 'Ms. Phùng Thanh Thúy · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase legal', idle: 22, note: 'Legal reviewing our T&C.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'banmecoffee.vn', since: '—' },
+  { name: 'Công ty CP Công nghệ TekOne', shortName: 'TekOne', legalName: 'Công ty Cổ phần Công nghệ TekOne', tax: '0361xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 4, HCMC', contact: 'Mr. Trần Gia Bảo · CEO', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Ask for a testimonial', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 101_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 68, cvTotal: 100, hasPage: true, jobs: 3, domain: 'tekone.vn', since: '06/02/2025' },
+  { name: 'Công ty TNHH An Toàn Lao Động Việt', shortName: 'ATLĐ Việt', legalName: 'Công ty TNHH An Toàn Lao Động Việt', tax: '0362xxxxxx', industry: 'Dịch vụ', size: '50–200', address: 'Quận Bình Tân, HCMC', contact: 'Ms. Dương Kiều My', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Collect PO number', idle: 6, note: 'Awaiting their PO number.', revenue: 118_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 69, cvTotal: 100, hasPage: true, jobs: 4, domain: 'atldviet.vn', since: '05/07/2026' },
+  { name: 'Công ty CP Khách sạn Biển Đông', shortName: 'Biển Đông', legalName: 'Công ty Cổ phần Khách sạn Biển Đông', tax: '0363xxxxxx', industry: 'Du lịch', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Nguyễn Hải Sơn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Confirm option 2', idle: 13, note: 'Second option preferred.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biendonghotel.vn', since: '—' },
+  { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
 ]
 
 const AC_STATUS: Record<Account, { tone: StatusTone; label: string }> = {
-  New: { tone: 'pending', label: 'New' },
-  Existing: { tone: 'neutral', label: 'Existing' },
+  New: { tone: 'draft', label: 'New' },
+  Existing: { tone: 'active', label: 'Existing' },
   Churn: { tone: 'rejected', label: 'Churn' },
+}
+/* Onboarding is a CADENCE, not a status — the first 90 days after the first
+   invoice, when a fresh customer needs a tighter touch. The real system reads
+   firstInvoicedAt; the mock uses `since`, which is the same date. */
+const ONBOARDING_DAYS = 90
+const TODAY = new Date(2026, 6, 29) // 29/07/2026 — the mock's "now"
+const daysSince = (dmy: string) => {
+  const [d, m, y] = dmy.split('/').map(Number)
+  if (!d || !m || !y) return Infinity // "—" — never activated
+  return Math.round((TODAY.getTime() - new Date(y, m - 1, d).getTime()) / 86_400_000)
 }
 // A company shows a pipeline step only while a deal is open (before it closes at
 // Invoice, or dies at Lost). Settled customers show "—".
 const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost'
 const revFmt = (v: number) => (v === 0 ? '—' : (v / 1e6).toFixed(0) + 'M ₫')
+
+/* ── Create-PO gate ───────────────────────────────────────────────────────────
+   A sales order / PO is only ever created from ONE ACCEPTED quotation option —
+   never from scratch, and never from a quotation that has lapsed (T&C clause 2:
+   the discounts and gifts were only committed until the expiry date). So the
+   button is always visible on a pre-PO company, but it explains itself when it
+   cannot fire. Demo mapping by stage: Qualified/Proposal = quote out, not yet
+   accepted · Proposal + idle > 14d = quote lapsed · Negotiation = an option has
+   been accepted, so the PO can be raised. */
+function poGate(c: Company): { ok: boolean; reason?: string; quote: string } {
+  const quote = `EST-0099${(c.tax.replace(/\D/g, '').slice(0, 2) || '10')}-07-2026`
+  if (c.status === 'PO' || c.status === 'Invoice') return { ok: false, reason: 'An order already exists for this deal.', quote }
+  if (c.status === 'Lost') return { ok: false, reason: 'The deal is closed-lost. Re-open it or start a new deal first.', quote }
+  if (c.status === 'Qualified') return { ok: false, reason: 'No quotation option has been accepted yet.', quote }
+  if (c.status === 'Proposal') {
+    return (c.idle ?? 0) > 14
+      ? { ok: false, reason: 'The quotation has lapsed past its validity — extend it or re-issue as v2 before raising an order.', quote }
+      : { ok: false, reason: 'The quotation is sent but no option has been accepted yet.', quote }
+  }
+  return { ok: true, quote } // Negotiation — an option is agreed, raise the order
+}
+
+/* ── Idle ──────────────────────────────────────────────────────────────────
+   Idle = days since the last human CONTACT with the client. Reset only by a real
+   touch (logged chat/call/meeting, or a document sent/confirmed); system events
+   (auto-reminders, provisioning, page publishes) must NOT reset it.
+
+   ONE rule everywhere — the same definition, thresholds table and display on the
+   Companies list and the Pipeline board. The rule is "idle vs the EXPECTED CONTACT
+   CADENCE for this relationship type", i.e. one formula reading a settings table,
+   never per-stage logic sprinkled through the code. A company with an open deal
+   always uses the openDeal row: the live opportunity sets the pace. */
+type Cadence = 'openDeal' | 'onboarding' | 'existing' | 'nurture' | 'churn'
+const IDLE_RULE: Record<Cadence, { amber: number; red: number; cadence: string }> = {
+  openDeal:    { amber: 7,  red: 14, cadence: 'weekly' },
+  onboarding:  { amber: 14, red: 30, cadence: 'fortnightly' }, // Existing, first 90 days after the first invoice
+  existing:    { amber: 30, red: 60, cadence: 'monthly' },
+  nurture:     { amber: 30, red: 60, cadence: 'monthly' },     // New (never bought), no open deal
+  churn:       { amber: 60, red: 90, cadence: 'quarterly' },   // win-back
+}
+/** Which cadence row a company is judged against. Open deal wins over everything. */
+function cadenceOf(c: Company): Cadence {
+  if (inPipeline(c)) return 'openDeal'
+  if (c.account === 'Churn') return 'churn'
+  if (c.account === 'New') return 'nurture'
+  return daysSince(c.since) <= ONBOARDING_DAYS ? 'onboarding' : 'existing'
+}
+type Rot = 'fresh' | 'amber' | 'red'
+function idleOf(days: number, k: Cadence = 'openDeal'): Rot {
+  const t = IDLE_RULE[k]
+  return days >= t.red ? 'red' : days >= t.amber ? 'amber' : 'fresh'
+}
+/** ONE display rule, used on both the Companies list and the Pipeline board:
+    under a month reads in days ("12d"); a month or more rolls up to months +
+    remainder ("1m 18d", "3m 2d") so a long gap stays readable instead of "92d". */
+function fmtIdle(days: number): string {
+  if (days < 30) return `${days}d`
+  const m = Math.floor(days / 30)
+  const d = days % 30
+  return d ? `${m}m ${d}d` : `${m}m`
+}
+const ROT_TEXT: Record<Rot, string> = {
+  fresh: 'text-muted',
+  amber: 'text-amber-600 font-medium',
+  red: 'text-rose-600 font-medium',
+}
+const ROT_DOT: Record<Rot, string> = { fresh: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-rose-500' }
+/** Idle read-out: a health dot + the gap. `days = null` → never contacted at all,
+    which is a DISTINCT state from 0d and the highest-priority follow-up. */
+function Idle({ days, kind = 'openDeal', dotOnly }: { days: number | null; kind?: Cadence; dotOnly?: boolean }) {
+  if (days === null) {
+    return (
+      <span className="inline-flex items-center gap-1 font-medium text-rose-600" title="No contact has ever been logged for this company — highest-priority follow-up.">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
+        {dotOnly ? null : 'Never'}
+      </span>
+    )
+  }
+  const t = IDLE_RULE[kind]
+  const rot = idleOf(days, kind)
+  return (
+    <span className={cn('inline-flex items-center gap-1 tabular-nums', ROT_TEXT[rot])} title={`${days} day(s) since the last contact · ${kind} expects ${t.cadence} contact — amber from ${t.amber}d, red from ${t.red}d`}>
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', ROT_DOT[rot])} />
+      {dotOnly ? null : fmtIdle(days)}
+    </span>
+  )
+}
+
 
 const CO_STATUS: Record<CoStatus, { tone: StatusTone; label: string }> = {
   Qualified: { tone: 'draft', label: 'Qualified' },
@@ -382,10 +583,237 @@ const CO_VALUE: Record<string, number> = {
   'Shopee Việt Nam': 245_000_000, 'Base.vn': 18_000_000, 'Công ty CP Đông Á': 72_000_000,
   'Công ty TNHH Minh Long': 60_000_000, 'Công ty CP Thành Đạt': 25_000_000,
   'Công ty CP An Khang': 95_000_000, 'Công ty TNHH Phú Thịnh': 33_500_000,
+  'Công ty CP Nam Long': 128_000_000, 'Công ty TNHH Hòa Bình': 210_000_000,
+  'Công ty CP Thương mại Vina': 76_000_000, 'Công ty TNHH An Phú Logistics': 54_000_000,
+  'Công ty CP Tài chính Đại Tín': 165_000_000, 'Công ty CP Trường Sơn': 231_000_000,
+  'Công ty TNHH Hải Âu Travel': 28_000_000, 'Công ty CP Tân Hưng Foods': 45_000_000,
+  'Công ty TNHH Giáo dục Sunrise': 22_000_000, 'Công ty CP Bảo Việt Care': 185_000_000,
+  'Công ty CP Dệt may Phương Nam': 64_000_000, 'Công ty TNHH Cơ khí Đông Phong': 41_000_000,
+  'Galaxy Media': 87_000_000, 'Công ty CP Dược Hậu Giang': 240_000_000,
+  'Vietjet Air': 465_000_000, 'Công ty TNHH Kim Long Steel': 58_000_000,
+  'Techcombank': 540_000_000, 'Công ty CP Bán lẻ Thiên Hà': 112_000_000,
+  'Công ty TNHH Bảo Sơn Group': 198_000_000, 'Công ty CP Vinh Quang Logistics': 31_000_000,
+  'Lazada Việt Nam': 195_000_000, 'Công ty CP Xây dựng Hưng Thịnh': 88_000_000,
+  'Công ty CP Công nghệ Tân Tiến': 74_000_000, 'Công ty TNHH Đức Thành': 18_000_000,
+  'Công ty TNHH AM Software Việt Nam': 6_588_000, 'Sacombank': 380_000_000,
 }
-const coValue = (c: Company) => CO_VALUE[c.name] ?? 0
+/* Deal value. Rows without an explicit entry above get a stable pseudo-value
+   derived from the name, so a demo company can never render as 0 ₫ — the map only
+   needs maintaining for the few figures we quote in conversation. */
+const coValue = (c: Company) => {
+  const explicit = CO_VALUE[c.name]
+  if (explicit) return explicit
+  let h = 0
+  for (const ch of c.name) h = (h * 31 + ch.codePointAt(0)!) % 100000
+  return (18 + (h % 43)) * 1_000_000 // 18M – 60M ₫, stable per name
+}
 /** Display label: prefer the short/brand name, fall back to the legal name. */
 const coLabel = (c: Company) => c.shortName?.trim() || c.legalName
+/* Demo stand-in for the database primary key. In the real build this is the
+   company row's bigint id; here it is derived from the name so every render (and
+   every screenshot) shows the same company ID. See lib/companyId.ts. */
+const coKey = (c: Company) => {
+  let h = 0
+  for (const ch of c.name) h = (h * 131 + ch.codePointAt(0)!) % 900000
+  return h + 1000
+}
+/** City / province — the last segment of the address (the form captures both). */
+const coCity = (c: Company) => c.address.split(',').pop()!.trim()
+/** Demo-only: a stable lead source per company, so the field is exercised without
+    authoring one on every row. Real build stores this from the New-company form. */
+const LEAD_SOURCES = ['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']
+/* Latest revenue = the value of the MOST RECENT paid order, where Total revenue is
+   lifetime. A first-time customer's latest equals their total; a repeat customer's
+   is the last order only — the pair together shows whether an account is growing or
+   coasting. Demo-only derivation; the real build reads the last paid invoice. */
+const coLastRevenue = (c: Company) => {
+  if (!c.revenue) return 0
+  if (c.account === 'New') return c.revenue // first order = their whole history
+  let h = 0
+  for (const ch of c.name) h = (h * 29 + ch.codePointAt(0)!) % 7919
+  const share = 0.2 + (h % 60) / 100 // 20% – 79% of lifetime, stable per company
+  return Math.round((c.revenue * share) / 1_000_000) * 1_000_000
+}
+const coLeadSource = (c: Company) => {
+  let h = 0
+  for (const ch of c.name) h = (h * 17 + ch.codePointAt(0)!) % 9973
+  return LEAD_SOURCES[h % LEAD_SOURCES.length]
+}
+
+/* ── Membership tier — Chương trình Khách hàng Thân thiết ───────────────────
+   A THIRD status axis on the company, and the only one that is purely arithmetic:
+   the tier is a function of ONE number — the cumulative value of the orders the
+   company paid for inside the current programme year. It is never typed, never
+   granted by a rep, and it is not account health (customerStatus) nor a live deal
+   (pipeline).
+
+   The rule that shapes everything: the accumulator RESETS on 1 January. Nothing
+   carries over — a Diamond customer starts the new year with 0 ₫ accumulated and
+   no tier, and climbs again from scratch. That is why the tier can never be stored
+   as a plain column and forgotten: it has to be recomputed against a year window.
+
+   Thresholds and the reward catalogue are SETTINGS (System → Membership tiers),
+   not code — the programme is re-issued every year and the bands move. */
+type Tier = 'Member' | 'Bronze' | 'Silver' | 'Gold' | 'Diamond'
+/** Ascending by threshold — the order every lookup below depends on. */
+const TIERS: { key: Tier; vi: string; from: number; pill: string }[] = [
+  { key: 'Member', vi: 'Thành viên', from: 30_000_000, pill: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { key: 'Bronze', vi: 'Đồng', from: 50_000_000, pill: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { key: 'Silver', vi: 'Bạc', from: 100_000_000, pill: 'bg-slate-200/70 text-slate-700 border-slate-300' },
+  { key: 'Gold', vi: 'Vàng', from: 200_000_000, pill: 'bg-amber-50 text-amber-700 border-amber-300' },
+  { key: 'Diamond', vi: 'Kim Cương', from: 300_000_000, pill: 'bg-sky-50 text-sky-700 border-sky-300' },
+]
+type TierRow = (typeof TIERS)[number]
+/** The programme year the mock sits in, and the date the accumulator zeroes. */
+const TIER_YEAR = 2026
+const TIER_RESET = '01/01/2027'
+
+/* The reward catalogue. One row per benefit, one cell per tier; a blank cell means
+   the tier does NOT get that benefit — it is a real answer, not missing data. Every
+   figure here is a setting, editable per programme year without a release. */
+const TIER_BENEFITS: { name: string; by: Record<Tier, string> }[] = [
+  { name: 'Voucher giảm giá — áp cho 01 đơn hàng tiếp theo', by: { Member: '1.000.000 ₫', Bronze: 'tối đa 3.000.000 ₫', Silver: 'tối đa 5.000.000 ₫', Gold: 'tối đa 10.000.000 ₫', Diamond: 'tối đa 15.000.000 ₫' } },
+  { name: 'Top Companies — trang Thị trường IT Việt Nam', by: { Member: '30 ngày', Bronze: '90 ngày', Silver: '180 ngày', Gold: '270 ngày', Diamond: '365 ngày' } },
+  { name: 'Bài đăng truyền thông Facebook', by: { Member: '—', Bronze: '1 bài', Silver: '2 bài', Gold: '3 bài', Diamond: '4 bài' } },
+  { name: 'Banner trang kết quả tìm kiếm', by: { Member: '—', Bronze: '—', Silver: '1 banner', Gold: '1 banner', Diamond: '1 banner' } },
+]
+
+/** Cumulative paid-order value inside the CURRENT programme year — the only input to
+    the tier. Demo-only derivation: a company whose first invoice landed this year has
+    all of its revenue in-year; an older account keeps a stable share of its lifetime;
+    a churned account has booked nothing this year, which is exactly why it holds no
+    tier. The real build sums paid orders whose paid date falls inside the year. */
+const tierRevenue = (c: Company) => {
+  if (!c.revenue || c.account === 'Churn') return 0
+  if (c.since.endsWith(String(TIER_YEAR))) return c.revenue
+  let h = 0
+  for (const ch of c.name) h = (h * 37 + ch.codePointAt(0)!) % 6151
+  const share = 0.3 + (h % 60) / 100 // 30% – 89% of lifetime, stable per company
+  return Math.round((c.revenue * share) / 1_000_000) * 1_000_000
+}
+/** The tier an amount earns — null below the first threshold, which is a real state
+    ("chưa có hạng"), not an error: most of the book sits there in January. */
+const tierAt = (v: number): TierRow | null => {
+  let hit: TierRow | null = null
+  for (const t of TIERS) if (v >= t.from) hit = t
+  return hit
+}
+const tierOf = (c: Company) => tierAt(tierRevenue(c))
+/** The next band up and therefore the gap to sell against — null once at Diamond. */
+const nextTierAt = (v: number): TierRow | null => TIERS.find((t) => v < t.from) ?? null
+
+function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
+  if (!tier) {
+    return (
+      <span className="text-[10.5px] text-faint" title={`Chưa đạt mốc ${revFmt(TIERS[0].from)} tích lũy trong năm ${TIER_YEAR} — chưa có hạng.`}>
+        Chưa có hạng
+      </span>
+    )
+  }
+  return (
+    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium', tier.pill)}>
+      <span aria-hidden>◆</span>
+      {tier.vi}
+      {en && <span className="text-[9.5px] opacity-70">({tier.key})</span>}
+    </span>
+  )
+}
+
+/* Membership block on the company record. Deliberately shows the ARITHMETIC, not
+   just the badge: accumulated-in-year, the gap to the next band, and the reset date.
+   The gap is the reason a rep opens this — it is the only upsell number the loyalty
+   programme produces. */
+function MembershipCard({ c }: { c: Company }) {
+  const acc = tierRevenue(c)
+  const tier = tierAt(acc)
+  const next = nextTierAt(acc)
+  const floor = tier?.from ?? 0
+  const ceil = next?.from ?? TIERS[TIERS.length - 1].from
+  const pct = Math.min(100, Math.max(2, ((acc - floor) / (ceil - floor)) * 100))
+  return (
+    <DetailCard title={`Hạng thành viên ${TIER_YEAR}`} action={<span className="text-[11px] text-brand">Ngưỡng &amp; quyền lợi: System →</span>}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <TierPill tier={tier} en />
+        <span className="text-[11.5px] text-muted">
+          Tích lũy trong năm: <b className="tabular-nums text-ink">{acc ? vnd(acc) : '0 ₫'}</b>
+        </span>
+      </div>
+
+      {/* progress toward the next band — the gap is the point, so it is stated in ₫ */}
+      <div className="h-[6px] overflow-hidden rounded-full bg-line">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1 text-[11px] text-muted">
+        {next ? (
+          <>
+            Còn <b className="tabular-nums text-ink">{vnd(next.from - acc)}</b> nữa để lên hạng <b>{next.vi}</b> ({next.key}).
+          </>
+        ) : (
+          <>Đã ở hạng cao nhất — không còn mốc nào phía trên.</>
+        )}
+      </p>
+
+      {/* Entitlement for the CURRENT tier only. A company with no tier gets nothing,
+          and saying so plainly is more useful than hiding the block. */}
+      <div className="mt-3 space-y-1">
+        {tier ? (
+          TIER_BENEFITS.map((b) => (
+            <div key={b.name} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
+              <p className="min-w-0 truncate text-[11.5px] text-ink/80">{b.name}</p>
+              <span className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', b.by[tier.key] === '—' ? 'text-faint' : 'text-ink')}>
+                {b.by[tier.key]}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-md border border-line bg-canvas/40 px-2.5 py-2 text-[11.5px] text-muted">
+            Chưa đạt mốc {vnd(TIERS[0].from)} nên chưa có quyền lợi nào.
+          </p>
+        )}
+      </div>
+
+      <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+        ♻️ Tích lũy <b>reset về 0 ngày {TIER_RESET}</b> — hạng {TIER_YEAR} không mang sang năm sau. Chưa chốt:
+        quyền lợi chưa dùng khi reset thì mất hay bảo lưu, và ai bấm dùng (KH tự chọn hay sales đăng ký hộ).
+      </p>
+    </DetailCard>
+  )
+}
+
+/* ── Corporate tree ────────────────────────────────────────────────────────
+   Parent and subsidiary are separate legal entities: separate records, separate
+   tax codes, separate accounts, separate billing, separate sales owners. The
+   only thing the link does is let a rep see the context and click across. A
+   BRANCH is the one exception in Vietnamese law — not its own legal entity, so
+   it shares the parent's 10-digit tax code and only appends a -001 suffix. We
+   store branches in the same tree with the same `parent` field and tell the two
+   apart by comparing tax roots, so there is no second mechanism to maintain. */
+const coByName = (n: string) => COMPANIES.find((x) => x.name === n)
+/** The 10-digit tax number without a branch suffix — the identity of the legal entity. */
+const taxRoot = (t: string) => t.split('-')[0]
+/** Direct children only, in list order. */
+const childrenOf = (c: Company) => COMPANIES.filter((x) => x.parent === c.name)
+/** Ancestor chain, furthest first: [group root, …, direct parent]. Depth-guarded so a
+    bad `parent` value can never spin the render loop. */
+const ancestorsOf = (c: Company) => {
+  const chain: Company[] = []
+  let cur = c.parent ? coByName(c.parent) : undefined
+  while (cur && chain.length < 8 && !chain.includes(cur)) {
+    chain.unshift(cur)
+    cur = cur.parent ? coByName(cur.parent) : undefined
+  }
+  return chain
+}
+/** The top of the group — the company itself when it has no parent. */
+const groupRootOf = (c: Company) => ancestorsOf(c)[0] ?? c
+/** Every company in the same group, the root included. */
+const groupOf = (root: Company) => COMPANIES.filter((x) => groupRootOf(x).name === root.name)
+/** True when the company is part of a group at all (has a parent or any children). */
+const inGroup = (c: Company) => Boolean(c.parent) || childrenOf(c).length > 0
+/** Branch (shares the parent's tax root) vs subsidiary (its own tax code). Derived from
+    the data — never a field someone has to remember to set. */
+const affiliateKind = (c: Company, parent: Company) =>
+  taxRoot(c.tax) === taxRoot(parent.tax) ? 'Chi nhánh' : 'Công ty con'
 
 function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: Company) => void; showOwner?: boolean; rows?: Company[] }) {
   return (
@@ -400,7 +828,16 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
             {list.map((c) => (
               <button key={c.name} onClick={() => onOpen(c)} className="mb-1.5 block w-full rounded-md border border-line bg-surface p-2 text-left hover:border-brand/40">
                 <p className="truncate text-[11.5px] font-semibold text-ink">{coLabel(c)}</p>
-                <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
+                {/* industry sits directly under the name — it is what a rep scans to
+                    judge fit and to spot clusters worth a sector play. Rendered as a
+                    bordered tag, not plain text, so it reads as a category the board
+                    can be filtered by rather than as a second line of the name. */}
+                <span className="mt-1 inline-block max-w-full truncate rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] text-muted">{c.industry}</span>
+                <div className="mt-1 flex items-center justify-between gap-1">
+                  <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
+                  <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} /></span>
+                </div>
+                {c.quoteLapsed && <p className="mt-1 truncate text-[10px] font-medium text-rose-600">⚠ offer lapsed — reissue or close</p>}
                 {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
               </button>
             ))}
@@ -427,9 +864,14 @@ function AdminCompanyList() {
   const [open, setOpen] = useState<Company | null>(null)
   const [creating, setCreating] = useState(false)
   const [view, setView] = useState<'me' | 'team'>('me')
-  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} />
+  // Group filter — the whole tree under one root. Deliberately NOT an owner filter:
+  // a group can span several reps, so filtering by group has to ignore the view
+  // switcher, otherwise a rep can never see the parts of the group they don't own.
+  const [group, setGroup] = useState<Company | null>(null)
+  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} onOpen={setOpen} />
 
-  const rows = view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
+  const rows = group ? groupOf(group) : view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
+  const showOwner = view === 'team' || Boolean(group)
   const stats = view === 'me'
     ? [
         { label: 'Revenue vs target (Q3)', value: '72%', delta: '₫720M / ₫1.0B', up: true },
@@ -459,34 +901,77 @@ function AdminCompanyList() {
 
       <div className="mb-4"><StatCards cards={stats} row /></div>
 
+      {/* Group filter banner — only ever visible once a rep has clicked a group tag,
+          so the default list stays exactly as it was. */}
+      {group && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[12px] text-brand">
+          <span className="font-semibold">🏢 Tập đoàn {coLabel(group)}</span>
+          <span className="text-brand/70">— {rows.length} công ty, mọi cấp, không phân biệt sales phụ trách. Mỗi công ty vẫn có MST, hợp đồng và quota riêng.</span>
+          <button onClick={() => setGroup(null)} className="ml-auto rounded-md border border-brand/40 px-2 py-0.5 text-[11px] font-medium hover:bg-surface">Bỏ lọc ✕</button>
+        </div>
+      )}
+
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
 
       <Table
-        minW={1320}
+        minW={showOwner ? 1520 : 1380}
         cols={[
           { label: 'Company', w: '1.4fr' },
           { label: 'Industry', w: '0.9fr' },
           { label: 'Location', w: '0.9fr' },
           { label: 'Status', w: '0.8fr' },
-          { label: 'Owner', w: '0.9fr' },
-          { label: 'Idle', w: '0.6fr' },
-          { label: 'Latest note', w: '1.6fr' },
-          { label: 'Total revenue', w: '0.9fr', align: 'r' },
+          // The third axis, next to customer status because that is what a rep
+          // compares it against: status says whether they buy, tier says how much.
+          { label: `Tier ${TIER_YEAR}`, w: '1fr' },
           { label: 'Pipeline', w: '0.9fr' },
+          // Owner is only meaningful when looking across the team — in Sales view
+          // every row is yours, so the column would repeat the same name. A group
+          // view always shows it: the whole point is that a group can span reps.
+          ...(showOwner ? [{ label: 'Owner', w: '0.9fr' } as Col] : []),
+          { label: 'Idle', w: '0.6fr' },
+          { label: 'Latest note', w: '1.5fr' },
+          { label: 'Total revenue', w: '1fr', align: 'r' as const },
+          { label: 'Latest revenue', w: '1fr', align: 'r' as const },
         ]}
         rows={rows.map((c) => [
-          <button onClick={() => setOpen(c)} className="block min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{coLabel(c)}</button>,
+          <div className="min-w-0">
+            <button onClick={() => setOpen(c)} className="block min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{coLabel(c)}</button>
+            {/* The group tag is the whole affordance: it says "this record is part of a
+                bigger customer" and doubles as the filter into that group. */}
+            {inGroup(c) && (
+              <button
+                onClick={() => setGroup(groupRootOf(c))}
+                className="mt-0.5 block max-w-full truncate text-left text-[10px] text-faint hover:text-brand hover:underline"
+              >
+                🏢 {coLabel(groupRootOf(c))}{c.parent ? ` · ${affiliateKind(c, coByName(c.parent)!).toLowerCase()}` : ' · công ty mẹ'}
+              </button>
+            )}
+          </div>,
           <span className="truncate">{c.industry}</span>,
           <span className="truncate">{c.address}</span>,
-          c.account ? <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill> : <span className="text-faint">—</span>,
-          <span className="truncate">{c.owner}</span>,
-          <span className={cn('tabular-nums', c.idle > 14 ? 'font-medium text-rose-600' : c.idle > 7 ? 'text-amber-600' : 'text-muted')}>{c.idle > 14 ? '🔥 ' : ''}{c.idle}d</span>,
+          <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>,
+          // Badge + the number it was earned on. The accumulated figure has to sit
+          // next to the badge: without it the tier looks like something a rep set.
+          <div className="min-w-0">
+            <TierPill tier={tierOf(c)} />
+            <p className="mt-0.5 text-[10px] text-faint tabular-nums">{tierRevenue(c) ? `${revFmt(tierRevenue(c))} tích lũy` : '—'}</p>
+          </div>,
+          inPipeline(c) ? (
+            <span className="flex min-w-0 flex-wrap items-center gap-1">
+              <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>
+              {c.quoteLapsed && <span title="The sent quotation has passed its expiry date — reissue or close the deal." className="text-[10.5px] font-medium text-rose-600">⚠ lapsed</span>}
+            </span>
+          ) : <span className="text-faint">—</span>,
+          ...(showOwner ? [<span className="truncate">{c.owner}</span>] : []),
+          <Idle days={c.idle} kind={cadenceOf(c)} />,
           <span className="truncate text-muted">{c.note}</span>,
           <span className="tabular-nums">{revFmt(c.revenue)}</span>,
-          inPipeline(c) ? <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill> : <span className="text-faint">—</span>,
+          <span className="tabular-nums">{revFmt(coLastRevenue(c))}</span>,
         ])}
       />
-      <Footer text={view === 'me' ? `Showing ${rows.length} of 84 — your book of business.` : `Showing ${rows.length} of 512 — every company across the team. Filter by owner to drill into one rep.`} />
+      <Footer text={group
+        ? `Showing ${rows.length} companies in the ${coLabel(group)} group — parent, subsidiaries and branches. Grouping is a view; each row is still its own customer with its own billing.`
+        : view === 'me' ? `Showing ${rows.length} of 84 — your book of business.` : `Showing ${rows.length} of 512 — every company across the team. Filter by owner to drill into one rep.`} />
     </div>
   )
 }
@@ -495,7 +980,7 @@ function AdminCompanyList() {
 function AdminCompanyPipeline() {
   const [open, setOpen] = useState<Company | null>(null)
   const [view, setView] = useState<'me' | 'team'>('me')
-  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} />
+  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} onOpen={setOpen} />
   const rows = view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
   return (
     <div>
@@ -652,24 +1137,53 @@ function companyTeam(c: Company): CoTeamUser[] {
 }
 
 type CoEvent = { icon: string; tone: string; title: string; time: string; sub: string }
+
+/* SALES ACTIVITY ONLY — what a human on our side did with the client: chats, calls,
+   and documents actually sent or confirmed to them. Deliberately NOT a merged
+   "everything that happened" feed.
+
+   System and usage events (CV unlocked, job published, page published, payment
+   received, products provisioned, account activated) are excluded on purpose. Two
+   reasons: they already each have their own tab on this record — Resume activity,
+   Jobs, Company page, Products & billing — so nothing is lost; and mixing them in
+   makes a silent client look busy, which is exactly the signal a sales rep opens
+   this panel to read.
+
+   The newest row is the last CONTACT, so it is what the Idle column counts from —
+   `c.idle` days ago. That keeps one number meaning one thing in both places. */
+const CHAT = 'bg-sky-100 text-sky-700'
+const CALL = 'bg-emerald-100 text-emerald-700'
+const DOC = 'bg-violet-100 text-violet-700'
 function companyActivity(c: Company): CoEvent[] {
-  const owner = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  const noProducts = !c.jobPosting && !c.resumeSearch
-  if (noProducts) {
+  const contact = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
+  const rep = c.owner.split(' ').slice(-2).join(' ')
+  const ago = (d: number) => `${fmtIdle(d)} ago`
+  // No contact has ever been logged — a real state, and the highest-priority
+  // follow-up. An empty trail says that far better than inventing history.
+  if (c.idle === null) return []
+  const last = c.idle
+
+  if (c.account === 'Churn') {
     return [
-      { icon: '⚠️', tone: 'bg-amber-100 text-amber-700', title: 'Subscription expired', time: '3 weeks ago', sub: 'All quota lapsed — account is read-only until renewal.' },
-      { icon: '✉', tone: 'bg-violet-100 text-violet-700', title: 'Renewal reminder sent', time: '2 weeks ago', sub: `Emailed ${owner} — no response yet.` },
-      { icon: '🏢', tone: 'bg-slate-100 text-slate-600', title: 'Account activated', time: c.since, sub: `Created from CRM (deal Won) · owner ${c.owner}.` },
+      { icon: '📞', tone: CALL, title: 'Call · win-back', time: ago(last), sub: `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.` },
+      { icon: '💬', tone: CHAT, title: 'Chat · Email', time: ago(last + 34), sub: `${rep} sent a renewal reminder to ${contact} — no reply.` },
+      { icon: '📄', tone: DOC, title: 'Renewal quotation sent', time: ago(last + 61), sub: `Sent to ${contact}; the quotation lapsed unanswered.` },
     ]
   }
-  const ev: CoEvent[] = []
-  if (c.resumeSearch) ev.push({ icon: '🔍', tone: 'bg-sky-100 text-sky-700', title: 'CV unlocked (PII)', time: '10m ago', sub: `${owner} unlocked a candidate — ${c.cvTotal - c.cvLeft}/${c.cvTotal} unlocks used · audited.` })
-  if (c.jobPosting) ev.push({ icon: '📢', tone: 'bg-emerald-100 text-emerald-700', title: 'Job published', time: '2h ago', sub: `${owner} posted a role — ${c.jobTotal - c.jobLeft}/${c.jobTotal} slots used.` })
-  ev.push({ icon: '👤', tone: 'bg-violet-100 text-violet-700', title: 'User invited', time: '1d ago', sub: 'HR Specialist added by the HR Manager.' })
-  if (c.hasPage) ev.push({ icon: '🌐', tone: 'bg-sky-100 text-sky-700', title: 'Company page published', time: '2 months ago', sub: 'Public profile went live on the jobseeker site.' })
-  ev.push({ icon: '💳', tone: 'bg-amber-100 text-amber-700', title: 'Payment received', time: '2 months ago', sub: 'Bank transfer applied to INV-3390 · VAT e-invoice issued.' })
-  ev.push({ icon: '📦', tone: 'bg-brand-soft text-brand', title: 'Products provisioned', time: '2 months ago', sub: [c.jobPosting && 'Job Posting', c.resumeSearch && 'Resume Search'].filter(Boolean).join(' + ') + ' — from the paid order.' })
-  ev.push({ icon: '🏢', tone: 'bg-slate-100 text-slate-600', title: 'Account activated', time: c.since, sub: `Created from CRM (deal Won) · owner ${c.owner}.` })
+
+  const ev: CoEvent[] = [
+    { icon: '💬', tone: CHAT, title: 'Chat · Zalo', time: ago(last), sub: `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.` },
+  ]
+  // Documents count as sales activity: a rep sent them to the client. Provisioning
+  // that follows a document does not — that is the system reacting.
+  if (c.status === 'PO' || c.status === 'Invoice') {
+    ev.push({ icon: '📄', tone: DOC, title: 'Order confirmed with the client', time: ago(last + 9), sub: `${contact} confirmed the accepted option; PO issued by ${rep}.` })
+  }
+  if (c.status !== 'Qualified') {
+    ev.push({ icon: '📄', tone: DOC, title: 'Quotation sent', time: ago(last + 21), sub: `${rep} sent the priced options to ${contact}.` })
+  }
+  ev.push({ icon: '📞', tone: CALL, title: 'Call · discovery', time: ago(last + 38), sub: `${rep} called ${contact} — logged via Calio, need and budget qualified.` })
+  ev.push({ icon: '💬', tone: CHAT, title: 'Chat · Email', time: ago(last + 52), sub: `First outreach to ${contact}.` })
   return ev
 }
 
@@ -680,7 +1194,7 @@ function CompanyActivities({ c }: { c: Company }) {
   const [channel, setChannel] = useState('Zalo')
   const [note, setNote] = useState('')
   const [logged, setLogged] = useState<CoEvent[]>([])
-  const base = companyActivity(c)
+  const rows = [...logged, ...companyActivity(c)]
 
   const save = () => {
     const entry: CoEvent = kind === 'chat'
@@ -691,7 +1205,9 @@ function CompanyActivities({ c }: { c: Company }) {
   }
 
   return (
-    <div className="space-y-4">
+    // min-w-0 so the trail's table scrolls inside this column instead of forcing
+    // the whole Overview grid wider than the page.
+    <div className="min-w-0 space-y-4">
       {/* composer */}
       <div className="rounded-xl border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
@@ -748,21 +1264,31 @@ function CompanyActivities({ c }: { c: Company }) {
       {/* history — table so the whole trail is scannable at a glance */}
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold text-ink">History <span className="font-normal text-muted">— sales activities + system events</span></p>
+          <p className="text-[13px] font-semibold text-ink">Sales activity <span className="font-normal text-muted">— contact with the client only</span></p>
           <span className="text-[11px] text-faint">newest first</span>
         </div>
-        <Table
-          cols={[{ label: 'When', w: '0.8fr' }, { label: 'Activity', w: '1.3fr' }, { label: 'Details', w: '2.6fr' }]}
-          rows={[...logged, ...base].map((e) => [
-            <span className="text-[11.5px] text-muted">{e.time}</span>,
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]', e.tone)}>{e.icon}</span>
-              <span className="truncate font-medium text-ink">{e.title}</span>
-            </span>,
-            <span className="text-muted">{e.sub}</span>,
-          ])}
-        />
-        <p className="mt-2 text-[11px] leading-relaxed text-faint">One trail for the account. PII-view actions (resume unlocks) are always audited.</p>
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/50 px-3.5 py-4 text-center">
+            <p className="text-[12.5px] font-medium text-rose-700">Never contacted</p>
+            <p className="mt-0.5 text-[11.5px] text-rose-700/80">No sales activity has ever been logged for this company — the highest-priority follow-up, not the lowest.</p>
+          </div>
+        ) : (
+          <Table
+            cols={[{ label: 'When', w: '0.8fr' }, { label: 'Activity', w: '1.3fr' }, { label: 'Details', w: '2.6fr' }]}
+            rows={rows.map((e) => [
+              <span className="text-[11.5px] text-muted">{e.time}</span>,
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]', e.tone)}>{e.icon}</span>
+                <span className="truncate font-medium text-ink">{e.title}</span>
+              </span>,
+              <span className="text-muted">{e.sub}</span>,
+            ])}
+          />
+        )}
+        <p className="mt-2 text-[11px] leading-relaxed text-faint">
+          Chats, calls and documents sent to the client — nothing else. The newest row is what <b>Idle</b> counts from, so a system event can never make a silent account look healthy.
+          System and usage events live on their own tabs: <b>Resume activity</b> (CV unlocks, always audited), <b>Jobs</b>, <b>Company page</b>, <b>Products &amp; billing</b> (payments, provisioning).
+        </p>
       </div>
     </div>
   )
@@ -778,7 +1304,7 @@ function MiniStat({ label, value, sub, tone }: { label: string; value: React.Rea
   )
 }
 
-type CoTab = 'Overview' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Resume activity' | 'Activity'
+type CoTab = 'Overview' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -886,11 +1412,71 @@ function CompanyPageEditor({ c }: { c: Company }) {
 }
 
 /* ── the tabbed company record ────────────────────────────────────────────── */
-function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
+/* ── Affiliated companies — the corporate-tree block on a company record ─────
+   One level up (as a breadcrumb) and one level down (as a list). Deliberately not
+   the whole tree: the rep needs context and a way across, not an org chart. Every
+   row shows the affiliate's OWN tax code, because that is what makes it obvious
+   these are separate customers that happen to be related. */
+function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
+  const chain = ancestorsOf(c)
+  const kids = childrenOf(c)
+  if (!chain.length && !kids.length) return null
+  const root = groupRootOf(c)
+  const go = (x: Company) => onOpen?.(x)
+
+  return (
+    <DetailCard
+      title="Công ty liên kết — Affiliated companies"
+      action={<span className="text-[11px] text-faint">{groupOf(root).length} công ty trong tập đoàn</span>}
+    >
+      {/* breadcrumb up to the group root */}
+      {chain.length > 0 && (
+        <div className="mb-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px]">
+          <span className="text-faint">Thuộc:</span>
+          {chain.map((a) => (
+            <span key={a.name} className="flex items-center gap-1.5">
+              <button onClick={() => go(a)} className="font-medium text-brand hover:underline">{coLabel(a)}</button>
+              <span className="text-faint">›</span>
+            </span>
+          ))}
+          <span className="font-medium text-ink">{coLabel(c)}</span>
+        </div>
+      )}
+
+      {kids.length > 0 ? (
+        <div className="space-y-1.5">
+          {kids.map((k) => (
+            <button key={k.name} onClick={() => go(k)} className="flex w-full items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 text-left hover:border-brand/40">
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-medium text-ink">{coLabel(k)}</p>
+                <p className="truncate text-[10.5px] text-faint">MST {k.tax} · 👤 {k.owner}</p>
+              </div>
+              <span className="shrink-0">
+                <Pill tone={affiliateKind(k, c) === 'Chi nhánh' ? 'draft' : 'neutral'}>{affiliateKind(k, c)}</Pill>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11.5px] text-muted">Không có công ty con trực tiếp.</p>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <button className="text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>
+        <button className="text-[11px] text-muted hover:text-ink hover:underline">+ Gán công ty mẹ</button>
+      </div>
+      <p className="mt-2 rounded-md bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+        Liên kết chỉ để tra cứu và điều hướng — <b>không kế thừa gì</b>. Gói/quota, hợp đồng, báo giá, hoá đơn VAT, user và sales phụ trách đều riêng theo MST của từng công ty.
+        <span className="text-faint"> Chi nhánh = cùng 10 số gốc MST (đuôi -001); công ty con = MST hoàn toàn khác.</span>
+      </p>
+    </DetailCard>
+  )
+}
+
+function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
-  const [converting, setConverting] = useState(false)
-  const preWon = !isCustomer(c) && c.status !== 'Lost' // still in the pipeline, no PO yet
+  const [quoting, setQuoting] = useState(false)
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
@@ -907,7 +1493,10 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
     { key: 'Products & billing', label: 'Products & billing' },
     { key: 'Company page', label: 'Company page' },
     { key: 'Jobs', label: 'Jobs', count: c.jobPosting ? jobs.length : undefined },
-    ...(c.resumeSearch ? [{ key: 'Resume activity' as CoTab, label: 'Resume activity' }] : []),
+    // Applications hang off the jobs this account posted, so the tab only exists
+    // for Job-Posting customers; Resumes only for Resume-Search customers.
+    ...(c.jobPosting ? [{ key: 'Applications' as CoTab, label: 'Applications', count: companyApplicants(c).length }] : []),
+    ...(c.resumeSearch ? [{ key: 'Resumes' as CoTab, label: 'Resumes' }] : []),
   ]
 
   return (
@@ -922,18 +1511,28 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Company account</p>
             <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
               {c.name}
-              {c.account
-                ? <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
-                : <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
-              {c.account && inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+              {/* Both axes, always: customer status (has it ever bought) and, only
+                  while a deal is live, the pipeline stage. */}
+              <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
+              {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+              {/* third axis — only rendered once a tier is actually earned, so the
+                  header never carries a "chưa có hạng" non-fact. */}
+              {tierOf(c) && <TierPill tier={tierOf(c)} en />}
             </h2>
-            <p className="text-[11.5px] text-muted">{c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
+            <p className="text-[11.5px] text-muted"><span className="font-mono font-medium text-ink/70">{companyId(coKey(c))}</span> · {c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
           </div>
         </div>
         <div className="flex gap-2">
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Edit</button>
           {c.hasPage && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">View on jobseeker ↗</button>}
-          {preWon && <button onClick={() => setConverting(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Convert to customer</button>}
+          {/* Tạo báo giá — unconditional, for EVERY company. A quotation is the one
+              document that is always legitimate to raise: a first quote for a
+              prospect, a renewal for an existing customer, a win-back for a churned
+              one. The gated step is the PO, which is raised from an accepted
+              quotation option (see the Quotations list), not from here. */}
+          <button onClick={() => setQuoting(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
+            Tạo báo giá / Create quotation
+          </button>
         </div>
       </div>
 
@@ -950,40 +1549,40 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
       <CoTabBar tabs={tabs} active={tab} onSelect={setTab} />
 
       {/* ── Overview ─────────────────────────────────────────────────────── */}
+      {/* Overview = who they are (left, narrow) + what we have done with them
+          (right, wide). Products & quota and Team are NOT repeated here — they own
+          the "Products & billing" and "Users" tabs. Activities is the primary
+          section: it is what a rep actually opens this record for. */}
       {tab === 'Overview' && (
-        <div className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
-          <DetailCard title="Basic info — from CRM">
-            <KV label="Legal name" value={c.legalName} />
-            <KV label="Tax code (MST)" value={c.tax} />
-            <KV label="Industry · size" value={`${c.industry} · ${c.size} staff`} />
-            <KV label="Address" value={c.address} />
-            <KV label="Primary contact" value={c.contact} />
-            <KV label="Contact email" value={contactEmail} />
-            <KV label="Contact phone" value={contactPhone} />
-            <KV label="Sales owner" value={c.owner} />
-            <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
-          </DetailCard>
-
-          <div className="space-y-4">
-            <DetailCard title="Products & quota" action={<button onClick={() => setTab('Products & billing')} className="text-[11px] text-brand hover:underline">Manage →</button>}>
-              <ProductsQuota c={c} compact />
+        <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+          <div className="min-w-0 space-y-4">
+            {/* Mirrors the New-company form field-for-field, in the same order, so a
+                rep never wonders where something they typed went. */}
+            <DetailCard title="Basic info — from CRM">
+              <KV label="Company ID" value={companyId(coKey(c))} />
+              <KV label="Legal name" value={c.legalName} />
+              <KV label="Short name" value={c.shortName?.trim() || '— (falls back to the legal name)'} />
+              <KV label="Tax code (MST)" value={c.tax} />
+              <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
+              <KV label="Industry · size" value={`${c.industry} · ${c.size} staff`} />
+              <KV label="Location" value={coCity(c)} />
+              <KV label="Website" value={c.domain} link />
+              <KV label="Address" value={c.address} />
+              <KV label="Primary contact" value={c.contact} />
+              <KV label="Contact email" value={contactEmail} />
+              <KV label="Contact phone" value={contactPhone} />
+              <KV label="Lead source" value={coLeadSource(c)} />
+              <KV label="Sales owner" value={c.owner} />
+              <KV label="Estimated deal value" value={vnd(coValue(c))} />
+              <KV label="Description" value={c.note} />
+              <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
             </DetailCard>
-            <DetailCard title="Team" action={<button onClick={() => setTab('Users')} className="text-[11px] text-brand hover:underline">{team.length}/{MAX_SEATS} seats →</button>}>
-              <div className="space-y-1.5">
-                {team.slice(0, 3).map((u) => (
-                  <div key={u.email} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
-                    <span className="truncate text-[12px] font-medium text-ink">{u.name}</span>
-                    <Pill tone={u.role === 'HR Manager' ? 'neutral' : 'draft'}>{u.role}</Pill>
-                  </div>
-                ))}
-              </div>
-            </DetailCard>
+            <MembershipCard c={c} />
+            <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
-        </div>
 
-        {/* activity log + full history — the account’s trail, on the first tab */}
-        <CompanyActivities c={c} />
+          {/* activity composer + full trail — the key section, so it gets the wider side */}
+          <CompanyActivities c={c} />
         </div>
       )}
 
@@ -1076,30 +1675,34 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
                 ])}
               />
               <p className="mt-2 text-[11px] text-faint">Jobs this account posted (HQ oversight). Company posts go live directly — manage them from Recruitment → Jobs.</p>
-
-              {/* Applications — same employer view the company sees on their own site */}
-              <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[13px] font-semibold text-ink">Applications <span className="font-normal text-muted">— what the company sees on their site</span></p>
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">▽ Filter by job / stage</span>
-              </div>
-              <Table
-                cols={[{ label: 'Candidate', w: '1.4fr' }, { label: 'Applied to', w: '1.8fr' }, { label: 'Stage', w: '1fr' }, { label: 'Applied', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1fr', align: 'r' }]}
-                rows={companyApplicants(c).map((a) => [
-                  <span className="truncate font-medium text-ink">{a.name}</span>,
-                  <span className="truncate text-muted">{a.job}</span>,
-                  <Pill tone={a.tone}>{a.stage}</Pill>,
-                  <span className="text-[11.5px] text-muted">{a.applied}</span>,
-                  <RowAction>View CV</RowAction>,
-                ])}
-              />
-              <p className="mt-2 text-[11px] text-faint">Read-only for HQ — opening a candidate’s CV is written to the audit log.</p>
             </>
           )}
         </div>
       )}
 
-      {/* ── Resume activity ──────────────────────────────────────────────── */}
-      {tab === 'Resume activity' && (
+      {/* ── Applications (employer view, mirrored for HQ) ─────────────────── */}
+      {tab === 'Applications' && (
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11.5px] text-muted">Applications received across this account’s jobs — <b className="text-ink">the same list the company sees on their site</b>.</p>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">▽ Filter by job / stage</span>
+          </div>
+          <Table
+            cols={[{ label: 'Candidate', w: '1.4fr' }, { label: 'Applied to', w: '1.8fr' }, { label: 'Stage', w: '1fr' }, { label: 'Applied', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1fr', align: 'r' }]}
+            rows={companyApplicants(c).map((a) => [
+              <span className="truncate font-medium text-ink">{a.name}</span>,
+              <span className="truncate text-muted">{a.job}</span>,
+              <Pill tone={a.tone}>{a.stage}</Pill>,
+              <span className="text-[11.5px] text-muted">{a.applied}</span>,
+              <RowAction>View CV</RowAction>,
+            ])}
+          />
+          <p className="mt-2 text-[11px] text-faint">Read-only for HQ — HQ never moves a company’s candidates through their pipeline, and opening a candidate’s CV is written to the audit log.</p>
+        </div>
+      )}
+
+      {/* ── Resumes (CV unlocks) ─────────────────────────────────────────── */}
+      {tab === 'Resumes' && (
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11.5px] text-muted">CVs this account <b className="text-ink">unlocked from Resume Search</b> — the same list the employer sees on their site. Uses <b className="text-ink">{c.cvTotal - c.cvLeft}/{c.cvTotal}</b> unlocks.</p>
@@ -1122,7 +1725,7 @@ function CompanyDetail({ c, onBack }: { c: Company; onBack: () => void }) {
       {/* ── Activities (log chat / call + timeline) ──────────────────────── */}
 
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
-      {converting && <ConvertLeadModal companyName={c.name} value={coValue(c)} owner={c.owner} onClose={() => setConverting(false)} />}
+      {quoting && <NewQuotationModal company={c.name} onClose={() => setQuoting(false)} />}
     </div>
   )
 }
@@ -1902,7 +2505,14 @@ function AdminPromotions() {
   )
 }
 
-/* ── Sales / CRM ──────────────────────────────────────────────────────────── */
+/* ── Sales / CRM ──────────────────────────────────────────────────────────────
+   LEGACY board. This is an older mockup of the same Sales pipeline that the
+   Companies board (CompaniesBoard, sourced from COMPANIES) now covers, with its
+   own stage vocabulary (Lead / Won) and its own demo rows. It shares the ONE
+   idle RULE via idleOf() above, but it still carries its own `idle` numbers — so
+   a company appearing in both shows two different day counts. Idle is a property
+   of the COMPANY; this duplicate field should go when the board is retired in
+   favour of the company-sourced one. */
 type Deal = { company: string; stage: string; tone: StatusTone; value: number; owner: string; idle: number; next: string }
 const DEALS: Deal[] = [
   { company: 'Cty Việt Tiến Logistics', stage: 'Negotiation', tone: 'pending', value: 369_900_000, owner: 'Trần Quốc Trung', idle: 21, next: 'Chase signed contract' },
@@ -1922,9 +2532,10 @@ const STAGES: { key: string; tone: StatusTone }[] = [
 const isOpen = (s: string) => s !== 'Won' && s !== 'Lost'
 const money = (v: number) => (v / 1e6).toFixed(1) + 'M ₫'
 
+/** Same flat no-contact thresholds as the Companies list — see idleOf above. */
 function IdlePill({ days }: { days: number }) {
-  const tone: StatusTone = days > 14 ? 'rejected' : days > 7 ? 'pending' : 'draft'
-  return <Pill tone={tone}>{days > 14 ? '🔥 ' : ''}Idle {days}d</Pill>
+  const rot = idleOf(days)
+  return <Pill tone={rot === 'red' ? 'rejected' : rot === 'amber' ? 'pending' : 'draft'}>Idle {days}d</Pill>
 }
 
 function PipelineTable({ onConvert, onOpen }: { onConvert: (d: Deal) => void; onOpen: (d: Deal) => void }) {
@@ -1956,7 +2567,7 @@ function PipelineTable({ onConvert, onOpen }: { onConvert: (d: Deal) => void; on
           <span className="truncate text-muted">{d.next}</span>,
         ])}
       />
-      <p className="mt-2 text-[11px] text-faint">Default view for long pipelines. Top row = most neglected open deal (🔥 idle &gt; 14d) — work down the list. Click a company to open the lead.</p>
+      <p className="mt-2 text-[11px] text-faint">Default view for long pipelines. Top row = most neglected open deal — work down the list. Idle thresholds are per stage (Negotiation tolerates 21d/45d, Qualified only 7d/14d); closed deals show &quot;—&quot;. Click a company to open the lead.</p>
     </div>
   )
 }
@@ -2189,6 +2800,380 @@ function ComboField({ label, req, value: initial, options, placeholder }: { labe
     </div>
   )
 }
+/* ── New quotation (Báo giá) ───────────────────────────────────────────────────
+   Modelled on the client's live PDF EST-009909-07-2026. The load-bearing idea is
+   that one quotation carries 1–3 priced OPTIONS which are ALTERNATIVES, not
+   add-ons: each totals independently, exactly one gets accepted, and the document
+   has no grand total. Everything derived (line totals, VAT, total-after-VAT,
+   amount-in-words, benefit lists) is computed here and never typed. */
+const QUOTE_CATALOG = [
+  { vi: 'Dịch vụ tin đăng (Basic Job)', short: 'Basic Job', unitVi: 'tin', unitEn: 'post', price: 2_710_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag', 'Làm mới bài đăng mỗi 15 ngày'] },
+  { vi: 'Dịch vụ tin đăng (Basic Plus Job)', short: 'Basic Plus Job', unitVi: 'tin', unitEn: 'post', price: 6_100_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag', 'Tiêu đề đậm xanh', 'Top Search: ưu tiên trên kết quả tìm kiếm', 'Làm mới bài đăng mỗi 10 ngày', 'Hiển thị tại “Các công ty nổi bật” — Trang chủ'] },
+  { vi: 'Dịch vụ tin đăng (Premium Job)', short: 'Premium Job', unitVi: 'tin', unitEn: 'post', price: 9_800_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 05 skill tag', 'Tiêu đề đậm xanh + huy hiệu Premium', 'Top Search + Top Category', 'Làm mới bài đăng mỗi 7 ngày'] },
+  { vi: 'Dịch vụ tìm kiếm hồ sơ (30 ngày)', short: 'CV Search 30d', unitVi: 'hồ sơ', unitEn: 'CV', price: 5_500_000, feats: ['Mở tối đa 50 hồ sơ trong 30 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
+  { vi: 'Dịch vụ tìm kiếm hồ sơ (90 ngày)', short: 'CV Search 90d', unitVi: 'hồ sơ', unitEn: 'CV', price: 13_900_000, feats: ['Mở tối đa 200 hồ sơ trong 90 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
+  { vi: 'Employer Branding Page', short: 'EB Page', unitVi: 'gói', unitEn: 'package', price: 15_000_000, feats: ['Trang thương hiệu tuyển dụng riêng', 'Banner + video giới thiệu'] },
+]
+const DISCOUNT_APPROVAL = 20 // % above which a sales lead must approve before Send
+
+const VN_D = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
+function vnRead3(n: number, full: boolean) {
+  const tr = Math.floor(n / 100), ch = Math.floor((n % 100) / 10), dv = n % 10
+  let s = ''
+  if (full || tr > 0) s += VN_D[tr] + ' trăm'
+  if (ch === 0 && dv > 0) s += ((tr > 0 || full) ? ' lẻ ' : ' ') + VN_D[dv]
+  else if (ch === 1) s += ' mười' + (dv > 0 ? ' ' + (dv === 5 ? 'lăm' : VN_D[dv]) : '')
+  else if (ch > 1) s += ' ' + VN_D[ch] + ' mươi' + (dv === 1 ? ' một' : dv === 5 ? ' lăm' : dv > 0 ? ' ' + VN_D[dv] : '')
+  return s.trim()
+}
+/** Bằng chữ — the PDF's amount-in-words, generated. 6,588,000 → "Sáu triệu năm trăm tám mươi tám nghìn đồng." */
+function vnWords(n: number) {
+  if (n <= 0) return 'Không đồng'
+  const g: number[] = []
+  for (let x = n; x > 0; x = Math.floor(x / 1000)) g.unshift(x % 1000)
+  const scales = ['', 'nghìn', 'triệu', 'tỷ']
+  const parts = g.map((v, i) => (v === 0 ? '' : (vnRead3(v, i > 0) + ' ' + scales[g.length - 1 - i]).trim())).filter(Boolean)
+  const s = parts.join(' ')
+  return s.charAt(0).toUpperCase() + s.slice(1) + ' đồng'
+}
+
+type QLine = { cat: number; qty: number; price: number; disc: number; gift: boolean }
+type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number }
+const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
+const VAT_RATE = 8
+
+/* ── Tạo PO / Create sales order ───────────────────────────────────────────────
+   Raised from ONE accepted quotation option. Nothing is retyped: lines, totals,
+   VAT and the VAT-billing block are copied from the quotation, because those are
+   what the e-invoice must eventually match. Confirming is the "won" moment for the
+   pipeline — but it provisions nothing; only the invoice does (T&C clause 3). */
+function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void }) {
+  const { quote } = poGate(c)
+  const [terms, setTerms] = useState('100% in advance')
+  const [poNo, setPoNo] = useState('')
+  /* Lines drive the total, never the reverse — quantity × the real catalog price.
+     Back-solving a unit price from the deal value produces prices like 5,979,938,
+     which is not a figure any catalog would ever quote. */
+  const pack = QUOTE_CATALOG[1]
+  const unit = pack.price
+  const qty = Math.max(1, Math.round(coValue(c) / (1 + VAT_RATE / 100) / unit))
+  const sub = qty * unit
+  const vat = Math.round(sub * VAT_RATE / 100)
+  const total = sub + vat
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[780px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Tạo PO / Create sales order — {coLabel(c)}</p>
+            <p className="text-[11px] text-muted">From the accepted quotation option. Lines and billing details are copied, not retyped.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="max-h-[72vh] space-y-3.5 overflow-y-auto p-5">
+          <Section title="Source — the accepted option" className="mt-0" />
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand-soft/40 px-3 py-2 text-[12px]">
+            <span className="font-mono font-medium text-brand">{quote}</span>
+            <Pill tone="active">Option 2 · accepted</Pill>
+            <span className="text-muted">The alternatives the customer did not choose never become orders.</span>
+          </div>
+
+          <Section title="Order lines — copied from the option" />
+          <div className="overflow-x-auto rounded-lg border border-line">
+            <div className="grid min-w-[560px] gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
+              <span>#</span><span>Dịch vụ / Service</span><span>Đơn vị</span><span>SL</span><span className="text-right">Đơn giá</span><span className="text-right">Tổng giá</span>
+            </div>
+            <div className="grid min-w-[560px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
+              <span className="text-faint">1</span><span className="truncate">{pack.vi}</span><span className="text-[11px] text-muted">{pack.unitVi} / {pack.unitEn}</span>
+              <span className="tabular-nums">{qty}</span><span className="text-right tabular-nums">{unit.toLocaleString('en-US')}</span><span className="text-right tabular-nums">{sub.toLocaleString('en-US')}</span>
+            </div>
+            <div className="grid min-w-[560px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
+              <span className="text-faint">2</span>
+              <span className="flex min-w-0 items-center gap-1.5"><span className="truncate">{pack.vi}</span><Pill tone="active">Tặng</Pill></span>
+              <span className="text-[11px] text-muted">{pack.unitVi} / {pack.unitEn}</span><span className="tabular-nums">1</span><span className="text-right tabular-nums">0</span><span className="text-right tabular-nums">0</span>
+            </div>
+          </div>
+          <p className="text-[10.5px] text-faint">The gift line carries into the order at 0 ₫ — no revenue, but it is provisioned as real quota once the invoice is issued.</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3">
+              <Section title="VAT billing — snapshot from the quotation" className="mt-0" />
+              <LField label="Tên công ty / Legal name" req value={c.legalName} />
+              <LField label="Địa chỉ KKD / Billing address" req value={c.address} />
+              <LField label="Mã số thuế / Tax code" req value={c.tax} hint="Must match the e-invoice exactly — a mismatch later needs a cancel + re-issue." />
+            </div>
+            <div className="space-y-3">
+              <Section title="Order terms" className="mt-0" />
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Điều khoản thanh toán / Payment terms</label>
+                <select value={terms} onChange={(e) => setTerms(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]">
+                  <option>100% in advance</option><option>50 / 50</option><option>Net 30 after invoice</option>
+                </select>
+                <p className="mt-1 text-[10.5px] text-faint">Advance is the default — clause 3 activates the service only after payment.</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Customer PO number <span className="font-normal text-faint">(optional)</span></label>
+                <input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="e.g. PO-VP/2026/044" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]" />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">If their procurement issues its own PO, record the number and attach the file. Customers without a procurement process simply confirm the order we send.</p>
+              </div>
+              <button className="w-full rounded-md border border-dashed border-line py-2 text-[11.5px] text-muted hover:border-ink/40">+ Attach their signed PO / confirmation</button>
+            </div>
+          </div>
+
+          <div className="ml-auto w-full max-w-[300px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+            <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
+            <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
+            <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{total.toLocaleString('en-US')} ₫</span></div>
+            <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(total)}.</p>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+            <b>Confirming this order is the “won” moment</b> — the deal moves to the PO stage. It does <b>not</b> provision anything: no account, no quota, no company page. That waits for the Accounting-confirmed payment and the issued VAT e-invoice (T&C clause 3). Customer status stays <b>{c.account ? AC_STATUS[c.account].label : 'Prospect'}</b> until the invoice.
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">
+          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-ink/40">Save draft</button>
+          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Send order for confirmation →</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Company ID in the same format the Create-job picker uses: "Vạn Phát · CO-0312". */
+const coId = (c: Company) => 'CO-' + (c.tax.replace(/\D/g, '').slice(0, 4) || '0000').padEnd(4, '0')
+/** A derived value shown as information — deliberately not styled as an input. */
+function InfoBit({ label, value, hint, mono }: { label: string; value: string; hint?: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[10px] uppercase tracking-wide text-faint">{label}</p>
+      <p className={cn('truncate text-[12.5px] font-medium text-ink', mono && 'font-mono')}>{value}</p>
+      {hint && <p className="truncate text-[10px] text-faint">{hint}</p>}
+    </div>
+  )
+}
+/* Confirmation card — mirrors CompanyInfoCard on Create job. Its job is to let the
+   rep verify they picked the right company, and it doubles as the VAT-billing
+   read-out: legal name, MST and registered address all print on the invoice, and
+   they live on the company record rather than being re-entered per quotation. */
+function QuoteCompanyCard({ c }: { c: Company }) {
+  const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
+  return (
+    <div className="rounded-lg border border-line bg-canvas/40 p-3">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-surface text-[12px] font-bold text-brand">{initials}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-ink">{coLabel(c)} <span className="text-[11px] font-normal text-muted">· ID {coId(c)}</span></p>
+          <p className="truncate text-[11px] text-muted">{c.industry} · {c.size} staff · {c.address}</p>
+        </div>
+        <span className="ml-auto flex shrink-0 items-center gap-2">
+          {c.account && <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>}
+          {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+        </span>
+      </div>
+      <div className="mt-2.5 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-line pt-2.5 sm:grid-cols-4">
+        <InfoBit label="Tên pháp lý / Legal name" value={c.legalName} hint="prints on the invoice" />
+        <InfoBit label="Mã số thuế / Tax code" value={c.tax} mono hint="prints on the invoice" />
+        <InfoBit label="Người liên hệ / Contact" value={c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]} hint={c.contact.split(' · ')[1] ?? ''} />
+        <InfoBit label="Email" value={`contact@${c.domain}`} hint="send-to address" />
+      </div>
+    </div>
+  )
+}
+
+/** `company` pre-selects the record — set when opened from a company detail page,
+    left empty when opened from the Quotations list. */
+export function NewQuotationModal({ onClose, company: initialCompany = '' }: { onClose: () => void; company?: string }) {
+  const today = '29/07/2026'
+  const [company, setCompany] = useState(initialCompany)
+  const [seq, setSeq] = useState(0)
+  const [options, setOptions] = useState<QOption[]>([
+    { id: 1, lines: [{ cat: 1, qty: 1, price: QUOTE_CATALOG[1].price, disc: 0, gift: false }, { cat: 1, qty: 1, price: 0, disc: 0, gift: true }], recommended: true, optDisc: 0 },
+    { id: 2, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }, { cat: 0, qty: 1, price: 0, disc: 0, gift: true }], recommended: false, optDisc: 0 },
+  ])
+
+  const co = COMPANIES.find((c) => c.name === company)
+  // Approval looks at BOTH discount levels — a 30% option-level cut is no less
+  // of a concession than a 30% line-level one.
+  const maxDisc = Math.max(0, ...options.flatMap((o) => [o.optDisc, ...o.lines.map((l) => l.disc)]))
+  const needsApproval = maxDisc > DISCOUNT_APPROVAL
+  const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
+  const valid = !!co && everyOptionPaid
+
+  const patch = (oid: number, li: number, d: Partial<QLine>) =>
+    setOptions((os) => os.map((o) => (o.id === oid ? { ...o, lines: o.lines.map((l, i) => (i === li ? { ...l, ...d } : l)) } : o)))
+  const addLine = (oid: number) =>
+    setOptions((os) => os.map((o) => (o.id === oid ? { ...o, lines: [...o.lines, { cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }] } : o)))
+  const delLine = (oid: number, li: number) =>
+    setOptions((os) => os.map((o) => (o.id === oid ? { ...o, lines: o.lines.filter((_, i) => i !== li) } : o)))
+  const addOption = () =>
+    setOptions((os) => (os.length >= 3 ? os : [...os, { id: Math.max(...os.map((o) => o.id)) + 1, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }], recommended: false, optDisc: 0 }]))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[1000px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">New quotation · Báo giá</p>
+            <p className="text-[11px] text-muted">Bilingual VN/EN proposal. 1–3 priced options in one document — the customer picks one.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="max-h-[74vh] space-y-3.5 overflow-y-auto p-5">
+          {/* 1 · header — every value is derived, so it reads as INFORMATION rather
+              than as fields the rep might think they should fill in. */}
+          <Section title="1 · Document header — auto" className="mt-0" />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-4">
+            <InfoBit label="Số báo giá / Quotation no." value={`EST-00991${seq}-07-2026`} mono hint="Gapless sequence" />
+            <InfoBit label="Ngày báo giá / Proposal date" value={today} />
+            <InfoBit label="Ngày hết hạn / Expiry date" value="12/08/2026" hint="+14 ngày" />
+            <InfoBit label="Báo giá bởi / Proposed by" value="Nguyễn Thị Lan" hint="Signed-in rep" />
+          </div>
+
+          {/* 2 · client — pick the company, then confirm it from its own record.
+              Billing data (legal name, MST, address) is READ from that record, so
+              there is no separate VAT-billing form to keep in sync. */}
+          <Section title="2 · Khách hàng / Client" />
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">
+              Company<span className="text-rose-500"> *</span>
+              <span className="ml-2 text-[10.5px] font-normal text-faint">— searchable by name or ID</span>
+            </label>
+            <select value={company} onChange={(e) => { setCompany(e.target.value); setSeq((s) => (s + 1) % 10) }} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+              <option value="">— Pick a company from the CRM —</option>
+              {COMPANIES.map((c) => <option key={c.name} value={c.name}>{coLabel(c)} · {coId(c)}</option>)}
+            </select>
+          </div>
+          {co
+            ? <QuoteCompanyCard c={co} />
+            : <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] text-faint">Pick a company to confirm its details, contact and billing data.</p>}
+
+          {/* 3 · options — the heart of it */}
+          <Section title="3 · Options — alternatives, not add-ons" />
+          {options.map((o, oi) => {
+            /* Two discount levels, applied in order: per-line first, then a single
+               option-level discount on the subtotal. VAT is charged on what is left,
+               so the option discount must land BEFORE the VAT line, not after. */
+            const sub = o.lines.reduce((s, l) => s + lineTotal(l), 0)
+            const optCut = Math.round(sub * o.optDisc / 100)
+            const net = sub - optCut
+            const vat = Math.round(net * VAT_RATE / 100)
+            return (
+              <div key={o.id} className={cn('rounded-xl border p-3', o.recommended ? 'border-brand/40 bg-brand-soft/30' : 'border-line')}>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[12.5px] font-semibold">
+                    Option {oi + 1}
+                    <span className="ml-1.5 font-normal text-muted">{o.lines.map((l) => QUOTE_CATALOG[l.cat].vi + (l.gift ? ' (Tặng)' : '')).join(' + ')}</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-[11px] text-ink/80">
+                      <input type="radio" name="rec" checked={o.recommended} onChange={() => setOptions((os) => os.map((x) => ({ ...x, recommended: x.id === o.id })))} className="h-3 w-3" />
+                      Recommended
+                    </label>
+                    {options.length > 1 && (
+                      <button onClick={() => setOptions((os) => os.filter((x) => x.id !== o.id))} className="rounded-md border border-line px-2 py-0.5 text-[11px] text-muted hover:border-rose-300 hover:text-rose-600">Remove</button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-line">
+                  <div className="grid min-w-[720px] gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '20px 2.2fr 0.7fr 0.5fr 1fr 0.6fr 1fr 24px' }}>
+                    <span>#</span><span>Dịch vụ / Service</span><span>Đơn vị</span><span>SL</span><span className="text-right">Đơn giá</span><span className="text-right">Giảm</span><span className="text-right">Tổng giá</span><span />
+                  </div>
+                  {o.lines.map((l, li) => (
+                    <div key={li} className="grid min-w-[720px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: '20px 2.2fr 0.7fr 0.5fr 1fr 0.6fr 1fr 24px' }}>
+                      <span className="text-faint">{li + 1}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <select value={l.cat} onChange={(e) => { const c = Number(e.target.value); patch(o.id, li, { cat: c, price: l.gift ? 0 : QUOTE_CATALOG[c].price }) }} className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-1.5 py-1 text-[11.5px]">
+                          {QUOTE_CATALOG.map((p, i) => <option key={i} value={i}>{p.vi}</option>)}
+                        </select>
+                        {l.gift && <Pill tone="active">Tặng</Pill>}
+                      </span>
+                      <span className="text-[11px] text-muted">{QUOTE_CATALOG[l.cat].unitVi} / {QUOTE_CATALOG[l.cat].unitEn}</span>
+                      <input type="number" min={1} value={l.qty} onChange={(e) => patch(o.id, li, { qty: Math.max(1, Number(e.target.value) || 1) })} className="w-full rounded border border-line bg-surface px-1 py-1 text-right text-[11.5px] tabular-nums" />
+                      <input disabled={l.gift} value={l.gift ? '0' : l.price.toLocaleString('en-US')} onChange={(e) => patch(o.id, li, { price: Number(e.target.value.replace(/\D/g, '')) || 0 })} className={cn('w-full rounded border border-line px-1 py-1 text-right text-[11.5px] tabular-nums', l.gift ? 'bg-canvas text-faint' : 'bg-surface')} />
+                      <span className="flex items-center justify-end gap-0.5">
+                        <input disabled={l.gift} type="number" min={0} max={100} value={l.disc} onChange={(e) => patch(o.id, li, { disc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', l.disc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-line bg-surface', l.gift && 'bg-canvas text-faint')} />
+                        <span className="text-[10.5px] text-faint">%</span>
+                      </span>
+                      <span className="text-right tabular-nums">{lineTotal(l).toLocaleString('en-US')}</span>
+                      {o.lines.length > 1
+                        ? <button onClick={() => delLine(o.id, li)} className="text-[12px] text-faint hover:text-rose-600">✕</button>
+                        : <span />}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => addLine(o.id)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">+ Line item</button>
+                    <button onClick={() => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, lines: [...x.lines, { cat: x.lines[0].cat, qty: 1, price: 0, disc: 0, gift: true }] } : x)))} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">+ Gift (Tặng)</button>
+                  </div>
+                  <div className="min-w-[300px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+                    <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
+                    {/* Applies to the whole option — on the subtotal, before VAT */}
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-muted">
+                        Chiết khấu
+                        <input type="number" min={0} max={100} value={o.optDisc}
+                          onChange={(e) => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, optDisc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) } : x)))}
+                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', o.optDisc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-line bg-surface')} />
+                        <span className="text-[10.5px] text-faint">%</span>
+                      </span>
+                      <span className={cn('tabular-nums', optCut > 0 && 'text-rose-600')}>{optCut > 0 ? '−' : ''}{optCut.toLocaleString('en-US')} ₫</span>
+                    </div>
+                    {o.optDisc > 0 && <div className="flex justify-between"><span className="text-muted">Sau chiết khấu</span><span className="tabular-nums">{net.toLocaleString('en-US')} ₫</span></div>}
+                    <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
+                    <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{(net + vat).toLocaleString('en-US')} ₫</span></div>
+                    <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(net + vat)}.</p>
+                  </div>
+                </div>
+
+              </div>
+            )
+          })}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={addOption} disabled={options.length >= 3} className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-medium', options.length >= 3 ? 'border-line text-faint' : 'border-brand/40 text-brand hover:bg-brand-soft')}>
+              + Add option {options.length >= 3 && '(max 3)'}
+            </button>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Internal note — not printed</label>
+            <textarea rows={2} placeholder="Why this pricing, what the customer asked for…" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]" />
+          </div>
+        </div>
+
+        {/* footer */}
+        <div className="space-y-2 border-t border-line px-5 py-3">
+          {needsApproval && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">
+              ⚠ A {maxDisc}% discount exceeds the {DISCOUNT_APPROVAL}% threshold — Send is blocked until a sales lead approves. Save as draft and request approval.
+            </div>
+          )}
+          {!everyOptionPaid && <p className="text-[11.5px] text-rose-600">Every option needs at least one paid line — an option cannot be gifts only.</p>}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Cancel</button>
+            <button disabled={!co} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', co ? 'border-line text-ink hover:border-ink/40' : 'border-line text-faint')}>Save draft</button>
+            <button disabled={!valid} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', valid ? 'border-brand/40 text-brand hover:bg-brand-soft' : 'border-line text-faint')}>Preview PDF</button>
+            {/* Over-threshold discount blocks SEND, but must not block the action that
+                unblocks it — the rep needs to be able to request the approval. */}
+            <button disabled={!valid} className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', !valid ? 'bg-line' : needsApproval ? 'bg-amber-600 hover:opacity-90' : 'bg-brand hover:opacity-90')}>
+              {needsApproval ? 'Request approval →' : 'Export'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CreateLeadModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -2198,11 +3183,37 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+          <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">A permanent <b className="text-ink">Company ID</b> (e.g. <span className="font-mono">JW-7K2M9PQ</span>) is assigned automatically on save — it is never typed and never changes.</p>
           <LField label="Legal name" req value="Công ty TNHH …" />
           <div className="grid grid-cols-2 gap-3">
             <LField label="Short name" value="e.g. FPT, Tiki, NEC" hint="Display / brand name — shown on the pipeline & company page." />
-            <LField label="Tax code (MST)" value="03xxxxxxxx" />
+            <LField label="Tax code (MST)" value="0328xxxxxx-001" hint="10 số, hoặc 10 số + “-001” nếu là chi nhánh." />
           </div>
+
+          {/* Dedup has three outcomes, not two. An exact full-MST hit is a real
+              duplicate and blocks. A shared 10-digit root, or a near-identical legal
+              name on a different MST, is almost always an affiliate — blocking those
+              is what stops sales entering a legitimate new customer. Shown here as the
+              "possible affiliate" state, which is the case reps hit most often. */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-900">
+            <p className="font-semibold">⚠ Trùng 10 số gốc MST với một khách hàng đã có</p>
+            <p className="mt-1">
+              <b>Công ty CP Trường Sơn</b> · MST 0328xxxxxx · owner Nguyễn Thị Lan. Cùng gốc, khác đuôi ⇒ đây là <b>chi nhánh</b>, không phải bản ghi trùng.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button className="rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Liên kết làm chi nhánh của công ty này</button>
+              <button className="rounded-md border border-amber-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-amber-900 hover:border-amber-500">Không liên quan — tạo độc lập</button>
+            </div>
+            <p className="mt-2 text-[10.5px] text-amber-800/80">
+              Chỉ MST trùng khít mới bị chặn. Cùng gốc MST, hoặc tên gần giống trên một MST khác (“… Miền Nam”, “… Hà Nội”), luôn được tạo — hệ thống chỉ gợi ý liên kết.
+            </p>
+          </div>
+
+          <ComboField label="Công ty mẹ (tuỳ chọn)" value="Công ty CP Trường Sơn" placeholder="Tìm theo tên hoặc MST…" options={['— Không thuộc tập đoàn nào —', 'Công ty CP Trường Sơn', 'Công ty TNHH Cơ khí Đông Phong', 'FPT Software', 'VNG Corporation']} />
+          <p className="-mt-1.5 text-[11px] leading-relaxed text-faint">
+            Chỉ là liên kết tra cứu. Công ty mới vẫn có MST, hợp đồng, quota và sales phụ trách riêng — không dùng chung gì với công ty mẹ. Không giới hạn số cấp; hệ thống chặn liên kết vòng.
+          </p>
+
           <div className="grid grid-cols-2 gap-3">
             <LField label="Industry" value="IT / Software" select />
             <LField label="Company size" value="100–499 staff" select />
@@ -2348,14 +3359,19 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
 
       {view === 'table' ? <PipelineTable onConvert={setConvertDeal} onOpen={setOpenLead} /> : <PipelineBoard onConvert={setConvertDeal} onOpen={setOpenLead} />}
 
-      {/* hand-off banner — the answer to "what do I do after Won?" */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-        <span className="text-[16px]">🎉</span>
-        <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-emerald-800">
-          <b>“Cty Trường Sơn” is Won.</b> The pipeline ends here. Next you <b>activate the customer</b> — create the account, choose products, and (for Job Posting) build the company page. This hands the customer off to <b>Account management</b>.
-        </p>
-        <button onClick={onActivate} className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">⚡ Activate customer →</button>
-      </div>
+      {/* Hand-off banner — the entry point to the activation walkthrough, and ONLY
+          that. Rendered only when a caller supplies onActivate (the admin wireframe).
+          On a requirement page nobody passes it, where the banner was a dead CTA
+          plus a hard-coded storyboard line about one specific company. */}
+      {onActivate && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <span className="text-[16px]">🎉</span>
+          <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-emerald-800">
+            <b>“Cty Trường Sơn” is Won.</b> The pipeline ends here. Next you <b>activate the customer</b> — create the account, choose products, and (for Job Posting) build the company page. This hands the customer off to <b>Account management</b>.
+          </p>
+          <button onClick={onActivate} className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">⚡ Activate customer →</button>
+        </div>
+      )}
 
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
       {convertDeal && <ConvertLeadModal companyName={convertDeal.company} value={convertDeal.value} owner={convertDeal.owner} onClose={() => setConvertDeal(null)} />}
@@ -2365,14 +3381,166 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
 /* Quote-to-cash, in the order it actually happens:
    Quotation (1–3 options) → Sales order / PO (confirm = won) → Payment
    (Accounting confirms) → VAT e-invoice (issue = closed + provisioning released). */
+/* FOUR statuses only: Draft · Sent · Issued to PO · Expired. Everything that used
+   to be its own status is a FLAG on one of these — discount approval is a gate on
+   Draft, an accepted option is recorded on a Sent quote until the PO exists, a
+   revision is a version (v2) not a status, and a lapsed offer is Sent + expired
+   validity. The flags live in the data and surface on the DETAIL page; the list
+   stays scannable and shows the status pill alone. */
+type QuoteStatus = 'Draft' | 'Sent' | 'Issued to PO' | 'Expired'
+type Quote = {
+  code: string; customer: string; co?: string; products: number[]; options: number
+  value: number; status: QuoteStatus; created: string; expires: string
+  acceptedOpt?: number; lapsed?: boolean; awaitingApproval?: boolean; note?: string
+}
+const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
+const QUOTES: Quote[] = [
+  { code: 'EST-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '03/08/2026' },
+  { code: 'EST-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '28/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
+  { code: 'EST-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '14/07/2026', acceptedOpt: 1 },
+  { code: 'EST-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
+  { code: 'EST-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — EST-009905-06-2026.' },
+  { code: 'EST-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '—', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
+]
+/** Products, compactly: first name + "+N" when there are more. Full list on hover. */
+function ProductCell({ ids }: { ids: number[] }) {
+  if (!ids.length) return <span className="text-faint">—</span>
+  return (
+    <span className="flex min-w-0 items-center gap-1.5" title={ids.map((i) => QUOTE_CATALOG[i].vi).join(' · ')}>
+      <span className="truncate">{QUOTE_CATALOG[ids[0]].short}</span>
+      {ids.length > 1 && <span className="shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted">+{ids.length - 1}</span>}
+    </span>
+  )
+}
+
+/* Quotation detail. The list stays scannable, so every exception lives here: the
+   approval gate, a lapsed offer, a superseded version, and which option the
+   customer actually accepted. Read-only — changes go through Edit, which reopens
+   the builder, because a Sent quotation is immutable and revising it makes a v2. */
+function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => void; onCreatePO: (c: Company) => void }) {
+  const co = COMPANIES.find((x) => x.name === q.co)
+  /* Issue PO shows on every SENT quotation — that is the only state where an order
+     can follow. It is disabled on a lapsed offer: the discounts and gifts expired
+     with the validity date (T&C clause 2), so extend or re-issue as v2 first. */
+  const canPO = q.status === 'Sent' && !q.lapsed
+  // One option per product listed, priced off the catalog so the arithmetic is real.
+  const opts = q.products.map((p, i) => {
+    const qty = Math.max(1, Math.round(q.value / (1 + VAT_RATE / 100) / QUOTE_CATALOG[p].price))
+    const sub = qty * QUOTE_CATALOG[p].price
+    const vat = Math.round(sub * VAT_RATE / 100)
+    return { n: i + 1, p, qty, sub, vat, total: sub + vat }
+  })
+  return (
+    <div>
+      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to Quotations</button>
+
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Báo giá / Quotation</p>
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
+            <span className="font-mono">{q.code}</span>
+            <Pill tone={QUOTE_TONE[q.status]}>{q.status}</Pill>
+          </h2>
+          <p className="text-[11.5px] text-muted">{q.customer} · {q.options} options · giá trị {q.value.toLocaleString('en-US')} ₫</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Preview PDF</button>
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">Export</button>
+          {/* Sales declares "sent" — reps routinely deliver the PDF by Zalo or from
+              their own mail client, so it cannot depend on our mailer firing. */}
+          {q.status === 'Draft' && (
+            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Mark as sent</button>
+          )}
+          {q.status === 'Sent' && (
+            <button
+              onClick={() => canPO && co && onCreatePO(co)}
+              disabled={!canPO}
+              title={canPO ? 'Raise the sales order from the accepted option' : `Offer lapsed ${q.expires} — extend validity or re-issue as v2 first`}
+              className={cn('rounded-lg px-3 py-1.5 text-[12px] font-semibold', canPO ? 'bg-brand text-white hover:opacity-90' : 'border border-line bg-canvas text-faint')}
+            >
+              Issue PO →
+            </button>
+          )}
+        </div>
+      </div>
+
+      {q.lapsed && (
+        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11.5px] text-rose-900">
+          ⚠ Offer lapsed — validity ended {q.expires}. Extend validity or re-issue as v2 before an order can be raised.
+        </div>
+      )}
+
+      <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-5">
+        <InfoBit label="Ngày báo giá / Created" value={q.created} />
+        <InfoBit label="Ngày hết hạn / Expires" value={q.expires} hint={q.lapsed ? 'lapsed' : q.expires === '—' ? 'not sent yet' : undefined} />
+        <InfoBit label="Báo giá bởi / Proposed by" value={co?.owner ?? 'Nguyễn Thị Lan'} />
+        <InfoBit label="Số option" value={String(q.options)} hint="alternatives, never summed" />
+        <InfoBit label="Giá trị / Value" value={`${q.value.toLocaleString('en-US')} ₫`} hint={q.acceptedOpt ? 'accepted option' : 'highest option'} />
+      </div>
+
+      {co && <div className="mb-4"><QuoteCompanyCard c={co} /></div>}
+
+      <p className="mb-2 text-[12.5px] font-semibold">Options</p>
+      <div className="space-y-2">
+        {opts.map((o) => (
+          <div key={o.n} className={cn('rounded-xl border p-3', q.acceptedOpt === o.n ? 'border-emerald-300 bg-emerald-50/40' : 'border-line')}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[12.5px] font-semibold">Option {o.n} <span className="font-normal text-muted">{QUOTE_CATALOG[o.p].vi}</span></p>
+              {q.acceptedOpt === o.n
+                ? <Pill tone="active">Accepted</Pill>
+                : q.acceptedOpt ? <Pill tone="draft">Not chosen</Pill> : null}
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-line">
+              <div className="grid min-w-[520px] gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
+                <span>#</span><span>Dịch vụ</span><span>Đơn vị</span><span>SL</span><span className="text-right">Đơn giá</span><span className="text-right">Tổng giá</span>
+              </div>
+              <div className="grid min-w-[520px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: '20px 2.4fr 0.7fr 0.5fr 1fr 1fr' }}>
+                <span className="text-faint">1</span><span className="truncate">{QUOTE_CATALOG[o.p].vi}</span>
+                <span className="text-[11px] text-muted">{QUOTE_CATALOG[o.p].unitVi}</span>
+                <span className="tabular-nums">{o.qty}</span>
+                <span className="text-right tabular-nums">{QUOTE_CATALOG[o.p].price.toLocaleString('en-US')}</span>
+                <span className="text-right tabular-nums">{o.sub.toLocaleString('en-US')}</span>
+              </div>
+            </div>
+            <div className="mt-2 ml-auto w-full max-w-[300px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+              <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{o.sub.toLocaleString('en-US')} ₫</span></div>
+              <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{o.vat.toLocaleString('en-US')} ₫</span></div>
+              <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{o.total.toLocaleString('en-US')} ₫</span></div>
+              <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(o.total)}.</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-faint">Options are alternatives — no grand total exists, and reporting never sums them.</p>
+    </div>
+  )
+}
+
 function AdminQuotes() {
-  const rows = [
-    ['EST-009909-07-2026', 'AM Software Việt Nam', '2 options', '6,588,000 ₫', <Pill tone="pending">Sent</Pill>, '03/08/2026'],
-    ['EST-009908-07-2026', 'Công ty Vạn Phát', '3 options', '37,800,000 ₫', <Pill tone="active">Accepted · Opt 2</Pill>, '28/07/2026'],
-    ['EST-009907-07-2026', 'Hoàng Gia', '1 option', '131,429,662 ₫', <Pill tone="rejected">Rejected</Pill>, '14/07/2026'],
-    ['EST-009906-06-2026', 'Việt Tiến Logistics', '2 options', '28,536,925 ₫', <Pill tone="expired">Superseded · v2</Pill>, '30/06/2026'],
-    ['EST-009905-06-2026', 'Tinh Hoa', '2 options', '60,206,698 ₫', <Pill tone="draft">Draft</Pill>, '—'],
-  ]
+  /* PO creation lives HERE, not on the company detail page: an order can only come
+     from an ACCEPTED quotation option, so the accepted row is the only place the
+     action is ever valid. Company detail carries "Create quotation" instead. */
+  const [poFor, setPoFor] = useState<Company | null>(null)
+  const [open, setOpen] = useState<Quote | null>(null)
+  if (open) return <QuotationDetail q={open} onBack={() => setOpen(null)} onCreatePO={setPoFor} />
+
+  const rows = QUOTES.map((q) => {
+    const canPO = !!q.acceptedOpt && q.status === 'Sent' && !q.lapsed
+    return [
+      <button onClick={() => setOpen(q)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{q.code}</button>,
+      <span className="truncate">{q.customer}</span>,
+      <ProductCell ids={q.products} />,
+      <span className="tabular-nums text-muted">{q.options}</span>,
+      <span className="tabular-nums">{q.value.toLocaleString('en-US')} ₫</span>,
+      <Pill tone={QUOTE_TONE[q.status]}>{q.status}</Pill>,
+      <span className="tabular-nums text-muted">{q.created}</span>,
+      <span className="tabular-nums text-muted">{q.expires}</span>,
+      canPO
+        ? <button onClick={() => setPoFor(COMPANIES.find((x) => x.name === q.co) ?? null)} className="rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand hover:bg-brand hover:text-white">Issue PO →</button>
+        : <span className="text-faint">—</span>,
+    ]
+  })
+
   return (
     <div>
       {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
@@ -2381,12 +3549,16 @@ function AdminQuotes() {
         first — a quotation is always attached to a company and a deal, never floating.
       </p>
       <ListPage
-        tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft' }, { label: 'Pending approval', count: 3 }, { label: 'Sent' }, { label: 'Accepted' }, { label: 'Rejected' }, { label: 'Expired' }]}
-        cols={[{ label: 'Quotation', w: '1.5fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Options', w: '0.8fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Expires', w: '0.9fr', align: 'r' }]}
+        tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft', count: 11 }, { label: 'Sent', count: 34 }, { label: 'Issued to PO', count: 41 }, { label: 'Expired', count: 6 }]}
+        cols={[
+          { label: 'Quotation', w: '1.4fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Products', w: '1.2fr' },
+          { label: 'Options', w: '0.6fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1fr' },
+          { label: 'Created', w: '0.8fr' }, { label: 'Expires', w: '0.8fr' }, { label: '', w: '1.2fr' },
+        ]}
         rows={rows}
-        minW={760}
-        footer="Value = the accepted option, else the recommended one — options are alternatives, never summed · accepted option → Sales order"
+        minW={1180}
       />
+      {poFor && <CreatePOModal c={poFor} onClose={() => setPoFor(null)} />}
     </div>
   )
 }
@@ -2403,7 +3575,7 @@ function AdminInvoices() {
       cols={[{ label: 'Invoice · legal no.', w: '1.7fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Payment', w: '0.9fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.6fr' }, { label: 'Issued', w: '0.9fr', align: 'r' }, { label: 'Activate by', w: '0.9fr', align: 'r' }]}
       rows={rows}
       minW={900}
-      footer="Issued only after a confirmed payment (T&C clause 3) — so no Overdue state here · issuing closes the deal, flips the company Prospect → New and releases provisioning · activate-by = issued + 12 months (clause 4)"
+      footer="Issued only after a confirmed payment (T&C clause 3) — so no Overdue state here · issuing closes the deal, flips the company New → Existing and releases provisioning · activate-by = issued + 12 months (clause 4)"
     />
   )
 }
@@ -2736,21 +3908,194 @@ function AdminRoles() {
 }
 
 /* ── System · Users (HQ operators) — create → assign role → invite → status ── */
-type OpUser = { id: number; name: string; email: string; role: string; status: 'Active' | 'Pending' | 'Disabled'; last: string }
+/* Department is the org unit (who they sit with, from System → Departments);
+   role is the RBAC grant set. The two are orthogonal — same department, different
+   roles is normal — so they get their own columns. */
+const OP_DEPTS = ['Sales', 'Operations', 'Content', 'Engineering'] as const
+type OpUser = { id: number; name: string; email: string; dept: string; role: string; status: 'Active' | 'Pending' | 'Disabled'; last: string }
 const OPERATORS: OpUser[] = [
-  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', role: 'Super admin', status: 'Active', last: '5m ago' },
-  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', role: 'Operations', status: 'Active', last: '1h ago' },
-  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', role: 'Sales', status: 'Active', last: '2h ago' },
-  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', role: 'Sales', status: 'Pending', last: '—' },
-  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', role: 'Content editor', status: 'Disabled', last: '2 months ago' },
+  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', dept: 'Content', role: 'Super admin', status: 'Active', last: '5m ago' },
+  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', dept: 'Operations', role: 'Operations', status: 'Active', last: '1h ago' },
+  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Active', last: '2h ago' },
+  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Pending', last: '—' },
+  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', dept: 'Content', role: 'Content editor', status: 'Disabled', last: '2 months ago' },
 ]
 const OP_STATUS: Record<OpUser['status'], StatusTone> = { Active: 'active', Pending: 'pending', Disabled: 'expired' }
 
-function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, role: string) => void; onClose: () => void }) {
+/* ── System · Staff directory ─────────────────────────────────────────────────
+ * The master people list for HQ — name · email · phone · department. It is the
+ * single source that two other places draw from:
+ *   • Operators (console logins) — you create an operator by PICKING a staff
+ *     member here, then assigning a role. Not every staff member is an operator.
+ *   • CRM ownership — a company is assigned to a SALES staff member (its owner).
+ * A person's email / department is entered once, here, then reused everywhere.
+ */
+type Staff = { id: number; name: string; email: string; phone: string; dept: string; title: string }
+const STAFF: Staff[] = [
+  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', phone: '0901 234 567', dept: 'Content', title: 'Founder / Super admin' },
+  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', phone: '0902 345 678', dept: 'Operations', title: 'Operations lead' },
+  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', phone: '0903 456 789', dept: 'Sales', title: 'Account executive' },
+  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', phone: '0904 567 890', dept: 'Sales', title: 'Account executive' },
+  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', phone: '0905 678 901', dept: 'Content', title: 'Content editor' },
+  { id: 6, name: 'Ngô Minh Tú', email: 'tu@saramin.vn', phone: '0906 789 012', dept: 'Operations', title: 'Moderator' },
+  { id: 7, name: 'Vũ Thanh Hải', email: 'hai@saramin.vn', phone: '0907 890 123', dept: 'Sales', title: 'Sales rep' },
+  { id: 8, name: 'Seonguk Park', email: 'seonguk@saramin.vn', phone: '0908 901 234', dept: 'Engineering', title: 'Engineering lead' },
+]
+/** which staff already have a console login (seed operators), by email → role. */
+const OPERATOR_ROLE_BY_EMAIL: Record<string, string> = Object.fromEntries(OPERATORS.map((o) => [o.email, o.role]))
+/** how many CRM companies a staff member owns (drawn from the CRM company list). */
+const companiesOwnedBy = (name: string) => COMPANIES.filter((c) => c.owner === name).length
+
+function AddStaffModal({ onAdd, onClose }: { onAdd: (s: Omit<Staff, 'id'>) => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dept, setDept] = useState<string>('Sales')
+  const [title, setTitle] = useState('')
+  const valid = name.trim() && /.+@.+\..+/.test(email)
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Add staff member</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3.5 p-5">
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Vũ Thanh Hải" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Email <span className="text-rose-500">*</span></label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@saramin.vn" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Phone</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09xx xxx xxx" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Department</label>
+              <select value={dept} onChange={(e) => setDept(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand">
+                {OP_DEPTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Account executive" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          </div>
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>ℹ️</span><span>This only adds the person to the directory. It does <b>not</b> grant console access — do that in <b>Users</b> (pick this staff member, assign a role, send the invite).</span></p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => valid && onAdd({ name: name.trim(), email: email.trim(), phone: phone.trim(), dept, title: title.trim() })} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Add to directory</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StaffDetail({ s, onBack }: { s: Staff; onBack: () => void }) {
+  const role = OPERATOR_ROLE_BY_EMAIL[s.email]
+  const owned = COMPANIES.filter((c) => c.owner === s.name)
+  const initials = s.name.split(' ').slice(-2).map((w) => w[0]).join('').toUpperCase()
+  return (
+    <div>
+      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">← Back to staff directory</button>
+      <div className="mb-4 flex items-start gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[16px] font-bold text-white shadow-sm">{initials}</span>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Staff member</p>
+          <h2 className="mt-0.5 text-[20px] font-bold tracking-tight">{s.name}</h2>
+          <p className="text-[11.5px] text-muted">{s.title || '—'} · {s.dept}</p>
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <DetailCard title="Contact & org">
+          <KV label="Full name" value={s.name} />
+          <KV label="Email" value={s.email} />
+          <KV label="Phone" value={s.phone || '—'} />
+          <KV label="Department" value={s.dept} />
+          <KV label="Title" value={s.title || '—'} />
+        </DetailCard>
+        <div className="space-y-4">
+          <DetailCard title="Console access" action={<span className="text-[11px] text-brand">Manage in Users →</span>}>
+            {role
+              ? <p className="flex items-center gap-2 text-[12.5px]">Operator <Pill tone={role === 'Super admin' ? 'neutral' : 'draft'}>{role}</Pill></p>
+              : <p className="text-[12px] text-muted">No console access. Grant it in <b className="text-ink/70">Users</b> — pick this person and assign a role.</p>}
+          </DetailCard>
+          <DetailCard title="CRM ownership">
+            {owned.length
+              ? <div className="space-y-1.5">{owned.map((c) => (
+                  <div key={c.name} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 text-[12px]"><span className="truncate">{c.name}</span><Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill></div>
+                ))}</div>
+              : <p className="text-[12px] text-muted">{s.dept === 'Sales' ? 'No companies assigned yet.' : 'Not a sales role — no company ownership.'}</p>}
+          </DetailCard>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdminStaff() {
+  const [staff, setStaff] = useState<Staff[]>(STAFF)
+  const [adding, setAdding] = useState(false)
+  const [open, setOpen] = useState<Staff | null>(null)
+  const add = (s: Omit<Staff, 'id'>) => {
+    setStaff((prev) => [{ id: Math.max(0, ...prev.map((x) => x.id)) + 1, ...s }, ...prev])
+    setAdding(false)
+  }
+  if (open) return <StaffDetail s={open} onBack={() => setOpen(null)} />
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-[64ch] flex-1 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+          The master people list for HQ. Add someone <b>once</b> (name · email · phone · department) and the record is reused elsewhere — <b>Users</b> picks a staff member to grant console access, and <b>CRM</b> assigns companies to a sales staff member as their owner. Adding staff here grants no access on its own.
+        </p>
+        <button onClick={() => setAdding(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Add staff</button>
+      </div>
+      <Table
+        minW={1180}
+        cols={[
+          { label: 'Staff', w: '1.1fr' }, { label: 'Title', w: '1.2fr' }, { label: 'Email', w: '1.3fr' }, { label: 'Phone', w: '0.9fr' },
+          { label: 'Department', w: '0.8fr' }, { label: 'Console access', w: '1fr' }, { label: 'CRM ownership', w: '1fr' },
+        ]}
+        rows={staff.map((s) => {
+          const role = OPERATOR_ROLE_BY_EMAIL[s.email]
+          const owned = companiesOwnedBy(s.name)
+          return [
+            <button onClick={() => setOpen(s)} className="min-w-0 truncate text-left text-[12.5px] font-medium text-brand hover:underline">{s.name}</button>,
+            <span className="truncate text-[12px] text-ink/75">{s.title || '—'}</span>,
+            <span className="truncate font-mono text-[11px] text-muted">{s.email}</span>,
+            <span className="truncate text-[12px] text-ink/75 tabular-nums">{s.phone}</span>,
+            <span className="truncate text-[12px] text-ink/75">{s.dept}</span>,
+            role ? <Pill tone={role === 'Super admin' ? 'neutral' : 'draft'}>{role}</Pill> : <span className="text-[11px] text-faint">No access</span>,
+            s.dept === 'Sales'
+              ? (owned > 0 ? <span className="text-[12px] text-ink/75">{owned} {owned > 1 ? 'companies' : 'company'}</span> : <span className="text-[11px] text-faint">Unassigned</span>)
+              : <span className="text-[11px] text-faint">—</span>,
+          ]
+        })}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Click a name to open the staff record. <b>Console access</b> = whether this person is an operator (and their role) — granted in <b>Users</b>, not here. <b>CRM ownership</b> = companies assigned to a sales staff member. Remove = deactivate (never hard-delete) so historical ownership &amp; the audit trail survive.
+      </p>
+      {adding && <AddStaffModal onAdd={add} onClose={() => setAdding(false)} />}
+    </div>
+  )
+}
+
+function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, email: string, dept: string, role: string) => void; onClose: () => void }) {
+  const [staffId, setStaffId] = useState<number | null>(null)
   const [role, setRole] = useState('')
-  const valid = name.trim() && /.+@.+\..+/.test(email) && role
+  // Only staff who aren't already operators can be invited (name/email come from
+  // the Staff directory — you don't re-type them here).
+  const takenEmails = new Set(OPERATORS.map((o) => o.email))
+  const options = STAFF.filter((s) => !takenEmails.has(s.email))
+  const picked = STAFF.find((s) => s.id === staffId) ?? null
+  const valid = picked && role
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -2761,18 +4106,26 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
         <div className="space-y-3.5 p-5">
           {/* step markers */}
           <div className="flex items-center gap-1 text-[10.5px] font-medium text-faint">
-            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-brand">2 · Details</span><span>→</span>
-            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-brand">3 · Assign role</span><span>→</span>
-            <span className="rounded-full bg-canvas px-2 py-0.5">4 · Send invite</span>
+            <span className={cn('rounded-full px-2 py-0.5', picked ? 'bg-brand-soft text-brand' : 'bg-brand text-white')}>1 · Pick staff</span><span>→</span>
+            <span className={cn('rounded-full px-2 py-0.5', role ? 'bg-brand-soft text-brand' : picked ? 'bg-brand text-white' : 'bg-canvas')}>2 · Assign role</span><span>→</span>
+            <span className="rounded-full bg-canvas px-2 py-0.5">3 · Send invite</span>
           </div>
           <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Vũ Thanh Hải" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Staff member <span className="text-rose-500">*</span></label>
+            <select value={staffId ?? ''} onChange={(e) => setStaffId(e.target.value ? Number(e.target.value) : null)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand">
+              <option value="">Select a staff member…</option>
+              {options.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.dept} · {s.email}</option>)}
+            </select>
+            <p className="mt-1.5 text-[11px] text-faint">From the <b className="text-ink/70">Staff directory</b> — name, email &amp; department come from their record. Not listed? Add them in <b className="text-ink/70">System → Staff</b> first.</p>
           </div>
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Work email <span className="text-rose-500">*</span></label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@saramin.vn" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
-          </div>
+          {picked && (
+            <div className="grid grid-cols-3 gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2.5 text-[11.5px]">
+              <div className="col-span-2 min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Email (login)</p><p className="truncate font-mono text-[11px] text-ink/80">{picked.email}</p></div>
+              <div className="min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Dept</p><p className="truncate text-ink/80">{picked.dept}</p></div>
+              <div className="min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Phone</p><p className="truncate text-ink/80 tabular-nums">{picked.phone || '—'}</p></div>
+              <div className="col-span-2 min-w-0"><p className="text-[10px] uppercase tracking-wide text-faint">Title</p><p className="truncate text-ink/80">{picked.title || '—'}</p></div>
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Role <span className="text-rose-500">*</span></label>
             <div className="grid gap-1.5">
@@ -2790,7 +4143,7 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => valid && onCreate(name.trim(), email.trim(), role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
+          <button onClick={() => picked && role && onCreate(picked.name, picked.email, picked.dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
         </div>
       </div>
     </div>
@@ -2802,8 +4155,8 @@ function AdminUsers() {
   const [creating, setCreating] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => setToast(m)
-  const create = (name: string, email: string, role: string) => {
-    setUsers((prev) => [{ id: Math.max(0, ...prev.map((u) => u.id)) + 1, name, email, role, status: 'Pending', last: '—' }, ...prev])
+  const create = (name: string, email: string, dept: string, role: string) => {
+    setUsers((prev) => [{ id: Math.max(0, ...prev.map((u) => u.id)) + 1, name, email, dept, role, status: 'Pending', last: '—' }, ...prev])
     setCreating(false)
     flash(`Invitation sent to ${email} — waiting for them to activate the link.`)
   }
@@ -2824,9 +4177,12 @@ function AdminUsers() {
 
       <TabBar tabs={[{ label: 'All', count: users.length, active: true }, { label: 'Active', count: users.filter((u) => u.status === 'Active').length }, { label: 'Pending', count: users.filter((u) => u.status === 'Pending').length }, { label: 'Disabled', count: users.filter((u) => u.status === 'Disabled').length }]} />
       <Table
-        cols={[{ label: 'Operator', w: '1.5fr' }, { label: 'Role', w: '1.1fr' }, { label: 'Status', w: '1fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.6fr', align: 'r' }]}
+        minW={1060}
+        cols={[{ label: 'Operator', w: '1.1fr' }, { label: 'Email (login)', w: '1.4fr' }, { label: 'Department', w: '0.9fr' }, { label: 'Role', w: '1.1fr' }, { label: 'Status', w: '1fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.6fr', align: 'r' }]}
         rows={users.map((u) => [
-          <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p><p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p></div>,
+          <span className="truncate text-[12.5px] font-medium text-ink">{u.name}</span>,
+          <span className="truncate font-mono text-[11px] text-muted">{u.email}</span>,
+          <span className="truncate text-[12px] text-ink/75">{u.dept}</span>,
           <Pill tone={u.role === 'Super admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
           u.status === 'Pending'
             ? <span className="inline-flex items-center gap-1.5"><Pill tone="pending">Pending</Pill><span className="text-[10.5px] text-faint">invite sent</span></span>
@@ -2998,6 +4354,238 @@ function MDDomainDetail({ d }: { d: MDDomain }) {
   )
 }
 
+/* ── System → Company information (issuer) ────────────────────────────────────
+   The ONE place the letterhead that prints on every selling document is set:
+   logo, VN + EN legal name, VN + EN address, website, plus the tax identity and
+   bank details the order and invoice need. Never typed per quotation — otherwise
+   the same company appears three different ways across three documents, and a
+   move of office means editing every template. */
+function AdminIssuer() {
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
+  const NAME = { VI: 'CÔNG TY TNHH DAOUKIWOOM INNOVATION', EN: 'DAOUKIWOOM INNOVATION COMPANY LIMITED' }
+  const ADDR = {
+    VI: 'Tầng 12, 13 & 14, Tòa nhà AP, 518B Điện Biên Phủ, Phường Thạnh Mỹ Tây, Thành Phố Hồ Chí Minh, Việt Nam',
+    EN: 'Level 12, 13 & 14, AP Tower, 518B Dien Bien Phu Street, Thanh My Tay Ward, Ho Chi Minh City, Vietnam',
+  }
+  return (
+    <div className="max-w-[900px]">
+      <p className="mb-3 max-w-[70ch] text-[11.5px] leading-relaxed text-muted">
+        The issuer identity printed at the top of every quotation, sales order and VAT invoice. Set once here —
+        documents read it, so nobody retypes it and past documents keep the version they were sent with.
+      </p>
+
+      {/* live letterhead preview — what the customer actually sees */}
+      <div className="mb-4 overflow-hidden rounded-xl border border-line">
+        <div className="flex items-center justify-between border-b border-line bg-canvas/50 px-3 py-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Letterhead preview</p>
+          <div className="flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
+            {(['VI', 'EN'] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)} className={cn('px-2 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-start justify-between gap-4 bg-surface p-4">
+          <div className="min-w-0 text-[11.5px] leading-relaxed">
+            <p className="font-bold text-ink">{NAME.VI}</p>
+            <p className="font-bold text-ink">{NAME.EN}</p>
+            <p className="mt-0.5 text-ink/80">{ADDR[lang]}</p>
+            <p className="text-brand">https://topdev.vn</p>
+            <p className="mt-1.5 text-ink/70">Báo giá bởi / Proposed by: Nguyễn Thị Lan | lan.nguyen@topdev.vn <span className="text-faint">— the signed-in rep, not a setting</span></p>
+          </div>
+          <div className="grid h-12 w-28 shrink-0 place-items-center rounded-md border border-dashed border-line bg-canvas/60 text-[11px] font-bold tracking-tight text-ink/60">saramin</div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <JobGroup title="Legal identity">
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Tên công ty (VI)" req value={NAME.VI} hint="Prints on line 1 of the letterhead." />
+            <LField label="Company name (EN)" req value={NAME.EN} hint="Prints on line 2 — both always print, in both languages." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Mã số thuế / Tax code" req value="0313545562" hint="The ISSUER’s MST — not the customer’s." />
+            <LField label="Website" value="https://topdev.vn" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <TArea label="Địa chỉ (VI)" req value={ADDR.VI} rows={2} />
+            <TArea label="Address (EN)" req value={ADDR.EN} rows={2} />
+          </div>
+        </JobGroup>
+
+        <JobGroup title="Brand">
+          <div>
+            <LabelRow label="Logo" />
+            <div className="flex items-center gap-3 rounded-lg border border-line bg-canvas/40 p-3">
+              <div className="grid h-12 w-28 shrink-0 place-items-center rounded-md border border-dashed border-line bg-surface text-[11px] font-bold tracking-tight text-ink/60">saramin</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11.5px] text-ink/80">saramin-logo.svg · 420×96</p>
+                <p className="text-[10.5px] text-faint">SVG or PNG at 2× · max 400 KB · transparent background. Printed top-right on every document.</p>
+              </div>
+              <button className="shrink-0 rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">Replace</button>
+            </div>
+          </div>
+        </JobGroup>
+
+        <JobGroup title="Document defaults">
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Thuế suất VAT / VAT rate" req value="8%" select hint="A State rate change is made here once (T&C clause 6). A sent document keeps the rate it was sent with." />
+            <LField label="Quotation validity" req value="14 days" hint="Drives the default Ngày hết hạn." />
+            <LField label="Discount needing approval" req value="> 20%" hint="Above this, Send is blocked pending a sales lead." />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Quotation no. format" value="EST-{seq}-{MM}-{YYYY}" hint="Gapless sequence." />
+            <LField label="Sales order no. format" value="SO-{seq}-{MM}-{YYYY}" />
+            <LField label="Support email" value="customercare@topdev.vn" hint="Printed in T&C clause 6." />
+          </div>
+        </JobGroup>
+
+        <JobGroup title="Bank details — printed on the order for payment">
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Ngân hàng / Bank" req value="Vietcombank — CN Tân Bình" />
+            <LField label="Số tài khoản / Account no." req value="0071 0004 12345" />
+            <LField label="Chủ tài khoản / Account name" req value="CONG TY TNHH DAOUKIWOOM INNOVATION" />
+          </div>
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Sent with the sales order because the default payment term is 100% in advance — the customer pays before the VAT
+            e-invoice is issued (T&amp;C clause 3).
+          </p>
+        </JobGroup>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-[11px] leading-relaxed text-amber-900">
+          Editing these values is <b>versioned, not retroactive</b>. Documents already sent keep the letterhead, VAT rate and
+          bank details they were issued with — reprinting a year-old quotation must produce the identical page.
+        </p>
+        <button className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
+      </div>
+    </div>
+  )
+}
+
+/* ── System → Membership tiers ─────────────────────────────────────────────────
+   The settings page behind the loyalty programme. Two tables and nothing else:
+   the thresholds that earn a tier, and the reward catalogue each tier unlocks.
+   Both are data, because the programme is re-issued every year — 2025's bands are
+   already different from 2026's, and that must never be a code change.
+
+   Only ONE number per tier is stored (the lower bound). The "đến dưới" column is
+   derived from the next band up, so the bands can never overlap or leave a gap. */
+function AdminMembership() {
+  const noTier = COMPANIES.filter((c) => !tierOf(c)).length
+  const countOf = (k: Tier) => COMPANIES.filter((c) => tierOf(c)?.key === k).length
+  return (
+    <div>
+      <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+        <b>Chương trình Khách hàng Thân thiết {TIER_YEAR}</b> — hạng thành viên được <b>tính tự động</b> từ tổng giá trị đơn hàng
+        tích lũy của công ty <b>trong một năm</b>. Sales không set hạng bằng tay. Tích lũy <b>reset về 0 vào {TIER_RESET}</b>;
+        hạng năm nay không mang sang năm sau.
+      </div>
+
+      <div className="space-y-4">
+        <JobGroup title="Chương trình">
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Tên chương trình" req value={`Chương trình Khách hàng Thân thiết ${TIER_YEAR}`} />
+            <LField label="Chu kỳ tích lũy" req value="Năm dương lịch (01/01 – 31/12)" select hint={`Reset về 0 ₫ ngày ${TIER_RESET}. Đổi chu kỳ ở đây, không sửa code.`} />
+            <LField label="Căn cứ tính tích lũy" req value="Tổng giá trị đơn hàng đã thanh toán" select hint="Các phương án khác: theo hóa đơn VAT đã xuất · theo giá trị PO. Cần chốt với business." />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <LField label="Cộng dồn theo tập đoàn" req value="Không — tính riêng từng pháp nhân" select hint="Công ty con KHÔNG cộng doanh thu vào công ty mẹ, đúng nguyên tắc “link không kế thừa gì”." />
+            <LField label="Đơn bị hủy / hoàn tiền" req value="Trừ khỏi tích lũy" select hint="Trừ ra có thể làm công ty TỤT hạng giữa năm — cần chốt có cho tụt hay giữ hạng đến hết năm." />
+            <LField label="Thời điểm cập nhật hạng" req value="Ngay khi đơn được ghi nhận thanh toán" select hint="Phương án khác: chốt định kỳ đầu tháng. Ảnh hưởng trực tiếp tới lúc KH thấy quyền lợi mới." />
+          </div>
+        </JobGroup>
+
+        {/* ── Thresholds ───────────────────────────────────────────────────── */}
+        <JobGroup title="Ngưỡng xếp hạng — chỉ lưu mốc dưới, mốc trên tự suy ra">
+          <Table
+            minW={720}
+            cols={[
+              { label: 'Danh hiệu', w: '1.2fr' },
+              { label: 'Từ (tích lũy ≥)', w: '1.1fr' },
+              { label: 'Đến dưới', w: '1.1fr' },
+              { label: 'Công ty đang ở hạng này', w: '1fr', align: 'r' },
+            ]}
+            rows={[
+              [
+                <span className="text-[11.5px] text-faint">Chưa có hạng</span>,
+                <span className="tabular-nums text-faint">0 ₫</span>,
+                <span className="tabular-nums text-faint">{vnd(TIERS[0].from)}</span>,
+                <span className="tabular-nums text-muted">{noTier}</span>,
+              ],
+              ...TIERS.map((t, i) => [
+                <span className="flex items-center gap-2"><TierPill tier={t} en /></span>,
+                <input
+                  readOnly
+                  value={t.from.toLocaleString('en-US')}
+                  className="w-full rounded-md border border-line bg-surface px-2 py-1 text-right text-[12px] tabular-nums text-ink"
+                />,
+                <span className="tabular-nums text-muted">{TIERS[i + 1] ? vnd(TIERS[i + 1].from) : 'không giới hạn'}</span>,
+                <span className="tabular-nums font-medium text-ink">{countOf(t.key)}</span>,
+              ]),
+            ]}
+          />
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Chỉ ô <b>“Từ”</b> là dữ liệu thật — <b>“Đến dưới”</b> lấy từ mốc của hạng kế tiếp, nên các khoảng không bao giờ chồng
+            nhau hay hở. Thêm / bớt một hạng là thêm / bớt một dòng ở đây.
+          </p>
+        </JobGroup>
+
+        {/* ── Reward catalogue ─────────────────────────────────────────────── */}
+        <JobGroup title="Danh mục quyền lợi theo hạng">
+          <Table
+            minW={880}
+            cols={[
+              { label: 'Quyền lợi', w: '1.8fr' },
+              ...TIERS.map((t) => ({ label: t.vi, w: '1fr', align: 'r' as const })),
+            ]}
+            rows={TIER_BENEFITS.map((b) => [
+              <span className="min-w-0 truncate text-[12px] text-ink/80" title={b.name}>{b.name}</span>,
+              // Every cell is an input, including the not-granted ones. An EMPTY input is
+              // how "this tier does not get this benefit" is expressed — the same encoding
+              // as the absent MembershipBenefitGrant row — so it can never be confused
+              // with a zero-value benefit.
+              ...TIERS.map((t) => (
+                <input
+                  readOnly
+                  value={b.by[t.key] === '—' ? '' : b.by[t.key]}
+                  placeholder="—"
+                  className="w-full rounded-md border border-line bg-surface px-2 py-1 text-right text-[11.5px] tabular-nums text-ink placeholder:text-faint"
+                />
+              )),
+            ])}
+          />
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Ô <b>để trống</b> nghĩa là hạng đó <b>không có</b> quyền lợi này — là một câu trả lời, không phải dữ liệu còn thiếu,
+            và không bao giờ được hiểu thành “quyền lợi trị giá 0”.
+          </p>
+        </JobGroup>
+      </div>
+
+      {/* The unresolved policy questions, kept ON the page they belong to so they
+          cannot be lost in a chat thread. Each one changes what gets built. */}
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-[11.5px] font-semibold text-amber-900">Chưa chốt với business — 5 câu chặn việc build</p>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[11px] leading-relaxed text-amber-900">
+          <li><b>Quyền lợi chưa dùng khi reset</b> — mất hết ngày {TIER_RESET}, hay bảo lưu / có hạn riêng dài hơn chu kỳ?</li>
+          <li><b>Ai bấm dùng quyền lợi</b> — KH tự chọn thời điểm trên tài khoản, hay gửi yêu cầu cho sales đăng ký hộ?</li>
+          <li><b>Voucher</b> — trị giá cố định hay giảm theo % với mức trần? Có cộng với chiết khấu số lượng (Existing) và ưu đãi Churn &amp; New 50% không?</li>
+          <li><b>Top Companies &amp; Banner</b> — trang có giới hạn số slot không? Nếu có, cam kết cho mọi KH Bạc/Vàng/Kim Cương sẽ <b>oversell</b>: cần booking + kiểm tra chỗ trống, không chỉ bật/tắt một cờ.</li>
+          <li><b>Tụt hạng giữa năm</b> — nếu một đơn bị hoàn khiến tích lũy xuống dưới mốc, KH có bị tụt hạng ngay, hay giữ hạng đến hết chu kỳ?</li>
+        </ol>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
+        <p className="text-[11px] leading-relaxed text-muted">
+          Mọi thay đổi ở trang này được <b>ghi log</b> và <b>không hồi tố</b>: một quyền lợi KH đã nhận vẫn giữ nguyên điều kiện
+          lúc được cấp, kể cả khi ngưỡng hay danh mục sau đó bị sửa.
+        </p>
+        <button className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
+      </div>
+    </div>
+  )
+}
+
 function AdminMasterData() {
   const [sel, setSel] = useState(0)
   const active = MD_DOMAINS[sel]
@@ -3148,8 +4736,6 @@ function AdminSignups() {
           ]
         })}
       />
-      <Footer text="Showing 5 of 34 — self-signups land here, get matched, then flow into the Pipeline as leads" />
-      <p className="mt-2 text-[11px] text-faint">Match key: tax code (strongest) → email domain → company name. Public domains (gmail…) need manual verification.</p>
     </div>
   )
 }
@@ -3647,6 +5233,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
 export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // Recruitment
   'admin-job-list': AdminJobList,
+  'admin-job-create': AdminJobCreateStandalone,
   'admin-job-applicants': AdminApplicants,
   'admin-resumes': AdminResumes,
   // Companies
@@ -3684,6 +5271,9 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // System
   'admin-users': AdminUsers,
   'admin-roles': AdminRoles,
+  'admin-staff': AdminStaff,
+  'admin-issuer': AdminIssuer,
+  'admin-membership': AdminMembership,
   'admin-master-data': AdminMasterData,
   'admin-audit-log': AdminAuditLog,
   'admin-environment': AdminEnvironment,

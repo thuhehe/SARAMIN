@@ -25,11 +25,13 @@ export const ADMIN_SPECS: FeatureSpec[] = [
         items: [
           'Searchable, paginated table of all companies; row → company detail. Already on the real backend.',
           'This master record powers the Store companies directory — the two must stay in sync.',
+          'A company that belongs to a corporate group shows a group tag under its name, which doubles as the filter into that group (parent + subsidiaries + branches, every level). Group filtering ignores the owner filter, because a group routinely spans several reps.',
         ],
       },
     ],
     whatToBuild: [
       'Confirm list columns + filters (industry, size, status) with the client',
+      'Group tag on the row + a “filter to this corporate group” view (recursive from the group root)',
       'Verify the sync path to the Store companies directory',
     ],
     adminStoreRelation: 'Company profile fields power the Store companies directory.',
@@ -52,6 +54,15 @@ export const ADMIN_SPECS: FeatureSpec[] = [
         ],
       },
       {
+        heading: 'Công ty liên kết (corporate group)',
+        items: [
+          'Internal-only block: the ancestor chain as a breadcrumb, plus the direct children as rows — each with its own tax code, its own sales owner, and a link through to that record. One level up and one level down; a “Xem sơ đồ tập đoàn” link opens the full tree.',
+          'Branch vs subsidiary is derived from the tax codes, never typed: same 10-digit root as the parent → Chi nhánh; a different tax code → Công ty con.',
+          'The link inherits nothing — quota, contracts, invoices, users, the public page and the sales owner all stay on the record that owns them. This block is context and navigation only.',
+          'None of this reaches the public Store profile — a jobseeker never sees who owns whom.',
+        ],
+      },
+      {
         heading: 'Reviews moderation (if UGC in scope)',
         items: [
           'ITviec/Glassdoor-style reviews carry an overall rating + sub-ratings (work-life, culture, career, compensation).',
@@ -61,6 +72,7 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     ],
     whatToBuild: [
       'Confirm the editable field set + which fields are multilingual (vi mandatory)',
+      '“Công ty liên kết” block (breadcrumb up, direct children down, auto-badged branch vs subsidiary) + a “set parent company” action that rejects cycles',
       'Standard company-profile schema (header, about, why-join-us, benefits, photos, reviews)',
       'If reviews launch: review model (overall + sub-ratings) + moderation queue (approve/reject/report)',
     ],
@@ -79,13 +91,17 @@ export const ADMIN_SPECS: FeatureSpec[] = [
         heading: 'Approach',
         items: [
           'Create form for a new company record. Shares the field schema with Company detail.',
-          'Guard against duplicates (tax code / name).',
+          'Guard against duplicates (tax code / name) — but only a full tax-code match is a duplicate. A shared 10-digit tax root, or a near-identical legal name on a different tax code, is offered as an affiliate link instead of being blocked; subsidiaries are routinely named “… Miền Nam” / “… Hà Nội”.',
+          'Optional “Công ty mẹ” field at creation — search by name or tax code. It only records the link; the new company still gets its own tax code, contract, quota and sales owner.',
+          'Tax code accepts 10 digits, or 10 + “-” + 3 for a branch. The full string is what must be unique.',
           'Origin: a company is created from the CRM (on customer activation), not as a standalone entry — this screen is the underlying create step. The public profile is filled only when the customer uses Job Posting.',
         ],
       },
     ],
     whatToBuild: [
-      'Field validation + duplicate detection (tax code / registered name)',
+      'Three-branch duplicate detection: full tax code blocks; shared tax root or similar name offers a branch / subsidiary link',
+      'Tax-code format validation (10 digits or 10-3) with uniqueness on the full string',
+      'Optional parent-company picker at creation',
       'Confirm required vs optional fields at creation',
       'Align creation with the CRM activation flow (single company record, no duplicates)',
     ],
@@ -691,13 +707,15 @@ export const ADMIN_SPECS: FeatureSpec[] = [
         group: 'Customer record (CRM — internal only)',
         items: [
           { name: 'Legal name', type: 'string', required: true },
-          { name: 'Tax code (MST)', type: 'string', notes: 'Used for de-duplication + VAT invoicing' },
+          { name: 'Tax code (MST)', type: 'string', notes: 'Used for de-duplication + VAT invoicing. Stored as the full string — 10 digits, or 10 + "-" + 3 for a branch (0301234567-001); the two are different, both-valid values' },
+          { name: 'Parent company', type: 'ref(company)', notes: 'Optional; the direct parent in the corporate tree. One parent only, unlimited depth (parent → subsidiary → sub-subsidiary). Empty = a root' },
+          { name: 'Affiliated companies', type: 'derived', notes: 'Read from the tree: the ancestor chain plus the direct children — rendered as the "Công ty liên kết" block on the record' },
           { name: 'Industry', type: 'enum' },
           { name: 'Address / location', type: 'string' },
           { name: 'Primary contact', type: 'person', notes: 'Name, role, phone, email' },
           { name: 'Lifecycle status', type: 'enum', required: true, notes: 'Lead → Qualified → … → Won → Active customer / Lost' },
-          { name: 'Owner', type: 'ref(admin user)' },
-          { name: 'Linked account', type: 'ref(account)', notes: 'Set at activation; empty while still a prospect' },
+          { name: 'Owner', type: 'ref(admin user)', notes: 'Assigned by hand, per company — the corporate tree never propagates it; a parent and its subsidiary may belong to different reps' },
+          { name: 'Linked account', type: 'ref(account)', notes: 'Set at activation; empty until then — independent of customer status' },
           { name: 'Linked company profile', type: 'ref(company)', notes: 'Set only if the customer posts jobs' },
         ],
       },
@@ -705,11 +723,17 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     behaviors: [
       'List is searchable/filterable by owner, industry, lifecycle status and activity (has quote/PO/invoice/contract).',
       'Row → customer detail: contact info, deal(s), quote/PO/invoice/payment/contract history, and the linked account/company (if any).',
+      'The record carries a “Công ty liên kết / Affiliated companies” block: a breadcrumb of the ancestor chain and a list of direct children, each row showing that company’s own tax code and linking through to its record. One level up, one level down; a “Xem sơ đồ tập đoàn” link opens the full tree.',
+      'Each affiliate row is badged automatically from the tax codes — same 10-digit root as the parent → “Chi nhánh / Branch”, a different tax code → “Công ty con / Subsidiary”. Never typed by hand.',
+      'The list can be filtered to a corporate group (every company under a chosen root), ignoring the owner filter — a group routinely spans reps.',
       'From a Won customer, “Activate” launches the account-creation flow (see Lead → customer activation).',
     ],
     rules: [
       'A company is always created here first — the CRM is the single front door, even for a company that arrives already large.',
-      'De-duplicate on tax code / legal name at creation; block or merge on a match.',
+      'Parent and subsidiary are SEPARATE records with separate tax codes — a subsidiary is its own legal entity. Only a branch shares its parent’s tax code, and then only the -001 suffix differs.',
+      'De-duplication at creation has three branches: (1) the full tax code already exists → block, a real duplicate; (2) same 10-digit root, different suffix → do NOT block, offer to link as a branch; (3) different tax code, near-identical legal name → do NOT block, offer to link as a subsidiary. Subsidiaries are routinely named “… Miền Nam” / “… Hà Nội”, so a name match alone is never a duplicate.',
+      'The parent link inherits NOTHING — packages/quota, contracts, quotations, VAT invoices, users, the public page, deals and the sales owner all stay per company, on its own tax code. A subsidiary can never spend its parent’s quota.',
+      'Tree integrity: at most one direct parent; a company can never be its own ancestor (reject direct and indirect cycles); depth soft-capped around 5 levels.',
       'A lead has no login and is not shown to jobseekers; those exist only after activation.',
       'Customer ↔ account is 1:1; a customer has a public company profile only when it uses Job Posting.',
     ],
@@ -717,13 +741,14 @@ export const ADMIN_SPECS: FeatureSpec[] = [
       dataModel: [
         { name: 'customer_id', type: 'uuid', required: true },
         { name: 'legal_name', type: 'string', required: true },
-        { name: 'tax_code', type: 'string', notes: 'unique — dedup key' },
+        { name: 'tax_code', type: 'string', notes: 'unique on the FULL string (10 digits, or 10 + "-" + 3 for a branch); index the 10-digit root separately — that index powers the "is this a branch of…" prompt' },
+        { name: 'parent_company_id', type: 'ref(company)', notes: 'self-reference, nullable; null = root. Unlimited depth. Enforce no-cycle on write by walking the ancestors — an FK alone will not catch an indirect cycle' },
         { name: 'lifecycle_status', type: 'enum', required: true },
         { name: 'account_id', type: 'ref(account)', notes: 'nullable until activation' },
         { name: 'company_id', type: 'ref(company)', notes: 'nullable; set when Job Posting is enabled' },
         { name: 'owner_id', type: 'ref(admin_user)' },
       ],
-      notes: 'Same underlying company entity as B1 Companies — Companies is a filtered/enriched view, not a separate table.',
+      notes: 'Same underlying company entity as B1 Companies — Companies is a filtered/enriched view, not a separate table. The corporate hierarchy lives in that same table as a self-referencing parent_company_id; there is deliberately NO company_group table, because nothing is owned, shared or billed at group level, so a group has no data of its own. A group is a recursive CTE from a chosen root.',
     },
     known: ['Backend migrated; customer records exist and link to deals.'],
     unknown: [
@@ -734,10 +759,13 @@ export const ADMIN_SPECS: FeatureSpec[] = [
       'Confirm: is a CRM customer the same record as a Company, or two records linked at activation?',
       'When a company arrives outside sales (self-signup), should the system auto-create a CRM customer so “always via CRM” still holds?',
       'What are the required fields to create a lead vs to activate a customer?',
+      'Does not block the build — the model handles either answer: are there customers that are BRANCHES (same tax code as the parent, only the -001 suffix differs) needing their own account and their own invoices? Useful for expectations only.',
     ],
     whatToBuild: [
       'Confirm customer ↔ company ↔ account relationship (recommend: one company record, lifecycle status)',
-      'De-duplication rules (tax code / legal name)',
+      'Corporate tree: parent_company_id self-reference, unlimited depth, cycle guard',
+      '“Công ty liên kết” block on the record (breadcrumb up + direct children, auto-badged branch vs subsidiary) and a group filter on the list',
+      'De-duplication rules — three branches (full tax code blocks; shared tax root or similar name offers an affiliate link)',
       'Lifecycle status model + who can advance it',
     ],
     adminStoreRelation: 'The activated customer becomes the company shown in the Store companies directory (if it posts jobs).',
@@ -947,6 +975,45 @@ export const ADMIN_SPECS: FeatureSpec[] = [
   },
 
   // ── B9 · System settings ─────────────────────────────────────────────────
+  {
+    id: 'admin-staff',
+    code: 'ADM-SYS-00',
+    surface: `${S} · System settings`,
+    title: 'Staff directory',
+    status: 'be-migrated',
+    summary: 'Master list of HQ people (name · email · phone · department).',
+    description:
+      'The single registry of Saramin HQ staff. A person is added once here — name, email, phone, department — and that record is reused everywhere: creating an operator (console login) picks a staff member from this list, and CRM assigns companies to a sales staff member as their owner. Adding someone here grants no access on its own.',
+    uiFields: [
+      {
+        group: 'Staff member',
+        items: [
+          { name: 'name', type: 'string', required: true },
+          { name: 'email', type: 'email', required: true, notes: 'unique; becomes the login if they are later made an operator' },
+          { name: 'phone', type: 'string', notes: 'contact number' },
+          { name: 'department', type: 'ref → Department', notes: 'org unit (System → Departments)' },
+          { name: 'title', type: 'string', notes: 'job title, e.g. Account executive' },
+        ],
+      },
+    ],
+    behaviors: [
+      'Add a staff member with name + email (phone / department / title optional).',
+      'A staff row is the source for two things: Users → “Create operator” selects a staff member from a dropdown, and CRM company ownership assigns a company to a sales staff member.',
+      'Console access is shown per row (their operator role, or “No access”) but is granted in Users, not here.',
+      'For Sales staff, the number of CRM companies they own is shown.',
+      'Remove = deactivate, never a hard delete — historical CRM ownership and the audit trail must survive.',
+    ],
+    rules: [
+      'Email is unique across staff and is the login identity if the person becomes an operator.',
+      'Being in the directory ≠ having console access — an operator record (with a role) is separate.',
+      'A staff member with owned companies or an active operator login cannot be hard-deleted; deactivate instead.',
+    ],
+    related: ['admin-users', 'admin-roles', 'admin-departments'],
+    clientQuestions: [
+      'Is staff created manually here, or synced from an HR system / directory (e.g. Google Workspace)?',
+      'Can a staff member belong to more than one department?',
+    ],
+  },
   {
     id: 'admin-roles',
     code: 'ADM-SYS-01',

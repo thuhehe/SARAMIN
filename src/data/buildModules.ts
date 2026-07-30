@@ -14,13 +14,12 @@
  * depth template.
  */
 
-export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail } from './build/types'
-export { SITE_META, SCOPE_META } from './build/types'
+export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail, Requirement, RequirementBlock, ReqTable } from './build/types'
+export { SITE_META, SCOPE_META, READY_META } from './build/types'
 
 import type { BuildModule } from './build/types'
 import { crm } from './build/crm'
 import { jobseekerUser } from './build/jobseeker-user'
-import { companyUser } from './build/company-user'
 import { adminAccess } from './build/admin-access'
 import { productsPackages } from './build/products-packages'
 import { jobManagement } from './build/job-management'
@@ -29,13 +28,22 @@ import { resumeManagement } from './build/resume-management'
 import { bannersPopups } from './build/banners-popups'
 import { tools } from './build/tools'
 
+/*
+ * Order matters — this is the reading order of the whole spec, in the left nav, on
+ * /modules and in the build plan. It follows the commercial chain: define what is
+ * SELLABLE, sell it, then deliver it.
+ *
+ *   Products & Packages  what we sell — the catalogue the CRM's documents draw on
+ *   CRM                  selling it — quotation → order → payment → invoice
+ *   Job management       delivering the thing they bought
+ *   …then the supporting domains.
+ */
 export const BUILD_MODULES: BuildModule[] = [
-  crm,
-  jobseekerUser,
-  companyUser,
-  adminAccess,
   productsPackages,
+  crm,
   jobManagement,
+  jobseekerUser,
+  adminAccess,
   applicationManagement,
   resumeManagement,
   bannersPopups,
