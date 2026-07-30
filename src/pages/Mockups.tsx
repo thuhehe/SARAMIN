@@ -222,7 +222,7 @@ function ApplyScreen() {
                 {([
                   ['saramin', 'Saramin CV', 'Structured profile · 70% complete'],
                   ['portfolio', '📄 Portfolio.pdf', 'Uploaded 26/07/2026 · 1.2 MB'],
-                  ['meet', '📄 Meet Thu Nguyen.pdf', 'Uploaded 12/01/2024'],
+                  ['meet', '📄 CV_TranMinhAnh.pdf', 'Uploaded 12/01/2024'],
                 ] as const).map(([id, label, sub]) => (
                   <label
                     key={id}
@@ -293,8 +293,8 @@ function MyPageScreen() {
         <div className="space-y-3">
           <div className="rounded-xl border border-line p-4 text-center">
             <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
-            <p className="text-[13px] font-bold text-ink">Nguyễn Thị Thu</p>
-            <p className="text-[11px] text-muted">UX/UI Design Lead</p>
+            <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
+            <p className="text-[11px] text-muted">Product Designer</p>
           </div>
           <div className="rounded-xl border border-line p-2">
             {menu.map(([m, target], i) => (
@@ -357,13 +357,13 @@ function MyPageScreen() {
 }
 
 /** A section card for the Saramin CV. `action` hides when empty (read-only recruiter view); `badge` shows an impact ↑%. */
-function CvSection({ title, action = 'Edit', badge, children }: { title: string; action?: string; badge?: string; children: React.ReactNode }) {
+function CvSection({ title, action = 'Edit', badge, onAction, children }: { title: string; action?: string; badge?: string; onAction?: () => void; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="mb-2.5 flex items-center gap-2">
         <h4 className="text-[14px] font-bold text-ink">{title}</h4>
         {badge && <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700">↑ {badge}</span>}
-        {action && <span className="ml-auto cursor-pointer text-[11px] font-medium text-brand">{action}</span>}
+        {action && <span onClick={onAction} className="ml-auto cursor-pointer text-[11px] font-medium text-brand">{action}</span>}
       </div>
       {children}
     </div>
@@ -393,9 +393,9 @@ function CompletenessBar() {
 }
 
 /** Empty-section prompt with an impact ↑% (why it's worth filling). */
-function EmptySection({ title, desc, pct, icon }: { title: string; desc: string; pct: string; icon: string }) {
+function EmptySection({ title, desc, pct, icon, onAdd }: { title: string; desc: string; pct: string; icon: string; onAdd?: () => void }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4">
+    <div onClick={onAdd} className={cn('flex items-center gap-3 rounded-xl border border-line bg-surface p-4', onAdd && 'cursor-pointer')}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h4 className="text-[14px] font-bold text-ink">{title}</h4>
@@ -409,22 +409,136 @@ function EmptySection({ title, desc, pct, icon }: { title: string; desc: string;
   )
 }
 
+function EditSheet({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div className="absolute inset-0 z-20 flex items-start justify-center bg-black/30 px-4 pt-10">
+      <div className="w-full max-w-[440px] overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <p className="text-[14px] font-bold text-ink">Edit · {title}</p>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="space-y-3 p-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i}>
+              <div className="mb-1 h-2 w-24 rounded bg-line" />
+              <div className="h-8 rounded-md border border-line bg-canvas/40" />
+            </div>
+          ))}
+          <p className="text-[11px] text-faint">Mock editor — the real fields depend on the section.</p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+          <Btn onClick={onClose}>Cancel</Btn>
+          <Btn primary onClick={onClose}>Save</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Fill-from-CV flow — turn an uploaded PDF/DOC into a structured Saramin CV (parse → review → confirm). */
+function FillFromCvModal({ step, setStep, onClose }: { step: 'select' | 'working' | 'done'; setStep: (s: 'select' | 'working' | 'done') => void; onClose: () => void }) {
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/40 px-4 pt-10">
+      <div className="w-full max-w-[440px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        {step === 'select' && (
+          <>
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <p className="text-[15px] font-bold text-ink">Select your CV</p>
+              <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+            </div>
+            <div className="space-y-3 p-4">
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
+                <span>⭐</span>
+                <p><b>Note:</b> We read your file and pre-fill your profile — you just review &amp; confirm. Nothing is published until you save.</p>
+              </div>
+              {/* option 1 — current CV */}
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border-2 border-brand/40 bg-brand-soft/40 p-3">
+                <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 border-brand"><span className="h-2 w-2 rounded-full bg-brand" /></span>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-semibold text-ink">Use your current CV</p>
+                  <p className="text-[12px] font-medium text-brand underline">CV_TranMinhAnh.pdf</p>
+                  <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
+                </div>
+              </label>
+              {/* option 2 — new upload */}
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-line p-3">
+                <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-line" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-semibold text-ink">Upload a new CV</p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className="rounded-md border border-brand/50 px-2.5 py-1 text-[11.5px] font-medium text-brand">⬆ Choose file</span>
+                    <span className="text-[11.5px] text-faint">No file chosen</span>
+                  </div>
+                  <p className="mt-1 text-[10.5px] text-faint">.doc, .docx or .pdf · max 3MB · no password protection</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-2 text-[11.5px] text-ink/80">
+                <span className="grid h-4 w-4 place-items-center rounded bg-brand text-[10px] text-white">✓</span>
+                Also replace my CV file with this upload
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+              <Btn onClick={onClose}>Cancel</Btn>
+              <Btn primary onClick={() => { setStep('working'); setTimeout(() => setStep('done'), 1600) }}>✨ Fill profile</Btn>
+            </div>
+          </>
+        )}
+        {step === 'working' && (
+          <div className="px-6 py-10 text-center">
+            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-xl bg-brand-soft text-[26px]">📄</div>
+            <div className="mx-auto mb-4 h-1.5 w-44 overflow-hidden rounded-full bg-line">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-brand" />
+            </div>
+            <p className="text-[15px] font-bold text-ink">We're reading your CV…</p>
+            <p className="mt-1 text-[12px] text-muted">Extracting your experience, skills and details.<br />Please don't close this window.</p>
+          </div>
+        )}
+        {step === 'done' && (
+          <div className="px-5 py-6 text-center">
+            <div className="mb-1 text-[30px]">🎉</div>
+            <p className="text-[15px] font-bold text-ink">Profile filled from your CV!</p>
+            <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Please review the imported info and edit anything that needs a touch-up.</p>
+            <p className="mt-4 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Updated sections</p>
+            <div className="mt-2 space-y-1.5 text-left">
+              {([['👤', 'Personal information'], ['💼', 'Work experience'], ['🎓', 'Education'], ['🛠', 'Skills']] as [string, string][]).map(([ic, label]) => (
+                <div key={label} className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] font-medium text-emerald-800"><span>{ic}</span>{label}</div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-center"><Btn primary onClick={onClose}>Review my profile</Btn></div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ProfileCvScreen() {
   const go = useNav()
-  const [cvTab, setCvTab] = useState<'saramin' | 'upload'>('saramin')
   const [cvView, setCvView] = useState<'me' | 'recruiter'>('me')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [fillStep, setFillStep] = useState<'select' | 'working' | 'done' | null>(null)
   const ro = cvView === 'recruiter'
   const menu: [string, string?][] = [['Dashboard', 'js-mypage'], ['My CV & Profile'], ['My applications'], ['Saved jobs'], ['Settings']]
+  const emptySections: [string, string, string, string][] = [
+    ['Foreign Language', '10%', 'Provide your language skills and proficiencies', '🌐'],
+    ['Highlight Project', '5%', 'Showcase your highlight project', '📁'],
+    ['Certificates', '5%', 'Provide evidence of your specific expertise and skills', '📜'],
+    ['Awards', '5%', 'Highlight your awards or recognitions', '🏆'],
+    ['Activities', '3%', 'Volunteering, clubs & communities you take part in', '🎯'],
+    ['Publications', '2%', 'Articles or papers you have published', '📰'],
+    ['References', '3%', 'People who can vouch for your work', '👥'],
+    ['Recommendations', '5%', 'Ask colleagues to recommend you', '⭐'],
+  ]
   return (
-    <div>
+    <div className="relative">
       <JsHeader active="CV & Profile" />
       <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
         {/* left rail */}
         <div className="space-y-3">
           <div className="rounded-xl border border-line p-4 text-center">
             <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
-            <p className="text-[13px] font-bold text-ink">Nguyễn Thị Thu</p>
-            <p className="text-[11px] text-muted">UX/UI Design Lead</p>
+            <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
+            <p className="text-[11px] text-muted">Product Designer</p>
             {/* single visibility toggle */}
             <div className="mt-3 flex items-center justify-between rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-left">
               <span className="text-[11px] font-medium text-ink/80">Let recruiters find me</span>
@@ -446,182 +560,167 @@ function ProfileCvScreen() {
 
         {/* main */}
         <div className="space-y-4">
-          {/* CV tabs — like VietnamWorks */}
-          <div className="flex gap-1 border-b border-line">
-            {([['saramin', 'Saramin CV'], ['upload', 'Uploaded CV']] as const).map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setCvTab(id)}
-                className={cn(
-                  'relative -mb-px border-b-2 px-4 py-2 text-[13px] font-medium transition-colors',
-                  cvTab === id ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink',
-                )}
-              >
-                {label}
-              </button>
-            ))}
+          {/* page title + "view as" toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[14px] font-bold text-ink">My CV &amp; Profile</p>
+            <div className="flex shrink-0 overflow-hidden rounded-md border border-line text-[11.5px] font-medium">
+              {([['me', 'Hồ sơ của tôi'], ['recruiter', 'Xem như nhà tuyển dụng']] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setCvView(id)} className={cn('px-3 py-1.5', cvView === id ? 'bg-brand text-white' : 'text-muted')}>{label}</button>
+              ))}
+            </div>
           </div>
 
-          {/* Uploaded CV — the file recruiters read (primary) */}
-          {cvTab === 'upload' && (
-            <div className="space-y-3">
-              <p className="text-[12px] text-muted">Your own CV file — what recruiters read. <span className="font-medium text-brand">Recommended.</span></p>
-              <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-semibold text-ink">Portfolio.pdf</p>
-                  <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
-                </div>
-                <Chip tone="green">Approved</Chip>
-                <span className="text-[11px] font-medium text-brand">Replace</span>
+          {/* ── Identity header — on top, clean (no cover banner) ── */}
+          <div className="rounded-xl border border-line bg-surface p-4">
+            <div className="flex items-start gap-3">
+              <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[22px] ring-2 ring-emerald-500 ring-offset-2 ring-offset-surface">🙂</div>
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-1.5 text-[17px] font-bold text-ink">Trần Minh Anh <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✓ Verified</span></p>
+                <p className="text-[12.5px] text-ink/80">Product Designer · 4 yrs experience</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Hồ Chí Minh, Vietnam · <span className="font-medium text-brand">Contact info</span></p>
+                {!ro && <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="green">✓ Email</Chip><Chip tone="green">✓ Phone</Chip></div>}
               </div>
-              <div className="grid place-items-center rounded-lg border border-dashed border-line py-6 text-[12px] text-brand">⬆ Upload a new CV</div>
-              <p className="text-[11px] text-faint">Supports .doc, .docx, .pdf · under 5 MB · no password protection.</p>
-              {/* auto-fill bridge — Phase 2 */}
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
+              {!ro && <span onClick={() => setEditing('Profile header')} className="shrink-0 cursor-pointer text-[13px] text-muted">✎</span>}
+            </div>
+          </div>
+
+          {ro && (
+            /* recruiter "3-second fit" summary */
+            <div className="rounded-xl border-2 border-brand/30 bg-surface p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[12.5px] font-medium text-ink">3-second fit</p>
+                <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-[12px] font-bold text-brand">92% match</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {([['Top skills', 'UX · UI · Design Systems'], ['Location · Work', 'Hồ Chí Minh · Hybrid'], ['Available · Salary', 'Open now · 20–30 tr']] as [string, string][]).map(([k, v]) => (
+                  <div key={k} className="rounded-lg border border-line p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{k}</p>
+                    <p className="mt-0.5 text-[11.5px] font-medium text-ink">{v}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[10.5px] text-faint">The 3-second view a recruiter sees first · empty sections are hidden.</p>
+            </div>
+          )}
+
+          {!ro && (
+            <>
+              {/* ── Job preferences (Basic info — NOT part of the CV) ── */}
+              <div className="rounded-xl border border-line bg-surface p-4">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-[14px] font-bold text-ink">Công việc mong muốn <span className="text-[11px] font-normal text-muted">· Job preferences</span></h4>
+                    <p className="mt-0.5 text-[11px] text-faint">Basic info · powers matching &amp; recommendations — not shown on your CV / PDF.</p>
+                  </div>
+                  <span onClick={() => setEditing('Job preferences')} className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">Edit</span>
+                </div>
+                <div className="divide-y divide-line-soft">
+                  {([
+                    ['Desired role', <>Senior Product Designer</>],
+                    ['Category · Level', <>Design · Experienced (non-manager)</>],
+                    ['Industry (≤3)', <span className="flex flex-wrap justify-end gap-1"><Chip tone="blue">IT / Software</Chip><Chip tone="blue">FMCG</Chip><Chip tone="blue">Banking</Chip></span>],
+                    ['Location (≤3)', <span className="flex flex-wrap justify-end gap-1"><Chip>Hồ Chí Minh</Chip><Chip>Hà Nội</Chip></span>],
+                    ['Expected salary', <span className="flex flex-wrap items-center justify-end gap-2">20 – 30 tr <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] font-normal text-muted">👁 Shown</span></span>],
+                    ['Availability', <>🟢 Open now</>],
+                  ] as [string, React.ReactNode][]).map(([k, v]) => (
+                    <div key={k} className="flex items-start justify-between gap-4 py-2 first:pt-0 last:pb-0">
+                      <span className="shrink-0 text-[11.5px] text-muted">{k}</span>
+                      <span className="text-right text-[12.5px] font-medium text-ink">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Your CV file — the uploaded document (replaces the old tab) ── */}
+              <div className="rounded-xl border border-line bg-surface p-4">
+                <h4 className="mb-2 text-[14px] font-bold text-ink">Your CV file <span className="text-[11px] font-normal text-muted">· the document recruiters download</span></h4>
+                <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-semibold text-ink">CV_TranMinhAnh.pdf</p>
+                    <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
+                  </div>
+                  <Chip tone="green">Approved</Chip>
+                  <span onClick={() => setEditing('CV file')} className="cursor-pointer text-[11px] font-medium text-brand">Replace</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[11.5px] font-semibold text-brand">✨ Turn this file into my Saramin CV</p>
+                    <p className="text-[11px] text-muted">We read the file and pre-fill the sections below — you just review &amp; confirm. <span className="text-faint">(Phase 2)</span></p>
+                  </div>
+                  <Btn primary onClick={() => setFillStep('select')}>Fill profile from CV</Btn>
+                </div>
+              </div>
+
+              {/* impact-framed completeness */}
+              <CompletenessBar />
+            </>
+          )}
+
+          {/* ── About (+ Top skills) ── */}
+          <CvSection title="About" action={ro ? '' : 'Edit'} onAction={() => setEditing('About')}>
+            <p className="text-[12.5px] leading-relaxed text-ink/80">Product designer with 4+ years across web and mobile products at agency and in-house teams. I turn user research into clean, usable interfaces and maintain scalable design systems.</p>
+            <div className="mt-3 rounded-lg border border-line px-3 py-2">
+              <p className="text-[11px] font-semibold text-ink">💎 Top skills</p>
+              <p className="mt-0.5 text-[11.5px] text-muted">User Experience (UX) · Interaction Design · Design Systems · Product Design</p>
+            </div>
+          </CvSection>
+
+          {/* ── Experience ── */}
+          <CvSection title="Experience" action={ro ? '' : '+ Add'} onAction={() => setEditing('Experience')}>
+            {([
+              ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.', ['User Research', 'Design Systems', 'Figma']],
+              ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Designed the payments experience across mobile and web, from research through to handoff.', ['Product Design', 'Prototyping']],
+            ] as [string, string, string, string, string, string[]][]).map(([role, org, dates, loc, desc, skills]) => (
+              <div key={role} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</div>
                 <div className="min-w-0">
-                  <p className="text-[11.5px] font-semibold text-brand">✨ Auto-fill my Saramin CV from this file</p>
-                  <p className="text-[11px] text-muted">We read the file and pre-fill your Saramin CV — you just confirm. <span className="text-faint">(Phase 2)</span></p>
-                </div>
-                <Btn primary>Fill profile</Btn>
-              </div>
-            </div>
-          )}
-
-          {/* Saramin CV — a polished, LinkedIn-style profile (optional) */}
-          {cvTab === 'saramin' && (
-            <div className="space-y-4">
-              {/* view toggle — my profile vs how a recruiter sees it */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[12px] text-muted">Your Saramin CV — a polished profile you can proudly share. <span className="text-faint">Optional.</span></p>
-                <div className="flex shrink-0 overflow-hidden rounded-md border border-line text-[11.5px] font-medium">
-                  {([['me', 'Hồ sơ của tôi'], ['recruiter', 'Xem như nhà tuyển dụng']] as const).map(([id, label]) => (
-                    <button key={id} onClick={() => setCvView(id)} className={cn('px-3 py-1.5', cvView === id ? 'bg-brand text-white' : 'text-muted')}>{label}</button>
-                  ))}
+                  <p className="text-[12.5px] font-semibold text-ink">{role}</p>
+                  <p className="text-[11.5px] text-ink/80">{org}</p>
+                  <p className="text-[11px] text-faint">{dates} · {loc}</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted">{desc}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1">{skills.map((s) => <Chip key={s}>{s}</Chip>)}</div>
                 </div>
               </div>
+            ))}
+          </CvSection>
 
-              {ro ? (
-                /* ── Recruiter-first "3-second fit" card ── */
-                <div className="rounded-xl border-2 border-brand/30 bg-surface p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[20px]">🙂</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-1.5 text-[16px] font-bold text-ink">Nguyễn Thị Thu <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✓ Verified</span></p>
-                      <p className="text-[12.5px] text-ink/80">UX/UI Designer · 4 yrs experience</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-[12px] font-bold text-brand">92% match</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    {([['Top skills', 'UX · UI · Design Systems'], ['Location · Work', 'Hồ Chí Minh · Hybrid'], ['Available · Salary', 'Open now · 20–30 tr']] as [string, string][]).map(([k, v]) => (
-                      <div key={k} className="rounded-lg border border-line p-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{k}</p>
-                        <p className="mt-0.5 text-[11.5px] font-medium text-ink">{v}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[10.5px] text-faint">The 3-second view a recruiter sees first · empty sections are hidden.</p>
+          {/* ── Education ── */}
+          <CvSection title="Education" action={ro ? '' : '+ Add'} onAction={() => setEditing('Education')}>
+            {([
+              ['University of Economics HCMC', 'Bachelor · Business Information Systems', '2016 – 2020'],
+              ['FPT Arena Multimedia', 'Diploma · Graphic & Digital Design', '2015 – 2016'],
+            ] as [string, string, string][]).map(([school, deg, dates]) => (
+              <div key={school} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</div>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-semibold text-ink">{school}</p>
+                  <p className="text-[11.5px] text-ink/80">{deg}</p>
+                  <p className="text-[11px] text-faint">{dates}</p>
                 </div>
-              ) : (
-                <>
-                  {/* impact-framed completeness */}
-                  <CompletenessBar />
-                  {/* header hero */}
-                  <div className="overflow-hidden rounded-xl border border-line bg-surface">
-                    <div className="relative h-28 bg-gradient-to-r from-emerald-200 via-teal-200 to-sky-200">
-                      <span className="absolute right-2 top-2 rounded-md bg-surface/90 px-2 py-0.5 text-[10px] font-medium text-muted">Suggested cover · change ✎</span>
-                    </div>
-                    <div className="px-4 pb-4">
-                      <div className="-mt-11 mb-2 inline-block rounded-full ring-4 ring-emerald-500">
-                        <div className="grid h-20 w-20 place-items-center rounded-full border-4 border-surface bg-gradient-to-br from-brand to-violet-500 text-[22px]">🙂</div>
-                      </div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="flex flex-wrap items-center gap-1.5 text-[18px] font-bold text-ink">Nguyễn Thị Thu <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✓ Verified</span></p>
-                          <p className="text-[12.5px] text-ink/80">UX/UI Designer · Practicing coaching &amp; emotional intelligence</p>
-                          <p className="mt-0.5 text-[11.5px] text-muted">Hồ Chí Minh, Vietnam · <span className="font-medium text-brand">Contact info</span></p>
-                          <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="green">🟢 Open to work</Chip><Chip tone="green">✓ Email</Chip><Chip tone="green">✓ Phone</Chip></div>
-                        </div>
-                        <span className="shrink-0 cursor-pointer text-[13px] text-muted">✎</span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
+              </div>
+            ))}
+          </CvSection>
 
-              {/* ── About (+ Top skills) ── */}
-              <CvSection title="About" action={ro ? '' : 'Edit'}>
-                <p className="text-[12.5px] leading-relaxed text-ink/80">I’m a UX/UI designer with 4+ years of experience working with web and IT agencies, designing digital products and user experiences. Alongside design, I practice coaching and study emotional intelligence.</p>
-                <div className="mt-3 rounded-lg border border-line px-3 py-2">
-                  <p className="text-[11px] font-semibold text-ink">💎 Top skills</p>
-                  <p className="mt-0.5 text-[11.5px] text-muted">User Experience (UX) · Interaction Design · Design Systems · Product Design</p>
-                </div>
-              </CvSection>
-
-              {/* ── Experience ── */}
-              <CvSection title="Experience" action={ro ? '' : '+ Add'}>
-                {([
-                  ['UX · UI Designer — Leader', 'Markdao Agency · Full-time', 'Mar 2022 – Aug 2023 · 1 yr 6 mos', 'Hồ Chí Minh City, Vietnam', 'Moving up to a leadership role, my primary emphasis is on project management, guiding team members to deliver high-quality results while enhancing their skill sets.', ['User Research', 'Team Leadership', 'Figma']],
-                  ['Senior Product Designer', 'MoMo · Full-time', '2021 – 2022 · 1 yr', 'Hồ Chí Minh City, Vietnam', 'Led design for the payments experience across mobile and web.', ['Product Design', 'Prototyping']],
-                ] as [string, string, string, string, string, string[]][]).map(([role, org, dates, loc, desc, skills]) => (
-                  <div key={role} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</div>
-                    <div className="min-w-0">
-                      <p className="text-[12.5px] font-semibold text-ink">{role}</p>
-                      <p className="text-[11.5px] text-ink/80">{org}</p>
-                      <p className="text-[11px] text-faint">{dates} · {loc}</p>
-                      <p className="mt-1 text-[11.5px] leading-relaxed text-muted">{desc}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">{skills.map((s) => <Chip key={s}>{s}</Chip>)}</div>
-                    </div>
-                  </div>
-                ))}
-              </CvSection>
-
-              {/* ── Education (no activities & societies) ── */}
-              <CvSection title="Education" action={ro ? '' : '+ Add'}>
-                {([
-                  ['University of Eastern Finland', 'Master’s degree · Innovation Management', '2014 – 2016'],
-                  ['Banking University of HCMC', 'Bachelor · Business', '2008 – 2012'],
-                ] as [string, string, string][]).map(([school, deg, dates]) => (
-                  <div key={school} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</div>
-                    <div className="min-w-0">
-                      <p className="text-[12.5px] font-semibold text-ink">{school}</p>
-                      <p className="text-[11.5px] text-ink/80">{deg}</p>
-                      <p className="text-[11px] text-faint">{dates}</p>
-                    </div>
-                  </div>
-                ))}
-              </CvSection>
-
-              {/* ── Skills (with years) ── */}
-              <CvSection title="Skills" action={ro ? '' : 'Edit'} badge={ro ? undefined : '6%'}>
-                {!ro && <div className="mb-2 rounded-md bg-brand-soft/60 px-3 py-2 text-[11.5px] text-brand">✎ Quick update — years of experience for skills</div>}
-                <p className="mb-1.5 text-[11px] font-semibold text-ink">Core skills</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {([['User Experience (UX)', '4 yrs'], ['Interaction Design', '4 yrs'], ['Design Systems', '3 yrs'], ['Product Design', '2 yrs'], ['User Research', '3 yrs']] as [string, string][]).map(([s, y]) => (
-                    <span key={s} className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80"><b className="font-semibold text-ink">{s}</b> ({y})</span>
-                  ))}
-                </div>
-              </CvSection>
-
-              {/* ── Empty sections — my view only, impact-framed prompts ── */}
-              {!ro && (
-                <>
-                  <EmptySection title="Foreign Language" pct="10%" desc="Provide your language skills and proficiencies" icon="🌐" />
-                  <EmptySection title="Highlight Project" pct="5%" desc="Showcase your highlight project" icon="📁" />
-                  <EmptySection title="Certificates" pct="5%" desc="Provide evidence of your specific expertise and skills" icon="📜" />
-                  <EmptySection title="Awards" pct="5%" desc="Highlight your awards or recognitions" icon="🏆" />
-                  <EmptySection title="Activities" pct="3%" desc="Volunteering, clubs & communities you take part in" icon="🎯" />
-                  <EmptySection title="Publications" pct="2%" desc="Articles or papers you have published" icon="📰" />
-                  <EmptySection title="References" pct="3%" desc="People who can vouch for your work" icon="👥" />
-                  <EmptySection title="Recommendations" pct="5%" desc="Ask colleagues to recommend you" icon="⭐" />
-                </>
-              )}
+          {/* ── Skills (with years) ── */}
+          <CvSection title="Skills" action={ro ? '' : 'Edit'} badge={ro ? undefined : '6%'} onAction={() => setEditing('Skills')}>
+            {!ro && <div className="mb-2 rounded-md bg-brand-soft/60 px-3 py-2 text-[11.5px] text-brand">✎ Quick update — years of experience for skills</div>}
+            <p className="mb-1.5 text-[11px] font-semibold text-ink">Core skills</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([['User Experience (UX)', '4 yrs'], ['Interaction Design', '4 yrs'], ['Design Systems', '3 yrs'], ['Product Design', '3 yrs'], ['User Research', '2 yrs']] as [string, string][]).map(([s, y]) => (
+                <span key={s} className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80"><b className="font-semibold text-ink">{s}</b> ({y})</span>
+              ))}
             </div>
-          )}
+          </CvSection>
+
+          {/* ── Empty sections — my view only, impact-framed prompts ── */}
+          {!ro && emptySections.map(([title, pct, desc, icon]) => (
+            <EmptySection key={title} title={title} pct={pct} desc={desc} icon={icon} onAdd={() => setEditing(title)} />
+          ))}
         </div>
       </div>
+      {editing && <EditSheet title={editing} onClose={() => setEditing(null)} />}
+      {fillStep && <FillFromCvModal step={fillStep} setStep={setFillStep} onClose={() => setFillStep(null)} />}
     </div>
   )
 }
@@ -629,10 +728,10 @@ function ProfileCvScreen() {
 function CreateCvScreen() {
   const go = useNav()
   const sections: [string, string[]][] = [
-    ['Contact & profile', ['Nguyễn Thị Thu', 'UX/UI Design Lead', 'thu@email.com · 0382 233 670']],
-    ['Professional summary', ['Senior product designer with 8 years across B2B SaaS & fintech.']],
-    ['Work experience', ['Design Lead · MoMo · 2021–now', 'Senior Designer · Tiki · 2018–2021']],
-    ['Education', ['Banking University of HCMC · 2008–2012']],
+    ['Contact & profile', ['Trần Minh Anh', 'Product Designer', 'minhanh@email.com · 09xx xxx xxx']],
+    ['Professional summary', ['Product designer with 4+ years across web & mobile products.']],
+    ['Work experience', ['Senior Product Designer · Lantern Digital · 2022–now', 'Product Designer · Zenpay · 2020–2022']],
+    ['Education', ['University of Economics HCMC · 2016–2020']],
     ['Skills', ['Figma, Design systems, User research, Prototyping']],
     ['Languages', ['Vietnamese (native), English (fluent)']],
   ]
@@ -661,14 +760,14 @@ function CreateCvScreen() {
         <div className="rounded-lg border border-line bg-canvas/30 p-4">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Live preview</p>
           <div className="rounded-md bg-surface border border-line p-4">
-            <p className="text-[15px] font-bold text-ink">Nguyễn Thị Thu</p>
-            <p className="mb-3 text-[11px] text-muted">UX/UI Design Lead · Hồ Chí Minh</p>
+            <p className="text-[15px] font-bold text-ink">Trần Minh Anh</p>
+            <p className="mb-3 text-[11px] text-muted">Product Designer · Hồ Chí Minh</p>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Summary</p>
-            <p className="mb-3 text-[11px] leading-relaxed text-muted">Senior product designer with 8 years across B2B SaaS &amp; fintech, leading design systems and 0→1 products.</p>
+            <p className="mb-3 text-[11px] leading-relaxed text-muted">Product designer with 4+ years across web &amp; mobile products, focused on design systems and user research.</p>
             <div className="my-3 h-px bg-line" />
             <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
-            <p className="text-[11px] text-ink">Design Lead · MoMo · 2021–now</p>
-            <p className="text-[11px] text-muted">Senior Designer · Tiki · 2018–2021</p>
+            <p className="text-[11px] text-ink">Senior Product Designer · Lantern Digital · 2022–now</p>
+            <p className="text-[11px] text-muted">Product Designer · Zenpay · 2020–2022</p>
           </div>
         </div>
       </div>

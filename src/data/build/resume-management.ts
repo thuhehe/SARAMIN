@@ -129,6 +129,7 @@ export const resumeManagement: BuildModule = {
           'The builder generates a downloadable PDF, so a candidate who builds here ends up with a file they can use elsewhere.',
           'Finishing routes back to whatever the candidate was doing — usually the job they wanted to apply to.',
           'Re-uploading to replace a CV keeps the same CV record and version history; it does not silently create a second CV.',
+          '“Fill profile from CV” is available on demand from My CV & Profile — not only at first upload. The candidate picks an existing CV (or uploads a new one), extraction runs behind a short “reading your CV” state, and a success step lists the sections that were filled (Personal info, Work experience, Education, Skills) before dropping them into the review step. It is review-and-confirm, never “fill 11 forms”, and it is the on-ramp that turns an uploaded PDF into the structured Saramin CV.',
         ],
         rules: [
           'A CV must have a document (uploaded or generated) — a structured profile alone is not a CV.',
@@ -143,7 +144,9 @@ export const resumeManagement: BuildModule = {
           'Route choice',
           'Uploading',
           'Upload rejected (type / size)',
+          'Fill from CV — select which CV (current / new upload)',
           'Extracting',
+          'Fill from CV — success (sections filled) → review',
           'Extraction review (low-confidence fields)',
           'Extraction failed (CV still saved, profile left to the light form)',
           'Builder — empty',
