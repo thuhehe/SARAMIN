@@ -6,7 +6,7 @@
  * Everything here is mock content laid out to VN-market recruitment standards —
  * structure & data shape only, not final visual design.
  */
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, isValidElement, useContext, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 
@@ -28,6 +28,15 @@ export function useDetailCrumb(label: string, onBack: () => void) {
     return () => set(null)
   }, [label, set])
 }
+
+/* Cross-page record links. A quotation opened from the Purchase-order list must
+   land on the QUOTATIONS page, not render inside Purchase order — otherwise the
+   breadcrumb reads "CRM / Purchase order / EST-…", naming the wrong module for
+   the record you are looking at, and Back returns to the wrong list. So the link
+   asks the shell to switch pages and pass the record to open. */
+export const ScreenNavCtx = createContext<(specId: string, record?: string) => void>(() => {})
+/** The record the shell wants this page to open on arrival, if any. */
+export const OpenRecordCtx = createContext<string | null>(null)
 
 /* ── shared bits ──────────────────────────────────────────────────────────── */
 type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
@@ -69,10 +78,50 @@ function Tab({ label, count, active }: { label: string; count?: number; active?:
   )
 }
 
-function TabBar({ tabs }: { tabs: { label: string; count?: number; active?: boolean }[] }) {
+/* One search box per list, sitting on the tab row so a list never grows a second
+   toolbar. It matches against EVERY column's rendered text (see `cellText`), which
+   is what people actually expect from a single box above a table — no field picker
+   to learn, and no guessing which column a value lives in. */
+function TableSearch({ q, onChange }: { q: string; onChange: (v: string) => void }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-1 border-b border-line-soft pb-3">
-      {tabs.map((t, i) => <Tab key={i} {...t} />)}
+    <div className="relative ml-auto shrink-0">
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
+      <input
+        value={q}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search all columns…"
+        className="w-[190px] rounded-lg border border-line bg-surface py-1.5 pl-7 pr-7 text-[12px] outline-none transition-[width,border-color] focus:w-[240px] focus:border-brand"
+      />
+      {q && (
+        <button
+          onClick={() => onChange('')}
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-faint hover:text-ink"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TabBar({
+  tabs,
+  q,
+  onQ,
+  action,
+}: {
+  tabs?: { label: string; count?: number; active?: boolean }[]
+  q: string
+  onQ: (v: string) => void
+  /** the list's create button — on this row so a list never needs a header strip of its own */
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-line-soft pb-3">
+      <div className="flex flex-wrap items-center gap-1">{tabs?.map((t, i) => <Tab key={i} {...t} />)}</div>
+      <TableSearch q={q} onChange={onQ} />
+      {action}
     </div>
   )
 }
@@ -96,7 +145,7 @@ function RowAction({ children, tone }: { children: React.ReactNode; tone?: 'bran
 
 type Col = { label: string; w: string; align?: 'r' | 'c' }
 
-function Table({ cols, rows, minW = 560 }: { cols: Col[]; rows: React.ReactNode[][]; minW?: number }) {
+function Table({ cols, rows, minW = 560, empty }: { cols: Col[]; rows: React.ReactNode[][]; minW?: number; empty?: string }) {
   const tmpl = cols.map((c) => c.w).join(' ')
   const alignCls = (a?: 'r' | 'c') => (a === 'r' ? 'text-right justify-end' : a === 'c' ? 'text-center justify-center' : '')
   return (
@@ -111,15 +160,28 @@ function Table({ cols, rows, minW = 560 }: { cols: Col[]; rows: React.ReactNode[
           ))}
         </div>
       ))}
+      {rows.length === 0 && (
+        <p className="border-t border-line-soft px-4 py-8 text-center text-[12px] text-muted">{empty ?? 'No rows.'}</p>
+      )}
     </div>
   )
 }
 
-/** `text` is optional — some lists carry no explanatory footnote, only pagination. */
-function Footer({ text }: { text?: string }) {
+const PAGE_SIZES = [10, 20, 50, 100]
+
+function Footer({ size, onSize }: { size: number; onSize: (n: number) => void }) {
   return (
-    <div className="mt-3 flex items-center justify-between">
-      <p className="text-[11px] text-faint">{text}</p>
+    <div className="mt-3 flex items-center justify-between gap-3">
+      <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
+        Rows per page
+        <select
+          value={size}
+          onChange={(e) => onSize(Number(e.target.value))}
+          className="rounded-md border border-line bg-surface px-1.5 py-1 text-[11.5px] text-ink outline-none focus:border-brand"
+        >
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </label>
       <div className="flex gap-1">
         {['1', '2', '3', '…', '12'].map((p) => (
           <span key={p} className={cn('grid h-6 min-w-6 place-items-center rounded border px-1 text-[11px]', p === '1' ? 'border-brand bg-brand text-white' : 'border-line text-muted')}>{p}</span>
@@ -129,12 +191,28 @@ function Footer({ text }: { text?: string }) {
   )
 }
 
-function ListPage({ tabs, cols, rows, footer, minW }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; footer?: string; minW?: number }) {
+/* Rendered text of a cell, so one search box can cover every column without each
+   list having to hand over a parallel plain-text copy of its rows. */
+function cellText(n: React.ReactNode): string {
+  if (n === null || n === undefined || typeof n === 'boolean') return ''
+  if (typeof n === 'string' || typeof n === 'number') return String(n)
+  if (Array.isArray(n)) return n.map(cellText).join(' ')
+  if (isValidElement(n)) return cellText((n.props as { children?: React.ReactNode }).children)
+  return ''
+}
+/** lowercase + diacritics stripped, so "cong ty" finds "Công ty". */
+const searchKey = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+
+function ListPage({ tabs, cols, rows, minW, action }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode }) {
+  const [q, setQ] = useState('')
+  const [size, setSize] = useState(20)
+  const query = searchKey(q.trim())
+  const matched = query ? rows.filter((r) => searchKey(r.map(cellText).join(' ')).includes(query)) : rows
   return (
     <div>
-      {tabs && <TabBar tabs={tabs} />}
-      <Table cols={cols} rows={rows} minW={minW} />
-      <Footer text={footer} />
+      <TabBar tabs={tabs} q={q} onQ={setQ} action={action} />
+      <Table cols={cols} rows={matched.slice(0, size)} minW={minW} empty={`No rows match “${q.trim()}”.`} />
+      <Footer size={size} onSize={setSize} />
     </div>
   )
 }
@@ -199,11 +277,8 @@ function AdminJobList() {
   if (detail) return <AdminJobDetail job={detail} onBack={() => setDetail(null)} />
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-[60ch] text-[11.5px] text-muted">HQ oversight of every job across all company accounts. Admin can also post a job on a company’s behalf.</p>
-        <button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ New job</button>
-      </div>
     <ListPage
+      action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New job</button>}
       minW={1200}
       tabs={[{ label: 'All', count: 1248 }, { label: 'Draft', count: 8 }, { label: 'Schedule', count: 5, active: true }, { label: 'Open', count: 1180 }, { label: 'Closed', count: 58 }]}
       cols={[
@@ -234,7 +309,6 @@ function AdminJobList() {
         <span className="tabular-nums">{r.saves.toLocaleString('en-US')}</span>,
         <span className="tabular-nums font-medium text-brand">{r.applicants || '—'}</span>,
       ])}
-      footer="Showing 7 of 1,248 — click a job title to open its detail · server-side filter · sort · pagination"
     />
     </div>
   )
@@ -306,7 +380,6 @@ function AdminApplicants() {
         { label: 'Applied', w: '0.8fr', align: 'r' },
       ]}
       rows={rows}
-      footer="Showing 15 of 342 applicants — HQ oversight view across all jobs"
     />
   )
 }
@@ -326,7 +399,6 @@ function AdminResumes() {
         tabs={[{ label: 'All', count: 8420, active: true }, { label: 'Public', count: 6100 }, { label: 'Private', count: 2320 }]}
         cols={[{ label: 'Candidate', w: '1.2fr' }, { label: 'Title / experience', w: '1.6fr' }, { label: 'Location', w: '1fr' }, { label: 'Visibility', w: '0.9fr' }, { label: 'Updated', w: '1fr', align: 'r' }]}
         rows={rows}
-        footer="Showing 5 of 8,420 resumes — CV-unlock model ties to employer talent search"
       />
     </div>
   )
@@ -947,7 +1019,7 @@ function AdminCompanyList() {
 
       {creating && <CreateLeadModal onClose={() => setCreating(false)} />}
 
-      <Table
+      <ListPage
         minW={showOwner ? 1520 : 1380}
         cols={[
           { label: 'Company', w: '1.4fr' },
@@ -1002,9 +1074,6 @@ function AdminCompanyList() {
           <span className="tabular-nums">{revFmt(coLastRevenue(c))}</span>,
         ])}
       />
-      <Footer text={group
-        ? `Showing ${rows.length} companies in the ${coLabel(group)} group — parent, subsidiaries and branches. Grouping is a view; each row is still its own customer with its own billing.`
-        : view === 'me' ? `Showing ${rows.length} of 84 — your book of business.` : `Showing ${rows.length} of 512 — every company across the team. Filter by owner to drill into one rep.`} />
     </div>
   )
 }
@@ -1150,6 +1219,221 @@ const companyResumeViews = (c: Company): CoResumeView[] => {
   ]
 }
 
+/* ── CONTACT PEOPLE vs LOGIN USERS ───────────────────────────────────────────
+   Two different populations on the same company, deliberately INDEPENDENT:
+
+     Contact  a person we do business with. Owned by Sales, lives in the CRM, and
+              may have no login at all — a CFO who signs off, an accountant who
+              receives invoices, a receptionist who takes the call.
+     User     a login on the Company site. Consumes one of the 4 seats, owned by
+              the customer's HR Manager, and may be someone Sales never met.
+
+   They overlap often (the HR Manager is usually both) but neither implies the
+   other, so one is NEVER auto-created from the other. A contact may optionally be
+   LINKED to a user record; the link is informational, not a dependency. */
+type ContactStatus =
+  | 'Unverified' | 'Active' | 'On leave' | 'Snoozed'
+  | 'Moved department' | 'Left company' | 'Retired' | 'Unreachable' | 'Do not contact'
+/* Ordered the way a rep reads them: usable → temporarily not → permanently not.
+   Every status answers exactly one question — "can I contact this person today,
+   and if not, what do I do instead?" */
+const CONTACT_STATUS: Record<ContactStatus, { tone: StatusTone; vi: string; hint: string }> = {
+  Unverified: { tone: 'draft', vi: 'Chưa xác minh', hint: 'Captured from a form / name card — email & phone not confirmed yet. Verify before it is used on a quotation.' },
+  Active: { tone: 'active', vi: 'Đang liên hệ', hint: 'Current contact — safe to call or email.' },
+  'On leave': { tone: 'pending', vi: 'Đang nghỉ phép / thai sản', hint: 'Temporarily unreachable — use the cover person.' },
+  Snoozed: { tone: 'pending', vi: 'Tạm dừng liên hệ', hint: 'Asked us to come back later — reminders resume on the snooze date.' },
+  'Moved department': { tone: 'schedule', vi: 'Đã chuyển phòng ban', hint: 'Still at the company but no longer our buyer — ask for the successor.' },
+  'Left company': { tone: 'expired', vi: 'Đã nghỉ việc', hint: 'Gone. Email will bounce — never contact. Find the replacement, and follow them to their new employer if known.' },
+  Retired: { tone: 'expired', vi: 'Đã nghỉ hưu', hint: 'Left the workforce — no successor to chase at this person, ask the company for the new owner.' },
+  Unreachable: { tone: 'draft', vi: 'Không liên lạc được', hint: 'Email bounced or phone dead — details need verifying.' },
+  'Do not contact': { tone: 'rejected', vi: 'Không liên hệ', hint: 'Asked not to be contacted — a compliance flag, never overridden.' },
+}
+type CoContact = {
+  name: string; title: string; email: string; phone: string
+  status: ContactStatus; primary?: boolean; decisionMaker?: boolean
+  /** receives every quotation / invoice — usually the accountant, rarely the buyer */
+  billing?: boolean
+  /** where a "Left company" contact went, when we know — a warm lead at the new employer */
+  movedTo?: string
+  /** the date a "Snoozed" contact asked to be approached again */
+  snoozedUntil?: string
+  /** email of the login user this person is the same human as, when they have one */
+  linkedUser?: string
+  /** ONE free-text note per contact — the human context a status can never carry:
+      how they prefer to be reached, who they defer to, what went wrong last time. */
+  note: string
+  /** when we last spoke to THIS person (the company's Idle is the newest of these) */
+  lastContact: string
+}
+
+/* Demo contacts: always the primary from the CRM record, plus a realistic spread
+   of the awkward states — someone who left, someone who moved desk, an unlinked
+   finance contact who will never need a login. */
+function companyContacts(c: Company): CoContact[] {
+  const person = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
+  const title = c.contact.split(' · ')[1] ?? 'HR'
+  const local = (n: string) =>
+    n.split(' ').pop()!.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '')
+  const out: CoContact[] = [
+    { name: person, title, email: `${local(person)}@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', primary: true, decisionMaker: true, linkedUser: `${local(person)}@${c.domain}`, note: 'Prefers Zalo over email. Signs off up to 100M ₫ alone; above that needs the GD.', lastContact: '2 days ago' },
+    // finance contact: receives every invoice, never needs to log in
+    { name: 'Phạm Kế Toán', title: 'Kế toán trưởng / Chief accountant', email: `ketoan@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', billing: true, note: 'Only wants the VAT invoice + MST — do not send sales material. Reachable 8–17h.', lastContact: '3 weeks ago' },
+  ]
+  if (isCustomer(c)) {
+    out.push({ name: 'Đỗ Thị Mai', title: 'HR Specialist', email: `mai@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', linkedUser: `mai@${c.domain}`, note: 'Day-to-day poster of jobs. Ask her for the hiring plan before quoting a renewal.', lastContact: '5 days ago' })
+    // the classic churn cause: the person who bought from us left, and nobody told Sales
+    out.push({ name: 'Trần Cũ', title: 'HR Manager (cũ)', email: `tran@${c.domain}`, phone: '—', status: 'Left company', movedTo: 'Công ty CP Vạn Phát', note: 'Bought the first package from us. Left 06/2026 — nobody told Sales, which is why the renewal slipped.', lastContact: '4 months ago' })
+  }
+  if (c.size === '5000+' || c.jobs > 15) {
+    out.push({ name: 'Nguyễn Điều Chuyển', title: 'Trưởng phòng Tuyển dụng', email: `chuyen@${c.domain}`, phone: '09xx xxx xxx', status: 'Moved department', note: 'Moved to Đào tạo. Still friendly — happy to introduce the new TA lead.', lastContact: '6 weeks ago' })
+    out.push({ name: 'Vũ Mới Nhập', title: 'Chuyên viên Tuyển dụng', email: `moi@${c.domain}`, phone: '09xx xxx xxx', status: 'Unverified', note: 'Captured from a name card at the 07/2026 job fair — email not confirmed yet.', lastContact: '—' })
+  }
+  if (c.account === 'Churn') {
+    out.push({ name: 'Lê Không Phản Hồi', title: 'Giám đốc Nhân sự', email: `le@${c.domain}`, phone: '09xx xxx xxx', status: 'Unreachable', note: 'Email bounced twice, phone rings out. Try the switchboard or LinkedIn.', lastContact: '5 months ago' })
+    out.push({ name: 'Hoàng Hẹn Lại', title: 'Trưởng phòng HCNS', email: `hoang@${c.domain}`, phone: '09xx xxx xxx', status: 'Snoozed', snoozedUntil: '01/10/2026', note: 'Budget frozen until Q4. Asked us to come back after 01/10 — do not chase before that.', lastContact: '2 months ago' })
+  }
+  return out
+}
+
+/* ── Contact detail (slide-over) ─────────────────────────────────────────────
+   A contact accumulates history a table row cannot hold — status changes, who
+   replaced whom, notes over time — so the row links here rather than trying to
+   show everything inline. Every ACTION on a contact lives in this panel, which is
+   why the list has no Actions column. */
+function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: () => void }) {
+  const st = CONTACT_STATUS[p.status]
+  const blocked = p.status === 'Left company' || p.status === 'Retired' || p.status === 'Do not contact'
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
+      <div className="flex h-full w-full max-w-[560px] flex-col bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* header */}
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Contact · {coLabel(c)}</p>
+            <h3 className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[16px] font-bold tracking-tight">
+              {p.name}
+              {p.primary && <span className="rounded border border-brand/30 bg-brand-soft px-1 py-0.5 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
+              {p.billing && <span className="rounded border border-line bg-canvas px-1 py-0.5 text-[9.5px] font-semibold text-muted">BILLING</span>}
+            </h3>
+            <p className="text-[11.5px] text-muted">{p.title}</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {/* status, with the "what do I do instead" line spelled out */}
+          <div className={cn('rounded-lg border px-3 py-2.5', blocked ? 'border-rose-200 bg-rose-50' : 'border-line bg-canvas/40')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone={st.tone}>{p.status}</Pill>
+              <span className="text-[11.5px] text-muted">{st.vi}</span>
+              {p.snoozedUntil && <span className="text-[11.5px] text-amber-700">· đến {p.snoozedUntil}</span>}
+            </div>
+            <p className={cn('mt-1.5 text-[11.5px] leading-relaxed', blocked ? 'text-rose-800' : 'text-muted')}>{st.hint}</p>
+            {p.movedTo && (
+              <p className="mt-1.5 text-[11.5px] text-brand">→ Nay ở <b>{p.movedTo}</b> — a warm lead at their new employer.</p>
+            )}
+          </div>
+
+          <DetailCard title="Details">
+            <KV label="Full name" value={p.name} />
+            <KV label="Job title" value={p.title} />
+            <KV label="Email" value={p.email} link />
+            <KV label="Phone" value={p.phone} />
+            <KV label="Decision maker" value={p.decisionMaker ? 'Yes — signs off on the purchase' : 'No'} />
+            <KV label="Receives quotations" value={p.primary ? 'Yes — PRIMARY contact' : 'No'} />
+            <KV label="Receives invoices" value={p.billing ? 'Yes — BILLING contact' : 'No'} />
+            <KV label="Login user" value={p.linkedUser ? `🔗 ${p.linkedUser}` : 'No login — contact only'} />
+            <KV label="Last contacted" value={p.lastContact} />
+          </DetailCard>
+
+          <DetailCard title="Note" action={<span className="text-[11px] text-faint">one note per contact</span>}>
+            <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink/85">{p.note}</div>
+            <p className="mt-1.5 text-[10.5px] text-faint">The human context a status cannot carry — preferred channel, who they defer to, what went wrong last time.</p>
+          </DetailCard>
+
+          <DetailCard title="History">
+            <div className="space-y-1.5 text-[11.5px] text-muted">
+              <p>· Status set to <b className="text-ink">{p.status}</b> — {p.lastContact === '—' ? 'on creation' : p.lastContact}</p>
+              <p>· Added to this company by <b className="text-ink">{c.owner}</b></p>
+              {p.linkedUser && <p>· Linked to the login <span className="font-mono text-[11px]">{p.linkedUser}</span></p>}
+            </div>
+          </DetailCard>
+        </div>
+
+        {/* every contact action lives here, not on the list row */}
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          {p.status === 'Unverified' && <button className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Verify details</button>}
+          {blocked || p.status === 'Moved department'
+            ? <button className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Find successor</button>
+            : null}
+          {!p.linkedUser && !blocked && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Invite as user</button>}
+          {!p.primary && !blocked && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Make primary</button>}
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Change status</button>
+          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Edit</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Add a contact by hand — the name-card path. Deliberately short: a contact is
+   cheap to create and details get verified later, which is what Unverified is for. */
+function AddContactModal({ c, onClose }: { c: Company; onClose: () => void }) {
+  const [status, setStatus] = useState<ContactStatus>('Unverified')
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Add contact</p>
+            <p className="text-[11px] text-muted">To {coLabel(c)} · a contact needs no login</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Full name" req value="Họ và tên" />
+            <ComboField label="Job title" value="" placeholder="Select or type a title…" options={['HR Manager', 'HR Director', 'Talent Acquisition', 'Recruiter', 'Kế toán trưởng / Chief accountant', 'CEO / Founder', 'Office Manager']} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Email" value="name@company.vn" hint="Verified before it is used on a quotation." />
+            <LField label="Phone" value="09xx xxx xxx" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Status</label>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(CONTACT_STATUS) as ContactStatus[]).map((k) => (
+                <button key={k} onClick={() => setStatus(k)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', status === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{k}</button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10.5px] text-faint">{CONTACT_STATUS[status].hint}</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Role on this account</label>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Primary contact (receives quotations)</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Billing contact (receives invoices)</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Decision maker</span>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note</label>
+            <div className="h-16 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">Preferred channel, who they defer to, anything the next rep should know…</div>
+          </div>
+          <p className="rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">
+            Adding a contact does <b>not</b> create a login. Use <b>Invite as user</b> on the contact afterwards if they need to sign in — that is an explicit, separate step.
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={onClose} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Add contact</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type CoTeamUser = { name: string; email: string; role: 'HR Manager' | 'HR Specialist'; status: 'Active' | 'Invited'; last: string }
 function companyTeam(c: Company): CoTeamUser[] {
   const noProducts = !c.jobPosting && !c.resumeSearch
@@ -1169,55 +1453,93 @@ function companyTeam(c: Company): CoTeamUser[] {
   return base.map((u) => ({ ...u, email: `${localPart(u.name)}@${c.domain}` }))
 }
 
-type CoEvent = { icon: string; tone: string; title: string; time: string; sub: string }
+/* ── Company activity feed ───────────────────────────────────────────────────
+   ONE merged trail of everything that ever happened on this account, typed by WHO
+   caused it so it can be filtered and so Idle stays honest:
 
-/* SALES ACTIVITY ONLY — what a human on our side did with the client: chats, calls,
-   and documents actually sent or confirmed to them. Deliberately NOT a merged
-   "everything that happened" feed.
+     sales   a human on OUR side did it — chat, call, quotation/PO sent
+     client  the CUSTOMER did it — posted a job, opened a CV, paid, invited a user
+     system  automatic — invoice issued, products provisioned, quota warnings
 
-   System and usage events (CV unlocked, job published, page published, payment
-   received, products provisioned, account activated) are excluded on purpose. Two
-   reasons: they already each have their own tab on this record — Resume activity,
-   Jobs, Company page, Products & billing — so nothing is lost; and mixing them in
-   makes a silent client look busy, which is exactly the signal a sales rep opens
-   this panel to read.
+   IDLE counts from the newest SALES row only. That is the rule that matters: a
+   client opening a CV or the system issuing an invoice must never make a silent
+   account look freshly contacted. Everything is visible; only sales resets the clock. */
+type CoKind = 'sales' | 'client' | 'system'
+type CoEvent = { icon: string; tone: string; title: string; time: string; sub: string; kind: CoKind; days: number }
 
-   The newest row is the last CONTACT, so it is what the Idle column counts from —
-   `c.idle` days ago. That keeps one number meaning one thing in both places. */
 const CHAT = 'bg-sky-100 text-sky-700'
 const CALL = 'bg-emerald-100 text-emerald-700'
 const DOC = 'bg-violet-100 text-violet-700'
+const CLIENT = 'bg-amber-100 text-amber-700'
+const SYS = 'bg-slate-100 text-slate-600'
+
+const KIND_META: Record<CoKind, { label: string; hint: string }> = {
+  sales: { label: 'Sales', hint: 'what we did — resets Idle' },
+  client: { label: 'Client', hint: 'what the customer did' },
+  system: { label: 'System', hint: 'automatic events' },
+}
+
 function companyActivity(c: Company): CoEvent[] {
   const contact = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
   const rep = c.owner.split(' ').slice(-2).join(' ')
-  const ago = (d: number) => `${fmtIdle(d)} ago`
   // No contact has ever been logged — a real state, and the highest-priority
   // follow-up. An empty trail says that far better than inventing history.
   if (c.idle === null) return []
   const last = c.idle
+  const ev: CoEvent[] = []
+  const add = (days: number, kind: CoKind, icon: string, tone: string, title: string, sub: string) =>
+    ev.push({ days, kind, icon, tone, title, sub, time: `${fmtIdle(days)} ago` })
 
   if (c.account === 'Churn') {
-    return [
-      { icon: '📞', tone: CALL, title: 'Call · win-back', time: ago(last), sub: `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.` },
-      { icon: '💬', tone: CHAT, title: 'Chat · Email', time: ago(last + 34), sub: `${rep} sent a renewal reminder to ${contact} — no reply.` },
-      { icon: '📄', tone: DOC, title: 'Renewal quotation sent', time: ago(last + 61), sub: `Sent to ${contact}; the quotation lapsed unanswered.` },
-    ]
+    add(last, 'sales', '📞', CALL, 'Call · win-back', `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.`)
+    add(last + 20, 'system', '⚠️', SYS, 'Subscription expired', 'All quota lapsed — the account is read-only until it is renewed.')
+    add(last + 34, 'sales', '💬', CHAT, 'Chat · Email', `${rep} sent a renewal reminder to ${contact} — no reply.`)
+    add(last + 61, 'sales', '📄', DOC, 'Renewal quotation sent', `Sent to ${contact}; the quotation lapsed unanswered.`)
+    add(last + 92, 'client', '🔍', CLIENT, 'Last CV unlocked', `${contact} opened a candidate — the final use before they went quiet.`)
+    add(last + 150, 'system', '💳', SYS, 'Payment confirmed', 'Accounting matched the bank transfer for the previous term.')
+    return ev.sort((x, y) => x.days - y.days)
   }
 
-  const ev: CoEvent[] = [
-    { icon: '💬', tone: CHAT, title: 'Chat · Zalo', time: ago(last), sub: `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.` },
-  ]
-  // Documents count as sales activity: a rep sent them to the client. Provisioning
-  // that follows a document does not — that is the system reacting.
+  // ── sales side: chats, calls and the documents we sent ────────────────────
+  add(last, 'sales', '💬', CHAT, 'Chat · Zalo', `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.`)
   if (c.status === 'PO' || c.status === 'Invoice') {
-    ev.push({ icon: '📄', tone: DOC, title: 'Order confirmed with the client', time: ago(last + 9), sub: `${contact} confirmed the accepted option; PO issued by ${rep}.` })
+    add(last + 9, 'sales', '📄', DOC, 'Purchase order sent', `${contact} confirmed the accepted option; PO issued by ${rep}.`)
   }
   if (c.status !== 'Qualified') {
-    ev.push({ icon: '📄', tone: DOC, title: 'Quotation sent', time: ago(last + 21), sub: `${rep} sent the priced options to ${contact}.` })
+    add(last + 21, 'sales', '📄', DOC, 'Quotation sent', `${rep} sent the priced options to ${contact}.`)
   }
-  ev.push({ icon: '📞', tone: CALL, title: 'Call · discovery', time: ago(last + 38), sub: `${rep} called ${contact} — logged via Calio, need and budget qualified.` })
-  ev.push({ icon: '💬', tone: CHAT, title: 'Chat · Email', time: ago(last + 52), sub: `First outreach to ${contact}.` })
-  return ev
+  add(last + 38, 'sales', '📞', CALL, 'Call · discovery', `${rep} called ${contact} — logged via Calio, need and budget qualified.`)
+  add(last + 52, 'sales', '💬', CHAT, 'Chat · Email', `First outreach to ${contact}.`)
+
+  // ── the money + provisioning chain, once they are a customer ──────────────
+  if (isCustomer(c)) {
+    add(last + 4, 'client', '💳', CLIENT, 'Payment made', `${contact} transferred ${vnd(coValue(c))} for the order.`)
+    add(last + 3, 'system', '💳', SYS, 'Payment confirmed', 'Accounting matched the transfer against the bank — invoicing unlocked.')
+    add(last + 2, 'system', '🧾', SYS, 'VAT e-invoice issued', 'Provider stamped the invoice; the 12-month activation window started.')
+    add(last + 2, 'system', '📦', SYS, 'Products provisioned',
+      [c.jobPosting && 'Job Posting', c.resumeSearch && 'Resume Search'].filter(Boolean).join(' + ') + ' — released from the paid invoice.')
+    add(last + 1, 'system', '🏢', SYS, 'Account activated', `Login created for ${contact} (HR Manager) · owner ${c.owner}.`)
+  }
+
+  // ── what the client themselves did on their site ──────────────────────────
+  if (c.jobPosting) {
+    add(Math.max(0, last - 2), 'client', '📢', CLIENT, 'Job published', `${contact} posted a role — ${c.jobTotal - c.jobLeft}/${c.jobTotal} posting slots used.`)
+    add(Math.max(0, last - 1), 'client', '📥', CLIENT, 'Applications received', 'Candidates applied to the open roles — visible on the Applications tab.')
+    if (c.hasPage) add(last + 30, 'system', '🌐', SYS, 'Company page published', 'The public profile went live on the jobseeker site.')
+    if (c.jobTotal && c.jobLeft / c.jobTotal < 0.3) {
+      add(Math.max(0, last - 3), 'system', '⚠️', SYS, 'Posting quota low', `${c.jobLeft} of ${c.jobTotal} slots left — offer a top-up.`)
+    }
+  }
+  if (c.resumeSearch) {
+    add(Math.max(0, last - 1), 'client', '🔍', CLIENT, 'CV unlocked (PII)', `${contact} opened a candidate — ${c.cvTotal - c.cvLeft}/${c.cvTotal} unlocks used · audited.`)
+    add(Math.max(0, last - 4), 'client', '🔎', CLIENT, 'Resume search run', 'Searched the CV pool — no unlock spent on a search itself.')
+  }
+  if (isCustomer(c)) {
+    add(Math.max(0, last - 5), 'client', '👤', CLIENT, 'User invited', `${contact} invited an HR Specialist to the account.`)
+    add(Math.max(0, last - 6), 'client', '🔑', CLIENT, 'Signed in', `${contact} signed in to the company site.`)
+  }
+
+  return ev.sort((x, y) => x.days - y.days)
 }
 
 /* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
@@ -1227,12 +1549,22 @@ function CompanyActivities({ c }: { c: Company }) {
   const [channel, setChannel] = useState('Zalo')
   const [note, setNote] = useState('')
   const [logged, setLogged] = useState<CoEvent[]>([])
-  const rows = [...logged, ...companyActivity(c)]
+  /** which kinds are shown — all three by default, so nothing is hidden by surprise */
+  const [show, setShow] = useState<Set<CoKind>>(new Set<CoKind>(['sales', 'client', 'system']))
+  const all = [...logged, ...companyActivity(c)]
+  const rows = all.filter((e) => show.has(e.kind))
+  const toggle = (k: CoKind) =>
+    setShow((prev) => {
+      const next = new Set(prev)
+      // never let the reader end up with an empty feed and no way back
+      if (next.has(k)) { if (next.size > 1) next.delete(k) } else next.add(k)
+      return next
+    })
 
   const save = () => {
     const entry: CoEvent = kind === 'chat'
-      ? { icon: '💬', tone: 'bg-sky-100 text-sky-700', title: `Chat · ${channel}`, time: 'just now', sub: note.trim() || 'No note added.' }
-      : { icon: '📞', tone: 'bg-emerald-100 text-emerald-700', title: 'Call · logged via Calio', time: 'just now', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.' }
+      ? { icon: '💬', tone: CHAT, title: `Chat · ${channel}`, time: 'just now', sub: note.trim() || 'No note added.', kind: 'sales', days: 0 }
+      : { icon: '📞', tone: CALL, title: 'Call · logged via Calio', time: 'just now', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.', kind: 'sales', days: 0 }
     setLogged((p) => [entry, ...p])
     setKind(null); setNote(''); setChannel('Zalo')
   }
@@ -1275,10 +1607,6 @@ function CompanyActivities({ c }: { c: Company }) {
 
           {kind === 'call' && (
             <div className="mt-3 space-y-2.5">
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
-                <span>📞 Linked with <b>Calio</b> — place the call in Calio and it auto-logs here (duration, outcome, recording).</span>
-                <button className="shrink-0 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Call via Calio</button>
-              </div>
               <div>
                 <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note</label>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call summary / next step… (auto-filled from Calio when available)" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
@@ -1290,15 +1618,42 @@ function CompanyActivities({ c }: { c: Company }) {
             </div>
           )}
 
-          {!kind && <p className="mt-3 text-[11px] leading-relaxed text-faint">Pick <b>Chat</b> to log a Zalo / Messenger / email conversation, or <b>Call</b> to log a phone call (synced from Calio).</p>}
         </div>
       </div>
 
       {/* history — table so the whole trail is scannable at a glance */}
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold text-ink">Sales activity <span className="font-normal text-muted">— contact with the client only</span></p>
-          <span className="text-[11px] text-faint">newest first</span>
+          <p className="text-[13px] font-semibold text-ink">Activity <span className="font-normal text-muted">— everything that happened on this account</span></p>
+          <span className="text-[11px] text-faint">newest first · {rows.length} of {all.length}</span>
+        </div>
+        {/* Filter by WHO caused it. All three on by default — the feed is the full
+            history; the chips are for reading it, not for hiding parts of it. */}
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          {/* "All" is both a state and a reset — one click back to the whole trail,
+              so a reader can never get stranded in a partial view. */}
+          <button
+            onClick={() => setShow(new Set<CoKind>(['sales', 'client', 'system']))}
+            className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', show.size === 3 ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
+          >
+            All
+            <span className={cn('rounded-full px-1.5 text-[10px]', show.size === 3 ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{all.length}</span>
+          </button>
+          {(['sales', 'client', 'system'] as CoKind[]).map((k) => {
+            const on = show.has(k)
+            const n = all.filter((e) => e.kind === k).length
+            return (
+              <button
+                key={k}
+                onClick={() => toggle(k)}
+                title={KIND_META[k].hint}
+                className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
+              >
+                {KIND_META[k].label}
+                <span className={cn('rounded-full px-1.5 text-[10px]', on ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{n}</span>
+              </button>
+            )
+          })}
         </div>
         {rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/50 px-3.5 py-4 text-center">
@@ -1307,20 +1662,21 @@ function CompanyActivities({ c }: { c: Company }) {
           </div>
         ) : (
           <Table
-            cols={[{ label: 'When', w: '0.8fr' }, { label: 'Activity', w: '1.3fr' }, { label: 'Details', w: '2.6fr' }]}
+            cols={[{ label: 'When', w: '0.8fr' }, { label: 'Activity', w: '1.3fr' }, { label: 'Who', w: '0.6fr' }, { label: 'Details', w: '2.4fr' }]}
             rows={rows.map((e) => [
               <span className="text-[11.5px] text-muted">{e.time}</span>,
               <span className="flex min-w-0 items-center gap-1.5">
                 <span className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]', e.tone)}>{e.icon}</span>
                 <span className="truncate font-medium text-ink">{e.title}</span>
               </span>,
+              <span className="text-[10.5px] text-faint">{KIND_META[e.kind].label}</span>,
               <span className="text-muted">{e.sub}</span>,
             ])}
           />
         )}
         <p className="mt-2 text-[11px] leading-relaxed text-faint">
-          Chats, calls and documents sent to the client — nothing else. The newest row is what <b>Idle</b> counts from, so a system event can never make a silent account look healthy.
-          System and usage events live on their own tabs: <b>Resume activity</b> (CV unlocks, always audited), <b>Jobs</b>, <b>Company page</b>, <b>Products &amp; billing</b> (payments, provisioning).
+          One trail for the whole account: <b>Sales</b> (what we did), <b>Client</b> (what the customer did — posted a job, opened a CV, paid) and <b>System</b> (invoice issued, products provisioned, quota warnings).
+          <b> Idle counts from the newest Sales row only</b>, so a client opening a CV can never make a silent account look freshly contacted. PII actions (CV unlocks) are always audited.
         </p>
       </div>
     </div>
@@ -1337,7 +1693,7 @@ function MiniStat({ label, value, sub, tone }: { label: string; value: React.Rea
   )
 }
 
-type CoTab = 'Overview' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Activity'
+type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -1615,6 +1971,8 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   useDetailCrumb(coLabel(c), onBack)
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
+  const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
+  const [addingContact, setAddingContact] = useState(false)
   const [quoting, setQuoting] = useState(false)
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
@@ -1628,6 +1986,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
 
   const tabs: { key: CoTab; label: string; count?: number }[] = [
     { key: 'Overview', label: 'Overview' },
+    { key: 'Contacts', label: 'Contacts', count: companyContacts(c).length },
     { key: 'Users', label: 'Users', count: team.length },
     { key: 'Products & billing', label: 'Products & billing' },
     { key: 'Company page', label: 'Company page' },
@@ -1719,6 +2078,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <CompanyTagPicker initial={['Korean company']} />
               <p className="mt-2 text-[11px] leading-relaxed text-faint">Editorial labels for this company (a company can carry several). Click to pick from Master data → Company tag. Shown as tags on the Company site &amp; usable as a Store filter.</p>
             </DetailCard>
+            <PeopleCard c={c} team={team} onOpenContacts={() => setTab('Contacts')} onOpenUsers={() => setTab('Users')} />
             <MembershipCard c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
@@ -1729,10 +2089,60 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       )}
 
       {/* ── Users ────────────────────────────────────────────────────────── */}
+      {/* ── Contacts — people we do business with (may have no login) ────── */}
+      {tab === 'Contacts' && (
+        <div>
+          <div>
+            <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-semibold text-ink">Contact people <span className="font-normal text-muted">— who we do business with</span></p>
+                <p className="text-[11px] text-faint">Owned by Sales. A contact does not need a login, and is never created from one.</p>
+              </div>
+              <button onClick={() => setAddingContact(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Add contact</button>
+            </div>
+            {/* No Actions column: the name is the link and every action lives in the
+                contact panel, so the row stays scannable and the note gets the width. */}
+            <Table
+              minW={980}
+              cols={[{ label: 'Contact', w: '1.5fr' }, { label: 'Title', w: '1.2fr' }, { label: 'Status', w: '1fr' }, { label: 'Has login?', w: '0.8fr' }, { label: 'Note', w: '2fr' }]}
+              rows={companyContacts(c).map((p) => [
+                <button onClick={() => setContactOpen(p)} className="block min-w-0 max-w-full text-left">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[12.5px] font-medium text-brand hover:underline">{p.name}</span>
+                    {p.primary && <span className="shrink-0 rounded border border-brand/30 bg-brand-soft px-1 py-0.5 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
+                    {p.billing && <span className="shrink-0 rounded border border-line bg-canvas px-1 py-0.5 text-[9.5px] font-semibold text-muted" title="Receives quotations & invoices">BILLING</span>}
+                    {p.decisionMaker && <span className="shrink-0 text-[10px] text-faint" title="Decision maker">◆</span>}
+                  </span>
+                  <span className="block truncate font-mono text-[10.5px] text-faint">{p.email}</span>
+                </button>,
+                <span className="truncate text-[11.5px] text-muted">{p.title}</span>,
+                <span title={CONTACT_STATUS[p.status].hint}><Pill tone={CONTACT_STATUS[p.status].tone}>{p.status}</Pill></span>,
+                p.linkedUser
+                  ? <span className="text-[11px] text-emerald-700">🔗 linked</span>
+                  : <span className="text-[11px] text-faint">no login</span>,
+                <span className="truncate text-[11.5px] text-muted" title={p.note}>{p.note}</span>,
+              ])}
+            />
+            <p className="mt-2 text-[11px] leading-relaxed text-faint">
+              Click a name to open the contact — every action (edit, change status, invite as user, find successor) lives there. Statuses answer “can I still call this person?”: <b>Left company</b>, <b>Retired</b> and <b>Do not contact</b> block outreach; <b>Moved department</b> means they are still there but no longer our buyer; <b>Snoozed</b> parks reminders until a date the contact chose. Exactly one contact is <b>PRIMARY</b> (quotations) and one is <b>BILLING</b> (invoices) — often two different people.
+            </p>
+          </div>
+
+          <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+            Contacts and <b>Users</b> are <b>independent lists</b>. A contact can exist with no login (the accountant who only receives invoices); a user can exist with no contact record (an HR Specialist the customer invited themselves). Where they are the same human the rows are <b>linked</b> 🔗 — but neither list is generated from the other, and deleting one never touches the other.
+          </p>
+        </div>
+      )}
+
+      {/* ── Users — logins on the Company site (the account's 4 seats) ────── */}
       {tab === 'Users' && (
         <div>
+          <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] font-semibold text-ink">Team members</p>
+            <div>
+              <p className="text-[13px] font-semibold text-ink">Login users <span className="font-normal text-muted">— who can sign in to the Company site</span></p>
+              <p className="text-[11px] text-faint">Owned by the customer’s HR Manager. Consumes a seat; may be someone Sales never met.</p>
+            </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className={cn('text-[11px] font-medium', full ? 'text-amber-700' : 'text-faint')}>{team.length}/{MAX_SEATS} seats</span>
               <button onClick={() => setInviting(true)} disabled={full} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">+ Invite user</button>
@@ -1754,6 +2164,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
             ])}
           />
           <p className="mt-2 text-[11px] leading-relaxed text-faint">Remove = disable (never hard-delete) — the HR Manager can’t be disabled directly; transfer the role first. A self-signup requesting to join appears here for the Manager to approve.</p>
+          </div>
+          <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
+            A seat is a <b>login</b>, not a relationship. Someone here may never appear under <b>Contacts</b> (the customer invited them without telling us), and a contact may never need a seat. Rows for the same human are <b>linked</b> 🔗 in both directions.
+          </p>
         </div>
       )}
 
@@ -1867,6 +2281,8 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       {/* ── Activities (log chat / call + timeline) ──────────────────────── */}
 
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
+      {contactOpen && <ContactDetail p={contactOpen} c={c} onClose={() => setContactOpen(null)} />}
+      {addingContact && <AddContactModal c={c} onClose={() => setAddingContact(false)} />}
       {quoting && <NewQuotationModal company={c.name} onClose={() => setQuoting(false)} />}
     </div>
   )
@@ -1971,17 +2387,14 @@ function AdminCompanyUsers() {
   }
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
-        <button onClick={() => setInviting(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Invite user</button>
-      </div>
-
       <div className="mb-3 grid gap-2 sm:grid-cols-2">
         <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">HR Manager · exactly 1</Pill><p className="mt-1.5 text-[11px] text-muted">Owner / super admin — everything, plus manage users & billing.</p></div>
         <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">HR Specialist · up to 3</Pill><p className="mt-1.5 text-[11px] text-muted">Member — post jobs / search resumes only.</p></div>
       </div>
 
-      <TabBar tabs={[{ label: 'All users', count: 1140, active: true }, { label: 'Active', count: 1020 }, { label: 'Invited', count: 96 }, { label: 'Disabled', count: 24 }]} />
-      <Table
+      <ListPage
+        action={<button onClick={() => setInviting(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ Invite user</button>}
+        tabs={[{ label: 'All users', count: 1140, active: true }, { label: 'Active', count: 1020 }, { label: 'Invited', count: 96 }, { label: 'Disabled', count: 24 }]}
         cols={[
           { label: 'User', w: '1.5fr' }, { label: 'Company (account)', w: '1.2fr' }, { label: 'Role', w: '1.1fr' },
           { label: 'Status', w: '0.9fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.5fr', align: 'r' },
@@ -2003,7 +2416,6 @@ function AdminCompanyUsers() {
           </div>,
         ])}
       />
-      <Footer text="Showing 5 of 1,140 · a self-signup can also request to join a company → the HR Manager approves it here" />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">Exactly 1 HR Manager. Making someone HR Manager <b>transfers</b> the role — the current manager becomes a Specialist; no email/login changes. If the sole manager is ever gone, HQ can reassign it.</p>
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
       {transfer && <TransferManagerModal company={transfer.company} users={users} preselect={transfer.preselect} onConfirm={applyTransfer} onClose={() => setTransfer(null)} />}
@@ -2093,13 +2505,6 @@ function AdminJobseekers() {
   const n = (s: JSStatus) => users.filter((u) => u.status === s).length
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-[62ch] text-[11.5px] text-muted">
-          Every jobseeker account on the Store site. Seekers sign themselves up (email + password or 1 of 4 social logins) — HQ searches, inspects and activates / deactivates. Click a name to open the account.
-        </p>
-        <button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ New user</button>
-      </div>
-
       {toast && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
           <span>✅ {toast}</span>
@@ -2116,7 +2521,8 @@ function AdminJobseekers() {
         <MiniStat label="New this month" value="3,204" sub="▲ 12% vs Jun" />
       </div>
 
-      <TabBar
+      <ListPage
+        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New user</button>}
         tabs={[
           { label: 'All', count: users.length, active: true },
           { label: 'Active', count: n('Active') },
@@ -2124,8 +2530,6 @@ function AdminJobseekers() {
           { label: 'Deactivated', count: n('Deactivated') },
           { label: 'Withdrawn', count: n('Withdrawn') },
         ]}
-      />
-      <Table
         minW={1120}
         cols={[
           { label: 'Jobseeker', w: '1.6fr' },
@@ -2169,7 +2573,6 @@ function AdminJobseekers() {
           </div>,
         ])}
       />
-      <Footer text="Showing 7 of 128,412 — search by name / email / phone · filter by status, sign-up method, location, joined date" />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
         Interactive prototype — <b>Simulate verify</b> flips an Unverified row to Active; <b>Deactivate</b> / <b>Reactivate</b> toggle a row. <b>Deactivated</b> is an HQ block (login refused, resumes hidden from Resume Search); <b>Withdrawn</b> is the seeker deactivating their own account from My page. Opening an account or its CV is PII access — always written to the audit log.
       </p>
@@ -2330,7 +2733,6 @@ function AdminBanners() {
     <ListPage
       cols={[{ label: 'Banner', w: '1.8fr' }, { label: 'Slot', w: '1fr' }, { label: 'Schedule', w: '1.2fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Clicks', w: '0.8fr', align: 'r' }]}
       rows={rows}
-      footer="Banners render in Store Home sections & Curation — slots link to paid ad products"
     />
   )
 }
@@ -2344,7 +2746,6 @@ function AdminPopups() {
     <ListPage
       cols={[{ label: 'Popup', w: '1.6fr' }, { label: 'Audience', w: '1.2fr' }, { label: 'Schedule', w: '1.2fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Frequency', w: '1fr', align: 'r' }]}
       rows={rows}
-      footer="Targeting + scheduling + frequency capping (don’t re-show)"
     />
   )
 }
@@ -2360,7 +2761,6 @@ function AdminPages() {
       tabs={[{ label: 'All', count: 24, active: true }, { label: 'Published', count: 19 }, { label: 'Draft', count: 5 }]}
       cols={[{ label: 'Page', w: '1.8fr' }, { label: 'Slug', w: '1.4fr' }, { label: 'Updated', w: '1fr' }, { label: 'Status', w: '0.9fr', align: 'r' }]}
       rows={rows}
-      footer="CMS pages (prototype) — full CMS vs banners+popups-only is a launch-scope decision"
     />
   )
 }
@@ -2374,7 +2774,6 @@ function AdminBoards() {
     <ListPage
       cols={[{ label: 'Board', w: '1.8fr' }, { label: 'Type', w: '1fr' }, { label: 'Posts', w: '0.7fr', align: 'r' }, { label: 'Updated', w: '1fr', align: 'r' }]}
       rows={rows}
-      footer="Content boards (prototype) — needs BE migration if in launch scope"
     />
   )
 }
@@ -2388,7 +2787,6 @@ function AdminBlog() {
     <ListPage
       cols={[{ label: 'Article', w: '2fr' }, { label: 'Author', w: '1fr' }, { label: 'Category', w: '1fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Published', w: '1fr', align: 'r' }]}
       rows={rows}
-      footer="Article model exists; menu hidden pending BE migration"
     />
   )
 }
@@ -2421,7 +2819,6 @@ function AdminCatalog() {
       cols={[{ label: 'Product', w: '1.8fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Price', w: '1fr', align: 'r' }, { label: 'Fulfilment', w: '1.3fr' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
       rows={rows}
       minW={820}
-      footer="Every product maps to an entitlement (product + remaining quota + validity) — the record downstream screens read and decrement"
     />
   )
 }
@@ -2598,7 +2995,6 @@ function AdminBundles() {
     <ListPage
       cols={[{ label: 'Package', w: '1.2fr' }, { label: 'Includes', w: '2fr' }, { label: 'Package price', w: '1.1fr', align: 'r' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
       rows={rows}
-      footer="Packages = several products at one package price (maps to Store “Recruit package”)"
     />
   )
 }
@@ -2612,7 +3008,6 @@ function AdminCredits() {
     <ListPage
       cols={[{ label: 'Company', w: '1.5fr' }, { label: 'Balance', w: '1fr', align: 'r' }, { label: 'Last change', w: '1fr', align: 'r' }, { label: 'By', w: '1fr', align: 'r' }, { label: 'When', w: '0.8fr', align: 'r' }]}
       rows={rows}
-      footer="Every change writes to an auditable credit ledger · blocked on credits-vs-cash decision"
     />
   )
 }
@@ -2628,7 +3023,6 @@ function AdminOrders() {
       tabs={[{ label: 'All', count: 312, active: true }, { label: 'Pending payment', count: 14 }, { label: 'Paid', count: 40 }, { label: 'Fulfilled', count: 250 }]}
       cols={[{ label: 'Order', w: '1fr' }, { label: 'Company', w: '1.6fr' }, { label: 'Amount', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.1fr' }, { label: 'Date', w: '1fr', align: 'r' }]}
       rows={rows}
-      footer="Draft → Pending payment → Paid → Fulfilled — no gateway wired yet"
     />
   )
 }
@@ -2642,7 +3036,6 @@ function AdminPromotions() {
     <ListPage
       cols={[{ label: 'Code', w: '1fr' }, { label: 'Discount', w: '1fr' }, { label: 'Applies to', w: '1.4fr' }, { label: 'Validity', w: '1.2fr' }, { label: 'Uses', w: '0.9fr', align: 'r' }]}
       rows={rows}
-      footer="Prototype only — decide promote-to-backend or drop"
     />
   )
 }
@@ -2749,6 +3142,79 @@ const NEXT_BY_STAGE: Record<string, string> = {
   Negotiation: 'Send the revised quote and agree terms — aim to close this week.',
   Won: 'Activate the customer: create the account & provision products.',
   Lost: 'Log the loss reason and set a reminder to re-engage next quarter.',
+}
+
+/* ── People on the Overview ───────────────────────────────────────────────────
+   The two populations a rep asks about first — who do I call, and who can sign in
+   — summarised where they land, with the full lists one click away on the
+   "Contacts & users" tab. Deliberately a SUMMARY: duplicating both tables here
+   would mean two places to keep true. */
+function PeopleCard({ c, team, onOpenContacts, onOpenUsers }: { c: Company; team: CoTeamUser[]; onOpenContacts: () => void; onOpenUsers: () => void }) {
+  const contacts = companyContacts(c)
+  /* statuses that mean "this door is closed" — the count a rep must act on */
+  const stale = contacts.filter((p) => ['Left company', 'Retired', 'Moved department', 'Unreachable'].includes(p.status))
+  const primary = contacts.find((p) => p.primary)
+  return (
+    <DetailCard
+      title="People"
+      action={<span className="text-[11px] text-faint">summary · open a list to edit</span>}
+    >
+      <div className="space-y-3">
+        <div>
+          <button onClick={onOpenContacts} className="mb-1.5 flex w-full items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint hover:text-brand">
+            Contact people
+            <span className="rounded-full bg-canvas px-1.5 text-[10px] font-medium text-muted">{contacts.length}</span>
+            <span className="ml-auto text-[10px] normal-case tracking-normal">open →</span>
+          </button>
+          <ul className="space-y-1">
+            {contacts.slice(0, 3).map((p) => (
+              <li key={p.email} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink/85">
+                  {p.name}
+                  {p.primary && <span className="ml-1 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
+                  <span className="text-faint"> · {p.title}</span>
+                </span>
+                <span className="shrink-0" title={CONTACT_STATUS[p.status].hint}>
+                  <Pill tone={CONTACT_STATUS[p.status].tone}>{CONTACT_STATUS[p.status].vi}</Pill>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {contacts.length > 3 && (
+            <button onClick={onOpenContacts} className="mt-1 text-[11px] text-brand hover:underline">+{contacts.length - 3} more</button>
+          )}
+          {stale.length > 0 && (
+            <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+              {stale.length} contact{stale.length > 1 ? 's' : ''} can no longer be reached ({stale.map((p) => p.name).join(', ')}) — find the successor before the renewal.
+            </p>
+          )}
+        </div>
+
+        <div className="border-t border-line-soft pt-2.5">
+          <button onClick={onOpenUsers} className="mb-1.5 flex w-full items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint hover:text-brand">
+            Login users
+            <span className="rounded-full bg-canvas px-1.5 text-[10px] font-medium text-muted">{team.length}/{MAX_SEATS} seats</span>
+            <span className="ml-auto text-[10px] normal-case tracking-normal">open →</span>
+          </button>
+          <ul className="space-y-1">
+            {team.slice(0, 3).map((u) => (
+              <li key={u.email} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink/85">{u.name}<span className="text-faint"> · {u.role}</span></span>
+                <span className="shrink-0"><Pill tone={u.status === 'Active' ? 'active' : 'pending'}>{u.status}</Pill></span>
+              </li>
+            ))}
+          </ul>
+          {team.length > 3 && (
+            <button onClick={onOpenUsers} className="mt-1 text-[11px] text-brand hover:underline">+{team.length - 3} more</button>
+          )}
+        </div>
+
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Two independent lists: a contact needs no login{primary ? ` (quotations go to ${primary.name})` : ''}, and a login user may be someone Sales never met.
+        </p>
+      </div>
+    </DetailCard>
+  )
 }
 
 function DetailCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
@@ -3702,10 +4168,22 @@ function AdminQuotes() {
      action is ever valid. Company detail carries "Create quotation" instead. */
   const [poFor, setPoFor] = useState<Company | null>(null)
   const [open, setOpen] = useState<Quote | null>(null)
-  if (open) return <QuotationDetail q={open} onBack={() => setOpen(null)} onCreatePO={setPoFor} />
+  const goTo = useContext(ScreenNavCtx)
+  /* Arrived via a cross-page link (e.g. from a PO row): open that quotation. Falls
+     back to a stub so a PO can always link to its source even if the quotation is
+     not one of the demo rows. */
+  const handed = useContext(OpenRecordCtx)
+  const linked = handed
+    ? QUOTES.find((x) => x.code === handed) ?? {
+        code: handed, customer: POS.find((p) => p.quote === handed)?.customer ?? '—', products: [1], options: 2,
+        value: POS.find((p) => p.quote === handed)?.total ?? 0, status: 'Issued to PO' as QuoteStatus,
+        created: '—', expires: '—',
+      }
+    : null
+  const showing = open ?? linked
+  if (showing) return <QuotationDetail q={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-quotes') }} onCreatePO={setPoFor} />
 
   const rows = QUOTES.map((q) => {
-    const canPO = !!q.acceptedOpt && q.status === 'Sent' && !q.lapsed
     return [
       <button onClick={() => setOpen(q)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{q.code}</button>,
       <span className="truncate">{q.customer}</span>,
@@ -3715,28 +4193,21 @@ function AdminQuotes() {
       <Pill tone={QUOTE_TONE[q.status]}>{q.status}</Pill>,
       <span className="tabular-nums text-muted">{q.created}</span>,
       <span className="tabular-nums text-muted">{q.expires}</span>,
-      canPO
-        ? <button onClick={() => setPoFor(COMPANIES.find((x) => x.name === q.co) ?? null)} className="rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand hover:bg-brand hover:text-white">Issue PO →</button>
-        : <span className="text-faint">—</span>,
     ]
   })
 
   return (
     <div>
       {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
-      <p className="mb-3 max-w-[60ch] text-[11.5px] text-muted">
-        Bilingual VN/EN proposal (BÁO GIÁ), 1–3 priced options per document. Creating one asks for the company
-        first — a quotation is always attached to a company and a deal, never floating.
-      </p>
       <ListPage
         tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft', count: 11 }, { label: 'Sent', count: 34 }, { label: 'Issued to PO', count: 41 }, { label: 'Expired', count: 6 }]}
         cols={[
           { label: 'Quotation', w: '1.4fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Products', w: '1.2fr' },
           { label: 'Options', w: '0.6fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1fr' },
-          { label: 'Created', w: '0.8fr' }, { label: 'Expires', w: '0.8fr' }, { label: '', w: '1.2fr' },
+          { label: 'Created', w: '0.8fr' }, { label: 'Expires', w: '0.8fr' },
         ]}
         rows={rows}
-        minW={1180}
+        minW={1000}
       />
       {poFor && <CreatePOModal c={poFor} onClose={() => setPoFor(null)} />}
     </div>
@@ -3912,7 +4383,7 @@ function poNext(step: PoStep) {
   const n = PO_FLOW[i + 1]
   if (!n) return null
   const label: Record<string, string> = {
-    sent: 'Gửi khách + thông tin thanh toán', paid: 'Xác nhận đã thanh toán',
+    sent: 'Mark as sent', paid: 'Xác nhận đã thanh toán',
     invoiced: 'Xuất hóa đơn',
   }
   return { label: label[n.key], by: n.by, accounting: n.by === 'Kế toán' }
@@ -3944,20 +4415,26 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           what moves it on and who may act — is documented in the requirement, not
           restated on screen every time a rep opens a PO. */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
+        <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-faint">Trạng thái</span>
-          <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
-          <span className="text-[11px] text-muted">{cur.vi}</span>
-        </div>
-        {next
-          ? (
-            <button className={cn('rounded-lg px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90', next.accounting ? 'bg-amber-600' : 'bg-brand')}>
-              {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
+          {/* Cancel stays available only while NO payment is confirmed. Once money
+              has landed the correction is a credit note by Kế toán, never a
+              cancellation — so the button disappears rather than erroring. */}
+          {(po.step === 'draft' || po.step === 'sent') && (
+            <button className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400">
+              Hủy PO
             </button>
-          )
-          : po.step === 'cancelled'
-            ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — không còn hành động nào</span>
-            : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
+          )}
+          {next
+            ? (
+              <button className={cn('rounded-lg px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90', next.accounting ? 'bg-amber-600' : 'bg-brand')}>
+                {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
+              </button>
+            )
+            : po.step === 'cancelled'
+              ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — không còn hành động nào</span>
+              : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
+        </div>
       </div>
 
       {/* document */}
@@ -4016,15 +4493,11 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
 
 function AdminPOs() {
   const [open, setOpen] = useState<Po | null>(null)
-  /* The PO's source quotation, opened read-only — every PO traces back to the ONE
-     accepted option it was built from, so the link is always resolvable. */
-  const [quote, setQuote] = useState<string | null>(null)
+  /* The source quotation belongs to the Quotations page, so the link navigates
+     there rather than rendering a quotation inside Purchase order — that keeps the
+     breadcrumb honest ("CRM / Quotations / EST-…") and Back going to the right list. */
+  const goTo = useContext(ScreenNavCtx)
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
-  if (quote) {
-    const q = QUOTES.find((x) => x.code === quote)
-      ?? { code: quote, customer: POS.find((p) => p.quote === quote)!.customer, products: [1], options: 2, value: POS.find((p) => p.quote === quote)!.total, status: 'Issued to PO' as QuoteStatus, created: '—', expires: '—', acceptedOpt: 1 }
-    return <QuotationDetail q={q} onBack={() => setQuote(null)} onCreatePO={() => {}} />
-  }
   return (
     <ListPage
       tabs={[{ label: 'All', count: 64, active: true }, { label: 'Sent' }, { label: 'Confirmed' }, { label: 'Awaiting payment', count: 9 }, { label: 'Invoiced' }]}
@@ -4035,7 +4508,7 @@ function AdminPOs() {
       rows={POS.map((p) => [
         <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
         <span className="truncate">{p.customer}</span>,
-        <button onClick={() => setQuote(p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
+        <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[p.step]}>{poStage(p.step).en}</Pill>,
         <span className="tabular-nums text-muted">{p.issued}</span>,
@@ -4058,7 +4531,6 @@ function AdminPayments() {
       cols={[{ label: 'Reference', w: '1fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Order', w: '0.9fr' }, { label: 'Amount', w: '1.1fr', align: 'r' }, { label: 'Method', w: '1.1fr' }, { label: 'Status', w: '1.6fr' }, { label: 'Paid', w: '0.9fr', align: 'r' }]}
       rows={rows}
       minW={860}
-      footer="Money lands against the ORDER, not an invoice · Recorded ≠ Confirmed — only Accounting confirms it against the bank, and that click is what unlocks invoicing"
     />
   )
 }
@@ -4072,7 +4544,6 @@ function AdminContracts() {
     <ListPage
       cols={[{ label: 'Contract', w: '1fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'Value', w: '1.2fr', align: 'r' }, { label: 'Status', w: '1fr' }, { label: 'Validity', w: '1.8fr', align: 'r' }]}
       rows={rows}
-      footer="Draft → Active on signing → Expired past end date · e-sign + storage TBD"
     />
   )
 }
@@ -4111,7 +4582,6 @@ function AdminSalesReport() {
           ['Main ad', '36', '0.29B ₫', '9%'],
           ['Boosts', '61', '0.18B ₫', '6%'],
         ]}
-        footer="Mock timeseries today — needs a real sales-aggregation read model"
       />
     </div>
   )
@@ -4137,7 +4607,6 @@ function AdminRevenueReport() {
       <ListPage
         cols={[{ label: 'Month', w: '1fr' }, { label: 'Bookings', w: '1.2fr', align: 'r' }, { label: 'Recognized', w: '1.2fr', align: 'r' }, { label: 'Refunds', w: '1fr', align: 'r' }]}
         rows={[['May 2026', '2.1B ₫', '1.7B ₫', '12M ₫'], ['Jun 2026', '2.3B ₫', '1.9B ₫', '18M ₫'], ['Jul 2026', '2.4B ₫', '2.0B ₫', '9M ₫']]}
-        footer="Backed by a real revenue read model — reconciles with orders"
       />
     </div>
   )
@@ -4613,10 +5082,6 @@ function AdminUsers() {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
-        <button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Create operator</button>
-      </div>
-
       {toast && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
           <span>✅ {toast}</span>
@@ -4624,8 +5089,9 @@ function AdminUsers() {
         </div>
       )}
 
-      <TabBar tabs={[{ label: 'All', count: users.length, active: true }, { label: 'Active', count: users.filter((u) => u.status === 'Active').length }, { label: 'Pending', count: users.filter((u) => u.status === 'Pending').length }, { label: 'Disabled', count: users.filter((u) => u.status === 'Disabled').length }]} />
-      <Table
+      <ListPage
+        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ Create operator</button>}
+        tabs={[{ label: 'All', count: users.length, active: true }, { label: 'Active', count: users.filter((u) => u.status === 'Active').length }, { label: 'Pending', count: users.filter((u) => u.status === 'Pending').length }, { label: 'Disabled', count: users.filter((u) => u.status === 'Disabled').length }]}
         minW={1060}
         cols={[{ label: 'Operator', w: '1.1fr' }, { label: 'Email (login)', w: '1.4fr' }, { label: 'Department', w: '0.9fr' }, { label: 'Role', w: '1.1fr' }, { label: 'Status', w: '1fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.6fr', align: 'r' }]}
         rows={users.map((u) => [
@@ -5051,7 +5517,6 @@ function AdminAuditLog() {
     <ListPage
       cols={[{ label: 'Time', w: '0.7fr' }, { label: 'Actor', w: '1.2fr' }, { label: 'Action', w: '1.6fr' }, { label: 'Target', w: '1.8fr', align: 'r' }]}
       rows={rows}
-      footer="Immutable log · PII-view actions (resumes) are always audited"
     />
   )
 }
@@ -5092,7 +5557,6 @@ function AdminDepartments() {
     <ListPage
       cols={[{ label: 'Department', w: '1.6fr' }, { label: 'Members', w: '0.8fr', align: 'r' }, { label: 'Lead', w: '1.4fr', align: 'r' }]}
       rows={rows}
-      footer="Prototype only (no BE counterpart) — org-department reference data"
     />
   )
 }
@@ -5141,8 +5605,8 @@ function AdminSignups() {
         <div className="rounded-lg border border-line p-2.5"><Pill tone="active">Existing customer</Pill><p className="mt-1.5 text-[11px] text-muted">Already a customer → <b className="text-ink">Send join request</b> to their admin.</p></div>
       </div>
 
-      <TabBar tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Dismissed', count: 3 }]} />
-      <Table
+      <ListPage
+        tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Dismissed', count: 3 }]}
         cols={[
           { label: 'Person', w: '1.4fr' }, { label: 'Company entered', w: '1.2fr' }, { label: 'Match', w: '1.6fr' },
           { label: 'Status', w: '1.3fr' }, { label: 'When', w: '0.6fr' }, { label: 'Action', w: '1.4fr', align: 'r' },

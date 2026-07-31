@@ -92,6 +92,66 @@ export const crm: BuildModule = {
       warn: 'The ID is immutable. Never re-issue, re-sequence or “tidy up” company IDs — quotations, orders, invoices, contracts and audit-log entries all reference it, so changing one silently breaks the paper trail.',
     },
     {
+      label: 'Contact people vs login users — two independent lists',
+      text: 'A company carries TWO separate populations of people, and neither is ever generated from the other. Confusing them is what makes CRMs rot: sales loses the accountant who has no login, and the seat count fills with people nobody ever spoke to.',
+      table: {
+        cols: ['', 'Contact person', 'Login user'],
+        rows: [
+          ['What it is', 'Someone we do business with', 'A login on the Company site'],
+          ['Owned by', 'Sales (CRM record)', 'The customer’s HR Manager'],
+          ['Needs a login?', 'No — most never have one', 'Yes, that is what it IS'],
+          ['Consumes a seat?', 'No', 'Yes — 1 of the 4 seats'],
+          ['Typical example', 'CFO who signs off · accountant who receives invoices', 'HR Specialist the customer invited themselves'],
+        ],
+      },
+      items: [
+        'Where the same human is both, the two rows are LINKED and the UI shows 🔗. The link is informational — deleting or disabling one never touches the other.',
+        'A contact can be promoted with “Invite as user”, which creates a user row and links it. That is an explicit action, never automatic.',
+        'Exactly ONE contact is the PRIMARY contact — the person quotations, orders and invoices are addressed to. A separate optional flag marks decision makers.',
+      ],
+      warn: 'Never auto-create one from the other, and never delete in pairs. A user leaving the seat does not delete the sales relationship; removing a contact must not lock someone out of the product.',
+    },
+    {
+      label: 'Contact status — “can I still call this person?”',
+      text: 'The status exists to stop wasted outreach and compliance mistakes, so it records what changed about the PERSON, not how the deal is going.',
+      table: {
+        cols: ['Status', 'Vietnamese', 'What it means for outreach'],
+        rows: [
+          ['Unverified', 'Chưa xác minh', 'Captured from a form / name card — email & phone not confirmed. Must be verified before the contact is used on a quotation'],
+          ['Active', 'Đang liên hệ', 'Current contact — safe to call or email'],
+          ['On leave', 'Đang nghỉ phép / thai sản', 'Temporarily unreachable — use the cover person'],
+          ['Snoozed', 'Tạm dừng liên hệ', 'Asked us to come back later — reminders resume on the snooze date (the date is required)'],
+          ['Moved department', 'Đã chuyển phòng ban', 'Still at the company but no longer our buyer — ask for the successor'],
+          ['Left company', 'Đã nghỉ việc', 'Gone; email will bounce — find the replacement, and record where they went if known'],
+          ['Retired', 'Đã nghỉ hưu', 'Left the workforce — no person to follow, ask the company for the new owner'],
+          ['Unreachable', 'Không liên lạc được', 'Email bounced or phone dead — details need verifying'],
+          ['Do not contact', 'Không liên hệ', 'Asked not to be contacted — a compliance flag, never overridden'],
+        ],
+      },
+      items: [
+        'Left company / Retired / Moved department must surface a “Find successor” action — a company with no Active contact is a silent churn risk and belongs in Needs attention.',
+        'Left company can carry WHERE they went. The person who bought from us is now buying for someone else, so “Follow to new company” creates a lead at that employer — the cheapest warm lead in the system.',
+        'Do not contact suppresses every automated email as well as manual outreach (PDPA-style consent withdrawal), and cannot be cleared by a rep alone.',
+        'A contact is never hard-deleted — status is what changes, so the history of who we dealt with stays intact.',
+      ],
+    },
+    {
+      label: 'Contact flags — the role a contact plays, separate from their status',
+      text: 'Status says whether we can reach the person; flags say what they are FOR. A company usually needs two different people on the paperwork, so both flags are set independently.',
+      table: {
+        cols: ['Flag', 'Who it usually is', 'What the system does with it'],
+        rows: [
+          ['PRIMARY (exactly one)', 'The HR Manager / buyer', 'Quotations and orders are addressed to them; they are the contact shown on the company row'],
+          ['BILLING', 'Kế toán trưởng — often never speaks to Sales', 'Receives the VAT e-invoice and payment chasing'],
+          ['◆ Decision maker', 'Director / CFO who signs off', 'Read-only marker for the rep — no automation hangs off it'],
+        ],
+      },
+      items: [
+        'PRIMARY and BILLING are frequently different humans — an invoice sent to the buyer instead of the accountant is a real cause of late payment.',
+        'The company Overview shows a People summary (contacts + login users, with the unreachable count); the full two lists live on the record’s “Contacts & users” tab.',
+      ],
+    },
+    {
       label: 'Company NAME — what is displayed vs what is stored',
       text: 'A company stores a legal name and an optional short (brand) name. Every list and card shows the SHORT name, falling back to the legal name when it is empty — one rule, so the same company never reads two different ways on two screens.',
       table: {

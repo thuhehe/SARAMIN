@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
@@ -9,12 +9,14 @@ import {
   BarChart3,
   Settings,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
 } from 'lucide-react'
 import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewQuotationModal , DetailCrumbCtx } from './adminPrototypes'
+import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewQuotationModal, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx } from './adminPrototypes'
 import type { DetailCrumb } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
@@ -70,6 +72,43 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-audit-log': { module: 'admin-access', feature: 'Audit log' },
   'admin-environment': { module: 'admin-access', feature: 'Environment' },
   'admin-departments': { module: 'admin-access', feature: 'Departments' },
+}
+
+/* ── Sidebar state, remembered per reader ────────────────────────────────────
+   Collapsing is a preference, not a per-visit decision: someone who works in the
+   wide CRM tables collapses once and expects it to stay that way. Both bits live
+   in localStorage and fail silently where it isn't available. */
+const LS_COLLAPSED = 'admin-nav-collapsed'
+const LS_OPEN_GROUPS = 'admin-nav-open-groups'
+
+function readStored<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw === null ? fallback : (JSON.parse(raw) as T)
+  } catch {
+    return fallback
+  }
+}
+function writeStored(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* private mode / storage disabled — the preference just doesn't persist */
+  }
+}
+
+/** True while the viewport is wide enough for the labelled sidebar to earn its width. */
+function useWideViewport() {
+  const [wide, setWide] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const onChange = () => setWide(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return wide
 }
 
 /** Resolve an admin page to its authored spec page, or null if none exists yet. */
@@ -206,11 +245,59 @@ export function AdminWireframe() {
     const g = NAV_GROUPS.find((x) => x.label === 'Recruitment') ?? NAV_GROUPS[0]
     return { group: g.label, item: g.items[0] }
   })
+  /* Bumped on every nav click. Used as the page's key so re-clicking the ALREADY
+     ACTIVE item remounts it: without this the shell clears the breadcrumb but the
+     page keeps its own detail state, and the crumb then describes a list while the
+     content still shows a record. */
+  const [navSeq, setNavSeq] = useState(0)
   const select = (group: string, item: NavItem) => {
     setWalkthrough(null)
     setDetail(null)
+    setOpenRecord(null)
+    setNavSeq((n) => n + 1)
     setActive({ group, item })
   }
+
+  /* A record linked from another page: switch to the page that OWNS the record and
+     hand it the id to open, so the breadcrumb names the right module and Back
+     returns to the right list. */
+  const [openRecord, setOpenRecord] = useState<string | null>(null)
+  const goToScreen = (specId: string, record?: string) => {
+    for (const g of NAV_GROUPS) {
+      const item = g.items.find((x) => x.specId === specId)
+      if (!item) continue
+      setWalkthrough(null)
+      setDetail(null)
+      setNavSeq((n) => n + 1)
+      setActive({ group: g.label, item })
+      setOpenRecord(record ?? null)
+      return
+    }
+  }
+
+  /* Sidebar chrome: collapsed to an icon rail, and which groups are unfolded.
+     Below md the labelled panel has nowhere to go, so the rail is forced on. */
+  const [collapsed, setCollapsed] = useState(() => readStored(LS_COLLAPSED, false))
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    readStored(LS_OPEN_GROUPS, Object.fromEntries(NAV_GROUPS.map((g) => [g.label, true]))),
+  )
+  const wide = useWideViewport()
+  const railOnly = collapsed || !wide
+  useEffect(() => writeStored(LS_COLLAPSED, collapsed), [collapsed])
+  useEffect(() => writeStored(LS_OPEN_GROUPS, openGroups), [openGroups])
+
+  /* "[" toggles the sidebar — the shortcut every console with a collapsible nav
+     uses. Ignored while the reader is typing, so it can't eat a keystroke. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return
+      setCollapsed((c) => !c)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const specHref = specPath(active.item.specId)
   const Proto = active.item.specId ? ADMIN_PROTOTYPES[active.item.specId] : undefined
@@ -224,72 +311,128 @@ export function AdminWireframe() {
 
       {/* ── Wireframe frame ─────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-line bg-surface overflow-hidden shadow-sm">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 border-b border-line bg-canvas/50 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-            <span className="text-[13px] font-semibold">Saramin · HQ Admin</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex rounded-md border border-line bg-surface text-[11px] font-medium overflow-hidden">
-              <span className="px-2 py-1 bg-brand text-white">VI</span>
-              <span className="px-2 py-1 text-muted">EN</span>
-              <span className="px-2 py-1 text-muted">KO</span>
-            </div>
-            <span className="relative grid h-7 w-7 place-items-center rounded-md border border-line text-muted">
-              <Bell className="h-3.5 w-3.5" />
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500" />
-            </span>
-            <span className="h-7 w-7 rounded-full bg-gradient-to-br from-brand to-violet-500" />
-          </div>
-        </div>
-
-        {/* Body: sidebar + content */}
-        <div className="grid grid-cols-1 md:grid-cols-[236px_minmax(0,1fr)]">
-          {/* Sidebar */}
-          <nav className="border-r border-line bg-canvas/30 py-2 max-h-[640px] overflow-y-auto scroll-thin">
-            {NAV_GROUPS.map((g) => (
-              <SidebarGroup
-                key={g.label}
-                group={g}
-                activeItem={active.group === g.label ? active.item.label : null}
-                onSelect={(item) => select(g.label, item)}
-              />
-            ))}
-          </nav>
-
-          {/* Content preview */}
-          <div className="min-w-0 bg-surface">
-            <div className="flex items-center gap-2 border-b border-line-soft px-5 py-3 text-[11.5px] text-muted">
-              <span className="shrink-0">{active.group}</span>
-              <span className="shrink-0 text-faint">/</span>
-              {/* On a detail view the page segment becomes the way BACK, and the record
-                  itself is the last crumb — so no page needs a "← Back to X" button. */}
-              {detail ? (
-                <button onClick={detail.onBack} className="shrink-0 text-brand hover:underline">{active.item.label}</button>
+        {/* ── Row 1: the console's ONLY bar ───────────────────────────────
+            The brand block sits at the sidebar's width so the top-left corner
+            reads as one piece with the nav under it, and the breadcrumb lives
+            IN this bar rather than in a second row below it. */}
+        <div className="flex h-[52px] shrink-0 border-b border-line">
+          <div
+            className={cn(
+              'flex shrink-0 items-center gap-2.5 overflow-hidden border-r border-line transition-[width] duration-150',
+              railOnly ? 'w-14 justify-center px-0' : 'w-[236px] pl-3 pr-1.5',
+            )}
+          >
+            {railOnly ? (
+              /* Collapsed: the logo IS the way back out — hovering it turns into the
+                 expand arrow. Below md there is nothing to expand into, so it stays
+                 a plain mark. */
+              wide ? (
+                <button
+                  onClick={() => setCollapsed(false)}
+                  title="Expand sidebar  ["
+                  aria-label="Expand sidebar"
+                  className="group grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-canvas"
+                >
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-[12px] font-bold text-white group-hover:hidden">S</span>
+                  <ChevronRight className="hidden h-4 w-4 text-ink group-hover:block" />
+                </button>
               ) : (
-                <span className="font-medium text-ink">{active.item.label}</span>
-              )}
-              {detail && (
-                <>
-                  <span className="shrink-0 text-faint">/</span>
-                  <span className="truncate font-medium text-ink">{detail.label}</span>
-                </>
-              )}
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                <ActivityLogButton page={active.item.label} />
-                {specHref && (
-                  <Link to={specHref} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
-                    View full spec <ExternalLink className="h-3 w-3" />
-                  </Link>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand text-[12px] font-bold text-white">S</span>
+              )
+            ) : (
+              <>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand text-[12px] font-bold text-white">S</span>
+                <span className="min-w-0 truncate text-[13px] font-semibold">Saramin · HQ Admin</span>
+                {/* Collapse lives on the sidebar's own header, pointing at the thing
+                    it moves — not out in the page bar. */}
+                <button
+                  onClick={() => setCollapsed(true)}
+                  title="Collapse sidebar  ["
+                  aria-label="Collapse sidebar"
+                  className="ml-auto grid h-7 w-7 shrink-0 place-items-center rounded-lg text-faint transition-colors hover:bg-canvas hover:text-ink"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-1 items-center">
+            <div className="flex min-w-0 items-center gap-2.5 px-3">
+              {/* Breadcrumb. On a detail view the page segment becomes the way BACK,
+                  and the record itself is the last crumb — so no page needs its own
+                  "← Back to X" button. */}
+              <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted">
+                {/* the group segment is the first thing to go when the bar is tight —
+                    the page (and the record on a detail view) matter more */}
+                <span className="hidden shrink-0 lg:inline">{active.group}</span>
+                <span className="hidden shrink-0 text-faint lg:inline">/</span>
+                {detail ? (
+                  <button onClick={detail.onBack} className="shrink-0 text-brand hover:underline">{active.item.label}</button>
+                ) : (
+                  <span className="truncate font-medium text-ink">{active.item.label}</span>
+                )}
+                {detail && (
+                  <>
+                    <span className="shrink-0 text-faint">/</span>
+                    <span className="truncate font-medium text-ink">{detail.label}</span>
+                  </>
                 )}
               </div>
             </div>
 
+            <div className="ml-auto flex h-full items-center">
+              <div className="flex h-full items-center gap-2 border-l border-line px-3">
+                <ActivityLogButton page={active.item.label} />
+                {specHref && (
+                  <Link to={specHref} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
+                    <span className="hidden lg:inline">View full spec</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+              <div className="flex h-full items-center gap-2 border-l border-line px-3">
+                <div className="hidden overflow-hidden rounded-md border border-line text-[11px] font-medium xl:flex">
+                  <span className="bg-brand px-2 py-1 text-white">VI</span>
+                  <span className="px-2 py-1 text-muted">EN</span>
+                  <span className="px-2 py-1 text-muted">KO</span>
+                </div>
+                <span className="relative grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line text-muted">
+                  <Bell className="h-3.5 w-3.5" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500" />
+                </span>
+                <span className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body: sidebar + content */}
+        <div className="flex">
+          <AdminSidebar
+            collapsed={railOnly}
+            activeGroup={active.group}
+            activeItem={active.item.label}
+            openGroups={openGroups}
+            onToggleGroup={(label) => setOpenGroups((o) => ({ ...o, [label]: !(o[label] ?? true) }))}
+            onSetAllGroups={(open) =>
+              setOpenGroups(Object.fromEntries(NAV_GROUPS.map((g) => [g.label, open])))
+            }
+            onExpandSidebar={(label) => {
+              setCollapsed(false)
+              setOpenGroups((o) => ({ ...o, [label]: true }))
+            }}
+            onSelect={(group, item) => select(group, item)}
+          />
+
+          {/* Content preview */}
+          <div className="min-w-0 flex-1 bg-surface">
             <div className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-[17px] font-semibold">{active.item.label}</h3>
-                {!walkthrough && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
+                {/* Create belongs to the LIST. On a detail view (detail is set) the
+                    page's verb is whatever that record allows, not "new". */}
+                {!walkthrough && !detail && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
                   <button
                     onClick={() => setCreating(active.item.specId!)}
                     className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
@@ -311,13 +454,21 @@ export function AdminWireframe() {
                   {walkthrough === 'activation' ? <ActivationFlow initialPhase={2} /> : <MonetizationFlow />}
                 </div>
               ) : active.item.specId === 'admin-sales-pipeline' ? (
-                <DetailCrumbCtx.Provider value={setDetail}>
-                  <AdminPipeline onActivate={() => setWalkthrough('activation')} />
-                </DetailCrumbCtx.Provider>
+                <ScreenNavCtx.Provider value={goToScreen}>
+                  <OpenRecordCtx.Provider value={openRecord}>
+                    <DetailCrumbCtx.Provider value={setDetail}>
+                      <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+                    </DetailCrumbCtx.Provider>
+                  </OpenRecordCtx.Provider>
+                </ScreenNavCtx.Provider>
               ) : Proto ? (
-                <DetailCrumbCtx.Provider value={setDetail}>
-                  <Proto />
-                </DetailCrumbCtx.Provider>
+                <ScreenNavCtx.Provider value={goToScreen}>
+                  <OpenRecordCtx.Provider value={openRecord}>
+                    <DetailCrumbCtx.Provider value={setDetail}>
+                      <Proto key={`${active.item.specId}-${navSeq}`} />
+                    </DetailCrumbCtx.Provider>
+                  </OpenRecordCtx.Provider>
+                </ScreenNavCtx.Provider>
               ) : (
                 <>
                   <div className="overflow-hidden rounded-xl border border-line">
@@ -357,47 +508,167 @@ export function AdminWireframe() {
   )
 }
 
-function SidebarGroup({
-  group,
+/* ── Sidebar ─────────────────────────────────────────────────────────────────
+   Two widths, one nav. Expanded (236px) it is the familiar grouped tree, each
+   group foldable. Collapsed (56px) it is a rail of the six group icons, and the
+   labels come back on demand: HOVER an icon for a flyout of that group's pages
+   (jump without leaving the collapsed state), CLICK it to expand the sidebar on
+   that group. So collapsing never costs the reader access to a page — only the
+   labels being permanently on screen. */
+function AdminSidebar({
+  collapsed,
+  activeGroup,
   activeItem,
+  openGroups,
+  onToggleGroup,
+  onSetAllGroups,
+  onExpandSidebar,
   onSelect,
 }: {
-  group: NavGroup
-  activeItem: string | null
-  onSelect: (item: NavItem) => void
+  collapsed: boolean
+  activeGroup: string
+  activeItem: string
+  openGroups: Record<string, boolean>
+  onToggleGroup: (label: string) => void
+  onSetAllGroups: (open: boolean) => void
+  onExpandSidebar: (label: string) => void
+  onSelect: (group: string, item: NavItem) => void
 }) {
-  const [open, setOpen] = useState(true)
+  /* group whose flyout is showing, and where to pin it (the icon's offset) */
+  const [fly, setFly] = useState<{ label: string; top: number } | null>(null)
+  const flyGroup = fly && NAV_GROUPS.find((g) => g.label === fly.label)
+  const allOpen = NAV_GROUPS.every((g) => openGroups[g.label] ?? true)
+
   return (
-    <div className="mt-1">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] font-medium text-ink/80 hover:bg-canvas/70"
-      >
-        <span className="text-faint">{group.icon}</span>
-        <span className="truncate">{group.label}</span>
-        <ChevronDown className={cn('ml-auto h-3.5 w-3.5 text-faint transition-transform', !open && '-rotate-90')} />
-      </button>
-      {open && (
-        <ul>
-          {group.items.map((it) => {
-            const isActive = activeItem === it.label
+    <aside
+      onMouseLeave={() => setFly(null)}
+      className={cn(
+        'relative flex shrink-0 border-r border-line bg-canvas/30 transition-[width] duration-150',
+        collapsed ? 'w-14' : 'w-[236px]',
+      )}
+    >
+      {collapsed ? (
+        <nav className="flex max-h-[640px] w-full flex-col items-center gap-1 overflow-y-auto scroll-thin py-2">
+          {NAV_GROUPS.map((g) => (
+            <button
+              key={g.label}
+              title={g.label}
+              aria-label={g.label}
+              onMouseEnter={(e) => setFly({ label: g.label, top: e.currentTarget.offsetTop })}
+              onClick={() => onExpandSidebar(g.label)}
+              className={cn(
+                'grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-colors',
+                activeGroup === g.label ? 'bg-brand-soft text-brand' : 'text-faint hover:bg-canvas hover:text-ink',
+              )}
+            >
+              {g.icon}
+            </button>
+          ))}
+        </nav>
+      ) : (
+        <nav className="max-h-[640px] w-full overflow-y-auto scroll-thin px-2 py-2.5">
+          {NAV_GROUPS.map((g) => {
+            const open = openGroups[g.label] ?? true
             return (
-              <li key={it.label}>
+              <div key={g.label}>
                 <button
-                  onClick={() => onSelect(it)}
-                  className={cn(
-                    'flex w-full items-center gap-2 py-1.5 pl-9 pr-3 text-left text-[12px] transition-colors',
-                    isActive ? 'bg-brand-soft text-brand font-medium' : 'text-ink/70 hover:bg-canvas/70',
-                  )}
+                  onClick={() => onToggleGroup(g.label)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] font-medium text-ink hover:bg-canvas"
                 >
-                  <span className="truncate">{it.label}</span>
+                  <span className={cn(activeGroup === g.label ? 'text-brand' : 'text-faint')}>{g.icon}</span>
+                  <span className="truncate">{g.label}</span>
+                  {/* folded away but holding the current page — the reader still
+                      needs to see where they are */}
+                  {!open && activeGroup === g.label && (
+                    <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                  )}
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0 text-faint transition-transform',
+                      !open && activeGroup === g.label ? 'ml-1.5' : 'ml-auto',
+                      !open && '-rotate-90',
+                    )}
+                  />
                 </button>
-              </li>
+                {open && (
+                  <ul>
+                    {g.items.map((it) => (
+                      <li key={it.label}>
+                        <NavPage
+                          label={it.label}
+                          active={activeGroup === g.label && activeItem === it.label}
+                          onClick={() => onSelect(g.label, it)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )
           })}
-        </ul>
+          {/* One click between the full tree and a six-line index of the console. */}
+          <button
+            onClick={() => onSetAllGroups(!allOpen)}
+            className="mt-2 w-full border-t border-line-soft px-2 pt-2 text-left text-[11px] text-muted hover:text-brand"
+          >
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+        </nav>
       )}
-    </div>
+
+      {/* flyout — the collapsed rail's labels, on hover */}
+      {collapsed && flyGroup && (
+        <div
+          style={{ top: fly!.top - 6 }}
+          className="absolute left-14 z-30 min-w-[196px] rounded-xl border border-line bg-surface p-1.5 shadow-xl"
+        >
+          <p className="px-2 pb-1 pt-1 text-[9.5px] font-bold uppercase tracking-[0.14em] text-faint">
+            {flyGroup.label}
+          </p>
+          <ul>
+            {flyGroup.items.map((it) => (
+              <li key={it.label}>
+                <NavPage
+                  label={it.label}
+                  active={activeGroup === flyGroup.label && activeItem === it.label}
+                  flush
+                  onClick={() => {
+                    setFly(null)
+                    onSelect(flyGroup.label, it)
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </aside>
+  )
+}
+
+/** One page row — indented under its group in the panel, flush inside a flyout. */
+function NavPage({
+  label,
+  active,
+  flush,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  flush?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center rounded-lg py-1.5 pr-2 text-left text-[12px] transition-colors',
+        flush ? 'pl-2' : 'pl-8',
+        active ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas',
+      )}
+    >
+      <span className="truncate">{label}</span>
+    </button>
   )
 }
 

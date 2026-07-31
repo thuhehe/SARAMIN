@@ -29,6 +29,48 @@ export const adminAccess: BuildModule = {
   owner: 'Luong',
   requirements: [
     {
+      label: 'Console shell — one bar, one sidebar',
+      text: 'Every admin page is framed by the same chrome: a single top bar and a left sidebar. The bar carries the breadcrumb (Group / Page / Record) as well as global search, so there is never a second bar under it — a page’s own title and its create action belong to the page body, not the frame. The sidebar’s switcher block (logo + console name) sits at the sidebar’s width, so the top-left corner reads as one piece with the nav below it.',
+      items: [
+        'Nav groups (Analytics · Recruitment · User · CRM · Content · System) are foldable; “Expand all / Collapse all” turns the tree into a six-line index and back.',
+        'A folded group holding the current page shows a dot on its header, so the reader never loses their position.',
+        'Role permissions still decide what is in the nav at all: a page granted None is not rendered in either state.',
+      ],
+    },
+    {
+      label: 'Sidebar states — collapse is a saved preference',
+      text: 'Wide tables (pipeline, quotations, jobs) need the horizontal room, so the sidebar collapses to an icon rail. Collapsing never costs access to a page — only the labels being permanently on screen.',
+      table: {
+        cols: ['State', 'Width', 'How the reader navigates'],
+        rows: [
+          ['Expanded', '236 px', 'Full grouped tree, one page per row'],
+          ['Collapsed', '56 px (icon rail)', 'Hover a group icon → flyout of its pages; click the icon → the sidebar expands with that group open'],
+          ['Narrow viewport (< 768 px)', '56 px (forced)', 'Rail only — the labelled panel has nowhere to go, so the flyout is the nav'],
+        ],
+      },
+      items: [
+        'Toggled from the bar or with the “[” shortcut.',
+        'Both the collapsed state and which groups are open persist per operator (browser storage), so the console reopens the way it was left.',
+      ],
+    },
+    {
+      label: 'List pages — one toolbar, one footer',
+      text: 'Every list in the console is built from the same two strips, so a page never explains itself in prose: the reader sees the data.',
+      table: {
+        cols: ['Strip', 'Holds', 'Rule'],
+        rows: [
+          ['Toolbar (above the table)', 'Status tabs · search · the page’s create button', 'One row. No description paragraph above a table.'],
+          ['Table', 'Columns only', 'Empty search result reads “No rows match …”'],
+          ['Footer (below the table)', 'Rows per page (10 / 20 / 50 / 100) · pagination', 'No explanatory footnote — the count belongs to the pagination, not a sentence.'],
+        ],
+      },
+      items: [
+        'ONE search box per list, matching against every column — no field picker to learn and no guessing which column a value lives in.',
+        'Search ignores diacritics and case, so “cong ty” finds “Công ty” — required for VN data entered both ways.',
+        'Rows per page is the operator’s choice, not a fixed page size.',
+      ],
+    },
+    {
       label: 'Operators vs company users — two separate populations',
       table: {
         cols: ['Population', 'Who they are', 'Where they work'],
