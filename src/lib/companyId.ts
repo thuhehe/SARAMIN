@@ -1,11 +1,11 @@
 /*
- * COMPANY ID — `JW-XXXXXXX`
+ * COMPANY ID — `CO-XXXXXXX`
  *
  * The human-facing identifier for a company: shown in the UI, in URLs, in exports
  * and quoted over the phone to support. It is NOT the database key — the database
  * keeps its own `bigint` primary key, and this code is a reversible encoding of it.
  *
- *   JW-        prefix, so the ID is self-describing in a log or a support ticket
+ *   CO-        prefix, so the ID is self-describing in a log or a support ticket
  *   6 chars    the internal key, scrambled then Crockford-Base32 encoded
  *   1 char     check character — rejects a mistyped ID instead of opening the wrong company
  *
@@ -64,7 +64,7 @@ export function companyId(key: number): string {
     payload = ALPHABET[n % 32] + payload
     n = Math.floor(n / 32)
   }
-  return `JW-${payload}${checkChar(payload)}`
+  return `CO-${payload}${checkChar(payload)}`
 }
 
 /**
@@ -78,7 +78,7 @@ export function parseCompanyId(input: string): number | null {
   const cleaned = String(input)
     .trim()
     .toUpperCase()
-    .replace(/^JW-/, '')
+    .replace(/^CO-/, '')
     .replace(/[IL]/g, '1')
     .replace(/O/g, '0')
     .replace(/U/g, 'V')

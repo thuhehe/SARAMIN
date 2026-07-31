@@ -78,19 +78,19 @@ function Tab({ label, count, active }: { label: string; count?: number; active?:
   )
 }
 
-/* One search box per list, sitting on the tab row so a list never grows a second
-   toolbar. It matches against EVERY column's rendered text (see `cellText`), which
-   is what people actually expect from a single box above a table — no field picker
-   to learn, and no guessing which column a value lives in. */
-function TableSearch({ q, onChange }: { q: string; onChange: (v: string) => void }) {
+/* One search box per list, first control on the filter row. It matches against
+   EVERY column's rendered text (see `cellText`), which is what people expect from a
+   single box above a table — no field picker to learn, and no guessing which column
+   a value lives in. */
+function TableSearch({ q, onChange, placeholder }: { q: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="relative ml-auto shrink-0">
+    <div className="relative shrink-0">
       <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
       <input
         value={q}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search all columns…"
-        className="w-[190px] rounded-lg border border-line bg-surface py-1.5 pl-7 pr-7 text-[12px] outline-none transition-[width,border-color] focus:w-[240px] focus:border-brand"
+        placeholder={placeholder ?? 'Search all columns…'}
+        className="w-[210px] rounded-lg border border-line bg-surface py-1 pl-7 pr-7 text-[11.5px] outline-none transition-[width,border-color] focus:w-[280px] focus:border-brand"
       />
       {q && (
         <button
@@ -110,19 +110,51 @@ function TabBar({
   q,
   onQ,
   action,
+  filters,
+  searchHint,
 }: {
   tabs?: { label: string; count?: number; active?: boolean }[]
   q: string
   onQ: (v: string) => void
   /** the list's create button — on this row so a list never needs a header strip of its own */
   action?: React.ReactNode
+  /** filter controls, rendered on their own line under the search */
+  filters?: React.ReactNode
+  /** tells the reader what the box actually matches on this list */
+  searchHint?: string
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-line-soft pb-3">
-      <div className="flex flex-wrap items-center gap-1">{tabs?.map((t, i) => <Tab key={i} {...t} />)}</div>
-      <TableSearch q={q} onChange={onQ} />
-      {action}
+    <div className="mb-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">{tabs?.map((t, i) => <Tab key={i} {...t} />)}</div>
+        {action && <div className="ml-auto">{action}</div>}
+      </div>
+      {/* Search leads the filter row: it is the control people reach for first, and
+          keeping both on one line means one place to narrow a list down. */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <TableSearch q={q} onChange={onQ} placeholder={searchHint} />
+        {filters}
+      </div>
     </div>
+  )
+}
+
+/** One filter control. Native select on purpose: it is keyboard- and mobile-correct
+    for free, and a list page needs six of them without six popovers. */
+function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  const on = value !== ''
+  return (
+    <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+      <span className={on ? 'text-brand/70' : 'text-faint'}>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn('max-w-[130px] cursor-pointer bg-transparent text-[11.5px] outline-none', on ? 'font-medium text-brand' : 'text-ink')}
+      >
+        <option value="">All</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
   )
 }
 
@@ -203,14 +235,28 @@ function cellText(n: React.ReactNode): string {
 /** lowercase + diacritics stripped, so "cong ty" finds "Công ty". */
 const searchKey = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-function ListPage({ tabs, cols, rows, minW, action }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode }) {
+function ListPage({ tabs, cols, rows, minW, action, filters, searchHint, searchExtra, total }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode; filters?: React.ReactNode; searchHint?: string
+  /** per-row text the search should match but the table does not print — e.g. the
+      company ID and MST. Without it a placeholder promising "search by ID" lies. */
+  searchExtra?: string[]
+  /** the unfiltered population, when `rows` has already been filtered by the page's
+      own controls — so "Total" means the whole list, not what survived the filters. */
+  total?: number }) {
   const [q, setQ] = useState('')
   const [size, setSize] = useState(20)
   const query = searchKey(q.trim())
-  const matched = query ? rows.filter((r) => searchKey(r.map(cellText).join(' ')).includes(query)) : rows
+  const matched = query
+    ? rows.filter((r, i) => searchKey([r.map(cellText).join(' '), searchExtra?.[i] ?? ''].join(' ')).includes(query))
+    : rows
   return (
     <div>
-      <TabBar tabs={tabs} q={q} onQ={setQ} action={action} />
+      <TabBar tabs={tabs} q={q} onQ={setQ} action={action} filters={filters} searchHint={searchHint} />
+      {/* Result count sits directly on top of the table it describes — how many rows
+          the current search/filters left, against the whole list. */}
+      <p className="mb-1.5 text-[11px] text-faint">
+        Search <b className="font-semibold text-ink/70 tabular-nums">{matched.length}</b>
+        {' / '}Total <b className="font-semibold text-ink/70 tabular-nums">{total ?? rows.length}</b>
+      </p>
       <Table cols={cols} rows={matched.slice(0, size)} minW={minW} empty={`No rows match “${q.trim()}”.`} />
       <Footer size={size} onSize={setSize} />
     </div>
@@ -543,10 +589,17 @@ const COMPANIES: Company[] = [
   { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
 ]
 
+/* Colour carries meaning, so customer status must not borrow RED. On a company row
+   red already means "act now" three times over — idle past its red threshold, a
+   lapsed quotation, never contacted. Churn is none of those: it is a factual
+   lifecycle state (no new order in 12 months) and commercially it is an
+   OPPORTUNITY — a churned customer is the warmest win-back lead we have. Amber
+   reads as attention-not-alarm, which is exactly the register, and it leaves red
+   free for the markers that genuinely demand action today. */
 const AC_STATUS: Record<Account, { tone: StatusTone; label: string }> = {
   New: { tone: 'draft', label: 'New' },
   Existing: { tone: 'active', label: 'Existing' },
-  Churn: { tone: 'rejected', label: 'Churn' },
+  Churn: { tone: 'pending', label: 'Churn' },
 }
 /* Onboarding is a CADENCE, not a status — the first 90 days after the first
    invoice, when a fresh customer needs a tighter touch. The real system reads
@@ -603,6 +656,16 @@ const IDLE_RULE: Record<Cadence, { amber: number; red: number; cadence: string }
   churn:       { amber: 60, red: 90, cadence: 'quarterly' },   // win-back
 }
 /** Which cadence row a company is judged against. Open deal wins over everything. */
+/* "Needs attention" = the rows a rep must DO something about today. One definition,
+   used by the filter, its count and the pipeline board — so the number never
+   disagrees with the list it filters. */
+function needsAttention(c: Company): boolean {
+  if (c.quoteLapsed) return true                                  // offer expired, decide
+  if (c.idle === null) return true                                // never contacted
+  if (idleOf(c.idle, cadenceOf(c)) === 'red') return true         // past its red threshold
+  return !companyContacts(c).some((p) => p.status === 'Active')   // nobody reachable left
+}
+
 function cadenceOf(c: Company): Cadence {
   if (inPipeline(c)) return 'openDeal'
   if (c.account === 'Churn') return 'churn'
@@ -827,7 +890,10 @@ function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
    just the badge: accumulated-in-year, the gap to the next band, and the reset date.
    The gap is the reason a rep opens this — it is the only upsell number the loyalty
    programme produces. */
-function MembershipCard({ c }: { c: Company }) {
+/* Membership tier as an at-a-glance STAT, not a left-column card: the tier and the
+   gap to the next band are numbers a rep reads in passing, and the per-tier benefit
+   table belongs in System → Membership tiers where it is configured once. */
+function MembershipStat({ c }: { c: Company }) {
   const acc = tierRevenue(c)
   const tier = tierAt(acc)
   const next = nextTierAt(acc)
@@ -835,52 +901,19 @@ function MembershipCard({ c }: { c: Company }) {
   const ceil = next?.from ?? TIERS[TIERS.length - 1].from
   const pct = Math.min(100, Math.max(2, ((acc - floor) / (ceil - floor)) * 100))
   return (
-    <DetailCard title={`Hạng thành viên ${TIER_YEAR}`}>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
+    <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">Hạng {TIER_YEAR}</p>
+      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
         <TierPill tier={tier} en />
-        <span className="text-[11.5px] text-muted">
-          Tích lũy trong năm: <b className="tabular-nums text-ink">{acc ? vnd(acc) : '0 ₫'}</b>
-        </span>
+        <span className="text-[11px] font-bold tabular-nums text-ink">{acc ? vnd(acc) : '0 ₫'}</span>
       </div>
-
-      {/* progress toward the next band — the gap is the point, so it is stated in ₫ */}
-      <div className="h-[6px] overflow-hidden rounded-full bg-line">
+      <div className="mt-1.5 h-[4px] overflow-hidden rounded-full bg-line">
         <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-1 text-[11px] text-muted">
-        {next ? (
-          <>
-            Còn <b className="tabular-nums text-ink">{vnd(next.from - acc)}</b> nữa để lên hạng <b>{next.vi}</b> ({next.key}).
-          </>
-        ) : (
-          <>Đã ở hạng cao nhất — không còn mốc nào phía trên.</>
-        )}
+      <p className="mt-1 truncate text-[10px] text-faint" title={next ? `Còn ${vnd(next.from - acc)} nữa để lên hạng ${next.vi}` : 'Đã ở hạng cao nhất'}>
+        {next ? `còn ${vnd(next.from - acc)} → ${next.key}` : 'hạng cao nhất'}
       </p>
-
-      {/* Entitlement for the CURRENT tier only. A company with no tier gets nothing,
-          and saying so plainly is more useful than hiding the block. */}
-      <div className="mt-3 space-y-1">
-        {tier ? (
-          TIER_BENEFITS.map((b) => (
-            <div key={b.name} className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
-              <p className="min-w-0 truncate text-[11.5px] text-ink/80">{b.name}</p>
-              <span className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', b.by[tier.key] === '—' ? 'text-faint' : 'text-ink')}>
-                {b.by[tier.key]}
-              </span>
-            </div>
-          ))
-        ) : (
-          <p className="rounded-md border border-line bg-canvas/40 px-2.5 py-2 text-[11.5px] text-muted">
-            Chưa đạt mốc {vnd(TIERS[0].from)} nên chưa có quyền lợi nào.
-          </p>
-        )}
-      </div>
-
-      <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
-        ♻️ Tích lũy <b>reset về 0 ngày {TIER_RESET}</b> — hạng {TIER_YEAR} không mang sang năm sau. Chưa chốt:
-        quyền lợi chưa dùng khi reset thì mất hay bảo lưu, và ai bấm dùng (KH tự chọn hay sales đăng ký hộ).
-      </p>
-    </DetailCard>
+    </div>
   )
 }
 
@@ -974,10 +1007,29 @@ function AdminCompanyList() {
   // a group can span several reps, so filtering by group has to ignore the view
   // switcher, otherwise a rep can never see the parts of the group they don't own.
   const [group, setGroup] = useState<Company | null>(null)
+  /* Filters mirror the columns a rep actually narrows by. Plain selects plus one
+     toggle: six popovers would cost more attention than this list is worth. */
+  const [fIndustry, setFIndustry] = useState('')
+  const [fLocation, setFLocation] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [fPipeline, setFPipeline] = useState('')
+  const [fOwner, setFOwner] = useState('')
+  const [attentionOnly, setAttentionOnly] = useState(false)
   if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} onOpen={setOpen} />
 
-  const rows = group ? groupOf(group) : view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
+  const base = group ? groupOf(group) : view === 'me' ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
   const showOwner = view === 'team' || Boolean(group)
+  const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
+  const rows = base.filter((c) =>
+    (!fIndustry || c.industry === fIndustry) &&
+    (!fLocation || coCity(c) === fLocation) &&
+    (!fStatus || c.account === fStatus) &&
+    (!fPipeline || (fPipeline === 'Not in pipeline' ? !inPipeline(c) : inPipeline(c) && c.status === fPipeline)) &&
+    (!fOwner || c.owner === fOwner) &&
+    (!attentionOnly || needsAttention(c)),
+  )
+  const activeFilters = [fIndustry, fLocation, fStatus, fPipeline, fOwner].filter(Boolean).length + (attentionOnly ? 1 : 0)
+  const clearAll = () => { setFIndustry(''); setFLocation(''); setFStatus(''); setFPipeline(''); setFOwner(''); setAttentionOnly(false) }
   const stats = view === 'me'
     ? [
         { label: 'Revenue vs target (Q3)', value: '72%', delta: '₫720M / ₫1.0B', up: true },
@@ -1021,6 +1073,36 @@ function AdminCompanyList() {
 
       <ListPage
         minW={showOwner ? 1520 : 1380}
+        /* rows are already narrowed by the filter row, so Total means the book of
+           business, not what survived the filters */
+        total={base.length}
+        searchHint="Search name, MST, company ID, contact…"
+        // the box promises these, so they have to be searchable even though the
+        // table prints none of them
+        searchExtra={rows.map((c) => [companyId(coKey(c)), c.tax, c.legalName, c.contact, coCity(c), c.domain].join(' '))}
+        filters={
+          <>
+            <FilterSelect label="Industry" value={fIndustry} onChange={setFIndustry} options={uniq(base.map((c) => c.industry))} />
+            <FilterSelect label="Location" value={fLocation} onChange={setFLocation} options={uniq(base.map(coCity))} />
+            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={Object.keys(AC_STATUS)} />
+            <FilterSelect label="Pipeline" value={fPipeline} onChange={setFPipeline} options={[...CO_ORDER, 'Not in pipeline']} />
+            {showOwner && <FilterSelect label="Owner" value={fOwner} onChange={setFOwner} options={uniq(base.map((c) => c.owner))} />}
+            {/* The one filter that is a job rather than a field: everything to act on. */}
+            <button
+              onClick={() => setAttentionOnly((v) => !v)}
+              title="Idle past its red threshold, a lapsed quotation, never contacted, or no reachable contact left"
+              className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', attentionOnly ? 'border-rose-300 bg-rose-50 font-medium text-rose-700' : 'border-line bg-surface text-muted hover:border-ink/30')}
+            >
+              ⚠ Needs attention
+              <span className={cn('rounded-full px-1.5 text-[10px]', attentionOnly ? 'bg-rose-600 text-white' : 'bg-canvas text-faint')}>{base.filter(needsAttention).length}</span>
+            </button>
+            {activeFilters > 0 && (
+              <button onClick={clearAll} className="ml-auto rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">
+                Clear {activeFilters} filter{activeFilters > 1 ? 's' : ''} ✕
+              </button>
+            )}
+          </>
+        }
         cols={[
           { label: 'Company', w: '1.4fr' },
           { label: 'Industry', w: '0.9fr' },
@@ -1231,31 +1313,49 @@ const companyResumeViews = (c: Company): CoResumeView[] => {
    They overlap often (the HR Manager is usually both) but neither implies the
    other, so one is NEVER auto-created from the other. A contact may optionally be
    LINKED to a user record; the link is informational, not a dependency. */
-type ContactStatus =
-  | 'Unverified' | 'Active' | 'On leave' | 'Snoozed'
-  | 'Moved department' | 'Left company' | 'Retired' | 'Unreachable' | 'Do not contact'
-/* Ordered the way a rep reads them: usable → temporarily not → permanently not.
-   Every status answers exactly one question — "can I contact this person today,
-   and if not, what do I do instead?" */
-const CONTACT_STATUS: Record<ContactStatus, { tone: StatusTone; vi: string; hint: string }> = {
-  Unverified: { tone: 'draft', vi: 'Chưa xác minh', hint: 'Captured from a form / name card — email & phone not confirmed yet. Verify before it is used on a quotation.' },
-  Active: { tone: 'active', vi: 'Đang liên hệ', hint: 'Current contact — safe to call or email.' },
-  'On leave': { tone: 'pending', vi: 'Đang nghỉ phép / thai sản', hint: 'Temporarily unreachable — use the cover person.' },
-  Snoozed: { tone: 'pending', vi: 'Tạm dừng liên hệ', hint: 'Asked us to come back later — reminders resume on the snooze date.' },
-  'Moved department': { tone: 'schedule', vi: 'Đã chuyển phòng ban', hint: 'Still at the company but no longer our buyer — ask for the successor.' },
-  'Left company': { tone: 'expired', vi: 'Đã nghỉ việc', hint: 'Gone. Email will bounce — never contact. Find the replacement, and follow them to their new employer if known.' },
-  Retired: { tone: 'expired', vi: 'Đã nghỉ hưu', hint: 'Left the workforce — no successor to chase at this person, ask the company for the new owner.' },
-  Unreachable: { tone: 'draft', vi: 'Không liên lạc được', hint: 'Email bounced or phone dead — details need verifying.' },
-  'Do not contact': { tone: 'rejected', vi: 'Không liên hệ', hint: 'Asked not to be contacted — a compliance flag, never overridden.' },
+/* FIVE statuses, not nine. Each answers "what do I do about this person NOW?", and
+   two statuses that lead to the SAME action are one status:
+     on leave + asked-us-to-come-back   → Paused          (both: wait, with a date)
+     left + retired + moved department   → No longer here  (all: find the successor)
+     never verified + email now bouncing → Needs verifying (both: fix the details)
+   The sub-reason ("nghỉ hưu" vs "chuyển phòng ban") goes in the note, where a human
+   reads it — rather than multiplying statuses that behave identically. */
+type ContactStatus = 'Active' | 'Needs verifying' | 'Paused' | 'No longer here' | 'Do not contact'
+const CONTACT_STATUS: Record<ContactStatus, { tone: StatusTone; vi: string; hint: string; action: string }> = {
+  Active: {
+    tone: 'active', vi: 'Đang liên hệ',
+    hint: 'Our working contact — reachable and expecting to hear from us.',
+    action: 'Call or email as normal.',
+  },
+  'Needs verifying': {
+    tone: 'pending', vi: 'Cần xác minh',
+    hint: 'Details not confirmed — from a name card or web form, or the email has started bouncing.',
+    action: 'Confirm email + phone before this contact goes on a quotation.',
+  },
+  Paused: {
+    tone: 'schedule', vi: 'Tạm dừng liên hệ',
+    hint: 'On leave, or they asked us to come back later. Still our contact, just not now.',
+    action: 'Do not chase until the resume date; use the cover person if urgent.',
+  },
+  'No longer here': {
+    tone: 'expired', vi: 'Không còn phụ trách',
+    hint: 'Left the company, retired, or moved department — either way they no longer buy from us.',
+    action: 'Find the successor. If you know where they went, that is a warm lead.',
+  },
+  'Do not contact': {
+    tone: 'rejected', vi: 'Không liên hệ',
+    hint: 'They asked not to be contacted. A compliance flag, not an opinion.',
+    action: 'No outreach at all, manual or automated. Only a manager can clear it.',
+  },
 }
 type CoContact = {
   name: string; title: string; email: string; phone: string
   status: ContactStatus; primary?: boolean; decisionMaker?: boolean
   /** receives every quotation / invoice — usually the accountant, rarely the buyer */
   billing?: boolean
-  /** where a "Left company" contact went, when we know — a warm lead at the new employer */
+  /** where a "No longer here" contact went, when we know — a warm lead at the new employer */
   movedTo?: string
-  /** the date a "Snoozed" contact asked to be approached again */
+  /** the date a "Paused" contact should be approached again */
   snoozedUntil?: string
   /** email of the login user this person is the same human as, when they have one */
   linkedUser?: string
@@ -1283,15 +1383,15 @@ function companyContacts(c: Company): CoContact[] {
   if (isCustomer(c)) {
     out.push({ name: 'Đỗ Thị Mai', title: 'HR Specialist', email: `mai@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', linkedUser: `mai@${c.domain}`, note: 'Day-to-day poster of jobs. Ask her for the hiring plan before quoting a renewal.', lastContact: '5 days ago' })
     // the classic churn cause: the person who bought from us left, and nobody told Sales
-    out.push({ name: 'Trần Cũ', title: 'HR Manager (cũ)', email: `tran@${c.domain}`, phone: '—', status: 'Left company', movedTo: 'Công ty CP Vạn Phát', note: 'Bought the first package from us. Left 06/2026 — nobody told Sales, which is why the renewal slipped.', lastContact: '4 months ago' })
+    out.push({ name: 'Trần Cũ', title: 'HR Manager (cũ)', email: `tran@${c.domain}`, phone: '—', status: 'No longer here', movedTo: 'Công ty CP Vạn Phát', note: 'Đã nghỉ việc 06/2026. Bought the first package from us — nobody told Sales, which is why the renewal slipped.', lastContact: '4 months ago' })
   }
   if (c.size === '5000+' || c.jobs > 15) {
-    out.push({ name: 'Nguyễn Điều Chuyển', title: 'Trưởng phòng Tuyển dụng', email: `chuyen@${c.domain}`, phone: '09xx xxx xxx', status: 'Moved department', note: 'Moved to Đào tạo. Still friendly — happy to introduce the new TA lead.', lastContact: '6 weeks ago' })
-    out.push({ name: 'Vũ Mới Nhập', title: 'Chuyên viên Tuyển dụng', email: `moi@${c.domain}`, phone: '09xx xxx xxx', status: 'Unverified', note: 'Captured from a name card at the 07/2026 job fair — email not confirmed yet.', lastContact: '—' })
+    out.push({ name: 'Nguyễn Điều Chuyển', title: 'Trưởng phòng Tuyển dụng', email: `chuyen@${c.domain}`, phone: '09xx xxx xxx', status: 'No longer here', note: 'Đã chuyển sang phòng Đào tạo. Still friendly — happy to introduce the new TA lead.', lastContact: '6 weeks ago' })
+    out.push({ name: 'Vũ Mới Nhập', title: 'Chuyên viên Tuyển dụng', email: `moi@${c.domain}`, phone: '09xx xxx xxx', status: 'Needs verifying', note: 'Captured from a name card at the 07/2026 job fair — email not confirmed yet.', lastContact: '—' })
   }
   if (c.account === 'Churn') {
-    out.push({ name: 'Lê Không Phản Hồi', title: 'Giám đốc Nhân sự', email: `le@${c.domain}`, phone: '09xx xxx xxx', status: 'Unreachable', note: 'Email bounced twice, phone rings out. Try the switchboard or LinkedIn.', lastContact: '5 months ago' })
-    out.push({ name: 'Hoàng Hẹn Lại', title: 'Trưởng phòng HCNS', email: `hoang@${c.domain}`, phone: '09xx xxx xxx', status: 'Snoozed', snoozedUntil: '01/10/2026', note: 'Budget frozen until Q4. Asked us to come back after 01/10 — do not chase before that.', lastContact: '2 months ago' })
+    out.push({ name: 'Lê Không Phản Hồi', title: 'Giám đốc Nhân sự', email: `le@${c.domain}`, phone: '09xx xxx xxx', status: 'Needs verifying', note: 'Email bounced twice, phone rings out. Try the switchboard or LinkedIn.', lastContact: '5 months ago' })
+    out.push({ name: 'Hoàng Hẹn Lại', title: 'Trưởng phòng HCNS', email: `hoang@${c.domain}`, phone: '09xx xxx xxx', status: 'Paused', snoozedUntil: '01/10/2026', note: 'Budget frozen until Q4. Asked us to come back after 01/10 — do not chase before that.', lastContact: '2 months ago' })
   }
   return out
 }
@@ -1301,9 +1401,35 @@ function companyContacts(c: Company): CoContact[] {
    replaced whom, notes over time — so the row links here rather than trying to
    show everything inline. Every ACTION on a contact lives in this panel, which is
    why the list has no Actions column. */
+/** Editable text row — the edit-mode counterpart of KV. */
+function EField({ label, value, onChange, mono, hint }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean; hint?: string }) {
+  return (
+    <div className="border-b border-line-soft py-2 last:border-0">
+      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn('mt-1 w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand', mono && 'font-mono text-[11.5px]')}
+      />
+      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
+    </div>
+  )
+}
+
 function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: () => void }) {
-  const st = CONTACT_STATUS[p.status]
-  const blocked = p.status === 'Left company' || p.status === 'Retired' || p.status === 'Do not contact'
+  /* Edit is in-place rather than a second modal: the reader is already looking at
+     the record, and a modal on top of a slide-over is one layer too many. Changes
+     are held in a draft so Cancel is a true revert. */
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<CoContact>(p)
+  const [justSaved, setJustSaved] = useState(false)
+  const set = <K extends keyof CoContact>(k: K, v: CoContact[K]) => setDraft((d) => ({ ...d, [k]: v }))
+  const cancel = () => { setDraft(p); setEditing(false) }
+  const save = () => { setEditing(false); setJustSaved(true) }
+  const startEdit = () => { setJustSaved(false); setEditing(true) }
+
+  const st = CONTACT_STATUS[draft.status]
+  const blocked = draft.status === 'No longer here' || draft.status === 'Do not contact'
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
       <div className="flex h-full w-full max-w-[560px] flex-col bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -1312,11 +1438,12 @@ function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: (
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Contact · {coLabel(c)}</p>
             <h3 className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[16px] font-bold tracking-tight">
-              {p.name}
-              {p.primary && <span className="rounded border border-brand/30 bg-brand-soft px-1 py-0.5 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
-              {p.billing && <span className="rounded border border-line bg-canvas px-1 py-0.5 text-[9.5px] font-semibold text-muted">BILLING</span>}
+              {draft.name}
+              {draft.primary && <span className="rounded border border-brand/30 bg-brand-soft px-1 py-0.5 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
+              {draft.billing && <span className="rounded border border-line bg-canvas px-1 py-0.5 text-[9.5px] font-semibold text-muted">BILLING</span>}
+              {editing && <span className="rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-[9.5px] font-semibold text-amber-700">EDITING</span>}
             </h3>
-            <p className="text-[11.5px] text-muted">{p.title}</p>
+            <p className="text-[11.5px] text-muted">{draft.title}</p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
@@ -1325,52 +1452,136 @@ function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: (
           {/* status, with the "what do I do instead" line spelled out */}
           <div className={cn('rounded-lg border px-3 py-2.5', blocked ? 'border-rose-200 bg-rose-50' : 'border-line bg-canvas/40')}>
             <div className="flex flex-wrap items-center gap-2">
-              <Pill tone={st.tone}>{p.status}</Pill>
+              <Pill tone={st.tone}>{draft.status}</Pill>
               <span className="text-[11.5px] text-muted">{st.vi}</span>
-              {p.snoozedUntil && <span className="text-[11.5px] text-amber-700">· đến {p.snoozedUntil}</span>}
+              {draft.snoozedUntil && <span className="text-[11.5px] text-amber-700">· đến {draft.snoozedUntil}</span>}
             </div>
             <p className={cn('mt-1.5 text-[11.5px] leading-relaxed', blocked ? 'text-rose-800' : 'text-muted')}>{st.hint}</p>
-            {p.movedTo && (
-              <p className="mt-1.5 text-[11.5px] text-brand">→ Nay ở <b>{p.movedTo}</b> — a warm lead at their new employer.</p>
+            {/* what to DO is a separate line from what it MEANS — the rep is here to act */}
+            <p className={cn('mt-1 text-[11.5px] font-medium', blocked ? 'text-rose-900' : 'text-ink/80')}>→ {st.action}</p>
+            {draft.movedTo && (
+              <p className="mt-1.5 text-[11.5px] text-brand">Nay ở <b>{draft.movedTo}</b> — a warm lead at their new employer.</p>
+            )}
+            {editing && (
+              <div className="mt-2.5 border-t border-line-soft pt-2.5">
+                <p className="mb-1.5 text-[10.5px] uppercase tracking-wide text-faint">Change status</p>
+                {/* Rows, not chips: five statuses each need their meaning beside them,
+                    otherwise a rep guesses what "Paused" covers. */}
+                <div className="space-y-1">
+                  {(Object.keys(CONTACT_STATUS) as ContactStatus[]).map((k) => {
+                    const m = CONTACT_STATUS[k]
+                    const on = draft.status === k
+                    return (
+                      <button
+                        key={k}
+                        onClick={() => set('status', k)}
+                        className={cn('flex w-full items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left', on ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-ink/30')}
+                      >
+                        <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', on ? 'border-brand' : 'border-line')}>
+                          {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className={cn('text-[12px] font-medium', on ? 'text-brand' : 'text-ink')}>{k}</span>
+                            <span className="text-[10.5px] text-faint">{m.vi}</span>
+                          </span>
+                          <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted">{m.hint}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {draft.status === 'Paused' && (
+                  <div className="mt-2"><EField label="Resume contact on" value={draft.snoozedUntil ?? ''} onChange={(v) => set('snoozedUntil', v)} hint="Required for Paused — reminders stay off until this date." /></div>
+                )}
+                {draft.status === 'No longer here' && (
+                  <div className="mt-2"><EField label="Now at (if known)" value={draft.movedTo ?? ''} onChange={(v) => set('movedTo', v)} hint="Optional — creates a warm lead at their new employer." /></div>
+                )}
+              </div>
             )}
           </div>
 
-          <DetailCard title="Details">
-            <KV label="Full name" value={p.name} />
-            <KV label="Job title" value={p.title} />
-            <KV label="Email" value={p.email} link />
-            <KV label="Phone" value={p.phone} />
-            <KV label="Decision maker" value={p.decisionMaker ? 'Yes — signs off on the purchase' : 'No'} />
-            <KV label="Receives quotations" value={p.primary ? 'Yes — PRIMARY contact' : 'No'} />
-            <KV label="Receives invoices" value={p.billing ? 'Yes — BILLING contact' : 'No'} />
-            <KV label="Login user" value={p.linkedUser ? `🔗 ${p.linkedUser}` : 'No login — contact only'} />
-            <KV label="Last contacted" value={p.lastContact} />
+          <DetailCard title="Details" action={justSaved ? <span className="text-[11px] font-medium text-emerald-700">✓ Saved</span> : undefined}>
+            {editing ? (
+              <>
+                <EField label="Full name" value={draft.name} onChange={(v) => set('name', v)} />
+                <EField label="Job title" value={draft.title} onChange={(v) => set('title', v)} />
+                <EField label="Email" value={draft.email} onChange={(v) => set('email', v)} mono hint="Verified before it is used on a quotation." />
+                <EField label="Phone" value={draft.phone} onChange={(v) => set('phone', v)} />
+                <div className="py-2">
+                  <p className="mb-1 text-[10.5px] uppercase tracking-wide text-faint">Role on this account</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      ['primary', 'Primary (receives quotations)'],
+                      ['billing', 'Billing (receives invoices)'],
+                      ['decisionMaker', 'Decision maker'],
+                    ] as [keyof CoContact, string][]).map(([k, label]) => {
+                      const on = Boolean(draft[k])
+                      return (
+                        <button key={String(k)} onClick={() => set(k, (!on) as never)} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>
+                          <span className={cn('grid h-3.5 w-3.5 place-items-center rounded border text-[9px]', on ? 'border-brand bg-brand text-white' : 'border-line')}>{on ? '✓' : ''}</span>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10.5px] text-faint">Only one contact per company can be Primary or Billing — setting it here moves it off whoever held it.</p>
+                </div>
+                <KV label="Login user" value={draft.linkedUser ? `🔗 ${draft.linkedUser}` : 'No login — contact only'} />
+                <KV label="Last contacted" value={draft.lastContact} />
+              </>
+            ) : (
+              <>
+                <KV label="Full name" value={draft.name} />
+                <KV label="Job title" value={draft.title} />
+                <KV label="Email" value={draft.email} link />
+                <KV label="Phone" value={draft.phone} />
+                <KV label="Decision maker" value={draft.decisionMaker ? 'Yes — signs off on the purchase' : 'No'} />
+                <KV label="Receives quotations" value={draft.primary ? 'Yes — PRIMARY contact' : 'No'} />
+                <KV label="Receives invoices" value={draft.billing ? 'Yes — BILLING contact' : 'No'} />
+                <KV label="Login user" value={draft.linkedUser ? `🔗 ${draft.linkedUser}` : 'No login — contact only'} />
+                <KV label="Last contacted" value={draft.lastContact} />
+              </>
+            )}
           </DetailCard>
 
           <DetailCard title="Note" action={<span className="text-[11px] text-faint">one note per contact</span>}>
-            <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink/85">{p.note}</div>
+            {editing ? (
+              <textarea value={draft.note} onChange={(e) => set('note', e.target.value)} rows={4} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink outline-none focus:border-brand" />
+            ) : (
+              <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink/85">{draft.note}</div>
+            )}
             <p className="mt-1.5 text-[10.5px] text-faint">The human context a status cannot carry — preferred channel, who they defer to, what went wrong last time.</p>
           </DetailCard>
 
           <DetailCard title="History">
             <div className="space-y-1.5 text-[11.5px] text-muted">
-              <p>· Status set to <b className="text-ink">{p.status}</b> — {p.lastContact === '—' ? 'on creation' : p.lastContact}</p>
+              {justSaved && <p>· <b className="text-ink">Edited</b> by you — just now</p>}
+              <p>· Status set to <b className="text-ink">{draft.status}</b> — {draft.lastContact === '—' ? 'on creation' : draft.lastContact}</p>
               <p>· Added to this company by <b className="text-ink">{c.owner}</b></p>
-              {p.linkedUser && <p>· Linked to the login <span className="font-mono text-[11px]">{p.linkedUser}</span></p>}
+              {draft.linkedUser && <p>· Linked to the login <span className="font-mono text-[11px]">{draft.linkedUser}</span></p>}
             </div>
           </DetailCard>
         </div>
 
         {/* every contact action lives here, not on the list row */}
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3.5">
-          {p.status === 'Unverified' && <button className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Verify details</button>}
-          {blocked || p.status === 'Moved department'
-            ? <button className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Find successor</button>
-            : null}
-          {!p.linkedUser && !blocked && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Invite as user</button>}
-          {!p.primary && !blocked && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Make primary</button>}
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Change status</button>
-          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Edit</button>
+          {editing ? (
+            <>
+              <span className="mr-auto text-[11px] text-faint">Editing — Cancel discards every change.</span>
+              <button onClick={cancel} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
+              <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Save changes</button>
+            </>
+          ) : (
+            <>
+              {draft.status === 'Needs verifying' && <button onClick={startEdit} className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Verify details</button>}
+              {draft.status === 'No longer here' && <button className="rounded-lg border border-brand/40 bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand">Find successor</button>}
+              {!draft.linkedUser && !blocked && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Invite as user</button>}
+              {!draft.primary && !blocked && <button onClick={() => { set('primary', true); setJustSaved(true) }} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Make primary</button>}
+              <button onClick={startEdit} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Change status</button>
+              <button onClick={startEdit} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Edit</button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1380,7 +1591,7 @@ function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: (
 /* Add a contact by hand — the name-card path. Deliberately short: a contact is
    cheap to create and details get verified later, which is what Unverified is for. */
 function AddContactModal({ c, onClose }: { c: Company; onClose: () => void }) {
-  const [status, setStatus] = useState<ContactStatus>('Unverified')
+  const [status, setStatus] = useState<ContactStatus>('Needs verifying')
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -1404,10 +1615,12 @@ function AddContactModal({ c, onClose }: { c: Company; onClose: () => void }) {
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Status</label>
             <div className="flex flex-wrap gap-1.5">
               {(Object.keys(CONTACT_STATUS) as ContactStatus[]).map((k) => (
-                <button key={k} onClick={() => setStatus(k)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', status === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{k}</button>
+                <button key={k} onClick={() => setStatus(k)} title={CONTACT_STATUS[k].hint} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', status === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>
+                  {k} <span className="text-[10px] opacity-70">{CONTACT_STATUS[k].vi}</span>
+                </button>
               ))}
             </div>
-            <p className="mt-1 text-[10.5px] text-faint">{CONTACT_STATUS[status].hint}</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{CONTACT_STATUS[status].hint} <b className="text-ink/70">→ {CONTACT_STATUS[status].action}</b></p>
           </div>
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Role on this account</label>
@@ -1434,7 +1647,8 @@ function AddContactModal({ c, onClose }: { c: Company; onClose: () => void }) {
   )
 }
 
-type CoTeamUser = { name: string; email: string; role: 'HR Manager' | 'HR Specialist'; status: 'Active' | 'Invited'; last: string }
+type CoUserRole = 'Admin' | 'Recruiter' | 'Viewer'
+type CoTeamUser = { name: string; email: string; role: CoUserRole; status: 'Active' | 'Invited'; last: string }
 function companyTeam(c: Company): CoTeamUser[] {
   const noProducts = !c.jobPosting && !c.resumeSearch
   const managerName = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
@@ -1442,15 +1656,149 @@ function companyTeam(c: Company): CoTeamUser[] {
     n.split(' ').pop()!.toLowerCase()
       .replace(/đ/g, 'd').replace(/ơ/g, 'o').replace(/ư/g, 'u')
       .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
-  const base: Omit<CoTeamUser, 'email'>[] = [{ name: managerName, role: 'HR Manager', status: 'Active', last: '10m ago' }]
+  const base: Omit<CoTeamUser, 'email'>[] = [{ name: managerName, role: 'Admin', status: 'Active', last: '10m ago' }]
   if (isCustomer(c) && !noProducts) {
-    base.push({ name: 'Đỗ Thị Mai', role: 'HR Specialist', status: 'Active', last: '2h ago' })
+    base.push({ name: 'Đỗ Thị Mai', role: 'Recruiter', status: 'Active', last: '2h ago' })
     if (c.size === '5000+' || c.jobs > 15) {
-      base.push({ name: 'Ngô Minh Tú', role: 'HR Specialist', status: 'Active', last: '1d ago' })
-      base.push({ name: 'Lê Thanh Sơn', role: 'HR Specialist', status: 'Invited', last: '—' })
+      base.push({ name: 'Ngô Minh Tú', role: 'Recruiter', status: 'Active', last: '1d ago' })
+      base.push({ name: 'Lê Thanh Sơn', role: 'Viewer', status: 'Invited', last: '—' })
     }
   }
   return base.map((u) => ({ ...u, email: `${localPart(u.name)}@${c.domain}` }))
+}
+
+/* ── Company roles — built from a short permission set, then assigned ──────────
+   The VietnamWorks "build a role, then set users" flow, trimmed to 7 permissions
+   across the 3 modules. Prerequisites auto-include so a role can never be invalid.
+   "Manage users & roles" is NOT tickable — it lives on the fixed Admin role. */
+type CoPermKey = 'jobs.view' | 'jobs.post' | 'jobs.edit' | 'apps.view' | 'apps.move' | 'resume.search' | 'resume.unlock'
+const CO_PERM_GROUPS: { module: string; perms: { key: CoPermKey; label: string; needs?: CoPermKey }[] }[] = [
+  { module: 'Job posts', perms: [
+    { key: 'jobs.view', label: 'View jobs' },
+    { key: 'jobs.post', label: 'Post jobs', needs: 'jobs.view' },
+    { key: 'jobs.edit', label: 'Edit jobs', needs: 'jobs.view' },
+  ] },
+  { module: 'Applications', perms: [
+    { key: 'apps.view', label: 'View applications & CVs' },
+    { key: 'apps.move', label: 'Manage applications', needs: 'apps.view' },
+  ] },
+  { module: 'Resume search', perms: [
+    { key: 'resume.search', label: 'Search resumes' },
+    { key: 'resume.unlock', label: 'View / unlock resume detail', needs: 'resume.search' },
+  ] },
+]
+const CO_ALL_PERMS: CoPermKey[] = CO_PERM_GROUPS.flatMap((g) => g.perms.map((p) => p.key))
+const CO_NEEDS: Partial<Record<CoPermKey, CoPermKey>> = Object.fromEntries(
+  CO_PERM_GROUPS.flatMap((g) => g.perms.filter((p) => p.needs).map((p) => [p.key, p.needs])),
+) as Partial<Record<CoPermKey, CoPermKey>>
+
+/* Admin is the one fixed, highest role (all access + manage users) and cannot be
+   edited. EVERY other role is a custom role the Admin builds and can edit. */
+type CoRoleDef = { name: string; admin?: boolean; perms: CoPermKey[] }
+const CO_ROLE_DEFS: CoRoleDef[] = [
+  { name: 'Admin', admin: true, perms: CO_ALL_PERMS },
+  { name: 'Recruiter', perms: [...CO_ALL_PERMS] },
+  { name: 'Viewer', perms: ['jobs.view', 'apps.view'] },
+]
+
+function coTogglePerm(perms: CoPermKey[], key: CoPermKey): CoPermKey[] {
+  if (!perms.includes(key)) {
+    const next = new Set(perms)
+    let k: CoPermKey | undefined = key
+    while (k) { next.add(k); k = CO_NEEDS[k] }
+    return CO_ALL_PERMS.filter((p) => next.has(p))
+  }
+  const drop = new Set<CoPermKey>([key])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const p of CO_ALL_PERMS) {
+      const n = CO_NEEDS[p]
+      if (n && drop.has(n) && !drop.has(p)) { drop.add(p); changed = true }
+    }
+  }
+  return perms.filter((p) => !drop.has(p))
+}
+
+/* Interactive "build a role" panel — the Add/Edit role screen (VietnamWorks-style,
+   trimmed). Roles list on the left, permission checklist on the right. */
+function CoRoleBuilder() {
+  const [roles, setRoles] = useState<CoRoleDef[]>(CO_ROLE_DEFS)
+  const [sel, setSel] = useState(1)
+  const role = roles[sel]
+  const editable = !role.admin
+  const setPerms = (perms: CoPermKey[]) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, perms } : r)))
+  const addRole = () => { setRoles((rs) => [...rs, { name: `New role ${rs.length}`, perms: ['jobs.view'] }]); setSel(roles.length) }
+  return (
+    <div className="mt-3 grid gap-3 rounded-lg border border-line p-3 md:grid-cols-[180px_1fr]">
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[11.5px] font-semibold text-ink">Roles</p>
+          <button onClick={addRole} className="text-[11px] font-medium text-brand">+ Add role</button>
+        </div>
+        <div className="space-y-1">
+          {roles.map((r, i) => (
+            <button key={r.name} onClick={() => setSel(i)} className={cn('flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1.5 text-left', i === sel ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
+              <span className="truncate text-[11.5px] font-medium text-ink">{r.name}</span>
+              {r.admin && <Pill tone="neutral">🔒 Super admin</Pill>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="min-w-0">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <input value={role.name} readOnly={!editable} onChange={(e) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, name: e.target.value } : r)))} className={cn('min-w-0 flex-1 rounded-md px-2 py-1.5 text-[12.5px] font-semibold text-ink', editable ? 'border border-line' : 'border border-transparent bg-transparent')} />
+          {role.admin && <span className="shrink-0 text-[10.5px] text-faint">🔒 Super admin · full access, can’t be edited</span>}
+        </div>
+        {CO_PERM_GROUPS.map((g) => (
+          <div key={g.module} className="mb-2 border-t border-line/60 pt-2 first:border-0 first:pt-0">
+            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-faint">{g.module}</p>
+            {g.perms.map((p) => {
+              const on = role.perms.includes(p.key)
+              const locked = on && CO_ALL_PERMS.some((q) => CO_NEEDS[q] === p.key && role.perms.includes(q))
+              const disabled = !editable || locked
+              return (
+                <label key={p.key} className={cn('flex items-center gap-2 rounded px-1.5 py-1', disabled ? '' : 'cursor-pointer hover:bg-canvas/70')}>
+                  <input type="checkbox" checked={on} disabled={disabled} onChange={() => editable && setPerms(coTogglePerm(role.perms, p.key))} className="h-3.5 w-3.5 accent-brand" />
+                  <span className="text-[11.5px] text-ink">{p.label}</span>
+                </label>
+              )
+            })}
+          </div>
+        ))}
+        <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Ticking a higher action auto-includes (and locks) its prerequisite, so a role is never invalid. Admin is the one fixed role — every other role is custom and editable.</p>
+      </div>
+    </div>
+  )
+}
+
+/* Compact read-only view of ONE role's permissions — used inside the invite modal. */
+function CoRolePermsView({ role }: { role: string }) {
+  const [open, setOpen] = useState(false)
+  const def = CO_ROLE_DEFS.find((r) => r.name === role)
+  return (
+    <div className="mt-2 rounded-lg border border-line">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between px-3 py-2 text-left">
+        <span className="text-[11.5px] font-medium text-brand">View role’s permissions</span>
+        <span className="text-[10px] text-faint">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && def && (
+        <div className="border-t border-line px-3 py-2.5">
+          {CO_PERM_GROUPS.map((g) => (
+            <div key={g.module} className="mb-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{g.module}</p>
+              {g.perms.map((p) => (
+                <p key={p.key} className={cn('text-[11.5px]', def.perms.includes(p.key) ? 'text-ink' : 'text-faint line-through')}>
+                  {def.perms.includes(p.key) ? '✅' : '—'} {p.label}
+                </p>
+              ))}
+            </div>
+          ))}
+          {def.admin && <p className="text-[11.5px] text-ink">✅ Manage users &amp; roles</p>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /* ── Company activity feed ───────────────────────────────────────────────────
@@ -1518,7 +1866,7 @@ function companyActivity(c: Company): CoEvent[] {
     add(last + 2, 'system', '🧾', SYS, 'VAT e-invoice issued', 'Provider stamped the invoice; the 12-month activation window started.')
     add(last + 2, 'system', '📦', SYS, 'Products provisioned',
       [c.jobPosting && 'Job Posting', c.resumeSearch && 'Resume Search'].filter(Boolean).join(' + ') + ' — released from the paid invoice.')
-    add(last + 1, 'system', '🏢', SYS, 'Account activated', `Login created for ${contact} (HR Manager) · owner ${c.owner}.`)
+    add(last + 1, 'system', '🏢', SYS, 'Account activated', `Login created for ${contact} (Admin) · owner ${c.owner}.`)
   }
 
   // ── what the client themselves did on their site ──────────────────────────
@@ -1535,7 +1883,7 @@ function companyActivity(c: Company): CoEvent[] {
     add(Math.max(0, last - 4), 'client', '🔎', CLIENT, 'Resume search run', 'Searched the CV pool — no unlock spent on a search itself.')
   }
   if (isCustomer(c)) {
-    add(Math.max(0, last - 5), 'client', '👤', CLIENT, 'User invited', `${contact} invited an HR Specialist to the account.`)
+    add(Math.max(0, last - 5), 'client', '👤', CLIENT, 'User invited', `${contact} invited a user (Recruiter) to the account.`)
     add(Math.max(0, last - 6), 'client', '🔑', CLIENT, 'Signed in', `${contact} signed in to the company site.`)
   }
 
@@ -1634,23 +1982,20 @@ function CompanyActivities({ c }: { c: Company }) {
               so a reader can never get stranded in a partial view. */}
           <button
             onClick={() => setShow(new Set<CoKind>(['sales', 'client', 'system']))}
-            className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', show.size === 3 ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
+            className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', show.size === 3 ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
           >
             All
-            <span className={cn('rounded-full px-1.5 text-[10px]', show.size === 3 ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{all.length}</span>
           </button>
           {(['sales', 'client', 'system'] as CoKind[]).map((k) => {
             const on = show.has(k)
-            const n = all.filter((e) => e.kind === k).length
             return (
               <button
                 key={k}
                 onClick={() => toggle(k)}
                 title={KIND_META[k].hint}
-                className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
+                className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
               >
                 {KIND_META[k].label}
-                <span className={cn('rounded-full px-1.5 text-[10px]', on ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{n}</span>
               </button>
             )
           })}
@@ -2034,7 +2379,8 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       </div>
 
       {/* at-a-glance stats */}
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+        <MembershipStat c={c} />
         <MiniStat label="Customer since" value={c.since.slice(-4)} sub={c.since} />
         <MiniStat label="Open jobs" value={c.jobPosting ? activeJobs : '—'} sub={c.jobPosting ? `${jobs.length} total` : 'No Job Posting'} />
         <MiniStat label="Team" value={`${team.length}/${MAX_SEATS}`} sub="seats used" tone={full ? 'warn' : undefined} />
@@ -2062,6 +2408,12 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <KV label="Tax code (MST)" value={c.tax} />
               <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
               <KV label="Industry · size" value={`${c.industry} · ${c.size} staff`} />
+              {/* Editorial labels sit with the other classification fields rather than in
+                  their own card — one company identity block, not two. */}
+              <div className="border-b border-line-soft py-2">
+                <p className="text-[10.5px] uppercase tracking-wide text-faint">Company tags</p>
+                <div className="mt-1"><CompanyTagPicker initial={['Korean company']} /></div>
+              </div>
               <KV label="Location" value={coCity(c)} />
               <KV label="Website" value={c.domain} link />
               <KV label="Address" value={c.address} />
@@ -2074,12 +2426,6 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <KV label="Description" value={c.note} />
               <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
             </DetailCard>
-            <DetailCard title="Company tags" action={<span className="text-[11px] text-faint">editorial · admin-applied</span>}>
-              <CompanyTagPicker initial={['Korean company']} />
-              <p className="mt-2 text-[11px] leading-relaxed text-faint">Editorial labels for this company (a company can carry several). Click to pick from Master data → Company tag. Shown as tags on the Company site &amp; usable as a Store filter.</p>
-            </DetailCard>
-            <PeopleCard c={c} team={team} onOpenContacts={() => setTab('Contacts')} onOpenUsers={() => setTab('Users')} />
-            <MembershipCard c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
 
@@ -2124,7 +2470,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               ])}
             />
             <p className="mt-2 text-[11px] leading-relaxed text-faint">
-              Click a name to open the contact — every action (edit, change status, invite as user, find successor) lives there. Statuses answer “can I still call this person?”: <b>Left company</b>, <b>Retired</b> and <b>Do not contact</b> block outreach; <b>Moved department</b> means they are still there but no longer our buyer; <b>Snoozed</b> parks reminders until a date the contact chose. Exactly one contact is <b>PRIMARY</b> (quotations) and one is <b>BILLING</b> (invoices) — often two different people.
+              Click a name to open the contact — every action (edit, change status, invite as user, find successor) lives there. Five statuses, each one an instruction: <b>Active</b> contact normally · <b>Needs verifying</b> fix the details first · <b>Paused</b> wait until the resume date · <b>No longer here</b> find the successor · <b>Do not contact</b> no outreach at all. Exactly one contact is <b>PRIMARY</b> (quotations) and one is <b>BILLING</b> (invoices) — often two different people.
             </p>
           </div>
 
@@ -2153,17 +2499,18 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
             cols={[{ label: 'User', w: '1.6fr' }, { label: 'Role', w: '1fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Last login', w: '0.9fr', align: 'r' }, { label: 'Actions', w: '1.5fr', align: 'r' }]}
             rows={team.map((u) => [
               <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p><p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p></div>,
-              <Pill tone={u.role === 'HR Manager' ? 'neutral' : 'draft'}>{u.role}</Pill>,
+              <Pill tone={u.role === 'Admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
               <Pill tone={u.status === 'Active' ? 'active' : 'pending'}>{u.status}</Pill>,
               <span className="text-[11.5px] text-muted">{u.last}</span>,
               u.status === 'Invited'
                 ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
-                : u.role === 'HR Manager'
-                  ? <RowAction>Transfer role</RowAction>
-                  : <><RowAction>Make manager</RowAction><RowAction tone="rose">Disable</RowAction></>,
+                : u.role === 'Admin'
+                  ? <RowAction>Change role</RowAction>
+                  : <><RowAction>Change role</RowAction><RowAction tone="rose">Disable</RowAction></>,
             ])}
           />
-          <p className="mt-2 text-[11px] leading-relaxed text-faint">Remove = disable (never hard-delete) — the HR Manager can’t be disabled directly; transfer the role first. A self-signup requesting to join appears here for the Manager to approve.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-faint">Each user is assigned a role. Remove = disable (never hard-delete) — the last Admin can’t be disabled; assign Admin to someone else first. A self-signup requesting to join appears here for the Admin to approve.</p>
+          <CoRoleBuilder />
           </div>
           <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
             A seat is a <b>login</b>, not a relationship. Someone here may never appear under <b>Contacts</b> (the customer invited them without telling us), and a contact may never need a seat. Rows for the same human are <b>linked</b> 🔗 in both directions.
@@ -2288,16 +2635,17 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   )
 }
 
-type CUser = { name: string; email: string; company: string; role: 'HR Manager' | 'HR Specialist'; status: 'Active' | 'Invited' | 'Disabled'; last: string }
+type CUser = { name: string; email: string; company: string; role: CoUserRole; status: 'Active' | 'Invited' | 'Disabled'; last: string }
 const CUSERS: CUser[] = [
-  { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', company: 'Cty Vạn Phát', role: 'HR Manager', status: 'Active', last: '10m ago' },
-  { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', company: 'Cty Vạn Phát', role: 'HR Specialist', status: 'Active', last: '2h ago' },
-  { name: 'Lý Văn Giang', email: 'giang@fpt.com.vn', company: 'FPT Software', role: 'HR Manager', status: 'Active', last: '1d ago' },
-  { name: 'Ngô Minh Tú', email: 'tu@fpt.com.vn', company: 'FPT Software', role: 'HR Specialist', status: 'Invited', last: '—' },
-  { name: 'Bùi Thu Hằng', email: 'hang@tiki.vn', company: 'Tiki', role: 'HR Specialist', status: 'Disabled', last: '3 months ago' },
+  { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', company: 'Cty Vạn Phát', role: 'Admin', status: 'Active', last: '10m ago' },
+  { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', company: 'Cty Vạn Phát', role: 'Recruiter', status: 'Active', last: '2h ago' },
+  { name: 'Lý Văn Giang', email: 'giang@fpt.com.vn', company: 'FPT Software', role: 'Admin', status: 'Active', last: '1d ago' },
+  { name: 'Ngô Minh Tú', email: 'tu@fpt.com.vn', company: 'FPT Software', role: 'Viewer', status: 'Invited', last: '—' },
+  { name: 'Bùi Thu Hằng', email: 'hang@tiki.vn', company: 'Tiki', role: 'Recruiter', status: 'Disabled', last: '3 months ago' },
 ]
 
 function InviteUserModal({ onClose }: { onClose: () => void }) {
+  const [role, setRole] = useState('Recruiter')
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -2309,12 +2657,12 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
           <LField label="Company (account)" value="Cty Vạn Phát" select />
           <LField label="Email" req value="new.hr@vanphat.vn" />
           <div>
-            <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Role</p>
-            <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2">
-              <Pill tone="draft">HR Specialist</Pill>
-              <span className="text-[11.5px] text-muted">member — post jobs / search resumes only</span>
-            </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-faint">New users join as HR Specialist (up to 3). There is <b className="text-ink/70">exactly 1 HR Manager</b>, created at conversion — to hand it over, use <b className="text-ink/70">Transfer role</b> on the users list (the current manager becomes a Specialist).</p>
+            <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Role <span className="text-rose-500">*</span></p>
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+              {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
+            </select>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-faint">Pick one of the account’s roles. Roles are built on the <b className="text-ink/70">Roles</b> screen; “Admin” grants account administration and every account keeps at least one.</p>
+            <CoRolePermsView role={role} />
           </div>
           <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>🔑</span><span>We email an invite link. The person <b>sets their own password</b> — no one types it for them.</span></p>
         </div>
@@ -2327,44 +2675,33 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TransferManagerModal({ company, users, preselect, onConfirm, onClose }: { company: string; users: CUser[]; preselect?: string; onConfirm: (targetEmail: string) => void; onClose: () => void }) {
-  const manager = users.find((u) => u.company === company && u.role === 'HR Manager' && u.status !== 'Disabled')
-  const specialists = users.filter((u) => u.company === company && u.role === 'HR Specialist' && u.status === 'Active')
-  const [target, setTarget] = useState<string>(preselect ?? specialists[0]?.email ?? '')
-  const targetUser = specialists.find((s) => s.email === target)
-  const none = specialists.length === 0
+function ChangeRoleModal({ user, users, onConfirm, onClose }: { user: CUser; users: CUser[]; onConfirm: (role: CoUserRole) => void; onClose: () => void }) {
+  const [target, setTarget] = useState<CoUserRole>(user.role)
+  const admins = users.filter((u) => u.company === user.company && u.role === 'Admin' && u.status !== 'Disabled')
+  const lastAdmin = user.role === 'Admin' && admins.length <= 1
+  const blocked = lastAdmin && target !== 'Admin'
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <p className="text-[15px] font-bold">Transfer HR Manager</p>
+          <p className="text-[15px] font-bold">Change role — {user.name}</p>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="space-y-3 p-5">
-          {none ? (
-            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>This account has no active HR Specialist to transfer to. <b>Invite one first</b> — an account must always have exactly one HR Manager.</span></p>
-          ) : (
-            <>
-              <p className="text-[12px] text-muted">Pick who becomes the HR Manager. The current manager moves to HR Specialist. <b className="text-ink/80">No email/login changes for anyone.</b></p>
-              <div className="space-y-1.5">
-                {specialists.map((s) => (
-                  <button key={s.email} onClick={() => setTarget(s.email)} className={cn('flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left', target === s.email ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
-                    <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', target === s.email ? 'border-brand' : 'border-line')}>{target === s.email && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
-                    <span className="min-w-0"><span className="block truncate text-[12.5px] font-medium text-ink">{s.name}</span><span className="block truncate font-mono text-[10.5px] text-faint">{s.email}</span></span>
-                  </button>
-                ))}
-              </div>
-              <div className="rounded-lg border border-line bg-canvas/40 p-3 text-[11.5px]">
-                <p className="mb-1 font-semibold text-ink/70">After transfer</p>
-                <p className="flex items-center gap-1.5">{targetUser?.name} <span className="text-faint">→</span> <Pill tone="neutral">HR Manager</Pill></p>
-                <p className="mt-1 flex items-center gap-1.5">{manager?.name} (current) <span className="text-faint">→</span> <Pill tone="draft">HR Specialist</Pill></p>
-              </div>
-            </>
-          )}
+          <p className="text-[12px] text-muted">Pick the role for this user. <b className="text-ink/80">No email/login changes</b> — only their access changes.</p>
+          <div className="space-y-1.5">
+            {CO_ROLE_DEFS.map((r) => (
+              <button key={r.name} onClick={() => setTarget(r.name as CoUserRole)} className={cn('flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left', target === r.name ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
+                <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', target === r.name ? 'border-brand' : 'border-line')}>{target === r.name && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
+                <span className="min-w-0"><span className="block truncate text-[12.5px] font-medium text-ink">{r.name}{r.admin ? ' · account owner' : ''}</span><span className="block truncate text-[10.5px] text-faint">{r.admin ? 'everything + manage users & roles' : r.perms.length + ' permissions'}</span></span>
+              </button>
+            ))}
+          </div>
+          {blocked && <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>This is the account’s <b>last Admin</b>. Assign Admin to another user before downgrading this one.</span></p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => target && onConfirm(target)} disabled={none || !target} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Transfer role</button>
+          <button onClick={() => !blocked && onConfirm(target)} disabled={blocked} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Save role</button>
         </div>
       </div>
     </div>
@@ -2374,22 +2711,18 @@ function TransferManagerModal({ company, users, preselect, onConfirm, onClose }:
 function AdminCompanyUsers() {
   const [inviting, setInviting] = useState(false)
   const [users, setUsers] = useState<CUser[]>(CUSERS)
-  const [transfer, setTransfer] = useState<{ company: string; preselect?: string } | null>(null)
-  const applyTransfer = (targetEmail: string) => {
-    if (!transfer) return
-    setUsers((prev) => prev.map((u) => {
-      if (u.company !== transfer.company) return u
-      if (u.role === 'HR Manager' && u.status !== 'Disabled') return { ...u, role: 'HR Specialist' }
-      if (u.email === targetEmail) return { ...u, role: 'HR Manager' }
-      return u
-    }))
-    setTransfer(null)
+  const [changing, setChanging] = useState<CUser | null>(null)
+  const applyRole = (role: CoUserRole) => {
+    if (!changing) return
+    setUsers((prev) => prev.map((u) => (u.email === changing.email ? { ...u, role } : u)))
+    setChanging(null)
   }
   return (
     <div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-2">
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">HR Manager · exactly 1</Pill><p className="mt-1.5 text-[11px] text-muted">Owner / super admin — everything, plus manage users & billing.</p></div>
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">HR Specialist · up to 3</Pill><p className="mt-1.5 text-[11px] text-muted">Member — post jobs / search resumes only.</p></div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">🔒 Super admin</Pill><p className="mt-1.5 text-[11px] text-muted">Fixed highest role — everything, plus manage users &amp; roles. At least 1 per account; can’t be edited.</p></div>
+        <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Recruiter</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — all 7 module permissions, no user admin.</p></div>
+        <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Viewer</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — view jobs &amp; applications only.</p></div>
       </div>
 
       <ListPage
@@ -2402,7 +2735,7 @@ function AdminCompanyUsers() {
         rows={users.map((u) => [
           <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p><p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p></div>,
           <span className="truncate">{u.company}</span>,
-          <Pill tone={u.role === 'HR Manager' ? 'neutral' : 'draft'}>{u.role}</Pill>,
+          <Pill tone={u.role === 'Admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
           <Pill tone={u.status === 'Active' ? 'active' : u.status === 'Invited' ? 'pending' : 'expired'}>{u.status}</Pill>,
           <span className="text-[11.5px] text-muted">{u.last}</span>,
           <div className="flex items-center justify-end gap-1.5">
@@ -2410,15 +2743,13 @@ function AdminCompanyUsers() {
               ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
               : u.status === 'Disabled'
                 ? <RowAction tone="brand">Re-enable</RowAction>
-                : u.role === 'HR Manager'
-                  ? <button onClick={() => setTransfer({ company: u.company })} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Transfer role</button>
-                  : <><button onClick={() => setTransfer({ company: u.company, preselect: u.email })} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Make manager</button><RowAction tone="rose">Disable</RowAction></>}
+                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button>{u.role !== 'Admin' && <RowAction tone="rose">Disable</RowAction>}</>}
           </div>,
         ])}
       />
-      <p className="mt-2 text-[11px] leading-relaxed text-faint">Exactly 1 HR Manager. Making someone HR Manager <b>transfers</b> the role — the current manager becomes a Specialist; no email/login changes. If the sole manager is ever gone, HQ can reassign it.</p>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">Each user is assigned a role built on the Roles screen. Every account keeps at least one <b>Admin</b> — the last Admin can’t be downgraded or disabled. If the sole Admin is ever gone, HQ can reassign it.</p>
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
-      {transfer && <TransferManagerModal company={transfer.company} users={users} preselect={transfer.preselect} onConfirm={applyTransfer} onClose={() => setTransfer(null)} />}
+      {changing && <ChangeRoleModal user={changing} users={users} onConfirm={applyRole} onClose={() => setChanging(null)} />}
     </div>
   )
 }
@@ -3144,78 +3475,6 @@ const NEXT_BY_STAGE: Record<string, string> = {
   Lost: 'Log the loss reason and set a reminder to re-engage next quarter.',
 }
 
-/* ── People on the Overview ───────────────────────────────────────────────────
-   The two populations a rep asks about first — who do I call, and who can sign in
-   — summarised where they land, with the full lists one click away on the
-   "Contacts & users" tab. Deliberately a SUMMARY: duplicating both tables here
-   would mean two places to keep true. */
-function PeopleCard({ c, team, onOpenContacts, onOpenUsers }: { c: Company; team: CoTeamUser[]; onOpenContacts: () => void; onOpenUsers: () => void }) {
-  const contacts = companyContacts(c)
-  /* statuses that mean "this door is closed" — the count a rep must act on */
-  const stale = contacts.filter((p) => ['Left company', 'Retired', 'Moved department', 'Unreachable'].includes(p.status))
-  const primary = contacts.find((p) => p.primary)
-  return (
-    <DetailCard
-      title="People"
-      action={<span className="text-[11px] text-faint">summary · open a list to edit</span>}
-    >
-      <div className="space-y-3">
-        <div>
-          <button onClick={onOpenContacts} className="mb-1.5 flex w-full items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint hover:text-brand">
-            Contact people
-            <span className="rounded-full bg-canvas px-1.5 text-[10px] font-medium text-muted">{contacts.length}</span>
-            <span className="ml-auto text-[10px] normal-case tracking-normal">open →</span>
-          </button>
-          <ul className="space-y-1">
-            {contacts.slice(0, 3).map((p) => (
-              <li key={p.email} className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ink/85">
-                  {p.name}
-                  {p.primary && <span className="ml-1 text-[9.5px] font-semibold text-brand">PRIMARY</span>}
-                  <span className="text-faint"> · {p.title}</span>
-                </span>
-                <span className="shrink-0" title={CONTACT_STATUS[p.status].hint}>
-                  <Pill tone={CONTACT_STATUS[p.status].tone}>{CONTACT_STATUS[p.status].vi}</Pill>
-                </span>
-              </li>
-            ))}
-          </ul>
-          {contacts.length > 3 && (
-            <button onClick={onOpenContacts} className="mt-1 text-[11px] text-brand hover:underline">+{contacts.length - 3} more</button>
-          )}
-          {stale.length > 0 && (
-            <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
-              {stale.length} contact{stale.length > 1 ? 's' : ''} can no longer be reached ({stale.map((p) => p.name).join(', ')}) — find the successor before the renewal.
-            </p>
-          )}
-        </div>
-
-        <div className="border-t border-line-soft pt-2.5">
-          <button onClick={onOpenUsers} className="mb-1.5 flex w-full items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint hover:text-brand">
-            Login users
-            <span className="rounded-full bg-canvas px-1.5 text-[10px] font-medium text-muted">{team.length}/{MAX_SEATS} seats</span>
-            <span className="ml-auto text-[10px] normal-case tracking-normal">open →</span>
-          </button>
-          <ul className="space-y-1">
-            {team.slice(0, 3).map((u) => (
-              <li key={u.email} className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ink/85">{u.name}<span className="text-faint"> · {u.role}</span></span>
-                <span className="shrink-0"><Pill tone={u.status === 'Active' ? 'active' : 'pending'}>{u.status}</Pill></span>
-              </li>
-            ))}
-          </ul>
-          {team.length > 3 && (
-            <button onClick={onOpenUsers} className="mt-1 text-[11px] text-brand hover:underline">+{team.length - 3} more</button>
-          )}
-        </div>
-
-        <p className="text-[10.5px] leading-relaxed text-faint">
-          Two independent lists: a contact needs no login{primary ? ` (quotations go to ${primary.name})` : ''}, and a login user may be someone Sales never met.
-        </p>
-      </div>
-    </DetailCard>
-  )
-}
 
 function DetailCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -3791,7 +4050,7 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
-          <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">A permanent <b className="text-ink">Company ID</b> (e.g. <span className="font-mono">JW-7K2M9PQ</span>) is assigned automatically on save — it is never typed and never changes.</p>
+          <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">A permanent <b className="text-ink">Company ID</b> (e.g. <span className="font-mono">CO-7K2M9PQ</span>) is assigned automatically on save — it is never typed and never changes.</p>
           <LField label="Legal name" req value="Công ty TNHH …" />
           <div className="grid grid-cols-2 gap-3">
             <LField label="Short name" value="e.g. FPT, Tiki, NEC" hint="Display / brand name — shown on the pipeline & company page." />
@@ -4633,7 +4892,7 @@ function AdminUserBehavior() {
  *   3. Assign the role      → pick from the roles defined in step 1
  *   4. Send email invite    → operator sets their OWN password via the link
  *   → status is Pending until they activate it, then Active
- * Same invitation format/flow as the company HR Manager / HR Specialist invite.
+ * Same invitation format/flow as the company Admin / assigned-role invite.
  */
 type PermLevel = 'none' | 'read' | 'write'
 const PERM_GROUPS: { key: string; label: string; resources: string[] }[] = [
@@ -5139,6 +5398,22 @@ type MDDomain = {
   groups?: { name: string; items: string[] }[]
 }
 const MD_DOMAINS: MDDomain[] = [
+  {
+    // Numbering series belong in Master data: they are configuration an admin looks
+    // up, not something any screen lets you type. Records and documents follow
+    // OPPOSITE rules, which is the whole point of listing them side by side.
+    key: 'doc-numbering', label: 'Document numbering', i18n: '—', used: 'Company · quotation · sales order · invoice',
+    note: 'System-assigned, never editable (except the customer’s own PO number, typed as given). A RECORD id must not be guessable — its sequence would reveal how many customers we have. A DOCUMENT number must be sequential + date-stamped so it is filable, quotable on the phone, and legal for VAT.',
+    kind: 'flat',
+    entries: [
+      'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
+      'Quotation — EST-{seq6}-{MM}-{YYYY} · e.g. EST-009909-07-2026 · sequential',
+      'Sales order / PO — INV-{seq6}/{MM}/{YYYY} · e.g. INV-005864/07/2026 · sequential · ⚠ shares the INV- prefix with the invoice (client’s live format — open question)',
+      'Invoice, internal — INV-{seq} · e.g. INV-3390 · sequential',
+      'Invoice, legal series — issued by the e-invoice provider · e.g. 1C26TAA/0041 · sequential and gapless, required by law',
+      'Customer’s own PO number — free text, recorded exactly as given · e.g. PO-VP/2026/044',
+    ],
+  },
   {
     key: 'industry', label: 'Industry', i18n: 'vi · en · ko', used: 'Company profile · job form · Store filter',
     note: 'Classifies companies (and jobs). Single-level list.', kind: 'flat',

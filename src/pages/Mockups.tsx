@@ -570,18 +570,25 @@ function ProfileCvScreen() {
             </div>
           </div>
 
-          {/* ── Identity header — on top, clean (no cover banner) ── */}
-          <div className="rounded-xl border border-line bg-surface p-4">
-            <div className="flex items-start gap-3">
-              <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[22px] ring-2 ring-emerald-500 ring-offset-2 ring-offset-surface">🙂</div>
+          {/* ── Identity header — on top, clean ── */}
+          <div className="rounded-xl border border-line bg-surface p-5">
+            <div className="flex items-start gap-4">
+              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[28px]">🙂</div>
               <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-1.5 text-[17px] font-bold text-ink">Trần Minh Anh <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✓ Verified</span></p>
-                <p className="text-[12.5px] text-ink/80">Product Designer · 4 yrs experience</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">Hồ Chí Minh, Vietnam · <span className="font-medium text-brand">Contact info</span></p>
-                {!ro && <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="green">✓ Email</Chip><Chip tone="green">✓ Phone</Chip></div>}
+                <p className="text-[19px] font-bold leading-tight text-ink">Trần Minh Anh</p>
+                <p className="mt-0.5 text-[13px] text-ink/80">Product Designer · 4 yrs experience</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">📍 Hồ Chí Minh, Vietnam</p>
               </div>
-              {!ro && <span onClick={() => setEditing('Profile header')} className="shrink-0 cursor-pointer text-[13px] text-muted">✎</span>}
+              {!ro && (
+                <button onClick={() => setEditing('Profile header')} className="shrink-0 rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit</button>
+              )}
             </div>
+            {!ro && (
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-line-soft pt-3 text-[12px] text-ink/80">
+                <span className="inline-flex items-center gap-1.5"><span className="text-muted">✉</span> minhanh@email.com</span>
+                <span className="inline-flex items-center gap-1.5"><span className="text-muted">📞</span> 0901 234 567</span>
+              </div>
+            )}
           </div>
 
           {ro && (

@@ -30,23 +30,48 @@ export const companyUser: BuildModule = {
     },
     {
       label: 'Activation — what it creates',
-      text: 'On PO/won → convert, the ACCOUNT is created at company level (products + billing) together with its FIRST USER — the login, which is the HR Manager.',
+      text: 'On PO/won → convert, the ACCOUNT is created at company level (products + billing) together with its FIRST USER — the login, which is the Admin (the account owner).',
     },
     {
-      label: 'Company user model — 4 seats',
+      label: 'Company user model — Super admin + custom roles',
+      text: 'The account has one fixed Admin (the "Super admin") plus other users, and each user is ASSIGNED a role. Admin is the ONLY built-in role; EVERY other role is a custom role the Admin composes from a short permission set (see the next block). The flow is: Admin builds a role, then assigns it to a user.',
       table: {
-        cols: ['Role', 'Seats', 'Can do'],
+        cols: ['Role', 'How it is set', 'Can do'],
         rows: [
-          ['HR Manager', 'Exactly 1', 'Admin: invite / remove users, transfer the manager role'],
-          ['HR Specialist', 'Up to 3', 'Post jobs, search resumes — no user administration'],
+          ['Admin (Super admin)', 'The one fixed, highest role — the account owner (created at activation). Cannot be edited or renamed.', 'Everything across the 3 modules PLUS manage users & roles: invite, create/edit roles, assign roles, disable users'],
+          ['Custom role (e.g. Recruiter, Viewer)', 'Admin builds it from the permission set, then assigns it to the user', 'Only the permissions ticked on that role — never user/role administration'],
         ],
       },
       items: [
-        'Users self-register on the Company site or are added on Admin; the HR Manager manages them.',
-        'Making someone HR Manager is a TRANSFER — the chosen Specialist is promoted and the current Manager becomes a Specialist, in one atomic swap. No email or login ever changes.',
-        'Break-glass: if the sole HR Manager is unavailable (left / lost access), HQ can reassign the role. This is what makes single-owner safe.',
+        'Admin is the single highest role and is locked — you never edit its permissions; it always has full access. Everything below it is a custom role.',
+        'Every account keeps AT LEAST ONE Admin — the last Admin cannot be disabled or downgraded. To hand over ownership, grant Admin to another user first.',
+        'Break-glass: if the sole Admin is unavailable (left / lost access), HQ can reassign Admin. This is what makes the single-owner floor safe.',
+        'Seats are capped per account (up to 4); users self-register or are invited, and the Admin assigns each one a role.',
         'All users share the account’s POOLED products/quota (posting slots, CV unlocks) — quota is account-level, never per user.',
       ],
+    },
+    {
+      label: 'Roles — composed from a short permission set (not a 30-checkbox tree)',
+      text: 'A custom role is a named set of permissions across the 3 modules. Admin builds/edits a role by ticking permissions on a Roles screen, then assigns it to users — the VietnamWorks "build a role, then set users" flow, deliberately trimmed to 7 permissions so a role fits on one screen and cannot be built broken.',
+      table: {
+        cols: ['Module', 'Permission', 'Notes'],
+        rows: [
+          ['Job posts', 'View jobs', 'the base of the group'],
+          ['', 'Post jobs', 'auto-includes View jobs'],
+          ['', 'Edit jobs', 'edit & close a posting — auto-includes View jobs'],
+          ['Applications', 'View applications & CVs', 'see who applied + open their CV'],
+          ['', 'Manage applications', 'move through the pipeline / shortlist / reject — auto-includes View applications'],
+          ['Resume search', 'Search resumes', 'browse masked results'],
+          ['', 'View / unlock resume detail', 'spends 1 CV unlock, reveals contact — audited; auto-includes Search resumes'],
+        ],
+      },
+      items: [
+        'Prerequisites are auto-included, so a role can never be invalid (no "edit but cannot view"). Ticking a higher action silently checks its base.',
+        '"Manage users & roles" is NOT in this list — it belongs to the Admin (Super admin) role only, so a custom role can never grant account administration.',
+        'Resume permissions are ENTITLEMENT-gated: they do nothing unless the account actually bought Resume Search.',
+        'Starter custom roles ship so no one begins from a blank checklist — Recruiter (all 7 permissions) and Viewer (View jobs + View applications). They are ordinary editable custom roles; Admin can edit them or add new ones.',
+      ],
+      warn: 'Keep the permission list to these 7 (3 modules only). Do NOT reintroduce a per-page capability tree (~30 checkboxes, VietnamWorks-style) — the short list + auto-prerequisites is exactly what keeps roles simple and always valid.',
     },
     {
       label: 'HQ sees what the employer sees',
@@ -66,8 +91,8 @@ export const companyUser: BuildModule = {
         cols: ['Status', 'Means', 'Rule'],
         rows: [
           ['Invited', 'Invite sent, awaiting activation', 'Person sets their own password via the invite link — no one types it for them.'],
-          ['Active', 'Link clicked / password set — full use', 'Shares the account’s pooled products/quota; role is just a flag on the user.'],
-          ['Disabled', 'Access removed', 'Remove = deactivate, never hard-delete (keep the audit trail); the sole HR Manager can’t be disabled directly — transfer the manager role first.'],
+          ['Active', 'Link clicked / password set — full use', 'Shares the account’s pooled products/quota; can act within their assigned role’s permissions.'],
+          ['Disabled', 'Access removed', 'Remove = deactivate, never hard-delete (keep the audit trail); the last Admin can’t be disabled — grant Admin to another user first.'],
         ],
       },
     },
@@ -97,7 +122,7 @@ export const companyUser: BuildModule = {
       mockup: 'crm-activate',
       detail: {
         description:
-          'The account is created only when a Won customer is activated in CRM. It sets up the company-level account (products + billing) and its first user (the login — usually the HR Manager) for the company that already exists as the lead. It does not create a company — activation makes the existing company appear in the account/company list automatically. Further users are added under the account afterwards.',
+          'The account is created only when a Won customer is activated in CRM. It sets up the company-level account (products + billing) and its first user (the login — the Admin / account owner) for the company that already exists as the lead. It does not create a company — activation makes the existing company appear in the account/company list automatically. Further users are added under the account afterwards.',
         userStory:
           'As a sales/ops user, when I activate a won customer I want its account created and linked to the existing company, so that there is never a duplicate company record.',
         uiFields: [
@@ -185,67 +210,139 @@ export const companyUser: BuildModule = {
       },
     },
     {
-      name: 'Company users & roles (on CO)',
+      name: 'Roles (permission builder, on CO)',
       site: 'Companies',
       scope: ['BE', 'FE', 'UI'],
-      notes: 'The HR Manager invites and manages the company’s users, self-serve on the Company site.',
+      notes: 'Admin builds/edits the account’s roles by ticking a short permission set; users are then assigned a role.',
       detail: {
         description:
-          'Self-serve team management for the company. All users (HR Manager AND HR Specialist) are rows in one users table, each with their own email/login; role is just a flag on the user — not a special field on the account. This is what makes role changes clean (no email is ever created, moved, or replaced).',
+          'The Roles screen where the Admin composes a custom role from the 7-permission catalog (3 modules) and names it. Roles are then picked when inviting or editing a user. The account ships with starter custom roles (Recruiter, Viewer) so no one starts from a blank checklist; they are ordinary editable roles — Admin can edit them or add new ones. Admin itself (the Super admin) is the one fixed role and is not editable here. "Manage users & roles" is never a tickable permission — it stays on the Admin role only.',
         userStory:
-          'As the HR Manager, I want to invite my team and set each person’s role so that the right people can post jobs / search CVs without sharing one login.',
+          'As the Admin, I want to build a role from a short list of permissions and reuse it, so that I assign access consistently instead of configuring each person from scratch.',
+        uiFields: [
+          {
+            group: 'Role',
+            items: [
+              { name: 'roleName', type: 'string', required: true, notes: 'e.g. "Recruiter", "Sourcer", "Viewer"' },
+              { name: 'permissions', type: 'permission[]', required: true, notes: 'the 7-permission catalog, grouped by module; prerequisites auto-included' },
+              { name: 'isStarter', type: 'bool', notes: 'true for the pre-seeded starter roles (Recruiter / Viewer) — still fully editable. Admin is the one fixed, non-editable role.' },
+            ],
+          },
+        ],
+        sections: [
+          {
+            heading: 'The permission catalog — 7 permissions, 3 modules',
+            items: [
+              'Job posts: View jobs · Post jobs · Edit jobs (Post/Edit auto-include View).',
+              'Applications: View applications & CVs · Manage applications (Manage auto-includes View).',
+              'Resume search: Search resumes · View / unlock resume detail (Unlock auto-includes Search, spends 1 unlock, audited).',
+              'Not in the list: "Manage users & roles" — Admin only.',
+            ],
+          },
+        ],
+        behaviors: [
+          'Admin ticks permissions grouped by module; ticking a higher action auto-checks (and locks) its prerequisite so a role can never be invalid.',
+          'Resume permissions render but do nothing unless the account owns Resume Search (entitlement gate).',
+          'Starter roles (Recruiter = all 7, Viewer = View jobs + View applications) are pre-seeded and are fully editable; Admin can edit them or create new roles.',
+          'Editing a role re-scopes every user already assigned to it (roles are shared, not per-user copies).',
+        ],
+        rules: [
+          'Only the Admin can create, edit, or delete roles.',
+          'A role composed here can never include user/role administration — that capability lives only on the fixed Admin role.',
+          'Prerequisites are enforced server-side too, not just in the UI — an API call that sets "Edit jobs" without "View jobs" is normalised, never stored broken.',
+          'A role that is assigned to users cannot be deleted until those users are reassigned.',
+        ],
+        states: ['Starter roles only (fresh account)', 'Custom role being built', 'Prerequisite auto-checked', 'Resume perms disabled (no Resume Search)', 'Role in use (delete blocked)'],
+        backend: {
+          dataModel: [
+            { name: 'roleId', type: 'uuid' },
+            { name: 'accountId', type: 'ref(account)', required: true },
+            { name: 'name', type: 'string', required: true },
+            { name: 'permissions', type: 'text[]', required: true, notes: 'e.g. jobs.view, jobs.post, jobs.edit, apps.view, apps.move, resume.search, resume.unlock' },
+            { name: 'isStarter', type: 'bool', notes: 'pre-seeded starter roles (still editable); Admin is the one fixed role and not an editable row' },
+          ],
+          endpoints: [
+            'GET /company/roles',
+            'POST /company/roles { name, permissions } — permissions normalised for prerequisites',
+            'PUT /company/roles/:id',
+            'DELETE /company/roles/:id — blocked while assigned',
+          ],
+          integrations: ['Products & quota (Resume entitlement gate)', 'Audit log (role create/edit/delete)'],
+          notes: 'Permissions are a flat allow-list of ~7 keys. Prerequisite closure is applied on write so the stored set is always valid.',
+        },
+        acceptance: [
+          'Ticking "Post jobs" auto-selects and locks "View jobs".',
+          'A saved role never contains an action without its prerequisite, even via direct API.',
+          'Resume permissions are unavailable when the account has no Resume Search.',
+          'Deleting an in-use role is blocked with a reassign path.',
+        ],
+        openQuestions: [
+          'Can Admin rename/delete the pre-seeded starter roles, or only edit their permissions?',
+          'Is there a hard cap on how many custom roles an account can create?',
+        ],
+      },
+    },
+    {
+      name: 'Company users (invite & assign role, on CO)',
+      site: 'Companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes: 'The Admin invites the company’s users and assigns each one a role, self-serve on the Company site.',
+      detail: {
+        description:
+          'Self-serve team management. Every user is a row with their own email/login and an ASSIGNED role (Admin, or a role built on the Roles screen). Role is a reference to a role, not a bag of per-user permissions — so editing a role re-scopes everyone on it, and changing a person’s access is just picking a different role.',
+        userStory:
+          'As the Admin, I want to invite my team and assign each person a role so that the right people can post jobs / search CVs without sharing one login.',
         uiFields: [
           {
             group: 'User',
             items: [
               { name: 'email', type: 'string', required: true, notes: 'their own login; they set their own password via the invite link' },
               { name: 'fullName', type: 'string', notes: 'ONE field — no first/last split' },
-              { name: 'role', type: "enum('HR Manager'|'HR Specialist')", required: true, notes: 'a flag on the user — HR Manager = admin, HR Specialist = post jobs / search resumes only' },
+              { name: 'role', type: 'ref(role)', required: true, notes: 'pick one of the account’s roles (Admin / Recruiter / Viewer / custom); "View role’s permissions" shows exactly what it grants' },
               { name: 'status', type: 'enum', notes: 'Invited → Active → Disabled' },
             ],
           },
         ],
         behaviors: [
-          'Invite by email + role → the person receives a link and sets their own password (no one types it for them). New invites are always HR Specialists.',
-          'Making someone HR Manager is a TRANSFER: the chosen HR Specialist becomes Manager AND the current Manager becomes an HR Specialist — one atomic swap. No email/login changes for either person.',
-          'The role change is reachable from two entry points (the current Manager’s “Transfer role”, or a Specialist’s “Make manager”) but is the same single transfer action.',
-          'Remove = deactivate (Disabled), never hard-delete — keep the audit trail. The HR Manager can’t be disabled directly; transfer the role first.',
-          'A self-signup requesting to join an existing company appears here for the HR Manager to approve.',
+          'Invite by email + role → the person receives a link and sets their own password (no one types it for them).',
+          'Changing a user’s access = assign a different role. Granting Admin is just assigning the Admin role; there is no separate "transfer" dance.',
+          'Remove = deactivate (Disabled), never hard-delete — keep the audit trail.',
+          'A self-signup requesting to join an existing company appears here for the Admin to approve and assign a role.',
         ],
         rules: [
-          'Policy: EXACTLY 1 HR Manager + up to 3 HR Specialists per account (4 seats max).',
-          'You cannot demote or disable the sole HR Manager on its own — the only way to change the Manager is to Transfer the role to a Specialist (which needs at least one Specialist to exist).',
+          'Only the Admin can invite / remove users and assign roles.',
+          'Every account must keep at least one active Admin — the last Admin cannot be disabled or downgraded (assign Admin to someone else first).',
+          'Seats are capped per account (up to 4); a beyond-cap invite is blocked.',
           'All users share the account’s pooled products/quota (posting slots, CV unlocks) — quota is account-level, not per user.',
-          'Only the HR Manager (admin) can invite / remove / transfer roles.',
-          'Break-glass: if the sole HR Manager is ever gone (left / lost access / dead email), HQ (Admin side) can reassign the HR Manager. This is what makes single-owner safe.',
+          'Break-glass: if the sole Admin is gone (left / lost access / dead email), HQ can reassign Admin.',
         ],
-        states: ['Invited (pending)', 'Active', 'Disabled', 'Join request pending approval', 'Seat limit reached (4)', 'No specialist to transfer to'],
+        states: ['Invited (pending)', 'Active', 'Disabled', 'Join request pending approval', 'Seat limit reached (4)', 'Last Admin (downgrade/disable blocked)'],
         backend: {
           dataModel: [
             { name: 'userId', type: 'uuid' },
             { name: 'accountId', type: 'ref(account)', required: true },
             { name: 'email', type: 'string', required: true, notes: 'unique per user' },
-            { name: 'role', type: 'enum', required: true, notes: 'hr_manager | hr_specialist' },
+            { name: 'roleId', type: 'ref(role)', required: true, notes: 'Admin is a reserved role id' },
             { name: 'status', type: 'enum', notes: 'invited | active | disabled' },
           ],
           endpoints: [
-            'POST /company/users/invite { email } — always a specialist',
-            'POST /company/manager/transfer { toUserId } — atomically demotes current manager, promotes target',
-            'PATCH /company/users/:id/disable — blocked for the sole manager',
-            'POST /company/join-requests/:id/approve',
+            'POST /company/users/invite { email, roleId }',
+            'PATCH /company/users/:id/role { roleId } — blocked if it would leave zero Admins',
+            'PATCH /company/users/:id/disable — blocked for the last Admin',
+            'POST /company/join-requests/:id/approve { roleId }',
           ],
-          integrations: ['Notifications (invite / set-password link)', 'Products & quota (shared at account level)'],
-          notes: 'Role is a column on the user row — no separate "owner email" on the account. The single-manager rule is enforced by making the manager change a transfer, not a free field edit.',
+          integrations: ['Notifications (invite / set-password link)', 'Roles (permission builder)', 'Products & quota (shared at account level)'],
+          notes: 'A user points at a role id. The "at least one Admin" floor is enforced on role-change and disable, replacing the old single-manager transfer swap.',
         },
         acceptance: [
           'Inviting a user emails a set-password link; the account never stores their password.',
-          'Transferring the manager role atomically swaps the two users’ roles; neither email/login changes.',
-          'Disabling or standalone-demoting the sole HR Manager is blocked; transfer is offered instead.',
-          'Adding a 5th user (beyond 1 + 3) is blocked.',
-          'HQ can reassign the HR Manager when the company’s manager is unavailable.',
+          'Assigning a different role changes the user’s access immediately; no email/login changes.',
+          'Disabling or downgrading the last Admin is blocked with a clear reason.',
+          'Adding a 5th user (beyond the seat cap) is blocked.',
+          'HQ can reassign Admin when the company’s Admin is unavailable.',
         ],
         openQuestions: [
-          'Confirm seats: 1 HR Manager + 3 HR Specialists (4 total)?',
+          'Confirm seat cap — still 4 total?',
           'Auto-approve join requests whose email domain matches the company’s verified domain?',
           'Which HQ roles may use the break-glass reassign, and is it always audited?',
         ],
@@ -255,20 +352,20 @@ export const companyUser: BuildModule = {
       name: 'Company users & roles (on Admin)',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'HQ concierge — same users/roles model as the CO side, gated + audited. The global list is oversight/search.',
+      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. The global list is oversight/search.',
       detail: {
         description:
-          'HQ can add/manage a company’s users on their behalf (support / concierge) — the same users-table + role-flag model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users), scoped to one company.',
+          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
         behaviors: [
-          'Same invite / transfer-manager / disable actions as the CO side, but performed by HQ.',
-          'Break-glass: HQ can reassign the HR Manager for a company when the sole manager is unavailable (left / lost access) — the one recovery path single-owner needs.',
+          'Same build-role / invite / assign-role / disable actions as the CO side, but performed by HQ.',
+          'Break-glass: HQ can reassign Admin for a company when the sole Admin is unavailable (left / lost access) — the one recovery path the single-Admin floor needs.',
         ],
         rules: [
           'HQ role/user edits should be permission-gated (specific HQ roles) and written to the audit log.',
-          'Prefer the company-scoped Users section for edits; keep the global list read-oriented (find a user, see which company).',
+          'Prefer the company-scoped Users / Roles sections for edits; keep the global list read-oriented (find a user, see which company).',
         ],
-        acceptance: ['HQ can resolve support cases (invite, transfer manager, disable) with every action audited.', 'HQ can reassign a stranded company’s HR Manager.'],
-        openQuestions: ['Which HQ roles may edit company users / use break-glass, and should the global list be read-only?'],
+        acceptance: ['HQ can resolve support cases (build a role, invite, assign role, disable) with every action audited.', 'HQ can reassign a stranded company’s Admin.'],
+        openQuestions: ['Which HQ roles may edit company users / roles and use break-glass, and should the global list be read-only?'],
       },
     },
     {

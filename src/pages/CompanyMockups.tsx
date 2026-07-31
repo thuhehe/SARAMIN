@@ -19,6 +19,8 @@ import {
   CreditCard,
   Bell,
   ChevronDown,
+  Crown,
+  Shield,
 } from 'lucide-react'
 import { Btn, Chip } from '@/components/wire'
 import { cn } from '@/lib/utils'
@@ -535,33 +537,184 @@ function CompanyPageScreen() {
   )
 }
 
+/* ── Roles = built from a short permission set, then assigned to users ─────────
+   The VietnamWorks "build a role, then set users" flow, trimmed to 7 permissions
+   across the 3 modules. Prerequisites auto-include so a role can never be invalid.
+   "Manage users & roles" is NOT a tickable permission — it lives on Admin only. */
+type PermKey = 'jobs.view' | 'jobs.post' | 'jobs.edit' | 'apps.view' | 'apps.move' | 'resume.search' | 'resume.unlock'
+const PERM_GROUPS: { module: string; perms: { key: PermKey; label: string; needs?: PermKey }[] }[] = [
+  { module: 'Job posts', perms: [
+    { key: 'jobs.view', label: 'View jobs' },
+    { key: 'jobs.post', label: 'Post jobs', needs: 'jobs.view' },
+    { key: 'jobs.edit', label: 'Edit jobs', needs: 'jobs.view' },
+  ] },
+  { module: 'Applications', perms: [
+    { key: 'apps.view', label: 'View applications & CVs' },
+    { key: 'apps.move', label: 'Manage applications', needs: 'apps.view' },
+  ] },
+  { module: 'Resume search', perms: [
+    { key: 'resume.search', label: 'Search resumes' },
+    { key: 'resume.unlock', label: 'View / unlock resume detail', needs: 'resume.search' },
+  ] },
+]
+const ALL_PERMS: PermKey[] = PERM_GROUPS.flatMap((g) => g.perms.map((p) => p.key))
+const NEEDS: Partial<Record<PermKey, PermKey>> = Object.fromEntries(
+  PERM_GROUPS.flatMap((g) => g.perms.filter((p) => p.needs).map((p) => [p.key, p.needs])),
+) as Partial<Record<PermKey, PermKey>>
+
+/* Admin is the one fixed, highest role (all access + manage users) and cannot be
+   edited. EVERY other role is a custom role the Admin builds and can edit. */
+type CoRole = { name: string; admin?: boolean; perms: PermKey[] }
+const DEFAULT_ROLES: CoRole[] = [
+  { name: 'Admin', admin: true, perms: ALL_PERMS },
+  { name: 'Recruiter', perms: [...ALL_PERMS] },
+  { name: 'Viewer', perms: ['jobs.view', 'apps.view'] },
+]
+
+/* Toggle a permission with prerequisite closure: turning one ON pulls in what it
+   needs; turning one OFF drops anything that needed it. A role is never broken. */
+function togglePerm(perms: PermKey[], key: PermKey): PermKey[] {
+  const has = perms.includes(key)
+  if (!has) {
+    const next = new Set(perms)
+    let k: PermKey | undefined = key
+    while (k) { next.add(k); k = NEEDS[k] }
+    return ALL_PERMS.filter((p) => next.has(p))
+  }
+  const drop = new Set<PermKey>([key])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const p of ALL_PERMS) {
+      const n = NEEDS[p]
+      if (n && drop.has(n) && !drop.has(p)) { drop.add(p); changed = true }
+    }
+  }
+  return perms.filter((p) => !drop.has(p))
+}
+
+function RolesScreen() {
+  const [roles, setRoles] = useState<CoRole[]>(DEFAULT_ROLES)
+  const [sel, setSel] = useState(1)
+  const role = roles[sel]
+  const editable = !role.admin
+  const setPerms = (perms: PermKey[]) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, perms } : r)))
+  const addRole = () => { setRoles((rs) => [...rs, { name: `New role ${rs.length}`, perms: ['jobs.view'] }]); setSel(roles.length) }
+  return (
+    <div>
+      <PageBar title="Roles" sub="Build a role from a short set of permissions, then assign it to users." />
+      <div className="grid max-w-[880px] gap-4 md:grid-cols-[220px_1fr]">
+        {/* roles list */}
+        <div className="rounded-xl border border-line p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[12px] font-bold">Roles</p>
+            <button onClick={addRole} className="text-[11px] font-medium text-brand">+ Add role</button>
+          </div>
+          <div className="space-y-1">
+            {roles.map((r, i) => (
+              <button key={r.name} onClick={() => setSel(i)} className={cn('flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-left', i === sel ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
+                <span className="text-[12px] font-medium text-ink">{r.name}</span>
+                {r.admin && <Chip tone="blue">🔒 Super admin</Chip>}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* permission builder */}
+        <div className="rounded-xl border border-line p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <input value={role.name} readOnly={!editable} onChange={(e) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, name: e.target.value } : r)))} className={cn('min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-[13px] font-semibold text-ink', editable ? 'border-line' : 'border-transparent bg-transparent')} />
+            {role.admin && <span className="shrink-0 text-[11px] text-faint">🔒 Super admin · full access, can’t be edited</span>}
+          </div>
+          {PERM_GROUPS.map((g) => (
+            <div key={g.module} className="mb-2.5 border-t border-line-soft pt-2.5 first:border-0 first:pt-0">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">{g.module}</p>
+              <div className="space-y-1">
+                {g.perms.map((p) => {
+                  const on = role.perms.includes(p.key)
+                  const locked = on && ALL_PERMS.some((q) => NEEDS[q] === p.key && role.perms.includes(q))
+                  const disabled = !editable || locked
+                  return (
+                    <label key={p.key} className={cn('flex items-center gap-2.5 rounded-md px-2 py-1.5', disabled ? 'opacity-90' : 'cursor-pointer hover:bg-canvas')}>
+                      <input type="checkbox" checked={on} disabled={disabled} onChange={() => editable && setPerms(togglePerm(role.perms, p.key))} className="h-3.5 w-3.5 accent-brand" />
+                      <span className="text-[12px] text-ink">{p.label}</span>
+                      {p.needs && on && <span className="text-[10px] text-faint">(needs {PERM_GROUPS.flatMap((x) => x.perms).find((x) => x.key === p.needs)!.label})</span>}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+          <p className="mt-3 text-[10.5px] leading-relaxed text-faint">Ticking a higher action auto-includes (and locks) its prerequisite, so a role is never invalid. Admin is the one fixed role — every other role is custom and editable.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TeamScreen() {
+  const go = useCoNav()
   const team = [
-    ['Vũ Thanh Linh', 'linh@vanphat.vn', 'HR Manager', 'green', 'Active'],
-    ['Đỗ Thị Mai', 'mai@vanphat.vn', 'HR Specialist', 'muted', 'Active'],
-    ['Ngô Văn Sơn', 'son@vanphat.vn', 'HR Specialist', 'amber', 'Invited'],
+    { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', role: 'Admin', status: 'Active' },
+    { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', role: 'Recruiter', status: 'Active' },
+    { name: 'Ngô Văn Sơn', email: 'son@vanphat.vn', role: 'Viewer', status: 'Invited' },
   ] as const
   return (
     <div>
       <PageBar title="Team" sub="The people who can log in for your company." />
-      <div className="max-w-[760px] rounded-xl border border-line p-4">
+      <div className="max-w-[820px] rounded-xl border border-line p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[12.5px] font-bold">Users</p>
           <div className="flex items-center gap-2"><span className="text-[11px] text-faint">3 / 4 seats</span><Btn primary>+ Invite user</Btn></div>
         </div>
-        <div className="space-y-1.5">
-          {team.map(([name, email, role, tone, status]) => (
-            <div key={email} className="flex items-center gap-2 rounded-md border border-line px-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
-                <p className="truncate font-mono text-[10.5px] text-faint">{email}</p>
-              </div>
-              <Chip tone={tone as 'green' | 'muted' | 'amber'}>{role}</Chip>
-              <Chip tone={status === 'Active' ? 'green' : 'amber'}>{status}</Chip>
-            </div>
-          ))}
+        {/* column captions so ROLE and STATUS read as two different things */}
+        <div className="mb-1 flex items-center gap-3 px-3 text-[9.5px] font-semibold uppercase tracking-wide text-faint">
+          <span className="flex-1">User</span>
+          <span className="w-[120px]">Role</span>
+          <span className="w-[84px]">Status</span>
+          <span className="w-[180px] text-right">Actions</span>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-faint">Exactly 1 HR Manager + up to 3 HR Specialists. All share the account's pooled quota. Only the Manager can invite / remove / transfer the role.</p>
+        <div className="space-y-1.5">
+          {team.map((u) => {
+            const admin = u.role === 'Admin'
+            const active = u.status === 'Active'
+            return (
+              <div key={u.email} className="flex items-center gap-3 rounded-md border border-line px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p>
+                  <p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p>
+                </div>
+                {/* ROLE — a bordered pill with an icon; clearly an assignment, not a state */}
+                <span className={cn('inline-flex w-[120px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium', admin ? 'border-brand/40 bg-brand-soft/50 text-brand' : 'border-line text-ink/75')}>
+                  {admin ? <Crown className="h-3 w-3 shrink-0" /> : <Shield className="h-3 w-3 shrink-0" />}
+                  <span className="truncate">{u.role}</span>
+                </span>
+                {/* STATUS — a coloured dot + label; clearly a state, not a role */}
+                <span className="inline-flex w-[84px] items-center gap-1.5 text-[11px] font-medium">
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', active ? 'bg-emerald-500' : 'bg-amber-500')} />
+                  <span className={active ? 'text-emerald-700' : 'text-amber-700'}>{u.status}</span>
+                </span>
+                {/* ACTIONS — deactivate an Active user; resend / cancel an Invite */}
+                <div className="flex w-[180px] shrink-0 items-center justify-end gap-1.5">
+                  {u.status === 'Invited' ? (
+                    <>
+                      <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand hover:bg-canvas">Resend</button>
+                      <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Cancel invitation</button>
+                    </>
+                  ) : admin ? (
+                    <span className="text-[10.5px] text-faint">Super admin · can’t deactivate</span>
+                  ) : (
+                    <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-faint">Invite by email and pick a role. Every account keeps at least one Admin (its login can’t be deactivated). All users share the account’s pooled quota.</p>
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="text-faint">Roles are built on the</span>
+          <button onClick={() => go('co-roles')} className="font-medium text-brand">Roles screen →</button>
+        </div>
       </div>
     </div>
   )
@@ -666,6 +819,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
       { id: 'co-team', label: 'Team', Comp: TeamScreen },
+      { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
     ],
   },
   {

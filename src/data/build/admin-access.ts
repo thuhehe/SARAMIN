@@ -32,6 +32,7 @@ export const adminAccess: BuildModule = {
       label: 'Console shell — one bar, one sidebar',
       text: 'Every admin page is framed by the same chrome: a single top bar and a left sidebar. The bar carries the breadcrumb (Group / Page / Record) as well as global search, so there is never a second bar under it — a page’s own title and its create action belong to the page body, not the frame. The sidebar’s switcher block (logo + console name) sits at the sidebar’s width, so the top-left corner reads as one piece with the nav below it.',
       items: [
+        'The bar holds no dividers and no global search: breadcrumb on the left, then History · View full spec · language (one globe icon carrying the active code) · notifications · account.',
         'Nav groups (Analytics · Recruitment · User · CRM · Content · System) are foldable; “Expand all / Collapse all” turns the tree into a six-line index and back.',
         'A folded group holding the current page shows a dot on its header, so the reader never loses their position.',
         'Role permissions still decide what is in the nav at all: a page granted None is not rendered in either state.',
@@ -49,7 +50,7 @@ export const adminAccess: BuildModule = {
         ],
       },
       items: [
-        'Toggled from the bar or with the “[” shortcut.',
+        'Toggled from the sidebar’s own header — a ‹ arrow beside the console name, and the logo itself turns into a › to expand — or with the “[” shortcut. The page bar carries no sidebar control.',
         'Both the collapsed state and which groups are open persist per operator (browser storage), so the console reopens the way it was left.',
       ],
     },
@@ -59,13 +60,15 @@ export const adminAccess: BuildModule = {
       table: {
         cols: ['Strip', 'Holds', 'Rule'],
         rows: [
-          ['Toolbar (above the table)', 'Status tabs · search · the page’s create button', 'One row. No description paragraph above a table.'],
+          ['Line 1 — tabs', 'Status tabs (All / Draft / Open …) · the page’s create button on the right', 'No description paragraph above a table, and no rule under the toolbar.'],
+          ['Line 2 — narrowing', 'Search box FIRST, then the filters', 'Search leads the row: it is the control people reach for first, and both live on one line.'],
+          ['Count line', '“Search <n> / Total <N>”', 'Sits directly on top of the table it describes. Total is the whole list, not what survived the filters.'],
           ['Table', 'Columns only', 'Empty search result reads “No rows match …”'],
-          ['Footer (below the table)', 'Rows per page (10 / 20 / 50 / 100) · pagination', 'No explanatory footnote — the count belongs to the pagination, not a sentence.'],
+          ['Footer (below the table)', 'Rows per page (10 / 20 / 50 / 100) · pagination', 'No explanatory footnote — the count belongs to the count line, not a sentence.'],
         ],
       },
       items: [
-        'ONE search box per list, matching against every column — no field picker to learn and no guessing which column a value lives in.',
+        'ONE search box per list, matching against every column — no field picker to learn and no guessing which column a value lives in. It also matches fields the table does not print (company ID, MST) when the placeholder promises them.',
         'Search ignores diacritics and case, so “cong ty” finds “Công ty” — required for VN data entered both ways.',
         'Rows per page is the operator’s choice, not a fixed page size.',
       ],
