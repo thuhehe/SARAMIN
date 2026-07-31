@@ -382,7 +382,7 @@ export function AdminWireframe() {
             </div>
 
             <div className="ml-auto flex h-full items-center">
-              <div className="flex h-full items-center gap-2 border-l border-line px-3">
+              <div className="flex h-full items-center gap-2 px-3">
                 <ActivityLogButton page={active.item.label} />
                 {specHref && (
                   <Link to={specHref} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-brand transition-colors hover:border-ink/30 hover:underline">
@@ -391,12 +391,9 @@ export function AdminWireframe() {
                   </Link>
                 )}
               </div>
-              <div className="flex h-full items-center gap-2 border-l border-line px-3">
-                <div className="hidden overflow-hidden rounded-md border border-line text-[11px] font-medium xl:flex">
-                  <span className="bg-brand px-2 py-1 text-white">VI</span>
-                  <span className="px-2 py-1 text-muted">EN</span>
-                  <span className="px-2 py-1 text-muted">KO</span>
-                </div>
+              <div className="flex h-full items-center gap-2 px-3">
+                {/* No language control: the Admin console is English-only, so a
+                    switcher would offer exactly one choice. See SH-I18N-01. */}
                 <span className="relative grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line text-muted">
                   <Bell className="h-3.5 w-3.5" />
                   <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500" />

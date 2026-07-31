@@ -97,12 +97,12 @@ export const CROSSCUTTING_SPECS: FeatureSpec[] = [
     title: 'Localisation scope',
     status: 'built-mock',
     summary:
-      'Three sites: Admin, Jobseeker (JS), Company (CO). Vietnamese is the default everywhere. JS = vi/en, CO = vi/en/ko, Admin = vi/en. Empty English falls back to Vietnamese.',
+      'Three sites: Admin, Jobseeker (JS), Company (CO). Vietnamese is the default on the public sites; the Admin console is English-only. JS = vi/en, CO = vi/en/ko, Admin = en. Empty English falls back to Vietnamese.',
     known: [
       'Three sites: Admin, Jobseeker (JS), Company (CO).',
-      'Default language: Vietnamese (all sites).',
-      'Jobseeker (JS): vi + en · Company (CO): vi + en + ko · Admin: vi + en.',
-      'Admin must always input Vietnamese; English optional, falls back to vi when empty.',
+      'Default language: Vietnamese on the public sites (JS, CO); the Admin console is English-only.',
+      'Jobseeker (JS): vi + en · Company (CO): vi + en + ko · Admin: en.',
+      'The English Admin UI does not change content rules: Admin must always input the Vietnamese content value; English optional, falls back to vi when empty.',
       'Multilingual data fields (job title, job description, …) are stored per-language.',
     ],
     unknown: ['Full list of multilingual fields; Korean fallback behaviour on the employer site.'],

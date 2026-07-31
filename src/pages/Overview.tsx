@@ -33,8 +33,8 @@ export function Overview() {
             <div className="grid gap-2 sm:grid-cols-3">
               {([
                 ['Jobseeker', 'EN · VI', 'bg-emerald-500'],
-                ['Admin', 'EN · VI', 'bg-slate-400'],
-                ['Company', 'EN · VI · KR', 'bg-sky-500'],
+                ['Admin', 'EN', 'bg-slate-400'],
+                ['Company', 'EN · VI · KO', 'bg-sky-500'],
               ] as const).map(([surface, langs, dot]) => (
                 <div key={surface} className="rounded-lg border border-line bg-canvas/40 px-3 py-2">
                   <p className="flex items-center gap-1.5 text-[12px] font-medium text-ink">

@@ -89,19 +89,20 @@ export const SHARED_SPECS: FeatureSpec[] = [
     title: 'i18n & multilingual content',
     status: 'built-mock',
     summary:
-      'Vietnamese is the default everywhere. Languages differ by audience; empty English falls back to Vietnamese. Locale from cookie → browser → default vi. No language in the URL.',
+      'Vietnamese is the default on the two public sites; the Admin console is English-only. Languages differ by audience; empty English falls back to Vietnamese. Locale from cookie → browser → the site default. No language in the URL.',
     description:
       'Framework-wide. Two concerns: (1) UI locale — which display languages each audience gets; ' +
       '(2) multilingual content — specific data fields (job title, job description, …) are stored per-language.',
     known: [
       'Three sites: Admin, Jobseeker (JS), Company (CO).',
-      'Vietnamese (vi) is the default language across all three sites.',
+      'Vietnamese (vi) is the default language on the two public sites (JS, CO). The Admin console has no Vietnamese UI at all.',
       'Jobseeker (JS): Vietnamese + English.',
       'Company (CO): Vietnamese + English + Korean.',
-      'Admin: Vietnamese + English.',
+      'Admin: English only.',
     ],
     rules: [
-      'Vietnamese is mandatory: Admin must always input the Vietnamese value for any multilingual field.',
+      'UI language and content language are separate concerns. The Admin console is English-only as an INTERFACE; that says nothing about the languages of the data edited through it.',
+      'Vietnamese is mandatory for content: whoever edits in Admin must always input the Vietnamese value for any multilingual field, because the public sites display Vietnamese by default.',
       'English (and other non-default languages) are optional inputs.',
       'Fallback: when the English value is empty, display the Vietnamese value instead.',
       'Fallback applies per-field, not per-record — a record can mix present and fallen-back languages.',
@@ -120,8 +121,9 @@ export const SHARED_SPECS: FeatureSpec[] = [
       {
         heading: 'UI locale',
         items: [
-          'Per-audience display languages: JS = vi/en, CO = vi/en/ko, Admin = vi/en. Locale resolved cookie → browser → default vi. No locale segment in the URL.',
-          'Standard i18n message catalogues per site; missing UI strings fall back to vi.',
+          'Per-audience display languages: JS = vi/en, CO = vi/en/ko, Admin = en. Locale resolved cookie → browser → the site default (vi on JS/CO, en on Admin). No locale segment in the URL.',
+          'Admin ships a single catalogue, so it needs no locale switcher in the chrome — one less control in the busiest bar on the site.',
+          'Standard i18n message catalogues per site; missing UI strings fall back to the site default locale.',
         ],
       },
       {
