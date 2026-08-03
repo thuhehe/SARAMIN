@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="330" viewBox="0 0 1260 330" fill="none" font-family="Pretendard, Inter, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="gradA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2D67FF"/>
+      <stop offset="1" stop-color="#02C6FF"/>
+    </linearGradient>
+    <linearGradient id="gradB" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#02C6FF"/>
+      <stop offset="1" stop-color="#00BE4C"/>
+    </linearGradient>
+    <linearGradient id="gradC" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00BE4C"/>
+      <stop offset="1" stop-color="#FFE15F"/>
+    </linearGradient>
+    <linearGradient id="gradD" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9F02FF"/>
+      <stop offset="1" stop-color="#2D67FF"/>
+    </linearGradient>
+    <clipPath id="cardClip">
+      <rect x="0" y="0" width="300" height="270" rx="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- ============ Card A : blue -> cyan ============ -->
+  <g transform="translate(0,0)">
+    <g clip-path="url(#cardClip)">
+      <rect width="300" height="270" fill="#FFFFFF"/>
+      <rect x="0" y="139" width="300" height="131" fill="#DCE3ED"/>
+      <rect x="0" y="0" width="300" height="3" fill="url(#gradA)"/>
+    </g>
+    <rect x="23" y="15" width="120" height="30" rx="4" fill="#EEF1F6"/>
+    <text x="33" y="35" font-size="13" font-weight="700" fill="#A5AEBE" letter-spacing="1">LOGO</text>
+    <text x="23" y="74" font-size="14" font-weight="700" fill="#292E41">(주)회사이름</text>
+    <text x="23" y="101" font-size="18" font-weight="400" fill="#292E41">신입/경력 채용 공고</text>
+    <text x="23" y="127" font-size="18" font-weight="400" fill="#292E41">제목 두 번째 줄</text>
+    <rect x="12" y="234" width="124" height="24" rx="12" fill="#000000" fill-opacity="0.55"/>
+    <text x="24" y="250" font-size="12" fill="#FFFFFF">매출액 1000억 이상</text>
+    <rect x="182" y="234" width="82" height="24" rx="4" fill="#000000" fill-opacity="0.55"/>
+    <text x="223" y="250" font-size="12" fill="#FFFFFF" text-anchor="middle">~08.14(Fri)</text>
+    <path d="M276 236.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.45-5.8-3.05-5.8 3.05 1.1-6.45-4.7-4.6 6.5-.95z" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+    <rect x="0.5" y="0.5" width="299" height="269" rx="15.5" fill="none" stroke="#D7DCE5"/>
+    <text x="0" y="296" font-size="13" font-weight="700" fill="#292E41">A · blue → cyan</text>
+    <text x="0" y="314" font-size="12" fill="#6B7385">#2D67FF → #02C6FF</text>
+  </g>
+
+  <!-- ============ Card B : cyan -> green ============ -->
+  <g transform="translate(320,0)">
+    <g clip-path="url(#cardClip)">
+      <rect width="300" height="270" fill="#FFFFFF"/>
+      <rect x="0" y="139" width="300" height="131" fill="#DCE3ED"/>
+      <rect x="0" y="0" width="300" height="3" fill="url(#gradB)"/>
+    </g>
+    <rect x="23" y="15" width="120" height="30" rx="4" fill="#EEF1F6"/>
+    <text x="33" y="35" font-size="13" font-weight="700" fill="#A5AEBE" letter-spacing="1">LOGO</text>
+    <text x="23" y="74" font-size="14" font-weight="700" fill="#292E41">(주)회사이름</text>
+    <text x="23" y="101" font-size="18" font-weight="400" fill="#292E41">신입/경력 채용 공고</text>
+    <text x="23" y="127" font-size="18" font-weight="400" fill="#292E41">제목 두 번째 줄</text>
+    <rect x="12" y="234" width="124" height="24" rx="12" fill="#000000" fill-opacity="0.55"/>
+    <text x="24" y="250" font-size="12" fill="#FFFFFF">매출액 1000억 이상</text>
+    <rect x="212" y="234" width="52" height="24" rx="4" fill="#000000" fill-opacity="0.55"/>
+    <text x="238" y="250" font-size="12" fill="#FFFFFF" text-anchor="middle">D-3</text>
+    <path d="M276 236.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.45-5.8-3.05-5.8 3.05 1.1-6.45-4.7-4.6 6.5-.95z" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+    <rect x="0.5" y="0.5" width="299" height="269" rx="15.5" fill="none" stroke="#D7DCE5"/>
+    <text x="0" y="296" font-size="13" font-weight="700" fill="#292E41">B · cyan → green</text>
+    <text x="0" y="314" font-size="12" fill="#6B7385">#02C6FF → #00BE4C</text>
+  </g>
+
+  <!-- ============ Card C : green -> yellow ============ -->
+  <g transform="translate(640,0)">
+    <g clip-path="url(#cardClip)">
+      <rect width="300" height="270" fill="#FFFFFF"/>
+      <rect x="0" y="139" width="300" height="131" fill="#DCE3ED"/>
+      <rect x="0" y="0" width="300" height="3" fill="url(#gradC)"/>
+    </g>
+    <rect x="23" y="15" width="120" height="30" rx="4" fill="#EEF1F6"/>
+    <text x="33" y="35" font-size="13" font-weight="700" fill="#A5AEBE" letter-spacing="1">LOGO</text>
+    <text x="23" y="74" font-size="14" font-weight="700" fill="#292E41">(주)회사이름</text>
+    <text x="23" y="101" font-size="18" font-weight="400" fill="#292E41">신입/경력 채용 공고</text>
+    <text x="23" y="127" font-size="18" font-weight="400" fill="#292E41">제목 두 번째 줄</text>
+    <rect x="12" y="234" width="124" height="24" rx="12" fill="#000000" fill-opacity="0.55"/>
+    <text x="24" y="250" font-size="12" fill="#FFFFFF">매출액 1000억 이상</text>
+    <rect x="182" y="234" width="82" height="24" rx="4" fill="#000000" fill-opacity="0.55"/>
+    <text x="223" y="250" font-size="12" fill="#FFFFFF" text-anchor="middle">~08.31(Mon)</text>
+    <path d="M276 236.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.45-5.8-3.05-5.8 3.05 1.1-6.45-4.7-4.6 6.5-.95z" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+    <rect x="0.5" y="0.5" width="299" height="269" rx="15.5" fill="none" stroke="#D7DCE5"/>
+    <text x="0" y="296" font-size="13" font-weight="700" fill="#292E41">C · green → yellow</text>
+    <text x="0" y="314" font-size="12" fill="#6B7385">#00BE4C → #FFE15F</text>
+  </g>
+
+  <!-- ============ Card D : purple -> blue ============ -->
+  <g transform="translate(960,0)">
+    <g clip-path="url(#cardClip)">
+      <rect width="300" height="270" fill="#FFFFFF"/>
+      <rect x="0" y="139" width="300" height="131" fill="#DCE3ED"/>
+      <rect x="0" y="0" width="300" height="3" fill="url(#gradD)"/>
+    </g>
+    <rect x="23" y="15" width="120" height="30" rx="4" fill="#EEF1F6"/>
+    <text x="33" y="35" font-size="13" font-weight="700" fill="#A5AEBE" letter-spacing="1">LOGO</text>
+    <text x="23" y="74" font-size="14" font-weight="700" fill="#292E41">(주)회사이름</text>
+    <text x="23" y="101" font-size="18" font-weight="400" fill="#292E41">신입/경력 채용 공고</text>
+    <text x="23" y="127" font-size="18" font-weight="400" fill="#292E41">제목 두 번째 줄</text>
+    <rect x="12" y="234" width="124" height="24" rx="12" fill="#000000" fill-opacity="0.55"/>
+    <text x="24" y="250" font-size="12" fill="#FFFFFF">매출액 1000억 이상</text>
+    <rect x="182" y="234" width="82" height="24" rx="4" fill="#000000" fill-opacity="0.55"/>
+    <text x="223" y="250" font-size="12" fill="#FFFFFF" text-anchor="middle">~08.27(Thu)</text>
+    <path d="M276 236.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.45-5.8-3.05-5.8 3.05 1.1-6.45-4.7-4.6 6.5-.95z" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+    <rect x="0.5" y="0.5" width="299" height="269" rx="15.5" fill="none" stroke="#D7DCE5"/>
+    <text x="0" y="296" font-size="13" font-weight="700" fill="#292E41">D · purple → blue</text>
+    <text x="0" y="314" font-size="12" fill="#6B7385">#9F02FF → #2D67FF</text>
+  </g>
+</svg>

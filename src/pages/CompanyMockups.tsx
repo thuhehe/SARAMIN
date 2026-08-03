@@ -503,17 +503,45 @@ function CompanyPageScreen() {
         action={<div className="flex gap-2"><Btn>Save changes</Btn><Btn primary>↗ View live</Btn></div>}
       />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-faint">Public profile <span className="text-emerald-600">· published</span></p>
-          <Field label="Display name" req value="Vạn Phát Healthcare" />
-          <Field label="Logo · cover image" value="Uploaded ✓" />
-          <Field label="About (vi required · en/ko optional)" req area value="Hệ thống y tế tư nhân hàng đầu HCMC, tuyển dụng điều dưỡng & vận hành…" />
-          <Field label="Benefits / welfare" value="Bảo hiểm · thưởng tháng 13 · hybrid" />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Locations" value="Quận 1, HCMC" />
-            <Field label="Website" value="vanphat.vn" />
+        <div className="space-y-4">
+          <div className="rounded-lg border border-line bg-surface p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-faint">Public profile <span className="text-emerald-600">· published</span></p>
+              <span className="text-[11px] font-bold text-brand">62% complete</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full w-[62%] rounded-full bg-brand" /></div>
+            <p className="mt-1.5 text-[11px] text-faint">Required fields are done. Add photos, benefits and story to rank higher in company search.</p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Basics · required</p>
+            <Field label="Display name" req value="Vạn Phát Healthcare" />
+            <Field label="Logo · cover image" req value="Uploaded ✓" />
+            <Field label="About (vi required · en optional)" req area value="Hệ thống y tế tư nhân hàng đầu HCMC, tuyển dụng điều dưỡng & vận hành…" />
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Locations" req value="Quận 1, HCMC" />
+              <Field label="Founded" value="2011" />
+              <Field label="Website" value="vanphat.vn" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Optional · never blocks publishing</p>
+            <Field label="Story blocks (0 / 4)" value="Not added — section hidden on the live page" />
+            <Field label="Vision & mission · core values · programmes" value="Not added — card hidden" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Photos (5 / 18)" value="Needs ≥3 ✓" />
+              <Field label="Videos (0 / 3)" value="YouTube · Vimeo only" />
+            </div>
+            <Field label="Benefit categories (4 / 8 filled)" value="Insurance · Salary · Training · Time off" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Headcount history" value="2 yrs — chart hidden, needs 3" />
+              <Field label="Leaders (0 / 6)" value="Not added" />
+            </div>
+            <Field label="CEO · business lines · brands · socials" value="Nguyễn Văn A · Bệnh viện đa khoa · Facebook, LinkedIn" />
           </div>
         </div>
+
         <div>
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker view →</p>
           <div className="overflow-hidden rounded-xl border border-line">
@@ -522,12 +550,29 @@ function CompanyPageScreen() {
               <div className="grid h-12 w-12 place-items-center rounded-xl border-2 border-surface bg-surface text-[16px] font-bold text-brand shadow">VP</div>
               <p className="mt-2 text-[13px] font-bold">Vạn Phát Healthcare</p>
               <p className="text-[11px] text-faint">Healthcare · HCMC · 200–500 staff</p>
-              <p className="mt-2 text-[11.5px] text-muted">Hệ thống y tế tư nhân hàng đầu HCMC, tuyển dụng điều dưỡng & vận hành.</p>
-              <p className="mt-3 text-[11px] font-bold text-ink">Open roles (4)</p>
+              <div className="mt-2 grid grid-cols-4 gap-1 rounded-md border border-line py-1.5 text-center">
+                {[['Founded', '2011'], ['Size', '200–500'], ['Industry', 'Y tế'], ['Open jobs', '4']].map(([l, v]) => (
+                  <div key={l}><p className="text-[9px] text-faint">{l}</p><p className="text-[11px] font-bold">{v}</p></div>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] font-bold text-ink">Việc làm đang tuyển (4)</p>
               <div className="mt-1.5 space-y-1.5">
                 <div className="flex justify-between rounded-md border border-line px-2.5 py-1.5 text-[11px]"><span>Điều dưỡng viên (Khoa Nội)</span><span className="text-faint">HCMC</span></div>
                 <div className="flex justify-between rounded-md border border-line px-2.5 py-1.5 text-[11px]"><span>Bác sĩ Đa khoa</span><span className="text-faint">HCMC</span></div>
               </div>
+              <p className="mt-3 text-[11px] font-bold text-ink">Về công ty</p>
+              <p className="mt-1 text-[11.5px] text-muted">Hệ thống y tế tư nhân hàng đầu HCMC, tuyển dụng điều dưỡng & vận hành.</p>
+              <p className="mt-3 text-[11px] font-bold text-ink">Hình ảnh công ty</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                {['', '', ''].map((_, i) => <div key={i} className="h-10 rounded-md bg-line/70" />)}
+              </div>
+              <p className="mt-3 text-[11px] font-bold text-ink">Phúc lợi</p>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {['Bảo hiểm', 'Lương thưởng', 'Đào tạo', 'Nghỉ phép'].map((b) => (
+                  <span key={b} className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-muted">{b}</span>
+                ))}
+              </div>
+              <p className="mt-3 text-[10.5px] italic text-faint">Story, video, growth chart and leaders are empty → those sections do not render.</p>
             </div>
           </div>
         </div>
