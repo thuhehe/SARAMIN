@@ -1074,75 +1074,28 @@ export const SCREENS: Screen[] = [
   { id: 'crm-company-page', site: 'Admin · CRM', title: '5 · Company detail page', url: 'admin/companies/vanphat/profile', Comp: CrmCompanyPageScreen },
 ]
 
-/** Jobseeker screens grouped into flows (Mobbin-style). Labels override the long registry titles. */
-const JS_FLOWS: { flow: string; items: { id: string; label: string }[] }[] = [
-  {
-    flow: 'Find a job',
-    items: [
-      { id: 'js-home', label: 'Homepage / job list' },
-      { id: 'js-search', label: 'Search results' },
-      { id: 'js-job-detail', label: 'Job detail' },
-    ],
-  },
-  {
-    flow: 'Apply to a job',
-    items: [{ id: 'js-apply', label: 'Apply flow' }],
-  },
-  {
-    flow: 'My profile & CV',
-    items: [
-      { id: 'js-mypage', label: 'My page' },
-      { id: 'js-profile-cv', label: 'My CV & Profile' },
-    ],
-  },
-]
-
-/** One canvas that swaps screens — driven by the flow index on the left and by clicks inside each screen. */
+/** One canvas that swaps screens — driven entirely by clicks inside each screen.
+    There is no flow index beside it on purpose: a list of every screen lets a
+    reader jump straight to "My CV & Profile" without ever going through Apply,
+    which is exactly the reading a clickable prototype exists to prevent. The
+    only way through is the way a candidate actually goes. */
 function InteractivePrototype() {
   const byId = new Map(SCREENS.map((s) => [s.id, s]))
   const [active, setActive] = useState('js-home')
   const current = byId.get(active) ?? SCREENS[0]
   const Comp = current.Comp
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-[210px_minmax(0,1fr)]">
-      {/* flow index sidebar */}
-      <aside className="scroll-thin self-start rounded-xl border border-line p-2 md:sticky md:top-4 md:max-h-[640px] md:overflow-y-auto">
-        <p className="mb-1 border-b border-line-soft px-2 pb-2 pt-1 text-[11px] font-bold text-ink">Jobseeker flows</p>
-        {JS_FLOWS.map((g, gi) => (
-          <div key={g.flow} className={cn(gi > 0 && 'mt-2.5')}>
-            {/* section label — uppercase micro-caps so it never reads as a clickable screen */}
-            <p className="px-2 pb-1 pt-1 text-[9.5px] font-bold uppercase tracking-[0.12em] text-faint">
-              {g.flow}
-            </p>
-            {g.items.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setActive(id)}
-                className={cn(
-                  'block w-full truncate rounded px-2 py-1.5 pl-3.5 text-left text-[12px]',
-                  id === active ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        ))}
-      </aside>
-
-      {/* live canvas */}
-      <div className="min-w-0">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Chip tone="blue">Interactive</Chip>
-          <span className="text-[12.5px] font-semibold text-ink">{current.title}</span>
-          <span className="text-[11px] text-faint">— click buttons, job cards &amp; menu items to move between screens</span>
-        </div>
-        <NavContext.Provider value={setActive}>
-          <Browser url={current.url}>
-            <Comp />
-          </Browser>
-        </NavContext.Provider>
+    <div className="min-w-0">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Chip tone="blue">Interactive</Chip>
+        <span className="text-[12.5px] font-semibold text-ink">{current.title}</span>
+        <span className="text-[11px] text-faint">— click buttons, job cards &amp; menu items to move between screens</span>
       </div>
+      <NavContext.Provider value={setActive}>
+        <Browser url={current.url}>
+          <Comp />
+        </Browser>
+      </NavContext.Provider>
     </div>
   )
 }
@@ -1154,9 +1107,9 @@ export function Mockups() {
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
         <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — core flows</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards). Pick any
-          screen from the index on the left, or click buttons inside a screen to move through the flow.
-          Structure &amp; layout only — not final visual design.
+          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards). Click
+          buttons, job cards and menu items inside a screen to move through the flow the way a candidate
+          would. Structure &amp; layout only — not final visual design.
         </p>
       </div>
 

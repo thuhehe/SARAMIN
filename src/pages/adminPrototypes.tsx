@@ -4441,7 +4441,19 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Printed on the quotation and the PO. English falls back to the VN text when empty.</p>
         </DetailCard>
 
-        <DetailCard title="Price list — one product, many prices" action={<span className="text-[11px] text-faint">{priceRows.length} segments</span>}>
+        {/* Mirrors the create form: an Add-on shows one internal value, not three
+            sellable segment prices, because it never reaches a quotation. */}
+        <DetailCard
+          title={isAddon ? 'Giá trị nội bộ' : 'Price list — one product, many prices'}
+          action={<span className="text-[11px] text-faint">{isAddon ? 'not quotable' : `${priceRows.length} segments`}</span>}
+        >
+        {isAddon ? (
+          <>
+            <p className="text-[15px] font-bold tabular-nums text-ink">{unpriced ? '— chưa đặt' : p.price.replace(' ⓒ', '')}</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Attributes margin inside the parent product. Never printed on a quotation — this product reaches a customer only through a parent's Includes.</p>
+          </>
+        ) : (
+        <>
           <div className="overflow-hidden rounded-lg border border-line">
             {priceRows.map(([seg, val], i) => (
               <div key={seg} className={cn('flex items-center justify-between px-3 py-2 text-[12px]', i > 0 && 'border-t border-line-soft')}>
@@ -4457,6 +4469,8 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
             </p>
           )}
           <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Once this product has been sold, <b className="text-ink/70">Edit</b> supersedes the price with a new version rather than overwriting it — so old orders still reprice to what the customer agreed.</p>
+        </>
+        )}
         </DetailCard>
 
         {/* Field-for-field the same set the create form asks for, per type — so the
@@ -4888,6 +4902,10 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 </div>
               </div>
 
+              {/* Composition is for products a customer buys. An Add-on is reached
+                  only through a parent, so letting it include further products would
+                  nest includes and make provisioning ambiguous. */}
+              {role !== 'addon' && (
               <div>
                 {/* "Add-on products" was wrong: there is no add-on class. These are
                     ordinary catalog products — Services, created in admin like any
@@ -4920,6 +4938,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 </div>
                 <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Included, not bundled: the customer sees ONE line “Tin Top Job” on the quotation. Paying it fires each include as an ops task at the quantity set here.</p>
               </div>
+              )}
 
             </>
           )}
@@ -5005,6 +5024,25 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           {/* One product, a price PER SEGMENT — this is what replaces the CRM's
               separate "… SMEs / … Enterprise / … New 2024" records, so what a
               product grants is defined once. The record shows the same three rows. */}
+          {/* An Add-on never reaches a quotation, so a per-segment LIST price would be
+              a price nobody can quote. It still needs a figure — for margin attribution
+              inside its parent — so one internal value, not three sellable ones. */}
+          {role === 'addon' ? (
+            <div>
+              <FLabel>Giá trị nội bộ (₫)<span className="ml-1 font-normal text-faint">internal value — not quotable</span></FLabel>
+              <input
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                inputMode="numeric"
+                placeholder="3000000"
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+              />
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                {priceNum > 0 && <span className="text-ink/70">{vnd(priceNum)} ₫ · </span>}
+                Attributes margin inside the parent product (“Top Job’s margin after the email send”). Never printed on a quotation.
+              </p>
+            </div>
+          ) : (
           <div>
             <FLabel req>Price (₫) per segment</FLabel>
             <div className="overflow-hidden rounded-md border border-line">
@@ -5024,6 +5062,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
             </div>
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Leave a segment empty when the product is not sold to it — Top Job has no SME / Enterprise price today.</p>
           </div>
+          )}
           {type === 'cv' && (
             <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] text-muted">
               Average per CV: <b className="text-ink/80">{perCv ? `~${vnd(perCv)} ₫ / CV` : '— enter price and amount'}</b> — computed, never typed. This is the number the deck sells on.
