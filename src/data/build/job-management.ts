@@ -59,7 +59,7 @@ export const jobManagement: BuildModule = {
       table: {
         cols: ['Field', 'Values'],
         rows: [
-          ['Posting package', 'Free · Basic · Basic plus · Distinction — drives visibility / ranking'],
+          ['Posting package', 'Free · Basic · Basic Plus · Distinction · Top Job — drives visibility / ranking (see Products & Packages)'],
           ['Job level', 'Intern/Student · Fresher/Entry · Experienced (non-manager) · Manager · Director and above'],
           ['Job type', 'Full-time · Part-time · Internship · Online · Freelancer · Seasonal · Other'],
           ['Other', 'Experience range · skills · salary (from–to + currency)'],
@@ -92,7 +92,7 @@ export const jobManagement: BuildModule = {
               { name: 'company', type: 'ref → Company', required: true, notes: 'searchable picker resolved via the Company API (company ID); drives branding on the JS side. Fixed to the user’s own company on the Company site.' },
               { name: 'title (vi / en)', type: 'i18n string', required: true, notes: 'bilingual — Vietnamese + English; max 120 chars each' },
               { name: 'exposure', type: 'toggle (On / Off)', required: true, notes: 'separate switch (not a status) — whether an Open job shows on the jobseeker site (hiển thị trên trang jobseeker hay không)' },
-              { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic plus · Distinction — posting tier that drives visibility / ranking' },
+              { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic Plus · Distinction · Top Job — posting tier that drives visibility / ranking' },
               { name: 'jobCategory / industry', type: 'enum', required: true, notes: 'category = the role area · industry = the company sector (two different axes)' },
               { name: 'jobLevel', type: 'enum', notes: 'Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above' },
               { name: 'jobType', type: 'enum', required: true, notes: 'Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other' },
@@ -142,7 +142,7 @@ export const jobManagement: BuildModule = {
             { name: 'status', type: 'enum', notes: 'draft · schedule · open · closed' },
             { name: 'scheduledAt', type: 'timestamp', notes: 'set when status = schedule; auto-publishes to open at this time' },
             { name: 'exposure', type: 'bool (on/off)', notes: 'independent of status; gates public visibility of an Open job' },
-            { name: 'packageType', type: 'enum', notes: 'free · basic · basic_plus · distinction' },
+            { name: 'packageType', type: 'enum', notes: 'free · basic · basic_plus · distinction · top_job' },
             { name: 'contractType / jobType', type: 'enum', notes: 'full_time|freelancer / in_office|remote|hybrid|oversea' },
             { name: 'salaryType / salaryMin / salaryMax', type: 'enum(negotiable|range) / int / int' },
             { name: 'experienceFrom / experienceTo', type: 'int (years)' },
@@ -194,7 +194,7 @@ export const jobManagement: BuildModule = {
           {
             group: 'Posting options',
             items: [
-              { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic plus · Distinction — consumes the matching purchased slot' },
+              { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic Plus · Distinction · Top Job — consumes the matching purchased slot' },
               { name: 'featuredUpgrade', type: 'enum', notes: 'optional: main-ad / rank boost (from Products & Packages)' },
             ],
           },

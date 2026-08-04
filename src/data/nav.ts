@@ -99,6 +99,7 @@ export const NAV: NavModule[] = [
     // Catalogue side only — the selling documents live under Sales (CRM).
     children: [
       { id: 'admin-catalog', label: 'Products' },
+      { id: 'admin-placements', label: 'Placements' },
       { id: 'admin-bundles', label: 'Packages' },
       { id: 'admin-promotions', label: 'Promotions' },
     ],

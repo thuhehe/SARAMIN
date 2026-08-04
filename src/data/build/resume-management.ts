@@ -12,10 +12,23 @@ export const resumeManagement: BuildModule = {
         rows: [
           ['Create CV — Jobseeker', 'Online builder + uploaded CV; “My CVs” on My page', '—'],
           ['Resume list — Admin', 'HQ oversight of the CV pool', 'HQ role'],
+          ['Create resume — Admin', 'HQ registers a candidate: upload + CV Convert, or the Builder wizard', 'HQ role'],
           ['Resume list — Companies', 'CV search / talent search', 'Package + candidate visibility consent'],
         ],
       },
       items: ['One jobseeker = one primary CV in Phase 1 — to CONFIRM with the client.'],
+    },
+    {
+      label: 'The Saramin Standard Resume is the ONE model every route normalises to',
+      text: 'A resume can arrive four ways — a candidate uploads a CV, a candidate builds one online, HQ uploads a CV on their behalf, HQ types one in. All four produce the same object: a CV document plus one Saramin Standard Resume (12 sections + job preferences + tags). Nothing downstream may branch on which route was used.',
+      table: {
+        cols: ['Route', 'Document set', 'How the structured layer is produced'],
+        rows: [
+          ['Upload (candidate or HQ)', 'original CV + generated Saramin CV', 'CV Convert pipeline — parse, extract, AI-tag, generate'],
+          ['Builder (candidate or HQ)', 'generated Saramin CV only', 'the typed fields, plus AI tagging over the body'],
+        ],
+      },
+      warn: 'Search, matching and the employer-facing CV all read the standard model — never the route. If a Builder resume behaves differently in CV search from an uploaded one, the boundary has leaked.',
     },
     {
       label: 'CV search is a DISCOVERY task first',
@@ -430,6 +443,332 @@ export const resumeManagement: BuildModule = {
           'Is the candidate told their CV was removed from the employer pool, and in what words?',
           'Who may moderate CVs — is this a dedicated trust & safety role rather than general ops?',
           'Do we need a duplicate-CV detector (the same CV uploaded under several accounts) for pool quality?',
+        ],
+      },
+    },
+
+    {
+      name: 'Create resume',
+      site: 'Admin',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'admin-resume-new',
+      detail: {
+        description:
+          'How HQ gets a candidate into the resume master. Two routes into one object: ① UPLOAD an existing CV (PDF/DOC/DOCX) and run it through the CV Convert pipeline, or ② the CV BUILDER WIZARD for a candidate who has no file. Both routes converge on a single “Saramin standard resume — review & edit” screen, and neither writes to the master until an operator has reviewed it there. This is the same object the candidate-facing Create CV produces — see that feature for the jobseeker-side route.',
+        userStory:
+          'As an HQ operator, I want to register a candidate from either an uploaded CV or a typed form, so that the resume master holds one consistent, searchable, matchable object no matter where the candidate came from.',
+        sections: [
+          {
+            heading: 'Two paths, one Saramin standard model',
+            items: [
+              '① Upload CV (PDF/DOC/DOCX) — AI parses the file and converts it into the Saramin standard format. This is the primary route and the one the data strategy is built around.',
+              '② CV Builder wizard — a step-by-step form (basics · headline & body · tags) that ends on the same standard resume, for the candidate who has no file to give.',
+              '“Choose another path” is available at any point before the review screen. Switching costs nothing because neither route has written to the master yet.',
+              'Only the DOCUMENT SET differs between the routes: Upload carries the original PDF plus the generated Saramin PDF, Builder carries only the generated one. The review screen, the standard JSON and the register action are identical.',
+            ],
+          },
+          {
+            heading: 'CV Convert pipeline — the four steps of the Upload route',
+            text: 'Strictly sequential, and a progress disclosure rather than a stepper the operator can jump around in. Each step reveals its own result card as it completes.',
+            table: {
+              cols: ['#', 'Step', 'What it does', 'Result card shows'],
+              rows: [
+                ['①', 'Parse PDF', 'Extract text and layout from the original CV.', 'the raw parse — file, page count, token count, and the lines it found'],
+                ['②', 'Extract structured fields', 'Map name, contact, experience, education and skills onto the Saramin schema.', 'the headline fields: headline, location, experience, education'],
+                ['③', 'AI tag suggestions', 'Suggest Skill / Role / Domain tags, each with a confidence.', 'the confidence-scored tag chips + the auto-apply threshold notice'],
+                ['④', 'Generate Saramin-standard resume', 'Render a new Saramin CV PDF from the standard template.', 'the generated PDF handle, ready for review'],
+              ],
+            },
+            items: [
+              '“Review & edit extracted result” appears only once the pipeline reaches done — an operator cannot carry a half-parsed resume onto the review screen.',
+              'Changing or removing the selected file resets the pipeline to idle; a stale result is never shown against a new file.',
+              'The same pipeline is reused on an already-registered resume as “Re-analyse & regenerate”, so extraction quality can be improved later without re-uploading (see Resume list → detail).',
+              'Extraction must be asynchronous and non-blocking in the real build: the CV is usable the moment it is uploaded, and a failed parse degrades to the manual form rather than blocking registration.',
+            ],
+          },
+          {
+            heading: 'AI tagging — confidence decides who reviews',
+            table: {
+              cols: ['Confidence', 'What happens'],
+              rows: [
+                ['≥ 80%', 'Auto-applied — pre-checked on the tag panel and carried into the standard resume.'],
+                ['< 80%', 'Suggested but left unchecked; it goes to the operator approval queue rather than into the resume.'],
+              ],
+            },
+            items: [
+              'Every tag carries a kind: Skill · Role · Domain. Only CHECKED tags are applied — a suggestion is not a decision.',
+              'The Builder route runs the same suggestion over the typed resume body, so both routes produce identically-shaped tags. A Builder resume is not second-class in CV search.',
+              'Tag suggestion needs content: the panel is disabled until the resume body has been filled in.',
+              'Re-running suggestion replaces the suggestion set, not the operator’s checkmarks.',
+            ],
+          },
+          {
+            heading: 'CV Builder wizard — four steps, with gates',
+            table: {
+              cols: ['Step', 'Captures', 'Cannot advance until'],
+              rows: [
+                ['1. Personal info', 'Full name, email, phone, location', 'name, phone and location are non-empty AND the email is a valid address'],
+                ['2. Headline & content', 'Headline + free-text resume body', 'both the headline and the body are non-empty'],
+                ['3. AI tags', 'Runs tag suggestion over the body; the operator checks what applies', '— no gate; zero tags is allowed'],
+                ['4. Preview & submit', 'Read-back of every field, the tag set, and source = SELF_REGISTER', '— Continue hands off to the review screen'],
+              ],
+            },
+            items: [
+              'Back is always available and never clears a step.',
+              'An incomplete step shows ONE error line rather than per-field red states.',
+              'Step 4 is a read-back, not the real review — the convergence screen is where the standard resume is actually edited.',
+              'Hand-off folds the free text into the standard model: headline + body become the VI summary, location becomes the address city, and each checked tag becomes a Skill tag at 0.95 confidence. Every other section starts empty for the operator to fill on the review screen.',
+            ],
+          },
+          {
+            heading: 'Convergence screen — “Saramin standard resume, review & edit”',
+            items: [
+              'LEFT — the CV documents, as a viewer with one tab per document. The badge states which documents exist: Original + Saramin · Original only · Saramin only · No CV.',
+              'RIGHT — the job-matching keys panel, then one editor card per section of the standard model.',
+              '“Register to resume master” is the ONLY write in the whole flow. Until it is pressed nothing exists in the master, so abandoning costs nothing and creates no orphan record.',
+              'Back returns to whichever route the operator came from — but note that today it RESETS that route: the pipeline drops to idle and the wizard to step 1. Cheap to live with while nothing is committed, annoying after a four-step parse. Flagged as an open question.',
+              'The same screen serves EDIT mode on an existing resume: it PATCHes instead of POSTs, and additionally exposes the admin CV unlock-price override.',
+            ],
+          },
+          {
+            heading: 'Job matching keys — “can this resume actually be found?”',
+            text: 'Nine derived readiness indicators, each Ready or Missing with a short preview of the value. They are named after the JOB-POSTING filters, not after the resume’s own fields, because the question they answer is which job filters this resume can be matched by.',
+            table: {
+              cols: ['Key', 'Ready when', 'Preview shows'],
+              rows: [
+                ['Job categories', 'desiredJobCategories is non-empty', 'the first 3, · separated'],
+                ['Employment types', 'desiredEmploymentTypes is non-empty', 'all selected values'],
+                ['Career', 'careerLevel ≠ ANY OR yearsOfExp > 0', '“EXPERIENCED · 3y”, else just the level'],
+                ['Education', 'at least one education entry', 'degree · school of the first entry'],
+                ['Industries', 'targetIndustries is non-empty', 'the first 3'],
+                ['Language certs', 'at least one language entry', 'language:cert:score, first 3'],
+                ['Salary', 'an expected salary with a min, OR kind = INTERVIEW', '“min~max CURRENCY”, or INTERVIEW'],
+                ['Locations', 'desiredLocations is non-empty', 'the first 3'],
+                ['Remote / relocate / overseas', 'any of remoteOk · relocate · overseas is on', 'which ones are on'],
+              ],
+            },
+            items: [
+              'The keys are derived LIVE from the draft, so an operator watches a key flip to Ready as they fill the section that feeds it.',
+              'An all-Missing resume registers fine but is close to invisible in CV search — which is exactly what the panel is there to make obvious before the operator commits.',
+            ],
+          },
+          {
+            heading: 'Source — where the resume came from',
+            table: {
+              cols: ['Value', 'Means'],
+              rows: [
+                ['IMPORT', 'the Upload route — a real CV file was parsed'],
+                ['SELF_REGISTER', 'the Builder route (accepted by the API, stored as DIRECT)'],
+                ['DIRECT', 'registered by HQ directly'],
+                ['PARTNER', 'supplied by a partner channel'],
+                ['REFERRAL', 'came in through a referral'],
+              ],
+            },
+            items: [
+              'source is set BY THE ROUTE, not chosen by the operator: Upload → IMPORT, Builder → SELF_REGISTER.',
+              'An unknown source token is a hard 400 rather than being coerced to a default — a mystery source is worse than a rejected request.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Route choice',
+            items: [
+              { name: 'path', type: 'enum', required: true, notes: 'Upload CV · CV Builder wizard — decides `source` and the document set' },
+              { name: 'file', type: 'file (pdf/doc/docx)', notes: 'upload route — type and size validated before upload, with an explicit error' },
+              { name: 'pipeline', type: 'derived state', notes: 'idle · running(step 1–4) · done — resets whenever the file changes' },
+            ],
+          },
+          {
+            group: 'Identity & contact',
+            items: [
+              { name: 'fullNameVi', type: 'string', required: true, notes: 'the VI name is the canonical one; EN/KO are alternates, not translations to be generated' },
+              { name: 'fullNameEn / fullNameKr', type: 'string', notes: 'real VN CVs carry a Latin and sometimes a Korean transliteration' },
+              { name: 'dob', type: 'date', notes: '—' },
+              { name: 'gender', type: 'enum', notes: 'M · F · OTHER · unset' },
+              { name: 'email', type: 'string', required: true, notes: 'the de-duplication key for the master' },
+              { name: 'phone', type: 'string', required: true, notes: '—' },
+              { name: 'address.city / district / road', type: 'string', notes: 'city is what search facets on; district and road are display only' },
+              { name: 'photoUrl', type: 'string', notes: 'optional — VN CVs commonly carry a photo' },
+            ],
+          },
+          {
+            group: 'Summary — trilingual',
+            items: [
+              { name: 'summary.vi', type: 'text', required: true, notes: 'the default and fallback language; its FIRST LINE becomes the resume headline' },
+              { name: 'summary.en / summary.ko', type: 'text', notes: 'optional — a Korean-facing employer reads the KO summary when present' },
+            ],
+          },
+          {
+            group: 'Experience — repeatable',
+            items: [
+              { name: 'company / position', type: 'string', required: true, notes: 'position normalises to the Title taxonomy' },
+              { name: 'location', type: 'string', notes: '—' },
+              { name: 'startYm / endYm', type: 'YYYY-MM', required: true, notes: 'an empty endYm means “present” — this drives years-of-experience' },
+              { name: 'areas', type: 'string[]', notes: 'comma-entered — the part of the business worked on (Storefront, Admin…)' },
+              { name: 'bullets', type: 'string[]', notes: 'one achievement per line' },
+              { name: 'techStack', type: 'string[]', notes: 'comma-entered — a source for skill extraction' },
+            ],
+          },
+          {
+            group: 'Education — repeatable',
+            items: [
+              { name: 'school', type: 'string', required: true, notes: '—' },
+              { name: 'faculty / major', type: 'string', notes: '—' },
+              { name: 'degree', type: 'enum', required: true, notes: 'HIGH_SCHOOL · ASSOCIATE · BACHELOR · MASTER · DOCTOR' },
+              { name: 'startYm / endYm', type: 'YYYY-MM', notes: 'derives highestEducationLevel' },
+              { name: 'gpa', type: 'string', notes: 'free text — “3.4 / 4.0” is how CVs actually write it' },
+              { name: 'achievements', type: 'string[]', notes: 'one per line' },
+            ],
+          },
+          {
+            group: 'Skills — grouped, not a flat list',
+            items: [
+              { name: 'group', type: 'string', required: true, notes: 'Frontend · State & Data · Tools · Office · Soft Skills — real CVs group their stack' },
+              { name: 'items', type: 'string[]', required: true, notes: 'comma-entered; each must resolve to the canonical Skill taxonomy, not a free string' },
+            ],
+          },
+          {
+            group: 'Languages — repeatable',
+            items: [
+              { name: 'language', type: 'enum', required: true, notes: 'vi · en · ko · ja · zh' },
+              { name: 'cert', type: 'enum', notes: 'TOPIK · TOEIC · TOEFL · IELTS · OPIC · JLPT · HSK — the cert lines VN CVs actually carry' },
+              { name: 'score', type: 'string', notes: 'free text because the scales differ: “5급”, “805”, “N3”' },
+              { name: 'levelHint', type: 'enum', notes: 'BASIC · INTERMEDIATE · ADVANCED · FLUENT · NATIVE — for the CV with no cert' },
+            ],
+          },
+          {
+            group: 'Certifications · Projects · Awards',
+            items: [
+              { name: 'certification', type: '{ name, issuer?, score?, year? }', notes: 'MOS, AWS and the like' },
+              { name: 'project', type: '{ name, role?, startYm?, endYm?, techStack[], bullets[], links[] }', notes: 'link kinds: demo · github · docs' },
+              { name: 'award', type: '{ name, year?, issuer? }', notes: 'awards and activities share one section' },
+            ],
+          },
+          {
+            group: 'References · Portfolio',
+            items: [
+              { name: 'reference', type: '{ name, role, relation?, phone? }', notes: 'VN CVs routinely list a referee WITH a phone number — this section is PII-heavy' },
+              { name: 'portfolioLink', type: '{ kind, url }', notes: 'github · linkedin · behance · web' },
+            ],
+          },
+          {
+            group: 'Job preferences — what the matching keys read',
+            items: [
+              { name: 'careerLevel', type: 'enum', required: true, notes: 'FRESHER · EXPERIENCED · ANY' },
+              { name: 'yearsOfExp', type: 'number', notes: 'derived from work history, overridable' },
+              { name: 'desiredJobCategories', type: 'string[]', notes: 'comma-entered — matches the job form’s category filter' },
+              { name: 'desiredEmploymentTypes', type: 'enum[]', notes: 'FULL_TIME · CONTRACT · FREELANCE · INTERN · DISPATCH · ENTRUSTED · PART_TIME' },
+              { name: 'desiredLocations', type: 'string[]', notes: 'comma-entered' },
+              { name: 'targetIndustries', type: 'string[]', notes: 'comma-entered' },
+              { name: 'expectedSalary', type: '{ kind, currency, min?, max? }', notes: 'kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE; currency: VND · USD' },
+              { name: 'remoteOk / relocate / overseas', type: 'bool', notes: 'the three mobility flags, read as one matching key' },
+            ],
+          },
+          {
+            group: 'Tags',
+            items: [
+              { name: 'kind', type: 'enum', required: true, notes: 'Skill · Role · Domain' },
+              { name: 'value', type: 'string', required: true, notes: 'must resolve to the canonical taxonomy; a blank entry is a 400' },
+              { name: 'confidence', type: '0–1', notes: 'from the AI suggestion; ≥ 0.8 auto-applies. A hand-added tag is 1.0' },
+            ],
+          },
+          {
+            group: 'Admin-only — edit mode',
+            items: [
+              { name: 'unlockPrice', type: 'int [1, 1000]', notes: 'credits an employer spends to unlock this CV. WRITE-ONLY “set to”: the current price is not returned by the detail endpoint, so blank means unchanged' },
+            ],
+          },
+        ],
+        behaviors: [
+          'The picker is the entry point; neither route is pre-selected for HQ, because an operator with a file in hand and an operator on the phone with a candidate are equally common.',
+          'A file is validated for type and size before upload, with an explicit error rather than a silent failure.',
+          'The pipeline runs on an explicit “Start analysis” — it does not auto-start on file select, so an operator can swap a wrong file without watching a run they will discard.',
+          'While the pipeline is running, removing the file is disabled; the run is either finished or reset, never orphaned.',
+          'Tags at ≥ 80% confidence arrive pre-checked; the operator unchecks rather than hunts for what to add.',
+          'Every extracted value is editable on the review screen, and an operator edit always beats the extracted value.',
+          'The matching-keys panel recomputes on every keystroke, so filling “desired locations” flips its key to Ready immediately.',
+          'Register navigates to the new resume’s detail page; a failure keeps the draft on screen with the server’s message, and never silently discards the work.',
+          'In edit mode, a blank unlock price is omitted from the request entirely — an absent key means “leave it”, and an explicit null would be rejected.',
+        ],
+        rules: [
+          'Nothing is written to the resume master until Register — the pipeline, the wizard and the review screen are all pre-commit.',
+          'A resume must have a document: uploaded, generated, or both. A structured profile alone is not a resume.',
+          'The flat columns are DERIVED from the standard model on register, never the other way round: headline = the first line of the VI summary, content = the VI summary (falling back to EN, then KO).',
+          'Register requires a real name and a real email. The wireframe substitutes placeholders to keep the demo moving; the production build must validate and refuse instead.',
+          'source is determined by the route, and an unrecognised source token is a 400.',
+          'A blank tag entry is a 400 — an empty tag pollutes the taxonomy join that CV search depends on.',
+          'unlockPrice is an integer in [1, 1000]; it is validated client-side for a clear message and re-validated by BE, which owns the invariant.',
+          'Skills, titles and industries must resolve to the canonical taxonomy — this is the join that makes CV search and matching work at all.',
+          'Registering a resume on a candidate’s behalf does not grant visibility consent: an HQ-created resume is not discoverable until the candidate consents (see My CVs).',
+          'Opening or generating a CV document from this flow is a PII event and is audited like every other document access (see Resume list — Admin).',
+        ],
+        states: [
+          'Path picker',
+          'Upload — no file selected',
+          'Upload — file selected, pipeline idle',
+          'Upload rejected (type / size)',
+          'Pipeline running (step 1–4, one result card per completed step)',
+          'Pipeline done → “Review & edit extracted result” unlocked',
+          'Pipeline failed (CV still attachable; profile falls back to the manual form)',
+          'Builder — step 1–4',
+          'Builder — step gate not met (one error line)',
+          'AI tags — idle / needs content / analysing / suggested',
+          'Review & edit — draft (documents: both · original only · saramin only · none)',
+          'Review & edit — matching keys all Missing (registers, but near-invisible in search)',
+          'Registering',
+          'Register failed (draft preserved, server message shown)',
+          'Registered → resume detail',
+          'Edit mode (PATCH + unlock-price override)',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'standardJson', type: 'text', required: true, notes: 'the whole Saramin Standard Resume, serialised. BE stores it VERBATIM and opaque — no schema validation — so the FE must hydrate defensively: a partial or foreign JSON falls back per-section instead of crashing the detail page' },
+            { name: 'fullName / email / phone / locationVi', type: 'string', required: true, notes: 'flat columns derived from identity on register — these are what the list and search read' },
+            { name: 'headline / content', type: 'string / text', notes: 'derived from the VI summary (first line / whole); the list hard-nulls content and standardJson in rows — the detail endpoint returns the full payload' },
+            { name: 'source', type: 'enum', required: true, notes: 'DIRECT · PARTNER · IMPORT · REFERRAL · SELF_REGISTER (stored as DIRECT)' },
+            { name: 'tags', type: 'string[]', notes: 'the checked tag values, flattened' },
+            { name: 'originalCvUrl / saraminCvUrl', type: 'string?', notes: 'Upload carries both; Builder carries only the generated Saramin PDF' },
+            { name: 'unlockPrice', type: 'int [1,1000]', notes: 'admin override, edit mode only — not present in the detail response, so the field is write-only' },
+          ],
+          endpoints: [
+            'POST /api/admin/resumes — register; body carries the flat columns + standardJson + tags + document urls → { resume: { id } }',
+            'PATCH /api/admin/resumes/:id — edit mode; an OMITTED unlockPrice means untouched, an explicit null is a 400',
+            'GET /api/admin/resumes — list; updatedAt desc, 500-row cap, tags included, content and standardJson hard-nulled',
+            'GET /api/admin/resumes/:id — detail, including the full standardJson',
+            'POST /api/admin/resumes/:id/reanalyze — re-run the CV Convert pipeline on an existing resume',
+          ],
+          integrations: [
+            'Object storage + malware scanning (the uploaded original)',
+            'AI CV parsing — the CV Convert pipeline (Phase-2)',
+            'Skill / Title / Industry taxonomy (the tag + skill join)',
+            'PDF generation (the Saramin standard template)',
+            'Audit log (document access, PII)',
+          ],
+          notes:
+            'The standard resume lives in ONE serialised column rather than twelve normalised tables, and the search index is fed from the flat columns plus tags. That is a deliberate trade: the model is still moving, and a JSON sidecar absorbs a schema change that twelve tables would not. The cost is that BE cannot validate it, which is exactly why defensive hydration on read is a hard requirement and not a nicety. Revisit once the schema stops moving and CV search needs to facet on a section the flat columns do not carry.',
+        },
+        acceptance: [
+          'An operator can register a candidate from an uploaded PDF, and the resume appears in the master with both document urls set.',
+          'An operator can register a candidate through the Builder with no file, and the resume carries only the generated Saramin PDF.',
+          'Both routes produce the same standard-resume shape, and the review screen is identical for each.',
+          'The pipeline cannot be skipped: “Review & edit” is unreachable until all four steps complete.',
+          'Changing the selected file resets the pipeline; no stale result is ever shown against a new file.',
+          'Tags at ≥ 80% confidence arrive pre-checked; tags below it arrive unchecked.',
+          'The matching-keys panel flips a key from Missing to Ready as soon as the section feeding it is filled.',
+          'Abandoning the flow at any point before Register leaves nothing in the resume master.',
+          'A failed register keeps the draft on screen and shows the server’s message.',
+          'In edit mode, leaving the unlock price blank does not change the stored price; a value outside [1, 1000] is refused with a clear message.',
+          'A resume registered by HQ is not discoverable in employer search until the candidate consents.',
+        ],
+        openQuestions: [
+          'Does HQ registering a resume on a candidate’s behalf create a jobseeker ACCOUNT too, or a resume with no login behind it?',
+          'How is a duplicate caught when HQ uploads a CV for a candidate who already has an account — match on email, phone, or both?',
+          'Who tells the candidate a resume exists for them, and does the flow send anything?',
+          'Is the operator approval queue for sub-80% tags a real screen in Phase-1, or do those tags simply get dropped?',
+          'Should the Builder route generate the Saramin PDF at register time, or lazily on first employer view?',
+          'Does the client want the trilingual summary (VI/EN/KO) in Phase-1, or is VI-only enough to launch?',
+          'Should Back preserve the route state (pipeline result / wizard answers), or is resetting acceptable given nothing is committed yet?',
         ],
       },
     },

@@ -38,6 +38,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-job-list': { module: 'job-management', feature: 'Job list', site: 'Admin' },
   'admin-job-applicants': { module: 'application-management', feature: 'Application list', site: 'Admin' },
   'admin-resumes': { module: 'resume-management', feature: 'Resume list', site: 'Admin' },
+  'admin-resume-new': { module: 'resume-management', feature: 'Create resume', site: 'Admin' },
   // Jobseekers
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
   // Content
@@ -45,11 +46,12 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-popups': { module: 'banners-popups', feature: 'Create popup + Popup list' },
   // Billing & products
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
-  // NOTE: no targets for 'admin-bundles' / 'admin-credits' / 'admin-orders' /
-  // 'admin-promotions' — all four features were removed from the Products &
-  // Packages module. A package is expressed as quotation lines, discounting
-  // happens on the quotation, orders are CRM → Purchase order, and the credit
-  // balance is the entitlement ledger on the company account.
+  'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
+  'admin-placements': { module: 'products-packages', feature: 'Placements registry' },
+  // NOTE: still no targets for 'admin-credits' / 'admin-orders' / 'admin-promotions'.
+  // Discounting happens on the quotation line (one place a price can be cut), orders
+  // are CRM → Purchase order, and the credit balance is the entitlement ledger on the
+  // company account.
   // CRM
   'admin-company-list': { module: 'crm', feature: 'Companies' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
@@ -203,6 +205,14 @@ const NAV_GROUPS: NavGroup[] = [
       // sits here rather than in its own menu — Packages and Promotions were dropped
       // (a package is quotation lines; discounting happens on the quotation).
       { label: 'Products', specId: 'admin-catalog' },
+      // Several products at one package price, defined once and quoted many times
+      // (the client's Gói Ultimate). NOT the per-segment price groups — those are a
+      // price list on the tier product.
+      { label: 'Packages', specId: 'admin-bundles' },
+      // The display areas on the jobseeker site (sizes, caps, how each is filled).
+      // Defined once here; a placement product points at a row instead of restating
+      // "1536×371, max 6, rotate 3s" on every sale.
+      { label: 'Placements', specId: 'admin-placements' },
       // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.
       // Here rather than under CRM for the same reason as Products — it is HQ-only
       // configuration that changes how another module behaves.

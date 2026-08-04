@@ -431,6 +431,8 @@ function AdminApplicants() {
 }
 
 function AdminResumes() {
+  const [creating, setCreating] = useState(false)
+  if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
   const rows = [
     ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', <Pill tone="active">Public</Pill>, '2 days ago'],
     ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', <Pill tone="active">Public</Pill>, '1 week ago'],
@@ -442,10 +444,1022 @@ function AdminResumes() {
     <div>
       <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">🔒 Resumes contain PII — access is permission-gated and every view is written to the audit log.</div>
       <ListPage
+        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
         tabs={[{ label: 'All', count: 8420, active: true }, { label: 'Public', count: 6100 }, { label: 'Private', count: 2320 }]}
         cols={[{ label: 'Candidate', w: '1.2fr' }, { label: 'Title / experience', w: '1.6fr' }, { label: 'Location', w: '1fr' }, { label: 'Visibility', w: '0.9fr' }, { label: 'Updated', w: '1fr', align: 'r' }]}
         rows={rows}
       />
+    </div>
+  )
+}
+
+/* ── Create resume (Admin) ────────────────────────────────────────────────────
+   Two routes into ONE object, converging on the Saramin standard review screen:
+
+     ① Upload CV  → CV Convert pipeline (parse → extract → AI tag → generate)
+     ② Builder    → 4-step wizard (basics → headline & body → AI tags → preview)
+
+   Neither route writes to the resume master. "Register to resume master" on the
+   convergence screen is the only write in the whole flow, which is why switching
+   paths or abandoning half-way costs nothing.
+
+   The route decides only two things: `source` (IMPORT vs SELF_REGISTER) and the
+   document set (Upload carries the original PDF too). Everything downstream —
+   the review screen, the standard JSON, the matching keys — is identical. */
+
+const CONVERT_STEPS = [
+  { n: '①', title: 'Parse PDF', desc: 'Extract text and layout from the original CV.', ms: 1200 },
+  { n: '②', title: 'Extract structured fields', desc: 'Map name, contact, experience, education, skills to the Saramin schema.', ms: 1500 },
+  { n: '③', title: 'AI tag suggestions', desc: 'Suggest skill / role / domain tags. Reviewable by operators.', ms: 1800 },
+  { n: '④', title: 'Generate Saramin-standard resume', desc: 'Create a new Saramin CV PDF from the standard template.', ms: 1400 },
+]
+
+/** The one canonical suggestion set, shared by the pipeline's step ③ and the
+    Builder's tag step — so both routes visibly converge on identical tags. */
+const SUGGESTED_TAGS: { kind: 'Skill' | 'Role' | 'Domain'; value: string; conf: number }[] = [
+  { kind: 'Skill', value: 'React', conf: 0.97 },
+  { kind: 'Skill', value: 'Next.js', conf: 0.94 },
+  { kind: 'Skill', value: 'TypeScript', conf: 0.93 },
+  { kind: 'Skill', value: 'Tailwind CSS', conf: 0.86 },
+  { kind: 'Skill', value: 'GraphQL', conf: 0.78 },
+  { kind: 'Role', value: 'Frontend Engineer', conf: 0.95 },
+  { kind: 'Domain', value: 'E-commerce', conf: 0.82 },
+]
+/** Confidence at or above this auto-applies; below it goes to the operator queue. */
+const AUTO_APPLY = 0.8
+
+const EXTRACTED_FIELDS: [string, string][] = [
+  ['Headline', 'Frontend Engineer | React + Next.js | 3y exp'],
+  ['Location', 'Hà Nội, Việt Nam'],
+  ['Experience', 'Tiki (2023.03~), Sendo (2022.01~2023.02)'],
+  ['Education', 'HUST · B.S. Computer Science'],
+]
+
+/** Drives the pipeline on a timer: idle → running(0..3) → done. */
+function useConvertProgress() {
+  const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
+  const [step, setStep] = useState(-1)
+  useEffect(() => {
+    if (phase !== 'running') return
+    const cur = CONVERT_STEPS[step]
+    if (!cur) return
+    const t = setTimeout(() => {
+      // The last step's timer flips to done, so the effect body stays free of a
+      // synchronous setState.
+      if (step + 1 >= CONVERT_STEPS.length) setPhase('done')
+      else setStep((i) => i + 1)
+    }, cur.ms)
+    return () => clearTimeout(t)
+  }, [phase, step])
+  return {
+    phase,
+    step,
+    start: () => { setPhase('running'); setStep(0) },
+    reset: () => { setPhase('idle'); setStep(-1) },
+  }
+}
+
+/* ── the standard model, as the prototype carries it ─────────────────────────── */
+type StdExp = { company: string; position: string; location: string; startYm: string; endYm: string; areas: string; bullets: string[]; tech: string }
+type StdEdu = { school: string; faculty: string; major: string; degree: string; startYm: string; endYm: string; gpa: string }
+type StdLang = { language: string; cert: string; score: string; level: string }
+type Prefs = {
+  careerLevel: string; yearsOfExp: string; cats: string; empTypes: string
+  locs: string; inds: string; salKind: string; salCur: string; salMin: string; salMax: string
+  remoteOk: boolean; relocate: boolean; overseas: boolean
+}
+type Std = {
+  nameVi: string; nameEn: string; nameKr: string; dob: string; gender: string
+  email: string; phone: string; city: string; district: string; road: string
+  sumVi: string; sumEn: string; sumKo: string
+  experiences: StdExp[]; educations: StdEdu[]
+  skills: { group: string; items: string }[]
+  languages: StdLang[]
+  certifications: { name: string; issuer: string; year: string; score: string }[]
+  projects: { name: string; role: string; period: string; tech: string }[]
+  awards: { name: string; year: string; issuer: string }[]
+  references: { name: string; role: string; relation: string; phone: string }[]
+  links: { kind: string; url: string }[]
+  prefs: Prefs
+  tags: { kind: string; value: string; conf: number }[]
+}
+
+const EMPTY_PREFS: Prefs = {
+  careerLevel: 'ANY', yearsOfExp: '0', cats: '', empTypes: '', locs: '', inds: '',
+  salKind: '', salCur: 'VND', salMin: '', salMax: '', remoteOk: false, relocate: false, overseas: false,
+}
+
+/** What the Upload route hands to the review screen — a fully-extracted resume. */
+function importedStd(): Std {
+  return {
+    nameVi: 'Nguyễn Văn An', nameEn: 'Nguyen Van An', nameKr: '응우옌 반 안',
+    dob: '1998-04-12', gender: 'M', email: 'nguyen.an@example.vn', phone: '+84 90 123 4567',
+    city: 'Hà Nội', district: 'Cầu Giấy', road: 'Trần Thái Tông',
+    sumVi: 'Frontend Engineer 3 năm kinh nghiệm với React, Next.js, TypeScript. Tập trung vào performance và DX cho hệ thống lớn.',
+    sumEn: 'Frontend Engineer with 3 years of experience in React, Next.js, TypeScript. Focused on performance and DX at scale.',
+    sumKo: 'React, Next.js, TypeScript 기반 프론트엔드 엔지니어 3년차. 대규모 서비스의 성능과 DX 개선에 집중합니다.',
+    experiences: [
+      { company: 'Tiki', position: 'Frontend Engineer', location: 'Hồ Chí Minh', startYm: '2023-03', endYm: '', areas: 'Storefront', tech: 'React, Next.js, TypeScript, Tailwind', bullets: ['Migrated the legacy jQuery checkout to React 18 + App Router', 'Owned the performance budget — cut TTI 35% on SKU listing', 'Mentored 2 juniors on Server Component patterns'] },
+      { company: 'Sendo', position: 'Junior Web Developer', location: 'Hồ Chí Minh', startYm: '2022-01', endYm: '2023-02', areas: 'Admin', tech: 'Vue 3, Pinia, Vite', bullets: ['Built seller admin dashboards on Vue 3 + Pinia', 'Cut bundle size 28% via code-splitting'] },
+    ],
+    educations: [{ school: 'Hanoi University of Science and Technology', faculty: 'School of ICT', major: 'Computer Science', degree: 'BACHELOR', startYm: '2018-09', endYm: '2022-07', gpa: '3.4 / 4.0' }],
+    skills: [
+      { group: 'Frontend', items: 'React, Next.js, TypeScript, Tailwind, GraphQL' },
+      { group: 'State & Data', items: 'Redux, TanStack Query, Zustand' },
+      { group: 'Tools', items: 'Git, Figma, Vercel, Sentry' },
+      { group: 'Soft skills', items: 'Mentoring, Cross-team collaboration' },
+    ],
+    languages: [
+      { language: 'vi', cert: '', score: '', level: 'NATIVE' },
+      { language: 'en', cert: 'TOEIC', score: '850', level: 'ADVANCED' },
+      { language: 'ko', cert: 'TOPIK', score: '4급', level: 'INTERMEDIATE' },
+    ],
+    certifications: [
+      { name: 'MOS Excel', issuer: 'Microsoft', year: '2021', score: '960' },
+      { name: 'AWS Cloud Practitioner', issuer: 'Amazon', year: '2024', score: '' },
+    ],
+    projects: [{ name: 'Tiki Storefront PPR migration', role: 'Lead Frontend', period: '2024-04 → 2024-09', tech: 'Next.js, React Server Components' }],
+    awards: [{ name: 'Best Performance Contribution Q3', year: '2024', issuer: 'Tiki' }],
+    references: [{ name: 'Trần Minh Hiếu', role: 'Engineering Manager, Tiki', relation: 'Direct manager', phone: '+84 90 555 1234' }],
+    links: [{ kind: 'github', url: 'https://github.com/nguyen-an' }, { kind: 'linkedin', url: 'https://linkedin.com/in/nguyen-an' }],
+    prefs: {
+      careerLevel: 'EXPERIENCED', yearsOfExp: '3', cats: 'Frontend Developer, Full-stack Developer',
+      empTypes: 'FULL_TIME', locs: 'Hà Nội, Hồ Chí Minh', inds: 'E-commerce, SaaS',
+      salKind: 'MONTHLY', salCur: 'VND', salMin: '30000000', salMax: '45000000',
+      remoteOk: true, relocate: false, overseas: false,
+    },
+    tags: SUGGESTED_TAGS.filter((t) => t.conf >= AUTO_APPLY).map((t) => ({ kind: t.kind, value: t.value, conf: t.conf })),
+  }
+}
+
+/** What the Builder route hands over: the typed free text folded into the model.
+    Headline + body become the VI summary, location becomes the address city, and
+    each checked tag becomes a Skill tag. Everything else starts EMPTY — which is
+    why so many matching keys read Missing on this route. */
+function builderStd(f: { fullName: string; email: string; phone: string; location: string; headline: string; body: string; tags: string[] }): Std {
+  return {
+    nameVi: f.fullName, nameEn: '', nameKr: '', dob: '', gender: '',
+    email: f.email, phone: f.phone, city: f.location, district: '', road: '',
+    sumVi: f.headline ? `${f.headline}\n\n${f.body}` : f.body, sumEn: '', sumKo: '',
+    experiences: [], educations: [], skills: [], languages: [], certifications: [],
+    projects: [], awards: [], references: [], links: [],
+    prefs: { ...EMPTY_PREFS },
+    tags: f.tags.map((value) => ({ kind: 'Skill', value, conf: 0.95 })),
+  }
+}
+
+/* ── Job matching keys ────────────────────────────────────────────────────────
+   Nine derived readiness indicators, named after the JOB-POSTING filters rather
+   than the resume's own fields — because the question they answer is "which job
+   filters can this resume be found by?". Recomputed on every keystroke, so a key
+   flips to Ready as the operator fills the section that feeds it. */
+function matchKeys(s: Std): { label: string; ready: boolean; preview: string }[] {
+  const list = (csv: string) => csv.split(',').map((x) => x.trim()).filter(Boolean)
+  const first3 = (csv: string) => list(csv).slice(0, 3).join(' · ') || '—'
+  const p = s.prefs
+  const edu = s.educations[0]
+  const salReady = p.salKind === 'INTERVIEW' || p.salMin.trim() !== ''
+  const mob = [p.remoteOk && 'remote', p.relocate && 'relocate', p.overseas && 'overseas'].filter(Boolean).join(' · ')
+  return [
+    { label: 'Job categories', ready: list(p.cats).length > 0, preview: first3(p.cats) },
+    { label: 'Employment types', ready: list(p.empTypes).length > 0, preview: list(p.empTypes).join(' · ') || '—' },
+    { label: 'Career', ready: p.careerLevel !== 'ANY' || Number(p.yearsOfExp) > 0, preview: p.careerLevel === 'EXPERIENCED' ? `${p.careerLevel} · ${p.yearsOfExp}y` : p.careerLevel },
+    { label: 'Education', ready: !!edu, preview: edu ? `${edu.degree} · ${edu.school}` : '—' },
+    { label: 'Industries', ready: list(p.inds).length > 0, preview: first3(p.inds) },
+    { label: 'Language certs', ready: s.languages.length > 0, preview: s.languages.map((l) => [l.language, l.cert, l.score].filter(Boolean).join(':')).slice(0, 3).join(' · ') || '—' },
+    { label: 'Salary', ready: salReady, preview: p.salKind === 'INTERVIEW' ? 'INTERVIEW' : p.salMin ? `${p.salMin}~${p.salMax || '?'} ${p.salCur}` : '—' },
+    { label: 'Locations', ready: list(p.locs).length > 0, preview: first3(p.locs) },
+    { label: 'Remote / relocate / overseas', ready: !!mob, preview: mob || '—' },
+  ]
+}
+
+/* ── small building blocks for the flow ──────────────────────────────────────── */
+
+/** A labelled boxed value — the prototype's stand-in for a text input. */
+function RField({ label, value, span }: { label: string; value?: string; span?: string }) {
+  return (
+    <div className={span}>
+      <label className="mb-1 block text-[10.5px] font-medium text-ink/70">{label}</label>
+      <div className={cn('min-h-[30px] rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px]', value ? 'text-ink/80' : 'text-faint')}>
+        {value || '—'}
+      </div>
+    </div>
+  )
+}
+
+/** One section of the standard resume on the review screen. */
+function StdSection({ title, count, repeatable, children }: { title: string; count?: number; repeatable?: boolean; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-surface">
+      <header className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2">
+        <h4 className="text-[12.5px] font-semibold text-ink">{title}</h4>
+        {count != null && <span className="rounded-full bg-canvas px-1.5 py-0.5 text-[10px] tabular-nums text-faint">{count}</span>}
+        {repeatable && <button className="ml-auto rounded-md border border-line px-2 py-0.5 text-[10.5px] text-muted hover:border-brand hover:text-brand">＋ Add item</button>}
+      </header>
+      <div className="space-y-3 p-3.5">{children}</div>
+    </section>
+  )
+}
+
+/** A repeatable entry inside a section, with its own remove affordance. */
+function StdItem({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative rounded-lg border border-line-soft bg-canvas/30 p-3">
+      <button className="absolute right-2 top-2 text-[10.5px] text-faint hover:text-rose-500">🗑 Remove</button>
+      {children}
+    </div>
+  )
+}
+
+/** Confidence-scored tag chip. Checked state is the operator's decision, not the
+    model's — the score only decides what arrives pre-checked. */
+function TagChip({ kind, value, conf, checked, onClick }: { kind: string; value: string; conf: number; checked: boolean; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors',
+        checked ? 'border-brand bg-brand-soft text-ink' : 'border-line bg-surface text-muted hover:text-ink',
+      )}
+    >
+      <span className={cn('text-[9.5px]', checked ? 'text-brand' : 'text-faint')}>{checked ? '☑' : '☐'}</span>
+      <span className="rounded bg-canvas px-1 text-[9px] uppercase tracking-wide text-faint">{kind}</span>
+      <span className="font-medium">{value}</span>
+      <span className={cn('rounded px-1 text-[9.5px] tabular-nums', conf >= AUTO_APPLY ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+        {(conf * 100).toFixed(0)}%
+      </span>
+    </button>
+  )
+}
+
+/* ── the flow ────────────────────────────────────────────────────────────────── */
+
+function AdminResumeNew({ onBack }: { onBack: () => void }) {
+  useDetailCrumb('New resume', onBack)
+  const [path, setPath] = useState<'picker' | 'upload' | 'builder' | 'review'>('picker')
+  const [draft, setDraft] = useState<Std | null>(null)
+  const [source, setSource] = useState<'IMPORT' | 'SELF_REGISTER'>('IMPORT')
+
+  function handoff(std: Std, src: 'IMPORT' | 'SELF_REGISTER') {
+    setDraft(std)
+    setSource(src)
+    setPath('review')
+  }
+
+  if (path === 'review' && draft) {
+    return (
+      <ResumeReview
+        std={draft}
+        setStd={setDraft as (s: Std) => void}
+        source={source}
+        onBack={() => setPath(source === 'IMPORT' ? 'upload' : 'builder')}
+        onRegistered={onBack}
+      />
+    )
+  }
+
+  if (path === 'picker') {
+    return (
+      <div className="max-w-[860px]">
+        <h2 className="text-[20px] font-bold tracking-tight">Two paths, one Saramin standard model</h2>
+        <p className="mt-1 text-[12.5px] text-muted">
+          Upload an existing CV or fill it in by hand — either path normalises to the same standard resume. Nothing is written to the
+          resume master until you register on the review screen.
+        </p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {([
+            ['① Upload CV', 'Upload CV (PDF / DOC / DOCX)', 'AI parses and converts the file into the Saramin standard format. Carries the original PDF alongside the generated one.', 'upload'],
+            ['② Fill by hand', 'CV Builder wizard', 'Step-by-step form for basics · headline & body · tags, ending on the same standard resume. No original file.', 'builder'],
+          ] as const).map(([badge, title, desc, target]) => (
+            <div key={target} className="flex flex-col rounded-xl border border-line bg-surface p-4 transition-colors hover:border-brand">
+              <div className="flex items-start justify-between gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-[15px]">{target === 'upload' ? '📤' : '📝'}</span>
+                <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">{badge}</span>
+              </div>
+              <p className="mt-3 text-[13.5px] font-semibold text-ink">{title}</p>
+              <p className="mt-1 flex-1 text-[11.5px] leading-relaxed text-muted">{desc}</p>
+              <button onClick={() => setPath(target)} className="mt-3 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Use this path</button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-[11px] leading-relaxed text-faint">
+          The route decides only two things: <b>source</b> (Upload → IMPORT, Builder → SELF_REGISTER) and which CV documents exist.
+          The review screen, the stored standard JSON and the register action are identical for both.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <button onClick={() => setPath('picker')} className="mb-3 text-[11.5px] font-medium text-muted hover:text-brand">← Choose another path</button>
+      {path === 'upload'
+        ? <UploadRoute onContinue={() => handoff(importedStd(), 'IMPORT')} />
+        : <BuilderRoute onContinue={(f) => handoff(builderStd(f), 'SELF_REGISTER')} />}
+    </div>
+  )
+}
+
+/** Registered as its own screen id so the spec page can show the create flow
+    directly; Back returns to the list, the same thing it does in the console. */
+function AdminResumeNewStandalone() {
+  const [backToList, setBackToList] = useState(false)
+  if (backToList) return <AdminResumes />
+  return <AdminResumeNew onBack={() => setBackToList(true)} />
+}
+
+/* ── ① Upload route — file + CV Convert pipeline ─────────────────────────────── */
+
+function UploadRoute({ onContinue }: { onContinue: () => void }) {
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const [file, setFile] = useState<{ name: string; kb: string } | null>(null)
+  const { phase, step, start, reset } = useConvertProgress()
+
+  // A stale pipeline result must never be shown against a new file, so any change
+  // to the selection resets the run.
+  function pick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    setFile(f ? { name: f.name, kb: (f.size / 1024).toFixed(1) } : null)
+    reset()
+  }
+  function clear() {
+    setFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+    reset()
+  }
+
+  const shown = (i: number) => phase === 'done' || step >= i
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
+      {/* left — file + step rail */}
+      <aside className="space-y-3">
+        <div className="rounded-xl border border-line bg-surface p-3.5">
+          <h3 className="text-[12.5px] font-semibold">Upload original CV</h3>
+          <p className="mt-0.5 text-[11px] text-faint">PDF · DOC · DOCX — max ~5 MB. Type and size are validated before upload.</p>
+          {file ? (
+            <div className="mt-3 flex items-center gap-2.5 rounded-md border border-line bg-canvas/40 p-2.5">
+              <span className="text-[15px]">📄</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11.5px] font-medium text-ink">{file.name}</p>
+                <p className="text-[10.5px] text-faint tabular-nums">{file.kb} KB</p>
+              </div>
+              <button
+                onClick={clear}
+                disabled={phase === 'running'}
+                title={phase === 'running' ? 'Cannot change the file while the pipeline is running' : 'Remove'}
+                className="rounded-md border border-line px-1.5 py-1 text-[10.5px] text-muted disabled:opacity-40"
+              >🗑</button>
+            </div>
+          ) : (
+            <>
+              <button onClick={() => fileRef.current?.click()} className="mt-3 flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-line bg-canvas/30 px-4 py-7 text-[11.5px] text-muted transition-colors hover:border-brand hover:text-ink">
+                <span className="text-[18px]">⬆️</span>
+                Choose file
+              </button>
+              {/* Prototype affordance only — the real console has just the file input.
+                  A spec reviewer should not have to find a PDF on their machine to see
+                  the pipeline, which is the part of this screen worth reviewing. */}
+              <button onClick={() => setFile({ name: 'original-cv.pdf', kb: '184.2' })} className="mt-2 w-full text-[10.5px] text-faint underline hover:text-brand">
+                or use a sample CV (prototype only)
+              </button>
+            </>
+          )}
+          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={pick} />
+        </div>
+
+        <ol className="space-y-2">
+          {CONVERT_STEPS.map((s, i) => {
+            const state = phase === 'done' || i < step ? 'done' : i === step && phase === 'running' ? 'active' : 'pending'
+            return (
+              <li key={s.title} className={cn('flex gap-2.5 rounded-lg border p-2.5', state === 'active' ? 'border-brand bg-brand-soft/40' : state === 'done' ? 'border-emerald-200 bg-emerald-50/50' : 'border-line bg-surface')}>
+                <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold', state === 'active' ? 'bg-brand text-white' : state === 'done' ? 'bg-emerald-600 text-white' : 'bg-canvas text-faint')}>
+                  {state === 'done' ? '✓' : state === 'active' ? '◍' : s.n}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11.5px] font-medium text-ink">{s.title}</p>
+                  <p className="text-[10.5px] leading-snug text-faint">{s.desc}</p>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+
+        {phase === 'idle' && (
+          <button onClick={start} disabled={!file} className="w-full rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
+            ✨ Start analysis
+          </button>
+        )}
+        {phase === 'running' && (
+          <button disabled className="w-full rounded-lg bg-brand/60 px-3 py-2 text-[12.5px] font-semibold text-white">◍ Processing…</button>
+        )}
+        {phase === 'done' && (
+          <>
+            <button onClick={onContinue} className="w-full rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Review &amp; edit extracted result →</button>
+            <p className="text-[10.5px] leading-relaxed text-faint">The extracted fields and tags are carried to the review screen. Nothing is saved until you register there.</p>
+          </>
+        )}
+        {phase === 'idle' && !file && (
+          <p className="text-[10.5px] text-faint">The pipeline runs on an explicit start — pick a file first, so a wrong file can be swapped without watching a run you would discard.</p>
+        )}
+      </aside>
+
+      {/* right — stage panel, one result card per completed step */}
+      {phase === 'idle' ? (
+        <section className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-line p-8 text-center">
+          <div>
+            <p className="text-[24px]">✨</p>
+            <h3 className="mt-1 text-[14px] font-semibold">Normalise this CV into the Saramin standard model</h3>
+            <p className="mx-auto mt-1 max-w-[420px] text-[11.5px] leading-relaxed text-muted">
+              The pipeline parses the original PDF, extracts structured fields and searchable tags, and generates a new resume in the
+              Saramin standard format. Every result is reviewable before anything is saved.
+            </p>
+            {file && <span className="mt-3 inline-block rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-[10px] text-muted">{file.name}</span>}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-3">
+          {shown(0) && (
+            <ResultCard title="PDF parsing result" active={step === 0 && phase === 'running'} done={phase === 'done' || step > 0}>
+              <pre className="overflow-x-auto rounded-md bg-canvas/60 p-3 font-mono text-[10.5px] leading-relaxed text-muted">{`📄 original-cv.pdf · 1 page · 312 tokens
+  ├─ Frontend Engineer · Tiki  (2023.03 – present)
+  ├─ Junior Web Developer · Sendo  (2022.01 – 2023.02)
+  ├─ HUST · B.S. Computer Science (2018 – 2022)
+  └─ Skills: React, TS, Next.js, Tailwind, GraphQL, PG`}</pre>
+            </ResultCard>
+          )}
+          {shown(1) && (
+            <ResultCard title="Structured fields" active={step === 1 && phase === 'running'} done={phase === 'done' || step > 1}>
+              <dl className="grid gap-2 sm:grid-cols-2">
+                {EXTRACTED_FIELDS.map(([k, v]) => (
+                  <div key={k} className="rounded-md border border-line bg-surface p-2.5">
+                    <dt className="text-[9.5px] uppercase tracking-wide text-faint">{k}</dt>
+                    <dd className="mt-0.5 text-[11.5px] text-ink/80">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </ResultCard>
+          )}
+          {shown(2) && (
+            <ResultCard title="AI suggested tags" active={step === 2 && phase === 'running'} done={phase === 'done' || step > 2}>
+              <div className="flex flex-wrap gap-1.5">
+                {SUGGESTED_TAGS.map((t) => (
+                  <TagChip key={t.value} kind={t.kind} value={t.value} conf={t.conf} checked={t.conf >= AUTO_APPLY} />
+                ))}
+              </div>
+              <p className="mt-2 text-[10.5px] text-faint">Confidence ≥ {AUTO_APPLY * 100}% is auto-applied. The rest move to the operator approval queue.</p>
+            </ResultCard>
+          )}
+          {shown(3) && (
+            <ResultCard title="Saramin-standard resume" active={step === 3 && phase === 'running'} done={phase === 'done'}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-[16px]">🪄</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11.5px] font-medium text-ink">saramin-cv.pdf · 1 page · ready for review</p>
+                  <p className="text-[10.5px] text-faint">Open the “Saramin standard” tab on the review screen to preview it.</p>
+                </div>
+                {phase === 'done' && <Pill tone="active">Preview ready</Pill>}
+              </div>
+            </ResultCard>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
+
+function ResultCard({ title, active, done, children }: { title: string; active: boolean; done: boolean; children: React.ReactNode }) {
+  return (
+    <div className={cn('rounded-xl border bg-surface', active ? 'border-brand/60 shadow-sm' : done ? 'border-emerald-200' : 'border-line')}>
+      <div className="flex items-center justify-between border-b border-line-soft px-3.5 py-2">
+        <h4 className="text-[12px] font-semibold text-ink">{title}</h4>
+        <span className={cn('text-[11px]', active ? 'text-brand' : done ? 'text-emerald-600' : 'text-faint')}>{active ? '◍' : done ? '✓' : '◌'}</span>
+      </div>
+      <div className="p-3.5">{children}</div>
+    </div>
+  )
+}
+
+/* ── ② Builder route — 4-step wizard with gates ──────────────────────────────── */
+
+const BUILDER_STEPS = [
+  { key: 'personal', label: 'Personal info', desc: 'Who the candidate is and how to reach them.' },
+  { key: 'content', label: 'Headline & content', desc: 'Summarise the experience for recruiters.' },
+  { key: 'tags', label: 'AI tags', desc: 'AI analyses the body and suggests Saramin-standard tags. Operator review applies.' },
+  { key: 'preview', label: 'Preview & submit', desc: 'Read back the information before handing off to the standard review screen.' },
+] as const
+
+type BuilderForm = { fullName: string; email: string; phone: string; location: string; headline: string; body: string; tags: string[] }
+
+function BuilderRoute({ onContinue }: { onContinue: (f: BuilderForm) => void }) {
+  const [step, setStep] = useState(1)
+  const [err, setErr] = useState<string | null>(null)
+  const [f, setF] = useState<BuilderForm>({ fullName: '', email: '', phone: '', location: '', headline: '', body: '', tags: [] })
+  const [tagPhase, setTagPhase] = useState<'idle' | 'running' | 'done'>('idle')
+
+  const up = <K extends keyof BuilderForm>(k: K, v: BuilderForm[K]) => setF((p) => ({ ...p, [k]: v }))
+
+  // The gate per step. Step 3 and 4 have none — zero tags is a valid resume.
+  function canAdvance() {
+    if (step === 1) return f.fullName.trim() !== '' && /.+@.+\..+/.test(f.email) && f.phone.trim() !== '' && f.location.trim() !== ''
+    if (step === 2) return f.headline.trim() !== '' && f.body.trim() !== ''
+    return true
+  }
+
+  function runTags() {
+    setTagPhase('running')
+    setTimeout(() => {
+      setTagPhase('done')
+      // Re-running replaces the SUGGESTION set, not the operator's checkmarks —
+      // so only seed the auto-apply set when nothing has been checked yet.
+      setF((p) => (p.tags.length > 0 ? p : { ...p, tags: SUGGESTED_TAGS.filter((t) => t.conf >= AUTO_APPLY).map((t) => t.value) }))
+    }, 1600)
+  }
+
+  const cur = BUILDER_STEPS[step - 1]
+
+  return (
+    <div className="max-w-[820px]">
+      <ol className="mb-4 flex flex-wrap items-center gap-1.5">
+        {BUILDER_STEPS.map((s, i) => {
+          const done = step > i + 1
+          const active = step === i + 1
+          return (
+            <li key={s.key} className="flex items-center gap-1.5">
+              <span className={cn('grid h-6 w-6 place-items-center rounded-full border text-[10.5px] font-semibold', done ? 'border-emerald-600 bg-emerald-600 text-white' : active ? 'border-brand bg-brand text-white' : 'border-line text-faint')}>
+                {done ? '✓' : i + 1}
+              </span>
+              <span className={cn('text-[11.5px]', active ? 'font-semibold text-ink' : 'text-muted')}>{s.label}</span>
+              {i < BUILDER_STEPS.length - 1 && <span className="text-faint">›</span>}
+            </li>
+          )
+        })}
+      </ol>
+
+      <div className="rounded-xl border border-line bg-surface">
+        <header className="border-b border-line-soft px-4 py-3">
+          <h3 className="text-[14px] font-semibold">Step {step}: {cur.label}</h3>
+          <p className="mt-0.5 text-[11.5px] text-muted">{cur.desc}</p>
+        </header>
+        <div className="space-y-3 p-4">
+          {step === 1 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <BField label="Full name" req value={f.fullName} onChange={(v) => up('fullName', v)} placeholder="Nguyễn Văn An" />
+              <BField label="Email" req value={f.email} onChange={(v) => up('email', v)} placeholder="you@example.com" />
+              <BField label="Phone" req value={f.phone} onChange={(v) => up('phone', v)} placeholder="0901234567" />
+              <BField label="Location" req value={f.location} onChange={(v) => up('location', v)} placeholder="Hồ Chí Minh" />
+            </div>
+          )}
+
+          {step === 2 && (
+            <>
+              <BField label="Headline" req value={f.headline} onChange={(v) => up('headline', v)} placeholder="Backend developer with 3 years of experience" />
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-ink/80">Resume body<span className="text-rose-500"> *</span></label>
+                <textarea
+                  rows={7}
+                  value={f.body}
+                  onChange={(e) => up('body', e.target.value)}
+                  placeholder="Describe the experience, skills, education…"
+                  className="w-full resize-y rounded-md border border-line bg-surface px-2.5 py-2 text-[12px] outline-none focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] text-faint">The headline and body become the VI summary of the standard resume — its first line is the resume headline.</p>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <div className="rounded-lg border border-line bg-canvas/30 p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-[12.5px] font-semibold">AI tag suggestions</h4>
+                  <p className="text-[11px] text-muted">The same suggestion set the Upload pipeline produces — both routes converge on identical tags.</p>
+                </div>
+                {tagPhase === 'idle' && (
+                  <button onClick={runTags} disabled={f.body.trim() === ''} className="rounded-md bg-brand px-2.5 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40">✨ Run AI suggestion</button>
+                )}
+                {tagPhase === 'running' && <button disabled className="rounded-md bg-brand/60 px-2.5 py-1.5 text-[11.5px] font-semibold text-white">◍ Analysing…</button>}
+                {tagPhase === 'done' && <button onClick={runTags} className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">↻ Re-run</button>}
+              </div>
+
+              {f.body.trim() === '' && tagPhase === 'idle' && <p className="mt-2 text-[11px] italic text-faint">Fill in the resume body on the previous step first.</p>}
+              {f.body.trim() !== '' && tagPhase === 'idle' && <p className="mt-2 text-[11px] italic text-faint">Run AI suggestion to see tags here.</p>}
+
+              {tagPhase !== 'idle' && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {SUGGESTED_TAGS.map((t) => (
+                    <TagChip
+                      key={t.value}
+                      kind={t.kind}
+                      value={t.value}
+                      conf={t.conf}
+                      checked={f.tags.includes(t.value)}
+                      onClick={() => tagPhase === 'done' && up('tags', f.tags.includes(t.value) ? f.tags.filter((x) => x !== t.value) : [...f.tags, t.value])}
+                    />
+                  ))}
+                </div>
+              )}
+              {tagPhase === 'done' && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-2.5">
+                  <span className="rounded-md bg-canvas px-2 py-0.5 text-[10.5px] text-muted tabular-nums">{f.tags.length} selected</span>
+                  <p className="text-[10.5px] text-faint">Only checked tags are applied. Below {AUTO_APPLY * 100}% confidence goes to the operator approval queue.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-2.5">
+              {([['Name', f.fullName], ['Email', f.email], ['Phone', f.phone], ['Location', f.location], ['Headline', f.headline]] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="grid grid-cols-3 gap-3 border-b border-line-soft pb-2 text-[12px] last:border-b-0">
+                  <span className="text-muted">{k}</span>
+                  <span className={cn('col-span-2', v ? 'font-medium text-ink' : 'italic text-faint')}>{v || 'not provided'}</span>
+                </div>
+              ))}
+              <div>
+                <p className="mb-1 text-[11px] font-medium text-ink/80">Body</p>
+                <p className="whitespace-pre-wrap rounded-md border border-line bg-canvas/40 p-2.5 text-[11.5px] text-ink/80">{f.body || <span className="italic text-faint">not provided</span>}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-medium text-ink/80">Tags</span>
+                {f.tags.length === 0
+                  ? <span className="text-[11.5px] italic text-faint">none selected</span>
+                  : f.tags.map((t) => <span key={t} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[10.5px] text-muted">{t}</span>)}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-ink/80">Source</span>
+                <span className="rounded-md border border-line bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-muted">SELF_REGISTER</span>
+                <span className="text-[10.5px] text-faint">— set by the route, not chosen here</span>
+              </div>
+              <p className="text-[10.5px] leading-relaxed text-faint">
+                This is a read-back, not the review. Continue hands off to the Saramin standard screen, where the resume is actually
+                edited and registered.
+              </p>
+            </div>
+          )}
+
+          {err && <p role="alert" className="text-[11.5px] text-rose-600">{err}</p>}
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <button onClick={() => { setErr(null); setStep((s) => Math.max(1, s - 1)) }} disabled={step === 1} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted disabled:opacity-40">‹ Back</button>
+        {step < BUILDER_STEPS.length ? (
+          <button
+            onClick={() => { if (!canAdvance()) { setErr('Please complete the required fields on this step.'); return } setErr(null); setStep((s) => s + 1) }}
+            className="rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
+          >Next ›</button>
+        ) : (
+          <button onClick={() => onContinue(f)} className="rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Continue to review →</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Editable wizard field. */
+function BField({ label, req, value, onChange, placeholder }: { label: string; req?: boolean; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-line bg-surface px-2.5 py-2 text-[12px] outline-none focus:border-brand"
+      />
+    </div>
+  )
+}
+
+/* ── convergence — Saramin standard resume, review & edit ────────────────────── */
+
+function ResumeReview({ std, setStd, source, onBack, onRegistered }: {
+  std: Std
+  setStd: (s: Std) => void
+  source: 'IMPORT' | 'SELF_REGISTER'
+  onBack: () => void
+  onRegistered: () => void
+}) {
+  const hasOriginal = source === 'IMPORT'
+  const [tab, setTab] = useState<'original' | 'saramin'>(hasOriginal ? 'original' : 'saramin')
+  const [registered, setRegistered] = useState(false)
+  const keys = matchKeys(std)
+  const ready = keys.filter((k) => k.ready).length
+
+  const setPref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => setStd({ ...std, prefs: { ...std.prefs, [k]: v } })
+
+  if (registered) {
+    return (
+      <div className="max-w-[560px] rounded-xl border border-emerald-200 bg-emerald-50/60 p-5">
+        <p className="text-[15px] font-bold text-emerald-800">Registered to the resume master</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-emerald-900/80">
+          The standard resume was saved with <b>source = {source}</b>{hasOriginal ? ', both the original and the generated Saramin PDF' : ', the generated Saramin PDF only'}, and {std.tags.length} tag{std.tags.length === 1 ? '' : 's'}.
+          The console would now open the new resume’s detail page.
+        </p>
+        <p className="mt-2 text-[11px] text-emerald-900/70">
+          The candidate is <b>not</b> discoverable in employer CV search yet — that needs their own visibility consent.
+        </p>
+        <button onClick={onRegistered} className="mt-3 rounded-lg bg-emerald-600 px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Back to resume list</button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <button onClick={onBack} className="text-[11.5px] font-medium text-muted hover:text-brand">← Previous step</button>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border border-line bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-muted">source: {source}</span>
+          <button onClick={() => setRegistered(true)} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Register to resume master</button>
+        </div>
+      </div>
+
+      <h2 className="text-[19px] font-bold tracking-tight">Saramin standard resume — review &amp; edit</h2>
+      <p className="mt-1 max-w-[760px] text-[12px] text-muted">
+        One unified view of the extracted or entered content in the Saramin standard format. Edit any section, then register. This is the
+        only write in the flow — until you press Register, nothing exists in the resume master.
+      </p>
+
+      <div className="mt-4 grid gap-5 lg:grid-cols-2">
+        {/* LEFT — CV documents */}
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <div className="rounded-xl border border-line bg-surface">
+            <header className="flex flex-wrap items-start justify-between gap-2 border-b border-line-soft px-3.5 py-2.5">
+              <div>
+                <h3 className="text-[12.5px] font-semibold">CV documents</h3>
+                <p className="text-[10.5px] text-faint">Opening a CV document is a PII event and is written to the audit log.</p>
+              </div>
+              <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">{hasOriginal ? 'Original + Saramin' : 'Saramin only'}</span>
+            </header>
+            <div className="flex gap-1 border-b border-line-soft px-3.5 pt-2.5">
+              {([['original', 'Original CV'], ['saramin', 'Saramin standard']] as const).map(([k, label]) => {
+                const disabled = k === 'original' && !hasOriginal
+                return (
+                  <button
+                    key={k}
+                    disabled={disabled}
+                    onClick={() => setTab(k)}
+                    title={disabled ? 'The Builder route produces no original file' : undefined}
+                    className={cn('rounded-t-md px-2.5 py-1.5 text-[11.5px]', tab === k ? 'border-b-2 border-brand font-semibold text-brand' : 'text-muted', disabled && 'opacity-40')}
+                  >{label}</button>
+                )
+              })}
+            </div>
+            <div className="p-3.5">
+              <div className="grid min-h-[380px] place-items-center rounded-lg border border-dashed border-line bg-canvas/30 text-center">
+                <div className="px-6">
+                  <p className="text-[22px]">📄</p>
+                  <p className="mt-1 text-[12px] font-medium text-ink">
+                    {tab === 'original' ? 'original-cv.pdf' : 'saramin-cv.pdf'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted">
+                    {tab === 'original'
+                      ? 'The file as the candidate supplied it — the document an employer reads.'
+                      : 'Generated from the standard template. Regenerated whenever the standard resume changes.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — matching keys + section editors */}
+        <div className="space-y-4">
+          <div className="rounded-xl border border-line bg-surface">
+            <header className="border-b border-line-soft px-3.5 py-2.5">
+              <div className="flex items-center gap-2">
+                <h3 className="text-[12.5px] font-semibold">Job matching keys</h3>
+                <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums', ready >= 7 ? 'bg-emerald-50 text-emerald-700' : ready >= 4 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600')}>
+                  {ready} / {keys.length} ready
+                </span>
+              </div>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">
+                Which job-posting filters this resume can be found by. Derived live — fill a section below and its key flips to Ready.
+                An all-Missing resume registers fine but is close to invisible in CV search.
+              </p>
+            </header>
+            <div className="grid gap-2 p-3.5 sm:grid-cols-2">
+              {keys.map((k) => (
+                <div key={k.label} className={cn('flex items-start gap-2 rounded-md border p-2', k.ready ? 'border-emerald-200 bg-emerald-50/50' : 'border-line bg-surface')}>
+                  <span className={cn('mt-0.5 text-[10px]', k.ready ? 'text-emerald-600' : 'text-faint')}>{k.ready ? '✓' : '◌'}</span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-ink">{k.label}</p>
+                    <p className="truncate text-[10.5px] text-faint">{k.preview}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <StdSection title="Identity & contact">
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              <RField label="Name (VI) *" value={std.nameVi} />
+              <RField label="Name (EN)" value={std.nameEn} />
+              <RField label="Name (KO)" value={std.nameKr} />
+              <RField label="Date of birth" value={std.dob} />
+              <RField label="Gender" value={std.gender} />
+              <RField label="Email *" value={std.email} />
+              <RField label="Phone *" value={std.phone} />
+              <RField label="City" value={std.city} />
+              <RField label="District" value={std.district} />
+              <RField label="Road" value={std.road} span="sm:col-span-2" />
+            </div>
+          </StdSection>
+
+          <StdSection title="Summary">
+            <div className="space-y-2.5">
+              <RField label="Summary (VI) — its first line becomes the resume headline" value={std.sumVi} />
+              <RField label="Summary (EN)" value={std.sumEn} />
+              <RField label="Summary (KO)" value={std.sumKo} />
+            </div>
+          </StdSection>
+
+          <StdSection title="Experience" count={std.experiences.length} repeatable>
+            {std.experiences.length === 0 && <EmptySec what="No experience yet — this is what drives years-of-experience and the Career matching key." />}
+            {std.experiences.map((e, i) => (
+              <StdItem key={i}>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <RField label="Company *" value={e.company} />
+                  <RField label="Position *" value={e.position} />
+                  <RField label="Location" value={e.location} />
+                  <RField label="Areas (comma-separated)" value={e.areas} />
+                  <RField label="Start (YYYY-MM) *" value={e.startYm} />
+                  <RField label="End (YYYY-MM — empty = present)" value={e.endYm} />
+                  <RField label="Tech stack (comma-separated)" value={e.tech} span="sm:col-span-2" />
+                </div>
+                <p className="mt-2 mb-1 text-[10.5px] font-medium text-ink/70">Achievements (one per line)</p>
+                <ul className="space-y-1">
+                  {e.bullets.map((b) => <li key={b} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11px] text-ink/80">{b}</li>)}
+                </ul>
+              </StdItem>
+            ))}
+          </StdSection>
+
+          <StdSection title="Education" count={std.educations.length} repeatable>
+            {std.educations.length === 0 && <EmptySec what="No education yet — the Education matching key stays Missing until one entry exists." />}
+            {std.educations.map((e, i) => (
+              <StdItem key={i}>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <RField label="School *" value={e.school} span="sm:col-span-2" />
+                  <RField label="Faculty" value={e.faculty} />
+                  <RField label="Major" value={e.major} />
+                  <RField label="Degree * (HIGH_SCHOOL · ASSOCIATE · BACHELOR · MASTER · DOCTOR)" value={e.degree} span="sm:col-span-2" />
+                  <RField label="Start (YYYY-MM)" value={e.startYm} />
+                  <RField label="End (YYYY-MM)" value={e.endYm} />
+                  <RField label="GPA" value={e.gpa} />
+                </div>
+              </StdItem>
+            ))}
+          </StdSection>
+
+          <StdSection title="Skills" count={std.skills.length} repeatable>
+            {std.skills.length === 0 && <EmptySec what="No skills yet. Real CVs group their stack — keep the groups rather than flattening to one list." />}
+            {std.skills.map((s, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-[150px_1fr]">
+                <RField label="Group" value={s.group} />
+                <RField label="Items (comma-separated — must resolve to the Skill taxonomy)" value={s.items} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="Languages" count={std.languages.length} repeatable>
+            {std.languages.length === 0 && <EmptySec what="No languages yet — this feeds the Language certs matching key." />}
+            {std.languages.map((l, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-4">
+                <RField label="Language" value={l.language} />
+                <RField label="Cert" value={l.cert} />
+                <RField label="Score / level" value={l.score} />
+                <RField label="Level" value={l.level} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="Certifications" count={std.certifications.length} repeatable>
+            {std.certifications.length === 0 && <EmptySec what="None." />}
+            {std.certifications.map((c, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-4">
+                <RField label="Certificate" value={c.name} />
+                <RField label="Issuer" value={c.issuer} />
+                <RField label="Score" value={c.score} />
+                <RField label="Year" value={c.year} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="Projects" count={std.projects.length} repeatable>
+            {std.projects.length === 0 && <EmptySec what="None." />}
+            {std.projects.map((p, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-2">
+                <RField label="Project" value={p.name} />
+                <RField label="Role" value={p.role} />
+                <RField label="Period" value={p.period} />
+                <RField label="Tech stack" value={p.tech} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="Awards / activities" count={std.awards.length} repeatable>
+            {std.awards.length === 0 && <EmptySec what="None." />}
+            {std.awards.map((a, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-3">
+                <RField label="Award" value={a.name} />
+                <RField label="Issuer" value={a.issuer} />
+                <RField label="Year" value={a.year} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="References" count={std.references.length} repeatable>
+            <p className="-mt-1 mb-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] text-amber-800">
+              🔒 VN CVs routinely list a referee with a phone number. This section is PII about a THIRD party — masked in the list, and revealing it is audited.
+            </p>
+            {std.references.length === 0 && <EmptySec what="None." />}
+            {std.references.map((r, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-4">
+                <RField label="Name" value={r.name} />
+                <RField label="Role" value={r.role} />
+                <RField label="Relation" value={r.relation} />
+                <RField label="Phone" value={r.phone} />
+              </div>
+            ))}
+          </StdSection>
+
+          <StdSection title="Portfolio / links" count={std.links.length} repeatable>
+            {std.links.length === 0 && <EmptySec what="None." />}
+            {std.links.map((l, i) => (
+              <div key={i} className="grid gap-2.5 sm:grid-cols-[120px_1fr]">
+                <RField label="Kind" value={l.kind} />
+                <RField label="URL" value={l.url} />
+              </div>
+            ))}
+          </StdSection>
+
+          {/* The one editable section, so the matching keys can be watched flipping. */}
+          <StdSection title="Job preferences">
+            <p className="-mt-1 text-[10.5px] text-faint">Editable here — change a field and watch its matching key above flip to Ready.</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <PrefSelect label="Career level" value={std.prefs.careerLevel} options={['FRESHER', 'EXPERIENCED', 'ANY']} onChange={(v) => setPref('careerLevel', v)} />
+              <BField label="Years of experience" value={std.prefs.yearsOfExp} onChange={(v) => setPref('yearsOfExp', v)} />
+              <BField label="Desired job categories (comma-separated)" value={std.prefs.cats} onChange={(v) => setPref('cats', v)} placeholder="Frontend Developer, Full-stack Developer" />
+              <BField label="Desired employment types (comma-separated)" value={std.prefs.empTypes} onChange={(v) => setPref('empTypes', v)} placeholder="FULL_TIME, CONTRACT" />
+              <BField label="Desired locations (comma-separated)" value={std.prefs.locs} onChange={(v) => setPref('locs', v)} placeholder="Hà Nội, Hồ Chí Minh" />
+              <BField label="Target industries (comma-separated)" value={std.prefs.inds} onChange={(v) => setPref('inds', v)} placeholder="E-commerce, SaaS" />
+              <PrefSelect label="Salary kind" value={std.prefs.salKind} options={['', 'ANNUAL', 'MONTHLY', 'INTERVIEW', 'INTERNAL_RULE']} onChange={(v) => setPref('salKind', v)} />
+              <PrefSelect label="Currency" value={std.prefs.salCur} options={['VND', 'USD']} onChange={(v) => setPref('salCur', v)} />
+              <BField label="Salary min" value={std.prefs.salMin} onChange={(v) => setPref('salMin', v)} placeholder="30000000" />
+              <BField label="Salary max" value={std.prefs.salMax} onChange={(v) => setPref('salMax', v)} placeholder="45000000" />
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {([['Remote OK', 'remoteOk'], ['Open to relocate', 'relocate'], ['Open to overseas', 'overseas']] as [string, 'remoteOk' | 'relocate' | 'overseas'][]).map(([label, k]) => (
+                <button
+                  key={k}
+                  onClick={() => setPref(k, !std.prefs[k])}
+                  className={cn('rounded-full border px-2.5 py-1 text-[11px] transition-colors', std.prefs[k] ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:text-ink')}
+                >
+                  {std.prefs[k] ? '☑' : '☐'} {label}
+                </button>
+              ))}
+            </div>
+          </StdSection>
+
+          <StdSection title="Tags" count={std.tags.length}>
+            {std.tags.length === 0
+              ? <EmptySec what="No tags applied. The resume registers, but it will not surface for skill or role searches." />
+              : (
+                <div className="flex flex-wrap gap-1.5">
+                  {std.tags.map((t) => <TagChip key={t.value} kind={t.kind} value={t.value} conf={t.conf} checked />)}
+                </div>
+              )}
+            <p className="text-[10.5px] text-faint">Only checked tags were applied. A blank tag value is rejected by the API — an empty tag pollutes the taxonomy join CV search depends on.</p>
+          </StdSection>
+
+          <p className="rounded-lg border border-line bg-canvas/40 px-3 py-2.5 text-[10.5px] leading-relaxed text-faint">
+            <b className="text-muted">On register:</b> the whole standard resume is stored as one serialised <code className="font-mono">standardJson</code>, and the flat
+            columns the list and search read are DERIVED from it — <code className="font-mono">headline</code> = the first line of the VI summary,{' '}
+            <code className="font-mono">content</code> = the VI summary (falling back to EN, then KO). Never the other way round.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EmptySec({ what }: { what: string }) {
+  return <p className="rounded-md border border-dashed border-line bg-canvas/30 px-2.5 py-2 text-[11px] italic text-faint">{what}</p>
+}
+
+function PrefSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-medium text-ink/80">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-line bg-surface px-2 py-2 text-[12px] outline-none focus:border-brand"
+      >
+        {options.map((o) => <option key={o} value={o}>{o || '—'}</option>)}
+      </select>
     </div>
   )
 }
@@ -3126,31 +4140,438 @@ function AdminBlog() {
 /* The five product TYPES, derived from the client Products deck. The type is the
    discriminator that decides what "fulfilment" means, so it drives which fields
    the create form asks for — see NewProductModal. */
+/* ── Placements registry ──────────────────────────────────────────────────────
+   One row per display area on the jobseeker site, transcribed from the client
+   Products deck (§1 Dịch vụ Trang chủ, §2 Dịch vụ Trang Tìm kiếm).
+
+   This is the layer BETWEEN the site and the catalog. Sizes and caps live here,
+   once — not retyped into every banner sale — and each row records how it gets
+   filled, which is the product ⇄ homepage relationship:
+
+     tier   — membership is DERIVED from a job's posting tier. Nothing is booked.
+     booked — a company buys the slot for N days. Capacity-capped → needs a calendar.
+     both   — available by tier AND sellable standalone. Needs a priority rule,
+              or the fixed positions get oversold. */
+type FillRoute = 'tier' | 'booked' | 'both'
+const FILL_META: Record<FillRoute, { label: string; tone: StatusTone; hint: string }> = {
+  tier: { label: 'Tier-driven', tone: 'active', hint: 'Derived from the job’s posting tier — never booked, never assigned by hand.' },
+  booked: { label: 'Booked', tone: 'pending', hint: 'Sold as a time window on the slot. Capacity-capped, so it needs an availability calendar.' },
+  both: { label: 'Tier + booked', tone: 'rejected', hint: 'Two supply routes competing for the same positions — needs an explicit priority rule.' },
+}
+type Placement = { id: string; page: 'Home' | 'Search'; ref: string; name: string; size: string; shown: string; cap: string; route: FillRoute; fedBy: string }
+const PLACEMENTS: Placement[] = [
+  { id: 'home-hero', page: 'Home', ref: '1.1', name: 'Main Banner (Hero)', size: '1536 × 371 px', shown: '1 at a time', cap: 'max 6 · rotate 3s', route: 'booked', fedBy: 'Banner placement product · client-supplied image + link' },
+  { id: 'home-feature-co', page: 'Home', ref: '1.2', name: 'Feature company (logos)', size: 'Logo from profile', shown: '6 logos', cap: 'max 12 · random per reload', route: 'booked', fedBy: 'Feature company product · logo auto-pulled from company profile' },
+  { id: 'home-super-hot', page: 'Home', ref: '1.3', name: 'Công việc Hot hôm nay', size: 'Job card + image', shown: '4 jobs', cap: 'unlimited pool · random per reload', route: 'both', fedBy: 'Top Job tier (first 10 days) — AND sold standalone (10 ngày)' },
+  { id: 'home-top-co', page: 'Home', ref: '1.4', name: 'Top Companies Hiring Now', size: 'Logo + cover', shown: '2 companies', cap: 'max 5 · rotate 5s', route: 'booked', fedBy: 'Công ty nổi bật product (10 ngày)' },
+  { id: 'home-popular-jobs', page: 'Home', ref: '1.5', name: 'Popular Jobs', size: 'Job row', shown: '20 postings', cap: '+4 fixed premium positions', route: 'both', fedBy: 'Distinction + Top Job tiers · 4 fixed positions sold as an add-on' },
+  { id: 'home-highlight-co', page: 'Home', ref: '1.6', name: 'Highlight Companies', size: 'Job row', shown: '20 postings', cap: '+5 fixed premium positions', route: 'both', fedBy: 'Basic Plus tier · 5 fixed positions sold as an add-on' },
+  { id: 'home-new-jobs', page: 'Home', ref: '1.7', name: 'Công việc mới (Job Basic)', size: 'Job row', shown: 'List', cap: 'Bottom of page', route: 'tier', fedBy: 'Basic tier' },
+  { id: 'home-adsense', page: 'Home', ref: '1.8', name: 'Banner adsense', size: '1260 × 120 px', shown: '1 at a time', cap: 'max 6 · refresh on reload', route: 'booked', fedBy: 'Banner placement product · below “Hot Categories”' },
+  { id: 'home-tailored', page: 'Home', ref: '1.9', name: 'Jobs Tailored For You', size: 'Job card', shown: 'List', cap: '—', route: 'tier', fedBy: 'Guests: Distinction + Top Job · Logged in: personalised by profile & behaviour' },
+  { id: 'home-popup', page: 'Home', ref: '1.10', name: 'Homepage pop-up', size: 'Custom creative', shown: '1 at a time', cap: 'priority decides · frequency-capped', route: 'booked', fedBy: 'Popup placement product · per campaign, CTA configurable' },
+  { id: 'search-highlight-co', page: 'Search', ref: '2.1', name: 'Highlight Company', size: 'Company block', shown: '1 company', cap: 'unlimited · random per reload', route: 'booked', fedBy: 'Highlight Company product → links to company profile' },
+  { id: 'search-highlight-jobs', page: 'Search', ref: '2.2', name: 'Highlight Jobs', size: 'Job row', shown: 'Unlimited', cap: 'random per reload', route: 'tier', fedBy: 'Basic Plus · Distinction · Top Job (tier sets the rank band)' },
+  { id: 'search-adsense', page: 'Search', ref: '2.3', name: 'Banner adsense', size: '425 × 160 px', shown: '1 at a time', cap: 'unlimited · position varies on reload', route: 'booked', fedBy: 'Banner placement product · interleaved between results' },
+]
+
+/** Placements list — the registry the product form and the jobseeker site share. */
+function AdminPlacements() {
+  const [route, setRoute] = useState<FillRoute | 'all'>('all')
+  const shown = PLACEMENTS.filter((p) => route === 'all' || p.route === route)
+  const n = (r: FillRoute) => PLACEMENTS.filter((p) => p.route === r).length
+  return (
+    <div>
+      <p className="mb-3 max-w-[72ch] text-[11.5px] leading-relaxed text-muted">
+        Every display area on the jobseeker site, from the client Products deck. Sizes and caps are defined
+        here <b className="text-ink/70">once</b> — a banner sale points at a row instead of re-typing “1536×371, max 6, rotate 3s”.
+        The <b className="text-ink/70">Filled by</b> column is the product ⇄ page relationship.
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {([['all', `All ${PLACEMENTS.length}`], ['tier', `Tier-driven ${n('tier')}`], ['booked', `Booked ${n('booked')}`], ['both', `Tier + booked ${n('both')}`]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setRoute(k as FillRoute | 'all')} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', route === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{label}</button>
+        ))}
+      </div>
+
+      <ListPage
+        cols={[{ label: 'Placement', w: '1.6fr' }, { label: 'Size', w: '1fr' }, { label: 'Shown', w: '0.9fr' }, { label: 'Capacity', w: '1.3fr' }, { label: 'Fill route', w: '1fr' }, { label: 'Filled by', w: '2fr' }]}
+        rows={shown.map((p) => [
+          <span>
+            <span className="font-medium text-ink">{p.name}</span>
+            <span className="block text-[10.5px] text-faint">{p.page} · deck §{p.ref}</span>
+          </span>,
+          <span className="font-mono text-[11px]">{p.size}</span>,
+          p.shown,
+          p.cap,
+          <Pill tone={FILL_META[p.route].tone}>{FILL_META[p.route].label}</Pill>,
+          <span className="text-[11px] leading-relaxed">{p.fedBy}</span>,
+        ])}
+        minW={1180}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Tier-driven = membership derived from the job’s tier, nothing booked · Booked = a purchased time window,
+        needs an availability calendar
+      </p>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {(['tier', 'booked', 'both'] as FillRoute[]).map((r) => (
+          <div key={r} className="rounded-lg border border-line p-2.5">
+            <Pill tone={FILL_META[r].tone}>{FILL_META[r].label}</Pill>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted">{FILL_META[r].hint}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+        <span>⚠️</span>
+        <span>
+          <b>Three placements have two supply routes.</b> “Công việc Hot hôm nay” shows 4 jobs but is both a Top Job
+          perk (first 10 days) and a standalone purchase; Popular Jobs and Highlight Companies each have a fixed
+          premium block (4 and 5 positions) sold as an add-on on top of the tier-driven list. Each needs one
+          resolver with an explicit priority rule — otherwise the finite positions get oversold.
+        </span>
+      </p>
+    </div>
+  )
+}
+
+/* FOUR types. "Add-on" was a fifth until we noticed it describes how a thing is
+   SOLD, not what it is: an email blast is a Manual service whether it is sold
+   alone or included in Top Job, and a premium fixed position is a Placement
+   either way. So attachability is a FLAG on the product (`standalone`), not a
+   type — which is why the same "Công ty nổi bật" definition serves both the
+   standalone booking and the copy included inside Top Job. */
 const PRODUCT_TYPES = [
-  { id: 'tier', label: 'Posting tier', blurb: 'Buy N posting slots; publishing a job spends one', eg: 'Basic · Basic Plus · Distinction · Top Job' },
-  { id: 'placement', label: 'Placement booking', blurb: 'A time window on a slot, capacity-capped', eg: 'Main banner · Feature company · Adsense · Popup' },
-  { id: 'credit', label: 'Credit pack', blurb: 'Quota + validity, spent per unlock', eg: 'COMBO 30 / 50 / 100 / 300 CV unlocks' },
-  { id: 'addon', label: 'Add-on (attach-only)', blurb: 'Rides on a parent tier, never sold alone', eg: 'Premium fixed slots · “HOT” label' },
-  { id: 'service', label: 'Manual service', blurb: 'Ops fulfils it — creates a task, not an entitlement', eg: 'Fanpage post · Email / Job Alert banner' },
+  { id: 'job', label: 'Job posting', blurb: 'A posting tier — publishing a job spends one slot', eg: 'Basic · Basic Plus · Distinction · Top Job' },
+  { id: 'cv', label: 'CV search', blurb: 'Unlock quota + validity, spent per CV opened', eg: 'COMBO 30 / 50 / 100 / 300' },
+  { id: 'placement', label: 'Placement booking', blurb: 'A time window on a slot, capacity-capped', eg: 'Main banner · Công ty nổi bật · Adsense · Popup' },
+  { id: 'service', label: 'Manual service', blurb: 'Ops fulfils it — creates a task, not an entitlement', eg: 'Fanpage post · Email marketing' },
 ] as const
 type ProductTypeId = (typeof PRODUCT_TYPES)[number]['id']
 
+/* The catalog, transcribed from the client Products deck. Prices marked ⓒ come
+   from the current CRM product picker (the deck prices only the CV combos).
+
+   Note what is deliberately NOT here: one row per tier, not the four segment
+   variants the CRM carries today (Basic Plus exists there as Basic Plus SMEs
+   3.949.000 / Basic Plus Enterprise 5.544.000 / Basic Plus Job 6.100.000 /
+   Basic Plus 15 days 30.000.000). Segment pricing is a price list ON the
+   product, so what a tier grants is defined once. */
+/* SKU is the stable handle a product keeps for life: it is what a quotation line,
+   an order, an invoice and an entitlement all reference, so it must survive a
+   rename. Shape is TYPE-CAPABILITY — the type prefix makes a row self-describing
+   in an export or a support ticket, where the Type column is not there to help. */
+/* `standalone: false` = attach-only: it exists in the catalogue with its own
+   definition, but it may never be a quotation line on its own — it only reaches a
+   customer via a Job posting product's `includes`. That replaces the old "Add-on"
+   type: these two rows ARE placements, they just are not sold separately. */
+const CATALOG: { sku: string; name: string; type: string; price: string; fulfilment: string; status: 'Active' | 'Inactive'; standalone?: false; includes?: string[] }[] = [
+  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', price: '2,710,000 ₫ ⓒ', fulfilment: '30 days · refresh 15d · 3 skill tags', status: 'Active' },
+  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', price: '6,100,000 ₫ ⓒ', fulfilment: '30 days · refresh 10d · red bold title', status: 'Active', includes: ['PLC-HLCOMPANIES'] },
+  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', price: '12,000,000 ₫ ⓒ', fulfilment: '30 days · refresh 5d · 5 skill tags', status: 'Active', includes: ['PLC-POPULARJOBS'] },
+  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', price: '13,800,000 ₫ ⓒ', fulfilment: '30 days · daily×7 then 5d · 7 skill tags', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
+  { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', price: '2,400,000 ₫', fulfilment: '30 unlocks · 30 days · ~80.000/CV', status: 'Active' },
+  { sku: 'CV-050', name: 'COMBO 50 — mở CV', type: 'CV search', price: '3,700,000 ₫', fulfilment: '50 unlocks · 30 days · ~74.000/CV', status: 'Active' },
+  { sku: 'CV-100', name: 'COMBO 100 — mở CV', type: 'CV search', price: '7,000,000 ₫', fulfilment: '100 unlocks · 90 days · ~70.000/CV', status: 'Active' },
+  { sku: 'CV-300', name: 'COMBO 300 — mở CV', type: 'CV search', price: '20,000,000 ₫', fulfilment: '300 unlocks · 90 days · ~67.000/CV', status: 'Active' },
+  { sku: 'PLC-HOMEHERO', name: 'Main Banner — Home hero', type: 'Placement booking', price: '— price TBC', fulfilment: '1536×371 · 1 of 6 · rotate 3s', status: 'Inactive' },
+  { sku: 'PLC-ADS-HOME', name: 'Banner adsense — Home', type: 'Placement booking', price: '— price TBC', fulfilment: '1260×120 · 1 of 6', status: 'Inactive' },
+  { sku: 'PLC-ADS-SEARCH', name: 'Banner adsense — Search', type: 'Placement booking', price: '— price TBC', fulfilment: '425×160 · unlimited', status: 'Inactive' },
+  { sku: 'PLC-TOPCOMPANY', name: 'Công ty nổi bật', type: 'Placement booking', price: '10,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · logo + cover', status: 'Active' },
+  { sku: 'PLC-HOTJOBS', name: 'Công việc Hot hôm nay', type: 'Placement booking', price: '5,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · 4 positions', status: 'Active' },
+  { sku: 'PLC-POPULARJOBS', name: 'Popular Jobs — premium position', type: 'Placement booking', price: '— included only', fulfilment: '4 fixed positions · attach-only', status: 'Active', standalone: false },
+  { sku: 'PLC-HLCOMPANIES', name: 'Highlight Companies — premium position', type: 'Placement booking', price: '— included only', fulfilment: '5 fixed positions · attach-only', status: 'Active', standalone: false },
+  { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', type: 'Manual service', price: '4,000,000 ₫ ⓒ', fulfilment: '1 post · 176k followers', status: 'Active' },
+  { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', type: 'Manual service', price: '20,000,000 ₫ ⓒ', fulfilment: '1 send · reach TBC (see note)', status: 'Active' },
+]
+
+type CatalogItem = (typeof CATALOG)[number]
+
+/* Product detail. Deliberately NOT one generic layout: the Fulfilment card and
+   the "Where it appears" card change with the type, because that is the whole
+   point of typing products. Everything else (price list, usage, history) is
+   shared.
+
+   The price list is the card that matters most — it is what replaces the CRM's
+   four separate Basic Plus SKUs with one product priced per segment. */
+function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
+  const isTier = p.type === 'Job posting'
+  const isCredit = p.type === 'CV search'
+  const isPlacement = p.type === 'Placement booking'
+  const isAddon = p.standalone === false
+  const isService = p.type === 'Manual service'
+  const unpriced = p.price.startsWith('—')
+
+  // Segment price list. Real figures where the CRM has them (the Basic Plus /
+  // Basic / Distinction segment rows in the picker), else flagged.
+  const PRICES: Record<string, [string, string][]> = {
+    'JOB-BASIC': [['SME / Startup', '1,749,000 ₫'], ['Enterprise', '2,464,000 ₫'], ['Standard (New 2024)', '2,710,000 ₫']],
+    'JOB-BASICPLUS': [['SME / Startup', '3,949,000 ₫'], ['Enterprise', '5,544,000 ₫'], ['Standard (New 2024)', '6,100,000 ₫']],
+    'JOB-DISTINCTION': [['SME / Startup', '7,689,000 ₫'], ['Enterprise', '11,088,000 ₫'], ['Standard (New 2024)', '12,000,000 ₫']],
+    'JOB-TOPJOB': [['Standard (New 2024)', '13,800,000 ₫'], ['SME / Startup', '— not offered'], ['Enterprise', '— not offered']],
+  }
+  const priceRows = PRICES[p.sku] ?? [['Standard', p.price]]
+
+  const placement = PLACEMENTS.find((x) =>
+    (p.sku === 'PLC-HOMEHERO' && x.id === 'home-hero') ||
+    (p.sku === 'PLC-ADS-HOME' && x.id === 'home-adsense') ||
+    (p.sku === 'PLC-ADS-SEARCH' && x.id === 'search-adsense') ||
+    (p.sku === 'PLC-TOPCOMPANY' && x.id === 'home-top-co') ||
+    (p.sku === 'PLC-HOTJOBS' && x.id === 'home-super-hot') ||
+    (p.sku === 'PLC-POPULARJOBS' && x.id === 'home-popular-jobs') ||
+    (p.sku === 'PLC-HLCOMPANIES' && x.id === 'home-highlight-co'))
+
+  // Which placements a tier feeds — read from the registry, not restated.
+  const TIER_FEEDS: Record<string, string[]> = {
+    'JOB-BASIC': ['home-new-jobs'],
+    'JOB-BASICPLUS': ['home-highlight-co', 'search-highlight-jobs'],
+    'JOB-DISTINCTION': ['home-popular-jobs', 'home-tailored', 'search-highlight-jobs'],
+    'JOB-TOPJOB': ['home-super-hot', 'home-popular-jobs', 'home-tailored', 'search-highlight-jobs'],
+  }
+  const feeds = (TIER_FEEDS[p.sku] ?? []).map((id) => PLACEMENTS.find((x) => x.id === id)!).filter(Boolean)
+
+  // Publishes "System / Products / Tin Basic Plus" to the shell — the crumb IS the
+  // way back, so there is no second "← Back" button, and the shell hides the
+  // list's "+ New product" while a record is open.
+  useDetailCrumb(p.name, onBack)
+
+  return (
+    <div className="max-w-[1080px]">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
+            {p.name} <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>
+          </h2>
+          <p className="text-[11.5px] text-muted"><span className="font-mono">{p.sku}</span> · {p.type} · v3 · created 24/07/2026</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink/80 hover:border-ink/40">Duplicate</button>
+          <button className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[12.5px] font-medium text-brand hover:bg-brand hover:text-white">Edit</button>
+          {p.status === 'Active'
+            ? <button className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12.5px] font-medium text-rose-600 hover:bg-rose-500 hover:text-white">Deactivate</button>
+            : <button className="rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Activate</button>}
+        </div>
+      </div>
+
+      {unpriced && (
+        <p className="mb-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+          <span>⚠️</span><span><b>Cannot be activated — no price.</b> The client deck does not price this item. Activation is blocked until a price and its fulfilment are complete.</span>
+        </p>
+      )}
+
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <MiniStat label="List price" value={unpriced ? '—' : p.price.replace(' ⓒ', '')} sub={unpriced ? 'not set' : 'current version'} tone={unpriced ? 'warn' : undefined} />
+        <MiniStat label="Sold" value={p.status === 'Active' ? '128' : '0'} sub="paid order lines" />
+        <MiniStat label="Active entitlements" value={p.status === 'Active' ? '41' : '0'} sub="across companies" />
+        <MiniStat label="In packages" value={p.sku === 'JOB-TOPJOB' ? '1' : '0'} sub={p.sku === 'JOB-TOPJOB' ? 'Gói Ultimate' : 'none'} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DetailCard title="Price list — one product, many prices" action={<span className="text-[11px] text-faint">{priceRows.length} segments</span>}>
+          <div className="overflow-hidden rounded-lg border border-line">
+            {priceRows.map(([seg, val], i) => (
+              <div key={seg} className={cn('flex items-center justify-between px-3 py-2 text-[12px]', i > 0 && 'border-t border-line-soft')}>
+                <span className="text-ink/80">{seg}</span>
+                <span className={cn('font-medium tabular-nums', val.startsWith('—') ? 'text-faint' : 'text-ink')}>{val}</span>
+              </div>
+            ))}
+          </div>
+          {isTier && (
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+              These three rows are the CRM’s “{p.name} SMEs / Enterprise / New 2024” records, collapsed into one
+              product. The benefits below are defined <b className="text-ink/70">once</b> and apply to every segment.
+            </p>
+          )}
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Once this product has been sold, <b className="text-ink/70">Edit</b> supersedes the price with a new version rather than overwriting it — so old orders still reprice to what the customer agreed.</p>
+        </DetailCard>
+
+        <DetailCard title={`Fulfilment — what a buyer gets (${p.type})`}>
+          {isTier && (<>
+            <KV label="Grants" value="10 posting slots at this tier" />
+            <KV label="Display duration" value="30 days per post" />
+            <KV label="Auto-refresh" value={p.fulfilment.includes('daily') ? 'Daily for 7 days, then every 5 days' : `Every ${p.fulfilment.match(/refresh (\d+)d/)?.[1] ?? '—'} days`} />
+            <KV label="Skill tags" value={`Max ${p.fulfilment.match(/(\d+) skill/)?.[1] ?? '3'}`} />
+            <KV label="Unused slots" value="Banked for 12 months from activation" />
+            <KV label="Publishes to" value="TopDev.vn + Saramin.vn" />
+          </>)}
+          {isCredit && (<>
+            <KV label="Grants" value={`${p.fulfilment.match(/(\d+) unlocks/)?.[1]} CV unlocks`} />
+            <KV label="Validity" value={`${p.fulfilment.match(/· (\d+) days/)?.[1]} days from activation`} />
+            <KV label="Average per CV" value={`${p.fulfilment.split('~')[1] ?? '—'} — computed from price ÷ unlocks`} />
+            <KV label="Opened CVs retained" value="30 days after the service expires" />
+            <KV label="Consumed by" value="Unlocking a CV in Resume search" />
+          </>)}
+          {(isPlacement || isAddon) && (<>
+            <KV label="Placement" value={placement ? `${placement.name} — ${placement.page}` : '— not mapped'} link />
+            <KV label="Size" value={placement?.size ?? '—'} />
+            <KV label="Shown / capacity" value={placement ? `${placement.shown} · ${placement.cap}` : '—'} />
+            <KV label="Booking unit" value={isAddon ? 'Per job, 10 days from publish' : p.fulfilment.match(/(\d+ ngày)/)?.[1] ?? 'Per week'} />
+            {isAddon && <KV label="Attaches to" value={p.fulfilment.split('· ')[1] ?? '—'} />}
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Size and capacity are read from System → Placements — read-only here, so a sale cannot contradict the site.</p>
+          </>)}
+          {isService && (<>
+            <KV label="Deliverable" value={p.fulfilment} />
+            <KV label="Fulfilment SLA" value="3 working days from payment" />
+            <KV label="Owning team" value="Marketing — TopDev" />
+            <KV label="Buyer must supply" value="Post copy · image · target audience · preferred date" />
+            <KV label="Proof of delivery" value="Required before the line counts as fulfilled" />
+          </>)}
+        </DetailCard>
+
+        {(p.includes?.length || p.standalone === false) && (
+          <DetailCard title={p.standalone === false ? 'How this reaches a customer' : 'Included in this product'} action={<span className="text-[11px] text-faint">{p.standalone === false ? 'attach-only' : `${p.includes!.length} products`}</span>}>
+            {p.standalone === false ? (<>
+              <p className="text-[11.5px] leading-relaxed text-muted">
+                Never a quotation line on its own. It reaches a customer only through a Job posting product that
+                lists it in <b className="text-ink/70">Includes</b>:
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {CATALOG.filter((c) => c.includes?.includes(p.sku)).map((c) => (
+                  <div key={c.sku} className="rounded-lg border border-line px-2.5 py-1.5">
+                    <span className="block text-[12px] font-medium text-ink">{c.name}</span>
+                    <span className="block text-[10.5px] text-faint">{c.type} · {c.price.replace(' ⓒ', '')}</span>
+                  </div>
+                ))}
+              </div>
+            </>) : (<>
+              <div className="space-y-1.5">
+                {p.includes!.map((s) => {
+                  const c = CATALOG.find((x) => x.sku === s)
+                  if (!c) return null
+                  return (
+                    <div key={s} className="flex items-start justify-between gap-2 rounded-lg border border-line px-2.5 py-2">
+                      <span className="min-w-0">
+                        <span className="block text-[12px] font-medium text-ink">{c.name}</span>
+                        <span className="block text-[10.5px] text-faint">{c.type} · {c.standalone === false ? 'attach-only' : `also sold separately at ${c.price.replace(' ⓒ', '')}`}</span>
+                      </span>
+                      <Pill tone={c.type === 'Manual service' ? 'pending' : 'neutral'}>{c.type === 'Manual service' ? 'ops task' : 'placement'}</Pill>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+                <b className="text-ink/70">Included, not bundled.</b> The customer sees one line — “{p.name}” — on the
+                quotation, at one price. Paying it fires each include: a Manual service opens an ops task, a placement
+                grants the position. This is why {p.name} stays a <b className="text-ink/70">product</b> and not a package.
+              </p>
+            </>)}
+          </DetailCard>
+        )}
+
+        <DetailCard title="Where it appears on the site" action={<span className="text-[11px] text-faint">{isTier ? `${feeds.length} placements` : placement ? '1 placement' : '—'}</span>}>
+          {isTier && feeds.length > 0 && (<>
+            <div className="space-y-1.5">
+              {feeds.map((f) => (
+                <div key={f.id} className="flex items-start justify-between gap-2 rounded-lg border border-line px-2.5 py-2">
+                  <span className="min-w-0">
+                    <span className="block text-[12px] font-medium text-ink">{f.name}</span>
+                    <span className="block text-[10.5px] text-faint">{f.page} · {f.shown} · {f.cap}</span>
+                  </span>
+                  <Pill tone={FILL_META[f.route].tone}>{FILL_META[f.route].label}</Pill>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+              Tier-driven: a job lands in these areas <b className="text-ink/70">because of its tier</b>. Nothing is
+              booked and nothing is assigned by hand.
+            </p>
+          </>)}
+          {(isPlacement || isAddon) && placement && (<>
+            <div className="rounded-lg border border-line px-2.5 py-2">
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="block text-[12px] font-medium text-ink">{placement.name}</span>
+                  <span className="block text-[10.5px] text-faint">{placement.page} · deck §{placement.ref} · {placement.size}</span>
+                </span>
+                <Pill tone={FILL_META[placement.route].tone}>{FILL_META[placement.route].label}</Pill>
+              </div>
+            </div>
+            {placement.route === 'both' && (
+              <p className="mt-2 flex gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-[10.5px] leading-relaxed text-amber-800">
+                <span>⚠️</span><span>This area is also filled by a posting tier, so tier-included jobs and purchased positions compete for the same finite slots. Needs a priority rule.</span>
+              </p>
+            )}
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Selling this needs an availability check — the slot cannot exceed {placement.cap}.</p>
+          </>)}
+          {isCredit && <p className="text-[11.5px] leading-relaxed text-muted">Nothing. A credit pack grants a balance, not visibility — it is spent in Resume search.</p>}
+          {isService && <p className="text-[11.5px] leading-relaxed text-muted">Off-platform. Delivered on the TopDev fanpage / by email, so it appears nowhere on the jobseeker site.</p>}
+        </DetailCard>
+
+        <DetailCard title="History" action={<span className="text-[11px] text-faint">append-only</span>}>
+          <div className="space-y-2.5">
+            <TL icon="₫" title="Price v3" time="24/07/2026" sub={unpriced ? 'no price set' : `list price → ${p.price.replace(' ⓒ', '')}`} tone="text-brand" />
+            <TL icon="✎" title="Fulfilment edited" time="12/07/2026" sub="refresh cadence updated" tone="text-muted" />
+            <TL icon="●" title={p.status === 'Active' ? 'Activated' : 'Created — never activated'} time="24/07/2026" sub="by Phạm Quang Huy" tone="text-emerald-600" />
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Order lines reference a product <b className="text-ink/70">version</b>, not the product — which is what makes a price change safe.</p>
+        </DetailCard>
+      </div>
+    </div>
+  )
+}
+
 function AdminCatalog() {
-  const rows = [
-    ['Tin Top Job', 'Posting tier', '15,000,000 ₫', '10 slots · 30 days each', <Pill tone="active">Active</Pill>],
-    ['COMBO 50 — CV unlocks', 'Credit pack', '3,700,000 ₫', '50 unlocks · 30 days', <Pill tone="active">Active</Pill>],
-    ['Main Banner (Home hero)', 'Placement booking', '8,000,000 ₫', 'Per week · 1 of 6 slots', <Pill tone="active">Active</Pill>],
-    ['Popular Jobs — premium slot', 'Add-on (attach-only)', '3,000,000 ₫', 'Per job · 4 positions', <Pill tone="active">Active</Pill>],
-    ['TopDev fanpage post', 'Manual service', '5,000,000 ₫', '1 post · SLA 3 days', <Pill tone="draft">Draft</Pill>],
-  ]
   // The "+ New product" button lives on the page title row in the shell
   // (PRIMARY_ACTION in AdminWireframe), which also opens NewProductModal.
+  //
+  // Type used to be a tab strip. It is a filter now: tabs spend a whole row to
+  // offer one facet, and this list needs to be narrowed by Type AND Status at
+  // the same time — which a tab strip cannot express.
+  const [fType, setFType] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [detail, setDetail] = useState<string | null>(null)
+  const rows = CATALOG.filter((p) => (!fType || p.type === fType) && (!fStatus || p.status === fStatus))
+
+  const open = CATALOG.find((p) => p.sku === detail)
+  if (open) return <ProductDetail p={open} onBack={() => setDetail(null)} />
+
   return (
-    <ListPage
-      cols={[{ label: 'Product', w: '1.8fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Price', w: '1fr', align: 'r' }, { label: 'Fulfilment', w: '1.3fr' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
-      rows={rows}
-      minW={820}
-    />
+    <div>
+      <p className="mb-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted">
+        From the client <b className="text-ink/70">Products</b> deck. One row per capability — segment and duration
+        are a price list on the product, not extra products. Prices marked <b className="text-ink/70">ⓒ</b> come from
+        the current CRM picker; the deck itself prices only the CV combos.
+      </p>
+      <ListPage
+        // Product name leads: a catalog product is an ENTITY, so the row's identity
+        // is the human name (sales says "Tin Top Job", never "JOB-TOPJOB"). Only
+        // document lists — quotation, invoice, PO — lead with their number, because
+        // for a document the number IS the name.
+        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.7fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
+        rows={rows.map((p) => [
+          // The name opens the product record — where the price list per segment,
+          // the entitlement it grants and its change history live.
+          <a href="#" onClick={(e) => { e.preventDefault(); setDetail(p.sku) }} className="min-w-0 truncate font-medium text-brand hover:underline">{p.name}</a>,
+          <span className="truncate font-mono text-[11px] text-muted">{p.sku}</span>,
+          p.type,
+          <span className={cn(p.price.startsWith('—') && 'text-faint')}>{p.price}</span>,
+          p.fulfilment,
+          <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>,
+        ])}
+        filters={
+          <>
+            <FilterSelect label="Type" value={fType} onChange={setFType} options={[...new Set(CATALOG.map((p) => p.type))]} />
+            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Active', 'Inactive']} />
+          </>
+        }
+        total={CATALOG.length}
+        searchHint="Search product, SKU, type…"
+        minW={1120}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Every product maps to an entitlement (product + remaining quota + validity) — the record downstream
+        screens read and decrement
+      </p>
+      <p className="mt-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+        <span>⚠️</span>
+        <span>
+          <b>Open with the client:</b> the deck gives no price for the banner / adsense / popup placements or the two
+          premium-position add-ons. Email reach is stated three different ways — 7.500 (Basic Plus), 9.500 (Ultimate),
+          650.000 and 300.000 on the same deck slide.
+        </span>
+      </p>
+    </div>
   )
 }
 
@@ -3158,13 +4579,16 @@ function AdminCatalog() {
    form — a placement needs a slot + calendar, a credit pack needs an amount, a
    manual service needs an SLA and an owner. One flat form can't express that. */
 export function NewProductModal({ onClose }: { onClose: () => void }) {
-  const [type, setType] = useState<ProductTypeId>('tier')
+  const [type, setType] = useState<ProductTypeId>('job')
   const [nameVi, setNameVi] = useState('')
   const [nameEn, setNameEn] = useState('')
-  const [sku, setSku] = useState('')
+  // Derived, not typed — see the Product ID note in the Identity section.
+  const sku = ''
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
-  const valid = nameVi.trim().length > 0 && sku.trim().length > 0
+  // SKU is derived, so the name is the only thing a human must supply to create a
+  // Draft-equivalent (Inactive) product. Price + fulfilment are what gate ACTIVATION.
+  const valid = nameVi.trim().length > 0
 
   const priceNum = Number(price.replace(/\D/g, ''))
   const amountNum = Number(amount.replace(/\D/g, ''))
@@ -3217,43 +4641,96 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. Top Job posting" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
             </div>
           </div>
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <div>
-              <FLabel req>SKU code</FLabel>
-              <input value={sku} onChange={(e) => setSku(e.target.value.toUpperCase())} placeholder="TOPJOB-10" className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
-            </div>
-            <SelectField label="Sales category" req value="Đăng tin tuyển dụng" options={['Dịch vụ Trang chủ', 'Dịch vụ Trang Tìm kiếm', 'Đăng tin tuyển dụng', 'Tìm kiếm CV', 'Nâng cao — thương hiệu']} />
+          {/* SKU is DERIVED, not typed — but it still exists, because quotations,
+              orders and invoices reference it and it must be immutable once sold.
+              Sales category is gone: with four types, the type IS the category. */}
+          <div className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+            <b className="text-ink/70">Product ID:</b> <span className="font-mono">{sku || 'auto-generated from type + name'}</span> — generated, not typed. Editable only until the first sale, then locked, because quotations and invoices reference it.
           </div>
-          <TArea label="Sales description" value="Bilingual blurb shown on the quotation and the company Store." rows={2} />
+          <TArea label="Product description" req value="Printed on the quotation and the PO. The benefit list the customer actually reads — bilingual VN / EN." rows={3} />
 
           <Section title="3 · Fulfilment" />
-          {type === 'tier' && (
+          {/* There is no separate "tier config" screen: THIS product IS the tier
+              definition. Display duration, refresh cadence and the placements it
+              feeds are editable here, and because there is exactly one Top Job
+              product (segments are a price list, not extra products), what Top Job
+              grants can only be defined in one place. */}
+          {type === 'job' && (
             <>
-              <SelectField label="Tier" req value="Top Job" options={['Basic', 'Basic Plus', 'Distinction', 'Top Job']} extra={<span className="ml-1 font-normal text-faint">— benefits come from tier config, not typed here</span>} />
               <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Posting slots" req value="10 slots" hint="Publishing a job spends one slot of this tier." />
-                <LField label="Slots must be used within" value="12 months from activation" select />
+                <LField label="Thời gian hiển thị (days)" req value="30 ngày" hint="How long one published job stays visible." />
+                <LField label="Auto-refresh" req value="Daily for 7 days, then every 5 days" select hint="Basic 15d · Basic Plus 10d · Distinction 5d · Top Job daily×7 then 5d." />
               </div>
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Posting slots sold" req value="10 slots" hint="Publishing a job spends one." />
+                <LField label="Max skill tags" value="7" select />
+              </div>
+
+              <div>
+                <FLabel req>Placement slots — where a job of this tier appears<span className="ml-1 font-normal text-faint">from the Placements registry</span></FLabel>
+                <div className="space-y-1.5">
+                  {PLACEMENTS.filter((x) => x.route !== 'booked').map((x, i) => {
+                    const on = i < 4
+                    return (
+                      <div key={x.id} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
+                        <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded border', on ? 'border-brand bg-brand text-white' : 'border-line')}>{on && <span className="text-[9px] leading-none">✓</span>}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{x.name}</span>
+                          <span className="block text-[10px] text-faint">{x.page} · {x.shown}</span>
+                        </span>
+                        {on && <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[10.5px] text-muted">10 ngày ▾</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Each ticked slot takes a duration — Top Job sits in “Công việc Hot hôm nay” for the first 10 days only, then drops out. Booked-only areas (hero banner, adsense, popup) are not offered: those are sold as their own Placement products.</p>
+              </div>
+
+              <div>
+                <FLabel>Add-on products included in this tier<span className="ml-1 font-normal text-faint">must already exist in the catalogue</span></FLabel>
+                <div className="space-y-1.5">
+                  {CATALOG.filter((c) => c.type === 'Manual service' || c.standalone === false).map((c, i) => {
+                    const on = i < 3
+                    return (
+                      <div key={c.sku} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
+                        <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded border', on ? 'border-brand bg-brand text-white' : 'border-line')}>{on && <span className="text-[9px] leading-none">✓</span>}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{c.name}</span>
+                          <span className="block text-[10px] text-faint">{c.type}{c.standalone === false ? ' · attach-only' : ` · sold separately at ${c.price.replace(' ⓒ', '')}`}</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Included, not bundled: the customer sees ONE line “Tin Top Job” on the quotation. Paying it fires each include — a Manual service opens an ops task, a placement grants the position.</p>
+              </div>
+
               <LField label="Publishes to" value="TopDev.vn + Saramin.vn" select />
-              <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
-                <b className="text-ink/70">Top Job grants (read-only):</b> 30 days display · refresh daily for 7 days then every 5 · green title + background · 3 benefits in search · highest search rank · “HOT JOB” label 10 days · Super Hot Jobs 10 days · Popular Jobs.
-              </p>
             </>
           )}
           {type === 'placement' && (
             <>
-              <SelectField label="Placement slot" req value="Main Banner — Home hero (1536×371)" options={['Main Banner — Home hero (1536×371)', 'Banner adsense — Home (1260×120)', 'Banner adsense — Search (425×160)', 'Feature company logo — Home', 'Top Companies Hiring Now — Home', 'Highlight Company — Search', 'Homepage popup']} />
+              {/* Options come from the Placements registry — the same list the
+                  jobseeker site renders, so a sale can't invent a slot. */}
+              <SelectField
+                label="Placement slot"
+                req
+                value={`${PLACEMENTS[0].name} — ${PLACEMENTS[0].page} (${PLACEMENTS[0].size})`}
+                options={PLACEMENTS.filter((p) => p.route !== 'tier').map((p) => `${p.name} — ${p.page} (${p.size})`)}
+                extra={<span className="ml-1 font-normal text-faint">— tier-driven areas are excluded; they aren’t bookable</span>}
+              />
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Booking unit" req value="Per week" select />
                 <LField label="Slots consumed" value="1 of 6 in rotation" hint="Pool is capped — sales must check the calendar before quoting." />
               </div>
               <LField label="Creative source" value="Client-supplied image + redirect link" select />
+              <LField label="Sold standalone?" value="Yes — may be its own quotation line" select hint="Set to No for attach-only inventory (the 4 Popular Jobs / 5 Highlight Companies premium positions): defined here, but reachable only via a Job posting product's includes." />
               <p className="rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
                 ⚠️ Inherited from the slot: 1 banner shown at a time, rotates every 3s, max 6 · title ≤ 50 chars, description ≤ 100, CTA ≤ 10. <b>Availability calendar</b> needed — this slot is sold out for weeks where 6 bookings already overlap.
               </p>
             </>
           )}
-          {type === 'credit' && (
+          {type === 'cv' && (
             <>
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Credit type" req value="CV unlock" select />
@@ -3265,15 +4742,6 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Validity" req value="30 days" select hint="Deck sells 30-day and 90-day packs." />
                 <LField label="Unused credits on repurchase" value="Roll over" select />
-              </div>
-            </>
-          )}
-          {type === 'addon' && (
-            <>
-              <LField label="Attaches to" req value="Distinction · Top Job" select hint="Never sold standalone — it only appears on a quotation line under its parent tier." />
-              <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Capacity" req value="4 fixed positions" hint="Shared, finite inventory — needs the same availability check as a placement." />
-                <LField label="Duration" value="10 days from job publish" select />
               </div>
             </>
           )}
@@ -3299,7 +4767,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
             </div>
             <LField label="Floor price" value="Lowest a sales rep may discount to" hint="Below this needs manager approval on the quotation." />
           </div>
-          {type === 'credit' && (
+          {type === 'cv' && (
             <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] text-muted">
               Average per CV: <b className="text-ink/80">{perCv ? `~${vnd(perCv)} ₫ / CV` : '— enter price and amount'}</b> — computed, never typed. This is the number the deck sells on.
             </p>
@@ -3316,17 +4784,88 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
     </div>
   )
 }
+/* Packages — several products at one package price, reusable across customers.
+   A package is a SELLING WRAPPER: paying for one provisions each component
+   separately at the component quota, so consumption and reporting are identical
+   whether the customer bought the package or the pieces.
+
+   The client has exactly one real package today (Gói Ultimate). The CRM's other
+   "Gói …" groups are NOT packages — Gói Enterprise / Gói SME are the same three
+   tiers at different segment prices, which is a price list on the product. */
 function AdminBundles() {
-  const rows = [
-    ['Recruit Starter', 'Job Posting Pro + 1 boost', '17,000,000 ₫', <Pill tone="active">Active</Pill>],
-    ['Recruit Growth', 'Job Posting Pro + Resume Search', '32,000,000 ₫', <Pill tone="active">Active</Pill>],
-    ['Enterprise', 'All products + Talent pool', 'Custom', <Pill tone="draft">Draft</Pill>],
+  const rows: React.ReactNode[][] = [
+    [
+      <span>
+        <span className="font-medium text-ink">Gói Ultimate</span>
+        <span className="block text-[10.5px] text-faint">6 components · from the client catalogue</span>
+      </span>,
+      <span className="text-[11px] leading-relaxed">Top Job posting (60 ngày: 30 chính thức + 30 bảo hành) · CV sourcing + giới thiệu · Email marketing 9.500 data · Popular Companies logo · HackerRank assessment · CSKH follow-up</span>,
+      <span className="text-faint">— mapping pending</span>,
+      '16,489,000 ₫',
+      <span className="text-faint">—</span>,
+      <Pill tone="active">Active</Pill>,
+    ],
+    [
+      <span>
+        <span className="font-medium text-ink">Top Job + premium position</span>
+        <span className="block text-[10.5px] text-faint">2 components · proposed</span>
+      </span>,
+      <span className="text-[11px] leading-relaxed">Tin Top Job ×1 · Popular Jobs premium position ×1</span>,
+      '13,800,000 ₫ +',
+      <span className="text-faint">— price TBC</span>,
+      <span className="text-faint">—</span>,
+      <Pill tone="expired">Inactive</Pill>,
+    ],
+    [
+      <span>
+        <span className="font-medium text-ink">Enterprise (custom)</span>
+        <span className="block text-[10.5px] text-faint">quoted per deal</span>
+      </span>,
+      <span className="text-[11px] leading-relaxed">All products + negotiated volume</span>,
+      <span className="text-faint">—</span>,
+      'Custom',
+      <span className="text-faint">—</span>,
+      <Pill tone="expired">Inactive</Pill>,
+    ],
   ]
   return (
-    <ListPage
-      cols={[{ label: 'Package', w: '1.2fr' }, { label: 'Includes', w: '2fr' }, { label: 'Package price', w: '1.1fr', align: 'r' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
-      rows={rows}
-    />
+    <div>
+      <p className="mb-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted">
+        Several products at one package price, defined once and quoted many times. A package never creates its own
+        entitlement — paying for one provisions <b className="text-ink/70">each component separately</b>, so quota
+        behaves identically to buying the pieces.
+      </p>
+      <ListPage
+        tabs={[{ label: 'All', count: 3, active: true }, { label: 'Active', count: 1 }, { label: 'Inactive', count: 2 }]}
+        cols={[{ label: 'Package', w: '1.3fr' }, { label: 'Components', w: '2.4fr' }, { label: 'Sum of parts', w: '1fr', align: 'r' }, { label: 'Package price', w: '1fr', align: 'r' }, { label: 'Discount', w: '0.8fr', align: 'r' }, { label: 'Status', w: '0.8fr', align: 'r' }]}
+        rows={rows}
+        minW={1100}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        A package needs at least 2 components — a one-component “package” is just a product at a price · every
+        component must be Active for the package to be Active · component versions are pinned, so a later price
+        change never re-prices a package already sold
+      </p>
+
+      <p className="mt-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+        <span>⚠️</span>
+        <span>
+          <b>“Gói Enterprise” and “Gói SME / Startup” in the current CRM are not packages.</b> Each holds the same
+          three tiers — Basic, Basic Plus, Distinction — with <b>identical benefit lists</b> and only the price
+          differing (Basic Plus: 3.949.000 SME vs 5.544.000 Enterprise). That is a <b>price list on the tier
+          product</b>, not a bundle. Modelling them as one-line packages is what split Basic Plus into four records
+          whose benefit text has already drifted apart.
+        </span>
+      </p>
+      <p className="mt-2 flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+        <span>❓</span>
+        <span>
+          Gói Ultimate’s components need mapping to catalogue products before a sum-of-parts and discount can be
+          shown — its email component (9.500 data) is a different scope from the standalone Email Marketing product
+          (20.000.000 ₫), and the 60-day display with a 30-day warranty period does not exist on any tier yet.
+        </span>
+      </p>
+    </div>
   )
 }
 function AdminCredits() {
@@ -6410,6 +7949,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-job-create': AdminJobCreateStandalone,
   'admin-job-applicants': AdminApplicants,
   'admin-resumes': AdminResumes,
+  'admin-resume-new': AdminResumeNewStandalone,
   // Companies
   'admin-company-list': AdminCompanyList,
   'admin-company-pipeline': AdminCompanyPipeline,
@@ -6424,6 +7964,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-blog': AdminBlog,
   // Billing & products
   'admin-catalog': AdminCatalog,
+  'admin-placements': AdminPlacements,
   'admin-bundles': AdminBundles,
   'admin-credits': AdminCredits,
   'admin-orders': AdminOrders,

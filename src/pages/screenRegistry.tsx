@@ -29,6 +29,7 @@ export type ResolvedScreen = {
    but the link has to open the nav page that owns it, or it lands nowhere. */
 const NAV_OWNER: Record<string, string> = {
   'admin-job-create': 'admin-job-list', // reached from "+ New job"
+  'admin-resume-new': 'admin-resumes', // reached from "+ New resume"
   'admin-credits': 'admin-company-list', // a per-company balance — lives on the company record
 }
 
