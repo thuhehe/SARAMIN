@@ -94,14 +94,15 @@ export const NAV: NavModule[] = [
   },
   {
     code: 'B2',
-    label: 'Product setting',
+    label: 'Products',
     app: 'HQ Admin',
     // Catalogue side only — the selling documents live under Sales (CRM).
+    // Products · Packages · Placements are one job: you cannot define a placement
+    // product without the placement list, so they share a module.
     children: [
       { id: 'admin-catalog', label: 'Products' },
-      { id: 'admin-placements', label: 'Placements' },
       { id: 'admin-bundles', label: 'Packages' },
-      { id: 'admin-promotions', label: 'Promotions' },
+      { id: 'admin-placements', label: 'Placements' },
     ],
   },
   {

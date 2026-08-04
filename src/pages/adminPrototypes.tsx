@@ -4262,28 +4262,46 @@ type ProductTypeId = (typeof PRODUCT_TYPES)[number]['id']
    an order, an invoice and an entitlement all reference, so it must survive a
    rename. Shape is TYPE-CAPABILITY — the type prefix makes a row self-describing
    in an export or a support ticket, where the Type column is not there to help. */
-/* `standalone: false` = attach-only: it exists in the catalogue with its own
-   definition, but it may never be a quotation line on its own — it only reaches a
-   customer via a Job posting product's `includes`. That replaces the old "Add-on"
-   type: these two rows ARE placements, they just are not sold separately. */
-const CATALOG: { sku: string; name: string; type: string; price: string; fulfilment: string; status: 'Active' | 'Inactive'; standalone?: false; includes?: string[] }[] = [
-  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', price: '2,710,000 ₫ ⓒ', fulfilment: '30 days · refresh 15d · 3 skill tags', status: 'Active' },
-  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', price: '6,100,000 ₫ ⓒ', fulfilment: '30 days · refresh 10d · red bold title', status: 'Active', includes: ['PLC-HLCOMPANIES'] },
-  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', price: '12,000,000 ₫ ⓒ', fulfilment: '30 days · refresh 5d · 5 skill tags', status: 'Active', includes: ['PLC-POPULARJOBS'] },
-  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', price: '13,800,000 ₫ ⓒ', fulfilment: '30 days · daily×7 then 5d · 7 skill tags', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
-  { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', price: '2,400,000 ₫', fulfilment: '30 unlocks · 30 days · ~80.000/CV', status: 'Active' },
-  { sku: 'CV-050', name: 'COMBO 50 — mở CV', type: 'CV search', price: '3,700,000 ₫', fulfilment: '50 unlocks · 30 days · ~74.000/CV', status: 'Active' },
-  { sku: 'CV-100', name: 'COMBO 100 — mở CV', type: 'CV search', price: '7,000,000 ₫', fulfilment: '100 unlocks · 90 days · ~70.000/CV', status: 'Active' },
-  { sku: 'CV-300', name: 'COMBO 300 — mở CV', type: 'CV search', price: '20,000,000 ₫', fulfilment: '300 unlocks · 90 days · ~67.000/CV', status: 'Active' },
-  { sku: 'PLC-HOMEHERO', name: 'Main Banner — Home hero', type: 'Placement booking', price: '— price TBC', fulfilment: '1536×371 · 1 of 6 · rotate 3s', status: 'Inactive' },
-  { sku: 'PLC-ADS-HOME', name: 'Banner adsense — Home', type: 'Placement booking', price: '— price TBC', fulfilment: '1260×120 · 1 of 6', status: 'Inactive' },
-  { sku: 'PLC-ADS-SEARCH', name: 'Banner adsense — Search', type: 'Placement booking', price: '— price TBC', fulfilment: '425×160 · unlimited', status: 'Inactive' },
-  { sku: 'PLC-TOPCOMPANY', name: 'Công ty nổi bật', type: 'Placement booking', price: '10,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · logo + cover', status: 'Active' },
-  { sku: 'PLC-HOTJOBS', name: 'Công việc Hot hôm nay', type: 'Placement booking', price: '5,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · 4 positions', status: 'Active' },
-  { sku: 'PLC-POPULARJOBS', name: 'Popular Jobs — premium position', type: 'Placement booking', price: '— included only', fulfilment: '4 fixed positions · attach-only', status: 'Active', standalone: false },
-  { sku: 'PLC-HLCOMPANIES', name: 'Highlight Companies — premium position', type: 'Placement booking', price: '— included only', fulfilment: '5 fixed positions · attach-only', status: 'Active', standalone: false },
-  { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', type: 'Manual service', price: '4,000,000 ₫ ⓒ', fulfilment: '1 post · 176k followers', status: 'Active' },
-  { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', type: 'Manual service', price: '20,000,000 ₫ ⓒ', fulfilment: '1 send · reach TBC (see note)', status: 'Active' },
+/* `role` is the product's relationship to a sale — the same axis the create form
+   asks for. Three values, not two, because the fanpage post and the email send are
+   genuinely sold standalone AND included inside Top Job; a binary flag would force
+   duplicating them.
+     Main   — quotable on its own
+     Add-on — reaches a customer only via another product's `includes`
+     Both   — quotable AND includable                                            */
+type ProductRole = 'Main' | 'Add-on' | 'Both'
+const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[] }[] = [
+  // ── Job posting ───────────────────────────────────────────────────────────
+  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
+  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['PLC-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
+  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS'] },
+  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
+  { sku: 'JOB-TRIAL', name: 'Tin Basic — dùng thử (tặng KH mới)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active' },
+
+  // ── CV search ─────────────────────────────────────────────────────────────
+  { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', role: 'Main', price: '2,400,000 ₫', fulfilment: '30 lượt · 30 ngày · ~80.000/CV', status: 'Active' },
+  { sku: 'CV-050', name: 'COMBO 50 — mở CV', type: 'CV search', role: 'Main', price: '3,700,000 ₫', fulfilment: '50 lượt · 30 ngày · ~74.000/CV', status: 'Active' },
+  { sku: 'CV-100', name: 'COMBO 100 — mở CV', type: 'CV search', role: 'Main', price: '7,000,000 ₫', fulfilment: '100 lượt · 90 ngày · ~70.000/CV', status: 'Active' },
+  { sku: 'CV-300', name: 'COMBO 300 — mở CV', type: 'CV search', role: 'Main', price: '20,000,000 ₫', fulfilment: '300 lượt · 90 ngày · ~67.000/CV', status: 'Active' },
+  { sku: 'CV-SOURCING', name: 'CV sourcing + giới thiệu', type: 'CV search', role: 'Add-on', price: '— nội bộ', fulfilment: '10 lượt · theo gói cha', status: 'Active' },
+
+  // ── Placement booking ─────────────────────────────────────────────────────
+  { sku: 'PLC-HOMEHERO', name: 'Main Banner — Home hero', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1536×371 · 1 of 6 · rotate 3s', status: 'Inactive' },
+  { sku: 'PLC-FEATURECO', name: 'Feature company (logo)', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '6 logo · tối đa 12', status: 'Inactive' },
+  { sku: 'PLC-TOPCOMPANY', name: 'Công ty nổi bật', type: 'Placement booking', role: 'Main', price: '10,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · logo + cover', status: 'Active' },
+  { sku: 'PLC-HOTJOBS', name: 'Công việc Hot hôm nay', type: 'Placement booking', role: 'Both', price: '5,000,000 ₫ ⓒ', fulfilment: '10 ngày · 4 vị trí', status: 'Active' },
+  { sku: 'PLC-ADS-HOME', name: 'Banner adsense — Home', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1260×120 · 1 of 6', status: 'Inactive' },
+  { sku: 'PLC-ADS-SEARCH', name: 'Banner adsense — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '425×160 · không giới hạn', status: 'Inactive' },
+  { sku: 'PLC-SEARCH-HLCO', name: 'Highlight Company — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 công ty · không giới hạn', status: 'Inactive' },
+  { sku: 'PLC-POPUP', name: 'Homepage pop-up', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 popup · theo chiến dịch', status: 'Inactive' },
+  { sku: 'PLC-POPULARJOBS', name: 'Popular Jobs — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '4 vị trí cố định', status: 'Active' },
+  { sku: 'PLC-HLCOMPANIES', name: 'Highlight Companies — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '5 vị trí cố định', status: 'Active' },
+
+  // ── Manual service ────────────────────────────────────────────────────────
+  { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', type: 'Manual service', role: 'Both', price: '4,000,000 ₫ ⓒ', fulfilment: '1 bài đăng · 176k follower', status: 'Active' },
+  { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', type: 'Manual service', role: 'Both', price: '20,000,000 ₫ ⓒ', fulfilment: '1 lượt gửi · reach theo gói cha', status: 'Active' },
+  { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '1 bài test · chỉ trong Gói Ultimate', status: 'Active' },
+  { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '2 mốc · ngày 11 và ngày 31', status: 'Active' },
 ]
 
 type CatalogItem = (typeof CATALOG)[number]
@@ -4299,7 +4317,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
   const isTier = p.type === 'Job posting'
   const isCredit = p.type === 'CV search'
   const isPlacement = p.type === 'Placement booking'
-  const isAddon = p.standalone === false
+  const isAddon = p.role === 'Add-on'
   const isService = p.type === 'Manual service'
   const unpriced = p.price.startsWith('—')
 
@@ -4320,7 +4338,10 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
     (p.sku === 'PLC-TOPCOMPANY' && x.id === 'home-top-co') ||
     (p.sku === 'PLC-HOTJOBS' && x.id === 'home-super-hot') ||
     (p.sku === 'PLC-POPULARJOBS' && x.id === 'home-popular-jobs') ||
-    (p.sku === 'PLC-HLCOMPANIES' && x.id === 'home-highlight-co'))
+    (p.sku === 'PLC-HLCOMPANIES' && x.id === 'home-highlight-co') ||
+    (p.sku === 'PLC-FEATURECO' && x.id === 'home-feature-co') ||
+    (p.sku === 'PLC-SEARCH-HLCO' && x.id === 'search-highlight-co') ||
+    (p.sku === 'PLC-POPUP' && x.id === 'home-popup'))
 
   // Which placements a tier feeds — read from the registry, not restated.
   const TIER_FEEDS: Record<string, string[]> = {
@@ -4343,7 +4364,11 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
             {p.name} <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>
           </h2>
-          <p className="text-[11.5px] text-muted"><span className="font-mono">{p.sku}</span> · {p.type} · v3 · created 24/07/2026</p>
+          <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted">
+            <span className="font-mono">{p.sku}</span> · {p.type} ·
+            {p.role === 'Main' ? <span>Main product</span> : <Pill tone={p.role === 'Add-on' ? 'pending' : 'neutral'}>{p.role}</Pill>}
+            · v3 · created 24/07/2026
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink/80 hover:border-ink/40">Duplicate</button>
@@ -4364,7 +4389,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
         <MiniStat label="List price" value={unpriced ? '—' : p.price.replace(' ⓒ', '')} sub={unpriced ? 'not set' : 'current version'} tone={unpriced ? 'warn' : undefined} />
         <MiniStat label="Sold" value={p.status === 'Active' ? '128' : '0'} sub="paid order lines" />
         <MiniStat label="Active entitlements" value={p.status === 'Active' ? '41' : '0'} sub="across companies" />
-        <MiniStat label="In packages" value={p.sku === 'JOB-TOPJOB' ? '1' : '0'} sub={p.sku === 'JOB-TOPJOB' ? 'Gói Ultimate' : 'none'} />
+        <MiniStat label="Included in" value={CATALOG.filter((c) => c.includes?.includes(p.sku)).length || '—'} sub={CATALOG.filter((c) => c.includes?.includes(p.sku)).length ? 'products' : 'not included anywhere'} />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -4386,42 +4411,39 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Once this product has been sold, <b className="text-ink/70">Edit</b> supersedes the price with a new version rather than overwriting it — so old orders still reprice to what the customer agreed.</p>
         </DetailCard>
 
-        <DetailCard title={`Fulfilment — what a buyer gets (${p.type})`}>
+        {/* Field-for-field the same set the create form asks for, per type — so the
+            form and the record never disagree about what defines a product. */}
+        <DetailCard title={`Fulfilment — ${p.type}`} action={<span className="text-[11px] text-faint">same fields as create</span>}>
           {isTier && (<>
-            <KV label="Grants" value="10 posting slots at this tier" />
-            <KV label="Display duration" value="30 days per post" />
-            <KV label="Auto-refresh" value={p.fulfilment.includes('daily') ? 'Daily for 7 days, then every 5 days' : `Every ${p.fulfilment.match(/refresh (\d+)d/)?.[1] ?? '—'} days`} />
-            <KV label="Skill tags" value={`Max ${p.fulfilment.match(/(\d+) skill/)?.[1] ?? '3'}`} />
-            <KV label="Unused slots" value="Banked for 12 months from activation" />
-            <KV label="Publishes to" value="TopDev.vn + Saramin.vn" />
+            <KV label="Thời gian hiển thị" value={`${p.fulfilment.match(/^(\d+) ngày/)?.[1] ?? '30'} ngày`} />
+            <KV label="Auto-refresh" value={p.fulfilment.split('· ')[1] ?? '—'} />
+            <KV label="Placement slots" value={feeds.length ? feeds.map((f) => f.name).join(' · ') : '— none'} link={feeds.length > 0} />
+            <KV label="Includes / Bán kèm" value={p.includes?.length ? `${p.includes.length} product(s)` : '— none'} />
           </>)}
           {isCredit && (<>
-            <KV label="Grants" value={`${p.fulfilment.match(/(\d+) unlocks/)?.[1]} CV unlocks`} />
-            <KV label="Validity" value={`${p.fulfilment.match(/· (\d+) days/)?.[1]} days from activation`} />
-            <KV label="Average per CV" value={`${p.fulfilment.split('~')[1] ?? '—'} — computed from price ÷ unlocks`} />
-            <KV label="Opened CVs retained" value="30 days after the service expires" />
-            <KV label="Consumed by" value="Unlocking a CV in Resume search" />
+            <KV label="Số lượng" value={`${p.fulfilment.match(/^(\d+) lượt/)?.[1] ?? '—'} lượt mở CV`} />
+            <KV label="Validity" value={`${p.fulfilment.match(/· (\d+) ngày/)?.[1] ?? '—'} ngày`} />
+            <KV label="Average per CV" value={p.fulfilment.includes('~') ? `~${p.fulfilment.split('~')[1]} — computed from price ÷ số lượng` : '— set a price'} />
           </>)}
-          {(isPlacement || isAddon) && (<>
-            <KV label="Placement" value={placement ? `${placement.name} — ${placement.page}` : '— not mapped'} link />
-            <KV label="Size" value={placement?.size ?? '—'} />
-            <KV label="Shown / capacity" value={placement ? `${placement.shown} · ${placement.cap}` : '—'} />
-            <KV label="Booking unit" value={isAddon ? 'Per job, 10 days from publish' : p.fulfilment.match(/(\d+ ngày)/)?.[1] ?? 'Per week'} />
-            {isAddon && <KV label="Attaches to" value={p.fulfilment.split('· ')[1] ?? '—'} />}
+          {isPlacement && (<>
+            <KV label="Placement slot" value={placement ? `${placement.name} — ${placement.page}` : '— not mapped'} link={!!placement} />
+            <KV label="Thời gian hiển thị" value={p.fulfilment.match(/(\d+ ngày)/)?.[1] ?? '— chưa đặt'} />
+            {/* Not every slot has a numeric pool — the Hot-jobs area is an unlimited
+                pool, so fall back to the registry's own capacity wording. */}
+            <KV label="Slots consumed" value={placement ? (placement.cap.match(/max (\d+)/) ? `1 of ${placement.cap.match(/max (\d+)/)![1]} in rotation` : `1 · ${placement.cap}`) : '—'} />
+            <KV label="Creative source" value={placement?.fedBy.split('· ')[1] ?? 'Client-supplied image + link'} />
             <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Size and capacity are read from System → Placements — read-only here, so a sale cannot contradict the site.</p>
           </>)}
           {isService && (<>
-            <KV label="Deliverable" value={p.fulfilment} />
-            <KV label="Fulfilment SLA" value="3 working days from payment" />
-            <KV label="Owning team" value="Marketing — TopDev" />
-            <KV label="Buyer must supply" value="Post copy · image · target audience · preferred date" />
-            <KV label="Proof of delivery" value="Required before the line counts as fulfilled" />
+            <KV label="Số lượng" value={p.fulfilment.match(/^(\d+)/)?.[1] ?? '1'} />
+            <KV label="Đơn vị" value={p.fulfilment.match(/^\d+ ([^·]+)/)?.[1]?.trim() ?? '—'} />
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Paying this opens a fulfilment task (Requested → Scheduled → Delivered) and needs proof of delivery — it does not provision quota.</p>
           </>)}
         </DetailCard>
 
-        {(p.includes?.length || p.standalone === false) && (
-          <DetailCard title={p.standalone === false ? 'How this reaches a customer' : 'Included in this product'} action={<span className="text-[11px] text-faint">{p.standalone === false ? 'attach-only' : `${p.includes!.length} products`}</span>}>
-            {p.standalone === false ? (<>
+        {(p.includes?.length || p.role === 'Add-on') && (
+          <DetailCard title={p.role === 'Add-on' ? 'How this reaches a customer' : 'Included in this product'} action={<span className="text-[11px] text-faint">{p.role === 'Add-on' ? 'attach-only' : `${p.includes!.length} products`}</span>}>
+            {p.role === 'Add-on' ? (<>
               <p className="text-[11.5px] leading-relaxed text-muted">
                 Never a quotation line on its own. It reaches a customer only through a Job posting product that
                 lists it in <b className="text-ink/70">Includes</b>:
@@ -4443,7 +4465,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
                     <div key={s} className="flex items-start justify-between gap-2 rounded-lg border border-line px-2.5 py-2">
                       <span className="min-w-0">
                         <span className="block text-[12px] font-medium text-ink">{c.name}</span>
-                        <span className="block text-[10.5px] text-faint">{c.type} · {c.standalone === false ? 'attach-only' : `also sold separately at ${c.price.replace(' ⓒ', '')}`}</span>
+                        <span className="block text-[10.5px] text-faint">{c.type} · {c.role === 'Add-on' ? 'attach-only' : `also sold separately at ${c.price.replace(' ⓒ', '')}`}</span>
                       </span>
                       <Pill tone={c.type === 'Manual service' ? 'pending' : 'neutral'}>{c.type === 'Manual service' ? 'ops task' : 'placement'}</Pill>
                     </div>
@@ -4519,9 +4541,10 @@ function AdminCatalog() {
   // offer one facet, and this list needs to be narrowed by Type AND Status at
   // the same time — which a tab strip cannot express.
   const [fType, setFType] = useState('')
+  const [fRole, setFRole] = useState('')
   const [fStatus, setFStatus] = useState('')
   const [detail, setDetail] = useState<string | null>(null)
-  const rows = CATALOG.filter((p) => (!fType || p.type === fType) && (!fStatus || p.status === fStatus))
+  const rows = CATALOG.filter((p) => (!fType || p.type === fType) && (!fRole || p.role === fRole) && (!fStatus || p.status === fStatus))
 
   const open = CATALOG.find((p) => p.sku === detail)
   if (open) return <ProductDetail p={open} onBack={() => setDetail(null)} />
@@ -4538,13 +4561,18 @@ function AdminCatalog() {
         // is the human name (sales says "Tin Top Job", never "JOB-TOPJOB"). Only
         // document lists — quotation, invoice, PO — lead with their number, because
         // for a document the number IS the name.
-        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.7fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
+        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1.1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Role', w: '0.8fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.6fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
         rows={rows.map((p) => [
           // The name opens the product record — where the price list per segment,
           // the entitlement it grants and its change history live.
           <a href="#" onClick={(e) => { e.preventDefault(); setDetail(p.sku) }} className="min-w-0 truncate font-medium text-brand hover:underline">{p.name}</a>,
           <span className="truncate font-mono text-[11px] text-muted">{p.sku}</span>,
           p.type,
+          // Add-on can never be a quotation line, so it is called out rather than
+          // printed as plain text like Main.
+          p.role === 'Main'
+            ? <span className="text-muted">Main</span>
+            : <Pill tone={p.role === 'Add-on' ? 'pending' : 'neutral'}>{p.role}</Pill>,
           <span className={cn(p.price.startsWith('—') && 'text-faint')}>{p.price}</span>,
           p.fulfilment,
           <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>,
@@ -4552,12 +4580,13 @@ function AdminCatalog() {
         filters={
           <>
             <FilterSelect label="Type" value={fType} onChange={setFType} options={[...new Set(CATALOG.map((p) => p.type))]} />
+            <FilterSelect label="Role" value={fRole} onChange={setFRole} options={['Main', 'Add-on', 'Both']} />
             <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Active', 'Inactive']} />
           </>
         }
         total={CATALOG.length}
         searchHint="Search product, SKU, type…"
-        minW={1120}
+        minW={1240}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
         Every product maps to an entitlement (product + remaining quota + validity) — the record downstream
@@ -4580,14 +4609,23 @@ function AdminCatalog() {
    manual service needs an SLA and an owner. One flat form can't express that. */
 export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState<ProductTypeId>('job')
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
+  const [role, setRole] = useState<'main' | 'addon' | 'both'>('main')
   const [nameVi, setNameVi] = useState('')
-  const [nameEn, setNameEn] = useState('')
-  // Derived, not typed — see the Product ID note in the Identity section.
-  const sku = ''
+  // Product ID auto-follows the name until someone types their own, then stops.
+  const [skuEdited, setSkuEdited] = useState(false)
+  const [skuManual, setSkuManual] = useState('')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
-  // SKU is derived, so the name is the only thing a human must supply to create a
-  // Draft-equivalent (Inactive) product. Price + fulfilment are what gate ACTIVATION.
+
+  const autoSku = nameVi.trim()
+    ? `${type.toUpperCase()}-${nameVi.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12)}`
+    : ''
+  const sku = skuEdited ? skuManual : autoSku
+  const setSku = setSkuManual
+
+  // The name is the only thing a human must supply to create an Inactive product.
+  // Price + fulfilment are what gate ACTIVATION.
   const valid = nameVi.trim().length > 0
 
   const priceNum = Number(price.replace(/\D/g, ''))
@@ -4631,23 +4669,82 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <Section title="2 · Identity" />
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <div>
-              <FLabel req>Name (VN)</FLabel>
-              <input value={nameVi} onChange={(e) => setNameVi(e.target.value)} placeholder="e.g. Tin Top Job" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          {/* One name — the internal/sales name sales and admin both use. Only the
+              customer-facing description is translated (see its own tab below). */}
+          <div>
+            <FLabel req>Name</FLabel>
+            <input
+              value={nameVi}
+              onChange={(e) => setNameVi(e.target.value)}
+              placeholder="e.g. Tin Top Job"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+            />
+          </div>
+          <div>
+            <FLabel req>Product ID<span className="ml-1 font-normal text-faint">auto-generated — edit only if you need a specific code</span></FLabel>
+            <input
+              value={sku}
+              onChange={(e) => { setSkuEdited(true); setSku(e.target.value.toUpperCase()) }}
+              placeholder={autoSku || `${type.toUpperCase()}-…`}
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+            />
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+              {skuEdited ? 'Manual — ' : 'Follows the name — '}
+              locked after the first sale, because quotations, orders and invoices reference it.
+            </p>
+          </div>
+          {/* Applies to EVERY type, so it lives in Identity rather than inside one
+              branch. Three values, not two: the fanpage post and the email send are
+              genuinely sold BOTH ways (4.000.000 ₫ / 20.000.000 ₫ standalone) AND
+              included inside Top Job — a binary flag would force duplicating them. */}
+          <div>
+            <FLabel req>Role</FLabel>
+            <div className="grid gap-1.5 sm:grid-cols-3">
+              {([
+                ['main', 'Main product', 'Quotable on its own'],
+                ['addon', 'Add-on', 'Only via Includes — hidden from the quotation picker'],
+                ['both', 'Both', 'Quotable AND includable'],
+              ] as const).map(([id, label, hint]) => (
+                <button
+                  key={id}
+                  onClick={() => setRole(id)}
+                  className={cn('rounded-lg border px-2.5 py-2 text-left transition-colors', role === id ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                >
+                  <span className={cn('block text-[12px] font-semibold', role === id ? 'text-brand' : 'text-ink')}>{label}</span>
+                  <span className="block text-[10px] leading-relaxed text-faint">{hint}</span>
+                </button>
+              ))}
             </div>
-            <div>
-              <FLabel>Name (EN)</FLabel>
-              <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. Top Job posting" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            {role !== 'main' && (
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                Appears in the <b className="text-ink/70">Includes</b> picker when any product is created.
+                {role === 'addon' && ' Never shown as a quotation line — it reaches a customer only inside a Main product.'}
+              </p>
+            )}
+          </div>
+
+          {/* The ONLY translated field: it is printed on the quotation and the PO,
+              which go out in the customer's language. Everything else on this form is
+              internal, so it needs one value, not two. */}
+          <div>
+            <div className="mb-1 flex items-end justify-between gap-2">
+              <FLabel req={lang === 'VI'}>Product description</FLabel>
+              <div className="mb-1 inline-flex shrink-0 overflow-hidden rounded-md border border-line">
+                {(['VI', 'EN'] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={cn('px-2 py-0.5 text-[10.5px] font-medium transition-colors', lang === l ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}
+                  >
+                    {l === 'VI' ? 'Tiếng Việt' : 'English'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-faint" style={{ minHeight: 60 }}>
+              {lang === 'VI' ? 'In trên báo giá và PO — danh sách quyền lợi khách hàng đọc.' : 'Printed on the quotation and the PO — the benefit list the customer reads.'}
             </div>
           </div>
-          {/* SKU is DERIVED, not typed — but it still exists, because quotations,
-              orders and invoices reference it and it must be immutable once sold.
-              Sales category is gone: with four types, the type IS the category. */}
-          <div className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
-            <b className="text-ink/70">Product ID:</b> <span className="font-mono">{sku || 'auto-generated from type + name'}</span> — generated, not typed. Editable only until the first sale, then locked, because quotations and invoices reference it.
-          </div>
-          <TArea label="Product description" req value="Printed on the quotation and the PO. The benefit list the customer actually reads — bilingual VN / EN." rows={3} />
 
           <Section title="3 · Fulfilment" />
           {/* There is no separate "tier config" screen: THIS product IS the tier
@@ -4658,13 +4755,11 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           {type === 'job' && (
             <>
               <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Thời gian hiển thị (days)" req value="30 ngày" hint="How long one published job stays visible." />
-                <LField label="Auto-refresh" req value="Daily for 7 days, then every 5 days" select hint="Basic 15d · Basic Plus 10d · Distinction 5d · Top Job daily×7 then 5d." />
+                <LField label="Thời gian hiển thị (days)" req value="30 ngày" />
+                <LField label="Auto-refresh" req value="Daily for 7 days, then every 5 days" select />
               </div>
-              <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Posting slots sold" req value="10 slots" hint="Publishing a job spends one." />
-                <LField label="Max skill tags" value="7" select />
-              </div>
+              {/* "Posting slots sold" removed: a product defines what ONE posting
+                  is; how many the customer buys is a quantity on the quotation line. */}
 
               <div>
                 <FLabel req>Placement slots — where a job of this tier appears<span className="ml-1 font-normal text-faint">from the Placements registry</span></FLabel>
@@ -4678,34 +4773,58 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                           <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{x.name}</span>
                           <span className="block text-[10px] text-faint">{x.page} · {x.shown}</span>
                         </span>
-                        {on && <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[10.5px] text-muted">10 ngày ▾</span>}
+                        {on && (
+                          <select
+                            defaultValue={x.id === 'home-super-hot' ? '10' : 'full'}
+                            className="shrink-0 rounded border border-line bg-surface px-1.5 py-1 text-[10.5px] text-ink/80 outline-none focus:border-brand"
+                          >
+                            <option value="full">Toàn bộ thời gian hiển thị</option>
+                            <option value="5">5 ngày đầu</option>
+                            <option value="7">7 ngày đầu</option>
+                            <option value="10">10 ngày đầu</option>
+                            <option value="15">15 ngày đầu</option>
+                            <option value="30">30 ngày</option>
+                          </select>
+                        )}
                       </div>
                     )
                   })}
                 </div>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Each ticked slot takes a duration — Top Job sits in “Công việc Hot hôm nay” for the first 10 days only, then drops out. Booked-only areas (hero banner, adsense, popup) are not offered: those are sold as their own Placement products.</p>
               </div>
 
               <div>
-                <FLabel>Add-on products included in this tier<span className="ml-1 font-normal text-faint">must already exist in the catalogue</span></FLabel>
+                {/* "Add-on products" was wrong: there is no add-on class. These are
+                    ordinary catalog products — Services, created in admin like any
+                    other — that this product grants along with itself. Hence Includes. */}
+                <FLabel>Includes / Bán kèm<span className="ml-1 font-normal text-faint">products granted together with this one — create them in the catalog first</span></FLabel>
+                {/* Manual services only. The premium fixed positions were listed here
+                    too, but they are PLACEMENTS — already chosen in the section above,
+                    so offering them twice let one tier grant the same slot twice. */}
                 <div className="space-y-1.5">
-                  {CATALOG.filter((c) => c.type === 'Manual service' || c.standalone === false).map((c, i) => {
-                    const on = i < 3
+                  {CATALOG.filter((c) => c.type === 'Manual service').map((c, i) => {
+                    const on = i < 2
                     return (
                       <div key={c.sku} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
                         <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded border', on ? 'border-brand bg-brand text-white' : 'border-line')}>{on && <span className="text-[9px] leading-none">✓</span>}</span>
                         <span className="min-w-0 flex-1">
                           <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{c.name}</span>
-                          <span className="block text-[10px] text-faint">{c.type}{c.standalone === false ? ' · attach-only' : ` · sold separately at ${c.price.replace(' ⓒ', '')}`}</span>
+                          <span className="block text-[10px] text-faint">{c.type} · sold separately at {c.price.replace(' ⓒ', '')}</span>
                         </span>
+                        {on && (
+                          <span className="flex shrink-0 items-center gap-1">
+                            <span className="text-[10px] text-faint">SL</span>
+                            <select defaultValue="1" className="rounded border border-line bg-surface px-1.5 py-1 text-[10.5px] text-ink/80 outline-none focus:border-brand">
+                              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                          </span>
+                        )}
                       </div>
                     )
                   })}
                 </div>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Included, not bundled: the customer sees ONE line “Tin Top Job” on the quotation. Paying it fires each include — a Manual service opens an ops task, a placement grants the position.</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Included, not bundled: the customer sees ONE line “Tin Top Job” on the quotation. Paying it fires each include as an ops task at the quantity set here.</p>
               </div>
 
-              <LField label="Publishes to" value="TopDev.vn + Saramin.vn" select />
             </>
           )}
           {type === 'placement' && (
@@ -4720,20 +4839,47 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 extra={<span className="ml-1 font-normal text-faint">— tier-driven areas are excluded; they aren’t bookable</span>}
               />
               <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Booking unit" req value="Per week" select />
-                <LField label="Slots consumed" value="1 of 6 in rotation" hint="Pool is capped — sales must check the calendar before quoting." />
+                <LField label="Thời gian hiển thị (days)" req value="10 ngày" select />
+                <LField label="Slots consumed" value="1 of 6 in rotation" />
               </div>
+
+              {/* The pool cap is 6, so the only question sales actually has is
+                  "is this slot free when the customer wants it?". Answering that at
+                  the point of sale is what stops overselling. */}
+              <div>
+                <FLabel>Availability — Main Banner, Home hero<span className="ml-1 font-normal text-faint">6 rotation slots</span></FLabel>
+                <div className="overflow-hidden rounded-lg border border-line">
+                  {[['Th 8 · 04–10', 6], ['Th 8 · 11–17', 4], ['Th 8 · 18–24', 2], ['Th 8 · 25–31', 0]].map(([wk, taken], i) => {
+                    const t = taken as number
+                    const full = t >= 6
+                    return (
+                      <div key={wk as string} className={cn('flex items-center gap-2.5 px-2.5 py-1.5 text-[11px]', i > 0 && 'border-t border-line-soft', full && 'bg-rose-50')}>
+                        <span className="w-24 shrink-0 text-ink/80">{wk}</span>
+                        <span className="flex shrink-0 gap-0.5">
+                          {[0, 1, 2, 3, 4, 5].map((n) => (
+                            <span key={n} className={cn('h-3.5 w-3.5 rounded-sm border', n < t ? 'border-brand bg-brand' : 'border-line bg-canvas')} />
+                          ))}
+                        </span>
+                        <span className={cn('shrink-0 tabular-nums', full ? 'font-semibold text-rose-600' : 'text-muted')}>{t}/6</span>
+                        <span className="min-w-0 flex-1 truncate text-right text-[10.5px] text-faint">
+                          {full ? 'Hết chỗ — không thể bán tuần này' : `${6 - t} chỗ trống`}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Hover a week to see which companies hold it. A quotation line for a full week is blocked, not warned.</p>
+              </div>
+
               <LField label="Creative source" value="Client-supplied image + redirect link" select />
-              <LField label="Sold standalone?" value="Yes — may be its own quotation line" select hint="Set to No for attach-only inventory (the 4 Popular Jobs / 5 Highlight Companies premium positions): defined here, but reachable only via a Job posting product's includes." />
               <p className="rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-                ⚠️ Inherited from the slot: 1 banner shown at a time, rotates every 3s, max 6 · title ≤ 50 chars, description ≤ 100, CTA ≤ 10. <b>Availability calendar</b> needed — this slot is sold out for weeks where 6 bookings already overlap.
+                ⚠️ Inherited from the slot: 1 banner shown at a time, rotates every 3s, max 6 · title ≤ 50 chars, description ≤ 100, CTA ≤ 10.
               </p>
             </>
           )}
           {type === 'cv' && (
             <>
               <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Credit type" req value="CV unlock" select />
                 <div>
                   <FLabel req>Amount</FLabel>
                   <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" placeholder="50" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
@@ -4741,17 +4887,18 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               </div>
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Validity" req value="30 days" select hint="Deck sells 30-day and 90-day packs." />
-                <LField label="Unused credits on repurchase" value="Roll over" select />
               </div>
             </>
           )}
           {type === 'service' && (
             <>
+              {/* What ONE unit of this service delivers. Quantity + unit rather than a
+                  hardcoded label, so the same type covers a fanpage post, an email
+                  send and a banner without needing a new product type each time. */}
               <div className="grid gap-3.5 sm:grid-cols-2">
-                <LField label="Fulfilment SLA" req value="3 working days" select />
-                <LField label="Owning team" req value="Marketing — TopDev" select />
+                <LField label="Số lượng" req value="1" />
+                <LField label="Đơn vị" req value="bài đăng" select hint="bài đăng · email · lượt gửi · banner" />
               </div>
-              <TArea label="Inputs required from the buyer" value="Post copy · image · target audience · preferred publish date" rows={2} />
               <p className="rounded-md bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
                 🛠 Paying this does <b>not</b> auto-provision quota. It opens a fulfilment task (Requested → Scheduled → Delivered) and needs proof-of-delivery before the line counts as fulfilled.
               </p>
@@ -4765,14 +4912,12 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" placeholder="3700000" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
               {priceNum > 0 && <p className="mt-1 text-[10.5px] text-faint">{vnd(priceNum)} ₫</p>}
             </div>
-            <LField label="Floor price" value="Lowest a sales rep may discount to" hint="Below this needs manager approval on the quotation." />
           </div>
           {type === 'cv' && (
             <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] text-muted">
               Average per CV: <b className="text-ink/80">{perCv ? `~${vnd(perCv)} ₫ / CV` : '— enter price and amount'}</b> — computed, never typed. This is the number the deck sells on.
             </p>
           )}
-          <LField label="Visibility" value="Sales-quote only" select hint="Public self-serve · Sales-quote only · Package-only." />
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
@@ -7739,13 +7884,13 @@ const TITLE_I18N: Record<'VI' | 'EN', string> = {
 
 /** Bilingual textarea — VI / EN tab on the label row. */
 function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolean; vi: string; en: string; rows?: number }) {
-  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
+  const [lang, setLang] = useState<'VI' | 'EN'>('EN')
   return (
     <div>
       <div className="mb-1 flex items-center gap-2">
         <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
         <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-          {(['VI', 'EN'] as const).map((l) => (
+          {(['EN', 'VI'] as const).map((l) => (
             <button key={l} onClick={() => setLang(l)} className={cn('px-2 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
           ))}
         </div>
@@ -7760,7 +7905,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
   const [exposed, setExposed] = useState(true)
   const [postMenu, setPostMenu] = useState(false)
   const [scheduling, setScheduling] = useState(false)
-  const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('VI')
+  const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('EN')
   const [locations, setLocations] = useState<string[]>(['Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2, HCMC'])
   const G2 = 'grid grid-cols-2 gap-3'
   const G3 = 'grid grid-cols-3 gap-3'
@@ -7809,13 +7954,13 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <div>
             <LabelRow label="Job title" req right={
               <div className="flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-                {(['VI', 'EN'] as const).map((l) => (
+                {(['EN', 'VI'] as const).map((l) => (
                   <button key={l} onClick={() => setTitleLang(l)} className={cn('px-2 py-0.5', titleLang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
                 ))}
               </div>
             } />
             <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{TITLE_I18N[titleLang]}</div>
-            <p className="mt-1 text-[10.5px] text-faint">Vietnamese is the default &amp; fallback language; English optional.</p>
+            <p className="mt-1 text-[10.5px] text-faint">English tab shown first. Vietnamese is still required and is the fallback shown wherever an EN/KO translation is missing.</p>
           </div>
 
           <div className={G2}>

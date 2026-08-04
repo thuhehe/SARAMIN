@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
+  Package,
   Users,
   FileImage,
   Bell,
@@ -147,7 +148,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Jobs', specId: 'admin-job-list' },
       { label: 'Applicants', specId: 'admin-job-applicants' },
-      { label: 'Resumes / candidates', specId: 'admin-resumes' },
+      { label: 'Resumes', specId: 'admin-resumes' },
     ],
   },
   {
@@ -192,6 +193,25 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // The catalogue, in one module: what is sellable, what it is bundled into, and
+    // where it surfaces on the site. Split across System before, but the three are
+    // one job — you cannot define a placement product without the placement list.
+    label: 'Products',
+    icon: <Package className="h-4 w-4" />,
+    items: [
+      // What is sellable and at what price.
+      { label: 'Products', specId: 'admin-catalog' },
+      // Several products at one package price, defined once and quoted many times
+      // (the client's Gói Ultimate). NOT the per-segment price groups — those are a
+      // price list on the tier product.
+      { label: 'Packages', specId: 'admin-bundles' },
+      // The display areas on the jobseeker site (sizes, caps, how each is filled).
+      // A placement product points at a row here instead of restating
+      // "1536×371, max 6, rotate 3s" on every sale.
+      { label: 'Placements', specId: 'admin-placements' },
+    ],
+  },
+  {
     label: 'System',
     icon: <Settings className="h-4 w-4" />,
     items: [
@@ -201,18 +221,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Roles & permissions', specId: 'admin-roles' },
       // The issuer identity that prints on every quotation / order / invoice.
       { label: 'Company information', specId: 'admin-issuer' },
-      // The catalogue: what is sellable and at what price. HQ configuration, so it
-      // sits here rather than in its own menu — Packages and Promotions were dropped
-      // (a package is quotation lines; discounting happens on the quotation).
-      { label: 'Products', specId: 'admin-catalog' },
-      // Several products at one package price, defined once and quoted many times
-      // (the client's Gói Ultimate). NOT the per-segment price groups — those are a
-      // price list on the tier product.
-      { label: 'Packages', specId: 'admin-bundles' },
-      // The display areas on the jobseeker site (sizes, caps, how each is filled).
-      // Defined once here; a placement product points at a row instead of restating
-      // "1536×371, max 6, rotate 3s" on every sale.
-      { label: 'Placements', specId: 'admin-placements' },
       // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.
       // Here rather than under CRM for the same reason as Products — it is HQ-only
       // configuration that changes how another module behaves.
