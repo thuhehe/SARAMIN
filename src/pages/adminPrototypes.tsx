@@ -4304,6 +4304,27 @@ const CATALOG: { sku: string; name: string; type: string; role: ProductRole; pri
   { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '2 mốc · ngày 11 và ngày 31', status: 'Active' },
 ]
 
+/* Price segments and product descriptions are shared by the create form and the
+   product record, so the two can never ask for / show a different set. */
+export const PRICE_SEGMENTS = ['SME / Startup', 'Enterprise', 'Standard'] as const
+
+/** Deck-derived VI/EN description — what prints on the quotation and the PO. */
+export const DESCRIPTIONS: Record<string, { vi: string; en: string }> = {
+  'JOB-BASIC': { vi: 'Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag · Làm mới bài đăng mỗi 15 ngày · Hiển thị tại Trang chủ mục “Công việc mới” và Trang tìm kiếm.', en: 'Official job posting for 30 days, up to 03 skill tags · Refreshed every 15 days · Shown in “New jobs” on the homepage and in search.' },
+  'JOB-BASICPLUS': { vi: 'Đăng tuyển chính thức 30 ngày · Làm mới mỗi 10 ngày · Tiêu đề tô đỏ · Ưu tiên hiển thị trong kết quả tìm kiếm · Logo công ty tại mục Highlight Companies · Email marketing đến 7.500 data.', en: 'Official posting for 30 days · Refreshed every 10 days · Bold red title · Priority in search results · Company logo in Highlight Companies · Email marketing to 7,500 targeted profiles.' },
+  'JOB-DISTINCTION': { vi: 'Đăng tuyển chính thức 30 ngày, tối đa 05 skill tag · Làm mới mỗi 05 ngày · Tiêu đề đỏ + nền nổi bật · Hiển thị 03 phúc lợi ở trang tìm kiếm · Top Search · Hiển thị tại “Các công ty phổ biến”.', en: 'Official posting for 30 days, up to 05 skill tags · Refreshed every 05 days · Red title + highlighted background · 3 benefits shown in search · Top Search · Shown in Popular Companies.' },
+  'JOB-TOPJOB': { vi: 'Gói cao cấp nhất: 30 ngày, tối đa 07 skill tag · Làm mới mỗi ngày trong 7 ngày đầu rồi mỗi 05 ngày · Nhãn “HOT JOB” 10 ngày · “Công việc Hot hôm nay” 10 ngày đầu · Vị trí cao nhất Top Search · Bài đăng fanpage TopDev · Big Banner trong Email Job Alert.', en: 'Top tier: 30 days, up to 07 skill tags · Refreshed daily for the first 7 days then every 05 · “HOT JOB” label for 10 days · “Hot jobs today” for the first 10 days · Highest Top Search position · TopDev fanpage post · Big Banner in the Email Job Alert.' },
+  'JOB-TRIAL': { vi: 'Tin dùng thử tặng khách hàng mới: 15 ngày hiển thị, 01 slot, giới hạn 01 lần trên mỗi mã số thuế.', en: 'Free trial posting for new customers: 15 days, 01 slot, limited to once per tax code.' },
+  'CV-030': { vi: 'Mở 30 hồ sơ ứng viên (mỗi CV tương ứng 01 lượt mở) · Hạn dùng 30 ngày kể từ ngày kích hoạt · Hồ sơ đã mở được bảo lưu 30 ngày sau khi dịch vụ hết hạn.', en: 'Unlock 30 candidate profiles (1 unlock per CV) · Valid 30 days from activation · Opened profiles retained 30 days after expiry.' },
+  'CV-050': { vi: 'Mở 50 hồ sơ ứng viên · Hạn dùng 30 ngày kể từ ngày kích hoạt.', en: 'Unlock 50 candidate profiles · Valid 30 days from activation.' },
+  'CV-100': { vi: 'Mở 100 hồ sơ ứng viên · Hạn dùng 90 ngày kể từ ngày kích hoạt.', en: 'Unlock 100 candidate profiles · Valid 90 days from activation.' },
+  'CV-300': { vi: 'Mở 300 hồ sơ ứng viên · Hạn dùng 90 ngày kể từ ngày kích hoạt.', en: 'Unlock 300 candidate profiles · Valid 90 days from activation.' },
+  'PLC-TOPCOMPANY': { vi: 'Thời gian hiển thị 10 ngày · Vị trí Trang chủ TopDev · Logo công ty và hình ảnh đại diện · Tiếp cận hơn 200.000 lượt truy cập.', en: '10 days · TopDev homepage · Company logo and cover image · Reaches 200,000+ visits.' },
+  'PLC-HOTJOBS': { vi: 'Thời gian hiển thị 10 ngày · Trang chủ TopDev · Logo công ty và thông tin tuyển dụng · 4 vị trí hiển thị.', en: '10 days · TopDev homepage · Company logo and job details · 4 display positions.' },
+  'SVC-FB-TOPDEV': { vi: 'Bài đăng quảng bá tin tuyển dụng hoặc thương hiệu trên fanpage chính thức TopDev, hơn 176.000 follower.', en: 'A promotional post for the job or brand on the official TopDev fanpage, 176,000+ followers.' },
+  'SVC-EMAIL-DEV': { vi: 'Gửi email tin tuyển dụng hoặc chiến dịch truyền thông đến database developer của TopDev.', en: 'Email the job or campaign to the TopDev developer database.' },
+}
+
 type CatalogItem = (typeof CATALOG)[number]
 
 /* Product detail. Deliberately NOT one generic layout: the Fulfilment card and
@@ -4329,7 +4350,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
     'JOB-DISTINCTION': [['SME / Startup', '7,689,000 ₫'], ['Enterprise', '11,088,000 ₫'], ['Standard (New 2024)', '12,000,000 ₫']],
     'JOB-TOPJOB': [['Standard (New 2024)', '13,800,000 ₫'], ['SME / Startup', '— not offered'], ['Enterprise', '— not offered']],
   }
-  const priceRows = PRICES[p.sku] ?? [['Standard', p.price]]
+  const priceRows: [string, string][] = PRICES[p.sku] ?? PRICE_SEGMENTS.map((seg) => [seg, seg === 'Standard' ? p.price : '— not offered'])
 
   const placement = PLACEMENTS.find((x) =>
     (p.sku === 'PLC-HOMEHERO' && x.id === 'home-hero') ||
@@ -4351,6 +4372,9 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
     'JOB-TOPJOB': ['home-super-hot', 'home-popular-jobs', 'home-tailored', 'search-highlight-jobs'],
   }
   const feeds = (TIER_FEEDS[p.sku] ?? []).map((id) => PLACEMENTS.find((x) => x.id === id)!).filter(Boolean)
+
+  const [descLang, setDescLang] = useState<'VI' | 'EN'>('VI')
+  const desc = DESCRIPTIONS[p.sku]
 
   // Publishes "System / Products / Tin Basic Plus" to the shell — the crumb IS the
   // way back, so there is no second "← Back" button, and the shell hides the
@@ -4393,6 +4417,30 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
+        {/* Same field the create form captures — the customer-facing text printed
+            on the quotation and the PO, with the same VI / EN tab. */}
+        <DetailCard
+          title="Product description"
+          action={
+            <span className="inline-flex overflow-hidden rounded-md border border-line">
+              {(['VI', 'EN'] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setDescLang(l)}
+                  className={cn('px-2 py-0.5 text-[10.5px] font-medium transition-colors', descLang === l ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}
+                >
+                  {l === 'VI' ? 'Tiếng Việt' : 'English'}
+                </button>
+              ))}
+            </span>
+          }
+        >
+          <p className={cn('text-[12px] leading-relaxed', desc ? 'text-ink/85' : 'text-faint')}>
+            {desc ? (descLang === 'VI' ? desc.vi : desc.en) : '— chưa nhập mô tả'}
+          </p>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Printed on the quotation and the PO. English falls back to the VN text when empty.</p>
+        </DetailCard>
+
         <DetailCard title="Price list — one product, many prices" action={<span className="text-[11px] text-faint">{priceRows.length} segments</span>}>
           <div className="overflow-hidden rounded-lg border border-line">
             {priceRows.map(([seg, val], i) => (
@@ -4417,8 +4465,38 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           {isTier && (<>
             <KV label="Thời gian hiển thị" value={`${p.fulfilment.match(/^(\d+) ngày/)?.[1] ?? '30'} ngày`} />
             <KV label="Auto-refresh" value={p.fulfilment.split('· ')[1] ?? '—'} />
-            <KV label="Placement slots" value={feeds.length ? feeds.map((f) => f.name).join(' · ') : '— none'} link={feeds.length > 0} />
-            <KV label="Includes / Bán kèm" value={p.includes?.length ? `${p.includes.length} product(s)` : '— none'} />
+            {/* Each slot carries its own duration in the create form, so the record
+                shows it per row rather than as a flat list of names. */}
+            <div className="border-b border-line-soft py-2">
+              <p className="text-[10.5px] uppercase tracking-wide text-faint">Placement slots</p>
+              {feeds.length ? (
+                <div className="mt-1 space-y-1">
+                  {feeds.map((f) => (
+                    <div key={f.id} className="flex items-center justify-between gap-2 text-[12px]">
+                      <span className="min-w-0 truncate text-ink/85">{f.name}</span>
+                      <span className="shrink-0 text-[10.5px] text-muted">{f.id === 'home-super-hot' ? '10 ngày đầu' : 'toàn bộ thời gian'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-0.5 text-[12.5px] text-faint">— none</p>}
+            </div>
+            <div className="py-2">
+              <p className="text-[10.5px] uppercase tracking-wide text-faint">Includes / Bán kèm</p>
+              {p.includes?.length ? (
+                <div className="mt-1 space-y-1">
+                  {p.includes.map((sku) => {
+                    const c = CATALOG.find((x) => x.sku === sku)
+                    if (!c) return null
+                    return (
+                      <div key={sku} className="flex items-center justify-between gap-2 text-[12px]">
+                        <span className="min-w-0 truncate text-ink/85">{c.name}</span>
+                        <span className="shrink-0 text-[10.5px] text-muted">SL 1</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : <p className="mt-0.5 text-[12.5px] text-faint">— none</p>}
+            </div>
           </>)}
           {isCredit && (<>
             <KV label="Số lượng" value={`${p.fulfilment.match(/^(\d+) lượt/)?.[1] ?? '—'} lượt mở CV`} />
@@ -4432,6 +4510,24 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
                 pool, so fall back to the registry's own capacity wording. */}
             <KV label="Slots consumed" value={placement ? (placement.cap.match(/max (\d+)/) ? `1 of ${placement.cap.match(/max (\d+)/)![1]} in rotation` : `1 · ${placement.cap}`) : '—'} />
             <KV label="Creative source" value={placement?.fedBy.split('· ')[1] ?? 'Client-supplied image + link'} />
+            <div className="mt-2">
+              <p className="mb-1 text-[10.5px] uppercase tracking-wide text-faint">Availability</p>
+              <div className="overflow-hidden rounded-md border border-line">
+                {[['Th 8 · 04–10', 6], ['Th 8 · 11–17', 4], ['Th 8 · 18–24', 2], ['Th 8 · 25–31', 0]].map(([wk, taken], i) => {
+                  const t = taken as number
+                  const full = t >= 6
+                  return (
+                    <div key={wk as string} className={cn('flex items-center gap-2 px-2.5 py-1 text-[11px]', i > 0 && 'border-t border-line-soft', full && 'bg-rose-50')}>
+                      <span className="w-20 shrink-0 text-ink/80">{wk}</span>
+                      <span className="flex shrink-0 gap-0.5">
+                        {[0, 1, 2, 3, 4, 5].map((n) => <span key={n} className={cn('h-3 w-3 rounded-sm border', n < t ? 'border-brand bg-brand' : 'border-line bg-canvas')} />)}
+                      </span>
+                      <span className={cn('shrink-0 tabular-nums', full ? 'font-semibold text-rose-600' : 'text-muted')}>{t}/6</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
             <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Size and capacity are read from System → Placements — read-only here, so a sale cannot contradict the site.</p>
           </>)}
           {isService && (<>
@@ -4906,12 +5002,27 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           )}
 
           <Section title="4 · Pricing" />
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <div>
-              <FLabel req>Price (₫)</FLabel>
-              <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" placeholder="3700000" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
-              {priceNum > 0 && <p className="mt-1 text-[10.5px] text-faint">{vnd(priceNum)} ₫</p>}
+          {/* One product, a price PER SEGMENT — this is what replaces the CRM's
+              separate "… SMEs / … Enterprise / … New 2024" records, so what a
+              product grants is defined once. The record shows the same three rows. */}
+          <div>
+            <FLabel req>Price (₫) per segment</FLabel>
+            <div className="overflow-hidden rounded-md border border-line">
+              {PRICE_SEGMENTS.map((seg, i) => (
+                <div key={seg} className={cn('flex items-center gap-2 px-2.5 py-1.5', i > 0 && 'border-t border-line-soft')}>
+                  <span className="w-28 shrink-0 text-[11.5px] text-ink/80">{seg}</span>
+                  <input
+                    value={seg === 'Standard' ? price : ''}
+                    onChange={(e) => seg === 'Standard' && setPrice(e.target.value)}
+                    inputMode="numeric"
+                    placeholder={seg === 'Standard' ? '3700000' : '— không bán cho segment này'}
+                    className="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-[12px] outline-none placeholder:text-faint focus:border-brand"
+                  />
+                  {seg === 'Standard' && priceNum > 0 && <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{vnd(priceNum)} ₫</span>}
+                </div>
+              ))}
             </div>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Leave a segment empty when the product is not sold to it — Top Job has no SME / Enterprise price today.</p>
           </div>
           {type === 'cv' && (
             <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] text-muted">
