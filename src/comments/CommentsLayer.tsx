@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { GripVertical, MessageSquare } from 'lucide-react'
 import { useComments } from './CommentsProvider'
 import { NO_COMMENT_ATTR } from './anchor'
 import { CommentRail } from './CommentRail'
 import { UnlockDialog } from './UnlockDialog'
+import { useDraggable } from './draggable'
+
+const POSITION_KEY = 'saramin.comments.buttonPosition'
 
 /**
  * The always-mounted chrome: the floating toggle, the rail, and the
@@ -24,6 +27,16 @@ export function CommentsLayer() {
     railVisible,
   } = useComments()
   const [unlocking, setUnlocking] = useState(false)
+
+  // The pill starts in the bottom-right corner and can be dragged
+  // anywhere from there — it otherwise covers whatever the spec puts in
+  // that corner. Declared before the `unavailable` bail-out below so the
+  // hook order stays fixed.
+  const drag = useDraggable({
+    storageKey: POSITION_KEY,
+    onActivate: () =>
+      status === 'ready' ? setRailOpen(true) : setUnlocking(true),
+  })
 
   // Clicking a highlight in the page opens the rail on that thread. Keyed on
   // the request rather than the id, so closing the rail and clicking that
@@ -60,11 +73,18 @@ export function CommentsLayer() {
         <button
           {...{ [NO_COMMENT_ATTR]: true }}
           type="button"
-          onClick={() =>
-            status === 'ready' ? setRailOpen(true) : setUnlocking(true)
-          }
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 text-[13px] font-medium shadow-lg hover:border-brand hover:text-brand"
+          {...drag.props}
+          title={`${status === 'ready' ? 'Comments' : 'Unlock comments'} — drag to move`}
+          // `whitespace-nowrap`: positioned by `left`, the pill's box is
+          // only as wide as the space to its right, so without it the
+          // label wraps to two lines as it nears the right edge.
+          className={`fixed bottom-5 right-5 z-40 flex select-none items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface py-2.5 pl-2.5 pr-4 text-[13px] font-medium shadow-lg hover:border-brand hover:text-brand ${
+            drag.dragging ? 'cursor-grabbing shadow-xl' : 'cursor-grab'
+          }`}
         >
+          {/* The grip is the affordance: without it nobody would guess
+              the pill can be moved off whatever it happens to cover. */}
+          <GripVertical className="h-4 w-4 text-faint" />
           <MessageSquare className="h-4 w-4" />
           {status === 'ready' ? 'Comments' : 'Unlock comments'}
           {openCount > 0 && (
