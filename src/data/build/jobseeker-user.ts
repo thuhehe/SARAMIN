@@ -38,8 +38,23 @@ export const jobseekerUser: BuildModule = {
           ['Social — Facebook · Google · LinkedIn · GitHub', 'Pre-verified by the provider', 'Active directly'],
         ],
       },
-      items: ['Password reset is available for email accounts.'],
+      items: [
+        'Password reset is available for email accounts.',
+        'NONE of the four providers returns a phone number. Every social sign-up therefore has an empty phone, always — it is asked at first apply, never at sign-up (see Application management → Apply flow).',
+      ],
       warn: 'Email is the IDENTITY KEY — one account per email address. A social login on an email that already exists LINKS to that account; it never creates a second one.',
+    },
+    {
+      label: 'Login email vs. contact email — two fields, one identity',
+      text: 'Because email is the identity key, a provider-supplied address cannot be edited: changing it would change which account it is. But the Google address someone signs in with is often not the one they want a recruiter emailing. Splitting the two keeps the identity rule intact without sending employers the wrong address.',
+      table: {
+        cols: ['Field', 'Editable?', 'Used for'],
+        rows: [
+          ['loginEmail', 'No, when provider-supplied', 'Identity + sign-in. Shown read-only with the provider named ("🔒 Google").'],
+          ['contactEmail', 'Always', 'What employers see. Defaults to loginEmail, and is what an application delivers.'],
+        ],
+      },
+      warn: 'The identity key is loginEmail. Employer-facing surfaces — applications, unlocked CVs, notifications to employers — must read contactEmail. Reading loginEmail there is how a candidate ends up unreachable at the address they chose.',
     },
     {
       label: 'Account status model',
@@ -373,7 +388,7 @@ export const jobseekerUser: BuildModule = {
               { name: 'fullName', type: 'string', required: true },
               { name: 'headline / current role', type: 'string', notes: 'pre-filled from the CV extraction where available' },
               { name: 'location', type: 'enum (province/city)', notes: 'from the shared location master data' },
-              { name: 'dateOfBirth / gender', type: 'date / enum', notes: 'optional — collect only what is actually used' },
+              // DOB / gender / nationality / marital status: NOT collected — cut platform-wide (slim-profile decision, see Resume management → field tiers)
             ],
           },
           {
@@ -457,10 +472,13 @@ export const jobseekerUser: BuildModule = {
         backend: {
           dataModel: [
             { name: 'jobseekerId', type: 'uuid', required: true },
-            { name: 'fullName / headline / location / dateOfBirth / gender', type: 'string / string? / enum / date? / enum?' },
+            { name: 'fullName / headline / location', type: 'string / string? / enum', notes: 'NO dateOfBirth, gender, nationality or maritalStatus columns — cut platform-wide (slim-profile decision)' },
             { name: 'avatarUrl', type: 'string?' },
-            { name: 'phone / phoneVerifiedAt', type: 'string? / timestamp?' },
-            { name: 'pendingEmail / pendingEmailToken', type: 'string? / hash?', notes: 'the new address stays pending until confirmed' },
+            { name: 'phone / phoneVerifiedAt', type: 'string? / timestamp?', notes: 'no social provider supplies a phone — captured at first apply' },
+            { name: 'loginEmail', type: 'string', required: true, notes: 'the IDENTITY KEY. Immutable when it came from a social provider' },
+            { name: 'contactEmail', type: 'string', required: true, notes: 'what employers see; defaults to loginEmail and is always editable. Employer-facing surfaces must read THIS, never loginEmail' },
+            { name: 'contactConfirmedAt', type: 'timestamp?', notes: 'set on the first apply-time confirmation; drives the "ask once" rule and the staleness re-prompt' },
+            { name: 'pendingEmail / pendingEmailToken', type: 'string? / hash?', notes: 'changing the LOGIN email only (email accounts); a contactEmail change needs no confirmation loop' },
             { name: 'desiredRole / desiredLocations / desiredSalaryMin / desiredSalaryMax / availability / jobTypes', type: 'enum / text[] / int? / int? / enum / text[]', notes: 'the ~5 fields AI cannot read from a CV' },
             { name: 'cvVisibility', type: 'enum', required: true, notes: 'discoverable|hidden — consent' },
             { name: 'notificationPrefs', type: 'jsonb' },

@@ -369,39 +369,186 @@ function ExtLink({ children }: { children: React.ReactNode }) {
   )
 }
 
+/* A CV is always shown as the candidate NAMED it, plus the kind it is — the two
+   things HQ needs to know at a glance. Never the tag alone: "Saramin CV" with no
+   name gives the screener nothing to recognise the document by. */
 function CvCell({ label, kind }: { label: string; kind: 'saramin' | 'upload' }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5">
+      <span className="min-w-0 truncate text-ink/80">{kind === 'saramin' ? '📃' : '📄'} {label}</span>
       {kind === 'saramin'
-        ? <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-medium text-emerald-700">Saramin CV</span>
-        : <span className="truncate text-ink/80">📄 {label}</span>}
+        ? <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Saramin CV</span>
+        : <span className="shrink-0 rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-muted">Uploaded</span>}
       <a target="_blank" rel="noopener noreferrer" className="shrink-0 text-brand hover:underline">View</a>
     </span>
   )
 }
 
-type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; stage: React.ReactNode; when: string }
+/* stage is a plain string + its own tone so the list can FILTER on it — a
+   pre-rendered <Pill> is unfilterable. Same shape as CoApplicant below. */
+/*
+ * Status model v2 — an application carries TWO status dimensions and the admin
+ * list must show both, because they are owned by different people:
+ *
+ *   status (Layer 2, HQ-owned)   Sent · Recalled · Blocked
+ *   stage  (Layer 3, company-owned, read-only here)
+ *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
+ *
+ * Layer 1 (screening) is dormant: every application is written `passed` at apply
+ * and it is never displayed, so there is no column for it.
+ */
+type Delivery = 'Sent' | 'Recalled' | 'Blocked'
+
+const DELIVERY_TONE: Record<Delivery, StatusTone> = {
+  Sent: 'neutral',
+  Recalled: 'draft',
+  Blocked: 'rejected',
+}
+
+/* The employer funnel, in order. Tones run cool → warm → resolved so the column
+   reads as progress at a glance. */
+const STAGE_TONE: Record<string, StatusTone> = {
+  New: 'draft',
+  Reviewing: 'neutral',
+  Shortlisted: 'schedule',
+  Interview: 'pending',
+  Hired: 'active',
+  Rejected: 'rejected',
+}
+
+type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; status: Delivery; stage: string; when: string }
+
+/* Applicant detail under status model v2. There is NO pre-send gate any more:
+   the employer already has this CV, so HQ cannot approve or reject it. What is
+   left is oversight — read the same information the employer sees, then either
+   pull it back (Recall) or shut the whole account off (Block). The quality
+   checks stay on screen as LABELS: they inform, they never block. */
+function ApplicantDetail({ name, status, onClose }: { name: string; status: Delivery; onClose: () => void }) {
+  const [decision, setDecision] = useState<'none' | 'recall' | 'block'>('none')
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
+      <div className="flex max-h-[600px] w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div>
+            <p className="flex items-center gap-2 text-[14px] font-bold text-ink">
+              {name}
+              <Pill tone={DELIVERY_TONE[status]}>{status}</Pill>
+            </p>
+            <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+              Senior Frontend Engineer · FPT Software · applied 2h ago · CV: <b className="font-semibold text-ink/80">Frontend Engineer CV</b>
+              <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Saramin CV</span>
+            </p>
+          </div>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+          {/* CV under review */}
+          <div className="rounded-lg border border-line bg-canvas/30 p-4">
+            <p className="text-[13px] font-bold text-ink">{name}</p>
+            <p className="mb-2 text-[11px] text-muted">Frontend Engineer · Hồ Chí Minh · 4 yrs</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
+            <p className="text-[11px] text-ink">Frontend Engineer · Zenpay · 2022–nay</p>
+            <p className="mb-2 text-[11px] text-muted">Web Developer · Lantern Digital · 2020–2022</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Skills</p>
+            <p className="text-[11px] text-ink">React · TypeScript · Next.js · Tailwind · Testing</p>
+            <p className="mt-2 text-[10.5px] text-faint">Opening the full CV is a PII action and is audited.</p>
+          </div>
+          {/* labels + the two oversight actions */}
+          <div className="space-y-3">
+            <div>
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Labels · never blocking</p>
+              <div className="space-y-1">
+                {([['Độ phù hợp', '86% — skills & years fit'], ['Mức hoàn thiện hồ sơ', '3 / 4'], ['Kênh liên hệ', 'Email + phone'], ['Nguồn dữ liệu', 'Saramin CV']] as [string, string][]).map(([k, v]) => (
+                  <p key={k} className="flex items-baseline justify-between gap-2 text-[11px]">
+                    <span className="text-faint">{k}</span><b className="font-semibold text-ink/80">{v}</b>
+                  </p>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10.5px] text-faint">These inform the employer’s decision. None of them stops a CV from being sent.</p>
+            </div>
+            {decision === 'recall' && (
+              <div>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-600">Recall this application</p>
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+                  The employer was emailed at apply time — that email cannot be un-sent. Recall removes the CV from their dashboard and notifies them to ignore it. Terminal: the candidate must apply again.
+                </p>
+              </div>
+            )}
+            {decision === 'block' && (
+              <div>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-rose-500">Block reason (required, audited)</p>
+                <div className="space-y-1">
+                  {['Fraudulent / fake identity', 'Abusive behaviour', 'Duplicate accounts', 'Other (note required)'].map((r, i) => (
+                    <label key={r} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]', i === 0 ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-line text-muted')}>{r}</label>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10.5px] font-medium text-rose-600">⚠️ Whole user: blocks future applies and recalls all 7 sent applications across every job.</p>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
+          <span className="text-[10.5px] text-faint">No approve / reject — the employer already has this CV. Every action is audited.</span>
+          <div className="flex shrink-0 gap-2 whitespace-nowrap">
+            {decision === 'none' ? (
+              <>
+                <RowAction>Note</RowAction>
+                <RowAction>Edit</RowAction>
+                <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
+                <button onClick={() => setDecision('recall')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Recall…</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setDecision('none')} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-semibold text-muted">Cancel</button>
+                <button onClick={onClose} className={cn('rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-white', decision === 'block' ? 'bg-rose-500' : 'bg-amber-500')}>
+                  {decision === 'block' ? 'Confirm block user' : 'Confirm recall'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AdminApplicants() {
+  const [open, setOpen] = useState<Applicant | null>(null)
+  const [fStatus, setFStatus] = useState('')
+  const [fStage, setFStage] = useState('')
+  const [fCompany, setFCompany] = useState('')
+  const [fLoc, setFLoc] = useState('')
+  const [fCv, setFCv] = useState('')
   const raw: Applicant[] = [
-    { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">Screening</Pill>, when: '2h ago' },
-    { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '5h ago' },
-    { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="active">Offer</Pill>, when: '1d ago' },
-    { name: 'Phạm Thu Dung', role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], stage: <Pill tone="neutral">New</Pill>, when: '1d ago' },
-    { name: 'Vũ Minh Đức', role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="rejected">Rejected</Pill>, when: '3d ago' },
-    { name: 'Đặng Thị Hoa', role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], stage: <Pill tone="neutral">New</Pill>, when: '3d ago' },
-    { name: 'Bùi Quang Huy', role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">Screening</Pill>, when: '4d ago' },
-    { name: 'Ngô Thị Lan', role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '4d ago' },
-    { name: 'Hoàng Văn Nam', role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '5d ago' },
-    { name: 'Trịnh Mỹ Linh', role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], stage: <Pill tone="neutral">Screening</Pill>, when: '5d ago' },
-    { name: 'Đỗ Anh Tú', role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '6d ago' },
-    { name: 'Lý Thu Trang', role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], stage: <Pill tone="pending">Interview</Pill>, when: '6d ago' },
-    { name: 'Phan Văn Kiên', role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="neutral">New</Pill>, when: '1w ago' },
-    { name: 'Võ Thị Ngọc', role: 'Business Analyst', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · IS', job: 'Business Analyst', company: 'Shopee', cv: ['ngoc-cv.pdf', 'upload'], stage: <Pill tone="neutral">Screening</Pill>, when: '1w ago' },
-    { name: 'Mai Đức Thắng', role: 'Solution Architect', years: '10 yrs', loc: 'Hồ Chí Minh', edu: 'Master · CS', job: 'Solution Architect', company: 'Techcombank', cv: ['Saramin CV', 'saramin'], stage: <Pill tone="active">Offer</Pill>, when: '1w ago' },
+    { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], status: 'Sent', stage: 'Reviewing', when: '2h ago' },
+    { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], status: 'Sent', stage: 'Interview', when: '5h ago' },
+    { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], status: 'Sent', stage: 'Hired', when: '1d ago' },
+    { name: 'Phạm Thu Dung', role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], status: 'Sent', stage: 'New', when: '1d ago' },
+    { name: 'Vũ Minh Đức', role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Backend Engineer CV', 'saramin'], status: 'Sent', stage: 'Rejected', when: '3d ago' },
+    { name: 'Đặng Thị Hoa', role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], status: 'Sent', stage: 'New', when: '3d ago' },
+    { name: 'Bùi Quang Huy', role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], status: 'Recalled', stage: 'Reviewing', when: '4d ago' },
+    { name: 'Ngô Thị Lan', role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], status: 'Sent', stage: 'Interview', when: '4d ago' },
+    { name: 'Hoàng Văn Nam', role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], status: 'Sent', stage: 'New', when: '5d ago' },
+    { name: 'Trịnh Mỹ Linh', role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], status: 'Blocked', stage: 'New', when: '5d ago' },
+    { name: 'Đỗ Anh Tú', role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['iOS Developer CV', 'saramin'], status: 'Sent', stage: 'Shortlisted', when: '6d ago' },
+    { name: 'Lý Thu Trang', role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], status: 'Sent', stage: 'Interview', when: '6d ago' },
+    { name: 'Phan Văn Kiên', role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Sales Executive CV', 'saramin'], status: 'Sent', stage: 'New', when: '1w ago' },
+    { name: 'Võ Thị Ngọc', role: 'Business Analyst', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · IS', job: 'Business Analyst', company: 'Shopee', cv: ['ngoc-cv.pdf', 'upload'], status: 'Sent', stage: 'Shortlisted', when: '1w ago' },
+    { name: 'Mai Đức Thắng', role: 'Solution Architect', years: '10 yrs', loc: 'Hồ Chí Minh', edu: 'Master · CS', job: 'Solution Architect', company: 'Techcombank', cv: ['Solution Architect CV', 'saramin'], status: 'Sent', stage: 'Hired', when: '1w ago' },
   ]
-  const rows = raw.map((a) => [
-    <ExtLink>{a.name}</ExtLink>,
+  const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
+  const cvKind = (a: Applicant) => (a.cv[1] === 'saramin' ? 'Saramin CV' : 'Uploaded file')
+  // the filter row narrows the list; ListPage still searches on top of the result
+  const shown = raw.filter(
+    (a) =>
+      (!fStatus || a.status === fStatus) &&
+      (!fStage || a.stage === fStage) &&
+      (!fCompany || a.company === fCompany) &&
+      (!fLoc || a.loc === fLoc) &&
+      (!fCv || cvKind(a) === fCv),
+  )
+  const rows = shown.map((a) => [
+    <span onClick={() => setOpen(a)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{a.name}</span>,
     <div className="min-w-0">
       <p className="truncate text-ink/80">{a.role} · {a.years}</p>
       <p className="truncate text-[11px] text-faint">{a.loc} · {a.edu}</p>
@@ -409,46 +556,160 @@ function AdminApplicants() {
     <ExtLink>{a.job}</ExtLink>,
     <ExtLink>{a.company}</ExtLink>,
     <CvCell label={a.cv[0]} kind={a.cv[1]} />,
-    a.stage,
+    <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
+    /* Recalled and Blocked CVs are off the employer's dashboard, so their funnel
+       stops moving — an em-dash says that better than a frozen badge would. */
+    a.status === 'Sent'
+      ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
+      : <span className="text-faint" title="Off the employer dashboard — the funnel no longer applies">—</span>,
     <span className="text-muted">{a.when}</span>,
   ])
   return (
-    <ListPage
-      minW={1360}
-      tabs={[{ label: 'All', count: 342 }, { label: 'New', count: 12, active: true }, { label: 'Screening', count: 88 }, { label: 'Interview', count: 40 }, { label: 'Hired', count: 21 }]}
-      cols={[
-        { label: 'Candidate', w: '1.1fr' },
-        { label: 'Snapshot', w: '1.7fr' },
-        { label: 'Applied to', w: '1.3fr' },
-        { label: 'Company', w: '1fr' },
-        { label: 'CV', w: '1.2fr' },
-        { label: 'Stage', w: '0.9fr' },
-        { label: 'Applied', w: '0.8fr', align: 'r' },
-      ]}
-      rows={rows}
-    />
+    <div>
+      {/* The two dimensions are owned by different people, so the list names both
+          owners once rather than leaving a reader to guess which badge is whose. */}
+      <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+        <b className="font-semibold text-ink/80">Status</b> is Saramin’s — Sent on apply, then Recalled or Blocked by HQ.{' '}
+        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. There is no screening
+        queue: an application is sent to the employer the moment it is submitted.
+      </p>
+      <ListPage
+        minW={1500}
+        /* rows are already narrowed by the filter row, so Total means every
+           application HQ holds, not what survived the filters */
+        total={raw.length}
+        searchHint="Search candidate, job, company…"
+        filters={
+          <>
+            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={uniq(raw.map((a) => a.status))} />
+            <FilterSelect label="Stage" value={fStage} onChange={setFStage} options={uniq(raw.map((a) => a.stage))} />
+            <FilterSelect label="Company" value={fCompany} onChange={setFCompany} options={uniq(raw.map((a) => a.company))} />
+            <FilterSelect label="Location" value={fLoc} onChange={setFLoc} options={uniq(raw.map((a) => a.loc))} />
+            <FilterSelect label="CV" value={fCv} onChange={setFCv} options={uniq(raw.map(cvKind))} />
+          </>
+        }
+        cols={[
+          { label: 'Candidate', w: '1.1fr' },
+          { label: 'Snapshot', w: '1.7fr' },
+          { label: 'Applied to', w: '1.3fr' },
+          { label: 'Company', w: '1fr' },
+          { label: 'CV', w: '1.2fr' },
+          { label: 'Status · Saramin', w: '0.9fr' },
+          { label: 'Stage · employer', w: '0.9fr' },
+          { label: 'Applied', w: '0.8fr', align: 'r' },
+        ]}
+        rows={rows}
+      />
+      {open && <ApplicantDetail name={open.name} status={open.status} onClose={() => setOpen(null)} />}
+    </div>
+  )
+}
+
+/* Candidate detail — ONE candidate = one row in the pool; the drill-in shows
+   their Profile summary + ALL their CVs (≤3, exactly one searchable) and the
+   HQ moderation actions. HQ moderates; it never edits content or flips the
+   candidate's own visibility consent. */
+function ResumeCandidateDetail({ name, onClose }: { name: string; onClose: () => void }) {
+  const cvs = [
+    { label: 'Frontend Engineer CV', kind: 'Saramin CV · generated', searchable: true, updated: '2 days ago', complete: '92%' },
+    { label: 'Fullstack CV (EN)', kind: 'Uploaded · CV_An_EN.pdf', searchable: false, updated: '1 week ago', complete: '81%' },
+  ]
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
+      <div className="flex max-h-[600px] w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div>
+            <p className="text-[14px] font-bold text-ink">{name}</p>
+            <p className="text-[11px] text-muted">Frontend Engineer · Hồ Chí Minh · 4 yrs · <span className="text-emerald-600">Discoverable (candidate-set)</span></p>
+          </div>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {/* profile summary — the searchable identity + preferences */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Profile (onboarding data — feeds search)</p>
+            <div className="grid gap-x-4 gap-y-1 rounded-lg border border-line p-3 text-[11.5px] sm:grid-cols-2">
+              <p className="text-muted">Desired role: <b className="text-ink">Senior Frontend Engineer</b></p>
+              <p className="text-muted">Locations: <b className="text-ink">HCMC · Hà Nội</b></p>
+              <p className="text-muted">Experience: <b className="text-ink">4 yrs</b></p>
+              <p className="text-muted">Expected salary: <b className="text-ink">25–35 tr</b></p>
+              <p className="text-muted">Availability: <b className="text-ink">1 month</b></p>
+              <p className="text-muted">Contact: <b className="text-ink">masked</b> <span className="cursor-pointer text-brand">reveal (audited)</span></p>
+            </div>
+          </div>
+          {/* the candidate's CVs — max 3, exactly one searchable */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">CVs ({cvs.length} of 3) — exactly one is searchable</p>
+            <div className="space-y-2">
+              {cvs.map((cv) => (
+                <div key={cv.label} className={cn('flex items-center gap-3 rounded-lg border p-3', cv.searchable ? 'border-brand/40 bg-brand-soft/30' : 'border-line')}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-ink">{cv.label} {cv.searchable && <Pill tone="active">Searchable</Pill>}</p>
+                    <p className="text-[10.5px] text-faint">{cv.kind} · {cv.complete} complete · updated {cv.updated}</p>
+                  </div>
+                  <span className="cursor-pointer text-[11px] font-medium text-brand">Open (audited)</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-faint">Which CV is searchable is the candidate’s choice — HQ cannot change it.</p>
+          </div>
+          {/* moderation — the only thing HQ owns here */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Moderation (HQ-owned)</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="active">Normal</Pill>
+              <button className="rounded-md border border-amber-300 px-2.5 py-1 text-[11px] font-medium text-amber-600">⚑ Flag for review…</button>
+              <button className="rounded-md border border-rose-300 px-2.5 py-1 text-[11px] font-medium text-rose-600">Remove from pool…</button>
+              <span className="text-[10.5px] text-faint">reason required · audited · never blocks the candidate from applying</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end border-t border-line px-4 py-3"><button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink/70">Close</button></div>
+      </div>
+    </div>
   )
 }
 
 function AdminResumes() {
   const [creating, setCreating] = useState(false)
+  const [sel, setSel] = useState<string | null>(null)
   if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
-  const rows = [
-    ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', <Pill tone="active">Public</Pill>, '2 days ago'],
-    ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', <Pill tone="active">Public</Pill>, '1 week ago'],
-    ['Lê Hoàng Cường', 'Product Manager · 8 yrs', 'Hồ Chí Minh', <Pill tone="draft">Private</Pill>, '3 weeks ago'],
-    ['Phạm Thu Dung', 'Kế toán · 3 yrs', 'Đà Nẵng', <Pill tone="active">Public</Pill>, '1 month ago'],
-    ['Vũ Minh Đức', 'Backend Engineer · 5 yrs', 'Hồ Chí Minh', <Pill tone="active">Public</Pill>, '2 months ago'],
+  const raw: [string, string, string, number, boolean, string][] = [
+    // candidate, searchable-CV title/yrs, location, cv count, discoverable, updated
+    ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', 2, true, '2 days ago'],
+    ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', 1, true, '1 week ago'],
+    ['Lê Hoàng Cường', 'Product Manager · 8 yrs', 'Hồ Chí Minh', 3, false, '3 weeks ago'],
+    ['Phạm Thu Dung', 'Kế toán · 3 yrs', 'Đà Nẵng', 1, true, '1 month ago'],
+    ['Vũ Minh Đức', 'Backend Engineer · 5 yrs', 'Hồ Chí Minh', 2, true, '2 months ago'],
   ]
+  const rows = raw.map(([name, title, loc, count, disc, updated]) => [
+    <span onClick={() => setSel(name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{name}</span>,
+    <span className="truncate text-ink/80">{title}</span>,
+    loc,
+    <span className="text-muted">{count} of 3</span>,
+    disc ? <Pill tone="active">Discoverable</Pill> : <Pill tone="draft">Hidden</Pill>,
+    <Pill tone="active">Normal</Pill>,
+    <span className="text-muted">{updated}</span>,
+  ])
   return (
     <div>
-      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">🔒 Resumes contain PII — access is permission-gated and every view is written to the audit log.</div>
+      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">🔒 ONE row per candidate — the row shows their SEARCHABLE CV (what employer CV search reads). Open a candidate to see all their CVs (max 3). Resumes contain PII — every open is audited.</div>
       <ListPage
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
-        tabs={[{ label: 'All', count: 8420, active: true }, { label: 'Public', count: 6100 }, { label: 'Private', count: 2320 }]}
-        cols={[{ label: 'Candidate', w: '1.2fr' }, { label: 'Title / experience', w: '1.6fr' }, { label: 'Location', w: '1fr' }, { label: 'Visibility', w: '0.9fr' }, { label: 'Updated', w: '1fr', align: 'r' }]}
+        tabs={[{ label: 'All candidates', count: 8420, active: true }, { label: 'Discoverable', count: 6100 }, { label: 'Hidden', count: 2320 }, { label: 'Flagged', count: 14 }, { label: 'Removed from pool', count: 9 }]}
+        cols={[
+          { label: 'Candidate', w: '1.2fr' },
+          { label: 'Searchable CV — title / exp', w: '1.6fr' },
+          { label: 'Location', w: '0.9fr' },
+          { label: 'CVs', w: '0.6fr' },
+          { label: 'Visibility (candidate)', w: '1fr' },
+          { label: 'Moderation (HQ)', w: '0.9fr' },
+          { label: 'Updated', w: '0.9fr', align: 'r' },
+        ]}
         rows={rows}
       />
+      {sel && <ResumeCandidateDetail name={sel} onClose={() => setSel(null)} />}
     </div>
   )
 }

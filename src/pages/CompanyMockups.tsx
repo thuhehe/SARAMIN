@@ -395,52 +395,235 @@ function MyJobsScreen() {
   )
 }
 
-function ApplicantsScreen() {
-  const cols: { stage: keyof typeof STAGE_TONE; people: { n: string; exp: string }[] }[] = [
-    { stage: 'New', people: [{ n: 'Nguyễn Thị Hoa', exp: '3 yrs · ĐD' }, { n: 'Phạm Thu Trang', exp: '1 yr · ĐD' }] },
-    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', exp: '5 yrs · ĐD' }] },
-    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', exp: '4 yrs · ĐD' }] },
-    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', exp: '6 yrs · ĐD' }] },
-    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', exp: '2 yrs · ĐD' }] },
-  ]
+/** The candidate's profile photo. Initials stand in for the real image in the
+    wireframe; a candidate who uploaded a photo shows it in the same slot. */
+function Avatar({ name, big }: { name: string; big?: boolean }) {
+  const parts = name.trim().split(/\s+/)
+  const initials = ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
   return (
-    <div>
+    <span
+      className={cn(
+        'grid shrink-0 place-items-center rounded-full bg-brand-soft font-bold text-brand',
+        big ? 'h-11 w-11 text-[14px]' : 'h-8 w-8 text-[11px]',
+      )}
+    >
+      {initials}
+    </span>
+  )
+}
+
+/** Match score against THIS job — the signal that tells a recruiter which card
+    to open first, so the column order stops being just "who applied last". */
+function Match({ score }: { score: number }) {
+  return (
+    <Chip tone={score >= 80 ? 'green' : score >= 60 ? 'amber' : 'muted'}>{score}% match</Chip>
+  )
+}
+
+type CoCandidate = {
+  n: string
+  role: string
+  exp: string
+  loc: string
+  match: number
+  applied: string
+  salary: string
+  cv: string
+}
+
+function ApplicantsScreen() {
+  const [sel, setSel] = useState<string | null>(null)
+  const cols: { stage: keyof typeof STAGE_TONE; people: CoCandidate[] }[] = [
+    {
+      stage: 'New',
+      people: [
+        { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV' },
+        { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên' },
+      ],
+    },
+    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV' }] },
+    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV' }] },
+    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV' }] },
+    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên' }] },
+  ]
+  // one flat lookup so the detail can render the candidate who was actually clicked
+  const picked = cols.flatMap((c) => c.people.map((p) => ({ ...p, stage: c.stage }))).find((p) => p.n === sel)
+  return (
+    <div className="relative">
       <PageBar
         title="Applicants"
         sub="Applications forwarded by Saramin after screening. Move candidates through your hiring stages."
         action={<span className="rounded-md border border-line px-3 py-1.5 text-[12px] text-muted">Job: Điều dưỡng viên (Khoa Nội) ▾</span>}
       />
-      <div className="grid grid-cols-5 gap-2 overflow-x-auto" style={{ minWidth: 720 }}>
+      <div className="grid grid-cols-5 gap-2 overflow-x-auto" style={{ minWidth: 980 }}>
         {cols.map((c) => (
-          <div key={c.stage} className="min-w-[130px] rounded-lg border border-line bg-canvas/40 p-2">
+          <div key={c.stage} className="min-w-[186px] rounded-lg border border-line bg-canvas/40 p-2">
             <div className="mb-2 flex items-center justify-between">
               <Chip tone={STAGE_TONE[c.stage]}>{c.stage}</Chip>
               <span className="text-[11px] font-bold text-faint">{c.people.length}</span>
             </div>
             {c.people.map((p) => (
-              <div key={p.n} className="mb-1.5 rounded-md border border-line bg-surface p-2">
-                <p className="truncate text-[11.5px] font-semibold text-ink">{p.n}</p>
-                <p className="text-[10.5px] text-muted">{p.exp}</p>
-                <span className="mt-1 inline-block text-[10px] font-medium text-brand">View CV →</span>
+              <div key={p.n} onClick={() => setSel(p.n)} className="mb-1.5 cursor-pointer rounded-md border border-line bg-surface p-2 hover:border-brand/40">
+                {/* photo + who they are — enough to judge the card without opening it */}
+                <div className="flex items-start gap-2">
+                  <Avatar name={p.n} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11.5px] font-semibold text-ink">{p.n}</p>
+                    <p className="truncate text-[10.5px] text-muted">{p.role} · {p.exp}</p>
+                  </div>
+                </div>
+                <div className="mt-1.5 space-y-0.5 text-[10px] text-muted">
+                  <p className="truncate">📍 {p.loc}</p>
+                  <p className="truncate">💰 Mong muốn {p.salary}</p>
+                  <p className="truncate">📄 {p.cv}</p>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between gap-1">
+                  <Match score={p.match} />
+                  <span className="shrink-0 text-[10px] text-faint">{p.applied}</span>
+                </div>
               </div>
             ))}
           </div>
         ))}
       </div>
       <p className="mt-3 text-[11px] text-faint">Every application is screened by Saramin before it reaches you. Drag a candidate to change stage.</p>
+
+      {/* ── candidate detail — the application record: CV + profile info + stage actions ── */}
+      {picked && (
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-4">
+          <div className="flex max-h-[620px] w-full max-w-[880px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Avatar name={picked.n} big />
+                <div>
+                  <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{picked.n} <Match score={picked.match} /></p>
+                  <p className="text-[11px] text-muted">Điều dưỡng viên (Khoa Nội) · applied {picked.applied} · <span className="text-emerald-600">✓ Screened by Saramin</span></p>
+                </div>
+              </div>
+              <span className="cursor-pointer text-faint" onClick={() => setSel(null)}>✕</span>
+            </div>
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_210px]">
+              {/* left: the FULL CV, rendered in place — no extra click, no separate
+                  viewer. A recruiter decides from the document, so the document is
+                  what the panel opens on. */}
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">CV — {picked.cv} (full document)</p>
+                  <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">⬇ Download PDF</span>
+                </div>
+                <div className="space-y-3 rounded-lg border border-line bg-canvas/30 p-4">
+                  {/* CV header */}
+                  <div className="border-b border-line-soft pb-2">
+                    <p className="text-[14px] font-bold text-ink">{picked.n}</p>
+                    <p className="text-[11.5px] text-muted">{picked.role} · {picked.loc} · {picked.exp}</p>
+                    <p className="mt-0.5 text-[10.5px] text-faint">✉ hoa.nguyen@email.com · 📞 0901 xxx xxx · 🎂 1998</p>
+                  </div>
+                  {/* objective */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Mục tiêu nghề nghiệp</p>
+                    <p className="text-[11px] leading-relaxed text-ink">Tìm vị trí {picked.role.toLowerCase()} tại bệnh viện đa khoa để phát triển chuyên môn chăm sóc nội khoa, hướng tới vai trò điều dưỡng trưởng trong 3–5 năm.</p>
+                  </div>
+                  {/* experience — full entries with responsibilities */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Kinh nghiệm làm việc</p>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[11.5px] font-semibold text-ink">{picked.role} · BV Nhân dân Gia Định</p>
+                        <p className="text-[10.5px] text-faint">03/2023 – nay · Hồ Chí Minh</p>
+                        <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[11px] leading-relaxed text-ink/80">
+                          <li>Chăm sóc 20–25 bệnh nhân nội khoa mỗi ca, theo dõi sinh hiệu và diễn tiến bệnh.</li>
+                          <li>Thực hiện tiêm truyền, lấy mẫu xét nghiệm, chuẩn bị bệnh nhân trước thủ thuật.</li>
+                          <li>Ghi chép và bàn giao hồ sơ bệnh án theo quy trình JCI của khoa.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-[11.5px] font-semibold text-ink">Điều dưỡng viên · PK Đa khoa Vạn Hạnh</p>
+                        <p className="text-[10.5px] text-faint">07/2021 – 02/2023 · Hồ Chí Minh</p>
+                        <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[11px] leading-relaxed text-ink/80">
+                          <li>Tiếp nhận, phân loại và hướng dẫn bệnh nhân ngoại trú.</li>
+                          <li>Hỗ trợ bác sĩ trong khám và tiểu thủ thuật; quản lý vật tư y tế của phòng.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  {/* education */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Học vấn</p>
+                    <p className="text-[11.5px] font-semibold text-ink">Cử nhân Điều dưỡng · ĐH Y Dược TP.HCM</p>
+                    <p className="text-[10.5px] text-faint">2017 – 2021 · GPA 3.2/4.0</p>
+                  </div>
+                  {/* skills */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Kỹ năng</p>
+                    <div className="flex flex-wrap gap-1">
+                      {['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án', 'Giao tiếp bệnh nhân', 'Sơ cấp cứu', 'Điều dưỡng hậu phẫu'].map((s) => (
+                        <Chip key={s}>{s}</Chip>
+                      ))}
+                    </div>
+                  </div>
+                  {/* certificates + languages */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Chứng chỉ</p>
+                      <p className="text-[11px] text-ink">Chứng chỉ hành nghề điều dưỡng (2021)</p>
+                      <p className="text-[11px] text-ink">Hồi sức cấp cứu cơ bản – BLS (2024)</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Ngoại ngữ</p>
+                      <p className="text-[11px] text-ink">Tiếng Anh · giao tiếp cơ bản</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* right: application info + actions */}
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Contact</p>
+                  <p className="text-[11.5px] text-ink">✉ hoa.nguyen@email.com</p>
+                  <p className="text-[11.5px] text-ink">📞 0901 xxx xxx</p>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Candidate info</p>
+                  <p className="text-[11.5px] text-muted">Expected salary: <b className="text-ink">{picked.salary}</b></p>
+                  <p className="text-[11.5px] text-muted">Availability: <b className="text-ink">1 month</b></p>
+                  <p className="text-[11.5px] text-muted">Location: <b className="text-ink">{picked.loc}</b></p>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Stage</p>
+                  <div className="space-y-1">
+                    {(['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected'] as const).map((s) => (
+                      <label key={s} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]', s === picked.stage ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted')}>{s}</label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Notes (team-visible)</p>
+                  <div className="h-14 rounded-md border border-line bg-canvas/40" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+              <Btn onClick={() => setSel(null)}>Close</Btn>
+              <Btn primary onClick={() => setSel(null)}>Save</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function ResumeSearchScreen() {
+  const [confirming, setConfirming] = useState(false)
+  const [viewing, setViewing] = useState(false)
   const cvs = [
-    { title: 'Điều dưỡng viên · 4 năm KN', loc: 'Hồ Chí Minh', updated: '2 days ago', unlocked: true, name: 'Nguyễn Thị H.' },
-    { title: 'Điều dưỡng trưởng · 7 năm KN', loc: 'Hồ Chí Minh', updated: '1 week ago', unlocked: false },
-    { title: 'Kỹ thuật viên xét nghiệm · 3 năm', loc: 'Bình Dương', updated: '3 weeks ago', unlocked: false },
-    { title: 'Bác sĩ đa khoa · 6 năm KN', loc: 'Hồ Chí Minh', updated: '1 month ago', unlocked: false },
+    { title: 'Điều dưỡng viên · 4 năm KN', loc: 'Hồ Chí Minh', updated: '2 days ago', unlocked: true, name: 'Nguyễn Thị H.', skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], salary: '12–15 tr', avail: 'Open now' },
+    { title: 'Điều dưỡng trưởng · 7 năm KN', loc: 'Hồ Chí Minh', updated: '1 week ago', unlocked: false, skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], salary: '20–25 tr', avail: '1 month' },
+    { title: 'Kỹ thuật viên xét nghiệm · 3 năm', loc: 'Bình Dương', updated: '3 weeks ago', unlocked: false, skills: ['Xét nghiệm huyết học', 'Sinh hóa'], salary: '10–13 tr', avail: 'Open now' },
+    { title: 'Bác sĩ đa khoa · 6 năm KN', loc: 'Hồ Chí Minh', updated: '1 month ago', unlocked: false, skills: ['Khám nội tổng quát', 'Cấp cứu'], salary: 'Thỏa thuận', avail: '2 months' },
   ]
   return (
-    <div>
+    <div className="relative">
       <PageBar title="Resume search" sub="Find and unlock candidate CVs from Saramin's talent pool." action={<Chip tone="blue">62 / 100 unlocks left</Chip>} />
       <div className="mb-3 flex items-center gap-2">
         <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">🔍 "điều dưỡng", skills, title…</div>
@@ -449,13 +632,15 @@ function ResumeSearchScreen() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
         <div className="space-y-3">
-          <p className="text-[12px] font-bold">Filters</p>
+          <div className="flex items-center justify-between"><p className="text-[12px] font-bold">Filters</p><span className="cursor-pointer text-[10.5px] text-brand">Clear all</span></div>
           {([
-            ['Industry', ['Healthcare', 'IT – Software', 'Finance']],
             ['Experience', ['1 – 3 years', '3 – 5 years', '5+ years']],
             ['Location', ['Hồ Chí Minh', 'Hà Nội', 'Bình Dương']],
+            ['Industry', ['Healthcare', 'IT – Software', 'Finance']],
             ['Education', ['College', 'Bachelor', 'Master']],
             ['Salary expectation', ['Under 15 tr', '15 – 30 tr', 'Over 30 tr']],
+            ['Availability', ['Open now', 'Within 1 month', '2+ months']],
+            ['Last updated', ['This week', 'This month', 'Any time']],
           ] as [string, string[]][]).map(([f, opts]) => (
             <div key={f}>
               <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">{f}</p>
@@ -471,25 +656,108 @@ function ResumeSearchScreen() {
           ))}
         </div>
         <div>
-          <p className="mb-3 text-[12px] text-muted"><b className="text-ink">248</b> candidates match</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[12px] text-muted"><b className="text-ink">248</b> candidates match</p>
+            <span className="text-[11px] text-muted">Sort: Best match ▾</span>
+          </div>
           <div className="space-y-2.5">
             {cvs.map((cv, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg border border-line p-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '👩‍⚕️' : '🔒'}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-semibold text-ink">{cv.unlocked ? cv.name : '••••••• (locked)'}</p>
-                  <p className="truncate text-[11.5px] text-muted">{cv.title}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5"><Chip>{cv.loc}</Chip><span className="text-[11px] text-faint">Updated {cv.updated}</span>{cv.unlocked && <Chip tone="green">Contact visible</Chip>}</div>
+              <div key={i} className="rounded-lg border border-line p-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '👩‍⚕️' : '🔒'}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12.5px] font-semibold text-ink">{cv.unlocked ? cv.name : '••••••• (unlock to see name & contact)'}</p>
+                    <p className="truncate text-[11.5px] text-muted">{cv.title}</p>
+                  </div>
+                  {cv.unlocked
+                    ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
+                    : <Btn primary onClick={() => setConfirming(true)}>🔓 Unlock · 1 credit</Btn>}
                 </div>
-                {cv.unlocked ? <Btn>View CV</Btn> : <Btn primary>🔓 Unlock · 1 CV</Btn>}
+                {/* locked PREVIEW — enough to judge fit, no PII */}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-[52px]">
+                  {cv.skills.map((s) => <Chip key={s}>{s}</Chip>)}
+                  <Chip tone="blue">{cv.loc}</Chip>
+                  <Chip tone="amber">💰 {cv.salary}</Chip>
+                  <Chip tone="green">🟢 {cv.avail}</Chip>
+                  <span className="text-[10.5px] text-faint">Updated {cv.updated}</span>
+                </div>
               </div>
             ))}
           </div>
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-            🔒 Unlocking a CV reveals PII and spends 1 unlock. Every unlock is logged.
+            🔒 The preview shows fit (title, skills, salary, availability) but never PII. Unlocking reveals name + contact + the full CV, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
           </div>
         </div>
       </div>
+
+      {/* ── unlock confirm — the paid moment, made explicit ── */}
+      {confirming && (
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-16">
+          <div className="w-full max-w-[400px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="p-5 text-center">
+              <p className="text-[24px]">🔓</p>
+              <p className="mt-1 text-[15px] font-bold text-ink">Unlock this CV?</p>
+              <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Điều dưỡng trưởng · 7 năm KN · HCMC. You’ll see the candidate’s name, contact details and full CV.</p>
+              <div className="mx-auto mt-3 flex max-w-[240px] items-center justify-between rounded-lg border border-line px-3 py-2 text-[12px]">
+                <span className="text-muted">Cost</span><b className="text-ink">1 credit</b>
+              </div>
+              <div className="mx-auto mt-1.5 flex max-w-[240px] items-center justify-between rounded-lg border border-line px-3 py-2 text-[12px]">
+                <span className="text-muted">Balance after</span><b className="text-ink">61 / 100</b>
+              </div>
+              <p className="mt-2 text-[10.5px] text-faint">Unlocks are pooled across your team · this unlock is logged · re-viewing is free.</p>
+            </div>
+            <div className="flex justify-center gap-2 border-t border-line px-4 py-3">
+              <Btn onClick={() => setConfirming(false)}>Cancel</Btn>
+              <Btn primary onClick={() => { setConfirming(false); setViewing(true) }}>Unlock · 1 credit</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── full CV view — after unlock ── */}
+      {viewing && (
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-4">
+          <div className="flex max-h-[560px] w-full max-w-[620px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-canvas text-[15px]">👩‍⚕️</span>
+                <div>
+                  <p className="flex items-center gap-1.5 text-[14px] font-bold text-ink">Nguyễn Thị Hoa <Chip tone="green">Unlocked</Chip></p>
+                  <p className="text-[11px] text-muted">✉ hoa.nguyen@email.com · 📞 0901 234 567 · Hồ Chí Minh</p>
+                </div>
+              </div>
+              <span className="cursor-pointer text-faint" onClick={() => setViewing(false)}>✕</span>
+            </div>
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_190px]">
+              <div className="rounded-lg border border-line bg-canvas/30 p-4">
+                <p className="text-[13px] font-bold text-ink">Nguyễn Thị Hoa</p>
+                <p className="mb-2 text-[11px] text-muted">Điều dưỡng viên · 4 yrs · Hồ Chí Minh</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
+                <p className="text-[11px] text-ink">Điều dưỡng viên · BV Nhân dân Gia Định · 2023–nay</p>
+                <p className="mb-2 text-[11px] text-muted">Điều dưỡng viên · PK Đa khoa Vạn Hạnh · 2021–2023</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Education</p>
+                <p className="mb-2 text-[11px] text-ink">Cử nhân Điều dưỡng · ĐH Y Dược TP.HCM</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Skills</p>
+                <p className="text-[11px] text-ink">Chăm sóc nội khoa · Tiêm truyền · Hồ sơ bệnh án · Giao tiếp bệnh nhân</p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Candidate asks</p>
+                  <p className="text-[11.5px] text-muted">Salary: <b className="text-ink">12–15 tr</b></p>
+                  <p className="text-[11.5px] text-muted">Availability: <b className="text-ink">Open now</b></p>
+                  <p className="text-[11.5px] text-muted">Locations: <b className="text-ink">HCMC</b></p>
+                </div>
+                <div className="space-y-1.5">
+                  <Btn primary className="w-full">⬇ Download CV</Btn>
+                  <Btn className="w-full">✉ Contact candidate</Btn>
+                  <Btn className="w-full">＋ Add to a job pipeline</Btn>
+                </div>
+                <p className="text-[10px] text-faint">Unlocked by Linh Trần · 05/08/2026 · from the team pool. Contacting the candidate happens outside Saramin in Phase 1.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -795,6 +1063,36 @@ function ProductsQuotaScreen() {
       <p className="mt-3 text-[11px] leading-relaxed text-faint">
         Quota is shared by everyone on your team. Products appear here automatically once Saramin confirms your payment — you never pick them by hand.
       </p>
+
+      {/* ── usage history — every spend, who and what, so quota is never a mystery ── */}
+      <div className="mt-4 rounded-xl border border-line p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[12.5px] font-bold">Usage history</p>
+          <div className="flex gap-1.5">
+            {['All', 'Posting slots', 'CV unlocks'].map((f, i) => (
+              <span key={f} className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[10.5px] font-medium', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}>{f}</span>
+            ))}
+          </div>
+        </div>
+        <div className="divide-y divide-line-soft">
+          {([
+            ['🔓', 'CV unlock — Nguyễn Thị Hoa (Điều dưỡng viên)', 'Linh Trần', '05/08/2026', '−1 unlock · 62 left'],
+            ['📢', 'Job opened — Điều dưỡng viên (Khoa Nội)', 'Minh Phạm', '01/08/2026', '−1 slot · 7 left'],
+            ['🔓', 'CV unlock — Trần Văn B. (Kỹ thuật viên XN)', 'Linh Trần', '29/07/2026', '−1 unlock · 63 left'],
+            ['📢', 'Job opened — Bác sĩ Đa khoa', 'Minh Phạm', '25/07/2026', '−1 slot · 8 left'],
+            ['↩', 'Slot returned — job "Kế toán viện phí" closed early (policy)', 'System', '20/07/2026', '+1 slot · 9 left'],
+          ] as [string, string, string, string, string][]).map(([ic, what, who, when, delta]) => (
+            <div key={what} className="flex items-center gap-3 py-2 text-[11.5px]">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-canvas text-[12px]">{ic}</span>
+              <span className="min-w-0 flex-1 truncate text-ink/80">{what}</span>
+              <span className="shrink-0 text-muted">{who}</span>
+              <span className="shrink-0 tabular-nums text-faint">{when}</span>
+              <span className="shrink-0 font-medium tabular-nums text-ink">{delta}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[10.5px] text-faint">Every spend is attributed to the team member who made it. Slot-return rules are set by Saramin policy.</p>
+      </div>
     </div>
   )
 }

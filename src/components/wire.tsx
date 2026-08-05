@@ -93,7 +93,7 @@ export function JsHeader({ active }: { active?: string }) {
       </nav>
       <div className="ml-auto flex items-center gap-2">
         <Btn>Sign in</Btn>
-        <Btn primary>Sign up</Btn>
+        <Btn primary onClick={() => go('js-signup')}>Sign up</Btn>
         <span className="ml-1 hidden sm:inline text-[11px] text-faint">| For employers</span>
       </div>
     </div>

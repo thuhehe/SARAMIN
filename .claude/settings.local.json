@@ -12,7 +12,21 @@
       "WebSearch",
       "WebFetch(domain:faq.vietnamworks.com)",
       "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-search",
-      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-create-pages"
+      "mcp__dc04705d-0549-4d66-ae14-a8c9c19e4536__notion-create-pages",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(sed -i '' '160,306d' src/data/build/crm.ts)",
+      "Bash(sed -i '' -e 's|// 5 · Quotes|// 2 · Quotes|' -e 's|// 6 · Purchase orders|// 3 · Purchase orders|' -e 's|// 7 · Invoices|// 4 · Invoices|' -e 's|// 8 · Payments|// 5 · Payments|' -e 's|// 9 · Contracts|// 6 · Contracts|' src/data/build/crm.ts)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(nohup npm run dev)",
+      "Bash(echo \"started pid $!\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5173/)",
+      "mcp__visualize__read_me",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

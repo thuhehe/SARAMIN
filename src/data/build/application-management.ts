@@ -4,6 +4,16 @@ import type { BuildModule } from './types'
  * Application management — the apply flow and the three screens that watch an
  * application move.
  *
+ * ⚠️ STATUS MODEL IS UNDER REVIEW (Aug 2026). Requirement blocks 1–5 below are
+ * the decision doc, in reading order: (1) the client's own "AMS status model"
+ * document from Huyền, (2) what they then asked for — drop Layer 1, (3) our
+ * suggestion, (4) the resulting model, (5) what they must decide. Keep them
+ * short — a PM reads them to make a call, not to build from.
+ *
+ * Everything from "AS-SPECIFIED" onward is the model as written BEFORE that
+ * review, kept intact in case the client rejects the change. The buildable
+ * detail for the new model lives on the Admin "Application list" feature.
+ *
  * ONE application = one jobseeker + one job, and it carries TWO status
  * dimensions that must never be confused:
  *
@@ -33,16 +43,87 @@ export const applicationManagement: BuildModule = {
   owner: 'Luong',
   requirements: [
     {
+      label: '1 · What the client sent us — “AMS status model” (Huyền)',
+      text: 'Their document, summarised faithfully. 3 layers, 5 screening statuses. Nothing here is our opinion.',
+      table: {
+        cols: ['Layer', 'Statuses', 'Who sees it'],
+        rows: [
+          ['Layer 1 — LỌC (filter)', 'Waiting · Ready · NEI · Pending · Spam', 'Admin only'],
+          ['Layer 2 — GỬI (send)', 'Đã gửi NTD · Đã thu hồi (Recall)', 'Admin'],
+          ['Layer 3 — PHỄU NTD (funnel)', 'Chưa xem → Đã xem → Tiềm năng → Phỏng vấn → Nhận / Loại', 'Employer'],
+        ],
+      },
+      items: [
+        'Ready = sent to the employer immediately. There is no hold window, so a recall can only notify — it cannot un-send the email.',
+        'A risk score decides the status: 0–29 Ready · 60–89 Pending · 90+ Spam.',
+        'Spam is USER-level: one bad application blocks every application that person has, on every job.',
+        'Admin has 7 actions, incl. Mark ready, Approve hàng loạt, Đánh Spam, Gỡ Spam.',
+      ],
+    },
+    {
+      label: '2 · What the client then asked for',
+      text: 'After reviewing the document above, they asked to remove Layer 1 entirely — “this platform has no spam and no missing information”.',
+      items: [
+        'Delete Waiting, NEI, Pending and Spam — the whole filter layer.',
+        'No risk scoring, no admin review queue.',
+        'Apply = sent to the employer straight away. Layers 2 and 3 stay exactly as they are.',
+      ],
+    },
+    {
+      label: '3 · Our suggestion',
+      text: 'We agree with the scope — build no screening. We disagree on one thing only: do not delete the column from the database.',
+      table: {
+        cols: ['They asked', 'We suggest'],
+        rows: [
+          ['Delete Waiting', 'Agree — delete it'],
+          ['Delete NEI', 'Agree — becomes a “profile completeness” label (e.g. 3/4) that never blocks'],
+          ['Delete Pending', 'Agree — hide it, but keep the VALUE in the database'],
+          ['Delete Spam', 'Agree — no automatic detection. But keep a manual “Block user” button'],
+          ['No admin review before sending', 'Agree — admin acts only AFTER sending: Recall and Block'],
+        ],
+      },
+      items: [
+        'Why keep the unused column: if spam appears later, adding screening becomes a config change instead of a database migration.',
+        'Why keep Block user: one abusive account with no off switch is a support fire on day one.',
+      ],
+      warn: 'Their own document lists spam cases (§7) and warns that promotions attract mass AI-generated applications (§7.2). Worth confirming with Huyền whether those cases happened on THIS platform or on TopDev — it changes how safe “no spam” is as an assumption.',
+    },
+    {
+      label: '4 · The model, if you approve',
+      text: 'Two layers instead of three. One status column that nobody ever sees.',
+      table: {
+        cols: ['Layer', 'Values', 'Who changes it'],
+        rows: [
+          ['Screening (hidden)', 'always “passed” — reserved for later: pending · spam', 'Nobody, in this version'],
+          ['Status', 'Sent · Recalled · Blocked', 'Saramin admin'],
+          ['Stage', 'New → Reviewing → Shortlisted → Interview → Hired / Rejected', 'Employer'],
+        ],
+      },
+      items: [
+        'Apply → Sent → employer funnel. Admin can Recall one application, or Block a user (which recalls all of theirs).',
+        'Recalled is final — the candidate has to apply again.',
+        'Admin actions drop from 7 to 4: Recall · Block/Unblock user · Edit · Note.',
+      ],
+    },
+    {
+      label: '5 · What we need you to decide',
+      items: [
+        'Does blocking a user also pull back the applications already sent? We recommend YES.',
+        'Can a candidate apply to the same job twice? We recommend one live application per job, re-apply only after a recall.',
+        'When do we build screening if spam does show up? We recommend agreeing a trigger now — first abuse case, or the first promotion campaign.',
+      ],
+    },
+    {
       label: 'Apply flow (Jobseeker)',
       text: 'Quick apply with a selected CV — the jobseeker picks one of their existing CVs. No re-typing of profile data.',
       items: [
         'One application = one jobseeker + one job. Applying twice to the same job is blocked; the jobseeker is shown their existing application instead.',
-        'At apply time the jobseeker is told about the HQ gate: “screened by Saramin before it reaches the employer”.',
+        'At apply time the jobseeker is told about the HQ gate: “screened by Saramin before it reaches the employer”. UNDER v2 this line is removed — the application reaches the employer immediately, so promising a screening step would be untrue.',
       ],
     },
     {
-      label: 'TWO independent status dimensions per application',
-      text: 'The employer pipeline does not start until HQ forwards. The candidate-facing status is DERIVED from these two — never stored separately.',
+      label: 'AS-SPECIFIED — TWO independent status dimensions per application',
+      text: 'This is the model as written before the status-model review. The employer pipeline does not start until HQ forwards. The candidate-facing status is DERIVED from these two — never stored separately. SUPERSEDED by section 4 above if the client confirms: the new model keeps both dimensions but the HQ gate stops gating, and delivery (Sent / Recalled) becomes the second dimension instead of screening.',
       table: {
         cols: ['Dimension', 'Owned by', 'Values'],
         rows: [
@@ -54,8 +135,8 @@ export const applicationManagement: BuildModule = {
       items: ['Stage changes are logged: who moved it, when, from → to.'],
     },
     {
-      label: 'Screening status (HQ gate)',
-      text: 'screeningStatus is HQ-owned — the only status HQ can write. Every value carries its own rule.',
+      label: 'AS-SPECIFIED — Screening status (HQ gate)',
+      text: 'screeningStatus is HQ-owned — the only status HQ can write. Every value carries its own rule. SUPERSEDED by section 4 above: in the new model this column survives but only ever holds `passed`, and Pending / Rejected-by-HQ are never written.',
       table: {
         cols: ['Status', 'Means', 'Rule'],
         rows: [
@@ -136,13 +217,75 @@ export const applicationManagement: BuildModule = {
               { name: 'cvId', type: 'ref → CV', required: true, notes: 'radio list of the candidate’s CVs (file name + last-updated). Pre-selects the primary CV. Phase-1 = one primary CV — see Resume management.' },
               { name: 'upload new CV', type: 'file (pdf/doc)', notes: 'inline escape hatch — a CV uploaded here is also saved to My CVs, never an orphan one-off file' },
               { name: 'coverMessage', type: 'text (optional)', notes: 'short note to the employer; max 1,000 chars' },
-              { name: 'contact snapshot', type: 'derived (read-only)', notes: 'name / phone / email pulled from the profile — shown for confirmation, not editable here' },
-              { name: 'screening notice', type: 'static copy', required: true, notes: '"Your application is screened by Saramin before it reaches the employer" — the Phase-1 gate, disclosed at apply time' },
+              { name: 'fullName', type: 'string', required: true, notes: 'pre-filled from the profile and ALWAYS editable — a social login supplies a display name, a nickname or the wrong capitalisation often enough that a read-only name sends the employer the wrong one' },
+              { name: 'contactEmail', type: 'string', required: true, notes: 'what the employer gets. Defaults to the login email and stays editable even when the login email is provider-locked — see Job seeker user management for the loginEmail / contactEmail split' },
+              { name: 'loginEmail', type: 'derived (read-only)', notes: 'shown locked with the provider named ("🔒 Google") when it came from social sign-up — it is the identity key and cannot change' },
+              { name: 'phone', type: 'string', required: true, notes: 'NONE of the four social providers returns a phone number, so this is empty for every social sign-up and always has to be asked. The field VN recruiters actually use' },
+              { name: 'consent', type: 'checkbox', required: true, notes: '"I agree to share my profile & CV with this employer, per Saramin’s privacy policy" — the per-employer disclosure' },
             ],
+          },
+          {
+            group: '② Application information',
+            items: [
+              { name: 'location (province/city)', type: 'enum', required: true, notes: 'the one location field — a CV-search facet. NO district, NO street address (data-minimisation decision, see Resume management)' },
+              { name: 'yearsOfExperience', type: 'number', required: true, notes: 'pre-filled from the profile (onboarding), overridable' },
+              { name: 'highestDegree', type: 'enum', required: true, notes: 'pre-filled from the profile (onboarding)' },
+              { name: 'current title / level / industry', type: 'derived (never asked)', notes: 'DERIVED from the CV work history — never a form field. The demographic set (DOB, gender, nationality, marital status, current salary) is CUT platform-wide; see Resume management → field tiers' },
+            ],
+          },
+          {
+            group: '③ Desired job',
+            items: [
+              { name: 'desiredLocation', type: 'enum', required: true, notes: 'was the standalone "Preferred work location" field; now grouped with the rest of the preferences' },
+              { name: 'desiredLevel', type: 'enum', required: true },
+              { name: 'desiredSalary', type: 'int + unit', notes: 'optional — the most-requested employer filter that no CV supplies; nudged, never blocking' },
+              { name: 'availability', type: 'enum', notes: 'optional — Immediately · 2 weeks · 1 month · 2 months' },
+              { name: 'desiredIndustry / desiredField', type: 'enum / enum', required: true },
+            ],
+          },
+        ],
+        sections: [
+          {
+            heading: 'Profile confirmation — asked here, and only here',
+            text: 'The apply modal confirms the SLIM profile (the decided field set — NOT VietnamWorks’ demographic form), grouped into four numbered sections: ① Your CV (Hồ sơ của bạn) · ② Application information (contact + location + experience/education — pre-filled from onboarding) · ③ Desired job (Công việc mong muốn) · ④ Cover message. Apply time is where PHONE is asked: it is the moment of highest motivation AND the moment the data is actually needed, because the application is what delivers it. Demographics (DOB, gender, nationality, marital status), street address and current salary are CUT platform-wide — see Resume management → field tiers.',
+            table: {
+              cols: ['Field', 'Editable?', 'Why'],
+              rows: [
+                ['Full name', 'Always', 'Social logins supply display names, nicknames and odd capitalisation. This is the name the employer reads, so the candidate must be able to correct it.'],
+                ['Login email', 'Never, when provider-supplied', 'Email is the identity key — one account per address. Shown locked with the provider named.'],
+                ['Contact email', 'Always', 'The address employers use. Defaults to the login email; a candidate whose Google address is personal can point employers elsewhere without touching their identity.'],
+                ['Phone', 'Always', 'No social provider returns one, so it is always empty on a social sign-up. In Vietnam recruiters call before they email — this is the field that decides whether a candidate hears back.'],
+              ],
+            },
+            items: [
+              'PRE-FILLED, not blank. Every field the CV can supply arrives already filled from the extracted Candidate Profile — the candidate CONFIRMS, they do not type. This is what keeps a ~24-field form compatible with the module principle “extract, don’t ask” (see Resume management): the objection is to heavy TYPING, not to a complete profile.',
+              'Grouped, never one long run. Six numbered sections, two fields per row. VietnamWorks proves the field count is workable in this market; the grouping is what makes it scannable.',
+              'Asked ONCE. After the first successful apply the sections collapse to a read-back — “Applying as Trần Minh Anh · minhanh@email.com · 09xx xxx xxx — Change” — expanding only on Change. A ~24-field form the candidate meets on every application would be fatal; met once, it is the profile they never have to fill separately.',
+              'Confirming writes back to the profile, so the answer is captured permanently rather than per-application.',
+              'Labels only — no helper copy, no reassurance paragraphs. A field that needs a sentence of explanation is a field that is wrongly labelled.',
+            ],
+          },
+          {
+            heading: 'When it is asked again',
+            text: 'Neither once-forever nor every time. The block re-expands when, and only when:',
+            table: {
+              cols: ['Trigger', 'Why'],
+              rows: [
+                ['A required field is empty', 'The application cannot be delivered without it.'],
+                ['Phone is unverified', 'Only if OTP ships — see open questions.'],
+                ['Last confirmed > 6–12 months ago', 'Numbers and addresses go stale; a recruiter calling a dead line is the failure this prevents.'],
+                ['An employer reported the number unreachable', 'A signal the stored value is wrong.'],
+              ],
+            },
+            items: ['In every other case the candidate sees the compact read-back and submits without a form.'],
           },
         ],
         behaviors: [
           'Apply is reachable only from a job that is Open + Exposure On (see Job management); a Closed or hidden job shows the job page with no Apply button.',
+          'On a first apply the contact block is expanded and pre-filled; on later applies it is a one-line read-back with a Change link.',
+          'The name field is editable on every apply, including repeat ones via Change — it is never locked.',
+          'A provider-locked login email is shown greyed with the provider named, alongside a "use a different email for employers" affordance rather than a dead end.',
+          'Editing a contact field and submitting updates the profile in the same request — the candidate is never asked to go and update their profile separately.',
           'A guest who taps Apply is sent to sign-in / sign-up and returned here with the job kept.',
           'A candidate with no CV yet is routed to Create CV first, then back here with the new CV pre-selected.',
           'Submitting creates the application with screeningStatus = Pending and NO stage yet — the employer queue has not started.',
@@ -152,6 +295,10 @@ export const applicationManagement: BuildModule = {
         rules: [
           'One application per (jobseeker, job). A second attempt is blocked and resolves to the existing application — never a duplicate row.',
           'A CV is required; a cover message is not.',
+          'An application is never delivered without a name, a contact email and a phone number — the three are required at apply time, server-side.',
+          'The login email can never be changed from this screen; it is the identity key. Only the contact email is writable.',
+          'Confirming contact details writes them to the jobseeker profile. Apply-time capture is a shortcut to the profile, not a parallel store — there is exactly one name, contact email and phone per candidate.',
+          'The CV is snapshotted, but contact details resolve LIVE from the profile: a candidate who changes their number must become reachable on the new one, including on applications already sent. Changes are audited so "what the employer saw" stays answerable.',
           'Apply is rejected server-side if the job is not Open + Exposure On, or if the deadline has passed — the client-side guard is not the control.',
           'The CV is snapshotted onto the application: later edits to the candidate’s CV do not silently change what the employer already received.',
           'A match-score snapshot is written at apply time so it is stable and auditable (see Resume management → CV data & matching architecture).',
@@ -159,6 +306,11 @@ export const applicationManagement: BuildModule = {
         states: [
           'Guest (must sign in)',
           'No CV yet (routed to Create CV)',
+          'Contact confirm — first apply (expanded, pre-filled)',
+          'Contact confirm — social login (email locked, phone empty)',
+          'Contact confirm — repeat apply (collapsed read-back)',
+          'Contact confirm — re-asked (stale / empty / reported unreachable)',
+          'Contact validation error (missing phone, malformed email)',
           'Ready to submit',
           'Submitting',
           'Success (screening explained)',
@@ -179,24 +331,42 @@ export const applicationManagement: BuildModule = {
             { name: 'stage', type: 'enum?', notes: 'null until forwarded, then new|reviewing|shortlisted|interview|hired|rejected' },
             { name: 'matchScore', type: 'number?', notes: 'snapshotted at apply time' },
             { name: 'appliedAt', type: 'timestamp', required: true },
+            { name: 'contactConfirmedAt', type: 'timestamp?', notes: 'on the JOBSEEKER, not the application — drives the "asked once" behaviour and the staleness re-prompt' },
+            { name: 'ContactChangeLog', type: 'entity', notes: 'jobseekerId, field(fullName|contactEmail|phone), oldValue, newValue, changedAt, source(apply|profile) — because contact details resolve live, this is what makes "what the employer saw" answerable' },
           ],
           endpoints: [
-            'POST /applications { jobId, cvId, coverMessage }',
+            'POST /applications { jobId, cvId, coverMessage, contact: { fullName, contactEmail, phone } } — contact is upserted onto the profile in the same transaction',
             'GET /jobseeker/cvs — CV picker',
-            'GET /jobs/:id/apply-eligibility — already applied? / still open?',
+            'GET /jobs/:id/apply-eligibility — already applied? / still open? / contact confirmation needed?',
+            'PATCH /jobseeker/contact { fullName, contactEmail, phone } — the same write, from the profile screen',
           ],
-          notes: 'Creating an application emits an event the HQ screening queue listens to. The unique (jobseekerId, jobId) index is the real duplicate guard.',
+          notes:
+            'Creating an application emits an event the HQ screening queue listens to. The unique (jobseekerId, jobId) index is the real duplicate guard. Contact details are written to the jobseeker in the SAME transaction as the application, so a submitted application can never reference contact data that failed to save. The apply-eligibility response tells the client whether to expand the contact block or render the read-back, so the "ask once" rule is decided server-side rather than by client state that a new device would get wrong.',
         },
         acceptance: [
           'A candidate with an existing CV can apply in one screen without typing profile data.',
           'Applying twice to the same job never creates a second application — the UI shows the existing one.',
           'A submitted application appears in the HQ screening queue as Pending and is NOT visible to the company.',
-          'The screening notice is visible before submit, not only after.',
+          'The screening gate is disclosed before submit, not only after — PLACEMENT UNRESOLVED: the notice was removed from the modal body in the current wireframe and has not been re-placed. See open questions.',
+          'A social-login candidate applying for the first time is asked for a phone number, because no provider supplied one.',
+          'A candidate can correct a name that came from their social provider, and the employer receives the corrected name.',
+          'The login email cannot be edited from the apply screen; the contact email can.',
+          'A second apply shows a one-line contact read-back, not a form.',
+          'Contact details confirmed at apply time appear in the candidate’s profile afterwards, with no second step.',
+          'An application cannot be submitted with an empty phone number, enforced server-side.',
         ],
         openQuestions: [
           'Is the cover message shown to employers in Phase-1, or only captured for later?',
           'Can a candidate withdraw an application, and if so up to which stage?',
           'Should apply be blocked for a job the candidate was already Rejected on, or allowed after a cool-down?',
+          'DECISION TAKEN, needs client sign-off: contact details resolve LIVE while the CV stays a snapshot — so a candidate who updates their phone becomes reachable on already-sent applications. The alternative (snapshot contact too) is more auditable but leaves recruiters calling dead numbers. Confirm which the client wants.',
+          'ASSUMED, needs confirmation: a failed phone OTP does NOT block submission — the number is captured and marked unverified, and the employer sees "phone unverified". Blocking on an SMS that did not arrive loses the candidate at the moment they decided to convert, and applying is already gated on account verification. Does the client accept unverified phones reaching employers?',
+          'BLOCKER — where does the "screened by Saramin before it reaches the employer" notice go? It was removed from the apply modal, but the module requirements still commit to disclosing the HQ gate at apply time, and a candidate who is not told will read the screening delay as the employer ignoring them. Options: the footer beside Submit, the success screen, or drop the commitment.',
+          'RESOLVED (2026-08-05): nationality, marital status, gender and DOB are NOT collected — cut platform-wide with the slim-profile decision (Resume management → field tiers). Only revisit if the client explicitly requests age data; then at most an optional birth year.',
+          'The apply form is now ~24 fields. If the CV parser is not live in Phase-1, most arrive EMPTY rather than pre-filled — which turns "confirm your profile" into "fill 24 fields to apply". Is the full form gated on extraction being live, or do we ship a reduced Phase-1 set?',
+          'How long before a confirmation goes stale — 6 months or 12?',
+          'Should the employer see that a phone number is unverified, or is that internal only?',
+          'Is there a route for an employer to report a number as unreachable, which is what triggers the re-prompt?',
         ],
       },
     },
@@ -209,115 +379,132 @@ export const applicationManagement: BuildModule = {
       mockup: 'admin-job-applicants',
       detail: {
         description:
-          'HQ’s cross-company view of every application, and the home of the Phase-1 screening queue. Two jobs in one screen: work the Pending queue (forward or reject each application before the employer sees it), then audit quality across all companies afterwards. HQ never moves a candidate through the employer’s own pipeline — past the screening gate this list is read-only.',
+          'HQ’s cross-company view of every application. Written to STATUS MODEL v2 (see the module requirements): there is no screening queue and no pre-send gate — an application reaches the employer the moment it is submitted. HQ’s job here is oversight after the fact: read what the employer sees, pull a bad application back (Recall), or shut an abusive account off (Block). HQ never moves a candidate through the employer’s own pipeline.',
         userStory:
-          'As an HQ operator, I want to screen incoming applications and see every application across all companies, so that employers only receive genuine candidates and we can spot quality problems early.',
+          'As an HQ operator, I want one list of every application across all companies with both status dimensions visible, so that I can spot a problem after it has gone out and pull it back or block the account.',
         uiFields: [
           {
-            group: 'Queue & filters',
+            group: 'Filters',
             items: [
-              { name: 'tab', type: 'enum', required: true, notes: 'Screening queue (screeningStatus = Pending) · All applications' },
               { name: 'search', type: 'string', notes: 'candidate name / email / job title / company' },
+              { name: 'status', type: 'enum', notes: 'Sent · Recalled · Blocked — the Saramin-owned dimension' },
+              { name: 'stage', type: 'enum', notes: 'New · Reviewing · Shortlisted · Interview · Hired · Rejected — the employer-owned funnel' },
               { name: 'company', type: 'ref → Company', notes: 'HQ-only filter — the company side never has this' },
-              { name: 'job', type: 'ref → Job' },
-              { name: 'screeningStatus', type: 'enum', notes: 'Pending · Forwarded · Rejected by HQ' },
-              { name: 'stage', type: 'enum', notes: 'New · Reviewing · Shortlisted · Interview · Hired · Rejected — only meaningful once forwarded' },
+              { name: 'location', type: 'enum' },
+              { name: 'CV type', type: 'enum', notes: 'Saramin CV · Uploaded file' },
               { name: 'appliedAt range', type: 'date range' },
-              { name: 'sort', type: 'enum', notes: 'default applied-desc; oldest-first is the useful order for the queue (SLA)' },
+              { name: 'sort', type: 'enum', notes: 'default applied-desc. No SLA ordering — there is no queue to work' },
             ],
           },
           {
-            group: 'Row',
+            group: 'Row — TWO status columns, different owners',
             items: [
               { name: 'candidate', type: 'ref → Jobseeker', required: true, notes: 'name + masked contact; full contact and the CV need an explicit, audited open' },
-              { name: 'job', type: 'ref → Job', required: true },
-              { name: 'company', type: 'ref → Company', required: true },
-              { name: 'screeningStatus', type: 'badge', required: true },
-              { name: 'stage', type: 'badge', notes: 'em-dash while screeningStatus = Pending — the pipeline has not started' },
-              { name: 'matchScore', type: 'derived', notes: 'basic match in Phase-1' },
-              { name: 'appliedAt / waitingFor', type: 'timestamp / derived', notes: 'age of a Pending row — the screening SLA signal' },
-              { name: 'actions', type: 'buttons', notes: 'Open CV (audited) · Forward · Reject — the two decisions appear only on Pending rows' },
+              { name: 'snapshot', type: 'derived', notes: 'role · years / location · education — enough to recognise the person without opening the CV' },
+              { name: 'job / company', type: 'ref → Job / ref → Company', required: true },
+              { name: 'cv', type: 'file', notes: 'file name + whether it is a Saramin CV or an uploaded file' },
+              { name: 'status', type: 'badge', required: true, notes: 'Saramin-owned: Sent · Recalled · Blocked. Labelled "Status · Saramin" in the header so the owner is unambiguous' },
+              { name: 'stage', type: 'badge', notes: 'employer-owned, read-only. Labelled "Stage · employer". Renders an EM-DASH when status ≠ Sent — a recalled or blocked CV is off the dashboard, so the funnel no longer applies' },
+              { name: 'appliedAt', type: 'timestamp' },
             ],
           },
         ],
         sections: [
           {
-            heading: 'Status options — screeningStatus (HQ-owned, the only status HQ can write)',
+            heading: 'Status options — status (Layer 2, Saramin-owned)',
             items: [
-              'Pending — the default on submit. The application exists but the company cannot see it. This is the queue.',
-              'Forwarded — HQ passed it. Sets stage = New and hands ownership to the company. Irreversible except by an audited re-open.',
-              'Rejected by HQ — HQ stopped it. A reason code is mandatory. It never reaches the company and never gets a stage.',
+              'Sent — written at apply, after two synchronous hard checks: the user is not blocked, and has no live application to this job. The employer sees it immediately.',
+              'Recalled — HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again.',
+              'Blocked — the user was blocked; every application of theirs was bulk-recalled. User-level, not application-level.',
+              'screeningStatus (Layer 1) is NOT shown: it is always `passed` in v2, so a column of identical badges would be noise.',
             ],
           },
           {
-            heading: 'Status options — stage (company-owned, read-only for HQ)',
+            heading: 'Status options — stage (Layer 3, company-owned, read-only for HQ)',
             items: [
-              'New — forwarded and untouched by the recruiter.',
+              'New — sent and untouched by the recruiter.',
               'Reviewing — the recruiter is reading the CV.',
               'Shortlisted — kept for the next round.',
               'Interview — interviewing; the employer contacts the candidate directly (no scheduling in Phase-1).',
               'Hired — terminal, the successful outcome.',
-              'Rejected — terminal, employer-side (distinct from Rejected by HQ, which is a screening decision).',
+              'Rejected — terminal, employer-side. In v2 there is no "Rejected by HQ" to confuse it with.',
               'HQ shows these badges but can never write them — hovering explains "owned by the company".',
+            ],
+          },
+          {
+            heading: 'Applicant detail — oversight, not a gate',
+            text: 'Opening a row shows the same information the employer has. There is no Approve and no Reject: the employer already holds this CV.',
+            items: [
+              'Labels, never blocking: độ phù hợp (match), mức hoàn thiện hồ sơ (e.g. 3/4), kênh liên hệ, nguồn dữ liệu.',
+              'Actions: Recall · Block user · Edit · Note. Recall and Block both open a confirmation step before they run.',
+              'Recall warns plainly that the employer’s email cannot be un-sent — recall removes the CV from the dashboard and notifies.',
+              'Block requires a reason code and states its blast radius: future applies rejected, and every sent application recalled across every job.',
             ],
           },
         ],
         behaviors: [
-          'The screening queue defaults to oldest-first: the longest-waiting candidate is the next one to screen.',
-          'Forward sets screeningStatus = Forwarded and creates the employer pipeline at stage = New — this is the moment the company can see the application.',
-          'Reject sets screeningStatus = Rejected with a required reason; the application never reaches the company.',
-          'Bulk forward / bulk reject on selected Pending rows, with the same reason requirement on reject.',
+          'The list has NO status tabs — the filter row is the only way to narrow it. One control set covers every combination, instead of tabs and filters overlapping on the same field.',
+          'A one-line legend above the table names both owners, because two status badges on one row is exactly where a reader guesses wrong.',
+          'Recall removes the CV from the employer dashboard and notifies them; it cannot un-send the original email.',
+          'Block user is user-level: it rejects future applies and bulk-recalls every sent application the user has, across all companies.',
+          'Unblock lets the user apply again but does NOT resurrect recalled applications.',
           'Opening a candidate’s CV or unmasking contact details is a PII action: it opens in a viewer and writes an audit entry (who, which candidate, when) — see Admin & access → Audit log.',
-          'Past the gate every stage badge is read-only for HQ.',
+          'Every stage badge is read-only for HQ, always.',
           'Export the filtered list (CSV) — itself an audited action, since the export carries PII.',
         ],
         rules: [
-          'HQ can set screeningStatus only. HQ can never write `stage` — that column belongs to the company.',
-          'A rejection reason is mandatory on Reject (a reason code is required; a free-text note is optional).',
-          'Screening decisions are irreversible in Phase-1 except by an explicit re-open, which is itself audited.',
+          'HQ can write `status` only. HQ can never write `stage` — that column belongs to the company — and never writes `screeningStatus`, which the system sets to `passed` at apply.',
+          'A reason code is mandatory on Block (free-text note optional). Recall captures an optional note.',
+          'Recalled is terminal: there is no Recalled → Sent transition.',
           'Candidate contact details are masked in the list; unmasking is per-row, deliberate and logged.',
           'HQ sees applications for all companies, including companies that are not yet activated.',
         ],
         states: [
           'Loading',
-          'Empty queue (nothing to screen)',
           'Empty (no applications at all)',
           'Filtered-empty',
-          'Bulk selection active',
-          'Reject reason required',
+          'Recall confirmation open',
+          'Block confirmation open (reason required)',
           'CV viewer open (audited)',
           'Export running',
         ],
         backend: {
           dataModel: [
-            { name: 'screeningStatus', type: 'enum', required: true, notes: 'pending|forwarded|rejected' },
-            { name: 'screenedBy / screenedAt', type: 'uuid / timestamp', notes: 'who cleared or rejected it' },
-            { name: 'rejectionReasonCode / rejectionNote', type: 'enum / text', notes: 'mandatory on HQ reject' },
-            { name: 'ApplicationStageLog', type: 'entity', notes: 'applicationId, from, to, actorId, actorSide(hq|company), at — one row per transition' },
+            { name: 'screeningStatus', type: 'enum', required: true, notes: 'v2: passed|blocked, written `passed` at apply. RESERVED values pending|spam exist in the enum from day one so Phase-2 screening needs no migration' },
+            { name: 'status (delivery)', type: 'enum', required: true, notes: 'sent|recalled — the only status HQ writes' },
+            { name: 'recalledBy / recalledAt / recallNote', type: 'uuid / timestamp / text?', notes: 'who pulled it back' },
+            { name: 'Jobseeker.blockedAt / blockedBy / blockReasonCode', type: 'timestamp? / uuid? / enum?', notes: 'on the JOBSEEKER, not the application — Block is user-level' },
+            { name: 'ApplicationStatusLog', type: 'entity', notes: 'applicationId, dimension(status|stage), from, to, actorId, actorSide(hq|company), reasonCode?, at — one row per transition' },
             { name: 'PiiAccessLog', type: 'entity', notes: 'actorId, applicationId, jobseekerId, action(view_cv|reveal_contact|export), at' },
           ],
           endpoints: [
-            'GET /admin/applications?tab=&company=&job=&screeningStatus=&stage=&from=&to=&page=',
-            'POST /admin/applications/:id/forward',
-            'POST /admin/applications/:id/reject { reasonCode, note }',
-            'POST /admin/applications/bulk { ids[], action, reasonCode? }',
+            'GET /admin/applications?status=&stage=&company=&location=&cvType=&from=&to=&page=',
+            'POST /admin/applications/:id/recall { note? }',
+            'POST /admin/jobseekers/:id/block { reasonCode, note? } — bulk-recalls every sent application in the same transaction',
+            'POST /admin/jobseekers/:id/unblock { note? }',
             'GET /admin/applications/:id/cv — streams the CV, writes a PII audit entry',
             'POST /admin/applications/export',
           ],
-          notes: 'Same Application entity as the company list — HQ differs only in row scope (all companies) and in write permission (screeningStatus only).',
+          notes:
+            'Same Application entity as the company list — HQ differs only in row scope (all companies) and in write permission (delivery status only). Apply must stay SYNCHRONOUS: it runs the blocked-user and duplicate-apply checks inline and writes `sent` in the same request. If a slow or failure-prone check is ever added, a queued state has to be reintroduced before it ships — that is what the deleted Waiting status was for.',
         },
         acceptance: [
-          'A Pending application is invisible to the company until HQ forwards it.',
-          'Forward creates the employer pipeline at New; the company list shows it immediately.',
-          'Reject without a reason is refused by the API, not just by the form.',
+          'A submitted application is visible to the company immediately — there is no state in which it exists but the employer cannot see it.',
+          'Both status columns are visible on every row and are labelled with their owner.',
+          'A recalled or blocked row shows an em-dash in the Stage column, not a stale badge.',
+          'Recall removes the CV from the company list and notifies the employer; it does not claim to un-send the email.',
+          'Blocking a user recalls every one of their sent applications across all companies, in one transaction.',
+          'Unblocking a user does not resurrect recalled applications.',
+          'Block without a reason code is refused by the API, not just by the form.',
           'Opening a CV writes an audit entry naming the operator and the candidate.',
           'No HQ action can change a stage set by the company.',
         ],
         openQuestions: [
-          'What is the screening SLA (hours), and should the queue warn when a row breaches it?',
-          'Who owns the fixed list of HQ rejection reason codes?',
-          'Is the candidate told an application was rejected at screening, and in what words?',
-          'Does screening survive Phase-1, or is it removed once employers trust the pool?',
+          'Does Block recall already-sent applications, or only stop future ones? BB recommends recall — see the module’s open questions.',
+          'Who owns the fixed list of Block reason codes?',
+          'Is the candidate told their application was recalled, or their account blocked, and in what words?',
+          'Does the employer see WHY a CV was recalled, or only that it was?',
+          'Phase-2 trigger: what event makes us build the screening layer that this list currently has no room for?',
         ],
       },
     },
@@ -348,9 +535,11 @@ export const applicationManagement: BuildModule = {
           {
             group: 'Applicant row / card',
             items: [
+              { name: 'photo', type: 'image (derived)', notes: 'the candidate’s profile image when they uploaded one; initials on a tinted circle otherwise. A face is what makes a board column scannable — never a required field, and never a screening criterion' },
               { name: 'candidate', type: 'ref → Jobseeker', required: true, notes: 'name, current role, years, location' },
-              { name: 'cv', type: 'file', required: true, notes: 'opens in a viewer; whether it can be downloaded depends on the company’s entitlement' },
-              { name: 'matchScore', type: 'derived', notes: 'basic match in Phase-1 (field overlap) — see Resume management' },
+              { name: 'cv', type: 'file', required: true, notes: 'the card shows which KIND arrived (Saramin CV · uploaded file); the full document renders in the detail panel. Downloading depends on the company’s entitlement' },
+              { name: 'desiredSalary', type: 'int + unit', notes: 'on the card — the first thing a recruiter checks before opening anything, and the most common silent mismatch' },
+              { name: 'matchScore', type: 'derived', notes: 'basic match in Phase-1 (field overlap) — see Resume management. On the card so a column can be worked highest-match-first instead of newest-first' },
               { name: 'stage', type: 'enum', required: true, notes: 'the only editable status on this screen' },
               { name: 'appliedAt / lastStageChange', type: 'timestamp / relative date', notes: '"waiting 6 days" is the pressure signal' },
               { name: 'internalNote', type: 'text', notes: 'visible to this company’s users only — never to the candidate, never in the HQ payload' },
@@ -434,7 +623,7 @@ export const applicationManagement: BuildModule = {
       name: 'My application',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
-      mockup: 'js-mypage',
+      mockup: 'js-applications',
       detail: {
         description:
           'The candidate’s list of everything they applied to, with the date applied and where it stands. The status shown here is DERIVED from the two internal dimensions (HQ screening + employer stage) — a label, not a third status column — so a candidate can never see something the recruiter disagrees with.',

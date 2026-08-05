@@ -24,19 +24,81 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Route', 'Document set', 'How the structured layer is produced'],
         rows: [
-          ['Upload (candidate or HQ)', 'original CV + generated Saramin CV', 'CV Convert pipeline — parse, extract, AI-tag, generate'],
+          ['Upload (candidate or HQ)', 'original CV; + generated Saramin CV only after the OPTIONAL convert offer', 'CV Convert pipeline — parse, extract, AI-tag, generate'],
           ['Builder (candidate or HQ)', 'generated Saramin CV only', 'the typed fields, plus AI tagging over the body'],
         ],
       },
       warn: 'Search, matching and the employer-facing CV all read the standard model — never the route. If a Builder resume behaves differently in CV search from an uploaded one, the boundary has leaked.',
     },
     {
+      label: 'DATA MODEL (decided): two tables — Profile + CV content',
+      text: 'One Profile per jobseeker (collected during onboarding, Saramin-KR style) plus up to 3 CVs whose content the user creates or uploads (VietnamWorks-style). Employer search & matching read the Profile PLUS the one searchable CV.',
+      table: {
+        cols: ['Table', 'Cardinality', 'Holds', 'Collected'],
+        rows: [
+          ['Profile', '1 per jobseeker', 'Identity (full name, phone, email, photo) + preferences: desired role, desired locations (≤3), total experience, education level, desired salary, availability, visibility consent', 'Onboarding wizard (required core) + later nudges (optional fields)'],
+          ['CV', 'up to 3 per jobseeker', 'Career content: summary, work experience[], education[], skills[], certifications[], languages[], projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
+        ],
+      },
+      items: [
+        'Exactly ONE CV is the searchable/main CV at any time; the other CVs are for applying to different kinds of jobs (e.g. tailored Dev vs Sales versions).',
+        'Visibility is ONE account-level switch (Discoverable / Hidden, Indeed-style) — no per-CV searchable toggles. "Searchable CV" only decides WHICH CV\'s content feeds search and which document an unlocking employer sees.',
+        'CV header (name, title, contact) is read from the Profile — never re-typed per CV.',
+        'Upload → convert: an uploaded PDF is parsed into the CV template; missing REQUIRED fields are flagged and gate applying (this is also the anti-spam quality gate). Uploading a file to attach to ONE application does not touch the searchable CV.',
+        'If Profile and a CV disagree, employer search reads Profile + the searchable CV — mismatches on the searchable CV are surfaced to the user, never silent.',
+      ],
+      warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table, not on the Profile. Search = Profile (identity + preferences) JOIN searchable CV (content).',
+    },
+    {
+      label: 'Add a new CV — ONE entry, two routes, shared everywhere',
+      text: 'Everywhere a candidate adds a CV — the My CVs page AND Apply → “Add a new CV” — opens the SAME flow: a single “Add new CV” action offering (1) Upload a CV or (2) Build a Saramin CV. The two surfaces must never diverge.',
+      table: {
+        cols: ['Step', 'What happens'],
+        rows: [
+          ['Upload a CV', 'AI reads the file and fills the Standard Resume — the candidate does NOT re-type what the CV already contains.'],
+          ['Review = COMPARE', 'A full-screen side-by-side: the uploaded PDF on the LEFT, the same information restructured as a Saramin CV on the RIGHT. Gaps are flagged inline in the structure (the candidate reads missing details straight off their own PDF); AI-SUGGESTED skills appear as one-tap add chips.'],
+          ['Document choice', 'Save my PDF only · Saramin CV only · BOTH (each saved document counts toward the 3-CV cap). The confirmed information is saved to the CV record regardless of the choice.'],
+          ['Build a Saramin CV', 'For candidates with no file: the guided builder produces the document + the Standard Resume directly (no extraction step).'],
+        ],
+      },
+      items: [
+        'Upload ACCEPTANCE gate (anti-spam): a file is accepted as a CV only if parsing yields at least SOME core career content (work experience OR education). A file with none — a blank page, an image-only scan, an unrelated document — is refused with a helpful path: build manually or upload a clearer file. Missing but less-critical fields (skills, summary) never refuse the upload; they are asked for in Review.',
+        'Saving an uploaded PDF as the CV document also SAVES the filled-in missing fields to the CV record — the structured layer is captured either way; “keep my PDF” never means “skip the data”.',
+        'Two tiers of missing fields in Review: REQUIRED (the CV is not usable / searchable without them — e.g. desired title, visibility consent) shown in red; RECOMMENDED (optional, boosts ranking — skill-years, languages, desired salary, availability) shown with an impact hint, never blocking.',
+        'One profile, many documents: the Standard Resume (the searchable / matchable layer) is SINGULAR and authoritative; a candidate may hold several CV DOCUMENTS (their original PDF + a Saramin version) and pick which to attach per application. This is the answer to “why not save two files?” — yes to two documents, no to two profiles.',
+      ],
+    },
+    {
+      label: 'Onboarding — CV-first, progressive, extract-don’t-ask',
+      text: 'Profile creation at sign-up is short and CV-first, NOT a VietnamWorks-style long form. AI extraction gives us rich search/matching data without heavy typing: collect a small core by hand, get the rest from the CV, nudge the optional extras over time.',
+      table: {
+        cols: ['Tier', 'Fields', 'How we get them'],
+        rows: [
+          ['Required (to start)', 'Full name · desired title · location (city) · contact · visibility consent', 'Asked — a tiny set'],
+          ['From AI (never ask)', 'Years of exp · occupation · industry · highest degree · skills · work history · education · languages', 'Extracted from the uploaded CV; DERIVE years & degree rather than asking'],
+          ['Recommended (nudge later)', 'Desired salary · availability · years-per-skill · benefits wanted', 'Progressive prompts with an impact hint (“+X% recruiter views”)'],
+          ['Optional / minimise', 'DOB · gender · nationality · marital status · street address · current salary · current title/level/industry · district · benefits wish-list', 'DROP: marital status, gender, nationality (VN default), current salary (desired salary is the signal), district, benefits picker. DERIVE current title/level/industry from the CV — never ask. DOB at most optional birth-year. Address = city only. Profile = the onboarding fields exactly — one form, one mental model, nothing asked twice.'],
+        ],
+      },
+      items: [
+        'Sign-up onboarding is a short GUIDED wizard (Saramin-KR style): job wanted → region → experience → education → get-seen, each step with a live job-count carrot. The LAST step shows matched jobs, then leads the candidate into creating their CV (upload or build — that fork lives on My CVs, not in onboarding).',
+        'Progressive & skippable: collect the minimum to start, let the candidate browse/apply immediately, then raise completeness over time. Nothing in onboarding blocks applying.',
+        'Motivate with carrots, not required-asterisks: show the payoff at each step (“12,400 jobs match your info so far”, “+40% recruiter views”) — the Saramin-KR pattern. This is also why a partly-filled profile reads as a guided to-do list, not a broken page.',
+      ],
+      warn: 'Do NOT rebuild VietnamWorks’ long basic-info form. Rich data comes from AI extraction + progressive nudges, never a wall of required fields at sign-up.',
+    },
+    {
       label: 'CV search is a DISCOVERY task first',
       text: 'How the CV pool is structured, indexed, searched and ranked must be researched before any build. See the “Resume list — Companies” feature.',
     },
     {
-      label: 'Do NOT burden candidates with heavy forms',
-      text: 'Unlike VietnamWorks, the structured data needed for matching and CV search is EXTRACTED from the uploaded CV by AI — not typed by the user. See “CV data & matching architecture”.',
+      label: 'Do NOT burden candidates with heavy TYPING',
+      text: 'The structured data needed for matching and CV search is EXTRACTED from the uploaded CV by AI — not typed by the user. See “CV data & matching architecture”.',
+      items: [
+        'The objection is to typing, NOT to a complete profile. The apply form collects the full profile (~24 fields, grouped) — every field the CV can supply arrives pre-filled, and the candidate confirms rather than types. See Application management → Apply flow.',
+        'Read the rule as: never ask for anything a CV already contains. A pre-filled field costs a glance; the same field blank costs a candidate.',
+      ],
+      warn: 'This rule DEPENDS on extraction being live. With the parser off, a pre-filled confirmation form degrades into a 24-field blank form at the exact moment a candidate is trying to apply — flagged as an open question on Apply flow.',
     },
     {
       label: 'Why we parse the CV into a structured database (not just store the PDF)',
@@ -108,6 +170,7 @@ export const resumeManagement: BuildModule = {
               { name: 'education', type: 'repeatable', notes: 'school, degree/major, from–to' },
               { name: 'skills', type: 'tags → taxonomy', required: true, notes: 'must resolve to the canonical Skill taxonomy, not free strings — otherwise search and matching silently fail' },
               { name: 'languages / certificates', type: 'repeatable', notes: 'optional' },
+              { name: 'optional sections', type: 'repeatable ×8', notes: 'Foreign Language · Highlight Project · Certificates · Awards · Activities · Publications · References · Recommendations — the SAME full section set as My Profile, added from the completeness rail. Each renders its real field form (one shared field catalogue with the profile edit sheets), so a CV built here can carry everything the profile can' },
               { name: 'template', type: 'enum', notes: 'a small set of layouts for the generated PDF' },
             ],
           },
@@ -125,15 +188,35 @@ export const resumeManagement: BuildModule = {
           {
             heading: 'Two routes, one object',
             items: [
-              'Upload → the file IS the CV employers read, and AI extraction produces the structured profile behind it. This is the path the platform optimises for.',
-              'Builder → the typed fields produce both a generated CV document (PDF) and the structured profile directly, with no extraction step and no confidence scores.',
+              'Upload → the mindset is “I want my PDF there, that’s it.” The file is saved as a CV in ONE step, byte-identical, immediately usable for applying. Conversion to a Saramin CV is an OFFER shown right after saving — never a step in the way. Accepting moves the candidate onto the create-Saramin-CV path with AI pre-fill; declining costs nothing, and the offer stays available from My CVs.',
+              'Create Saramin CV → the structured, searchable CV. The form can be filled two ways that land in IDENTICAL fields: typed manually, or pre-filled by uploading a PDF (“Upload & pre-fill”) — the PDF is just a faster pen. Output is a generated CV document plus the structured profile.',
+              'The post-upload convert offer and the Builder’s pre-fill option are two entrances to the SAME extraction flow and the same review/compare screen — one pipeline, never two.',
               'Downstream, nothing cares which route was used: an application attaches a CV document, and search reads the Candidate Profile. Keeping that boundary clean is what allows Phase-1 to ship without AI at all.',
               'Phase-1 without AI: an upload still produces a CV; the structured profile is then only what the candidate confirms in the light review step. Phase-2 turns extraction on and the review step gets shorter, not longer.',
             ],
           },
+          {
+            heading: 'Missing fields after a PDF upload — four tiers, one rule each',
+            text: 'Extraction WILL miss things — scanned pages, two-column layouts, dates written as "spring 2020". The policy is tiered by how much the missing piece matters, and the one global rule is: a gap never destroys the upload. The only hard gate is at the file level.',
+            table: {
+              cols: ['Tier', 'Example', 'What happens'],
+              rows: [
+                ['File unusable as a CV', 'No readable work experience AND no readable education', 'The upload is refused as a CV with a plain reason, and the candidate is offered the Builder instead. This is the ONLY blocking tier.'],
+                ['Core field unreadable', 'Employment dates, a job title, a school name', 'Flagged INLINE in the structured view, at the exact spot in the structure where it belongs, with an empty field to type into — while the PDF sits beside it, so the answer is on screen. Saving is still allowed with the gap open.'],
+                ['Optional section absent', 'Languages, projects, certificates, awards', 'Never flagged as an error — shown as compact “＋ Add” prompts. Absence of an optional section is normal, not a defect.'],
+                ['Contact field missing', 'Phone (no social provider returns one), email', 'Not this screen’s problem alone: the apply flow asks for name / email / phone before the first application is delivered (see Application management → Apply flow). That is the last net — a candidate can never reach an employer contactless.'],
+              ],
+            },
+            items: [
+              'Gaps are not free: an unfilled core field costs completeness score and search ranking, and the screen says so — the candidate is nudged with consequences, never blocked.',
+              'Every gap the candidate fills here is written to the structured profile only. The PDF is never modified — recruiters who download the original get the original.',
+              'The same tiering serves Phase-1 without AI: with the parser off, every core field is simply “unreadable” and the review step becomes the light manual form.',
+            ],
+          },
         ],
         behaviors: [
-          'Upload is pre-selected because it is the fastest route and the one that yields the best data.',
+          'Upload never forces conversion: the PDF is saved as a CV first, and “Also create a Saramin CV?” is asked after — a candidate who declines still has a complete, usable CV.',
+          'The convert offer is asked ONCE at save time and then lives as a quiet action on the CV card in My CVs — it is never a recurring nag.',
           'A file is validated for type and size before upload, with an explicit error rather than a silent failure.',
           'After upload, extraction runs and the candidate is shown only the low-confidence fields to confirm — a high-confidence extraction is not put in their way.',
           'Any extracted value is editable, and a user edit always beats the extracted value.',
