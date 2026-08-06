@@ -31,7 +31,7 @@ export function useDetailCrumb(label: string, onBack: () => void) {
 
 /* Cross-page record links. A quotation opened from the Purchase-order list must
    land on the QUOTATIONS page, not render inside Purchase order — otherwise the
-   breadcrumb reads "CRM / Purchase order / EST-…", naming the wrong module for
+   breadcrumb reads "CRM / Purchase order / QUO-…", naming the wrong module for
    the record you are looking at, and Back returns to the wrong list. So the link
    asks the shell to switch pages and pass the record to open. */
 export const ScreenNavCtx = createContext<(specId: string, record?: string) => void>(() => {})
@@ -1753,6 +1753,9 @@ type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'L
 type Account = 'New' | 'Existing' | 'Churn'
 type Company = {
   name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
+  /** Quốc tịch — where the company is REGISTERED. 'Việt Nam' is what reveals the
+      province picker; every country keeps a free-text address. */
+  country: string
   // Corporate tree. `parent` is the DIRECT parent's `name` — one parent only, any
   // depth (parent → subsidiary → sub-subsidiary). Undefined = a root: either the top
   // of a group, or a company that stands alone. Nothing is inherited down this link:
@@ -1767,101 +1770,101 @@ type Company = {
   hasPage: boolean; jobs: number; domain: string; since: string
 }
 const COMPANIES: Company[] = [
-  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 34, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
-  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
-  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
-  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 47, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
-  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 60, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
-  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
-  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 73, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
-  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 86, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
-  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 99, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
-  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
-  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 112, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
-  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
-  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
-  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
-  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
-  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
-  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
-  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
+  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', country: 'Việt Nam', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 34, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
+  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', country: 'Việt Nam', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
+  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', country: 'Việt Nam', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
+  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', country: 'Việt Nam', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 47, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
+  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', country: 'Việt Nam', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 60, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
+  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', country: 'Việt Nam', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
+  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', country: 'Việt Nam', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 73, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
+  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', country: 'Việt Nam', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 86, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
+  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', country: 'Việt Nam', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 99, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
+  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', country: 'Việt Nam', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
+  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', country: 'Việt Nam', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 112, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
+  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', country: 'Singapore', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
+  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', country: 'Việt Nam', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
+  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', country: 'Việt Nam', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
+  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
+  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', country: 'Việt Nam', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
+  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', country: 'Việt Nam', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
+  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', country: 'Việt Nam', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
   // ── Rot coverage: the rows below deliberately span fresh / amber / red for every
   // open stage, and across all three reps, so the Idle column can be read at a glance
   // in both Sales view and Sales-lead view. Thresholds are IDLE_AMBER / IDLE_RED above.
-  { name: 'Công ty CP Nam Long', shortName: 'Nam Long', legalName: 'Công ty Cổ phần Đầu tư Nam Long', tax: '0323xxxxxx', industry: 'Bất động sản', size: '500–1000', address: 'Quận 7, HCMC', contact: 'Ms. Đặng Kiều Oanh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-send quotation options', idle: 9, note: 'Asked us to circle back after Tết planning.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namlong.vn', since: '—' },
-  { name: 'Công ty TNHH Hòa Bình', shortName: 'Hòa Bình', legalName: 'Công ty TNHH Xây dựng Hòa Bình', tax: '0324xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Mr. Đinh Trọng Nghĩa · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — no reply in 2.5 weeks', idle: 18, note: 'Three follow-ups, no answer. Try the CFO.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoabinh.com.vn', since: '—' },
-  { name: 'Công ty CP Thương mại Vina', shortName: 'Vina Trading', legalName: 'Công ty Cổ phần Thương mại Vina', tax: '0325xxxxxx', industry: 'FMCG', size: '500–1000', address: 'Quận Bình Thạnh, HCMC', contact: 'Ms. Hoàng Diệu Linh · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase quotation feedback', idle: 12, note: 'Quotation sent; validity ends in 2 days.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinatrading.vn', since: '—' },
-  { name: 'Công ty TNHH An Phú Logistics', shortName: 'An Phú', legalName: 'Công ty TNHH Giao nhận An Phú', tax: '0326xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận 9, HCMC', contact: 'Mr. Lại Văn Bình', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation expired — reissue or close', idle: 26, note: 'Went silent after pricing. Decide: reissue or Lost.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'anphulog.vn', since: '—' },
-  { name: 'Công ty CP Tài chính Đại Tín', shortName: 'Đại Tín', legalName: 'Công ty Cổ phần Tài chính Đại Tín', tax: '0327xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Chu Thanh Vân · HR Director', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval timeline', idle: 30, note: 'Legal review dragging; needs a nudge.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'daitin.com.vn', since: '—' },
-  { name: 'Công ty CP Trường Sơn', shortName: 'Trường Sơn', legalName: 'Công ty Cổ phần Tập đoàn Trường Sơn', tax: '0328xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Đà Nẵng', contact: 'Mr. Tạ Quang Đạo · Giám đốc NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 52, note: 'Stalled past 45d — approval never came back.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '—' },
+  { name: 'Công ty CP Nam Long', shortName: 'Nam Long', legalName: 'Công ty Cổ phần Đầu tư Nam Long', country: 'Việt Nam', tax: '0323xxxxxx', industry: 'Bất động sản', size: '500–1000', address: 'Quận 7, HCMC', contact: 'Ms. Đặng Kiều Oanh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-send quotation options', idle: 9, note: 'Asked us to circle back after Tết planning.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namlong.vn', since: '—' },
+  { name: 'Công ty TNHH Hòa Bình', shortName: 'Hòa Bình', legalName: 'Công ty TNHH Xây dựng Hòa Bình', country: 'Việt Nam', tax: '0324xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Mr. Đinh Trọng Nghĩa · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — no reply in 2.5 weeks', idle: 18, note: 'Three follow-ups, no answer. Try the CFO.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoabinh.com.vn', since: '—' },
+  { name: 'Công ty CP Thương mại Vina', shortName: 'Vina Trading', legalName: 'Công ty Cổ phần Thương mại Vina', country: 'Việt Nam', tax: '0325xxxxxx', industry: 'FMCG', size: '500–1000', address: 'Quận Bình Thạnh, HCMC', contact: 'Ms. Hoàng Diệu Linh · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase quotation feedback', idle: 12, note: 'Quotation sent; validity ends in 2 days.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinatrading.vn', since: '—' },
+  { name: 'Công ty TNHH An Phú Logistics', shortName: 'An Phú', legalName: 'Công ty TNHH Giao nhận An Phú', country: 'Việt Nam', tax: '0326xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận 9, HCMC', contact: 'Mr. Lại Văn Bình', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation expired — reissue or close', idle: 26, note: 'Went silent after pricing. Decide: reissue or Lost.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'anphulog.vn', since: '—' },
+  { name: 'Công ty CP Tài chính Đại Tín', shortName: 'Đại Tín', legalName: 'Công ty Cổ phần Tài chính Đại Tín', country: 'Việt Nam', tax: '0327xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Chu Thanh Vân · HR Director', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval timeline', idle: 30, note: 'Legal review dragging; needs a nudge.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'daitin.com.vn', since: '—' },
+  { name: 'Công ty CP Trường Sơn', shortName: 'Trường Sơn', legalName: 'Công ty Cổ phần Tập đoàn Trường Sơn', country: 'Việt Nam', tax: '0328xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Đà Nẵng', contact: 'Mr. Tạ Quang Đạo · Giám đốc NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 52, note: 'Stalled past 45d — approval never came back.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '—' },
   // The one BRANCH in the mock — same 10-digit tax root as its parent, only the -001
   // suffix differs. That is what flips the affiliate badge from "Công ty con" to
   // "Chi nhánh"; nothing else about the record behaves differently. It still buys its
   // own package, is invoiced on its own tax code, and has its own sales owner.
-  { name: 'CN Trường Sơn — Hà Nội', shortName: 'Trường Sơn HN', legalName: 'Chi nhánh Công ty Cổ phần Tập đoàn Trường Sơn tại Hà Nội', tax: '0328xxxxxx-001', industry: 'Sản xuất', size: '200–500', address: 'Long Biên, Hà Nội', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Vân Khánh · HC-NS', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 21, note: 'Hires separately from HQ — own PO, own invoice.', revenue: 42_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '08/06/2025' },
-  { name: 'Công ty TNHH Hải Âu Travel', shortName: 'Hải Âu', legalName: 'Công ty TNHH Du lịch Hải Âu', tax: '0329xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Quận 1, HCMC', contact: 'Ms. Phùng Mỹ Hạnh · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Chase payment on PO', idle: 10, note: 'PO signed 19/07; payment not received yet.', revenue: 28_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'haiautravel.vn', since: '19/07/2026' },
-  { name: 'Công ty CP Tân Hưng Foods', shortName: 'Tân Hưng', legalName: 'Công ty Cổ phần Thực phẩm Tân Hưng', tax: '0330xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Long An', contact: 'Mr. Ngô Bá Thành · HC-NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Payment 24d overdue — escalate', idle: 24, note: 'Accounting has chased twice; no transfer.', revenue: 45_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 10, cvLeft: 50, cvTotal: 50, hasPage: false, jobs: 0, domain: 'tanhungfoods.vn', since: '05/07/2026' },
+  { name: 'CN Trường Sơn — Hà Nội', shortName: 'Trường Sơn HN', legalName: 'Chi nhánh Công ty Cổ phần Tập đoàn Trường Sơn tại Hà Nội', country: 'Việt Nam', tax: '0328xxxxxx-001', industry: 'Sản xuất', size: '200–500', address: 'Long Biên, Hà Nội', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Vân Khánh · HC-NS', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 21, note: 'Hires separately from HQ — own PO, own invoice.', revenue: 42_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '08/06/2025' },
+  { name: 'Công ty TNHH Hải Âu Travel', shortName: 'Hải Âu', legalName: 'Công ty TNHH Du lịch Hải Âu', country: 'Việt Nam', tax: '0329xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Quận 1, HCMC', contact: 'Ms. Phùng Mỹ Hạnh · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Chase payment on PO', idle: 10, note: 'PO signed 19/07; payment not received yet.', revenue: 28_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'haiautravel.vn', since: '19/07/2026' },
+  { name: 'Công ty CP Tân Hưng Foods', shortName: 'Tân Hưng', legalName: 'Công ty Cổ phần Thực phẩm Tân Hưng', country: 'Việt Nam', tax: '0330xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Long An', contact: 'Mr. Ngô Bá Thành · HC-NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Payment 24d overdue — escalate', idle: 24, note: 'Accounting has chased twice; no transfer.', revenue: 45_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 10, cvLeft: 50, cvTotal: 50, hasPage: false, jobs: 0, domain: 'tanhungfoods.vn', since: '05/07/2026' },
   // More Qualified cover — idle spans fresh / amber / red (8d / 15d) across all three reps
-  { name: 'Công ty CP Dệt may Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Dệt may Phương Nam', tax: '0331xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Quận 12, HCMC', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Hồng Nhung · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 4, note: 'Wants Basic Plus vs Basic breakdown.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuongnamtex.vn', since: '—' },
-  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 11, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
-  { name: 'Galaxy Media', shortName: 'Galaxy', legalName: 'Công ty Cổ phần Truyền thông Galaxy', tax: '0333xxxxxx', industry: 'Truyền thông', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Đặng Thảo My · TA Lead', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase — 3 calls unanswered', idle: 19, note: 'Went quiet after the discovery call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'galaxymedia.vn', since: '—' },
+  { name: 'Công ty CP Dệt may Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Dệt may Phương Nam', country: 'Việt Nam', tax: '0331xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Quận 12, HCMC', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Hồng Nhung · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 4, note: 'Wants Basic Plus vs Basic breakdown.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuongnamtex.vn', since: '—' },
+  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 11, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
+  { name: 'Galaxy Media', shortName: 'Galaxy', legalName: 'Công ty Cổ phần Truyền thông Galaxy', country: 'Việt Nam', tax: '0333xxxxxx', industry: 'Truyền thông', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Đặng Thảo My · TA Lead', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase — 3 calls unanswered', idle: 19, note: 'Went quiet after the discovery call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'galaxymedia.vn', since: '—' },
   // More Proposal cover — includes a quotation that has already lapsed past its 14-day validity
-  { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
-  { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
-  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 27, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
+  { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
+  { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
+  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 27, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
   // More Negotiation cover — long internal-approval cycles, so the reds run deep here
-  { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
-  { name: 'Công ty CP Bán lẻ Thiên Hà', shortName: 'Thiên Hà', legalName: 'Công ty Cổ phần Bán lẻ Thiên Hà', tax: '0338xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Đỗ Nhật Trường · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send v3 quote at 12% discount', idle: 26, note: 'Board meets month-end to approve.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thienharetail.vn', since: '—' },
-  { name: 'Công ty TNHH Bảo Sơn Group', shortName: 'Bảo Sơn', legalName: 'Công ty TNHH Tập đoàn Bảo Sơn', tax: '0339xxxxxx', industry: 'Bất động sản', size: '1000–5000', address: 'Nam Từ Liêm, Hà Nội', contact: 'Ms. Cao Quỳnh Anh · HR', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — 7 weeks silent', idle: 51, note: 'Sponsor left the company; no new contact.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'baosongroup.com', since: '—' },
+  { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
+  { name: 'Công ty CP Bán lẻ Thiên Hà', shortName: 'Thiên Hà', legalName: 'Công ty Cổ phần Bán lẻ Thiên Hà', country: 'Việt Nam', tax: '0338xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Đỗ Nhật Trường · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send v3 quote at 12% discount', idle: 26, note: 'Board meets month-end to approve.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thienharetail.vn', since: '—' },
+  { name: 'Công ty TNHH Bảo Sơn Group', shortName: 'Bảo Sơn', legalName: 'Công ty TNHH Tập đoàn Bảo Sơn', country: 'Việt Nam', tax: '0339xxxxxx', industry: 'Bất động sản', size: '1000–5000', address: 'Nam Từ Liêm, Hà Nội', contact: 'Ms. Cao Quỳnh Anh · HR', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — 7 weeks silent', idle: 51, note: 'Sponsor left the company; no new contact.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'baosongroup.com', since: '—' },
   // More PO cover — order confirmed, payment outstanding by varying degrees
-  { name: 'Công ty CP Vinh Quang Logistics', shortName: 'Vinh Quang', legalName: 'Công ty Cổ phần Vinh Quang Logistics', tax: '0340xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Bùi Xuân Trường · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Awaiting transfer — due 31/07', idle: 3, note: 'Order confirmed; bank details sent.', revenue: 31_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhquanglog.vn', since: '24/07/2026' },
-  { name: 'Lazada Việt Nam', shortName: 'Lazada', legalName: 'Công ty TNHH Recess (Lazada Việt Nam)', tax: '0341xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Trương Mỹ Hạnh · TA Lead', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '15/07/2026', renewal: '15/10/2026', nextStep: 'Chase payment — 12d out', idle: 12, note: 'Their finance runs a 30-day cycle.', revenue: 195_000_000, jobPosting: true, resumeSearch: true, jobLeft: 20, jobTotal: 20, cvLeft: 150, cvTotal: 150, hasPage: false, jobs: 0, domain: 'lazada.vn', since: '15/07/2026' },
-  { name: 'Công ty CP Xây dựng Hưng Thịnh', shortName: 'Hưng Thịnh', legalName: 'Công ty Cổ phần Xây dựng Hưng Thịnh', tax: '0342xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận Bình Thạnh, HCMC', contact: 'Mr. Phan Đăng Hải · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Payment 25d overdue — escalate', idle: 25, note: 'Signed PO but no transfer; CFO on leave.', revenue: 88_000_000, jobPosting: true, resumeSearch: true, jobLeft: 15, jobTotal: 15, cvLeft: 80, cvTotal: 80, hasPage: false, jobs: 0, domain: 'hungthinhcorp.vn', since: '04/07/2026' },
+  { name: 'Công ty CP Vinh Quang Logistics', shortName: 'Vinh Quang', legalName: 'Công ty Cổ phần Vinh Quang Logistics', country: 'Việt Nam', tax: '0340xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Bùi Xuân Trường · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Awaiting transfer — due 31/07', idle: 3, note: 'Order confirmed; bank details sent.', revenue: 31_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhquanglog.vn', since: '24/07/2026' },
+  { name: 'Lazada Việt Nam', shortName: 'Lazada', legalName: 'Công ty TNHH Recess (Lazada Việt Nam)', country: 'Việt Nam', tax: '0341xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Trương Mỹ Hạnh · TA Lead', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '15/07/2026', renewal: '15/10/2026', nextStep: 'Chase payment — 12d out', idle: 12, note: 'Their finance runs a 30-day cycle.', revenue: 195_000_000, jobPosting: true, resumeSearch: true, jobLeft: 20, jobTotal: 20, cvLeft: 150, cvTotal: 150, hasPage: false, jobs: 0, domain: 'lazada.vn', since: '15/07/2026' },
+  { name: 'Công ty CP Xây dựng Hưng Thịnh', shortName: 'Hưng Thịnh', legalName: 'Công ty Cổ phần Xây dựng Hưng Thịnh', country: 'Việt Nam', tax: '0342xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận Bình Thạnh, HCMC', contact: 'Mr. Phan Đăng Hải · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Payment 25d overdue — escalate', idle: 25, note: 'Signed PO but no transfer; CFO on leave.', revenue: 88_000_000, jobPosting: true, resumeSearch: true, jobLeft: 15, jobTotal: 15, cvLeft: 80, cvTotal: 80, hasPage: false, jobs: 0, domain: 'hungthinhcorp.vn', since: '04/07/2026' },
   // Lost — closed, so no rot colour at all
-  { name: 'Công ty CP Công nghệ Tân Tiến', shortName: 'Tân Tiến', legalName: 'Công ty Cổ phần Công nghệ Tân Tiến', tax: '0343xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 7, HCMC', contact: 'Mr. Hoàng Việt Dũng · CTO', owner: 'Phạm Quang Huy', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1 2027', idle: 40, note: 'Lost to competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tantien.tech', since: '—' },
-  { name: 'Công ty TNHH Đức Thành', shortName: 'Đức Thành', legalName: 'Công ty TNHH Thương mại Đức Thành', tax: '0344xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lưu Ngọc Diễm · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '20/05/2025', renewal: 'Lapsed', nextStep: 'Win-back call in August', idle: 33, note: 'Hiring frozen; no budget this year.', revenue: 18_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ducthanh.com.vn', since: '20/05/2024' },
+  { name: 'Công ty CP Công nghệ Tân Tiến', shortName: 'Tân Tiến', legalName: 'Công ty Cổ phần Công nghệ Tân Tiến', country: 'Việt Nam', tax: '0343xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 7, HCMC', contact: 'Mr. Hoàng Việt Dũng · CTO', owner: 'Phạm Quang Huy', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1 2027', idle: 40, note: 'Lost to competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tantien.tech', since: '—' },
+  { name: 'Công ty TNHH Đức Thành', shortName: 'Đức Thành', legalName: 'Công ty TNHH Thương mại Đức Thành', country: 'Việt Nam', tax: '0344xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lưu Ngọc Diễm · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '20/05/2025', renewal: 'Lapsed', nextStep: 'Win-back call in August', idle: 33, note: 'Hiring frozen; no budget this year.', revenue: 18_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ducthanh.com.vn', since: '20/05/2024' },
   // Invoice — won and closed
-  // The company behind the client's real quotation EST-009909-07-2026, so that
+  // The company behind the client's real quotation QUO-009909-07-2026, so that
   // quotation resolves to a CRM record like every other one.
-  { name: 'Công ty TNHH AM Software Việt Nam', shortName: 'AM Software', legalName: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', tax: '0317110315', industry: 'CNTT', size: '50–200', address: '115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, HCMC', contact: 'Mr. Nguyễn Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 9, note: 'Quotation sent 20/07 — 2 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'aoimirai.co.jp', since: '—' },
-  { name: 'Sacombank', shortName: 'Sacombank', legalName: 'Ngân hàng TMCP Sài Gòn Thương Tín', tax: '0345xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Quận 3, HCMC', contact: 'Ms. Nguyễn Lê Vy · Head of Talent', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 66, note: 'Renewed for a second year.', revenue: 380_000_000, jobPosting: true, resumeSearch: true, jobLeft: 25, jobTotal: 40, cvLeft: 220, cvTotal: 350, hasPage: true, jobs: 19, domain: 'sacombank.com.vn', since: '08/06/2025' },
-  { name: 'Công ty TNHH Giáo dục Sunrise', shortName: 'Sunrise Edu', legalName: 'Công ty TNHH Giáo dục Sunrise', tax: '0331xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Lưu Ngọc Hân · HR', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 2, note: 'Discovery call done; keen on Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'sunriseedu.vn', since: '—' },
-  { name: 'Công ty CP Bảo Việt Care', shortName: 'Bảo Việt Care', legalName: 'Công ty Cổ phần Bảo Việt Care', tax: '0332xxxxxx', industry: 'Y tế', size: '500–1000', address: 'Quận 5, HCMC', contact: 'Ms. Trịnh Bích Thảo · TA Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '28/05/2026', renewal: '28/11/2026', nextStep: 'Quarterly review', idle: 79, note: 'Renewal talk starts next month.', revenue: 185_000_000, jobPosting: true, resumeSearch: true, jobLeft: 14, jobTotal: 20, cvLeft: 120, cvTotal: 200, hasPage: true, jobs: 11, domain: 'baovietcare.vn', since: '14/06/2025' },
+  { name: 'Công ty TNHH AM Software Việt Nam', shortName: 'AM Software', legalName: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', country: 'Việt Nam', tax: '0317110315', industry: 'CNTT', size: '50–200', address: '115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, HCMC', contact: 'Mr. Nguyễn Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 9, note: 'Quotation sent 20/07 — 2 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'aoimirai.co.jp', since: '—' },
+  { name: 'Sacombank', shortName: 'Sacombank', legalName: 'Ngân hàng TMCP Sài Gòn Thương Tín', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Quận 3, HCMC', contact: 'Ms. Nguyễn Lê Vy · Head of Talent', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 66, note: 'Renewed for a second year.', revenue: 380_000_000, jobPosting: true, resumeSearch: true, jobLeft: 25, jobTotal: 40, cvLeft: 220, cvTotal: 350, hasPage: true, jobs: 19, domain: 'sacombank.com.vn', since: '08/06/2025' },
+  { name: 'Công ty TNHH Giáo dục Sunrise', shortName: 'Sunrise Edu', legalName: 'Công ty TNHH Giáo dục Sunrise', country: 'Việt Nam', tax: '0331xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Lưu Ngọc Hân · HR', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 2, note: 'Discovery call done; keen on Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'sunriseedu.vn', since: '—' },
+  { name: 'Công ty CP Bảo Việt Care', shortName: 'Bảo Việt Care', legalName: 'Công ty Cổ phần Bảo Việt Care', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Y tế', size: '500–1000', address: 'Quận 5, HCMC', contact: 'Ms. Trịnh Bích Thảo · TA Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '28/05/2026', renewal: '28/11/2026', nextStep: 'Quarterly review', idle: 79, note: 'Renewal talk starts next month.', revenue: 185_000_000, jobPosting: true, resumeSearch: true, jobLeft: 14, jobTotal: 20, cvLeft: 120, cvTotal: 200, hasPage: true, jobs: 11, domain: 'baovietcare.vn', since: '14/06/2025' },
   // ── Volume rows: enough companies for the pipeline board and the list to feel
   // like a real book of business — every stage populated, owners rotated across
   // the three reps, idle values spanning fresh / amber / red.
-  { name: 'Công ty CP Vĩnh Cửu', shortName: 'Vĩnh Cửu', legalName: 'Công ty Cổ phần Vĩnh Cửu', tax: '0333xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Ms. Lê Kim Chi · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up in 2 days', idle: 3, note: 'Quotation sent, awaiting review.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhcuu.vn', since: '—' },
-  { name: 'Công ty TNHH Bách Khoa Tech', shortName: 'Bách Khoa', legalName: 'Công ty TNHH Bách Khoa Technology', tax: '0334xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 10, HCMC', contact: 'Mr. Vương Tuấn Kiệt · CTO', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Call the HR manager', idle: 9, note: 'No reply since the quotation.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bachkhoatech.vn', since: '—' },
-  { name: 'Công ty CP Nội thất Sài Gòn', shortName: 'Nội thất SG', legalName: 'Công ty Cổ phần Nội thất Sài Gòn', tax: '0335xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 12, HCMC', contact: 'Ms. Trần Thảo Vy · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Reissue or close', idle: 19, note: 'Quotation validity almost up.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatsg.vn', since: '—' },
-  { name: 'Công ty TNHH Dệt may Phong Phú', shortName: 'Phong Phú', legalName: 'Công ty TNHH Dệt may Phong Phú', tax: '0336xxxxxx', industry: 'Dệt may', size: '1000–5000', address: 'Quận 9, HCMC', contact: 'Mr. Bùi Hữu Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Clarify option B', idle: 5, note: 'Comparing our 3 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phongphu.com.vn', since: '—' },
-  { name: 'Công ty CP Dược Nam Hà', shortName: 'Nam Hà', legalName: 'Công ty Cổ phần Dược Nam Hà', tax: '0337xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Ms. Nguyễn Bảo Châu · HR Director', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Decide: reissue or Lost', idle: 24, note: 'Silent for over 3 weeks.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
-  { name: 'Công ty TNHH Cơ khí Tây Đô', shortName: 'Tây Đô', legalName: 'Công ty TNHH Cơ khí Tây Đô', tax: '0338xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Hải Dương', contact: 'Mr. Hà Trọng Tín', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book the demo', idle: 2, note: 'Wants a demo next week.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'taydock.vn', since: '—' },
-  { name: 'Công ty CP Vận tải Bắc Nam', shortName: 'Bắc Nam', legalName: 'Công ty Cổ phần Vận tải Bắc Nam', tax: '0339xxxxxx', industry: 'Logistics', size: '500–1000', address: 'Đà Nẵng', contact: 'Ms. Đỗ Lan Phương · HC-NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask about budget cycle', idle: 11, note: 'Budget check in progress.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bacnamlogistics.vn', since: '—' },
-  { name: 'Công ty TNHH Kiến Á', shortName: 'Kiến Á', legalName: 'Công ty TNHH Đầu tư Kiến Á', tax: '0340xxxxxx', industry: 'Bất động sản', size: '200–500', address: 'Quận 2, HCMC', contact: 'Mr. Lâm Chí Cường · HR', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 16, note: 'Went quiet after first call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kiena.vn', since: '—' },
-  { name: 'Công ty CP Bia Sài Gòn Miền Tây', shortName: 'Bia SG MT', legalName: 'Công ty Cổ phần Bia Sài Gòn Miền Tây', tax: '0341xxxxxx', industry: 'Thực phẩm', size: '500–1000', address: 'Cần Thơ', contact: 'Ms. Phạm Ngọc Diệp', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 6, note: 'Interested in Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biasgmt.vn', since: '—' },
-  { name: 'Công ty TNHH Thiết bị Y tế Việt', shortName: 'TBYT Việt', legalName: 'Công ty TNHH Thiết bị Y tế Việt', tax: '0342xxxxxx', industry: 'Y tế', size: '50–200', address: 'Quận 5, HCMC', contact: 'Mr. Tôn Quang Vinh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Discovery call', idle: 4, note: 'Referred by an existing client.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tbytviet.vn', since: '—' },
-  { name: 'Công ty CP Xi măng Hà Tiên', shortName: 'Hà Tiên', legalName: 'Công ty Cổ phần Xi măng Hà Tiên', tax: '0343xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Kiên Giang', contact: 'Ms. Cao Thị Lệ · HR Manager', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 14, note: 'Haggling on the 6-month price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hatien.com.vn', since: '—' },
-  { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
-  { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
-  { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },
-  { name: 'Công ty CP Du lịch Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Du lịch Phương Nam', tax: '0347xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Nha Trang', contact: 'Ms. Huỳnh Mai Trâm · HR', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '16/07/2026', renewal: '16/10/2026', nextStep: 'Hand to Accounting', idle: 2, note: 'PO signed, invoice next.', revenue: 63_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 54, cvTotal: 100, hasPage: true, jobs: 7, domain: 'phuongnamtravel.vn', since: '16/07/2026' },
-  { name: 'Công ty TNHH Giấy Tân Mai', shortName: 'Tân Mai', legalName: 'Công ty TNHH Giấy Tân Mai', tax: '0348xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', contact: 'Mr. Trịnh Bá Hưng · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '17/07/2026', renewal: '17/10/2026', nextStep: 'Chase payment', idle: 12, note: 'Payment not received yet.', revenue: 80_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 8, domain: 'tanmai.vn', since: '17/07/2026' },
-  { name: 'Công ty CP Điện máy Thành Công', shortName: 'Thành Công', legalName: 'Công ty Cổ phần Điện máy Thành Công', tax: '0349xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lý Thu Trang · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Escalate to Accounting lead', idle: 23, note: 'Payment badly overdue.', revenue: 97_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 56, cvTotal: 100, hasPage: true, jobs: 9, domain: 'thanhcongdm.vn', since: '18/07/2026' },
-  { name: 'Công ty TNHH Logistics Sao Việt', shortName: 'Sao Việt', legalName: 'Công ty TNHH Logistics Sao Việt', tax: '0350xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Phan Đức Duy', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Kickoff call', idle: 92, note: 'Onboarding in progress.', revenue: 114_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 57, cvTotal: 100, hasPage: true, jobs: 10, domain: 'saovietlog.vn', since: '19/07/2026' },
-  { name: 'Công ty CP Giáo dục Én Nhỏ', shortName: 'Én Nhỏ', legalName: 'Công ty Cổ phần Giáo dục Én Nhỏ', tax: '0351xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Phú Nhuận, HCMC', contact: 'Ms. Ngô Hải Yến · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '20/07/2026', renewal: '20/10/2026', nextStep: 'Quarterly review', idle: 105, note: 'Using both products actively.', revenue: 131_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'ennho.edu.vn', since: '21/01/2025' },
-  { name: 'Công ty TNHH Sơn Đại Việt', shortName: 'Đại Việt', legalName: 'Công ty TNHH Sơn Đại Việt', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Long An', contact: 'Mr. Chu Văn Thái', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '21/07/2026', renewal: '21/10/2026', nextStep: 'Check-in — usage is low', idle: 118, note: 'Quiet since activation.', revenue: 148_000_000, jobPosting: true, resumeSearch: true, jobLeft: 5, jobTotal: 20, cvLeft: 59, cvTotal: 100, hasPage: true, jobs: 3, domain: 'sondaiviet.vn', since: '21/07/2026' },
-  { name: 'Công ty CP Nông sản Xanh', shortName: 'Nông sản Xanh', legalName: 'Công ty Cổ phần Nông sản Xanh', tax: '0353xxxxxx', industry: 'Nông nghiệp', size: '200–500', address: 'Lâm Đồng', contact: 'Ms. Trương Bích Hạnh · HR', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '22/07/2026', renewal: '22/10/2026', nextStep: 'Prepare renewal quote', idle: 46, note: 'Renewal in 2 months.', revenue: 165_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 60, cvTotal: 100, hasPage: true, jobs: 4, domain: 'nongsanxanh.vn', since: '23/03/2025' },
-  { name: 'Công ty TNHH Nhựa Bình Phát', shortName: 'Bình Phát', legalName: 'Công ty TNHH Nhựa Bình Phát', tax: '0354xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Đoàn Quốc Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '23/07/2026', renewal: '23/10/2026', nextStep: 'Re-engage before renewal', idle: 31, note: 'No contact in a month.', revenue: 182_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 5, domain: 'binhphat.vn', since: '23/07/2026' },
-  { name: 'Công ty CP Bán lẻ Vạn Xuân', shortName: 'Vạn Xuân', legalName: 'Công ty Cổ phần Bán lẻ Vạn Xuân', tax: '0355xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Tạ Mỹ Linh · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Upsell Resume Search', idle: 59, note: 'Repeat customer, 3rd order.', revenue: 199_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 6, domain: 'vanxuan.vn', since: '25/05/2025' },
-  { name: 'Công ty TNHH Kỹ thuật Nam Việt', shortName: 'Nam Việt', legalName: 'Công ty TNHH Kỹ thuật Nam Việt', tax: '0356xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Lưu Anh Tú', owner: 'Trần Quốc Trung', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-engage next quarter', idle: 35, note: 'Chose a competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namvieteng.vn', since: '—' },
-  { name: 'Công ty CP Chứng khoán Đại Nam', shortName: 'CK Đại Nam', legalName: 'Công ty Cổ phần Chứng khoán Đại Nam', tax: '0357xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Hồ Diễm Quỳnh · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1', idle: 44, note: 'Budget frozen for the year.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'cknam.vn', since: '—' },
-  { name: 'Công ty TNHH Mỹ phẩm Hương Sen', shortName: 'Hương Sen', legalName: 'Công ty TNHH Mỹ phẩm Hương Sen', tax: '0358xxxxxx', industry: 'FMCG', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Bạch Tuyết Nhi', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send discount options', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'huongsen.vn', since: '—' },
-  { name: 'Công ty CP Thép Việt Đức', shortName: 'Thép Việt Đức', legalName: 'Công ty Cổ phần Thép Việt Đức', tax: '0359xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Vĩnh Phúc', contact: 'Mr. Kiều Mạnh Hà · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Retry after 01/08', idle: 9, note: 'HR manager on leave.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thepvietduc.vn', since: '—' },
-  { name: 'Công ty TNHH Cà phê Ban Mê', shortName: 'Ban Mê', legalName: 'Công ty TNHH Cà phê Ban Mê', tax: '0360xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Đắk Lắk', contact: 'Ms. Phùng Thanh Thúy · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase legal', idle: 22, note: 'Legal reviewing our T&C.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'banmecoffee.vn', since: '—' },
-  { name: 'Công ty CP Công nghệ TekOne', shortName: 'TekOne', legalName: 'Công ty Cổ phần Công nghệ TekOne', tax: '0361xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 4, HCMC', contact: 'Mr. Trần Gia Bảo · CEO', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Ask for a testimonial', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 101_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 68, cvTotal: 100, hasPage: true, jobs: 3, domain: 'tekone.vn', since: '06/02/2025' },
-  { name: 'Công ty TNHH An Toàn Lao Động Việt', shortName: 'ATLĐ Việt', legalName: 'Công ty TNHH An Toàn Lao Động Việt', tax: '0362xxxxxx', industry: 'Dịch vụ', size: '50–200', address: 'Quận Bình Tân, HCMC', contact: 'Ms. Dương Kiều My', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Collect PO number', idle: 6, note: 'Awaiting their PO number.', revenue: 118_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 69, cvTotal: 100, hasPage: true, jobs: 4, domain: 'atldviet.vn', since: '05/07/2026' },
-  { name: 'Công ty CP Khách sạn Biển Đông', shortName: 'Biển Đông', legalName: 'Công ty Cổ phần Khách sạn Biển Đông', tax: '0363xxxxxx', industry: 'Du lịch', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Nguyễn Hải Sơn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Confirm option 2', idle: 13, note: 'Second option preferred.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biendonghotel.vn', since: '—' },
-  { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
+  { name: 'Công ty CP Vĩnh Cửu', shortName: 'Vĩnh Cửu', legalName: 'Công ty Cổ phần Vĩnh Cửu', country: 'Việt Nam', tax: '0333xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Ms. Lê Kim Chi · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up in 2 days', idle: 3, note: 'Quotation sent, awaiting review.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhcuu.vn', since: '—' },
+  { name: 'Công ty TNHH Bách Khoa Tech', shortName: 'Bách Khoa', legalName: 'Công ty TNHH Bách Khoa Technology', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 10, HCMC', contact: 'Mr. Vương Tuấn Kiệt · CTO', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Call the HR manager', idle: 9, note: 'No reply since the quotation.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bachkhoatech.vn', since: '—' },
+  { name: 'Công ty CP Nội thất Sài Gòn', shortName: 'Nội thất SG', legalName: 'Công ty Cổ phần Nội thất Sài Gòn', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 12, HCMC', contact: 'Ms. Trần Thảo Vy · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Reissue or close', idle: 19, note: 'Quotation validity almost up.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatsg.vn', since: '—' },
+  { name: 'Công ty TNHH Dệt may Phong Phú', shortName: 'Phong Phú', legalName: 'Công ty TNHH Dệt may Phong Phú', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Dệt may', size: '1000–5000', address: 'Quận 9, HCMC', contact: 'Mr. Bùi Hữu Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Clarify option B', idle: 5, note: 'Comparing our 3 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phongphu.com.vn', since: '—' },
+  { name: 'Công ty CP Dược Nam Hà', shortName: 'Nam Hà', legalName: 'Công ty Cổ phần Dược Nam Hà', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Ms. Nguyễn Bảo Châu · HR Director', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Decide: reissue or Lost', idle: 24, note: 'Silent for over 3 weeks.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
+  { name: 'Công ty TNHH Cơ khí Tây Đô', shortName: 'Tây Đô', legalName: 'Công ty TNHH Cơ khí Tây Đô', country: 'Việt Nam', tax: '0338xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Hải Dương', contact: 'Mr. Hà Trọng Tín', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book the demo', idle: 2, note: 'Wants a demo next week.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'taydock.vn', since: '—' },
+  { name: 'Công ty CP Vận tải Bắc Nam', shortName: 'Bắc Nam', legalName: 'Công ty Cổ phần Vận tải Bắc Nam', country: 'Việt Nam', tax: '0339xxxxxx', industry: 'Logistics', size: '500–1000', address: 'Đà Nẵng', contact: 'Ms. Đỗ Lan Phương · HC-NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask about budget cycle', idle: 11, note: 'Budget check in progress.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bacnamlogistics.vn', since: '—' },
+  { name: 'Công ty TNHH Kiến Á', shortName: 'Kiến Á', legalName: 'Công ty TNHH Đầu tư Kiến Á', country: 'Việt Nam', tax: '0340xxxxxx', industry: 'Bất động sản', size: '200–500', address: 'Quận 2, HCMC', contact: 'Mr. Lâm Chí Cường · HR', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 16, note: 'Went quiet after first call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kiena.vn', since: '—' },
+  { name: 'Công ty CP Bia Sài Gòn Miền Tây', shortName: 'Bia SG MT', legalName: 'Công ty Cổ phần Bia Sài Gòn Miền Tây', country: 'Việt Nam', tax: '0341xxxxxx', industry: 'Thực phẩm', size: '500–1000', address: 'Cần Thơ', contact: 'Ms. Phạm Ngọc Diệp', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 6, note: 'Interested in Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biasgmt.vn', since: '—' },
+  { name: 'Công ty TNHH Thiết bị Y tế Việt', shortName: 'TBYT Việt', legalName: 'Công ty TNHH Thiết bị Y tế Việt', country: 'Việt Nam', tax: '0342xxxxxx', industry: 'Y tế', size: '50–200', address: 'Quận 5, HCMC', contact: 'Mr. Tôn Quang Vinh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Discovery call', idle: 4, note: 'Referred by an existing client.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tbytviet.vn', since: '—' },
+  { name: 'Công ty CP Xi măng Hà Tiên', shortName: 'Hà Tiên', legalName: 'Công ty Cổ phần Xi măng Hà Tiên', country: 'Việt Nam', tax: '0343xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Kiên Giang', contact: 'Ms. Cao Thị Lệ · HR Manager', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 14, note: 'Haggling on the 6-month price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hatien.com.vn', since: '—' },
+  { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', country: 'Nhật Bản / Japan', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
+  { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
+  { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', country: 'Việt Nam', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },
+  { name: 'Công ty CP Du lịch Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Du lịch Phương Nam', country: 'Việt Nam', tax: '0347xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Nha Trang', contact: 'Ms. Huỳnh Mai Trâm · HR', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '16/07/2026', renewal: '16/10/2026', nextStep: 'Hand to Accounting', idle: 2, note: 'PO signed, invoice next.', revenue: 63_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 54, cvTotal: 100, hasPage: true, jobs: 7, domain: 'phuongnamtravel.vn', since: '16/07/2026' },
+  { name: 'Công ty TNHH Giấy Tân Mai', shortName: 'Tân Mai', legalName: 'Công ty TNHH Giấy Tân Mai', country: 'Việt Nam', tax: '0348xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', contact: 'Mr. Trịnh Bá Hưng · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '17/07/2026', renewal: '17/10/2026', nextStep: 'Chase payment', idle: 12, note: 'Payment not received yet.', revenue: 80_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 8, domain: 'tanmai.vn', since: '17/07/2026' },
+  { name: 'Công ty CP Điện máy Thành Công', shortName: 'Thành Công', legalName: 'Công ty Cổ phần Điện máy Thành Công', country: 'Việt Nam', tax: '0349xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lý Thu Trang · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Escalate to Accounting lead', idle: 23, note: 'Payment badly overdue.', revenue: 97_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 56, cvTotal: 100, hasPage: true, jobs: 9, domain: 'thanhcongdm.vn', since: '18/07/2026' },
+  { name: 'Công ty TNHH Logistics Sao Việt', shortName: 'Sao Việt', legalName: 'Công ty TNHH Logistics Sao Việt', country: 'Việt Nam', tax: '0350xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Phan Đức Duy', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Kickoff call', idle: 92, note: 'Onboarding in progress.', revenue: 114_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 57, cvTotal: 100, hasPage: true, jobs: 10, domain: 'saovietlog.vn', since: '19/07/2026' },
+  { name: 'Công ty CP Giáo dục Én Nhỏ', shortName: 'Én Nhỏ', legalName: 'Công ty Cổ phần Giáo dục Én Nhỏ', country: 'Việt Nam', tax: '0351xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Phú Nhuận, HCMC', contact: 'Ms. Ngô Hải Yến · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '20/07/2026', renewal: '20/10/2026', nextStep: 'Quarterly review', idle: 105, note: 'Using both products actively.', revenue: 131_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'ennho.edu.vn', since: '21/01/2025' },
+  { name: 'Công ty TNHH Sơn Đại Việt', shortName: 'Đại Việt', legalName: 'Công ty TNHH Sơn Đại Việt', country: 'Việt Nam', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Long An', contact: 'Mr. Chu Văn Thái', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '21/07/2026', renewal: '21/10/2026', nextStep: 'Check-in — usage is low', idle: 118, note: 'Quiet since activation.', revenue: 148_000_000, jobPosting: true, resumeSearch: true, jobLeft: 5, jobTotal: 20, cvLeft: 59, cvTotal: 100, hasPage: true, jobs: 3, domain: 'sondaiviet.vn', since: '21/07/2026' },
+  { name: 'Công ty CP Nông sản Xanh', shortName: 'Nông sản Xanh', legalName: 'Công ty Cổ phần Nông sản Xanh', country: 'Việt Nam', tax: '0353xxxxxx', industry: 'Nông nghiệp', size: '200–500', address: 'Lâm Đồng', contact: 'Ms. Trương Bích Hạnh · HR', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '22/07/2026', renewal: '22/10/2026', nextStep: 'Prepare renewal quote', idle: 46, note: 'Renewal in 2 months.', revenue: 165_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 60, cvTotal: 100, hasPage: true, jobs: 4, domain: 'nongsanxanh.vn', since: '23/03/2025' },
+  { name: 'Công ty TNHH Nhựa Bình Phát', shortName: 'Bình Phát', legalName: 'Công ty TNHH Nhựa Bình Phát', country: 'Việt Nam', tax: '0354xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Đoàn Quốc Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '23/07/2026', renewal: '23/10/2026', nextStep: 'Re-engage before renewal', idle: 31, note: 'No contact in a month.', revenue: 182_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 5, domain: 'binhphat.vn', since: '23/07/2026' },
+  { name: 'Công ty CP Bán lẻ Vạn Xuân', shortName: 'Vạn Xuân', legalName: 'Công ty Cổ phần Bán lẻ Vạn Xuân', country: 'Việt Nam', tax: '0355xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Tạ Mỹ Linh · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Upsell Resume Search', idle: 59, note: 'Repeat customer, 3rd order.', revenue: 199_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 6, domain: 'vanxuan.vn', since: '25/05/2025' },
+  { name: 'Công ty TNHH Kỹ thuật Nam Việt', shortName: 'Nam Việt', legalName: 'Công ty TNHH Kỹ thuật Nam Việt', country: 'Việt Nam', tax: '0356xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Lưu Anh Tú', owner: 'Trần Quốc Trung', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-engage next quarter', idle: 35, note: 'Chose a competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namvieteng.vn', since: '—' },
+  { name: 'Công ty CP Chứng khoán Đại Nam', shortName: 'CK Đại Nam', legalName: 'Công ty Cổ phần Chứng khoán Đại Nam', country: 'Việt Nam', tax: '0357xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Hồ Diễm Quỳnh · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1', idle: 44, note: 'Budget frozen for the year.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'cknam.vn', since: '—' },
+  { name: 'Công ty TNHH Mỹ phẩm Hương Sen', shortName: 'Hương Sen', legalName: 'Công ty TNHH Mỹ phẩm Hương Sen', country: 'Việt Nam', tax: '0358xxxxxx', industry: 'FMCG', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Bạch Tuyết Nhi', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send discount options', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'huongsen.vn', since: '—' },
+  { name: 'Công ty CP Thép Việt Đức', shortName: 'Thép Việt Đức', legalName: 'Công ty Cổ phần Thép Việt Đức', country: 'Việt Nam', tax: '0359xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Vĩnh Phúc', contact: 'Mr. Kiều Mạnh Hà · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Retry after 01/08', idle: 9, note: 'HR manager on leave.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thepvietduc.vn', since: '—' },
+  { name: 'Công ty TNHH Cà phê Ban Mê', shortName: 'Ban Mê', legalName: 'Công ty TNHH Cà phê Ban Mê', country: 'Việt Nam', tax: '0360xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Đắk Lắk', contact: 'Ms. Phùng Thanh Thúy · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase legal', idle: 22, note: 'Legal reviewing our T&C.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'banmecoffee.vn', since: '—' },
+  { name: 'Công ty CP Công nghệ TekOne', shortName: 'TekOne', legalName: 'Công ty Cổ phần Công nghệ TekOne', country: 'Việt Nam', tax: '0361xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 4, HCMC', contact: 'Mr. Trần Gia Bảo · CEO', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Ask for a testimonial', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 101_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 68, cvTotal: 100, hasPage: true, jobs: 3, domain: 'tekone.vn', since: '06/02/2025' },
+  { name: 'Công ty TNHH An Toàn Lao Động Việt', shortName: 'ATLĐ Việt', legalName: 'Công ty TNHH An Toàn Lao Động Việt', country: 'Việt Nam', tax: '0362xxxxxx', industry: 'Dịch vụ', size: '50–200', address: 'Quận Bình Tân, HCMC', contact: 'Ms. Dương Kiều My', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Collect PO number', idle: 6, note: 'Awaiting their PO number.', revenue: 118_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 69, cvTotal: 100, hasPage: true, jobs: 4, domain: 'atldviet.vn', since: '05/07/2026' },
+  { name: 'Công ty CP Khách sạn Biển Đông', shortName: 'Biển Đông', legalName: 'Công ty Cổ phần Khách sạn Biển Đông', country: 'Việt Nam', tax: '0363xxxxxx', industry: 'Du lịch', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Nguyễn Hải Sơn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Confirm option 2', idle: 13, note: 'Second option preferred.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biendonghotel.vn', since: '—' },
+  { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', country: 'Việt Nam', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
 ]
 
 /* Colour carries meaning, so customer status must not borrow RED. On a company row
@@ -1900,7 +1903,7 @@ const revFmt = (v: number) => (v === 0 ? '—' : (v / 1e6).toFixed(0) + 'M ₫')
    accepted · Proposal + idle > 14d = quote lapsed · Negotiation = an option has
    been accepted, so the PO can be raised. */
 function poGate(c: Company): { ok: boolean; reason?: string; quote: string } {
-  const quote = `EST-0099${(c.tax.replace(/\D/g, '').slice(0, 2) || '10')}-07-2026`
+  const quote = `QUO-0099${(c.tax.replace(/\D/g, '').slice(0, 2) || '10')}-07-2026`
   if (c.status === 'PO' || c.status === 'Invoice') return { ok: false, reason: 'An order already exists for this deal.', quote }
   if (c.status === 'Lost') return { ok: false, reason: 'The deal is closed-lost. Re-open it or start a new deal first.', quote }
   if (c.status === 'Qualified') return { ok: false, reason: 'No quotation option has been accepted yet.', quote }
@@ -2060,6 +2063,8 @@ const coKey = (c: Company) => {
   return h + 1000
 }
 /** City / province — the last segment of the address (the form captures both). */
+/** A Vietnamese-registered company — the only case that gets the province picker. */
+const isVNCompany = (c: Company) => /^vi[eệ]t nam$|^vietnam$/i.test(c.country.trim())
 const coCity = (c: Company) => c.address.split(',').pop()!.trim()
 /** Demo-only: a stable lead source per company, so the field is exercised without
     authoring one on every row. Real build stores this from the New-company form. */
@@ -2676,6 +2681,24 @@ function companyContacts(c: Company): CoContact[] {
    replaced whom, notes over time — so the row links here rather than trying to
    show everything inline. Every ACTION on a contact lives in this panel, which is
    why the list has no Actions column. */
+/** Editable SELECT row — for fields whose values come from Master data. */
+function SelectRow({ label, value, onChange, options, placeholder, hint }: { label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; hint?: string }) {
+  return (
+    <div className="border-b border-line-soft py-2 last:border-0">
+      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand"
+      >
+        <option value="">{placeholder ?? '— none —'}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
+    </div>
+  )
+}
+
 /** Editable text row — the edit-mode counterpart of KV. */
 function EField({ label, value, onChange, mono, hint }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean; hint?: string }) {
   return (
@@ -3487,16 +3510,22 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
 
 function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
   const [chart, setChart] = useState(false)
+  /* Creating the subsidiary from HERE is the whole point: the parent is already
+     known, so it is pre-filled and locked instead of being picked again. */
+  const [addingChild, setAddingChild] = useState(false)
   const chain = ancestorsOf(c)
   const kids = childrenOf(c)
-  if (!chain.length && !kids.length) return null
   const root = groupRootOf(c)
   const go = (x: Company) => onOpen?.(x)
 
   return (
     <DetailCard
       title="Công ty liên kết — Affiliated companies"
-      action={<span className="text-[11px] text-faint">{groupOf(root).length} công ty trong tập đoàn</span>}
+      action={
+        inGroup(c)
+          ? <span className="text-[11px] text-faint">{groupOf(root).length} công ty trong tập đoàn</span>
+          : <span className="text-[11px] text-faint">Đứng độc lập</span>
+      }
     >
       {/* breadcrumb up to the group root */}
       {chain.length > 0 && (
@@ -3527,14 +3556,23 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
           ))}
         </div>
       ) : (
-        <p className="text-[11.5px] text-muted">Không có công ty con trực tiếp.</p>
+        <p className="text-[11.5px] text-muted">
+          {chain.length
+            ? 'Không có công ty con trực tiếp.'
+            : 'Chưa thuộc tập đoàn nào và chưa có công ty con.'}
+        </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <button onClick={() => setChart(true)} className="text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>
-        <button className="text-[11px] text-muted hover:text-ink hover:underline">+ Gán công ty mẹ</button>
+      {/* Two directions, two actions. Downward CREATES a record (the subsidiary does
+          not exist yet); upward only LINKS an existing one. That asymmetry is why
+          only the parent side is ever stored — see the note at the foot of the card. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-2.5">
+        <button onClick={() => setAddingChild(true)} className="rounded-md border border-brand/40 bg-brand-soft px-2 py-1 text-[11px] font-semibold text-brand hover:border-brand">+ Thêm công ty con</button>
+        <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">↑ Gán công ty mẹ</button>
+        {inGroup(c) && <button onClick={() => setChart(true)} className="ml-auto text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>}
       </div>
 
+      {addingChild && <CreateLeadModal onClose={() => setAddingChild(false)} lockedParent={c} />}
       {chart && <GroupChart root={root} current={c} onClose={() => setChart(false)} onOpen={onOpen} />}
       <p className="mt-2 rounded-md bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted">
         Liên kết chỉ để tra cứu và điều hướng — <b>không kế thừa gì</b>. Gói/quota, hợp đồng, báo giá, hoá đơn VAT, user và sales phụ trách đều riêng theo MST của từng công ty.
@@ -3587,11 +3625,83 @@ function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
   )
 }
 
+/* ── Owner (sales) history — who held the account, and who reassigned it ────
+   The current owner is the newest entry; every earlier tenure records the ACTOR
+   who moved it (a Sales lead, never the old/new owner) and why. Deterministic
+   from the company so a record reads the same every render. Mirrors the CRM
+   requirement "Sales owner — one current owner, and a full reassignment history". */
+type CoOwnerTenure = { owner: string; from: string; to: string; by: string; reason: string; created?: boolean }
+const OWNER_POOL = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
+const OWNER_LEAD = 'Lê Hữu Phong · Sales Lead'
+const REASSIGN_REASONS = [
+  'Territory rebalance — moved to the rep for this region',
+  'Previous rep left the company — handed over',
+  'Upgraded to a key-account rep as the account grew',
+  'Round-robin reallocation after a workload review',
+]
+const ownerSinceYear = (c: Company) => {
+  const m = /\/(\d{4})$/.exec(c.since)
+  return m ? Number(m[1]) : null
+}
+/** a rep different from `owner`, chosen deterministically by `salt`. */
+const pickPrevOwner = (owner: string, salt: number) => {
+  const others = OWNER_POOL.filter((r) => r !== owner)
+  return others[salt % others.length]
+}
+function companyOwnerHistory(c: Company): CoOwnerTenure[] {
+  const yr = ownerSinceYear(c)
+  // A brand-new lead (no purchase / no activation date): one entry — whoever
+  // created it still owns it. "Never reassigned" is a real state, not a gap.
+  if (yr === null) return [{ owner: c.owner, from: 'at creation', to: 'now', by: 'Tạo lead (hệ thống)', reason: `Lead created — ${coLeadSource(c)}`, created: true }]
+  const priors = yr <= 2023 ? 2 : yr <= 2024 ? 1 : 0
+  if (priors === 0) return [{ owner: c.owner, from: c.since, to: 'now', by: 'Tạo lead (hệ thống)', reason: 'Owner set at creation · never reassigned', created: true }]
+  const salt = c.name.length + c.tax.length
+  const out: CoOwnerTenure[] = [
+    { owner: c.owner, from: priors === 2 ? '02/2025' : '03/2025', to: 'now', by: OWNER_LEAD, reason: REASSIGN_REASONS[salt % REASSIGN_REASONS.length] },
+  ]
+  if (priors === 2) out.push({ owner: pickPrevOwner(c.owner, salt), from: '05/2024', to: '02/2025', by: OWNER_LEAD, reason: REASSIGN_REASONS[(salt + 2) % REASSIGN_REASONS.length] })
+  out.push({ owner: pickPrevOwner(c.owner, salt + 1), from: c.since, to: priors === 2 ? '05/2024' : '03/2025', by: 'Tạo lead (hệ thống)', reason: 'Created from CRM · first owner', created: true })
+  return out
+}
+
+function OwnerHistory({ c }: { c: Company }) {
+  const hist = companyOwnerHistory(c)
+  return (
+    <DetailCard title="Owner history" action={<span className="text-[11px] text-faint">{hist.length} {hist.length === 1 ? 'owner' : 'owners'}</span>}>
+      <ol className="space-y-2.5">
+        {hist.map((t, i) => (
+          <li key={i} className="relative pl-4">
+            <span className={cn('absolute left-0 top-[5px] h-2 w-2 rounded-full', i === 0 ? 'bg-brand' : 'bg-line')} />
+            {i < hist.length - 1 && <span className="absolute bottom-[-10px] left-[3px] top-4 w-px bg-line-soft" />}
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-[12.5px] font-medium text-ink">{t.owner}</span>
+              {i === 0
+                ? <Pill tone="active">Current</Pill>
+                : <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{t.from} – {t.to}</span>}
+            </div>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
+              {i === 0 && <span className="tabular-nums text-muted">{t.from} – now · </span>}
+              {t.created ? '🌱 Created the lead' : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
+              {' · '}{t.reason}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 border-t border-line-soft pt-2 text-[11px] leading-relaxed text-faint">
+        Every reassignment is logged with <b className="text-ink/70">who moved it and why</b> — the record is append-only, never overwritten. Changing owner does not touch contacts, deals or the customer relationship.
+      </p>
+    </DetailCard>
+  )
+}
+
 function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
   useDetailCrumb(coLabel(c), onBack)
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
   const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
+  /* One Edit toggle for the whole Basic-info card, rather than a pencil per row:
+     14 inline editors is 14 chances to leave one half-saved. */
+  const [editInfo, setEditInfo] = useState(false)
   const [addingContact, setAddingContact] = useState(false)
   const [quoting, setQuoting] = useState(false)
   const noProducts = !c.jobPosting && !c.resumeSearch
@@ -3600,9 +3710,6 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   const activeJobs = jobs.filter((j) => j.status === 'open').length
   const full = team.length >= MAX_SEATS
   const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
-  const contactPerson = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  const contactEmail = contactPerson.split(' ').pop()!.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '') + '@' + c.domain
-  const contactPhone = '090' + (c.tax.replace(/\D/g, '').slice(0, 1) || '0') + ' ' + c.tax.replace(/\D/g, '').slice(1, 4).padEnd(3, '0') + ' •••'
 
   const tabs: { key: CoTab; label: string; count?: number }[] = [
     { key: 'Overview', label: 'Overview' },
@@ -3676,31 +3783,91 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           <div className="min-w-0 space-y-4">
             {/* Mirrors the New-company form field-for-field, in the same order, so a
                 rep never wonders where something they typed went. */}
-            <DetailCard title="Basic info — from CRM">
+            <DetailCard
+              title="Basic info — from CRM"
+              action={
+                editInfo
+                  ? (
+                    <span className="flex items-center gap-1.5">
+                      <button onClick={() => setEditInfo(false)} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">Cancel</button>
+                      <button onClick={() => setEditInfo(false)} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white hover:opacity-90">Save</button>
+                    </span>
+                  )
+                  : <button onClick={() => setEditInfo(true)} className="text-[11px] text-brand hover:underline">Edit</button>
+              }
+            >
+              {/* Company ID is system-assigned, so it is never editable — everything
+                  below it is. Editing happens in place: one Edit toggle turns the whole
+                  card into fields, rather than 14 pencil icons. */}
               <KV label="Company ID" value={companyId(coKey(c))} />
-              <KV label="Legal name" value={c.legalName} />
-              <KV label="Short name" value={c.shortName?.trim() || '— (falls back to the legal name)'} />
-              <KV label="Tax code (MST)" value={c.tax} />
-              <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
-              <KV label="Industry · size" value={`${c.industry} · ${c.size} staff`} />
+              {editInfo ? (
+                <>
+                  <EField label="Legal name" value={c.legalName} onChange={() => {}} />
+                  <EField label="Short name" value={c.shortName} onChange={() => {}} hint="Empty falls back to the legal name." />
+                  <EField label="Tax code (MST)" value={c.tax} onChange={() => {}} />
+                  <SelectRow label="Công ty mẹ" value={c.parent ?? ''} onChange={() => {}} options={COMPANIES.filter((x) => x.name !== c.name).map((x) => x.name)} placeholder="— không thuộc tập đoàn nào —" hint="Full legal names, because two companies can share a short name. Pick the DIRECT parent. Leave empty for a standalone company or a group root." />
+                  <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
+                  <SelectRow label="Company size" value={c.size} onChange={() => {}} options={['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']} />
+                </>
+              ) : (
+                <>
+                  <KV label="Legal name" value={c.legalName} />
+                  <KV label="Short name" value={c.shortName?.trim() || '— (falls back to the legal name)'} />
+                  <KV label="Tax code (MST)" value={c.tax} />
+                  <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
+                  {/* Split: industry and size are two different facts, filtered separately. */}
+                  <KV label="Industry" value={c.industry} />
+                  <KV label="Company size" value={`${c.size} staff`} />
+                </>
+              )}
               {/* Editorial labels sit with the other classification fields rather than in
                   their own card — one company identity block, not two. */}
               <div className="border-b border-line-soft py-2">
                 <p className="text-[10.5px] uppercase tracking-wide text-faint">Company tags</p>
                 <div className="mt-1"><CompanyTagPicker initial={['Korean company']} /></div>
               </div>
-              <KV label="Location" value={coCity(c)} />
-              <KV label="Website" value={c.domain} link />
-              <KV label="Address" value={c.address} />
-              <KV label="Primary contact" value={c.contact} />
-              <KV label="Contact email" value={contactEmail} />
-              <KV label="Contact phone" value={contactPhone} />
-              <KV label="Lead source" value={coLeadSource(c)} />
-              <KV label="Sales owner" value={c.owner} />
-              <KV label="Estimated deal value" value={vnd(coValue(c))} />
-              <KV label="Description" value={c.note} />
-              <p className="mt-2 rounded-md bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">🔗 Synced from the CRM customer record — the same company, one source of truth.</p>
+              {/* Same rule as the create form: country always, Vietnamese province
+                  only for a Vietnamese company, Address for everyone. */}
+              {editInfo ? (
+                <>
+                  <SelectRow label="Quốc tịch / Country" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
+                  {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.groups?.[0]?.items ?? []} />}
+                  <EField label="Address" value={c.address} onChange={() => {}} hint="Prints on quotations, orders and invoices." />
+                  <EField label="Website" value={c.domain} onChange={() => {}} mono />
+                  <SelectRow label="Lead source" value={coLeadSource(c)} onChange={() => {}} options={LEAD_SOURCES} />
+                  <SelectRow label="Sales owner" value={c.owner} onChange={() => {}} options={[...new Set(COMPANIES.map((x) => x.owner))]} />
+                </>
+              ) : (
+                <>
+                  <KV label="Quốc tịch / Country" value={c.country} />
+                  {isVNCompany(c)
+                    ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
+                    : <KV label="Tỉnh / Thành phố · City" value="— (không phải công ty Việt Nam · xem Address)" />}
+                  <KV label="Address" value={c.address} />
+                  <KV label="Website" value={c.domain} link />
+                  <KV label="Lead source" value={coLeadSource(c)} />
+                  <KV label="Sales owner" value={c.owner} />
+                </>
+              )}
+              {/* Captured on the New-company form as pre-sale INTENT. Kept here so it does
+                  not vanish after creation — what they actually bought lives on the
+                  Products & billing tab, which is a different fact. */}
+              <div className="border-b border-line-soft py-2">
+                <p className="text-[10.5px] uppercase tracking-wide text-faint">Products interested</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {!c.jobPosting && !c.resumeSearch && <span className="text-[12px] text-faint">— not recorded</span>}
+                  {c.jobPosting && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">📢 Job Posting</span>}
+                  {c.resumeSearch && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">🔍 Resume Search</span>}
+                </div>
+              </div>
+              {editInfo
+                ? <><EField label="Estimated deal value (₫)" value={String(coValue(c))} onChange={() => {}} /><EField label="Description" value={c.note} onChange={() => {}} /></>
+                : <><KV label="Estimated deal value" value={vnd(coValue(c))} /><KV label="Description" value={c.note} /></>}
+              {/* Contact person / email / phone deliberately NOT here — they live on the
+                  Contacts tab, where a company can have several with their own statuses.
+                  Duplicating the primary one here guarantees the two drift apart. */}
             </DetailCard>
+            <OwnerHistory c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
 
@@ -5725,9 +5892,12 @@ function Section({ title, className }: { title: string; className?: string }) {
 }
 
 /** Interactive combobox — pick a suggested option or type a custom value. */
-function ComboField({ label, req, value: initial, options, placeholder }: { label: string; req?: boolean; value?: string; options: string[]; placeholder?: string }) {
+function ComboField({ label, req, value: initial, options, placeholder, onChange }: { label: string; req?: boolean; value?: string; options: string[]; placeholder?: string
+  /** report the picked value up, for fields that gate another field (e.g. country → city) */
+  onChange?: (v: string) => void }) {
   const [open, setOpen] = useState(false)
   const [val, setVal] = useState(initial ?? '')
+  const commit = (v: string) => { setVal(v); onChange?.(v) }
   const isExact = options.some((o) => o.toLowerCase() === val.toLowerCase())
   // exact selection (or empty) → show the whole list; mid-typing → filter
   const matches = isExact || val.length === 0 ? options : options.filter((o) => o.toLowerCase().includes(val.toLowerCase()))
@@ -5738,7 +5908,7 @@ function ComboField({ label, req, value: initial, options, placeholder }: { labe
       <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 focus-within:border-brand">
         <input
           value={val}
-          onChange={(e) => { setVal(e.target.value); setOpen(true) }}
+          onChange={(e) => { commit(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
           className="w-full bg-transparent text-[12.5px] text-ink outline-none placeholder:text-faint"
@@ -5750,7 +5920,7 @@ function ComboField({ label, req, value: initial, options, placeholder }: { labe
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-line bg-surface py-1 shadow-lg">
             {matches.map((o) => (
-              <button type="button" key={o} onClick={() => { setVal(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === val ? 'font-medium text-brand' : 'text-ink')}>{o}</button>
+              <button type="button" key={o} onClick={() => { commit(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === val ? 'font-medium text-brand' : 'text-ink')}>{o}</button>
             ))}
             {isCustom && (
               <button type="button" onClick={() => setOpen(false)} className="block w-full border-t border-line px-3 py-1.5 text-left text-[12px] text-brand hover:bg-canvas">Use “{val}” (custom)</button>
@@ -5763,7 +5933,7 @@ function ComboField({ label, req, value: initial, options, placeholder }: { labe
   )
 }
 /* ── New quotation (Báo giá) ───────────────────────────────────────────────────
-   Modelled on the client's live PDF EST-009909-07-2026. The load-bearing idea is
+   Modelled on the client's live PDF QUO-009909-07-2026. The load-bearing idea is
    that one quotation carries 1–3 priced OPTIONS which are ALTERNATIVES, not
    add-ons: each totals independently, exactly one gets accepted, and the document
    has no grand total. Everything derived (line totals, VAT, total-after-VAT,
@@ -5991,7 +6161,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
               than as fields the rep might think they should fill in. */}
           <Section title="1 · Document header — auto" className="mt-0" />
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-4">
-            <InfoBit label="Số báo giá / Quotation no." value={`EST-00991${seq}-07-2026`} mono hint="Gapless sequence" />
+            <InfoBit label="Số báo giá / Quotation no." value={`QUO-00991${seq}-07-2026`} mono hint="Gapless sequence" />
             <InfoBit label="Ngày báo giá / Proposal date" value={today} />
             <InfoBit label="Ngày hết hạn / Expiry date" value="12/08/2026" hint="+14 ngày" />
             <InfoBit label="Báo giá bởi / Proposed by" value="Nguyễn Thị Lan" hint="Signed-in rep" />
@@ -6136,12 +6306,21 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   )
 }
 
-function CreateLeadModal({ onClose }: { onClose: () => void }) {
+/**
+ * New-company form. `lockedParent` is set when the form is opened from a parent's
+ * "+ Thêm công ty con": the parent is then already known, so it is shown as a fixed
+ * row rather than asked for again. There is deliberately NO "công ty con" field —
+ * see the note inside the form for why.
+ */
+function CreateLeadModal({ onClose, lockedParent }: { onClose: () => void; lockedParent?: Company }) {
+  /* Quốc tịch drives whether the Vietnamese province picker is shown at all. */
+  const [country, setCountry] = useState('Việt Nam')
+  const isVN = country.trim().toLowerCase().startsWith('việt nam') || country.trim().toLowerCase() === 'vietnam'
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <p className="text-[15px] font-bold">New company</p>
+          <p className="text-[15px] font-bold">{lockedParent ? 'Thêm công ty con' : 'New company'}</p>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
         <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
@@ -6171,20 +6350,56 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
 
-          <ComboField label="Công ty mẹ (tuỳ chọn)" value="Công ty CP Trường Sơn" placeholder="Tìm theo tên hoặc MST…" options={['— Không thuộc tập đoàn nào —', 'Công ty CP Trường Sơn', 'Công ty TNHH Cơ khí Đông Phong', 'FPT Software', 'VNG Corporation']} />
+          {lockedParent ? (
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Công ty mẹ</label>
+              <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand-soft px-3 py-2 text-[12.5px] text-brand">
+                <span className="min-w-0 truncate font-medium">🏢 {coLabel(lockedParent)}</span>
+                <span className="shrink-0 text-[10.5px] text-brand/70">MST {lockedParent.tax}</span>
+                <span className="ml-auto shrink-0 rounded border border-brand/30 px-1.5 py-0.5 text-[10px] font-medium">Đã cố định</span>
+              </div>
+            </div>
+          ) : (
+            <ComboField label="Công ty mẹ (tuỳ chọn)" value="Công ty CP Trường Sơn" placeholder="Tìm theo tên hoặc MST…" options={['— Không thuộc tập đoàn nào —', 'Công ty CP Trường Sơn', 'Công ty TNHH Cơ khí Đông Phong', 'FPT Software', 'VNG Corporation']} />
+          )}
           <p className="-mt-1.5 text-[11px] leading-relaxed text-faint">
             Chỉ là liên kết tra cứu. Công ty mới vẫn có MST, hợp đồng, quota và sales phụ trách riêng — không dùng chung gì với công ty mẹ. Không giới hạn số cấp; hệ thống chặn liên kết vòng.
+            <b className="text-ink/70"> Không có field “công ty con”</b> — quan hệ chỉ lưu một chiều ở công ty con; muốn thêm công ty con thì mở công ty mẹ → <b className="text-ink/70">+ Thêm công ty con</b>.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
             <LField label="Industry" value="IT / Software" select />
             <LField label="Company size" value="100–499 staff" select />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <LField label="Location" value="Hồ Chí Minh" select hint="City / province of the head office." />
-            <LField label="Website" value="company.vn" />
+            {/* Same field as the detail card, in the same position — a rep should not
+                discover a field only after the company is created. */}
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
+              <CompanyTagPicker />
+            </div>
+          {/* Quốc tịch gates the province picker: a Vietnamese company gets the
+              63-province list, a foreign one does not (its city goes in Address).
+              Address itself is asked either way — every document needs it. */}
+          <div>
+            <ComboField
+              label="Quốc tịch / Country"
+              value={country}
+              onChange={setCountry}
+              placeholder="Select a country…"
+              options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? ['Việt Nam']}
+            />
           </div>
-          <LField label="Address" value="Số nhà, tên đường, phường/xã, quận/huyện" hint="Full head-office address — used on quotes, invoices & contracts." />
+          {isVN ? (
+            <LField label="Tỉnh / Thành phố · City" value="Hồ Chí Minh" select hint="Vietnamese province or city of the head office — from Master data → Locations." />
+          ) : (
+            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+              Không phải công ty Việt Nam nên <b className="text-ink">không chọn Tỉnh / Thành phố</b> — ghi thành phố vào Address bên dưới.
+            </p>
+          )}
+          <LField label="Address" value={isVN ? 'Số nhà, tên đường, phường/xã, quận/huyện' : 'Street, city, postal code, country'} hint="Full head-office address — used on quotations, invoices & contracts. Required for every country." />
+          {/* Website sits AFTER address: the two are read together as "where they
+              are", and the physical address is the one that prints on documents. */}
+          <LField label="Website" value="company.vn" />
           <Section title="Primary contact" className="!mt-6" />
           <div className="grid grid-cols-2 gap-3">
             <LField label="Contact name" req value="Họ và tên" />
@@ -6197,7 +6412,7 @@ function CreateLeadModal({ onClose }: { onClose: () => void }) {
           <Section title="Sales" className="!mt-6" />
           <div className="grid grid-cols-2 gap-3">
             <ComboField label="Lead source" value="Website sign-up" placeholder="Select or type…" options={['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']} />
-            <LField label="Owner" value="Nguyễn Thị Lan" select />
+            <LField label="Sales owner" value="Nguyễn Thị Lan" select />
           </div>
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Products interested</label>
@@ -6357,12 +6572,12 @@ type Quote = {
 }
 const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
 const QUOTES: Quote[] = [
-  { code: 'EST-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '03/08/2026' },
-  { code: 'EST-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '28/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
-  { code: 'EST-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '14/07/2026', acceptedOpt: 1 },
-  { code: 'EST-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
-  { code: 'EST-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — EST-009905-06-2026.' },
-  { code: 'EST-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '—', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
+  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '03/08/2026' },
+  { code: 'QUO-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '28/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
+  { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '14/07/2026', acceptedOpt: 1 },
+  { code: 'QUO-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
+  { code: 'QUO-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — QUO-009905-06-2026.' },
+  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '—', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
 ]
 /** Products, compactly: first name + "+N" when there are more. Full list on hover. */
 function ProductCell({ ids }: { ids: number[] }) {
@@ -6744,13 +6959,13 @@ function poNext(step: PoStep) {
 }
 type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; due: string; seller: string; product: number; qty: number }
 const POS: Po[] = [
-  { code: 'INV-005864/07/2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'EST-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
-  { code: 'INV-005863/07/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'EST-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
-  { code: 'INV-005862/07/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'EST-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
-  { code: 'INV-005861/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'EST-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
-  { code: 'INV-005860/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'EST-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  { code: 'INV-005859/07/2026', customer: 'Công ty TNHH Minh Long', quote: 'EST-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
-  { code: 'INV-005858/07/2026', customer: 'Công ty CP Đông Á', quote: 'EST-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'INV-005864/07/2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
+  { code: 'INV-005863/07/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
+  { code: 'INV-005862/07/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
+  { code: 'INV-005861/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  { code: 'INV-005860/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  { code: 'INV-005859/07/2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
+  { code: 'INV-005858/07/2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
 const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active', cancelled: 'rejected' }
 
@@ -6849,7 +7064,7 @@ function AdminPOs() {
   const [open, setOpen] = useState<Po | null>(null)
   /* The source quotation belongs to the Quotations page, so the link navigates
      there rather than rendering a quotation inside Purchase order — that keeps the
-     breadcrumb honest ("CRM / Quotations / EST-…") and Back going to the right list. */
+     breadcrumb honest ("CRM / Quotations / QUO-…") and Back going to the right list. */
   const goTo = useContext(ScreenNavCtx)
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
   return (
@@ -7502,7 +7717,7 @@ const MD_DOMAINS: MDDomain[] = [
     kind: 'flat',
     entries: [
       'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
-      'Quotation — EST-{seq6}-{MM}-{YYYY} · e.g. EST-009909-07-2026 · sequential',
+      'Quotation — QUO-{seq6}-{MM}-{YYYY} · e.g. QUO-009909-07-2026 · sequential',
       'Sales order / PO — INV-{seq6}/{MM}/{YYYY} · e.g. INV-005864/07/2026 · sequential · ⚠ shares the INV- prefix with the invoice (client’s live format — open question)',
       'Invoice, internal — INV-{seq} · e.g. INV-3390 · sequential',
       'Invoice, legal series — issued by the e-invoice provider · e.g. 1C26TAA/0041 · sequential and gapless, required by law',
@@ -7551,6 +7766,14 @@ const MD_DOMAINS: MDDomain[] = [
     key: 'job-types', label: 'Job types', i18n: 'vi · en · ko', used: 'Job form · Store filter',
     note: 'Employment type. Single-level list.', kind: 'flat',
     entries: ['Full-time', 'Part-time', 'Internship', 'Online Jobs', 'Freelancer', 'Seasonal', 'Other'],
+  },
+  {
+    // Gates the Locations field: a Vietnamese company picks a province from
+    // Locations below; a foreign one does not, and writes its city into Address.
+    key: 'country', label: 'Country (quốc tịch công ty)', i18n: 'vi · en', used: 'Company profile (create + detail)',
+    note: 'Nationality of the COMPANY — where it is registered, not where its office is. Việt Nam is the default and the only value that reveals the Vietnamese province picker. Single-level list.',
+    kind: 'flat',
+    entries: ['Việt Nam', 'Hàn Quốc / Korea', 'Nhật Bản / Japan', 'Singapore', 'Hoa Kỳ / United States', 'Trung Quốc / China', 'Đài Loan / Taiwan', 'Thái Lan / Thailand', 'Malaysia', 'Đức / Germany', 'Pháp / France', 'Anh / United Kingdom', 'Úc / Australia', 'Ấn Độ / India', 'Khác / Other'],
   },
   {
     key: 'locations', label: 'Locations', i18n: 'vi · en', used: 'Company profile · job form · Store filter',
@@ -7723,7 +7946,7 @@ function AdminIssuer() {
             <LField label="Discount needing approval" req value="> 20%" hint="Above this, Send is blocked pending a sales lead." />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <LField label="Quotation no. format" value="EST-{seq}-{MM}-{YYYY}" hint="Gapless sequence." />
+            <LField label="Quotation no. format" value="QUO-{seq}-{MM}-{YYYY}" hint="Gapless sequence." />
             <LField label="Sales order no. format" value="SO-{seq}-{MM}-{YYYY}" />
             <LField label="Support email" value="customercare@topdev.vn" hint="Printed in T&C clause 6." />
           </div>
@@ -8092,6 +8315,24 @@ function FField({ label, req, value, select, hint, extra }: { label: React.React
   )
 }
 
+/** KV row with a read-only "shown to jobseekers" toggle on the right — mirrors the create form's Show-to-Jobseekers switch. */
+function KVShow({ label, value, shown }: { label: string; value: string; shown: boolean }) {
+  return (
+    <div className="border-b border-line-soft py-2 last:border-0">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10.5px] uppercase tracking-wide text-faint">{label}</p>
+        <span className="inline-flex shrink-0 items-center gap-1 text-[9.5px] text-muted">
+          <span className={cn('relative h-3.5 w-6 rounded-full', shown ? 'bg-emerald-500' : 'bg-line')}>
+            <span className={cn('absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white', shown ? 'left-[11px]' : 'left-0.5')} />
+          </span>
+          {shown ? 'Shown' : 'Hidden'}
+        </span>
+      </div>
+      <p className="mt-0.5 text-[12.5px] text-ink/85">{value}</p>
+    </div>
+  )
+}
+
 /* ── Job detail (read-only) — opened by clicking a job title ─────────────────── */
 function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
   useDetailCrumb(job.title, onBack)
@@ -8110,34 +8351,74 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        <MiniStat label="Applicants" value={job.applicants || '—'} sub="total received" />
-        <MiniStat label="Views" value={job.views.toLocaleString('en-US')} sub="job detail views" />
-        <MiniStat label="Saves" value={job.saves.toLocaleString('en-US')} sub="saved by seekers" />
-        <MiniStat label="Created by" value={job.source} sub={job.source === 'Admin' ? 'HQ on behalf' : 'company HR'} />
-        <MiniStat label="Posted" value={job.posted} sub="went live" />
-        <MiniStat label="Expires" value={job.deadline} sub="applications close" />
+        <MiniStat label="Applicants" value={job.applicants || '—'} />
+        <MiniStat label="Views" value={job.views.toLocaleString('en-US')} />
+        <MiniStat label="Saves" value={job.saves.toLocaleString('en-US')} />
+        <MiniStat label="Created by" value={job.source} />
+        <MiniStat label="Posted" value={job.posted} />
+        <MiniStat label="Expires" value={job.deadline} />
         <MiniStat label="Status" value={job.statusLabel} tone={job.status === 'schedule' ? 'warn' : undefined} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <DetailCard title="Overview">
-          <KV label="Company" value={job.company} />
-          <KV label="Category · role" value="IT · Software Developer" />
-          <KV label="Level" value="Team Lead / Manager" />
-          <KV label="Experience" value="7+ years" />
-          <KV label="Salary" value="Negotiable (hidden)" />
-          <KV label="Location" value="Hồ Chí Minh" />
-          <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">Placeholder detail — mirrors the create-form fields. Real values load from the saved job record.</p>
+      {/* Full read-only field view — mirrors the Create job form, grouped the same way */}
+      <div className="space-y-4">
+        <DetailCard title="Posting setup">
+          <div className="grid gap-x-6 sm:grid-cols-2">
+            <KV label="Company" value={`${job.company} · CO-1042`} link />
+            <KV label="Package" value="Free · expires in 14 days" />
+            <KV label="Exposure" value={job.status === 'open' ? 'On — visible on the jobseeker site' : '— (only meaningful while Open)'} />
+            <KV label="Created by" value={job.source === 'Admin' ? 'Admin — HQ on the company’s behalf' : 'Company HR'} />
+          </div>
         </DetailCard>
-        <DetailCard title="Description">
-          <Section title="Responsibilities" />
+
+        <DetailCard title="Job information">
+          <div className="grid gap-x-6 sm:grid-cols-2">
+            <KV label="Job title (VI)" value="Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)" />
+            <KV label="Job title (EN)" value="Technical Leader / Technical Architect (.NET)" />
+            <KV label="Job category" value={job.category} />
+            <KV label="Job role" value="Software Developer" />
+            <KV label="Job level" value="Experienced (non-manager)" />
+            <KV label="Job type" value="Full-time" />
+            <KV label="Industry" value="FMCG" />
+            <KV label="Skills" value="ASP.NET Core · .NET · React" />
+            <KV label="Location (province / city)" value="Hồ Chí Minh" />
+            <KV label="Address" value="Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2" />
+            <KVShow label="Salary" value="500 – 1,500 USD / month" shown />
+            <KVShow label="Number of headcount" value="1" shown={false} />
+            <KV label="Application deadline" value={job.deadline} />
+          </div>
+        </DetailCard>
+
+        <DetailCard title="Job content">
+          <Section title="Job description" />
           <p className="text-[12px] leading-relaxed text-muted">Lead the development team; backend architecture (70%) + frontend (30%); code review &amp; mentoring…</p>
-          <Section title="Requirements" />
+          <Section title="Requirements" className="mt-2" />
           <p className="text-[12px] leading-relaxed text-muted">7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…</p>
+          <Section title="Benefits" className="mt-2" />
+          <p className="text-[12px] leading-relaxed text-muted">Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…</p>
+          <p className="mt-2 text-[10.5px] text-faint">Vietnamese is the default, required, and the fallback; English/Korean optional. (Sample shown in English.)</p>
+        </DetailCard>
+
+        <DetailCard title="Candidate expectation">
+          <div className="grid gap-x-6 sm:grid-cols-2">
+            <KV label="Minimum years of experience" value="—" />
+            <KV label="Minimum education level" value="Bachelor" />
+            <KVShow label="Nationality" value="Any" shown={false} />
+            <KVShow label="Gender" value="Any" shown={false} />
+            <KVShow label="Marital status" value="Any" shown={false} />
+            <KVShow label="Age preference" value="18 – 60" shown={false} />
+            <KV label="Cover letter" value="Never required" />
+          </div>
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — pending client confirmation.</p>
+        </DetailCard>
+
+        <DetailCard title="Internal (HQ only)">
+          <p className="text-[12px] leading-relaxed text-muted">Approval context, special instructions, follow-ups… — never shown publicly.</p>
         </DetailCard>
       </div>
 
       {job.status === 'open' && <p className="mt-3 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] text-muted">This job is live on the jobseeker site. Turn Exposure off to take it down without closing it — or Close to end it.</p>}
+      <p className="mt-3 text-[11px] leading-relaxed text-faint">Read-only view — mirrors the Create job fields. Real values load from the saved job record; use Edit to change them.</p>
     </div>
   )
 }
@@ -8280,10 +8561,7 @@ function CompanyInfoCard() {
         <p className="text-[13px] font-semibold text-ink">NEC Vietnam <span className="text-[11px] font-normal text-muted">· ID CO-1042</span></p>
         <p className="text-[11px] text-muted">IT / Software · 100–499 staff · Head office: Hồ Chí Minh</p>
       </div>
-      <span className="ml-auto flex items-center gap-2">
-        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">✓ Job-Posting quota</span>
-        <span className="text-[15px] text-muted">→</span>
-      </span>
+      <span className="ml-auto text-[15px] text-muted">→</span>
     </button>
   )
 }
@@ -8295,13 +8573,13 @@ const TITLE_I18N: Record<'VI' | 'EN', string> = {
 
 /** Bilingual textarea — VI / EN tab on the label row. */
 function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolean; vi: string; en: string; rows?: number }) {
-  const [lang, setLang] = useState<'VI' | 'EN'>('EN')
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
   return (
     <div>
       <div className="mb-1 flex items-center gap-2">
         <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
         <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-          {(['EN', 'VI'] as const).map((l) => (
+          {(['VI', 'EN'] as const).map((l) => (
             <button key={l} onClick={() => setLang(l)} className={cn('px-2 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
           ))}
         </div>
@@ -8316,8 +8594,8 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
   const [exposed, setExposed] = useState(true)
   const [postMenu, setPostMenu] = useState(false)
   const [scheduling, setScheduling] = useState(false)
-  const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('EN')
-  const [locations, setLocations] = useState<string[]>(['Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2, HCMC'])
+  const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('VI')
+  const [locations, setLocations] = useState<{ city: string; address: string }[]>([{ city: 'Hồ Chí Minh', address: 'Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2' }])
   const G2 = 'grid grid-cols-2 gap-3'
   const G3 = 'grid grid-cols-3 gap-3'
 
@@ -8344,7 +8622,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
               <LabelRow label="Package" />
               <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-2">
                 <span className="text-[12.5px] text-ink/80">Free <span className="text-[11px] text-muted">· expires in 14 days</span></span>
-                <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500">from linked order</span>
+                <span className="text-faint">▾</span>
               </div>
             </div>
             <div>
@@ -8365,13 +8643,13 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <div>
             <LabelRow label="Job title" req right={
               <div className="flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-                {(['EN', 'VI'] as const).map((l) => (
+                {(['VI', 'EN'] as const).map((l) => (
                   <button key={l} onClick={() => setTitleLang(l)} className={cn('px-2 py-0.5', titleLang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
                 ))}
               </div>
             } />
             <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{TITLE_I18N[titleLang]}</div>
-            <p className="mt-1 text-[10.5px] text-faint">English tab shown first. Vietnamese is still required and is the fallback shown wherever an EN/KO translation is missing.</p>
+            <p className="mt-1 text-[10.5px] text-faint">Vietnamese is the default &amp; required language and the fallback shown wherever an EN/KO translation is missing; English/Korean optional.</p>
           </div>
 
           <div className={G2}>
@@ -8388,10 +8666,15 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           </div>
           <div>
             <LabelRow label="Working location (up to 3 locations)" req />
+            <div className="mb-1 flex gap-2 text-[10.5px] text-faint">
+              <span className="w-44 shrink-0">Location (province / city)</span>
+              <span>Address (street · building)</span>
+            </div>
             <div className="space-y-2">
               {locations.map((loc, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="flex flex-1 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc}<span className="ml-auto">▾</span></div>
+                  <div className="flex w-44 shrink-0 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.city}<span className="ml-auto">▾</span></div>
+                  <div className="flex flex-1 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.address}</div>
                   {locations.length > 1 && (
                     <button onClick={() => setLocations((ls) => ls.filter((_, j) => j !== i))} className="rounded-md border border-line px-2 py-2 text-[12px] text-muted">🗑</button>
                   )}
@@ -8399,19 +8682,9 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
               ))}
             </div>
             {locations.length < 3 && (
-              <button onClick={() => setLocations((ls) => [...ls, 'Select a working location…'])} className="mt-1 text-[11px] font-medium text-brand">+ Add a working location</button>
+              <button onClick={() => setLocations((ls) => [...ls, { city: 'Select city…', address: 'Enter address…' }])} className="mt-1 text-[11px] font-medium text-brand">+ Add a working location</button>
             )}
           </div>
-
-          <BiTArea label="Job description" req rows={4}
-            vi="Lãnh đạo nhóm phát triển; kiến trúc backend (70%) + frontend (30%); review code & mentoring…"
-            en="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" />
-          <BiTArea label="Requirements" req rows={4}
-            vi="7+ năm phát triển phần mềm; 3+ năm ở vị trí Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; tiếng Nhật N4+…"
-            en="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" />
-          <BiTArea label="Benefits" rows={3}
-            vi="Bảo hiểm đầy đủ; lương tháng 13; phụ cấp ngoại ngữ tới $500/tháng; 19+ ngày phép; Udemy; hybrid…"
-            en="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" />
 
           <div>
             <LabelRow label="Salary range" req right={<ShowToggle />} />
@@ -8426,6 +8699,19 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
             <Stepper value="1" />
           </div>
           <FField label="Application deadline" req value="dd/mm/yyyy" select />
+        </JobGroup>
+
+        {/* ═══ JOB CONTENT (bilingual rich text) ════════════════════════════ */}
+        <JobGroup title="Job content">
+          <BiTArea label="Job description" req rows={4}
+            vi="Lãnh đạo nhóm phát triển; kiến trúc backend (70%) + frontend (30%); review code & mentoring…"
+            en="Lead the development team; backend architecture (70%) + frontend (30%); code review & mentoring…" />
+          <BiTArea label="Requirements" req rows={4}
+            vi="7+ năm phát triển phần mềm; 3+ năm ở vị trí Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; tiếng Nhật N4+…"
+            en="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" />
+          <BiTArea label="Benefits" rows={3}
+            vi="Bảo hiểm đầy đủ; lương tháng 13; phụ cấp ngoại ngữ tới $500/tháng; 19+ ngày phép; Udemy; hybrid…"
+            en="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" />
         </JobGroup>
 
         {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}

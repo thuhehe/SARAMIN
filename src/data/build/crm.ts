@@ -15,7 +15,7 @@ import type { BuildModule } from './types'
  * VAT e-invoice, plus Contracts). One document chain, each step created from the
  * one before it and never retyped:
  *
- *   Quotation (Báo giá, 1–3 OPTIONS)   Sales, EST-xxxxxx-MM-YYYY
+ *   Quotation (Báo giá, 1–3 OPTIONS)   Sales, QUO-xxxxxx-MM-YYYY
  *        │ customer picks ONE option
  *        ▼
  *   Sales order / PO  ── SENT to the customer ──▶ deal = PO (won)
@@ -30,7 +30,7 @@ import type { BuildModule } from './types'
  *
  * The order is payment-before-invoice on purpose: the client's own terms say
  * "the service will be activated after the customer completes the payment & the
- * invoice is issued" (T&C clause 3 of EST-009909-07-2026). Field names and the
+ * invoice is issued" (T&C clause 3 of the client’s source PDF EST-009909-07-2026). Field names and the
  * document layout in ./crm.ts Quotations are modelled on that live PDF.
  *
  * Depth mirrors ./job-management.ts. UI mockups link per feature via `mockup`.
@@ -77,7 +77,7 @@ export const crm: BuildModule = {
         cols: ['What', 'Format', 'Example', 'Sequential?'],
         rows: [
           ['Company (record)', 'CO- + 6 encoded chars + 1 check char', 'CO-P9FCEPD', 'NO — deliberately scrambled'],
-          ['Quotation', 'EST-{seq6}-{MM}-{YYYY}', 'EST-009909-07-2026', 'Yes'],
+          ['Quotation', 'QUO-{seq6}-{MM}-{YYYY}', 'QUO-009909-07-2026', 'Yes'],
           ['Sales order / PO', 'INV-{seq6}/{MM}/{YYYY} (client’s live format)', 'INV-005864/07/2026', 'Yes'],
           ['Invoice — internal', 'INV-{seq}', 'INV-3390', 'Yes'],
           ['Invoice — legal series', 'Issued by the e-invoice provider', '1C26TAA/0041', 'Yes — required by law'],
@@ -87,7 +87,7 @@ export const crm: BuildModule = {
       items: [
         'Every number is system-assigned and never editable, except the customer’s own PO number, which is typed in as given.',
         'A company gets its CO- id the moment the record is created — a lead has one before it is ever a customer, and it never changes through lead → customer → churn → win-back.',
-        'Sequential numbers DO leak volume: a customer holding EST-009909 can infer roughly how many quotations we have issued, and two documents dated a month apart reveal the rate. That is accepted for documents and unavoidable for the legal series.',
+        'Sequential numbers DO leak volume: a customer holding QUO-009909 can infer roughly how many quotations we have issued, and two documents dated a month apart reveal the rate. That is accepted for documents and unavoidable for the legal series.',
         'The quotation number leaks the most, because quotations go to every PROSPECT — including ones comparing us with a competitor — while invoices only go to customers. It is also the one number with NO legal constraint, so it is the only one we could scramble if the client wants to.',
       ],
       warn: 'Open question — the Sales order and the Invoice both currently start with INV-, inherited from the client’s live system. Two different documents sharing a prefix is a real ambiguity in support and in exports. Recommend renaming the sales order to SO-{seq6}/{MM}/{YYYY}; needs client confirmation because existing documents already carry INV-.',
@@ -104,6 +104,7 @@ export const crm: BuildModule = {
         ],
       },
       items: [
+        'WHY THIS AND NOT JUST 7 RANDOM BASE32 CHARS: it IS 7 Base32 chars — capacity was never in question. The point is what the seven are. ONE of them is a CHECK character (catches a mistyped ID before it opens the wrong company); the other SIX are the database key run through a reversible scramble, not random. That buys two things random codes cannot: uniqueness BY CONSTRUCTION (no unique-index clash, no collision-and-retry loop on insert) and a code that decodes straight back to the row. Seven random chars would instead need a collision check + regenerate loop, and give zero typo protection unless you still reserve a check char — at which point it is this scheme with a worse failure mode. So this is not "more than 7 letters"; it is those 7 letters, chosen so they can never collide and a fat-finger is rejected.',
         'ALPHABET (Crockford Base32, 32 symbols, uppercase): 0 1 2 3 4 5 6 7 8 9 A B C D E F G H J K M N P Q R S T V W X Y Z — note I, L, O and U are absent, so 1/I/l and 0/O can never be confused.',
         'WORKED EXAMPLES — internal key → company ID (a developer can test an implementation against these exact values): 1 → CO-1MQJXE4 · 2 → CO-33TZVKS · 3 → CO-4JYCSRG · 1042 → CO-Y2FKY36 · 999,999 → CO-9BJ7V4W · 12,345,678 → CO-ZWH0QF9. Consecutive keys land far apart, which is what hides the customer count.',
         'VALIDATION EXAMPLES — CO-Y2FKY36 accepted · y2fky36 accepted (lowercase + prefix optional) · CO-Y2FKY3Z REJECTED (check character fails, a typo must never resolve to another company) · CO-Y2FKY36 with O typed for 0 accepted (I/L→1, O→0, U→V are folded on input).',
@@ -135,6 +136,60 @@ export const crm: BuildModule = {
       items: [
         'Search must match the ID even though no cell prints it — the search box says “company ID”, so it has to be true. Same for MST, legal name and the contact’s name.',
         'Search input is forgiving: lowercase, missing CO- prefix, and I/L→1 O→0 U→V folded — because the ID usually arrives pasted from an email or read out over the phone.',
+      ],
+    },
+    {
+      label: 'Company detail — Basic info card: what belongs here, and how it is edited',
+      text: 'One card holds the company IDENTITY. Everything about PEOPLE lives on the Contacts tab and everything about what they BOUGHT lives on Products & billing — so no contact name, email or phone appears on this card. A “primary contact” copy here would be a second place to update and would drift from the Contacts tab within a week.',
+      table: {
+        cols: ['Field', 'Editable', 'Input', 'Note'],
+        rows: [
+          ['Company ID', 'NEVER', '—', 'System-assigned at creation, permanent.'],
+          ['Legal name', 'Yes', 'Text', 'Required. As written on the MST registration.'],
+          ['Short name', 'Yes', 'Text', 'Optional. Empty falls back to the legal name everywhere.'],
+          ['Tax code (MST)', 'Yes', 'Text', 'Duplicate check on save — see the MST edge case.'],
+          ['Công ty mẹ', 'Yes', 'Select — company', 'The DIRECT parent only. Empty = standalone or group root.'],
+          ['Industry', 'Yes', 'Select — Master data', 'Its own field, NOT joined to size.'],
+          ['Company size', 'Yes', 'Select — band', 'Its own field: the two are filtered separately.'],
+          ['Company tags', 'Yes', 'Tag picker', 'Editorial labels, many per company.'],
+          ['Quốc tịch / Country', 'Yes', 'Select — Master data', 'Gates the province field below.'],
+          ['Tỉnh / Thành phố', 'Yes', 'Select — VN provinces', 'Shown ONLY when country = Việt Nam.'],
+          ['Address', 'Yes', 'Text', 'Required for every country — it prints on the documents.'],
+          ['Website', 'Yes', 'Text', 'Sits AFTER address. Read mode renders it as a link.'],
+          ['Lead source', 'Yes', 'Select — Master data', 'How the company first reached us.'],
+          ['Sales owner', 'Yes', 'Select — user', 'Reassignment is an audited change.'],
+          ['Products interested', 'Yes', 'Checkboxes', 'Pre-sale INTENT. What they actually bought is a different fact, on Products & billing.'],
+          ['Estimated deal value', 'Yes', 'Number (₫)', 'The rep’s own estimate; the quotation total supersedes it.'],
+          ['Description', 'Yes', 'Text', 'Free notes about the company.'],
+        ],
+      },
+      items: [
+        'ONE Edit toggle for the whole card, not a pencil per row: Edit turns every editable row into its input, Cancel reverts all of them, Save writes all of them. Fourteen independent inline editors is fourteen chances to leave one half-saved.',
+        'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
+        'The card and the New-company form must expose the SAME field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole.',
+        'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
+      ],
+    },
+    {
+      label: 'Công ty con — the UI, in both directions',
+      text: 'The parent/subsidiary relationship is stored ONCE, as parentCompanyId on the child, pointing at its direct parent. There is no “subsidiaries” list to maintain on the parent — that side is derived by querying children.\n\nSo the create form has a “Công ty mẹ” field and deliberately NO “công ty con” field. A subsidiary field would be a second way to write the same relationship, and the two would eventually disagree; it is also usually unfillable, because when a parent is being created its subsidiaries are not records yet. The parent → child direction is an ACTION, not a field: “+ Thêm công ty con” on the parent record opens this same form with the parent pre-filled and locked.',
+      table: {
+        cols: ['Case', 'Where it is done', 'Screen'],
+        rows: [
+          ['Create a subsidiary — from the subsidiary', 'New-company form → Công ty mẹ (tuỳ chọn)', 'A subsidiary is created exactly like any other company; picking a parent is one field on the same form.'],
+          ['Create a subsidiary — from the parent', 'Company detail → Công ty liên kết → + Thêm công ty con', 'Opens the SAME New-company form, titled “Thêm công ty con”, with Công ty mẹ pre-filled and locked (shown as a fixed row, not a picker). This is the answer to “where is the công ty con field” — it is an action, not a field.'],
+          ['Attach or move an existing company', 'Company detail → Basic info → Edit → Công ty mẹ', 'Also how a company is detached: clear the field.'],
+          ['See a company’s parent', 'Company detail → Basic info → Công ty mẹ', 'One row, links to the parent record.'],
+          ['See a company’s subsidiaries', 'Company detail → “Công ty liên kết — Affiliated companies”', 'DERIVED from the children — never typed. Shows the group tree with each member’s status.'],
+          ['See a whole group at once', 'Companies list → click a group tag', 'A banner appears (“🏢 Tập đoàn …”) and the list narrows to that group at every level, across sales owners, with a “Bỏ lọc” to clear it.'],
+        ],
+      },
+      items: [
+        'Nothing is inherited down the tree: each entity has its own tax code, account, quota, membership tier and sales owner, and a subsidiary can never spend its parent’s quota.',
+        'A company may not be its own ancestor — reject a parent choice that would create a cycle, at any depth.',
+        'The parent picker excludes the company itself, and the list is searchable: with 5,000 companies a plain dropdown is unusable.',
+        'The Công ty liên kết card renders on EVERY company, including a standalone one with no parent and no children — it reads “Đứng độc lập / Chưa thuộc tập đoàn nào”. Hiding the card there would leave no way to start a group.',
+        'Both directions are offered on that card, and they are not symmetrical: “+ Thêm công ty con” CREATES a record (the subsidiary does not exist yet), while “↑ Gán công ty mẹ” only LINKS an existing one. Either way, the value written is parentCompanyId on the child.',
       ],
     },
     {
@@ -194,6 +249,25 @@ export const crm: BuildModule = {
         'PRIMARY and BILLING are frequently different humans — an invoice sent to the buyer instead of the accountant is a real cause of late payment.',
         'The company Overview shows a People summary (contacts + login users, with the unreachable count); the full two lists live on the record’s “Contacts & users” tab.',
       ],
+    },
+    {
+      label: 'Quốc tịch (country) — and the address fields it gates',
+      text: 'Quốc tịch is the country the company is REGISTERED in, not where its office happens to be. It is asked on the New-company form and shown on the company record, and it decides whether the Vietnamese province picker appears at all. The country list is Master data (System → Master data → Country), never free text.',
+      table: {
+        cols: ['Field', 'Vietnamese company', 'Foreign company', 'Source'],
+        rows: [
+          ['Quốc tịch / Country', 'Việt Nam (the default)', 'Any other country', 'Master data → Country'],
+          ['Tỉnh / Thành phố · City', 'REQUIRED — pick a province', 'Not shown at all', 'Master data → Locations (63 provinces)'],
+          ['Address', 'REQUIRED — số nhà, đường, phường/xã, quận/huyện', 'REQUIRED — street, city, postal code, country', 'Free text'],
+        ],
+      },
+      items: [
+        'Address is asked for EVERY country — a quotation, order, invoice and contract all print it, so it can never be optional.',
+        'A foreign company writes its city INTO the address, because a province dropdown of Vietnamese provinces cannot express “Seoul” or “Singapore”. The form says so explicitly rather than leaving an unusable empty picker on screen.',
+        'The Companies list Location column and its Location filter read the Vietnamese province. A foreign company therefore has no city to group by — that is expected, not missing data.',
+        'Quốc tịch is a property of the COMPANY, not of a contact or a job. A Korean-owned company registered in Vietnam is Việt Nam; use the Company tag “Korean company” for the ownership angle, which is a separate, editorial fact.',
+      ],
+      warn: 'Do not infer the country from the tax code or the address. MST only exists for Vietnamese entities, and an address string is not parseable — so quốc tịch is always an explicit choice.',
     },
     {
       label: 'Company NAME — what is displayed vs what is stored',
@@ -281,6 +355,29 @@ export const crm: BuildModule = {
       text: 'The Account/Opportunity split every mature CRM uses. A company has zero, one or many deals over its life — deal #1 won in 2026, deal #2 lost, deal #3 open now.',
     },
     {
+      label: 'Sales owner — one current owner, and a full reassignment history',
+      text: 'Every company has EXACTLY ONE current sales owner (account manager), assigned by hand. But the owner CHANGES over an account’s life — a rep leaves, territories are rebalanced, a growing account moves to a key-account rep. The record must keep the whole chain, never silently overwrite it: the company detail shows an Owner history, so anyone can see who held the account when and — the point of the request — WHO reassigned it and why.',
+      table: {
+        cols: ['What the history records', 'Meaning', 'Example'],
+        rows: [
+          ['Owner (current)', 'The one rep responsible now — DERIVED from the newest entry, not a free field that can drift', 'Nguyễn Thị Lan'],
+          ['From → To', 'The tenure window for each owner in the chain', '05/2024 → 02/2025'],
+          ['Reassigned by', 'The ACTOR who performed the handover — a Sales lead, and NOT either the old or new owner', 'Lê Hữu Phong · Sales Lead'],
+          ['Reason', 'Why it moved', 'Previous rep left — handed over'],
+          ['First entry', 'The creation row: who owned it the moment the lead was created', 'Tạo lead (hệ thống)'],
+        ],
+      },
+      items: [
+        'The current owner is DERIVED from the newest history entry — it is never a standalone column that could disagree with the log.',
+        'A reassignment IS the audited change the edit form already writes for “Sales owner” (field · old · new · who · when) — the Owner history is that audit surfaced as a readable timeline instead of a raw log row.',
+        'Only a Sales lead / admin may reassign an owner; a rep cannot quietly pass their own accounts around.',
+        'Reassigning the owner touches NOTHING else — contacts, deals, quota, membership tier and the customer relationship all stay put. It changes who is responsible, not what the customer has.',
+        'Parent and subsidiary owners are independent (see the edge case): moving the parent’s owner never moves the subsidiary’s.',
+        'A brand-new lead shows a SINGLE entry — whoever created it still owns it. “Never reassigned” is a real state, not missing history.',
+      ],
+      warn: 'The owner history is append-only. Never edit or delete a past tenure to “tidy up”: quotations, sales targets and commission all reference who owned the account at the time, so rewriting it breaks the trail.',
+    },
+    {
       label: 'Leaving the pipeline — exactly two ways, both a DEAL closing',
       table: {
         cols: ['Way out', 'Trigger', 'Where the company lands'],
@@ -297,7 +394,7 @@ export const crm: BuildModule = {
       table: {
         cols: ['Step', 'Who', 'Produces', 'Effect'],
         rows: [
-          ['Quotation', 'Sales', 'Bilingual PDF, 1–3 options, EST-xxxxxx-MM-YYYY', 'Deal → Proposal'],
+          ['Quotation', 'Sales', 'Bilingual PDF, 1–3 options, QUO-xxxxxx-MM-YYYY', 'Deal → Proposal'],
           ['Sales order / PO', 'Sales', 'Order + payment request; can hold the customer’s own PO no. + file', 'Deal → PO (won) when SENT'],
           ['Payment', 'Accounting', 'Confirmation against the bank', 'Unlocks invoicing'],
           ['VAT e-invoice', 'Accounting', 'Invoice issued', 'Deal closed · New → Existing · provisioning released'],
@@ -359,11 +456,11 @@ export const crm: BuildModule = {
       table: {
         cols: ['Setting', 'Prints on', 'Why it must be central'],
         rows: [
-          ['Logo + VN/EN legal name + VN/EN address + website', 'Letterhead of quotation, sales order, invoice', 'The block the customer reads first. Both languages always print, exactly as on EST-009909-07-2026.'],
+          ['Logo + VN/EN legal name + VN/EN address + website', 'Letterhead of quotation, sales order, invoice', 'The block the customer reads first. Both languages always print, exactly as on the client’s source PDF EST-009909-07-2026.'],
           ['Issuer tax code (MST)', 'Sales order, VAT e-invoice', 'Ours, not the customer’s — the two are adjacent on the page and easy to confuse.'],
           ['VAT rate (currently 8%)', 'Every option total, every invoice', 'A State rate change (T&C clause 6) is then one edit, not a code release.'],
           ['Quotation validity (14 days) · discount-approval threshold (20%)', 'Expiry date · the Send gate', 'Sales policy, so it belongs to sales ops rather than to engineering.'],
-          ['Numbering formats — EST-{seq}-{MM}-{YYYY}, SO-…', 'Document numbers', 'The sequence must stay gapless and concurrency-safe; the format is configurable, the counter is not.'],
+          ['Numbering formats — QUO-{seq}-{MM}-{YYYY}, SO-…', 'Document numbers', 'The sequence must stay gapless and concurrency-safe; the format is configurable, the counter is not.'],
           ['Bank details', 'Sales order', 'Sent with the order because payment comes before the invoice (clause 3).'],
         ],
       },
@@ -500,7 +597,7 @@ export const crm: BuildModule = {
         'Store a TIMESTAMP `lastContactAt` on the company and compute idle at read time — never store a day counter, it goes stale overnight.',
         'Sort and filter on the raw timestamp, never the formatted string, or “2m” sorts before “9d”.',
         'The event types that reset idle must be an explicit allowlist in config — this is the single most likely thing to be built wrong.',
-        '`lastContactAt = null` renders “Never contacted” — a DISTINCT state from 0d, and the HIGHEST-priority follow-up, not the lowest.',
+        '`lastContactAt = null` renders “Never contacted” — a DISTINCT state from 0d, and the HIGHQUO-priority follow-up, not the lowest.',
         'Calendar days, timezone Asia/Ho_Chi_Minh, day boundary at local midnight. Public holidays and Tết are NOT excluded.',
         'Every threshold lives in settings and is editable by the sales lead without a deploy.',
       ],
@@ -955,7 +1052,7 @@ export const crm: BuildModule = {
           {
             group: 'Step 1 · Document header (auto)',
             items: [
-              { name: 'quoteCode', type: 'string', required: true, notes: 'auto — EST-{seq6}-{MM}-{YYYY}, e.g. EST-009909-07-2026. Never editable.' },
+              { name: 'quoteCode', type: 'string', required: true, notes: 'auto — QUO-{seq6}-{MM}-{YYYY}, e.g. QUO-009909-07-2026. Never editable.' },
               { name: 'version', type: 'int', required: true, notes: 'v1, v2… a re-issue after negotiation bumps the version; code stays the same' },
               { name: 'vendorBlock', type: 'ref → Settings', required: true, notes: 'The issuer letterhead — logo, VN + EN legal name, VN + EN address, website. NEVER typed per quotation and never hard-coded: it comes from System → Company information (issuer). One place to change it when the entity, address or logo changes, and every past quotation keeps the version it was sent with.' },
               { name: 'proposedBy', type: 'derived', notes: '"Báo giá bởi / Proposed by: {rep name} | {rep email}" — the signed-in rep' },
@@ -1111,7 +1208,7 @@ export const crm: BuildModule = {
           {
             heading: 'Worked example — the client’s EST-009909-07-2026, as this builder would produce it',
             items: [
-              'Header: EST-009909-07-2026 · Proposal 20/07/2026 · Expiry 03/08/2026 · Proposed by Đoàn Thị Phượng | phuongdoan@topdev.vn',
+              'Header: QUO-009909-07-2026 · Proposal 20/07/2026 · Expiry 03/08/2026 · Proposed by Đoàn Thị Phượng | phuongdoan@topdev.vn',
               'Client: anh Huy · huy.nguyen@aoimirai.co.jp · 0978490363',
               'VAT billing: CÔNG TY TNHH AM SOFTWARE VIỆT NAM · 115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, TP. Hồ Chí Minh · MST 0317110315',
               'Option 1 — Basic Plus Job + Basic Plus Job (Tặng): line 1 = 1 tin × 6,100,000 − 0% = 6,100,000; line 2 = 1 tin × 0 (Tặng) = 0. VAT 8% = 488,000. Total = 6,588,000. In words auto: "Sáu triệu năm trăm tám mươi tám nghìn đồng." Features: 5 numbered benefits (30-day posting, ≤03 skill tags, bold blue title, Top Search, refresh every 10 days, Highlight-companies homepage slot) + the gift package’s own list.',
@@ -1125,7 +1222,7 @@ export const crm: BuildModule = {
         backend: {
           dataModel: [
             { name: 'quotationId', type: 'uuid', required: true },
-            { name: 'quoteCode', type: 'string', required: true, notes: 'EST-{seq}-{MM}-{YYYY}; unique per version-family' },
+            { name: 'quoteCode', type: 'string', required: true, notes: 'QUO-{seq}-{MM}-{YYYY}; unique per version-family' },
             { name: 'version', type: 'int', required: true },
             { name: 'supersedesId', type: 'uuid?', notes: 'previous version' },
             { name: 'customerId', type: 'uuid', required: true },
@@ -1187,7 +1284,7 @@ export const crm: BuildModule = {
             'Snapshot everything printed (names, units, prices, features, terms, VAT rate) onto the quotation rows. A quotation is a legal offer — reprinting it a year later must produce the identical document even after the catalog changes. Number sequence must be gapless and concurrency-safe.',
         },
         acceptance: [
-          'A quotation with 2 options renders a PDF identical in structure and content to EST-009909-07-2026, including per-option VAT, total-after-VAT, bilingual amount-in-words, per-package benefit lists, the 6 T&C clauses and the signature block.',
+          'A quotation with 2 options renders a PDF identical in structure and content to the client’s EST-009909-07-2026, including per-option VAT, total-after-VAT, bilingual amount-in-words, per-package benefit lists, the 6 T&C clauses and the signature block.',
           'Options total independently and no grand total appears anywhere in the document or the pipeline value.',
           'A gift line prints as 0₫ / 0% and is excluded from revenue, but appears as provisionable quota after activation.',
           'Accepting exactly one option locks the quotation and reveals "Create Sales Order / PO" prefilled with that option’s lines.',
@@ -1208,7 +1305,7 @@ export const crm: BuildModule = {
           'Discount threshold that triggers sales-lead approval, and who the approvers are?',
           'Does the customer accept by replying (rep marks it), or do we want a signed accept link in the PDF/email so the customer picks the option themselves?',
           'Is e-signature required on the quotation, or is the current authorized-signature image enough?',
-          'Confirm the quote-number format EST-{seq}-{MM}-{YYYY} — is the sequence global or per month/per rep?',
+          'Confirm the quote-number format QUO-{seq}-{MM}-{YYYY} — is the sequence global or per month/per rep?',
           'Default validity: is 14 days the standing rule?',
         ],
       },
@@ -1231,7 +1328,7 @@ export const crm: BuildModule = {
             group: 'Order header',
             items: [
               { name: 'orderCode', type: 'string', required: true, notes: 'auto — SO-{seq}-{MM}-{YYYY}; kept in sync with the quote it came from' },
-              { name: 'sourceQuotation', type: 'ref → Quotation + option', required: true, notes: 'shows "EST-009909-07-2026 · Option 1" — the audit link back' },
+              { name: 'sourceQuotation', type: 'ref → Quotation + option', required: true, notes: 'shows "QUO-009909-07-2026 · Option 1" — the audit link back' },
               { name: 'customer', type: 'ref → Customer', required: true },
               { name: 'customerPoNumber', type: 'string', notes: 'the customer’s OWN PO number, when their procurement issues one' },
               { name: 'customerPoFile', type: 'file', notes: 'their signed PO / confirmation email as an attachment' },

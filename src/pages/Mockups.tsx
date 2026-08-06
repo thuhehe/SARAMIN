@@ -2205,8 +2205,140 @@ function MyApplicationsScreen() {
 /* ── Sign up — account creation, the FIRST step of the sign-up flow.
    Create account (email or social) → Onboarding (build profile) → browse jobs.
    Uses ONE "Full name" field (the platform-wide standard, no first/last split). */
+/* ── Social sign-up completion ────────────────────────────────────────────────
+   The step that finishes a social sign-up. It exists because a provider gives us
+   a verified EMAIL and nothing else that matters:
+     · the NAME it returns is a display name — often a nickname, or wrongly cased
+     · it never returns a PHONE — the field VN recruiters actually call
+     · it cannot ACCEPT OUR TERMS on the candidate's behalf
+   The last one alone makes this step mandatory, which is why asking for the phone
+   here is nearly free: we are stopping the candidate anyway. Modelled on the
+   Saramin KR completion screen (agree-to-all + itemised required/optional). */
+function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Facebook'; onBack: () => void }) {
+  const go = useNav()
+  const OPTIONAL_CONSENTS = [
+    'Location-based service terms of use',
+    'Marketing information — Email',
+    'Marketing information — SMS / Zalo',
+  ]
+  const [all, setAll] = useState(false)
+  const [required, setRequired] = useState(false)
+  const [optional, setOptional] = useState<string[]>([])
+
+  function toggleAll() {
+    const next = !all
+    setAll(next)
+    setRequired(next)
+    setOptional(next ? OPTIONAL_CONSENTS : [])
+  }
+  function toggleOptional(c: string) {
+    setOptional((a) => (a.includes(c) ? a.filter((x) => x !== c) : [...a, c]))
+    setAll(false)
+  }
+  const canSubmit = required
+
+  const Check = ({ on }: { on: boolean }) => (
+    <span className={cn('mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-sm border text-[10px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+  )
+
+  return (
+    <div className="min-h-[560px] bg-canvas/40">
+      <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-3">
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
+        <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
+      </div>
+      <div className="grid place-items-center px-4 py-8">
+        <div className="w-full max-w-[440px]">
+          <p className="text-center text-[17px] font-bold text-ink">Almost there — confirm your details</p>
+          <p className="mx-auto mt-1 max-w-sm text-center text-[12px] text-muted">
+            We got your email from {provider}. Check your name, add a phone number, and accept our terms.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+            {/* email — from the provider, locked: it is the identity key */}
+            <div>
+              <p className="mb-1 text-[11.5px] font-medium text-ink">Email</p>
+              <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-canvas/60 px-3 text-[12px] text-muted">
+                <span className="truncate">minhanh@gmail.com</span>
+                <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[9px] font-medium text-faint">🔒 {provider}</span>
+              </div>
+            </div>
+
+            {/* name — EDITABLE: a provider display name is often not the real one */}
+            <div className="mt-3">
+              <p className="mb-1 text-[11.5px] font-medium text-ink">Full name <span className="text-rose-500">*</span></p>
+              <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 text-[12px] text-ink/80">
+                <span>Trần Minh Anh</span>
+                <span className="shrink-0 text-[10px] text-faint">✎</span>
+              </div>
+              <p className="mt-0.5 text-[10px] text-faint">From {provider} — edit it if it isn’t how you want employers to address you.</p>
+            </div>
+
+            {/* phone — never supplied by any provider */}
+            <div className="mt-3">
+              <p className="mb-1 text-[11.5px] font-medium text-ink">Mobile phone <span className="text-rose-500">*</span></p>
+              <div className="flex items-center gap-1.5">
+                <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span>
+                <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-brand/50 bg-surface px-3 text-[12px] text-faint">Enter your phone number</div>
+              </div>
+              <label className="mt-1.5 flex items-center gap-2 text-[10.5px] text-muted"><span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I live abroad — I don’t have a Vietnamese number</label>
+            </div>
+
+            {/* consents — agree-to-all, then the itemised list */}
+            <div className="mt-4 rounded-lg bg-canvas/60 p-3">
+              <label onClick={toggleAll} className="flex cursor-pointer items-start gap-2">
+                <Check on={all} />
+                <span className="min-w-0">
+                  <span className="block text-[12px] font-semibold text-ink">Agree to all</span>
+                  <span className="block text-[10.5px] leading-relaxed text-muted">Includes the optional location-based terms and marketing consents.</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="mt-2 divide-y divide-line-soft rounded-lg border border-line">
+              <label onClick={() => { setRequired((v) => !v); setAll(false) }} className="flex cursor-pointer items-start gap-2 p-2.5">
+                <Check on={required} />
+                <span className="min-w-0 flex-1 text-[11.5px] text-ink/80"><b className="font-semibold text-rose-500">(Required)</b> Individual Membership Terms &amp; Privacy Policy</span>
+                <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
+              </label>
+              {OPTIONAL_CONSENTS.map((c) => (
+                <label key={c} onClick={() => toggleOptional(c)} className="flex cursor-pointer items-start gap-2 p-2.5">
+                  <Check on={optional.includes(c)} />
+                  <span className="min-w-0 flex-1 text-[11.5px] text-ink/80"><span className="text-faint">(Optional)</span> {c}</span>
+                  <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
+                </label>
+              ))}
+              <div className="flex items-start gap-2 p-2.5">
+                <span className="mt-1 text-[10px] text-faint">·</span>
+                <span className="min-w-0 flex-1 text-[11.5px] text-ink/80">How we collect and use your personal information</span>
+                <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => canSubmit && go('js-onboarding')}
+              disabled={!canSubmit}
+              className={cn('mt-4 w-full rounded-lg py-2.5 text-[13px] font-semibold', canSubmit ? 'bg-brand text-white hover:opacity-90' : 'cursor-not-allowed bg-line text-faint')}
+            >
+              Đồng ý điều khoản của chúng tôi
+            </button>
+            {!canSubmit && <p className="mt-1.5 text-center text-[10.5px] text-faint">The required terms must be accepted to finish signing up.</p>}
+          </div>
+
+          <p onClick={onBack} className="mt-3 cursor-pointer text-center text-[11.5px] text-muted hover:text-brand">← Use a different method</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SignUpScreen() {
   const go = useNav()
+  /* A provider verifies an EMAIL. It cannot accept our terms and it never returns
+     a phone number — so a social sign-up is not finished at the OAuth callback.
+     It lands on a completion step: confirm name, add phone, accept the terms. */
+  const [social, setSocial] = useState<null | 'Google' | 'Facebook'>(null)
+  if (social) return <SocialCompleteScreen provider={social} onBack={() => setSocial(null)} />
   return (
     <div className="min-h-[560px] bg-canvas/40">
       <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-3">
@@ -2218,10 +2350,10 @@ function SignUpScreen() {
           <p className="text-center text-[16px] font-bold text-ink">Create your account</p>
           <p className="mx-auto mt-1 max-w-xs text-center text-[12px] text-muted">One account to apply, save jobs and be found by recruiters.</p>
 
-          {/* social — pre-verified, goes straight on to onboarding */}
+          {/* social — verified email, but still needs the completion step */}
           <div className="mt-4 space-y-2">
-            {([['🟢', 'Continue with Google'], ['🔵', 'Continue with Facebook']] as [string, string][]).map(([ic, label]) => (
-              <button key={label} onClick={() => go('js-onboarding')} className="flex w-full items-center justify-center gap-2 rounded-lg border border-line py-2.5 text-[12.5px] font-medium text-ink hover:border-brand/50"><span>{ic}</span>{label}</button>
+            {([['🟢', 'Google'], ['🔵', 'Facebook']] as ['🟢' | '🔵', 'Google' | 'Facebook'][]).map(([ic, name]) => (
+              <button key={name} onClick={() => setSocial(name)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-line py-2.5 text-[12.5px] font-medium text-ink hover:border-brand/50"><span>{ic}</span>Continue with {name}</button>
             ))}
           </div>
           <div className="my-3 flex items-center gap-2 text-[11px] text-faint"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>

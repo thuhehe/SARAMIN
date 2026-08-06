@@ -101,7 +101,9 @@ export const jobManagement: BuildModule = {
           {
             group: 'Location, experience & salary',
             items: [
-              { name: 'workLocations (city)', type: 'Location[]', required: true, notes: 'province / city; multiple cities pending client confirmation — see open questions' },
+              { name: 'workLocations', type: 'Location[]', required: true, notes: 'up to 3; each entry is a province/city PLUS a street address — Location field then Address' },
+              { name: '· location (province / city)', type: 'enum per entry', required: true, notes: 'the city/province half of each work location' },
+              { name: '· address (street · building)', type: 'string per entry', notes: 'the street address half of each work location' },
               { name: 'experienceFrom / experienceTo', type: 'number (years)', notes: 'experience range, from–to' },
               { name: 'salaryType', type: 'radio', required: true, notes: 'Negotiable ("Thỏa thuận") OR a from–to range' },
               { name: 'salaryMin / salaryMax', type: 'number (VND)', notes: 'required only when salaryType = range' },

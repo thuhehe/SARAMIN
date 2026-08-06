@@ -12,9 +12,11 @@ import type { BuildModule } from './types'
  *          └────────── never verified, ages out ──────────────────▶ (purge)  │
  *                                                       reactivate ─────────┘
  *
- * Social login (Facebook / Google / LinkedIn / GitHub) arrives pre-verified by
- * the provider, so it skips straight to Active — that is the one asymmetry worth
- * remembering across every screen here.
+ * Social login (Facebook / Google / LinkedIn / GitHub) arrives with a verified
+ * EMAIL, so it skips the email-verification wait — but it does NOT skip straight
+ * to Active. It lands on a COMPLETION STEP (confirm name · add phone · accept
+ * terms) because a provider cannot accept our terms and never returns a phone.
+ * That asymmetry is worth remembering across every screen here.
  *
  * Two things stay strictly separate:
  *   ACCOUNT status  — can this person sign in at all (this module).
@@ -35,14 +37,33 @@ export const jobseekerUser: BuildModule = {
         cols: ['Method', 'Verification', 'Lands on'],
         rows: [
           ['Email + password', 'Email verification required', 'Pending verification → Active'],
-          ['Social — Facebook · Google · LinkedIn · GitHub', 'Pre-verified by the provider', 'Active directly'],
+          ['Social — Facebook · Google · LinkedIn · GitHub', 'Email pre-verified by the provider', 'COMPLETION STEP → Active'],
         ],
       },
       items: [
         'Password reset is available for email accounts.',
-        'NONE of the four providers returns a phone number. Every social sign-up therefore has an empty phone, always — it is asked at first apply, never at sign-up (see Application management → Apply flow).',
+        'A social sign-up is NOT finished at the OAuth callback. A provider gives us a verified email and nothing else we can rely on, so it lands on a completion step — confirm name, add phone, accept terms — and only then becomes Active.',
       ],
       warn: 'Email is the IDENTITY KEY — one account per email address. A social login on an email that already exists LINKS to that account; it never creates a second one.',
+    },
+    {
+      label: 'Social sign-up completion step — three things a provider cannot give us',
+      text: 'OAuth returns a verified email. It does not return anything else the platform can act on, which is why a social sign-up finishes on its own screen rather than dropping the candidate straight into the site.',
+      table: {
+        cols: ['Field', 'Why the provider cannot settle it', 'On the completion step'],
+        rows: [
+          ['Terms consent', 'A provider cannot accept our terms on someone’s behalf. This ALONE makes the step mandatory — there is no legal route around it.', 'Required checkbox + optional consents, agree-to-all shortcut'],
+          ['Full name', 'What comes back is a DISPLAY name — a nickname, a handle, or the wrong capitalisation. It is the name employers will read.', 'Pre-filled, always editable'],
+          ['Mobile phone', 'None of the four providers returns one, ever. In Vietnam this is the field a recruiter calls.', 'Required, with an “I live abroad” escape'],
+        ],
+      },
+      items: [
+        'The login email is shown LOCKED with the provider named — it is the identity key and cannot be changed here.',
+        'Because the step is unavoidable for consent, asking for the phone here is nearly free: the candidate is already stopped. This is the one place onboarding earns an extra field.',
+        'The confirm button reads “Đồng ý điều khoản của chúng tôi” — accepting the terms IS completing the sign-up; there is no separate submit.',
+        'Optional consents (location-based terms, marketing email, marketing SMS/Zalo) are individually toggleable and default to OFF; only the membership terms gate the button.',
+      ],
+      warn: 'An account that has not passed the completion step is NOT Active — it cannot apply, and it must never be counted as a registration. Abandoning here is a drop-off to measure, not a signed-up user.',
     },
     {
       label: 'Login email vs. contact email — two fields, one identity',
@@ -62,7 +83,7 @@ export const jobseekerUser: BuildModule = {
         cols: ['Status', 'Means', 'Reversible?', 'Rule'],
         rows: [
           ['Pending verification', 'Signed up, email not confirmed — cannot apply', 'Yes, by verifying', 'Can sign in and browse, but cannot apply or be discovered in CV search'],
-          ['Active', 'Verified, full use', '—', 'Full use of the site; a social sign-up lands here directly'],
+          ['Active', 'Verified, full use', '—', 'Full use of the site. An email sign-up reaches it by verifying; a social sign-up reaches it by finishing the completion step'],
           ['Suspended', 'Blocked by HQ — a reason is required', 'Yes, by HQ', 'Sign-in is refused with a support contact, never the reason text'],
           ['Deactivated', 'Withdrawn by the user', 'Yes, on sign-in within the grace window', 'Reinstate returns to the previous status, not blindly Active'],
         ],
@@ -113,7 +134,7 @@ export const jobseekerUser: BuildModule = {
       notes: '4 social login (Facebook, Gmail, LinkedIn, Github)',
       detail: {
         description:
-          'The jobseeker’s way in: email + password, or one of four social providers (Facebook, Google, LinkedIn, GitHub). Email sign-ups must confirm their address before they can apply; social sign-ups are already verified by the provider and go straight to Active. The same screen pair covers sign-in, forgotten password and re-entry after a withdrawal, because email is the single identity key for all of them.',
+          'The jobseeker’s way in: email + password, or one of four social providers (Facebook, Google, LinkedIn, GitHub). Email sign-ups must confirm their address before they can apply. Social sign-ups skip that wait — the provider already verified the email — but they are NOT done: they land on a completion step to confirm their name, add a phone number and accept the terms, because a provider can supply none of those. The same screen pair covers sign-in, forgotten password and re-entry after a withdrawal, because email is the single identity key for all of them.',
         userStory:
           'As a jobseeker, I want to sign up in seconds — ideally with an account I already have — so that I can apply to a job without filling in a registration form first.',
         uiFields: [
@@ -150,7 +171,7 @@ export const jobseekerUser: BuildModule = {
             heading: 'Status options — what each account status allows',
             items: [
               'Pending verification — created by an email/password sign-up. Can sign in and browse, CANNOT apply or be discovered in CV search. The whole UI carries a "confirm your email" banner with a resend action.',
-              'Active — verified email, or any social sign-up. Full use of the site.',
+              'Active — a verified email, or a social sign-up that has completed the completion step. Full use of the site.',
               'Suspended — blocked by HQ with a reason. Sign-in is refused with a support contact, never with the reason text (which is internal).',
               'Deactivated — the user withdrew. Sign-in inside the grace window offers reactivation; after it, the account is treated as gone.',
               'Only Active can apply to a job. Every other status is a read-only visitor with an account.',
@@ -208,6 +229,7 @@ export const jobseekerUser: BuildModule = {
             { name: 'fullName', type: 'string', required: true },
             { name: 'status', type: 'enum', required: true, notes: 'pending_verification|active|suspended|deactivated' },
             { name: 'emailVerifiedAt', type: 'timestamp?', notes: 'set by the link, or immediately on social sign-up' },
+            { name: 'signupCompletedAt', type: 'timestamp?', notes: 'social accounts only — null until the completion step is finished. An account with a null value here is NOT Active and must not be counted as a registration' },
             { name: 'SocialIdentity', type: 'entity', notes: 'jobseekerId, provider(facebook|google|linkedin|github), providerUserId, linkedAt — UNIQUE (provider, providerUserId)' },
             { name: 'VerificationToken', type: 'entity', notes: 'token hash, purpose(verify|reset), expiresAt, usedAt — single-use' },
             { name: 'termsVersion / termsAcceptedAt', type: 'string / timestamp' },
@@ -233,6 +255,8 @@ export const jobseekerUser: BuildModule = {
         },
         acceptance: [
           'A new email/password sign-up lands on Pending verification and cannot apply until verified.',
+          'A social sign-up cannot apply until the completion step is finished — abandoning it leaves an account that is not Active.',
+          'A social sign-up captures a phone number, so a social candidate arrives at their first apply with contact details already filled.',
           'Clicking the verification link sets Active and returns the user to where they left off.',
           'A social sign-in on an email that already has an account signs into that account and does not create a second one.',
           'Signing up with an existing email offers sign-in or reset rather than creating a duplicate.',
