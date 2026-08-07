@@ -266,15 +266,22 @@ function ApplyGroup({ n, title, action, children }: { n: number; title: string; 
   )
 }
 
-/** One read-only line in the apply summary. `missing` flags a required value the
-    candidate still has to supply — the only reason to open the edit popup. */
-function SumRow({ label, value, missing }: { label: string; value: string; missing?: boolean }) {
+/** One read-only line in the apply summary. Same row rhythm as the Job
+    preferences card on My CVs — label left, value right, hairline between — so
+    the two places a candidate reads their own data back look like one product.
+    `missing` flags a required value they still have to supply. */
+function SumRow({ label, value, missing }: { label: string; value: React.ReactNode; missing?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="shrink-0 text-[10.5px] text-faint">{label}</span>
-      <span className={cn('min-w-0 truncate text-right text-[11.5px]', missing ? 'font-medium text-rose-500' : 'text-ink')}>{value}</span>
+    <div className="flex items-start justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
+      <span className="shrink-0 text-[11px] text-muted">{label}</span>
+      <span className={cn('text-right text-[11.5px] font-medium', missing ? 'text-rose-500' : 'text-ink')}>{value}</span>
     </div>
   )
+}
+
+/** The small caps heading that separates groups inside a summary card. */
+function SumHead({ children }: { children: React.ReactNode }) {
+  return <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">{children}</p>
 }
 
 /** Two-column field grid inside a group. */
@@ -390,35 +397,31 @@ function ApplyScreen() {
               n={2}
               title="Your information"
               action={
-                <button
-                  onClick={() => setEditing(true)}
-                  className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-brand hover:border-brand/50"
-                >
-                  Edit
-                </button>
+                <span onClick={() => setEditing(true)} className="cursor-pointer text-[11px] font-medium text-brand">Edit</span>
               }
             >
-              <div className="rounded-md border border-line p-2.5">
-                <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-faint">Basic information</p>
+              <div className="rounded-xl border border-line bg-surface p-3">
+                <SumHead>Basic information</SumHead>
                 <div className="divide-y divide-line-soft">
                   <SumRow label="Full name" value="Trần Minh Anh" />
                   <SumRow label="Email" value="minhanh@gmail.com" />
-                  <SumRow label="Phone" value="Add your phone number" missing />
+                  <SumRow label="Phone" value="+ Add your phone number" missing />
                   <SumRow label="Province / City" value="Hồ Chí Minh" />
                   <SumRow label="Years of experience" value="4 years" />
                   <SumRow label="Highest degree" value="Bachelor" />
                 </div>
-                <p className="mb-0.5 mt-2.5 text-[10px] font-bold uppercase tracking-wide text-faint">Work preference</p>
+                <div className="my-2.5 border-t border-line" />
+                <SumHead>Work preference</SumHead>
                 <div className="divide-y divide-line-soft">
-                  <SumRow label="Desired work location" value="Hồ Chí Minh" />
+                  <SumRow label="Desired work location" value={<span className="flex flex-wrap justify-end gap-1"><Chip>Hồ Chí Minh</Chip></span>} />
                   <SumRow label="Desired level" value="Trưởng nhóm" />
-                  <SumRow label="Desired industry" value="IT / Software" />
-                  <SumRow label="Desired field" value="Not set" />
-                  <SumRow label="Desired salary" value="Not set" />
-                  <SumRow label="Availability" value="1 month" />
+                  <SumRow label="Desired industry" value={<span className="flex flex-wrap justify-end gap-1"><Chip tone="blue">IT / Software</Chip></span>} />
+                  <SumRow label="Desired field" value={<span className="font-normal text-faint">Not set</span>} />
+                  <SumRow label="Desired salary" value={<span className="font-normal text-faint">Not set</span>} />
+                  <SumRow label="Availability" value="🟢 1 month" />
                 </div>
               </div>
-              <p className="mt-1 text-[10px] text-faint">From your profile. Your title, level and industry are read from your CV automatically.</p>
+              <p className="mt-1.5 text-[10.5px] text-faint">From your profile. Your title, level and industry are read from your CV automatically.</p>
             </ApplyGroup>
 
             <ApplyGroup n={3} title="Cover letter">
@@ -1585,55 +1588,63 @@ function CrmCompanyPageScreen() {
    the file appears (upload preview, saved confirmation, compare screen), so "your
    PDF" always looks like the same document. White on purpose: a PDF is a white
    page in both app themes. `highlightDates` marks the Zenpay dates the parser
-   misses — only the compare screen turns that on. */
-function UploadedCvDoc({ highlightDates }: { highlightDates?: boolean }) {
-  return (
-    <div className="flex min-h-[430px] flex-col rounded-xl border border-line bg-white p-6 text-slate-800 shadow-sm">
-      <p className="text-[16px] font-bold tracking-wide">TRẦN MINH ANH</p>
-      <p className="text-[11px] font-medium text-slate-500">Product Designer</p>
-      <p className="mt-0.5 text-[9.5px] text-slate-400">Hồ Chí Minh · minhanh@email.com · 0901 234 567 · behance.net/minhanh</p>
+   misses — only the compare screen turns that on.
 
-      <div className="my-3 h-px bg-slate-200" />
-      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Summary</p>
-      <p className="mt-1 text-[10px] leading-relaxed text-slate-600">
+   `compact` renders the same page markedly smaller, for the compare screen where
+   the PDF is only a reference to check answers against. It shrinks the real type
+   and padding rather than CSS-transforming the box, so the layout height matches
+   what is drawn and no dead space appears underneath. */
+function UploadedCvDoc({ highlightDates, compact }: { highlightDates?: boolean; compact?: boolean }) {
+  const z = compact
+    ? { pad: 'p-3.5', min: 'min-h-0', name: 'text-[11px]', role: 'text-[8.5px]', meta: 'text-[7px]', head: 'text-[7px]', body: 'text-[7.5px]', item: 'text-[8px]', bullet: 'text-[7.5px]', gap: 'my-2', foot: 'text-[7px]' }
+    : { pad: 'p-6', min: 'min-h-[430px]', name: 'text-[16px]', role: 'text-[11px]', meta: 'text-[9.5px]', head: 'text-[9px]', body: 'text-[10px]', item: 'text-[10.5px]', bullet: 'text-[9.5px]', gap: 'my-3', foot: 'text-[9.5px]' }
+  return (
+    <div className={cn('flex flex-col rounded-xl border border-line bg-white text-slate-800 shadow-sm', z.pad, z.min)}>
+      <p className={cn('font-bold tracking-wide', z.name)}>TRẦN MINH ANH</p>
+      <p className={cn('font-medium text-slate-500', z.role)}>Product Designer</p>
+      <p className={cn('mt-0.5 text-slate-400', z.meta)}>Hồ Chí Minh · minhanh@email.com · 0901 234 567 · behance.net/minhanh</p>
+
+      <div className={cn('h-px bg-slate-200', z.gap)} />
+      <p className={cn('font-bold uppercase tracking-widest text-slate-400', z.head)}>Summary</p>
+      <p className={cn('mt-1 leading-relaxed text-slate-600', z.body)}>
         Product designer with 4+ years across web and mobile products at agency and in-house teams. Focused on user research,
         clean interfaces and scalable design systems.
       </p>
 
-      <div className="my-3 h-px bg-slate-200" />
-      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Experience</p>
+      <div className={cn('h-px bg-slate-200', z.gap)} />
+      <p className={cn('font-bold uppercase tracking-widest text-slate-400', z.head)}>Experience</p>
       <div className="mt-1">
-        <p className="text-[10.5px] font-semibold">Senior Product Designer — Lantern Digital</p>
-        <p className="text-[9px] text-slate-400">2022 – Present · Hồ Chí Minh</p>
-        <ul className="mt-0.5 list-disc pl-4 text-[9.5px] leading-relaxed text-slate-600">
+        <p className={cn('font-semibold', z.item)}>Senior Product Designer — Lantern Digital</p>
+        <p className={cn('text-slate-400', z.head)}>2022 – Present · Hồ Chí Minh</p>
+        <ul className={cn('mt-0.5 list-disc pl-4 leading-relaxed text-slate-600', z.bullet)}>
           <li>Lead designer on the core web product — research, design system, mentoring two juniors</li>
           <li>Design system rollout across 4 product teams</li>
         </ul>
       </div>
       <div className="mt-2">
-        <p className="text-[10.5px] font-semibold">Product Designer — Zenpay</p>
-        <p className="text-[9px] text-slate-400">
+        <p className={cn('font-semibold', z.item)}>Product Designer — Zenpay</p>
+        <p className={cn('text-slate-400', z.head)}>
           {highlightDates
             ? <span className="rounded-sm bg-amber-100 px-1 py-px font-medium text-amber-800">03/2020 – 12/2021</span>
             : <span>03/2020 – 12/2021</span>}
           {' '}· Hồ Chí Minh
         </p>
-        <ul className="mt-0.5 list-disc pl-4 text-[9.5px] leading-relaxed text-slate-600">
+        <ul className={cn('mt-0.5 list-disc pl-4 leading-relaxed text-slate-600', z.bullet)}>
           <li>Designed the merchant dashboard and KYC onboarding flow</li>
           <li>Ran usability tests with 20+ merchants per quarter</li>
         </ul>
       </div>
 
-      <div className="my-3 h-px bg-slate-200" />
-      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Education</p>
-      <p className="mt-1 text-[10.5px] font-semibold">University of Economics HCMC</p>
-      <p className="text-[9px] text-slate-400">Bachelor · Business Information Systems · 2016 – 2020</p>
+      <div className={cn('h-px bg-slate-200', z.gap)} />
+      <p className={cn('font-bold uppercase tracking-widest text-slate-400', z.head)}>Education</p>
+      <p className={cn('mt-1 font-semibold', z.item)}>University of Economics HCMC</p>
+      <p className={cn('text-slate-400', z.head)}>Bachelor · Business Information Systems · 2016 – 2020</p>
 
-      <div className="my-3 h-px bg-slate-200" />
-      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Skills</p>
-      <p className="mt-1 text-[9.5px] text-slate-600">Figma · UI Design · Sketch · Adobe CC · HTML/CSS basics</p>
+      <div className={cn('h-px bg-slate-200', z.gap)} />
+      <p className={cn('font-bold uppercase tracking-widest text-slate-400', z.head)}>Skills</p>
+      <p className={cn('mt-1 text-slate-600', z.bullet)}>Figma · UI Design · Sketch · Adobe CC · HTML/CSS basics</p>
 
-      <p className="mt-auto pt-4 text-[9.5px] text-slate-400">CV_TranMinhAnh.pdf · 1.2 MB · exactly as recruiters would download it</p>
+      <p className={cn('mt-auto pt-4 text-slate-400', z.foot)}>CV_TranMinhAnh.pdf · 1.2 MB · exactly as recruiters would download it</p>
     </div>
   )
 }
@@ -1667,36 +1678,31 @@ function AddCvScreen() {
           </>
         )}
 
+        {/* Upload — ONE column, centred. The file is the whole subject of this
+            step, so it sits in the middle of the page with the actions under it
+            rather than pushed to one side by an empty second column. */}
         {step === 'upload' && (
           <>
-            <p className="text-[18px] font-bold text-ink">Upload a CV</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {/* left — the file itself: dropzone, then the PDF PREVIEW once chosen */}
-              <div>
-                {!chosen ? (
-                  <div onClick={() => setChosen(true)} className="grid min-h-[300px] cursor-pointer place-items-center rounded-xl border-2 border-dashed border-line py-14 text-center hover:border-brand/50">
-                    <div>
-                      <p className="text-[26px]">📄</p>
-                      <p className="mt-1.5 text-[13px] font-medium text-brand">Choose a file or drop it here</p>
-                      <p className="mt-0.5 text-[11.5px] text-faint">.pdf, .doc, .docx · max 3MB · no password</p>
-                    </div>
-                  </div>
-                ) : (
+            <p className="text-center text-[18px] font-bold text-ink">Upload a CV</p>
+            <div className="mx-auto mt-4 max-w-[520px]">
+              {!chosen ? (
+                <div onClick={() => setChosen(true)} className="grid min-h-[300px] cursor-pointer place-items-center rounded-xl border-2 border-dashed border-line py-14 text-center hover:border-brand/50">
                   <div>
-                    {/* the full document, not a thumbnail — the user is about to
-                        commit this exact file, so show all of it */}
-                    <UploadedCvDoc />
-                    <p onClick={() => setChosen(false)} className="mt-1.5 cursor-pointer text-[11px] font-medium text-brand">↺ Choose a different file</p>
+                    <p className="text-[26px]">📄</p>
+                    <p className="mt-1.5 text-[13px] font-medium text-brand">Choose a file or drop it here</p>
+                    <p className="mt-0.5 text-[11.5px] text-faint">.pdf, .doc, .docx · max 3MB · no password</p>
                   </div>
-                )}
-              </div>
-              {/* right — actions only. The explainer cards were removed: the
-                  document beside them already says what is being saved. */}
-              <div className="flex flex-col">
-                <div className="mt-auto flex justify-end gap-2">
-                  <Btn onClick={() => { setChosen(false); setStep('choose') }}>Back</Btn>
-                  <Btn primary onClick={() => setStep('saved')}>Save my PDF</Btn>
                 </div>
+              ) : (
+                <>
+                  {/* the full document — the user is about to commit this exact file */}
+                  <UploadedCvDoc />
+                  <p onClick={() => setChosen(false)} className="mt-1.5 text-center text-[11px] font-medium text-brand cursor-pointer">↺ Choose a different file</p>
+                </>
+              )}
+              <div className="mt-5 flex justify-center gap-2">
+                <Btn onClick={() => { setChosen(false); setStep('choose') }}>Back</Btn>
+                <Btn primary onClick={() => setStep('saved')}>Save my PDF</Btn>
               </div>
             </div>
           </>
@@ -1884,16 +1890,14 @@ function CvCompareScreen() {
         </div>
       </div>
 
-      {/* The PDF column is deliberately NARROWER than the Saramin column: the PDF
-          is the reference you check answers against, the Saramin CV is the thing
-          being built. Equal halves made them read as equal choices. */}
-      <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)]">
-        {/* ── left: their PDF, as uploaded — reference, not the main event ── */}
+      {/* The PDF column is deliberately MUCH narrower than the Saramin column and
+          renders the compact document: the PDF is only the reference you check
+          answers against, the Saramin CV is the thing being built. */}
+      <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+        {/* ── left: their PDF — reference, not the main event ── */}
         <div className="md:sticky md:top-4 md:self-start">
           <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">📄 Your PDF — reference</p>
-          <div className="origin-top scale-[0.94]">
-            <UploadedCvDoc highlightDates />
-          </div>
+          <UploadedCvDoc highlightDates compact />
         </div>
 
         {/* ── right: the SAME info, restructured — mirrors the FULL CV structure
@@ -1974,7 +1978,7 @@ function CvCompareScreen() {
            already made; the PDF is already saved and untouched regardless. ── */}
       <div className="border-t border-line bg-surface px-5 py-3.5">
         <div className="flex flex-wrap items-center justify-center gap-2.5">
-          <button onClick={() => go('js-my-cvs')} className="rounded-lg bg-brand px-5 py-2.5 text-[12.5px] font-semibold text-white hover:opacity-90">📃 Save as Saramin CV</button>
+          <button onClick={() => go('js-my-cvs')} className="rounded-lg bg-brand px-6 py-2.5 text-[12.5px] font-semibold text-white hover:opacity-90">Save</button>
         </div>
         <p className="mt-2 text-center text-[10.5px] text-faint">
           Your original PDF stays in My CVs, unchanged — this adds the structured version beside it.
