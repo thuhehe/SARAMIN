@@ -158,16 +158,20 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
   )
 }
 
-function RowAction({ children, tone }: { children: React.ReactNode; tone?: 'brand' | 'rose' | 'muted' }) {
+function RowAction({ children, tone, title, onClick }: { children: React.ReactNode; tone?: 'brand' | 'rose' | 'amber' | 'muted'; title?: string; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
+      title={title}
       className={cn(
         'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',
         tone === 'brand'
           ? 'border-brand/30 bg-brand-soft text-brand hover:bg-brand hover:text-white'
           : tone === 'rose'
             ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white'
-            : 'border-line text-muted hover:bg-canvas/70',
+            : tone === 'amber'
+              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white'
+              : 'border-line text-muted hover:bg-canvas/70',
       )}
     >
       {children}
@@ -563,6 +567,19 @@ function AdminApplicants() {
       ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
       : <span className="text-faint" title="Off the employer dashboard — the funnel no longer applies">—</span>,
     <span className="text-muted">{a.when}</span>,
+    /* Row actions are STATE-AWARE: an action that cannot apply is not rendered,
+       so the row never offers a dead button. Recall is terminal, Block is
+       user-level, and both open the detail for the reason + confirm step. */
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      <RowAction title="Opens the CV in a viewer — audited" onClick={() => setOpen(a)}>CV</RowAction>
+      {a.status === 'Sent' && (
+        <RowAction tone="amber" title="Pull this CV off the employer’s dashboard — terminal" onClick={() => setOpen(a)}>Recall</RowAction>
+      )}
+      {a.status === 'Blocked' && (
+        <RowAction tone="rose" title="Unblock this user and let them apply again" onClick={() => setOpen(a)}>Unblock</RowAction>
+      )}
+      <RowAction title="Edit · Note · Block user · Delivery history" onClick={() => setOpen(a)}>⋯</RowAction>
+    </div>,
   ])
   return (
     <div>
@@ -574,7 +591,7 @@ function AdminApplicants() {
         queue: an application is sent to the employer the moment it is submitted.
       </p>
       <ListPage
-        minW={1500}
+        minW={1700}
         /* rows are already narrowed by the filter row, so Total means every
            application HQ holds, not what survived the filters */
         total={raw.length}
@@ -597,6 +614,7 @@ function AdminApplicants() {
           { label: 'Status · Saramin', w: '0.9fr' },
           { label: 'Stage · employer', w: '0.9fr' },
           { label: 'Applied', w: '0.8fr', align: 'r' },
+          { label: 'Actions', w: '1.4fr', align: 'r' },
         ]}
         rows={rows}
       />

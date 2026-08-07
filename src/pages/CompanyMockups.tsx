@@ -1199,11 +1199,6 @@ export function CompanyMockups() {
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
         <h1 className="mt-1 text-[26px] font-bold tracking-tight">Company portal — navigation & shell</h1>
-        <p className="mt-2 max-w-[72ch] text-[14px] leading-relaxed text-ink/75">
-          The <b>employer / recruiter</b> console — what a company's HR Manager &amp; HR Specialists see after
-          logging in. Same shell as the HQ Admin wireframe: a left sidebar + content area. Click any nav item to
-          preview its screen. Structure &amp; layout only — not final visual design.
-        </p>
       </div>
 
       {/* console shell */}

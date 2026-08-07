@@ -9,12 +9,6 @@ export function useNav() {
   return useContext(NavContext)
 }
 
-/** Header nav items → screen id (only the wired destinations). */
-const HEADER_NAV: Record<string, string | undefined> = {
-  Jobs: 'js-home',
-  'CV & Profile': 'js-profile-cv',
-}
-
 export function Line({ w = '100%', h = 8, className }: { w?: string | number; h?: number; className?: string }) {
   return <span className={cn('block rounded bg-line', className)} style={{ width: w, height: h }} />
 }
@@ -72,26 +66,23 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
   )
 }
 
-/** Jobseeker site top nav (VN recruitment standard). */
-export function JsHeader({ active }: { active?: string }) {
-  const items = ['Jobs', 'Companies', 'CV & Profile', 'Tools']
+/** Jobseeker site top nav. The section nav (Jobs / Companies / …) is parked for
+    now — the logo goes home, and "My account" opens the signed-in area (My page,
+    My CVs, My applications…). `active` is accepted so callers stay unchanged. */
+export function JsHeader(_props: { active?: string } = {}) {
   const go = useNav()
   return (
     <div className="flex items-center gap-4 border-b border-line px-5 py-3 bg-surface">
-      <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-      <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
-      <nav className="ml-2 hidden md:flex items-center gap-4 text-[12.5px]">
-        {items.map((it) => (
-          <span
-            key={it}
-            onClick={() => HEADER_NAV[it] && go(HEADER_NAV[it]!)}
-            className={cn(HEADER_NAV[it] && 'cursor-pointer', active === it ? 'font-semibold text-brand' : 'text-ink/70')}
-          >
-            {it}
-          </span>
-        ))}
-      </nav>
+      <span onClick={() => go('js-home')} className="grid h-6 w-6 cursor-pointer place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
+      <span onClick={() => go('js-home')} className="cursor-pointer text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
       <div className="ml-auto flex items-center gap-2">
+        <span
+          onClick={() => go('js-mypage')}
+          className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-medium text-ink/80 hover:border-brand/50"
+        >
+          <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] text-white">🙂</span>
+          My account <span className="text-faint">▾</span>
+        </span>
         <Btn>Sign in</Btn>
         <Btn primary onClick={() => go('js-signup')}>Sign up</Btn>
         <span className="ml-1 hidden sm:inline text-[11px] text-faint">| For employers</span>

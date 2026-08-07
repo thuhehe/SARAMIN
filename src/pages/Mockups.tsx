@@ -35,10 +35,6 @@ function MyPageRail({ active }: { active: string }) {
         <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
         <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
         <p className="text-[11px] text-muted">Product Designer</p>
-        <div className="mt-3 flex items-center justify-between rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-left">
-          <span className="text-[11px] font-medium text-ink/80">Let recruiters find me</span>
-          <span className="relative h-4 w-7 shrink-0 rounded-full bg-emerald-500"><span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-white" /></span>
-        </div>
       </div>
       <div className="rounded-xl border border-line p-2">
         {MY_PAGE_MENU.map(({ label, screen }) => {
@@ -257,15 +253,27 @@ function JobDetailScreen() {
    The apply modal collects the full profile, grouped VietnamWorks-style: a
    numbered section per topic rather than one long field run, so ~24 fields stay
    scannable. Labels only — no helper copy. */
-function ApplyGroup({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function ApplyGroup({ n, title, action, children }: { n: number; title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section>
       <div className="mb-1.5 flex items-center gap-1.5">
         <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-brand text-[9px] font-bold text-white">{n}</span>
         <h4 className="text-[12px] font-semibold text-ink">{title}</h4>
+        {action && <span className="ml-auto shrink-0">{action}</span>}
       </div>
       {children}
     </section>
+  )
+}
+
+/** One read-only line in the apply summary. `missing` flags a required value the
+    candidate still has to supply — the only reason to open the edit popup. */
+function SumRow({ label, value, missing }: { label: string; value: string; missing?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="shrink-0 text-[10.5px] text-faint">{label}</span>
+      <span className={cn('min-w-0 truncate text-right text-[11.5px]', missing ? 'font-medium text-rose-500' : 'text-ink')}>{value}</span>
+    </div>
   )
 }
 
@@ -321,6 +329,7 @@ function AField({ label, req, value, kind = 'text', options, full, lock, unit }:
 function ApplyScreen() {
   const go = useNav()
   const [cv, setCv] = useState<'saramin' | 'portfolio' | 'meet' | 'new'>('saramin')
+  const [editing, setEditing] = useState(false)
   return (
     <div className="relative">
       <div className="pointer-events-none opacity-40"><JobDetailScreen /></div>
@@ -372,43 +381,49 @@ function ApplyScreen() {
               <p className="mt-1.5 text-[11px] text-faint">.doc, .docx, .pdf · max 5 MB · no password protection.</p>
             </ApplyGroup>
 
-            {/* Application information — the SLIM profile set only (the decided
-                field tiers — no demographics, no address, no "current position"
-                fields: those are derived from the CV, never asked). Everything
-                arrives pre-filled from the Profile; phone is the one field a
-                social sign-up always has to add. */}
-            <ApplyGroup n={2} title="Application information">
-              <ApplyFields>
-                <AField label="Full name" req value="Trần Minh Anh" full />
-                <AField label="Email" req value="minhanh@gmail.com" lock="Google" />
-                <AField label="Phone" req kind="phone" />
-                <AField label="Province / City" req kind="select" value="Hồ Chí Minh" />
-                <AField label="Years of experience" req value="4" unit="years" />
-                <AField label="Highest degree" req kind="select" value="Bachelor" />
-              </ApplyFields>
-              <p className="mt-1 text-[10px] text-faint">Pre-filled from your profile — confirm once. Your title, level and industry are read from your CV automatically.</p>
+            {/* Your information — READ-ONLY here. Everything is already on the
+                profile, so applying should be a confirmation, not a form: the
+                candidate reads it back and only opens the popup if something is
+                wrong or missing. Keeps the apply modal short enough to submit
+                without scrolling past ~24 inputs. */}
+            <ApplyGroup
+              n={2}
+              title="Your information"
+              action={
+                <button
+                  onClick={() => setEditing(true)}
+                  className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-brand hover:border-brand/50"
+                >
+                  Edit
+                </button>
+              }
+            >
+              <div className="rounded-md border border-line p-2.5">
+                <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-faint">Basic information</p>
+                <div className="divide-y divide-line-soft">
+                  <SumRow label="Full name" value="Trần Minh Anh" />
+                  <SumRow label="Email" value="minhanh@gmail.com" />
+                  <SumRow label="Phone" value="Add your phone number" missing />
+                  <SumRow label="Province / City" value="Hồ Chí Minh" />
+                  <SumRow label="Years of experience" value="4 years" />
+                  <SumRow label="Highest degree" value="Bachelor" />
+                </div>
+                <p className="mb-0.5 mt-2.5 text-[10px] font-bold uppercase tracking-wide text-faint">Work preference</p>
+                <div className="divide-y divide-line-soft">
+                  <SumRow label="Desired work location" value="Hồ Chí Minh" />
+                  <SumRow label="Desired level" value="Trưởng nhóm" />
+                  <SumRow label="Desired industry" value="IT / Software" />
+                  <SumRow label="Desired field" value="Not set" />
+                  <SumRow label="Desired salary" value="Not set" />
+                  <SumRow label="Availability" value="1 month" />
+                </div>
+              </div>
+              <p className="mt-1 text-[10px] text-faint">From your profile. Your title, level and industry are read from your CV automatically.</p>
             </ApplyGroup>
 
-            <ApplyGroup n={3} title="Desired job">
-              <ApplyFields>
-                <AField label="Desired work location" req kind="select" value="Hồ Chí Minh" />
-                <AField label="Desired level" req kind="select" value="Trưởng nhóm" />
-                <AField label="Desired industry" req kind="select" value="IT / Software" />
-                <AField label="Desired field" req kind="select" />
-                <AField label="Desired salary" unit="tr/month" />
-                <AField label="Availability" kind="select" value="1 month" />
-              </ApplyFields>
-            </ApplyGroup>
-
-            <ApplyGroup n={4} title="Cover message">
+            <ApplyGroup n={3} title="Cover letter">
               <div className="h-14 rounded-md border border-line bg-canvas/40" />
             </ApplyGroup>
-
-            {/* consent */}
-            <label className="flex items-start gap-2 text-[11px] leading-relaxed text-muted">
-              <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />
-              I agree to share my profile &amp; CV with this employer, per Saramin's privacy policy.
-            </label>
           </div>
 
           {/* footer */}
@@ -418,60 +433,58 @@ function ApplyScreen() {
           </div>
         </div>
       </div>
+
+      {/* Edit popup — the ONLY place the apply flow shows inputs. Saving writes
+          back to the profile, so a correction made once while applying is not
+          re-typed on the next application. */}
+      {editing && (
+        <div className="absolute inset-0 z-10 flex items-start justify-center bg-black/35 px-4 pt-10">
+          <div className="flex max-h-[480px] w-full max-w-[430px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <p className="text-[13px] font-bold text-ink">Edit your information</p>
+              <span className="cursor-pointer text-faint" onClick={() => setEditing(false)}>✕</span>
+            </div>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
+              <ApplyGroup n={1} title="Basic information">
+                <ApplyFields>
+                  <AField label="Full name" req value="Trần Minh Anh" full />
+                  <AField label="Email" req value="minhanh@gmail.com" lock="Google" />
+                  <AField label="Phone" req kind="phone" />
+                  <AField label="Province / City" req kind="select" value="Hồ Chí Minh" />
+                  <AField label="Years of experience" req value="4" unit="years" />
+                  <AField label="Highest degree" req kind="select" value="Bachelor" />
+                </ApplyFields>
+              </ApplyGroup>
+              <ApplyGroup n={2} title="Work preference">
+                <ApplyFields>
+                  <AField label="Desired work location" req kind="select" value="Hồ Chí Minh" />
+                  <AField label="Desired level" req kind="select" value="Trưởng nhóm" />
+                  <AField label="Desired industry" req kind="select" value="IT / Software" />
+                  <AField label="Desired field" req kind="select" />
+                  <AField label="Desired salary" unit="tr/month" />
+                  <AField label="Availability" kind="select" value="1 month" />
+                </ApplyFields>
+              </ApplyGroup>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+              <Btn onClick={() => setEditing(false)}>Cancel</Btn>
+              <Btn primary onClick={() => setEditing(false)}>Save</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function MyPageScreen() {
-  const go = useNav()
   return (
     <div>
       <JsHeader active="CV & Profile" />
       <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
         <MyPageRail active="js-mypage" />
-        <div className="space-y-4">
-          <div className="rounded-xl border border-line p-4">
-            <p className="mb-1.5 text-[13px] font-bold">Profile completeness</p>
-            <div className="h-2 w-full rounded-full bg-canvas"><div className="h-2 w-[70%] rounded-full bg-brand" /></div>
-            <p className="mt-1 text-[11.5px] text-muted">70% — add work experience to improve visibility.</p>
-          </div>
-          <div className="rounded-xl border border-line p-4">
-            <SectionTitle more>My CV &amp; Profile</SectionTitle>
-            <div className="space-y-2">
-              {/* uploaded CV — the file recruiters read */}
-              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-ink">Portfolio.pdf</p>
-                  <p className="text-[11px] text-muted">Your uploaded CV · what recruiters read</p>
-                </div>
-              </div>
-              {/* saramin CV — optional structured profile */}
-              <div onClick={() => go('js-profile-cv')} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🧬</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-ink">Saramin CV</p>
-                  <p className="text-[11px] text-muted">Structured profile · optional</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-xl border border-line p-4">
-            <SectionTitle more>Recent applications</SectionTitle>
-            <div className="space-y-2">
-              {([
-                ['Senior Frontend Engineer · FPT', 'Applied'],
-                ['Product Manager · MoMo', 'Screening'],
-                ['UI Engineer · One Mount', 'Sent to employer'],
-              ] as [string, string][]).map(([job, s]) => (
-                <div key={job} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2">
-                  <span className="truncate text-[11.5px] text-ink">{job}</span>
-                  <Chip tone="amber">{s}</Chip>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Dashboard content is parked — to be designed. */}
+        <div className="space-y-4" />
       </div>
     </div>
   )
@@ -1677,15 +1690,9 @@ function AddCvScreen() {
                   </div>
                 )}
               </div>
-              {/* right — what happens with the file + the acceptance rule + actions */}
-              <div className="flex flex-col gap-3">
-                <div className="rounded-xl border border-line bg-canvas/40 p-3.5">
-                  <p className="text-[12px] font-semibold text-ink">Saved exactly as uploaded</p>
-                  <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">Recruiters download this file as-is — we never modify it. You can convert it into a searchable Saramin CV right after saving.</p>
-                </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5">
-                  <p className="text-[11.5px] leading-relaxed text-amber-800">A file must contain readable work experience <b>or</b> education to be accepted as a CV — otherwise we’ll ask you to create one instead. Smaller gaps (skills, summary) can be filled in later.</p>
-                </div>
+              {/* right — actions only. The explainer cards were removed: the
+                  document beside them already says what is being saved. */}
+              <div className="flex flex-col">
                 <div className="mt-auto flex justify-end gap-2">
                   <Btn onClick={() => { setChosen(false); setStep('choose') }}>Back</Btn>
                   <Btn primary onClick={() => setStep('saved')}>Save my PDF</Btn>
@@ -1753,31 +1760,58 @@ function MyCvsScreen() {
 
         {/* main */}
         <div className="space-y-4">
-          {/* ── profile summary — the onboarding data, always on top (Saramin-KR style) ── */}
-          <div className="rounded-xl border border-line bg-brand-soft/30 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+          {/* ── Profile summary — two named groups, Saramin-KR structure:
+                 BASIC INFORMATION (who you are + how to reach you) then
+                 WORK PREFERENCE (the five facts a recruiter filters on, as
+                 tiles). Splitting them stops the card reading as one undifferentiated
+                 field dump, and the tiles make the preference set scannable. ── */}
+          <div className="rounded-xl border border-line bg-surface">
+            {/* — Basic information — */}
+            <div className="flex flex-wrap items-start justify-between gap-2 p-4">
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 text-[14px] font-bold text-ink">
+                <p className="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-ink">
                   Trần Minh Anh
                   <span className="rounded bg-brand px-1.5 py-0.5 text-[9.5px] font-semibold text-white">Đang bật tìm kiếm</span>
                 </p>
-                {/* the FULL Profile (= onboarding) field set — nothing more, nothing less */}
-                <p className="mt-0.5 text-[11px] text-muted">✉ minhanh@email.com · 📱 0901 234 567</p>
-                <div className="mt-1.5 grid gap-x-5 gap-y-0.5 text-[11.5px] text-ink/80 sm:grid-cols-2">
-                  <p>💼 Desired: <b>Senior Product Designer</b> · Trưởng nhóm</p>
-                  <p>📍 Hồ Chí Minh · Hà Nội <span className="text-faint">· open to relocating</span></p>
-                  <p>🏭 IT / Software · FMCG</p>
-                  <p>💰 20 – 30 tr</p>
-                  <p>📈 4 yrs experience · 🎓 Bachelor</p>
-                  <p>🟢 Open now</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">
+                  1996 (30 tuổi)
+                  <span className="ml-2 inline-flex items-center gap-1 rounded bg-canvas px-1.5 py-0.5 text-[10px] text-faint">🔒 Hồ sơ của bạn</span>
+                </p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                  Personal information is shown to a company only when they view your CV or send you a proposal.
+                </p>
+                <div className="mt-2 grid gap-x-6 gap-y-0.5 text-[11.5px] text-ink/80 sm:grid-cols-2">
+                  <p><span className="text-faint">Email</span> minhanh@email.com</p>
+                  <p><span className="text-faint">Điện thoại</span> 0901 234 567</p>
                 </div>
               </div>
-              <span onClick={() => go('js-profile-cv')} className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70">✎ Edit profile</span>
+              <span onClick={() => go('js-profile-cv')} className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit profile</span>
             </div>
+
+            {/* — Work preference — the five recruiter-facing facts, as tiles — */}
+            <div className="border-t border-line-soft px-4 pb-4 pt-3">
+              <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {([
+                  ['💼', 'Kinh nghiệm', '4 năm · Trưởng nhóm'],
+                  ['🎓', 'Học vấn', 'Cử nhân'],
+                  ['🔧', 'Vị trí mong muốn', 'Senior Product Designer'],
+                  ['💰', 'Lương mong muốn', '20 – 30 triệu'],
+                  ['📍', 'Nơi làm việc', 'Hồ Chí Minh · Hà Nội'],
+                ] as [string, string, string][]).map(([icon, label, value]) => (
+                  <div key={label} className="rounded-lg border border-line p-2.5">
+                    <p className="flex items-center gap-1 text-[10.5px] text-faint">{icon} {label}</p>
+                    <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[10.5px] text-faint">🏭 IT / Software · FMCG <span className="mx-1">·</span> 🟢 Sẵn sàng đi làm <span className="mx-1">·</span> open to relocating</p>
+            </div>
+
             {/* the counters that make this a homepage, not a form */}
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-line-soft pt-3">
+            <div className="flex flex-wrap gap-2 border-t border-line-soft px-4 py-3">
               {([['Đề xuất nhận được', '0'], ['Lượt xem CV', '3'], ['Đã ứng tuyển', '5']] as [string, string][]).map(([k, v]) => (
-                <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[11px] text-muted">{k} <b className="text-ink">{v}</b></span>
+                <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/40 px-3 py-1 text-[11px] text-muted">{k} <b className="text-ink">{v}</b></span>
               ))}
             </div>
           </div>
@@ -1850,11 +1884,16 @@ function CvCompareScreen() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
-        {/* ── left: their PDF, as uploaded ── */}
-        <div>
-          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">📄 Your PDF — as uploaded</p>
-          <UploadedCvDoc highlightDates />
+      {/* The PDF column is deliberately NARROWER than the Saramin column: the PDF
+          is the reference you check answers against, the Saramin CV is the thing
+          being built. Equal halves made them read as equal choices. */}
+      <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)]">
+        {/* ── left: their PDF, as uploaded — reference, not the main event ── */}
+        <div className="md:sticky md:top-4 md:self-start">
+          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">📄 Your PDF — reference</p>
+          <div className="origin-top scale-[0.94]">
+            <UploadedCvDoc highlightDates />
+          </div>
         </div>
 
         {/* ── right: the SAME info, restructured — mirrors the FULL CV structure
@@ -1930,15 +1969,15 @@ function CvCompareScreen() {
         </div>
       </div>
 
-      {/* ── save — two explicit buttons; the filled-in info is saved to the CV
-           record either way (the PDF file itself is never modified) ── */}
+      {/* ── save — ONE action. The candidate reached this screen by choosing to
+           convert, so "save as original PDF" was a second exit from a decision
+           already made; the PDF is already saved and untouched regardless. ── */}
       <div className="border-t border-line bg-surface px-5 py-3.5">
         <div className="flex flex-wrap items-center justify-center gap-2.5">
-          <button onClick={() => go('js-my-cvs')} className="rounded-lg border-2 border-line px-4 py-2.5 text-[12.5px] font-semibold text-ink hover:border-brand/50">📄 Save as original PDF</button>
-          <button onClick={() => go('js-my-cvs')} className="rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-semibold text-white hover:opacity-90">📃 Save as Saramin CV</button>
+          <button onClick={() => go('js-my-cvs')} className="rounded-lg bg-brand px-5 py-2.5 text-[12.5px] font-semibold text-white hover:opacity-90">📃 Save as Saramin CV</button>
         </div>
         <p className="mt-2 text-center text-[10.5px] text-faint">
-          Either way, everything you typed here (dates, skills, …) is saved with the CV — recruiters searching or screening read that data even when they download your original PDF. The file itself is never modified.
+          Your original PDF stays in My CVs, unchanged — this adds the structured version beside it.
         </p>
       </div>
     </div>
@@ -1950,17 +1989,26 @@ function CvCompareScreen() {
    each step framed with a live job-count carrot, ending on a screen of matched
    jobs — from which we lead the candidate into creating their CV. No upload /
    build fork here; that lives on the My CVs page. */
+const VN_PROVINCES = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai', 'Hải Phòng', 'Cần Thơ', 'Bắc Ninh', 'Remote', 'Overseas']
+
 function OnboardingScreen() {
   const go = useNav()
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 'results'>(1)
-  const counts: Record<number, string> = { 1: '', 2: '61,341', 3: '12,231', 4: '8,400', 5: '6,900' }
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 'results'>(1)
+  /* Locations are a SEARCHABLE DROPDOWN, not chips: Vietnam has 63 provinces, so
+     a chip grid either lies about the choice or scrolls forever. Short curated
+     lists (category, industry) stay as chips — the whole set is visible there. */
+  const [locOpen, setLocOpen] = useState(false)
+  const [locs, setLocs] = useState<string[]>(['Hồ Chí Minh', 'Hà Nội'])
+  const toggleLoc = (c: string) =>
+    setLocs((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
+  const counts: Record<number, string> = { 1: '', 2: '61,341', 3: '12,231', 4: '8,400' }
   const Bar = ({ n }: { n: number }) => (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between text-[11px] text-muted">
-        <span>Step {n} of 5</span>
+        <span>Step {n} of 4</span>
         {counts[n] && <span className="font-medium text-brand">✨ {counts[n]} jobs match so far</span>}
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${n * 20}%` }} /></div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${n * 25}%` }} /></div>
     </div>
   )
   const Fld = ({ label, ph }: { label: string; ph?: string }) => (
@@ -1979,64 +2027,122 @@ function OnboardingScreen() {
         {step !== 'results' ? (
           <div className="w-full max-w-[440px] rounded-2xl border border-line bg-surface p-5 shadow-sm">
             <Bar n={step} />
+            {/* 1 · WHAT work — category → role → industry answer one question, so
+                   they belong on one screen. Category is picked first because it
+                   narrows the role list below it. */}
             {step === 1 && (
               <>
                 <p className="text-[15px] font-bold text-ink">What kind of work are you looking for?</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">Tell us the role — personalized job matches begin from here.</p>
-                <div className="mt-3"><div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">🔍 e.g. Product Designer at an IT company</div></div>
-                <Nav next={() => setStep(2)} />
-              </>
-            )}
-            {step === 2 && (
-              <>
-                <p className="text-[15px] font-bold text-ink">Which region would you like to work in?</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">Pick up to 3.</p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Remote', 'Overseas'].map((c, i) => (
-                    <span key={c} className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', i < 2 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}>{c}</span>
-                  ))}
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-[11.5px] text-ink/80"><span className="grid h-4 w-4 place-items-center rounded bg-brand text-[10px] text-white">✓</span> I’m open to relocating</label>
-                <Nav back={() => setStep(1)} next={() => setStep(3)} />
-              </>
-            )}
-            {step === 3 && (
-              <>
-                <p className="text-[15px] font-bold text-ink">Your work experience</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Personalized job matches begin from here.</p>
                 <div className="mt-3 space-y-3">
-                  <Fld label="Total years of experience" ph="e.g. 4 years" />
-                </div>
-                <p className="mt-2 text-[10.5px] text-faint">Just the total — your work history itself lives on your CV, where we can read it from an upload.</p>
-                <Nav back={() => setStep(2)} next={() => setStep(4)} />
-              </>
-            )}
-            {step === 4 && (
-              <>
-                <p className="text-[15px] font-bold text-ink">Your highest level of education</p>
-                <div className="mt-3 space-y-3">
-                  <Fld label="Highest level of education" ph="e.g. Bachelor’s degree" />
-                </div>
-                <p className="mt-2 text-[10.5px] text-faint">School and major go on your CV — no need to type them here.</p>
-                <Nav back={() => setStep(3)} next={() => setStep(5)} />
-              </>
-            )}
-            {step === 5 && (
-              <>
-                <p className="text-[15px] font-bold text-ink">What are you aiming for?</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">These sharpen your matches — recruiters filter on them.</p>
-                <div className="mt-3 space-y-3">
-                  <Fld label="Desired job level" ph="Nhân viên · Trưởng nhóm · Trưởng phòng · …" />
                   <div>
-                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired industry (up to 3)</p>
+                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job category</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Design', 'IT — Software', 'Marketing', 'Sales', 'Accounting', 'HR'].map((c, i) => (
+                        <span key={c} className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}>{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job role</p>
+                    <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">🔍 e.g. Senior Product Designer</div>
+                    <p className="mt-1 text-[10px] text-faint">Suggestions come from the category you picked above.</p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired industry <span className="font-normal text-faint">(up to 3)</span></p>
                     <div className="flex flex-wrap gap-1.5">
                       {['IT / Software', 'FMCG', 'Banking', 'Healthcare', 'Education', 'Logistics'].map((c, i) => (
                         <span key={c} className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', i < 2 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}>{c}</span>
                       ))}
                     </div>
+                    <p className="mt-1 text-[10px] text-faint">The company’s sector — a designer can work in Banking or FMCG.</p>
                   </div>
-                  <Fld label="Desired salary (optional)" ph="e.g. 20 – 30 tr / month" />
                 </div>
-                <Nav back={() => setStep(4)} next={() => setStep('results')} nextLabel="See my matches →" />
+                <Nav next={() => setStep(2)} />
+              </>
+            )}
+            {/* 2 · WHERE */}
+            {step === 2 && (
+              <>
+                <p className="text-[15px] font-bold text-ink">Where would you like to work?</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Pick up to 3.</p>
+                <div className="mt-3">
+                  {/* the field itself — click to open the province list */}
+                  <button
+                    onClick={() => setLocOpen((o) => !o)}
+                    className={cn('flex h-10 w-full items-center gap-2 rounded-lg border bg-surface px-3 text-[12px]', locOpen ? 'border-brand' : 'border-line')}
+                  >
+                    <span className="text-faint">🔍</span>
+                    <span className={cn('flex-1 text-left', locs.length ? 'text-ink/80' : 'text-faint')}>
+                      {locs.length ? `${locs.length} selected` : 'Search a province or city…'}
+                    </span>
+                    <span className="text-faint">{locOpen ? '▴' : '▾'}</span>
+                  </button>
+
+                  {locOpen && (
+                    <div className="mt-1 max-h-[168px] overflow-y-auto rounded-lg border border-line bg-surface shadow-sm">
+                      {VN_PROVINCES.map((c) => {
+                        const on = locs.includes(c)
+                        const full = !on && locs.length >= 3
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => toggleLoc(c)}
+                            disabled={full}
+                            className={cn(
+                              'flex w-full items-center gap-2 border-b border-line-soft px-3 py-2 text-left text-[12px] last:border-b-0',
+                              on ? 'bg-brand-soft/50 font-medium text-brand' : full ? 'text-faint' : 'text-ink/80 hover:bg-canvas/60',
+                            )}
+                          >
+                            <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+                            {c}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* selections stay visible as removable chips under the field */}
+                  {locs.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {locs.map((c) => (
+                        <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-2.5 py-1 text-[11.5px] text-brand">
+                          {c}
+                          <span onClick={() => toggleLoc(c)} className="cursor-pointer text-[10px] text-brand/70 hover:text-brand">✕</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-1 text-[10px] text-faint">{locs.length} of 3 selected · Vietnam has 63 provinces, so this searches rather than lists.</p>
+                </div>
+                <Nav back={() => setStep(1)} next={() => setStep(3)} />
+              </>
+            )}
+            {/* 3 · ABOUT YOU — the two Basic-information facts, together: one field
+                   per screen is a wasted step. */}
+            {step === 3 && (
+              <>
+                <p className="text-[15px] font-bold text-ink">Tell us about your background</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Recruiters filter on both of these.</p>
+                <div className="mt-3 space-y-3">
+                  <Fld label="Years of work experience" ph="e.g. 4 years" />
+                  <Fld label="Highest education" ph="e.g. Bachelor’s degree" />
+                </div>
+                <p className="mt-2 text-[10.5px] text-faint">Just the totals — your work history and school go on your CV, where we can read them from an upload.</p>
+                <Nav back={() => setStep(2)} next={() => setStep(4)} />
+              </>
+            )}
+            {/* 4 · THE ASK — salary gets its own moment; buried in a list it goes
+                   unanswered, and it is the filter employers use most. */}
+            {step === 4 && (
+              <>
+                <p className="text-[15px] font-bold text-ink">What salary are you expecting?</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">One of the filters recruiters use most — and no CV ever states it.</p>
+                <div className="mt-3">
+                  <Fld label="Expected salary" ph="e.g. 20 – 30 tr / month" />
+                </div>
+                <p className="mt-2 text-[10.5px] text-faint">Only shown to employers as a range. You can change it any time.</p>
+                <Nav back={() => setStep(3)} next={() => setStep('results')} nextLabel="See my matches →" />
               </>
             )}
           </div>
@@ -2216,30 +2322,8 @@ function MyApplicationsScreen() {
    Saramin KR completion screen (agree-to-all + itemised required/optional). */
 function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Facebook'; onBack: () => void }) {
   const go = useNav()
-  const OPTIONAL_CONSENTS = [
-    'Location-based service terms of use',
-    'Marketing information — Email',
-    'Marketing information — SMS / Zalo',
-  ]
-  const [all, setAll] = useState(false)
-  const [required, setRequired] = useState(false)
-  const [optional, setOptional] = useState<string[]>([])
-
-  function toggleAll() {
-    const next = !all
-    setAll(next)
-    setRequired(next)
-    setOptional(next ? OPTIONAL_CONSENTS : [])
-  }
-  function toggleOptional(c: string) {
-    setOptional((a) => (a.includes(c) ? a.filter((x) => x !== c) : [...a, c]))
-    setAll(false)
-  }
-  const canSubmit = required
-
-  const Check = ({ on }: { on: boolean }) => (
-    <span className={cn('mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-sm border text-[10px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
-  )
+  /* One consent line — the same control the email Create-account form uses. */
+  const [agreed, setAgreed] = useState(false)
 
   return (
     <div className="min-h-[560px] bg-canvas/40">
@@ -2284,45 +2368,29 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
               <label className="mt-1.5 flex items-center gap-2 text-[10.5px] text-muted"><span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I live abroad — I don’t have a Vietnamese number</label>
             </div>
 
-            {/* consents — agree-to-all, then the itemised list */}
-            <div className="mt-4 rounded-lg bg-canvas/60 p-3">
-              <label onClick={toggleAll} className="flex cursor-pointer items-start gap-2">
-                <Check on={all} />
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-semibold text-ink">Agree to all</span>
-                  <span className="block text-[10.5px] leading-relaxed text-muted">Includes the optional location-based terms and marketing consents.</span>
-                </span>
-              </label>
-            </div>
-
-            <div className="mt-2 divide-y divide-line-soft rounded-lg border border-line">
-              <label onClick={() => { setRequired((v) => !v); setAll(false) }} className="flex cursor-pointer items-start gap-2 p-2.5">
-                <Check on={required} />
-                <span className="min-w-0 flex-1 text-[11.5px] text-ink/80"><b className="font-semibold text-rose-500">(Required)</b> Individual Membership Terms &amp; Privacy Policy</span>
-                <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
-              </label>
-              {OPTIONAL_CONSENTS.map((c) => (
-                <label key={c} onClick={() => toggleOptional(c)} className="flex cursor-pointer items-start gap-2 p-2.5">
-                  <Check on={optional.includes(c)} />
-                  <span className="min-w-0 flex-1 text-[11.5px] text-ink/80"><span className="text-faint">(Optional)</span> {c}</span>
-                  <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
-                </label>
-              ))}
-              <div className="flex items-start gap-2 p-2.5">
-                <span className="mt-1 text-[10px] text-faint">·</span>
-                <span className="min-w-0 flex-1 text-[11.5px] text-ink/80">How we collect and use your personal information</span>
-                <span className="shrink-0 text-[10.5px] text-faint">View ›</span>
+            {/* personal details — the rest of Basic information, collected here.
+                All four are OPTIONAL: they are never employer search facets, so
+                they must never block someone from finishing sign-up. */}
+            <div className="mt-4">
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details <span className="font-normal normal-case tracking-normal">· optional</span></p>
+              <div className="grid grid-cols-2 gap-2">
+                {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
+                  <div key={label}>
+                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
+                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-faint">{ph}<span className="text-faint">▾</span></div>
+                  </div>
+                ))}
               </div>
+              <p className="mt-1 text-[10px] text-faint">Shown on your CV if you fill them in. Employers can never search or filter by these.</p>
             </div>
 
-            <button
-              onClick={() => canSubmit && go('js-onboarding')}
-              disabled={!canSubmit}
-              className={cn('mt-4 w-full rounded-lg py-2.5 text-[13px] font-semibold', canSubmit ? 'bg-brand text-white hover:opacity-90' : 'cursor-not-allowed bg-line text-faint')}
-            >
-              Đồng ý điều khoản của chúng tôi
-            </button>
-            {!canSubmit && <p className="mt-1.5 text-center text-[10.5px] text-faint">The required terms must be accepted to finish signing up.</p>}
+            {/* consent — the same single line as the email Create-account form */}
+            <label onClick={() => setAgreed((v) => !v)} className="mt-4 flex cursor-pointer items-start gap-2 text-[10.5px] leading-relaxed text-muted">
+              <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', agreed ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+              I agree to Saramin’s Terms &amp; Privacy Policy.
+            </label>
+
+            <button onClick={() => go('js-onboarding')} className="mt-4 w-full rounded-lg bg-brand py-2.5 text-[13px] font-semibold text-white">Create account</button>
           </div>
 
           <p onClick={onBack} className="mt-3 cursor-pointer text-center text-[11.5px] text-muted hover:text-brand">← Use a different method</p>
@@ -2369,6 +2437,21 @@ function SignUpScreen() {
                 {['12+ chars', '1 number', '1 symbol', '1 uppercase'].map((r) => <span key={r} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] text-muted"><span className="text-emerald-500">✓</span>{r}</span>)}
               </div>
             </div>
+            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone</p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
+
+            {/* the rest of Basic information — optional, never search facets */}
+            <div>
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details <span className="font-normal normal-case tracking-normal">· optional</span></p>
+              <div className="grid grid-cols-2 gap-2">
+                {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
+                  <div key={label}>
+                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
+                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-canvas/30 px-2.5 text-[11.5px] text-faint">{ph}<span className="text-faint">▾</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <label className="flex items-start gap-2 text-[10.5px] leading-relaxed text-muted"><span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I agree to Saramin’s Terms &amp; Privacy Policy.</label>
           </div>
 
@@ -2425,11 +2508,6 @@ function InteractivePrototype() {
   const Comp = current.Comp
   return (
     <div className="min-w-0">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Chip tone="blue">Interactive</Chip>
-        <span className="text-[12.5px] font-semibold text-ink">{current.title}</span>
-        <span className="text-[11px] text-faint">— click buttons, job cards &amp; menu items to move between screens</span>
-      </div>
       <NavContext.Provider value={setActive}>
         <Browser url={current.url}>
           <Comp />
@@ -2444,22 +2522,10 @@ export function Mockups() {
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
-        <h1 className="text-[26px] font-bold tracking-tight mt-1">Mockups — core flows</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink/75 max-w-[72ch]">
-          Low-fidelity wireframes of the candidate-facing recruitment flow (VN-market standards). Click
-          buttons, job cards and menu items inside a screen to move through the flow the way a candidate
-          would. Structure &amp; layout only — not final visual design.
-        </p>
+        <h1 className="text-[26px] font-bold tracking-tight mt-1">Jobseeker mockups</h1>
       </div>
 
       <section>
-        <div className="mb-1 flex items-center gap-2">
-          <h2 className="text-[16px] font-bold">Interactive prototype</h2>
-          <Chip tone="blue">Clickable</Chip>
-        </div>
-        <p className="mb-3 max-w-[72ch] text-[12.5px] text-muted">
-          Try the happy path: Home → click a job → <b>Apply now</b> → submit → My page → <b>My CV &amp; Profile</b>.
-        </p>
         <InteractivePrototype />
       </section>
     </div>

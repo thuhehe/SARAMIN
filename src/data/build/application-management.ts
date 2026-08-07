@@ -76,34 +76,60 @@ export const applicationManagement: BuildModule = {
         cols: ['They asked', 'We suggest'],
         rows: [
           ['Delete Waiting', 'Agree — delete it'],
-          ['Delete NEI', 'Agree — becomes a “profile completeness” label (e.g. 3/4) that never blocks'],
-          ['Delete Pending', 'Agree — hide it, but keep the VALUE in the database'],
+          ['Delete NEI', 'Merge into Pending — a CV the system cannot read still has to stop somewhere'],
+          ['Delete Pending', 'Keep ONE Pending, for technical failures only: scan failed, upload broken, required information missing'],
           ['Delete Spam', 'Agree — no automatic detection. But keep a manual “Block user” button'],
-          ['No admin review before sending', 'Agree — admin acts only AFTER sending: Recall and Block'],
+          ['No admin review before sending', 'Agree for normal applications — they go straight out. Only Pending ones reach an admin'],
         ],
       },
       items: [
-        'Why keep the unused column: if spam appears later, adding screening becomes a config change instead of a database migration.',
+        'Why keep one Pending: a CV that fails to scan cannot be sent to the employer, and it is not the candidate’s fault — it needs a human, not a rejection.',
         'Why keep Block user: one abusive account with no off switch is a support fire on day one.',
+        'Everything else the client asked to delete, we delete. No risk scoring, no spam detection, no review queue for normal applications.',
       ],
       warn: 'Their own document lists spam cases (§7) and warns that promotions attract mass AI-generated applications (§7.2). Worth confirming with Huyền whether those cases happened on THIS platform or on TopDev — it changes how safe “no spam” is as an assumption.',
     },
     {
-      label: '4 · The model, if you approve',
-      text: 'Two layers instead of three. One status column that nobody ever sees.',
+      label: '4 · BB suggested model',
+      text: 'Same 3 layers as the client’s document, but Layer 1 keeps only ONE status — Pending — and it is a technical hold, not a judgement on the candidate.',
       table: {
-        cols: ['Layer', 'Values', 'Who changes it'],
+        cols: ['Layer', 'Status', 'When it happens', 'Action admin can do'],
         rows: [
-          ['Screening (hidden)', 'always “passed” — reserved for later: pending · spam', 'Nobody, in this version'],
-          ['Status', 'Sent · Recalled · Blocked', 'Saramin admin'],
-          ['Stage', 'New → Reviewing → Shortlisted → Interview → Hired / Rejected', 'Employer'],
+          [
+            'Layer 1 — Check (Saramin)',
+            'Pending',
+            'The CV cannot be scanned, the upload failed, or required information is missing.',
+            'Fix the information · Mark as ready (sends it) · Block user · Note',
+          ],
+          [
+            '',
+            '(passed — never shown)',
+            'Everything else. The application goes straight to the employer.',
+            'Nothing — there is no queue to work',
+          ],
+          [
+            'Layer 2 — Send (Saramin)',
+            'Sent',
+            'Passed the check. The employer has it and the candidate is notified.',
+            'Recall · Block user · Edit · Note',
+          ],
+          ['', 'Recalled', 'Admin pulled it back from the employer.', 'Note only — Recalled is final'],
+          ['', 'Blocked', 'The user was blocked; every application of theirs was recalled.', 'Unblock user · Note'],
+          [
+            'Layer 3 — Employer funnel',
+            'New → Reviewing → Shortlisted → Interview → Hired / Rejected',
+            'The employer works their own pipeline.',
+            'Read-only — admin can never change these',
+          ],
         ],
       },
       items: [
-        'Apply → Sent → employer funnel. Admin can Recall one application, or Block a user (which recalls all of theirs).',
-        'Recalled is final — the candidate has to apply again.',
-        'Admin actions drop from 7 to 4: Recall · Block/Unblock user · Edit · Note.',
+        'The employer can CUSTOMISE their own stages — rename them, add or remove steps. The list above is only the default set, so nothing in Saramin may assume these exact six.',
+        'Pending replaces four of the client’s statuses at once (Waiting, NEI, Pending, Spam). It is the only thing that ever holds an application back.',
+        'Spam is gone as an automatic status. What is left is a manual Block user, which recalls everything that user has sent.',
+        'Admin actions drop from 7 to 6: Mark as ready · Recall · Block/Unblock user · Fix information · Edit · Note.',
       ],
+      warn: 'Keeping Pending means the CV scan can fail or be slow, so apply is no longer instant for every application. That is fine — but it is exactly why the status column has to exist in the database, and it is the one thing section 3 said we should not delete.',
     },
     {
       label: '5 · What we need you to decide',
@@ -148,7 +174,7 @@ export const applicationManagement: BuildModule = {
     },
     {
       label: 'Employer pipeline stage',
-      text: 'stage is company-owned and read-only for HQ. It is null until HQ forwards; every value carries its own rule.',
+      text: 'stage is company-owned and read-only for HQ. The employer can CUSTOMISE these stages — rename them, add or remove steps — so the list below is the DEFAULT set, not a fixed enum. Nothing in Saramin (reports, filters, the admin list, the candidate-facing label) may hard-code these six values.',
       table: {
         cols: ['Stage', 'Means', 'Rule'],
         rows: [
