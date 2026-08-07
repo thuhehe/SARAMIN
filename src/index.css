@@ -16,6 +16,23 @@
   --color-brand-soft: #eaf1fe;
 }
 
+/*
+ * Tailwind v4 dropped the `button { cursor: pointer }` its v3 preflight
+ * used to add, deferring to the UA default of `cursor: default`. Put it
+ * back here rather than in 300-odd class lists: the pointer is what tells
+ * a reader a thing is clickable, and "whoever wrote this button remembered
+ * the utility" is not a rule anyone can hold.
+ *
+ * `:not(:disabled)` so a dead button still reads as dead.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
 :root {
   color-scheme: light;
 
