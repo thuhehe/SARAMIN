@@ -127,11 +127,12 @@ export const jobseekerUser: BuildModule = {
   features: [
     // 0 · Identity ────────────────────────────────────────────────────────────
     {
-      name: 'Sign up / Sign in',
+      name: 'Create account (email) & Sign in',
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: '4 social login (Facebook, Gmail, LinkedIn, Github)',
+      mockup: 'js-signup',
+      notes: 'The normal email route. Social sign-up is its own feature below.',
       detail: {
         description:
           'The jobseeker’s way in: email + password, or one of four social providers (Facebook, Google, LinkedIn, GitHub). Email sign-ups must confirm their address before they can apply. Social sign-ups skip that wait — the provider already verified the email — but they are NOT done: they land on a completion step to confirm their name, add a phone number and accept the terms, because a provider can supply none of those. The same screen pair covers sign-in, forgotten password and re-entry after a withdrawal, because email is the single identity key for all of them.',
@@ -167,6 +168,17 @@ export const jobseekerUser: BuildModule = {
           },
         ],
         sections: [
+          {
+            heading: 'FLOW — create an account with email',
+            items: [
+              '1. Jobseeker opens Sign up (header "Sign up" button, or from a job when they try to apply).',
+              '2. Fills the form: Full name (ONE field) · Email · Password (live rule checklist) · Phone · optional Personal details (date of birth, nationality, gender, marital status) · accept Terms & Privacy.',
+              '3. "Create account" → the account is created with status Pending verification, and a verification email is sent.',
+              '4. The jobseeker continues straight into ONBOARDING — verification does not block them from browsing or finishing their profile.',
+              '5. Clicking the emailed link sets the account Active. Applying is blocked until it is.',
+              '→ Next: Onboarding (this module) → Create CV (Resume management) → Apply (Application management).',
+            ],
+          },
           {
             heading: 'Status options — what each account status allows',
             items: [
@@ -270,6 +282,156 @@ export const jobseekerUser: BuildModule = {
           'How long may an unverified account live before it is purged?',
           'Should a social provider that releases no email be supported at all, or dropped?',
           'Session lifetime and "remember me" duration — what do we commit to?',
+        ],
+      },
+    },
+
+    // 0b · Social sign-up ─────────────────────────────────────────────────────
+    {
+      name: 'Sign up with social login',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'js-signup',
+      notes: 'Facebook · Google · LinkedIn · GitHub — verified email, but NOT a finished account.',
+      detail: {
+        description:
+          'A provider verifies an EMAIL. It cannot accept our terms, and none of the four providers returns a phone number — so an OAuth callback is not a finished sign-up. It lands on a COMPLETION STEP: confirm the name the provider supplied, add a phone, accept the terms. Only then is the account Active. Because the email is already verified, this route skips the verification wait entirely.',
+        userStory:
+          'As a jobseeker, I want to sign up with an account I already have, so that I skip typing a password and email verification — and only answer what the provider could not tell you.',
+        uiFields: [
+          {
+            group: 'Completion step',
+            items: [
+              { name: 'email', type: 'derived (read-only)', required: true, notes: 'from the provider and LOCKED with the provider named ("🔒 Google") — it is the identity key and cannot change' },
+              { name: 'fullName', type: 'string', required: true, notes: 'pre-filled from the provider but ALWAYS editable — a display name is often a nickname or the wrong capitalisation' },
+              { name: 'phone', type: 'string (+84)', required: true, notes: 'NO provider returns one, so it is always empty here. Includes an "I live abroad" escape' },
+              { name: 'personal details', type: 'group (optional)', notes: 'date of birth · nationality · gender · marital status — optional, and never a search facet' },
+              { name: 'termsAccepted', type: 'checkbox', required: true, notes: 'the provider cannot accept terms on the user’s behalf' },
+            ],
+          },
+        ],
+        sections: [
+          {
+            heading: 'FLOW — sign up with a social provider',
+            items: [
+              '1. Jobseeker opens Sign up and picks a provider (Google · Facebook · LinkedIn · GitHub).',
+              '2. OAuth runs at the provider and returns a VERIFIED email.',
+              '3. If that email already has an account → sign in to it. A social login NEVER creates a second account on an existing email.',
+              '4. Otherwise the completion step opens: locked email · editable full name · required phone · optional personal details · accept terms.',
+              '5. "Create account" → the account is Active immediately (no verification email — the provider already verified it).',
+              '6. Continue into ONBOARDING.',
+            ],
+          },
+          {
+            heading: 'Why a completion step exists at all',
+            items: [
+              'A provider verifies identity, not consent — our terms must still be accepted by the person.',
+              'None of the four providers releases a phone number, and in Vietnam recruiters call before they email.',
+              'Provider display names are frequently nicknames — the employer-facing name has to be confirmable.',
+            ],
+          },
+        ],
+        rules: [
+          'Email is the identity key: a social login on an existing email LINKS to that account, never creates a second one.',
+          'The provider email is immutable. A candidate who wants employers to use a different address changes contactEmail, not the login email.',
+          'A social sign-up is NOT Active until the completion step is finished — an abandoned completion leaves an unusable account.',
+          'No verification email is sent on this route — the provider already verified the address.',
+        ],
+        states: ['Provider chooser', 'OAuth in progress', 'Completion step (empty phone)', 'Existing email → signed in instead', 'Provider released no email (blocked)', 'Completed → Active'],
+        acceptance: [
+          'A social sign-up reaches Active without any verification email.',
+          'The provider-supplied email is displayed locked, with the provider named.',
+          'The account cannot be completed without a phone and an accepted terms checkbox.',
+          'Signing in socially with an email that already exists lands in the SAME account.',
+        ],
+        openQuestions: [
+          'Which of the four providers ship in Phase-1 — all four, or Google + Facebook first?',
+          'What happens when a provider releases no email at all (some Facebook accounts)?',
+        ],
+      },
+    },
+
+    // 0c · Onboarding ─────────────────────────────────────────────────────────
+    {
+      name: 'Onboarding (build the profile)',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'js-onboarding',
+      notes: 'The 4-step wizard that collects Basic information + Work preference.',
+      detail: {
+        description:
+          'Straight after an account is created, a short guided wizard collects the profile — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. Four topic-grouped steps, each framed with a live job-count carrot, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Profile field (see Resume management → Candidate data): nothing is asked that the CV already contains.',
+        userStory:
+          'As a new jobseeker, I want to answer a few quick questions and immediately see jobs that match, so that I know the site is worth my time before I invest in a CV.',
+        uiFields: [
+          {
+            group: 'Step 1 · What kind of work are you looking for?',
+            items: [
+              { name: 'desiredJobCategory', type: 'select → Category taxonomy', notes: 'picked FIRST because it narrows the role suggestions below it' },
+              { name: 'desiredJobRole', type: 'text → Title taxonomy', notes: 'the #1 recruiter filter; suggestions come from the chosen category' },
+              { name: 'desiredIndustry', type: 'multi-select (≤3)', notes: 'the COMPANY’s sector — a different axis from category (a designer can work in Banking or FMCG)' },
+            ],
+          },
+          { group: 'Step 2 · Where would you like to work?', items: [{ name: 'desiredWorkLocation', type: 'multi-select (≤3)', notes: 'province / city level' }] },
+          {
+            group: 'Step 3 · Tell us about your background',
+            items: [
+              { name: 'yearsOfWorkExperience', type: 'number', notes: 'the total only — the work history itself lives on the CV' },
+              { name: 'highestEducation', type: 'select', notes: 'the level only — school and major live on the CV' },
+            ],
+          },
+          { group: 'Step 4 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'number range (VND)', notes: 'the most-requested employer filter that no CV supplies; shown to employers as a range' }] },
+        ],
+        sections: [
+          {
+            heading: 'FLOW — onboarding',
+            items: [
+              '1. Account created (email or social) → the wizard opens automatically at step 1 of 4.',
+              '2. Step 1 · what work — desired job category → desired job role → desired industry.',
+              '3. Step 2 · where — desired work location (up to 3).',
+              '4. Step 3 · background — years of work experience + highest education.',
+              '5. Step 4 · the ask — expected salary.',
+              '6. RESULTS — a full page of matched jobs ("We found the best job postings based on the information you entered"), each saveable.',
+              '7. "Complete your CV and go apply →" leads to My CVs, where the candidate uploads a PDF or builds a Saramin CV.',
+              '→ Next: Create CV (Resume management).',
+            ],
+          },
+          {
+            heading: 'Design principles — why it is short',
+            items: [
+              'Motivate with carrots, not required-asterisks: every step shows the payoff ("✨ 12,231 jobs match so far"), the Saramin-KR pattern.',
+              'Topic-grouped, never one field per screen: category/role/industry answer ONE question, so they share a screen.',
+              'Nothing here is asked twice: work history, education detail and skills come from the CV, never from this wizard.',
+              'Skippable — nothing in onboarding blocks browsing or applying; an incomplete profile is a normal state.',
+            ],
+          },
+        ],
+        rules: [
+          'Onboarding collects PROFILE fields only (Basic information + Work preference). CV content is never asked here.',
+          'Every profile field is collected at sign-up or in this wizard — there is no separate "fill in your profile later" form.',
+          'The wizard is skippable at any step; the profile is simply less complete, which lowers search ranking but blocks nothing.',
+          'The final step must show matched jobs before asking for a CV — proving value precedes asking for effort.',
+        ],
+        states: ['Step 1–4', 'Skipped step', 'Results — matched jobs', 'Results — no matches yet (broaden suggestions)'],
+        backend: {
+          dataModel: [
+            { name: 'Profile (Work preference)', type: 'entity', notes: 'desiredJobCategory · desiredJobRole · desiredIndustry[] · desiredWorkLocation[] · expectedSalary' },
+            { name: 'Profile (Basic information)', type: 'entity', notes: 'this wizard writes highestEducation + yearsOfWorkExperience; the rest comes from sign-up' },
+            { name: 'onboardingCompletedAt', type: 'timestamp?', notes: 'null while skipped — drives the "finish your profile" nudge' },
+          ],
+          endpoints: ['PATCH /jobseeker/profile — one call per step (autosave, so a drop-off keeps what was answered)', 'GET /jobs/match-count?… — the live carrot count', 'GET /jobs/matches — the results page'],
+          integrations: ['Job / Title / Category / Industry taxonomies', 'Job matching (the count + the results list)'],
+        },
+        acceptance: [
+          'A new account lands in the wizard automatically after sign-up.',
+          'All seven onboarding fields are collected across the four steps.',
+          'The job-count carrot updates between steps.',
+          'The last step shows matched jobs and routes to My CVs.',
+          'Skipping any step still creates a usable account and profile.',
+        ],
+        openQuestions: [
+          'Are the match counts real (a live query) in Phase-1, or an approximation?',
+          'Do we re-prompt the wizard later if it was skipped, and after how long?',
         ],
       },
     },

@@ -10,26 +10,23 @@ import type { BuildModule } from './types'
  * suggestion, (4) the resulting model, (5) what they must decide. Keep them
  * short — a PM reads them to make a call, not to build from.
  *
- * Everything from "AS-SPECIFIED" onward is the model as written BEFORE that
- * review, kept intact in case the client rejects the change. The buildable
+ * The pre-review model (screeningStatus Pending → Forwarded / Rejected-by-HQ,
+ * the derived candidate label) was REMOVED from these requirements on request —
+ * recover it from git history if the client rejects the change. The buildable
  * detail for the new model lives on the Admin "Application list" feature.
  *
  * ONE application = one jobseeker + one job, and it carries TWO status
  * dimensions that must never be confused:
  *
- *   1. screeningStatus  — HQ's Phase-1 quality gate. Pending → Forwarded / Rejected.
- *                         Owned by HQ. Nothing reaches the employer until Forwarded.
- *   2. stage            — the employer's hiring pipeline. New → Reviewing →
- *                         Shortlisted → Interview → Hired / Rejected.
- *                         Owned by the company. HQ is read-only here.
+ *   1. status  — Saramin's. Pending (scan failed / information missing) →
+ *                Sent → Recalled. Blocked is user-level and recalls everything.
+ *   2. stage   — the employer's hiring pipeline, defaulting to New → Reviewing
+ *                → Shortlisted → Interview → Hired / Rejected. Owned by the
+ *                company, which can RENAME/ADD/REMOVE stages, so these six are
+ *                a default set and never a hard-coded enum. HQ is read-only.
  *
- *   Jobseeker applies ──▶ screeningStatus = Pending  (candidate sees "Screening")
- *          │ HQ screener passes it
- *          ▼
- *   screeningStatus = Forwarded ──▶ stage = New      (employer's queue starts)
- *          │ company works the pipeline
- *          ▼
- *   Reviewing → Shortlisted → Interview → Hired / Rejected  (terminal)
+ *   Jobseeker applies ──▶ scan ──┬─ ok ──▶ Sent ──▶ stage = New (employer's queue)
+ *                                └─ fails ▶ Pending (admin fixes it or marks ready)
  *
  * The candidate-facing status in "My application" is a LABEL derived from those
  * two — never a third source of truth.
@@ -144,73 +141,16 @@ export const applicationManagement: BuildModule = {
       text: 'Quick apply with a selected CV — the jobseeker picks one of their existing CVs. No re-typing of profile data.',
       items: [
         'One application = one jobseeker + one job. Applying twice to the same job is blocked; the jobseeker is shown their existing application instead.',
-        'At apply time the jobseeker is told about the HQ gate: “screened by Saramin before it reaches the employer”. UNDER v2 this line is removed — the application reaches the employer immediately, so promising a screening step would be untrue.',
+        'No “screened by Saramin” promise at apply time — an application normally goes straight to the employer. Only the Pending case (scan failed / information missing) is held, and the candidate is told then, not upfront.',
       ],
-    },
-    {
-      label: 'AS-SPECIFIED — TWO independent status dimensions per application',
-      text: 'This is the model as written before the status-model review. The employer pipeline does not start until HQ forwards. The candidate-facing status is DERIVED from these two — never stored separately. SUPERSEDED by section 4 above if the client confirms: the new model keeps both dimensions but the HQ gate stops gating, and delivery (Sent / Recalled) becomes the second dimension instead of screening.',
-      table: {
-        cols: ['Dimension', 'Owned by', 'Values'],
-        rows: [
-          ['screeningStatus (the HQ gate)', 'HQ — Phase-1 quality gate', 'Pending → Forwarded / Rejected'],
-          ['stage (employer pipeline)', 'The company, after forwarding', 'New → Reviewing → Shortlisted → Interview → Hired / Rejected'],
-        ],
-      },
-      warn: 'One application, one truth, three surfaces. The status a candidate sees must always match the company-side stage.',
-      items: ['Stage changes are logged: who moved it, when, from → to.'],
-    },
-    {
-      label: 'AS-SPECIFIED — Screening status (HQ gate)',
-      text: 'screeningStatus is HQ-owned — the only status HQ can write. Every value carries its own rule. SUPERSEDED by section 4 above: in the new model this column survives but only ever holds `passed`, and Pending / Rejected-by-HQ are never written.',
-      table: {
-        cols: ['Status', 'Means', 'Rule'],
-        rows: [
-          ['Pending', 'The default on submit — the application exists but the company cannot see it.', 'This is the queue; it carries no stage yet.'],
-          ['Forwarded', 'HQ passed it.', 'Sets stage = New and hands ownership to the company. Irreversible except by an audited re-open.'],
-          ['Rejected by HQ', 'HQ stopped it — it never reaches the company and never gets a stage.', 'A reason code is mandatory.'],
-        ],
-      },
-    },
-    {
-      label: 'Employer pipeline stage',
-      text: 'stage is company-owned and read-only for HQ. The employer can CUSTOMISE these stages — rename them, add or remove steps — so the list below is the DEFAULT set, not a fixed enum. Nothing in Saramin (reports, filters, the admin list, the candidate-facing label) may hard-code these six values.',
-      table: {
-        cols: ['Stage', 'Means', 'Rule'],
-        rows: [
-          ['New', 'Just forwarded by HQ, nobody has looked yet.', 'The default landing stage; stage is null until HQ forwards.'],
-          ['Reviewing', 'A recruiter has picked it up and is reading the CV.', 'Moves need not be sequential — New → Interview is legal.'],
-          ['Shortlisted', 'Kept for the next round — the “yes for now” bucket.', 'Company-owned; HQ shows the badge read-only.'],
-          ['Interview', 'Interviewing.', 'The employer contacts the candidate off-platform; no scheduling in Phase-1.'],
-          ['Hired', 'Terminal — the successful outcome that ends the pipeline.', 'Confirmed on set; can be re-opened to an earlier stage, logged as a re-open.'],
-          ['Rejected', 'Terminal — the employer declined the candidate.', 'Employer-side, distinct from Rejected by HQ. An optional reason is captured; can be re-opened, logged as a re-open.'],
-        ],
-      },
-    },
-    {
-      label: 'Candidate-facing status (derived displayStatus)',
-      text: 'The label in “My application” is DERIVED from (screeningStatus, stage) on read — never stored as a third status.',
-      table: {
-        cols: ['Label', 'Derived from'],
-        rows: [
-          ['Screening', 'screeningStatus = Pending'],
-          ['Sent to employer', 'screeningStatus = Forwarded, stage = New'],
-          ['Reviewing', 'stage = Reviewing'],
-          ['Shortlisted', 'stage = Shortlisted'],
-          ['Interview', 'stage = Interview'],
-          ['Hired', 'stage = Hired'],
-          ['Not selected', 'stage = Rejected'],
-        ],
-      },
-      warn: 'An HQ rejection (screeningStatus = Rejected) has NO distinct label — pending a client decision it also renders as “Not selected”, so a candidate is never told “Saramin blocked you”.',
     },
     {
       label: 'Who sees what',
       table: {
         cols: ['Surface', 'Sees', 'Can do'],
         rows: [
-          ['Admin (HQ)', 'Applications across ALL companies — candidate · job · company · stage', 'Screening queue + quality checks. READ-ONLY on the employer pipeline'],
-          ['Company', 'Only its own applications, filterable by job and stage', 'Owns the stage pipeline after HQ forwards'],
+          ['Admin (HQ)', 'Applications across ALL companies — candidate · job · company · status · stage', 'Works the Pending list · Recall · Block user. READ-ONLY on the employer pipeline'],
+          ['Company', 'Only its own applications, filterable by job and stage', 'Owns the stage pipeline, and can customise the stages themselves'],
           ['Jobseeker — My application', 'Each application with its current stage + date applied', 'View only'],
         ],
       },
@@ -271,6 +211,19 @@ export const applicationManagement: BuildModule = {
           },
         ],
         sections: [
+          {
+            heading: 'FLOW — how a jobseeker applies',
+            items: [
+              '1. Find a job — Homepage / Search results → Job detail.',
+              '2. "Apply now" → the apply modal opens over the job.',
+              '3. ① Your CV — pick one of your CVs (radio list, name + kind). No CV yet, or want a different one? "Add a new CV" opens the SAME Add-a-new-CV flow as My CVs.',
+              '4. ② Application information — pre-filled from your profile: full name · email (locked when from a social provider) · PHONE (the one field a social sign-up must add) · location · years of experience · highest education.',
+              '5. ③ Desired job — desired location · level · industry · field · expected salary · availability, pre-filled from onboarding.',
+              '6. ④ Cover message (optional) → tick the consent to share your profile & CV with this employer → "Submit application".',
+              '7. The application is created and the candidate lands on MY APPLICATIONS, where its status is tracked.',
+              '→ Next: HQ screening (Admin) → forwarded to the employer (Company) → status flows back to My applications.',
+            ],
+          },
           {
             heading: 'Profile confirmation — asked here, and only here',
             text: 'The apply modal confirms the SLIM profile (the decided field set — NOT VietnamWorks’ demographic form), grouped into four numbered sections: ① Your CV (Hồ sơ của bạn) · ② Application information (contact + location + experience/education — pre-filled from onboarding) · ③ Desired job (Công việc mong muốn) · ④ Cover message. Apply time is where PHONE is asked: it is the moment of highest motivation AND the moment the data is actually needed, because the application is what delivers it. Demographics (DOB, gender, nationality, marital status), street address and current salary are CUT platform-wide — see Resume management → field tiers.',
@@ -437,6 +390,18 @@ export const applicationManagement: BuildModule = {
         ],
         sections: [
           {
+            heading: 'FLOW — application management on ADMIN (HQ)',
+            items: [
+              '1. Recruitment → Applicants. Every application across all companies lands here first.',
+              '2. Tabs split the queue: All · New — to screen · Forwarded · Interview · Hired · Rejected at screening. Filters: search · stage · company · location · CV kind.',
+              '3. Each row shows candidate · snapshot (role · years · location · education) · applied-to job · company · the CV (name + Saramin CV / Uploaded tag) · stage · applied.',
+              '4. Click a candidate → the SCREENING DETAIL: the CV under review, a quality checklist, and the match-to-job score.',
+              '5. Decide — "✓ Approve & forward to employer" (the company pipeline starts) or "✕ Reject…" with a mandatory, audited reason.',
+              '6. Both decisions notify the candidate and the employer, and are written to the audit log.',
+              '→ HQ is READ-ONLY on the employer pipeline: it never moves a company’s candidates through their stages.',
+            ],
+          },
+          {
             heading: 'Status options — status (Layer 2, Saramin-owned)',
             items: [
               'Sent — written at apply, after two synchronous hard checks: the user is not blocked, and has no live application to this job. The employer sees it immediately.',
@@ -574,9 +539,21 @@ export const applicationManagement: BuildModule = {
         ],
         sections: [
           {
-            heading: 'Status options — the employer pipeline (`stage`)',
+            heading: 'FLOW — application management on the COMPANY site',
             items: [
-              'New — just forwarded by HQ, nobody has looked yet. The default landing stage.',
+              '1. Recruiting → Applicants. Only applications HQ has FORWARDED appear here — the company never sees the screening queue.',
+              '2. A per-job board with the hiring stages as columns: New · Screening · Interview · Offer · Rejected, each showing its count.',
+              '3. Click a candidate card → the application detail: the CV snapshot that was actually sent (+ download), contact details, candidate info (expected salary · availability · location), and team-visible notes.',
+              '4. Move the candidate by changing the stage; every move is logged (who · when · from → to).',
+              '5. The stage the company sets is what the candidate sees in My applications — one truth, three surfaces.',
+              '→ The employer can customise their own stages; nothing in Saramin may assume the default six.',
+            ],
+          },
+          {
+            heading: 'Status options — the employer pipeline (`stage`)',
+            text: 'The employer can CUSTOMISE these stages — rename them, add or remove steps. What follows is the DEFAULT set every company starts with, NOT a fixed enum: nothing (reports, filters, the admin list, the candidate-facing label) may hard-code these six values.',
+            items: [
+              'New — just arrived, nobody has looked yet. The default landing stage.',
               'Reviewing — a recruiter has picked it up and is reading the CV.',
               'Shortlisted — kept for the next round; the "yes for now" bucket.',
               'Interview — interviewing. The employer contacts the candidate off-platform in Phase-1; no scheduling here.',
@@ -676,6 +653,16 @@ export const applicationManagement: BuildModule = {
           },
         ],
         sections: [
+          {
+            heading: 'FLOW — the jobseeker tracks their applications',
+            items: [
+              '1. My account → My applications.',
+              '2. The list shows every application: job · company · date applied · WHICH CV was sent · a status chip · and a one-line note ("Interview scheduled — 08/08, 10:00"). Filter tabs: All · In progress · Offer · Closed.',
+              '3. Click one → the detail: the CV SNAPSHOT that was sent ("later edits don’t change it") and a PROGRESS TIMELINE — Submitted → Saramin screening → Forwarded to employer → Viewed → Interview → Result.',
+              '4. "Withdraw application" is available from the detail.',
+              '→ The status shown here is DERIVED from HQ screening + the employer stage — never a third source of truth.',
+            ],
+          },
           {
             heading: 'Status options — the candidate-facing label and where each one comes from',
             items: [

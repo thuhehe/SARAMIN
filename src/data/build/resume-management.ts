@@ -31,23 +31,27 @@ export const resumeManagement: BuildModule = {
       warn: 'Search, matching and the employer-facing CV all read the standard model — never the route. If a Builder resume behaves differently in CV search from an uploaded one, the boundary has leaked.',
     },
     {
-      label: 'DATA MODEL (decided): two tables — Profile + CV content',
-      text: 'One Profile per jobseeker (collected during onboarding, Saramin-KR style) plus up to 3 CVs whose content the user creates or uploads (VietnamWorks-style). Employer search & matching read the Profile PLUS the one searchable CV.',
+      label: 'DATA MODEL (decided): CANDIDATE DATA = 3 groups — Basic information · Work preference · CV content',
+      text: 'Everything we hold about a jobseeker is CANDIDATE DATA (VN: Dữ liệu ứng viên), made of THREE field groups stored as TWO records: Basic information + Work preference together are the PROFILE (1 per jobseeker, collected at sign-up and onboarding); CV content is the CV (up to 3 per jobseeker, created or uploaded). Employer search & matching read the Profile PLUS the one searchable CV.',
       table: {
-        cols: ['Table', 'Cardinality', 'Holds', 'Collected'],
+        cols: ['Group', 'Stored in', 'Cardinality', 'Holds', 'Collected'],
         rows: [
-          ['Profile', '1 per jobseeker', 'Identity (full name, phone, email, photo) + preferences: desired role, desired locations (≤3), total experience, education level, desired salary, availability, visibility consent', 'Onboarding wizard (required core) + later nudges (optional fields)'],
-          ['CV', 'up to 3 per jobseeker', 'Career content: summary, work experience[], education[], skills[], certifications[], languages[], projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
+          ['1 · Basic information', 'Profile', '1 per jobseeker', 'Full name · email · phone (required) · nationality · gender · marital status · date of birth (optional) · highest education · years of work experience', 'Sign up (identity + optional demographics) · Onboarding (education, years)'],
+          ['2 · Work preference', 'Profile', '1 per jobseeker', 'Desired job category · desired job role · desired industry (≤3) · desired work location (≤3) · expected salary', 'Onboarding wizard (4 steps)'],
+          ['3 · CV content', 'CV', 'up to 3 per jobseeker', 'About · work experience[] · education[] · skills[] · certificates[] · languages[] · projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
         ],
       },
       items: [
+        'Naming: "Candidate data" is the umbrella (spec + database only). Jobseekers never see that term — they see "My CVs" and their profile card.',
+        'Why Basic information and Work preference are ONE table: they are 1:1, written by the same sign-up/onboarding flow and always read together. Splitting them would only add a join.',
+        'Every profile field is collected at SIGN UP or during ONBOARDING — there is no separate "fill in your profile later" form; the profile IS those answers, editable afterwards.',
         'Exactly ONE CV is the searchable/main CV at any time; the other CVs are for applying to different kinds of jobs (e.g. tailored Dev vs Sales versions).',
         'Visibility is ONE account-level switch (Discoverable / Hidden, Indeed-style) — no per-CV searchable toggles. "Searchable CV" only decides WHICH CV\'s content feeds search and which document an unlocking employer sees.',
         'CV header (name, title, contact) is read from the Profile — never re-typed per CV.',
         'Upload → convert: an uploaded PDF is parsed into the CV template; missing REQUIRED fields are flagged and gate applying (this is also the anti-spam quality gate). Uploading a file to attach to ONE application does not touch the searchable CV.',
         'If Profile and a CV disagree, employer search reads Profile + the searchable CV — mismatches on the searchable CV are surfaced to the user, never silent.',
       ],
-      warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table, not on the Profile. Search = Profile (identity + preferences) JOIN searchable CV (content).',
+      warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table (group 3), never on the Profile. Search = Profile (Basic information + Work preference) JOIN the searchable CV (CV content).',
     },
     {
       label: 'Add a new CV — ONE entry, two routes, shared everywhere',
@@ -186,6 +190,20 @@ export const resumeManagement: BuildModule = {
         ],
         sections: [
           {
+            heading: 'FLOW — create a CV (both routes)',
+            items: [
+              '1. My CVs → "+ Add new CV" (the SAME entry point is reached from Apply → "Add a new CV") → the Add-a-new-CV screen.',
+              '2. Choose a route: UPLOAD a CV, or CREATE a Saramin CV.',
+              'UPLOAD · 3a. Pick the file → the PDF preview shows on the left, what-happens-next on the right → "Save my PDF" → the file is in My CVs, byte-identical, usable for applying right away.',
+              'UPLOAD · 4a. An OFFER follows (never a step in the way): "Also create a Saramin CV from it?" — decline and you are done; accept and AI reads the file.',
+              'UPLOAD · 5a. CV COMPARE screen — your PDF on the LEFT, the same information restructured as a Saramin CV on the RIGHT. Gaps are inline editable fields; AI suggests skills as one-tap chips. Save as original PDF, or as a Saramin CV.',
+              'CREATE · 3b. The CV builder opens (Saramin-KR layout): profile header on top, stacked section forms, right rail with CV completeness + the item list (＋/− optional sections).',
+              'CREATE · 4b. Fill Education (essential) · Work experience · Skills · About, add optional sections from the rail, name the CV in the bottom bar → "Completed".',
+              '6. Either route lands back in My CVs with the new CV in the list.',
+              '→ Next: CV management (which CV is searchable) · Apply (Application management).',
+            ],
+          },
+          {
             heading: 'Two routes, one object',
             items: [
               'Upload → the mindset is “I want my PDF there, that’s it.” The file is saved as a CV in ONE step, byte-identical, immediately usable for applying. Conversion to a Saramin CV is an OFFER shown right after saving — never a step in the way. Accepting moves the candidate onto the create-Saramin-CV path with AI pre-fill; declining costs nothing, and the offer stays available from My CVs.',
@@ -296,10 +314,10 @@ export const resumeManagement: BuildModule = {
       },
     },
     {
-      name: 'My CVs (My page)',
+      name: 'CV management (My CVs)',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
-      mockup: 'js-mypage',
+      mockup: 'js-my-cvs',
       detail: {
         description:
           'The candidate’s CV shelf inside My page: what CVs they have, which one is primary, how complete each is, and the single control that decides whether employers can discover them at all. It is also where the consequences are made legible — a candidate should be able to see, in one place, who can find their CV and what they can see of it.',
@@ -327,6 +345,17 @@ export const resumeManagement: BuildModule = {
           },
         ],
         sections: [
+          {
+            heading: 'FLOW — manage my CVs',
+            items: [
+              '1. My account → My CVs. The page opens with the PROFILE SUMMARY on top (name · visibility badge · contact · desired job, level, locations, industries, salary, experience, education, availability) plus the counters (proposals received · CV views · applications sent).',
+              '2. Below it, the CV list — up to 3, each showing its NAME ("Product Designer CV") and a kind tag (Uploaded PDF / Saramin template).',
+              '3. "Cho phép tìm kiếm" toggle per CV — switching one ON switches the others OFF, because exactly one CV is searchable at a time.',
+              '4. Per-CV actions: View · Delete. "✎ Edit profile" opens My Profile.',
+              '5. "+ Add new CV" → the Add-a-new-CV flow (see Create CV).',
+              '→ Feeds: employer CV search reads the Profile + the searchable CV; Apply lets the candidate pick any CV to send.',
+            ],
+          },
           {
             heading: 'Visibility — one switch, stated consequences',
             items: [
