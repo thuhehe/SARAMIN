@@ -5515,6 +5515,133 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
    The client has exactly one real package today (Gói Ultimate). The CRM's other
    "Gói …" groups are NOT packages — Gói Enterprise / Gói SME are the same three
    tiers at different segment prices, which is a price list on the product. */
+/* Create package. The whole point of the screen is the number at the bottom: the
+   sum of the component list prices against the one package price, i.e. the discount
+   the product owner is actually deciding. So components carry a quantity and the
+   comparison is live — never a figure someone types by hand.
+
+   Add-ons are not offered as components: they reach a customer through a parent
+   product's Includes, so putting one in a package would grant it twice. */
+export function NewPackageModal({ onClose }: { onClose: () => void }) {
+  const eligible = CATALOG.filter((c) => c.role !== 'Add-on' && c.status === 'Active')
+  const [qty, setQty] = useState<Record<string, number>>({ 'JOB-TOPJOB': 1, 'CV-050': 1 })
+  const [pkgPrice, setPkgPrice] = useState('')
+  const [name, setName] = useState('')
+  const [custom, setCustom] = useState(false)
+
+  const num = (v: string) => Number((v.match(/[\d,]+/)?.[0] ?? '').replace(/,/g, ''))
+  const picked = Object.entries(qty).filter(([, n]) => n > 0)
+  const sumOfParts = picked.reduce((t, [sku, n]) => t + num(CATALOG.find((c) => c.sku === sku)?.price ?? '') * n, 0)
+  const priceNum = Number(pkgPrice.replace(/\D/g, ''))
+  const discount = sumOfParts > 0 && priceNum > 0 ? Math.round((1 - priceNum / sumOfParts) * 100) : null
+  const vnd = (n: number) => n.toLocaleString('vi-VN')
+  const valid = name.trim().length > 0 && picked.length >= 2 && (custom || priceNum > 0)
+
+  const toggle = (sku: string) => setQty((q) => ({ ...q, [sku]: q[sku] ? 0 : 1 }))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[620px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">New package</p>
+            <p className="text-[11px] text-muted">Several products at one price. Paying it provisions each component separately.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          <Section title="1 · Identity" className="mt-0" />
+          <div>
+            <FLabel req>Name</FLabel>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gói Ultimate" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+          </div>
+          <div className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+            <b className="text-ink/70">Package ID:</b>{' '}
+            <span className="font-mono">{name.trim() ? `PKG-${name.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12)}` : 'auto-generated from the name'}</span>
+          </div>
+
+          <Section title="2 · Components" />
+          <div className="space-y-1.5">
+            {eligible.map((c) => {
+              const on = (qty[c.sku] ?? 0) > 0
+              return (
+                <div key={c.sku} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
+                  <button onClick={() => toggle(c.sku)} className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded border', on ? 'border-brand bg-brand text-white' : 'border-line')}>
+                    {on && <span className="text-[9px] leading-none">✓</span>}
+                  </button>
+                  <button onClick={() => toggle(c.sku)} className="min-w-0 flex-1 text-left">
+                    <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{c.name}</span>
+                    <span className="block text-[10px] text-faint">{c.type} · {c.price.replace(' ⓒ', '')}</span>
+                  </button>
+                  {on && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <span className="text-[10px] text-faint">SL</span>
+                      <select value={qty[c.sku]} onChange={(e) => setQty((q) => ({ ...q, [c.sku]: Number(e.target.value) }))} className="rounded border border-line bg-surface px-1.5 py-1 text-[10.5px] text-ink/80 outline-none focus:border-brand">
+                        {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {picked.length < 2 && (
+            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+              <span>⚠️</span><span>A package needs at least <b>2 components</b> — one component is just a product at a price.</span>
+            </p>
+          )}
+
+          <Section title="3 · Package price" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCustom((c) => !c)} className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded border', custom ? 'border-brand bg-brand text-white' : 'border-line')}>
+              {custom && <span className="text-[9px] leading-none">✓</span>}
+            </button>
+            <span className="text-[11.5px] text-ink/80">Custom price — quoted per deal (the Enterprise case)</span>
+          </div>
+          {!custom && (
+            <div>
+              <FLabel req>Package price (₫)</FLabel>
+              <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} inputMode="numeric" placeholder="16489000" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          )}
+          <div className="overflow-hidden rounded-md border border-line text-[12px]">
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-muted">Sum of parts</span>
+              <span className="tabular-nums text-ink/85">{sumOfParts > 0 ? `${vnd(sumOfParts)} ₫` : '—'}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-line-soft px-3 py-1.5">
+              <span className="text-muted">Package price</span>
+              <span className="tabular-nums text-ink/85">{custom ? 'Custom' : priceNum > 0 ? `${vnd(priceNum)} ₫` : '—'}</span>
+            </div>
+            <div className={cn('flex items-center justify-between border-t border-line-soft px-3 py-1.5', discount !== null && discount < 0 && 'bg-rose-50')}>
+              <span className="font-medium text-ink/80">Implied discount</span>
+              <span className={cn('font-semibold tabular-nums', discount === null ? 'text-faint' : discount < 0 ? 'text-rose-600' : 'text-emerald-600')}>
+                {discount === null ? '—' : `${discount}%`}
+              </span>
+            </div>
+          </div>
+          {discount !== null && discount < 0 && (
+            <p className="flex gap-2 rounded-md bg-rose-50 px-3 py-2 text-[11.5px] leading-relaxed text-rose-700">
+              <span>⚠️</span><span>The package costs <b>more</b> than buying the parts separately. Sales will be undercut by its own catalogue.</span>
+            </p>
+          )}
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            The discount is informational — the package price is stored as its own figure, not recomputed from the
+            components, so a later component price change never silently re-prices this package.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={onClose} disabled={!valid} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink/80 hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40">Save as Inactive</button>
+          <button onClick={onClose} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create &amp; activate</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminBundles() {
   const rows: React.ReactNode[][] = [
     [
@@ -6306,6 +6433,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   )
 }
 
+/** The existing customer the MST-root check matched — one place, so the warning, the
+    confirmation and the parent field can never disagree about who it is. */
+const DEDUP_MATCH = { name: 'Công ty CP Trường Sơn', tax: '0328xxxxxx', owner: 'Nguyễn Thị Lan' }
+
 /**
  * New-company form. `lockedParent` is set when the form is opened from a parent's
  * "+ Thêm công ty con": the parent is then already known, so it is shown as a fixed
@@ -6315,6 +6446,9 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
 function CreateLeadModal({ onClose, lockedParent }: { onClose: () => void; lockedParent?: Company }) {
   /* Quốc tịch drives whether the Vietnamese province picker is shown at all. */
   const [country, setCountry] = useState('Việt Nam')
+  /* warn → the rep has not answered the MST-root match yet; branch → link it as a
+     subsidiary of the match; separate → create an unrelated record. */
+  const [dedup, setDedup] = useState<'warn' | 'branch' | 'separate'>('warn')
   const isVN = country.trim().toLowerCase().startsWith('việt nam') || country.trim().toLowerCase() === 'vietnam'
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -6336,36 +6470,61 @@ function CreateLeadModal({ onClose, lockedParent }: { onClose: () => void; locke
               name on a different MST, is almost always an affiliate — blocking those
               is what stops sales entering a legitimate new customer. Shown here as the
               "possible affiliate" state, which is the case reps hit most often. */}
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-900">
-            <p className="font-semibold">⚠ Trùng 10 số gốc MST với một khách hàng đã có</p>
-            <p className="mt-1">
-              <b>Công ty CP Trường Sơn</b> · MST 0328xxxxxx · owner Nguyễn Thị Lan. Cùng gốc, khác đuôi ⇒ đây là <b>chi nhánh</b>, không phải bản ghi trùng.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button className="rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Liên kết làm chi nhánh của công ty này</button>
-              <button className="rounded-md border border-amber-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-amber-900 hover:border-amber-500">Không liên quan — tạo độc lập</button>
+          {/* The two buttons RESOLVE the warning — they are the whole point of showing
+              it. Picking one replaces the amber block with what was decided, and the
+              decision is reversible until Save: a rep who mis-clicks must not have to
+              close the form and start over. Neither choice ever blocks the save. */}
+          {dedup === 'warn' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-900">
+              <p className="font-semibold">⚠ Trùng 10 số gốc MST với một khách hàng đã có</p>
+              <p className="mt-1">
+                <b>{DEDUP_MATCH.name}</b> · MST {DEDUP_MATCH.tax} · owner {DEDUP_MATCH.owner}. Cùng gốc, khác đuôi ⇒ đây là <b>chi nhánh</b>, không phải bản ghi trùng.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button onClick={() => setDedup('branch')} className="rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Liên kết làm chi nhánh của công ty này</button>
+                <button onClick={() => setDedup('separate')} className="rounded-md border border-amber-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-amber-900 hover:border-amber-500">Không liên quan — tạo độc lập</button>
+              </div>
+              <p className="mt-2 text-[10.5px] text-amber-800/80">
+                Chỉ MST trùng khít mới bị chặn. Cùng gốc MST, hoặc tên gần giống trên một MST khác (“… Miền Nam”, “… Hà Nội”), luôn được tạo — hệ thống chỉ gợi ý liên kết.
+              </p>
             </div>
-            <p className="mt-2 text-[10.5px] text-amber-800/80">
-              Chỉ MST trùng khít mới bị chặn. Cùng gốc MST, hoặc tên gần giống trên một MST khác (“… Miền Nam”, “… Hà Nội”), luôn được tạo — hệ thống chỉ gợi ý liên kết.
-            </p>
-          </div>
+          )}
 
-          {lockedParent ? (
+          {dedup === 'branch' && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-emerald-900">
+              <p className="flex flex-wrap items-center gap-x-1.5 font-semibold">
+                <span>✓ Sẽ tạo làm chi nhánh của</span>
+                <span className="text-emerald-950">{DEDUP_MATCH.name}</span>
+                <Pill tone="draft">Chi nhánh</Pill>
+              </p>
+              <p className="mt-1">Công ty mẹ đã được điền bên dưới. Bản ghi mới vẫn có MST, hợp đồng, quota và sales phụ trách <b>riêng</b>.</p>
+              <button onClick={() => setDedup('warn')} className="mt-2 rounded-md border border-emerald-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-emerald-900 hover:border-emerald-500">Bỏ liên kết</button>
+            </div>
+          )}
+
+          {dedup === 'separate' && (
+            <div className="rounded-lg border border-line bg-canvas/70 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+              <p className="font-semibold text-ink">✓ Tạo bản ghi độc lập — không liên kết</p>
+              <p className="mt-1">Đã bỏ qua gợi ý trùng MST gốc. Ghi lại lý do vào lịch sử để lần sau không hỏi lại.</p>
+              <button onClick={() => setDedup('warn')} className="mt-2 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">Hoàn tác</button>
+            </div>
+          )}
+
+          {/* Three sources for this field, in priority order: opened from a parent →
+              locked; linked as a branch above → filled with that match; otherwise a
+              free picker. */}
+          {lockedParent || dedup === 'branch' ? (
             <div>
               <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Công ty mẹ</label>
               <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand-soft px-3 py-2 text-[12.5px] text-brand">
-                <span className="min-w-0 truncate font-medium">🏢 {coLabel(lockedParent)}</span>
-                <span className="shrink-0 text-[10.5px] text-brand/70">MST {lockedParent.tax}</span>
-                <span className="ml-auto shrink-0 rounded border border-brand/30 px-1.5 py-0.5 text-[10px] font-medium">Đã cố định</span>
+                <span className="min-w-0 truncate font-medium">🏢 {lockedParent ? coLabel(lockedParent) : DEDUP_MATCH.name}</span>
+                <span className="shrink-0 text-[10.5px] text-brand/70">MST {lockedParent ? lockedParent.tax : DEDUP_MATCH.tax}</span>
+                <span className="ml-auto shrink-0 rounded border border-brand/30 px-1.5 py-0.5 text-[10px] font-medium">{lockedParent ? 'Đã cố định' : 'Từ liên kết chi nhánh'}</span>
               </div>
             </div>
           ) : (
             <ComboField label="Công ty mẹ (tuỳ chọn)" value="Công ty CP Trường Sơn" placeholder="Tìm theo tên hoặc MST…" options={['— Không thuộc tập đoàn nào —', 'Công ty CP Trường Sơn', 'Công ty TNHH Cơ khí Đông Phong', 'FPT Software', 'VNG Corporation']} />
           )}
-          <p className="-mt-1.5 text-[11px] leading-relaxed text-faint">
-            Chỉ là liên kết tra cứu. Công ty mới vẫn có MST, hợp đồng, quota và sales phụ trách riêng — không dùng chung gì với công ty mẹ. Không giới hạn số cấp; hệ thống chặn liên kết vòng.
-            <b className="text-ink/70"> Không có field “công ty con”</b> — quan hệ chỉ lưu một chiều ở công ty con; muốn thêm công ty con thì mở công ty mẹ → <b className="text-ink/70">+ Thêm công ty con</b>.
-          </p>
 
           <div className="grid grid-cols-2 gap-3">
             <LField label="Industry" value="IT / Software" select />

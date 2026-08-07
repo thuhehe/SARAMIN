@@ -17,7 +17,7 @@ import {
 import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewQuotationModal, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx } from './adminPrototypes'
+import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewPackageModal, NewQuotationModal, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx } from './adminPrototypes'
 import type { DetailCrumb } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
@@ -239,6 +239,7 @@ const NAV_GROUPS: NavGroup[] = [
    single create action (reports, logs, boards). */
 const PRIMARY_ACTION: Record<string, string> = {
   'admin-catalog': '+ New product',
+  'admin-bundles': '+ New package',
   'admin-quotes': '+ New quotation',
 }
 
@@ -514,6 +515,7 @@ export function AdminWireframe() {
           </div>
 
           {creating === 'admin-catalog' && <NewProductModal onClose={() => setCreating(null)} />}
+          {creating === 'admin-bundles' && <NewPackageModal onClose={() => setCreating(null)} />}
           {creating === 'admin-quotes' && <NewQuotationModal onClose={() => setCreating(null)} />}
         </div>
       </div>

@@ -171,6 +171,28 @@ export const crm: BuildModule = {
       ],
     },
     {
+      label: 'MST duplicate check — the two buttons, and what each one writes',
+      text: 'The check runs on the tax code as it is typed and has THREE outcomes, not two. Only an identical FULL MST is a duplicate and blocks the save. A shared 10-digit root with a different suffix, or a near-identical legal name on a different MST, is almost always an affiliate — the system flags it and offers a link, and the rep answers with one of two buttons. Blocking either of those is what would stop sales entering a legitimate new customer.',
+      table: {
+        cols: ['Outcome', 'What the rep sees', 'What the button writes', 'Can the record be saved?'],
+        rows: [
+          ['Identical full MST', 'Blocking error naming the existing company, with a link to open it', 'Nothing — there is no button', 'NO. The company already exists.'],
+          ['Same 10-digit root, different suffix (0328xxxxxx vs 0328xxxxxx-001)', 'Amber warning naming the match: company, MST, sales owner', '“Liên kết làm chi nhánh của công ty này” → parentCompanyId = the match', 'Yes'],
+          ['Same root, but genuinely unrelated', 'The same amber warning', '“Không liên quan — tạo độc lập” → parentCompanyId stays empty; the override is written to history', 'Yes'],
+          ['Near-identical legal name on a different MST ("… Miền Nam", "… Hà Nội")', 'The same amber warning, matched on name instead of MST', 'Either button, same as above', 'Yes'],
+        ],
+      },
+      items: [
+        'Answering REPLACES the warning with what was decided — green “Sẽ tạo làm chi nhánh của …” or a neutral “Tạo bản ghi độc lập”. An unanswered warning must never just sit there next to a filled-in form; the rep has to be able to see which way it went.',
+        'Both answers are reversible until Save (“Bỏ liên kết” / “Hoàn tác”). A mis-click must not force the rep to close the form and retype everything.',
+        'Linking as a branch FILLS the Công ty mẹ field and locks it, labelled “Từ liên kết chi nhánh” — so there is one visible source of that value, not two controls that can disagree.',
+        'Neither answer is required to save. The warning is advice; only an identical full MST blocks.',
+        '“Không liên quan” is recorded against the record with who decided and when, so the same pair does not get re-flagged on every later edit.',
+        'Branch (same 10-digit root, -001 suffix) and subsidiary (a completely different MST) are stored the same way — one parentCompanyId. The distinction is derived from the tax codes for display only.',
+      ],
+      warn: 'Nothing is inherited down the link, in either case: the new record keeps its own MST, package/quota, quotations, VAT invoices, users and sales owner. The link is for lookup and navigation only — a branch can never spend its parent’s quota.',
+    },
+    {
       label: 'Công ty con — the UI, in both directions',
       text: 'The parent/subsidiary relationship is stored ONCE, as parentCompanyId on the child, pointing at its direct parent. There is no “subsidiaries” list to maintain on the parent — that side is derived by querying children.\n\nSo the create form has a “Công ty mẹ” field and deliberately NO “công ty con” field. A subsidiary field would be a second way to write the same relationship, and the two would eventually disagree; it is also usually unfillable, because when a parent is being created its subsidiaries are not records yet. The parent → child direction is an ACTION, not a field: “+ Thêm công ty con” on the parent record opens this same form with the parent pre-filled and locked.',
       table: {
