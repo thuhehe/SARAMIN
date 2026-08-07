@@ -1,19 +1,63 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
+  ChevronRight,
   CornerDownRight,
   Link2Off,
   MessageSquare,
   RotateCcw,
+  Search,
   Trash2,
   X,
 } from 'lucide-react'
 import { useComments } from './CommentsProvider'
 import { resolveAvatarUrl } from './client'
-import { docOrder, docTitle } from './docTitle'
+import { docLabelParts, docOrder } from './docTitle'
 import { COMMENT_ROOT_ID, NO_COMMENT_ATTR, resolveAnchor } from './anchor'
+import { QUICK_KEY_LABEL, isTypingTarget } from './hotkeys'
 import { NameField } from './NameField'
 import type { Comment, CommentThread, ShareMember } from './types'
+
+/** Which threads the rail is showing. `open` is the working default. */
+type StatusFilter = 'open' | 'resolved' | 'all'
+
+/**
+ * Where the keyboard should land after a j/k step. The sequence number is
+ * what makes a repeat land again: pressing Enter twice on one thread is
+ * two requests to focus the reply box, and without it the second is a
+ * no-op because nothing about the value changed.
+ */
+interface KeyboardFocus {
+  id: string
+  target: 'card' | 'reply'
+  seq: number
+}
+
+function isMine(thread: CommentThread): boolean {
+  return thread.mine || thread.replies.some((r) => r.mine)
+}
+
+function matchesStatus(thread: CommentThread, status: StatusFilter): boolean {
+  if (status === 'all') return true
+  const resolved = thread.resolvedAt !== null
+  return status === 'resolved' ? resolved : !resolved
+}
+
+/**
+ * Search covers the replies and the quoted text too, not just the opening
+ * comment — "the one about the pipeline stages" is as likely to be
+ * something DucLuong said three replies down as it is the title.
+ */
+function matchesQuery(thread: CommentThread, needle: string): boolean {
+  if (!needle) return true
+  const fields = [
+    thread.body,
+    thread.author.name,
+    thread.anchor.quote ?? '',
+    ...thread.replies.flatMap((r) => [r.body, r.author.name]),
+  ]
+  return fields.some((field) => field.toLowerCase().includes(needle))
+}
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -52,6 +96,14 @@ function MemberBadge({ member }: { member: ShareMember }) {
       <span className="text-[11.5px] font-medium">{member.name}</span>
       <span className="text-[10px] text-faint">signed in</span>
     </div>
+  )
+}
+
+function Key({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-line bg-canvas px-1 py-px font-sans text-[9.5px] font-semibold text-muted">
+      {children}
+    </kbd>
   )
 }
 
@@ -99,6 +151,12 @@ function Bubble({
  * A thread that lives on another page. Read-only on purpose: the useful
  * action from here is "take me there", and a reply box on a quote you
  * can't see is an invitation to answer the wrong question.
+ *
+ * Two lines, deliberately. These sit inside a group already labelled with
+ * the page they belong to, so the reader has the context and only needs
+ * enough of the thread to recognise it — the quote, the reply count on
+ * its own line and a second line of body were three rows of scroll each,
+ * spent on a card whose entire purpose is to be clicked through.
  */
 function RemoteThreadCard({ thread }: { thread: CommentThread }) {
   const { jumpTo } = useComments()
@@ -108,34 +166,31 @@ function RemoteThreadCard({ thread }: { thread: CommentThread }) {
     <button
       type="button"
       onClick={() => jumpTo(thread)}
+      title={thread.anchor.quote ?? undefined}
       className={[
-        'w-full rounded-xl border border-line bg-surface p-2.5 text-left transition-colors hover:border-brand',
+        'w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-left transition-colors hover:border-brand',
         resolved ? 'opacity-60' : '',
       ].join(' ')}
     >
-      {thread.anchor.quote && (
-        <p className="mb-1.5 line-clamp-1 border-l-2 border-amber-400 pl-2 text-[11px] italic text-muted">
-          {thread.anchor.quote}
-        </p>
-      )}
-      <div className="flex items-baseline gap-2">
-        <span className="text-[12px] font-semibold">{thread.author.name}</span>
-        <span className="text-[10px] text-faint">
+      <div className="flex items-baseline gap-1.5">
+        <span className="truncate text-[11.5px] font-semibold">
+          {thread.author.name}
+        </span>
+        <span className="shrink-0 text-[10px] text-faint">
           {relativeTime(thread.createdAt)}
         </span>
+        {thread.replies.length > 0 && (
+          <span className="shrink-0 text-[10px] text-faint">
+            · {thread.replies.length}
+          </span>
+        )}
         {resolved && (
           <Check className="ml-auto h-3 w-3 shrink-0 text-emerald-700" />
         )}
       </div>
-      <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-ink/85">
+      <p className="line-clamp-1 text-[12px] leading-relaxed text-ink/85">
         {thread.body}
       </p>
-      {thread.replies.length > 0 && (
-        <p className="mt-1 text-[10px] text-faint">
-          {thread.replies.length}{' '}
-          {thread.replies.length === 1 ? 'reply' : 'replies'}
-        </p>
-      )}
     </button>
   )
 }
@@ -143,17 +198,33 @@ function RemoteThreadCard({ thread }: { thread: CommentThread }) {
 function ThreadCard({
   thread,
   orphaned,
+  focus,
 }: {
   thread: CommentThread
   orphaned: boolean
+  /** Set when the keyboard just landed here; null for every other card. */
+  focus: KeyboardFocus | null
 }) {
   const { activeId, setActiveId, post, setResolved, remove, name, member } =
     useComments()
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const replyRef = useRef<HTMLTextAreaElement>(null)
   const active = activeId === thread.id
   const resolved = thread.resolvedAt !== null
+
+  /*
+   * `preventScroll` because the two scrollers this card sits in are
+   * already being driven — the rail by the effect below, the page by
+   * CommentableRoot — and letting the browser also scroll to the focused
+   * element lands somewhere between the two, mid-animation.
+   */
+  useEffect(() => {
+    if (!focus) return
+    if (focus.target === 'reply') replyRef.current?.focus({ preventScroll: true })
+    else cardRef.current?.focus({ preventScroll: true })
+  }, [focus])
 
   /**
    * When a thread is selected from the page (clicking its highlight),
@@ -191,9 +262,37 @@ function ThreadCard({
   return (
     <div
       ref={cardRef}
-      onClick={() => setActiveId(thread.id)}
+      /**
+       * The card is a toggle: click to open the reply box, click again to
+       * put it away. Before this the only way to close one was to open a
+       * different one, so a rail you had finished with kept a composer
+       * and two buttons wedged open under the thread you were reading.
+       *
+       * Two things are not "a click on the card". Anything that landed on
+       * a control of its own — Reply, Resolve, the delete bin, the
+       * textarea — is that control's click and nothing else; without this
+       * guard, clicking into the reply box would close the reply box.
+       * And a drag that left text selected is a copy, not a click: the
+       * same rule the page highlights use in CommentableRoot.
+       */
+      onClick={(e) => {
+        if (
+          e.target instanceof Element &&
+          e.target.closest('button, textarea, input, a, [contenteditable]')
+        )
+          return
+        if (!window.getSelection()?.isCollapsed) return
+        setActiveId(active ? null : thread.id)
+      }}
+      /*
+       * Focusable so ↑/↓ have somewhere to mean "the rail" rather than
+       * "the page", and so the list is reachable by Tab at all — until now
+       * these were click-only divs, invisible to anyone on a keyboard.
+       */
+      tabIndex={0}
+      aria-current={active || undefined}
       className={[
-        'rounded-xl border p-3 transition-colors cursor-default',
+        'cursor-pointer rounded-xl border p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/40',
         active ? 'border-brand bg-brand-soft/40' : 'border-line bg-surface',
         resolved && !active ? 'opacity-60' : '',
       ].join(' ')}
@@ -231,6 +330,7 @@ function ThreadCard({
           <div className="flex items-start gap-1.5">
             <CornerDownRight className="mt-2 h-3 w-3 shrink-0 text-faint" />
             <textarea
+              ref={replyRef}
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               onKeyDown={(e) => {
@@ -305,8 +405,18 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
     error,
     signOut,
     refresh,
+    activeId,
+    setActiveId,
+    setResolved,
   } = useComments()
-  const [showResolved, setShowResolved] = useState(false)
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<StatusFilter>('open')
+  const [mineOnly, setMineOnly] = useState(false)
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+  const [focus, setFocus] = useState<KeyboardFocus | null>(null)
+  const focusSeq = useRef(0)
 
   const { ordered, orphanIds } = useMemo(() => {
     const root = document.getElementById(COMMENT_ROOT_ID)
@@ -335,16 +445,23 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
     return { ordered: sorted, orphanIds: orphans }
   }, [threads])
 
-  const visible = showResolved
-    ? ordered
-    : ordered.filter((t) => t.resolvedAt === null)
+  const needle = query.trim().toLowerCase()
+  const keep = useCallback(
+    (thread: CommentThread) =>
+      matchesStatus(thread, status) &&
+      (!mineOnly || isMine(thread)) &&
+      matchesQuery(thread, needle),
+    [status, mineOnly, needle],
+  )
+
+  const visible = useMemo(() => ordered.filter(keep), [ordered, keep])
 
   // Every other page that has something to say, in nav order.
   const elsewhere = useMemo(() => {
     const byDoc = new Map<string, CommentThread[]>()
     for (const thread of allThreads) {
       if (thread.docKey === docKey) continue
-      if (!showResolved && thread.resolvedAt !== null) continue
+      if (!keep(thread)) continue
       const list = byDoc.get(thread.docKey) ?? []
       list.push(thread)
       byDoc.set(thread.docKey, list)
@@ -353,37 +470,182 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       .sort(([a], [b]) => docOrder(a) - docOrder(b))
       .map(([key, list]) => ({
         key,
-        label: docTitle(key),
+        ...docLabelParts(key),
         threads: list.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
       }))
-  }, [allThreads, docKey, showResolved])
+  }, [allThreads, docKey, keep])
 
   const openCount = allThreads.filter((t) => t.resolvedAt === null).length
   const resolvedCount = allThreads.length - openCount
   const elsewhereCount = elsewhere.reduce((n, g) => n + g.threads.length, 0)
 
+  /*
+   * Searching overrides the collapsed state rather than clearing it: the
+   * point of typing is to see what matched, and a list of shut folders is
+   * a worse answer than no answer. Clearing the box restores whatever the
+   * reader had opened by hand.
+   */
+  const searching = needle.length > 0
+  const toggleGroup = (key: string) =>
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+
+  /**
+   * j / k step through the threads on this page, Enter drops into the
+   * reply box, R resolves. ↑ / ↓ do the same as j / k but only while the
+   * focus is inside the rail — bound globally they would take the arrow
+   * keys away from scrolling the page, which is a bad trade for anyone
+   * who leaves the rail open while reading.
+   *
+   * Only this page's threads are navigable. The ones from elsewhere are
+   * one click from being on another page entirely, and stepping onto one
+   * would mean navigating out from under the key you just pressed.
+   */
+  const railRef = useRef<HTMLElement>(null)
+  const step = useCallback(
+    (delta: number) => {
+      if (visible.length === 0) return
+      const at = visible.findIndex((t) => t.id === activeId)
+      const next =
+        at === -1
+          ? delta > 0
+            ? 0
+            : visible.length - 1
+          : (at + delta + visible.length) % visible.length
+      setActiveId(visible[next].id)
+      focusSeq.current += 1
+      setFocus({ id: visible[next].id, target: 'card', seq: focusSeq.current })
+    },
+    [visible, activeId, setActiveId],
+  )
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat) return
+      if (isTypingTarget(e.target)) return
+
+      const inRail =
+        document.activeElement instanceof Node &&
+        !!railRef.current?.contains(document.activeElement)
+      const down = e.key === 'j' || (inRail && e.key === 'ArrowDown')
+      const up = e.key === 'k' || (inRail && e.key === 'ArrowUp')
+      if (down || up) {
+        e.preventDefault()
+        step(down ? 1 : -1)
+        return
+      }
+
+      /*
+       * Enter and R act on the selected thread, so they must not fire
+       * while the reader is somewhere else with something focused — a nav
+       * link, the "Refresh" button, a tab. Enter on a focused link means
+       * "follow it", and a thread staying selected in the rail is no
+       * reason to swallow that. Body (nothing focused) still counts as
+       * ours: that is where a click on a page highlight leaves you.
+       */
+      const elsewhereFocus =
+        document.activeElement !== null &&
+        document.activeElement !== document.body &&
+        !inRail
+      if (elsewhereFocus) return
+
+      const thread = activeId ? visible.find((t) => t.id === activeId) : null
+      if (!thread) return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        focusSeq.current += 1
+        setFocus({ id: thread.id, target: 'reply', seq: focusSeq.current })
+        return
+      }
+      if (e.key === 'r') {
+        e.preventDefault()
+        void setResolved(thread.id, thread.resolvedAt === null)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [step, visible, activeId, setResolved])
+
   return (
     <aside
+      ref={railRef}
       {...{ [NO_COMMENT_ATTR]: true }}
       // Width comes from `--comment-rail-w` in index.css because the page
       // reserves exactly this much room while the rail is open.
       className="fixed right-0 top-0 z-40 flex h-full w-[var(--comment-rail-w)] flex-col border-l border-line bg-canvas shadow-2xl"
     >
-      <header className="flex items-center gap-2 border-b border-line bg-surface px-4 py-3">
-        <MessageSquare className="h-4 w-4 text-brand" />
-        <span className="text-[13px] font-semibold">Comments</span>
-        <span className="text-[11px] text-faint">
-          {openCount} open
-          {resolvedCount > 0 ? ` · ${resolvedCount} resolved` : ''}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ml-auto text-muted hover:text-ink"
-          aria-label="Close comments"
-        >
-          <X className="h-4 w-4" />
-        </button>
+      <header className="space-y-2 border-b border-line bg-surface px-4 py-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-brand" />
+          <span className="text-[13px] font-semibold">Comments</span>
+          <span className="text-[11px] text-faint">
+            {openCount} open
+            {resolvedCount > 0 ? ` · ${resolvedCount} resolved` : ''}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto text-muted hover:text-ink"
+            aria-label="Close comments"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Escape clears rather than closing the rail — you reach for
+              // it to undo the filter you can see, not to leave.
+              if (e.key === 'Escape' && query) {
+                e.stopPropagation()
+                setQuery('')
+              }
+            }}
+            placeholder="Search comments…"
+            aria-label="Search comments"
+            className="w-full rounded-lg border border-line bg-canvas/50 py-1.5 pl-7 pr-2 text-[12px] outline-none focus:border-brand"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <div className="flex rounded-lg border border-line p-0.5">
+            {(['open', 'resolved', 'all'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatus(value)}
+                aria-pressed={status === value}
+                className={`rounded-md px-2 py-0.5 text-[11px] capitalize transition-colors ${
+                  status === value
+                    ? 'bg-brand text-white'
+                    : 'text-muted hover:text-ink'
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setMineOnly((v) => !v)}
+            aria-pressed={mineOnly}
+            className={`rounded-lg border px-2 py-1 text-[11px] transition-colors ${
+              mineOnly
+                ? 'border-brand bg-brand-soft/50 text-brand'
+                : 'border-line text-muted hover:text-ink'
+            }`}
+          >
+            Mine
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -396,12 +658,24 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         data-comment-scroll
         className="flex-1 space-y-2.5 overflow-y-auto scroll-thin p-3"
       >
-        <SectionLabel>This page</SectionLabel>
+        <SectionLabel>This page · {visible.length}</SectionLabel>
         {visible.length === 0 ? (
           <p className="px-1 pb-2 pt-1 text-center text-[11.5px] leading-relaxed text-faint">
-            No {showResolved ? '' : 'open '}comments here.
-            <br />
-            Select any text to start a thread.
+            {searching || mineOnly || status !== 'open' ? (
+              'Nothing here matches those filters.'
+            ) : (
+              <>
+                No open comments here.
+                <br />
+                Select any text, then click{' '}
+                <span className="font-medium text-muted">Comment</span> or
+                press{' '}
+                <kbd className="rounded border border-line bg-surface px-1 py-px font-sans text-[10px] font-semibold text-muted">
+                  {QUICK_KEY_LABEL}
+                </kbd>
+                .
+              </>
+            )}
           </p>
         ) : (
           visible.map((thread) => (
@@ -409,6 +683,7 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
               key={thread.id}
               thread={thread}
               orphaned={orphanIds.has(thread.id)}
+              focus={focus?.id === thread.id ? focus : null}
             />
           ))
         )}
@@ -418,22 +693,46 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
             <SectionLabel>
               Elsewhere on the site · {elsewhereCount}
             </SectionLabel>
-            {elsewhere.map((group) => (
-              <div key={group.key} className="space-y-1.5">
-                <p
-                  title={group.key}
-                  className="flex items-baseline gap-1.5 px-0.5 pt-1 text-[11px] font-medium text-muted"
-                >
-                  <span className="truncate">{group.label}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-faint">
-                    {group.threads.length}
-                  </span>
-                </p>
-                {group.threads.map((thread) => (
-                  <RemoteThreadCard key={thread.id} thread={thread} />
-                ))}
-              </div>
-            ))}
+            {elsewhere.map((group) => {
+              const open = searching || expanded.has(group.key)
+              return (
+                <div key={group.key} className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    aria-expanded={open}
+                    title={group.parent ? `${group.parent} › ${group.leaf}` : group.leaf}
+                    className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left hover:bg-surface"
+                  >
+                    <ChevronRight
+                      className={`h-3.5 w-3.5 shrink-0 text-faint transition-transform ${
+                        open ? 'rotate-90' : ''
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      {/* Module above, page below: five features of one
+                          module otherwise read as five identical rows
+                          truncated at the only part that differs. */}
+                      {group.parent && (
+                        <span className="block truncate text-[9.5px] uppercase tracking-wide text-faint">
+                          {group.parent}
+                        </span>
+                      )}
+                      <span className="block truncate text-[11.5px] font-medium text-ink/80">
+                        {group.leaf}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-faint">
+                      {group.threads.length}
+                    </span>
+                  </button>
+                  {open &&
+                    group.threads.map((thread) => (
+                      <RemoteThreadCard key={thread.id} thread={thread} />
+                    ))}
+                </div>
+              )
+            })}
           </>
         )}
 
@@ -446,14 +745,17 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       </div>
 
       <footer className="space-y-2 border-t border-line bg-surface px-4 py-2.5">
-        <label className="flex items-center gap-2 text-[11px] text-muted">
-          <input
-            type="checkbox"
-            checked={showResolved}
-            onChange={(e) => setShowResolved(e.target.checked)}
-          />
-          Show resolved
-        </label>
+        {/* The shortcuts only pay off if you know they exist, and this is
+            the one strip of the rail that never scrolls away. */}
+        <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[10px] text-faint">
+          <Key>j</Key>
+          <Key>k</Key>
+          <span>move</span>
+          <Key>↵</Key>
+          <span>reply</span>
+          <Key>r</Key>
+          <span>resolve</span>
+        </p>
         {/* A member is already named by their account — asking again
             would invite two names for one person. */}
         {member ? <MemberBadge member={member} /> : <NameField />}

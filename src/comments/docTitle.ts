@@ -60,6 +60,29 @@ export function docOrder(docKey: string): number {
   return PAGES.get(docKey)?.order ?? Number.MAX_SAFE_INTEGER
 }
 
+export interface DocLabelParts {
+  /** The module the page belongs to, or null for a standalone page. */
+  parent: string | null
+  /** The page's own name. */
+  leaf: string
+}
+
+/**
+ * Split a page label at its last `›`, so a narrow list can lead with the
+ * part that identifies the page and demote the part that repeats.
+ *
+ * In a rail this matters more than it sounds: five features of one module
+ * all begin "CRM — Sales & customer lifecycle › …", and a single truncated
+ * line shows the reader five identical rows whose only distinguishing text
+ * is the bit that got cut off.
+ */
+export function docLabelParts(docKey: string): DocLabelParts {
+  const label = docTitle(docKey)
+  const at = label.lastIndexOf('›')
+  if (at === -1) return { parent: null, leaf: label }
+  return { parent: label.slice(0, at).trim(), leaf: label.slice(at + 1).trim() }
+}
+
 /** False when the path no longer maps to a page on this site. */
 export function docExists(docKey: string): boolean {
   return PAGES.has(docKey)

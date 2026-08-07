@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { GripVertical, MessageSquare } from 'lucide-react'
 import { useComments } from './CommentsProvider'
 import { NO_COMMENT_ATTR } from './anchor'
+import {
+  COMMENT_CHORD_LABEL,
+  hasCommentableSelection,
+  isCommentChord,
+  isTypingTarget,
+} from './hotkeys'
 import { CommentRail } from './CommentRail'
 import { UnlockDialog } from './UnlockDialog'
 import { useDraggable } from './draggable'
@@ -61,6 +67,32 @@ export function CommentsLayer() {
     previousStatus.current = status
   }, [status])
 
+  /**
+   * The chord with nothing selected toggles the rail — same key as
+   * "comment on this", because from the reader's side both are the one
+   * intent "take me to the comments", and which one they get is decided
+   * by whether they had picked out a sentence first.
+   *
+   * When comments are still locked it opens the unlock dialog instead:
+   * pressing the comment shortcut is exactly the moment to ask for the
+   * passcode, rather than doing nothing and looking broken.
+   */
+  useEffect(() => {
+    if (status === 'unavailable') return
+    const onKey = (e: KeyboardEvent) => {
+      if (!isCommentChord(e) || e.repeat) return
+      if (isTypingTarget(e.target)) return
+      // With text selected the popover owns this key — it has somewhere
+      // more specific to take you.
+      if (status === 'ready' && hasCommentableSelection()) return
+      e.preventDefault()
+      if (status === 'ready') setRailOpen(!railOpen)
+      else setUnlocking(true)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [status, railOpen, setRailOpen])
+
   if (status === 'unavailable') return null
 
   // Site-wide, matching what the rail lists: the number on the button and
@@ -74,7 +106,7 @@ export function CommentsLayer() {
           {...{ [NO_COMMENT_ATTR]: true }}
           type="button"
           {...drag.props}
-          title={`${status === 'ready' ? 'Comments' : 'Unlock comments'} — drag to move`}
+          title={`${status === 'ready' ? 'Comments' : 'Unlock comments'} (${COMMENT_CHORD_LABEL}) — drag to move`}
           // `whitespace-nowrap`: positioned by `left`, the pill's box is
           // only as wide as the space to its right, so without it the
           // label wraps to two lines as it nears the right edge.
