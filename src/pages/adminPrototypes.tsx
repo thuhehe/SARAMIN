@@ -2002,11 +2002,14 @@ function fmtIdle(days: number): string {
 /* Fixed "today" for the mock so the dates it derives stay stable across reloads
    and match the hand-written dates elsewhere in the data (lastPO, renewal…). */
 const MOCK_TODAY = new Date(2026, 7, 8)
-/** A gap in days, rendered as the DATE that gap points back to — dd/mm/yyyy. */
-function dateBefore(days: number): string {
+/** A gap in days, rendered as the DATE that gap points back to — dd/mm/yyyy.
+    `short` drops the year, for places where the column is one of several things
+    competing for a narrow card. The full date is always in the tooltip. */
+function dateBefore(days: number, short?: boolean): string {
   const d = new Date(MOCK_TODAY)
   d.setDate(d.getDate() - days)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  const dm = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+  return short ? dm : `${dm}/${d.getFullYear()}`
 }
 const ROT_TEXT: Record<Rot, string> = {
   fresh: 'text-muted',
@@ -2016,21 +2019,29 @@ const ROT_TEXT: Record<Rot, string> = {
 const ROT_DOT: Record<Rot, string> = { fresh: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-rose-500' }
 /** Idle read-out: a health dot + the gap. `days = null` → never contacted at all,
     which is a DISTINCT state from 0d and the highest-priority follow-up. */
-function Idle({ days, kind = 'openDeal', dotOnly }: { days: number | null; kind?: Cadence; dotOnly?: boolean }) {
+/**
+ * `compact` is the KANBAN-CARD read-out: dd/mm with no year, no health dot and no
+ * colour. A card already carries its stage, its value and its owner — a fourth
+ * coloured signal there competes with the stage rather than adding to it, and the
+ * card is narrow enough that the year is four characters of noise. The full date,
+ * the gap in days and the threshold are all still one hover away.
+ */
+function Idle({ days, kind = 'openDeal', dotOnly, compact }: { days: number | null; kind?: Cadence; dotOnly?: boolean; compact?: boolean }) {
   if (days === null) {
     return (
-      <span className="inline-flex items-center gap-1 font-medium text-rose-600" title="No contact has ever been logged for this company — highest-priority follow-up.">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-        {dotOnly ? null : 'Chưa liên hệ'}
+      <span className={cn('inline-flex items-center gap-1', compact ? 'text-muted' : 'font-medium text-rose-600')} title="Chưa có liên hệ nào được ghi nhận cho công ty này — ưu tiên theo dõi cao nhất.">
+        {!compact && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />}
+        {dotOnly ? null : compact ? '—' : 'Chưa liên hệ'}
       </span>
     )
   }
   const t = IDLE_RULE[kind]
   const rot = idleOf(days, kind)
+  const tip = `Liên hệ gần nhất ${dateBefore(days)} — ${days} ngày trước. ${kind} expects ${t.cadence} contact: amber from ${t.amber}d, red from ${t.red}d.`
   return (
-    <span className={cn('inline-flex items-center gap-1 tabular-nums', ROT_TEXT[rot])} title={`Liên hệ gần nhất ${dateBefore(days)} — ${days} ngày trước. ${kind} expects ${t.cadence} contact: amber from ${t.amber}d, red from ${t.red}d.`}>
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', ROT_DOT[rot])} />
-      {dotOnly ? null : dateBefore(days)}
+    <span className={cn('inline-flex items-center gap-1 tabular-nums', compact ? 'text-muted' : ROT_TEXT[rot])} title={tip}>
+      {!compact && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', ROT_DOT[rot])} />}
+      {dotOnly ? null : dateBefore(days, compact)}
     </span>
   )
 }
@@ -2299,7 +2310,7 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
                 <span className="mt-1 inline-block max-w-full truncate rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] text-muted">{c.industry}</span>
                 <div className="mt-1 flex items-center justify-between gap-1">
                   <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
-                  <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} /></span>
+                  <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} compact /></span>
                 </div>
                 {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
               </button>
@@ -3292,7 +3303,7 @@ function AttachRow({ atts, onAdd, onDrop }: { atts: CoAtt[]; onAdd: (a: CoAtt) =
   const n = atts.filter((a) => a.kind === 'image').length
   return (
     <div>
-      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Đính kèm <span className="font-normal text-faint">— ảnh chụp màn hình, email đã forward</span></label>
+      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Đính kèm</label>
       <div className="flex flex-wrap items-center gap-1.5">
         {atts.map((a, i) => (
           <span key={i} className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]', a.kind === 'email' ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-line bg-canvas text-muted')}>
@@ -3304,9 +3315,6 @@ function AttachRow({ atts, onAdd, onDrop }: { atts: CoAtt[]; onAdd: (a: CoAtt) =
         <button onClick={() => onAdd({ kind: 'image', label: `anh-${n + 1}.png` })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Ảnh</button>
         <button onClick={() => onAdd({ kind: 'email', label: 'RE- trao đổi.eml' })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Email</button>
       </div>
-      <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-        Nhiều ảnh cho một hoạt động (ảnh chụp hội thoại Zalo, biên bản họp). Email đính kèm được hai cách: forward tới <span className="font-mono text-ink/70">crm@saramin.vn</span> — hệ thống tự gắn vào công ty theo địa chỉ người gửi — hoặc tải lên file .eml / .msg.
-      </p>
     </div>
   )
 }
@@ -3396,7 +3404,11 @@ function CompanyActivities({ c }: { c: Company }) {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Ngày <span className="text-rose-500">*</span></label>
+                  {/* Backdating is allowed, but only inside the current month: a rep
+                      writing up yesterday's meeting is normal, one editing last
+                      month's numbers after the period closed is not. */}
                   <input value={when} onChange={(e) => setWhen(e.target.value)} className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand" />
+                  <p className="mt-1 text-[10px] leading-relaxed text-faint">Từ 01/08/2026 đến hôm nay</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Giờ <span className="text-rose-500">*</span></label>
@@ -3415,14 +3427,6 @@ function CompanyActivities({ c }: { c: Company }) {
                   {['Tại văn phòng khách hàng', 'Tại văn phòng Saramin', 'Online — Google Meet', 'Online — Zoom', 'Khác'].map((pl) => (
                     <button key={pl} onClick={() => setPlace(pl)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', place === pl ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{pl}</button>
                   ))}
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Người tham dự</label>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas px-2 py-1 text-[11px] text-muted">👤 {c.contact.split(' · ')[0]} <span className="text-faint">· phía khách hàng</span></span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas px-2 py-1 text-[11px] text-muted">👤 {ME} <span className="text-faint">· Saramin</span></span>
-                  <button className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Thêm</button>
                 </div>
               </div>
               <div>
@@ -3899,6 +3903,65 @@ function OwnerHistory({ c }: { c: Company }) {
   )
 }
 
+/* ── Verification documents — proof the MST belongs to them (giấy phép KD, giấy
+   chứng nhận đăng ký thuế, hợp đồng đã ký). Optional at creation, but REQUIRED +
+   approved before the first VAT e-invoice. Uploaded at creation AND managed here
+   on the record. Mirrors the CRM requirement "Company verification document". */
+type CoDocStatus = 'approved' | 'pending' | 'rejected'
+type CoDoc = { name: string; status: CoDocStatus; note?: string }
+const DOC_PILL: Record<CoDocStatus, { tone: StatusTone; label: string }> = {
+  approved: { tone: 'active', label: 'Đã duyệt' },
+  pending: { tone: 'pending', label: 'Chờ duyệt' },
+  rejected: { tone: 'rejected', label: 'Từ chối' },
+}
+function companyDocs(c: Company): CoDoc[] {
+  // Anyone ever invoiced has an approved licence on file; a churned customer keeps
+  // theirs (it does not un-verify). A deal that reached PO is collecting the
+  // document — it sits Chờ duyệt. An early lead has none yet.
+  if (c.account === 'Existing' || c.account === 'Churn') return [
+    { name: 'giay-phep-kinh-doanh.pdf', status: 'approved', note: `Kế toán duyệt · ${c.since}` },
+    { name: 'giay-chung-nhan-dang-ky-thue.pdf', status: 'approved' },
+  ]
+  if (isCustomer(c)) return [{ name: 'giay-phep-kinh-doanh.pdf', status: 'pending' }]
+  return []
+}
+function CompanyDocs({ c }: { c: Company }) {
+  const [docs, setDocs] = useState<CoDoc[]>(() => companyDocs(c))
+  const add = () => setDocs((d) => [...d, { name: `tai-lieu-${d.length + 1}.pdf`, status: 'pending' }])
+  const allApproved = docs.length > 0 && docs.every((d) => d.status === 'approved')
+  return (
+    <DetailCard
+      title="Verification documents"
+      action={docs.length === 0
+        ? <Pill tone="rejected">Chưa có</Pill>
+        : allApproved ? <Pill tone="active">Đã duyệt</Pill> : <Pill tone="pending">Chờ duyệt</Pill>}
+    >
+      <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-4 text-center">
+        <p className="text-[12px] font-medium text-ink">Kéo thả hoặc <button onClick={add} className="text-brand hover:underline">chọn tệp</button></p>
+        <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">Giấy phép kinh doanh · Giấy chứng nhận đăng ký thuế · Hợp đồng đã ký. PDF, JPG, PNG — tối đa 10MB mỗi tệp.</p>
+      </div>
+      {docs.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {docs.map((d, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5">
+              <span className="text-[13px]">📄</span>
+              <div className="min-w-0 flex-1">
+                <a href="#" onClick={(e) => e.preventDefault()} className="block truncate text-[11.5px] font-medium text-brand hover:underline">{d.name}</a>
+                {d.note && <p className="truncate text-[10px] text-faint">{d.note}</p>}
+              </div>
+              <Pill tone={DOC_PILL[d.status].tone}>{DOC_PILL[d.status].label}</Pill>
+              <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {docs.length === 0
+        ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Chưa có tài liệu xác minh — vẫn bán được, nhưng sẽ bị chặn ở bước <b>xuất hoá đơn VAT</b>.</p>
+        : <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Không bắt buộc lúc tạo, nhưng <b className="text-ink/70">bắt buộc + đã duyệt trước khi xuất hoá đơn VAT</b>. Kế toán duyệt; bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>}
+    </DetailCard>
+  )
+}
+
 function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
@@ -4077,6 +4140,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                   Contacts tab, where a company can have several with their own statuses.
                   Duplicating the primary one here guarantees the two drift apart. */}
             </DetailCard>
+            <CompanyDocs c={c} />
             <OwnerHistory c={c} />
             <AffiliatedCompanies c={c} onOpen={onOpen} onAddChild={() => setAddingChild(true)} />
           </div>
@@ -6253,6 +6317,22 @@ const QUOTE_CATALOG = [
   { vi: 'Dịch vụ tìm kiếm hồ sơ (90 ngày)', short: 'CV Search 90d', unitVi: 'hồ sơ', unitEn: 'CV', price: 13_900_000, feats: ['Mở tối đa 200 hồ sơ trong 90 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
   { vi: 'Employer Branding Page', short: 'EB Page', unitVi: 'gói', unitEn: 'package', price: 15_000_000, feats: ['Trang thương hiệu tuyển dụng riêng', 'Banner + video giới thiệu'] },
 ]
+/* A quotation ALWAYS expires on the last day of the month it was created in —
+   not after a fixed number of days. So validity shrinks through the month, and
+   every quote raised in a month lapses together. Derived, never typed. */
+function endOfMonth(ddmmyyyy: string) {
+  const [, mm, yyyy] = ddmmyyyy.split('/').map(Number)
+  if (!mm || !yyyy) return '—'
+  const last = new Date(yyyy, mm, 0).getDate()
+  return `${String(last).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yyyy}`
+}
+/** Days left on a quotation raised on `created`, as of `today`. */
+function daysLeft(created: string, today: string) {
+  const p = (d: string) => { const [dd, mm, yy] = d.split('/').map(Number); return new Date(yy, mm - 1, dd) }
+  const exp = p(endOfMonth(created))
+  const n = Math.round((exp.getTime() - p(today).getTime()) / 86_400_000)
+  return n
+}
 const DISCOUNT_APPROVAL = 20 // % above which a sales lead must approve before Send
 
 const VN_D = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
@@ -6470,7 +6550,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-4">
             <InfoBit label="Số báo giá / Quotation no." value={`QUO-00991${seq}-07-2026`} mono hint="Gapless sequence" />
             <InfoBit label="Ngày báo giá / Proposal date" value={today} />
-            <InfoBit label="Ngày hết hạn / Expiry date" value="12/08/2026" hint="+14 ngày" />
+            <InfoBit label="Ngày hết hạn / Expiry date" value={endOfMonth(today)} hint={`cuối tháng · còn ${daysLeft(today, today)} ngày`} />
             <InfoBit label="Báo giá bởi / Proposed by" value="Nguyễn Thị Lan" hint="Signed-in rep" />
           </div>
 
@@ -6992,12 +7072,12 @@ type Quote = {
 }
 const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
 const QUOTES: Quote[] = [
-  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '03/08/2026' },
-  { code: 'QUO-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '28/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
-  { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '14/07/2026', acceptedOpt: 1 },
+  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '31/07/2026' },
+  { code: 'QUO-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '31/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
+  { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '30/06/2026', acceptedOpt: 1 },
   { code: 'QUO-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
   { code: 'QUO-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — QUO-009905-06-2026.' },
-  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '—', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
+  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '31/07/2026', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
 ]
 /** Products, compactly: first name + "+N" when there are more. Full list on hover. */
 function ProductCell({ ids }: { ids: number[] }) {
@@ -8362,7 +8442,7 @@ function AdminIssuer() {
         <JobGroup title="Document defaults">
           <div className="grid grid-cols-3 gap-3">
             <LField label="Thuế suất VAT / VAT rate" req value="8%" select hint="A State rate change is made here once (T&C clause 6). A sent document keeps the rate it was sent with." />
-            <LField label="Quotation validity" req value="14 days" hint="Drives the default Ngày hết hạn." />
+            <LField label="Quotation validity" req value="Đến hết tháng / End of month" select hint="Every quotation lapses on the last day of the month it was raised in — so validity shrinks through the month." />
             <LField label="Discount needing approval" req value="> 20%" hint="Above this, Send is blocked pending a sales lead." />
           </div>
           <div className="grid grid-cols-3 gap-3">

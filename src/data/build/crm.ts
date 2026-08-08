@@ -57,7 +57,7 @@ export const crm: BuildModule = {
       table: {
         cols: ['Stage', 'What it means', 'Entered when', 'Rule'],
         rows: [
-          ['Proposal', 'Quotation has been sent to the customer', 'Rep marks the quotation Sent', 'SYSTEM puts the card here the moment SALES marks the quotation Sent — the stage is a consequence, never a manual drag. Requires a quotation in Sent state or later; a Draft or Pending-approval quotation never lands here. → Next action: SALES chases the customer for a reply.'],
+          ['Proposal', 'A quotation exists for this company — being written or already out', 'Quotation CREATED (Draft)', 'SYSTEM puts the card here the moment SALES creates the quotation, while it is still Draft — the stage is a consequence, never a manual drag. Working on a quote IS the proposal activity, so the deal is visible on the board from the first keystroke rather than appearing only once it is sent. → Next action: SALES finishes it and clicks “Mark as sent”, then chases a reply.'],
           ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies', 'SALES moves the card when the customer engages. May be skipped entirely — Proposal → Negotiation is legal. → Next action: SALES agrees the option and the price.'],
           ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', 'SALES moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: SALES creates the Sales order from the option the customer accepted.'],
           ['PO', 'The Sales order has been SENT to the customer — this is “won”.', 'PO sent', 'SALES reaches this by sending the Sales order (with bank details). The “won” moment — but it provisions NOTHING yet, and the customer has neither agreed nor paid. → Next action: KẾ TOÁN ONLY confirms the payment against the bank statement.'],
@@ -67,7 +67,7 @@ export const crm: BuildModule = {
       },
       items: [
         'Invoice and Lost are terminal; a Lost deal can be re-opened to an earlier stage, and win-back means a NEW deal on the same company.',
-        'Only companies whose quotation has actually gone out appear on the board — a Draft or Pending-approval quotation is not yet Proposal.',
+        'A company appears on the board as soon as a quotation is CREATED for it — Draft included. Writing the quote is the proposal work, so hiding it until Send would leave live deals invisible.',
       ],
     },
     {
@@ -476,12 +476,32 @@ export const crm: BuildModule = {
       ],
     },
     {
+      label: 'Quotation expiry — ALWAYS the end of the month',
+      text: 'A quotation does not live for a fixed number of days. It expires on the LAST DAY OF THE MONTH it was created in, whatever date that is — raised 02/07 or raised 28/07, both lapse on 31/07. Every quotation issued in a month therefore dies together, which is what ties pricing, discounts and promotions to one monthly policy cycle instead of to hundreds of rolling per-quote deadlines.',
+      table: {
+        cols: ['Created', 'Expires', 'Days valid'],
+        rows: [
+          ['02/07/2026', '31/07/2026', '29'],
+          ['20/07/2026', '31/07/2026', '11'],
+          ['28/07/2026', '31/07/2026', '3'],
+          ['01/08/2026', '31/08/2026', '30'],
+        ],
+      },
+      items: [
+        'DERIVED, never typed. expiryDate = last day of month(createdAt). There is no validity-days setting to get wrong, and no nightly job can leave a quotation stale — a quotation is expired when today > expiryDate, computed on read.',
+        'Consequence the rep must see: validity SHRINKS through the month. The builder shows the expiry date and the days remaining next to it, so a quote raised on the 28th visibly says "3 days" rather than looking the same as one raised on the 2nd.',
+        'The rot clock is deliberately NOT anchored to expiry any more. With a fixed 14-day validity the two could be aligned; with month-end they cannot, or a quote raised late in the month would turn red almost the moment it was sent. Expiry runs on the calendar, rot runs on contact.',
+        'Expiring still moves nothing on its own: the deal stays where it is and a HUMAN either extends validity, revises to v2, or closes the deal as Lost. A re-issued v2 gets a fresh end-of-month date — which, if it is re-issued in a new month, is the end of THAT month.',
+        'UNRESOLVED — a quotation raised on the 30th is valid for one day. Either roll quotations raised in the last few days of a month to the end of the NEXT month, or accept the short window. This needs a business answer before build.',
+      ],
+    },
+    {
       label: 'Quotation status — exactly four',
       text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the Sales order is created from the accepted option.',
       table: {
         cols: ['Status', 'Means', 'Rule'],
         rows: [
-          ['Draft', 'Private working material — editable, not yet out', 'SALES builds and edits it. The only editable status and the only one with no pipeline presence; abandoning it leaves the forecast untouched. → Next action: SALES clicks “Mark as sent”.'],
+          ['Draft', 'Being written — editable, not yet out', 'SALES builds and edits it; the only editable status. Creating it puts the deal on the board at PROPOSAL immediately, so a draft already counts in the pipeline — abandoning one therefore needs the deal closing as Lost, it does not just evaporate. → Next action: SALES clicks “Mark as sent”.'],
           ['Sent', 'Delivered to the customer, awaiting their pick', 'SALES declares this by clicking “Mark as sent” — reps routinely deliver the PDF by Zalo or from their own mailbox, so the status cannot depend on our mailer firing. Immutable from here; this is what puts the deal on the board at Proposal. → Next action: SALES clicks “Issue PO” and picks the option the customer chose.'],
           ['Issued to PO', 'An option was accepted and the Sales order was created from it', 'Reached automatically the moment SALES creates the Sales order. Terminal success — no further action on the quotation.'],
           ['Expired', 'Offer lapsed past its expiry date and closed out with no PO', 'SYSTEM sets this on the expiry date — nobody clicks it, and expiring never moves the deal in the pipeline. → To re-open: SALES extends validity or revises to v2.'],
@@ -527,7 +547,7 @@ export const crm: BuildModule = {
           ['Logo + VN/EN legal name + VN/EN address + website', 'Letterhead of quotation, sales order, invoice', 'The block the customer reads first. Both languages always print, exactly as on the client’s source PDF EST-009909-07-2026.'],
           ['Issuer tax code (MST)', 'Sales order, VAT e-invoice', 'Ours, not the customer’s — the two are adjacent on the page and easy to confuse.'],
           ['VAT rate (currently 8%)', 'Every option total, every invoice', 'A State rate change (T&C clause 6) is then one edit, not a code release.'],
-          ['Quotation validity (14 days) · discount-approval threshold (20%)', 'Expiry date · the Send gate', 'Sales policy, so it belongs to sales ops rather than to engineering.'],
+          ['Quotation validity (END OF MONTH) · discount-approval threshold (20%)', 'Expiry date · the Send gate', 'Sales policy, so it belongs to sales ops rather than to engineering.'],
           ['Numbering formats — QUO-{seq}-{MM}-{YYYY}, SO-…', 'Document numbers', 'The sequence must stay gapless and concurrency-safe; the format is configurable, the counter is not.'],
           ['Bank details', 'Sales order', 'Sent with the order because payment comes before the invoice (clause 3).'],
         ],
@@ -661,7 +681,8 @@ export const crm: BuildModule = {
       items: [
         'The coloured dot beside the date is unchanged: green / amber / red from the same cadence thresholds. The date says WHEN, the dot says WHETHER IT IS LATE — the reader should not have to subtract to learn the second.',
         'The gap in days moves into the tooltip, together with the threshold being applied: “Liên hệ gần nhất 05/07/2026 — 34 ngày trước. Existing expects monthly contact: amber from 30d, red from 60d.”',
-        'On a card, where there is no column header to carry the meaning, the pill says it: “Liên hệ 05/07/2026”.',
+        'THE KANBAN CARD IS THE EXCEPTION: dd/mm with no year, no dot and no colour. A card already carries its stage, its value and its owner, so a fourth coloured signal there competes with the stage rather than adding to it — and the year is four characters of noise on a narrow card. The full date, the gap in days and the threshold all stay one hover away, and “Chưa liên hệ” shortens to “—”.',
+        'The health dot and colour stay on the LIST, where the column exists precisely to be scanned for what is late, and there is room for the full date.',
         'THRESHOLDS are still expressed in days — they are durations, and “amber from 30d” is the natural way to state a rule. Only the read-out is a date.',
       ],
       warn: 'The stored value stays a TIMESTAMP; the date is presentation only, and sorting always uses the underlying value so the order is by recency, not by the rendered string.',
@@ -725,16 +746,37 @@ export const crm: BuildModule = {
         rows: [
           ['💬 Chat', 'Channel (Zalo · Messenger · Email · SMS · Zalo OA · Phone · Other) + note + attachments', 'Channel is required — “we chatted” without saying where is not a record.'],
           ['📞 Call', 'Note + attachments', 'Auto-filled from Calio when the call came through it.'],
-          ['🤝 Meeting', 'Date · time · duration · format (their office / our office / Meet / Zoom / other) · attendees · note + attachments', 'The only type with a scheduled MOMENT of its own — a chat is logged when it happened, a meeting is logged against the slot it was held in.'],
+          ['🤝 Meeting', 'Date · time · duration · format (their office / our office / Meet / Zoom / other) · note + attachments', 'The only type with a MOMENT of its own — a chat is logged when it happened, a meeting is logged against the slot it was held in. The date is constrained — see the block below. No attendee list: the client side is the contact on the record, our side is whoever logs it.'],
         ],
       },
       items: [
         'ATTACHMENTS on every type, several per activity: screenshots of a Zalo thread, meeting minutes, photos. They belong to the activity row, not to a separate document library — the point is that the row proves what happened.',
         'EMAIL is attached two ways: (1) the rep forwards or BCCs the message to a system address (crm@saramin.vn) and the system files it against the company by matching the sender/recipient domain — this is the one reps actually use, because it needs no upload; (2) uploading a saved .eml / .msg file, as the fallback when the address is not reachable.',
+        'The composer explains none of this: the control is labelled “Đính kèm” and nothing more. How email forwarding works belongs in onboarding and in this document, not in a paragraph every rep reads once and then scrolls past forever.',
         'Every activity is stamped with the ACCOUNT that performed it — NOT the company’s sales owner. A colleague covering for a busy owner is the one shown, and the one the KPI counts. The composer states whose KPI it will land on before the rep saves.',
         'The activity table shows that account by name, with the side it acted for underneath, and marks a row “hỗ trợ” when the performer is not the company’s owner — so a sales lead can see help being given without opening anything.',
         'Idle still counts from the newest SALES row regardless of who performed it: any colleague’s contact is contact.',
       ],
+    },
+    {
+      label: 'Meeting date — the allowed window',
+      text: 'The meeting date can be backdated, but only inside the CURRENT month. Two different abuses are being prevented, and they need different answers.',
+      table: {
+        cols: ['Date chosen', 'Allowed?', 'Why'],
+        rows: [
+          ['Today', 'Yes', 'The normal case.'],
+          ['Earlier this month', 'Yes', 'Writing a meeting up a few days late is ordinary work — forcing today’s date would make the record wrong.'],
+          ['Any day in a previous month', 'NO', 'That month is a closed KPI period. Backdating into it changes a number that has already been reported.'],
+          ['Any future date', 'NO', 'An activity log records what HAPPENED. A meeting that has not happened yet is a plan, not an activity — and a future date would push Last contact to a date that has not arrived.'],
+        ],
+      },
+      items: [
+        'The picker ENFORCES it rather than validating after the fact: days outside the window are disabled, and the field states the range under it — “Từ 01/08/2026 đến hôm nay”.',
+        'The boundary is the 1st of the current month, NOT a rolling 30 days. The rule exists to protect the closed reporting period, so it moves with the calendar — on 01/09 the whole of August closes at once.',
+        'This constrains the meeting DATE only. The created-at stamp is always the real moment of saving, and BOTH are stored: a meeting held on the 3rd and written up on the 7th keeps both facts, which is what makes late write-ups auditable instead of invisible.',
+        'Same window applies to Chat and Call if they are ever given an explicit date field. Today they are stamped at the moment of saving and have no date field at all.',
+      ],
+      warn: 'Open question for the client: may anyone log into a closed month — a sales lead, an admin, nobody? Recommend nobody, and handle corrections as a note on the current month instead, so a reported number never changes after it has been reported.',
     },
     {
       label: 'Search on the Companies list — a rep lists only their own book, but can REACH any customer by name',
@@ -1041,7 +1083,7 @@ export const crm: BuildModule = {
             heading: 'Pipeline hygiene — how long before a deal is considered stale (starting defaults)',
             items: [
               'Thresholds are per STAGE, not one number for the whole pipeline — each stage has a different natural rhythm. Measured in days since the last meaningful activity.',
-              'Proposal (quotation sent) — amber 7d, red 21d. Anchored to the quotation’s own 14-day validity: nudge at 7, the quote expires at 14, red 7 days after it lapses.',
+              'Proposal — amber 7d, red 21d. NOT anchored to the quotation’s expiry any more: since every quote lapses at month-end, a quote raised on the 28th would otherwise turn red almost immediately. The rot clock runs on contact, the expiry on the calendar, and they are deliberately independent.',
               'Qualified (HR manager willing to discuss) — amber 7d, red 14d. Interest is warm here; a fortnight of silence means it cooled.',
               'Negotiation (HR manager in internal approval) — amber 21d, red 45d. Deliberately the most generous: VN internal approval and budget cycles genuinely run to month-end, and killing these early is the most expensive mistake.',
               'PO (order sent, awaiting customer confirmation) — amber 7d, red 21d. They already said yes; silence here usually means a signature is stuck.',
@@ -1163,7 +1205,7 @@ export const crm: BuildModule = {
               { name: 'vendorBlock', type: 'ref → Settings', required: true, notes: 'The issuer letterhead — logo, VN + EN legal name, VN + EN address, website. NEVER typed per quotation and never hard-coded: it comes from System → Company information (issuer). One place to change it when the entity, address or logo changes, and every past quotation keeps the version it was sent with.' },
               { name: 'proposedBy', type: 'derived', notes: '"Báo giá bởi / Proposed by: {rep name} | {rep email}" — the signed-in rep' },
               { name: 'proposalDate', type: 'date', required: true, notes: 'Ngày báo giá / Proposal Date — defaults today' },
-              { name: 'expiryDate', type: 'date', required: true, notes: 'Ngày hết hạn / Expiry Date — defaults proposal + 14 days (PDF: 20/07 → 03/08); editable, must be > proposalDate' },
+              { name: 'expiryDate', type: 'date', required: true, notes: 'Ngày hết hạn / Expiry Date — ALWAYS the last day of the month the quotation was created in (20/07/2026 → 31/07/2026). DERIVED, never typed: every quotation raised in a month lapses together on the same date, which is what keeps pricing and promotions tied to a monthly policy cycle.' },
             ],
           },
           {
@@ -1231,7 +1273,7 @@ export const crm: BuildModule = {
               { name: 'company', type: 'ref → Customer', required: true },
               { name: 'options', type: 'count', notes: 'e.g. "2 options" — with the accepted one named once decided' },
               { name: 'value', type: 'money (₫)', notes: 'accepted option if decided, else the HIGHEST option — one option’s total-after-VAT, never the sum of the options' },
-              { name: 'status', type: 'enum', notes: 'Draft · Sent · Issued to PO · Expired — FOUR statuses, deliberately. Draft is the only one with no pipeline presence' },
+              { name: 'status', type: 'enum', notes: 'Draft · Sent · Issued to PO · Expired — FOUR statuses, deliberately. Creating a Draft already puts the deal at Proposal' },
               { name: 'sentVia / sentAt', type: 'derived', notes: 'blank while Draft; shows e.g. "Zalo · 22/07" so the lead can see which quotes went out off-platform' },
               { name: 'expiryDate', type: 'date', notes: 'with a "expires in N days" warning inside 3 days' },
               { name: 'owner', type: 'ref → admin user' },
@@ -1279,7 +1321,7 @@ export const crm: BuildModule = {
           'The quotation states the commercial terms the whole chain inherits: service activates only after payment + invoice (clause 3), must be activated within 12 months of the invoice date (clause 4), and runs 30 days once activated (clause 5).',
         ],
         states: [
-          'Draft (editable · no pipeline presence · may carry an "awaiting discount approval" flag)',
+          'Draft (editable · already on the board at Proposal · may carry an "awaiting discount approval" flag)',
           'Sent (immutable, awaiting the customer — via platform Send or "Mark as sent"; this is what puts the deal on the board at Proposal)',
           'Sent + offer lapsed (past the expiry date — the flag that forces a human decision)',
           'Issued to PO (an option was accepted and the Sales order was created from it — terminal success)',
@@ -1314,7 +1356,7 @@ export const crm: BuildModule = {
           {
             heading: 'Worked example — the client’s EST-009909-07-2026, as this builder would produce it',
             items: [
-              'Header: QUO-009909-07-2026 · Proposal 20/07/2026 · Expiry 03/08/2026 · Proposed by Đoàn Thị Phượng | phuongdoan@topdev.vn',
+              'Header: QUO-009909-07-2026 · Proposal 20/07/2026 · Expiry 31/07/2026 (end of the month it was raised in) · Proposed by Đoàn Thị Phượng | phuongdoan@topdev.vn',
               'Client: anh Huy · huy.nguyen@aoimirai.co.jp · 0978490363',
               'VAT billing: CÔNG TY TNHH AM SOFTWARE VIỆT NAM · 115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, TP. Hồ Chí Minh · MST 0317110315',
               'Option 1 — Basic Plus Job + Basic Plus Job (Tặng): line 1 = 1 tin × 6,100,000 − 0% = 6,100,000; line 2 = 1 tin × 0 (Tặng) = 0. VAT 8% = 488,000. Total = 6,588,000. In words auto: "Sáu triệu năm trăm tám mươi tám nghìn đồng." Features: 5 numbered benefits (30-day posting, ≤03 skill tags, bold blue title, Top Search, refresh every 10 days, Highlight-companies homepage slot) + the gift package’s own list.',
@@ -1412,7 +1454,7 @@ export const crm: BuildModule = {
           'Does the customer accept by replying (rep marks it), or do we want a signed accept link in the PDF/email so the customer picks the option themselves?',
           'Is e-signature required on the quotation, or is the current authorized-signature image enough?',
           'Confirm the quote-number format QUO-{seq}-{MM}-{YYYY} — is the sequence global or per month/per rep?',
-          'Default validity: is 14 days the standing rule?',
+          'End-of-month expiry: a quotation raised on the 30th is valid for one day. Do we roll those to the end of the NEXT month (e.g. anything raised in the last 5 days), or is a one-day offer intended?',
         ],
       },
     },
