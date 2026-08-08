@@ -59,6 +59,11 @@ export interface SpecTable {
 export interface SpecSection {
   /** short heading, e.g. "Fields", "Behaviours", "Validation" */
   heading: string
+  /** Pin this section directly under Overview, ABOVE "UI fields", instead of
+      leaving it in the trailing block after Acceptance criteria. For the section
+      that describes what the screen/document actually IS — a reader needs that
+      before a field list, not five blocks below the backend contract. */
+  early?: boolean
   /** optional lead sentence above the table / bullets. */
   text?: string
   /** value grid — use it for enums (status, exposure, stage) where each value has

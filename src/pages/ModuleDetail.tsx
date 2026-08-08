@@ -220,7 +220,24 @@ function RefDocs({ docs }: { docs: NonNullable<FeatureDetail['refDocs']> }) {
   )
 }
 
+/* One freeform spec section. Extracted so a section renders identically whether it
+   is pinned early (under Overview) or left in the trailing group. */
+function SectionBlock({ s }: { s: NonNullable<FeatureDetail['sections']>[number] }) {
+  return (
+    <SpecBlock title={s.heading}>
+      {s.text && <p className="mb-2 text-[13px] leading-relaxed text-ink/75">{s.text}</p>}
+      {s.table && <ReqTableView t={s.table} />}
+      {s.items && <Bullets items={s.items} />}
+    </SpecBlock>
+  )
+}
+
 function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
+  /* A section marked `early` describes what the screen/document actually IS, so it
+     belongs directly under Overview — above the field list, not below the backend
+     contract. Everything else keeps its place in the trailing group. */
+  const early = d.sections?.filter((s) => s.early) ?? []
+  const rest = d.sections?.filter((s) => !s.early) ?? []
   return (
     <>
       {d.refDocs && <RefDocs docs={d.refDocs} />}
@@ -242,6 +259,7 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
           )}
         </SpecBlock>
       )}
+      {early.map((s, i) => <SectionBlock key={`early-${i}`} s={s} />)}
       {d.uiFields && (
         <SpecBlock title="UI fields">
           <FieldTable groups={d.uiFields} />
@@ -250,6 +268,13 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
       {d.behaviors && (
         <SpecBlock title="Behaviours">
           <Ordered items={d.behaviors} />
+        </SpecBlock>
+      )}
+      {/* Rules that govern THIS screen. Sits above the generic rule list because a
+          labelled block with a table is what a reader scans for first. */}
+      {d.requirements && (
+        <SpecBlock title="Rules for this screen">
+          <Requirements items={d.requirements} />
         </SpecBlock>
       )}
       {d.rules && (
@@ -285,13 +310,7 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
           </ul>
         </SpecBlock>
       )}
-      {d.sections?.map((s, i) => (
-        <SpecBlock key={i} title={s.heading}>
-          {s.text && <p className="mb-2 text-[13px] leading-relaxed text-ink/75">{s.text}</p>}
-          {s.table && <ReqTableView t={s.table} />}
-          {s.items && <Bullets items={s.items} />}
-        </SpecBlock>
-      ))}
+      {rest.map((s, i) => <SectionBlock key={i} s={s} />)}
       {d.openQuestions && (
         <SpecBlock title="Open questions">
           <ul className="space-y-1.5">

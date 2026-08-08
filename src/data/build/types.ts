@@ -76,6 +76,10 @@ export interface FeatureDetail {
   acceptance?: string[]
   /** freeform extra sections. */
   sections?: SpecSection[]
+  /** Rules that belong to THIS feature rather than to the whole module — same
+      shape as module requirements (label + text + table + items), so a rule can
+      live next to the screen it governs instead of in a module-wide list. */
+  requirements?: Requirement[]
   /** open questions for the client / team. */
   openQuestions?: string[]
 }

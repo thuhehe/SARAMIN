@@ -52,25 +52,6 @@ export const crm: BuildModule = {
   ],
   requirements: [
     {
-      label: 'Pipeline stages (the kanban)',
-      text: 'The board mirrors the document chain. A card carries deal value + owner. Stage lives on the DEAL, never on the company.',
-      table: {
-        cols: ['Stage', 'What it means', 'Entered when', 'Rule'],
-        rows: [
-          ['Proposal', 'A quotation exists for this company — being written or already out', 'Quotation CREATED (Draft)', 'SYSTEM puts the card here the moment SALES creates the quotation, while it is still Draft — the stage is a consequence, never a manual drag. Working on a quote IS the proposal activity, so the deal is visible on the board from the first keystroke rather than appearing only once it is sent. → Next action: SALES finishes it and clicks “Mark as sent”, then chases a reply.'],
-          ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies', 'SALES moves the card when the customer engages. May be skipped entirely — Proposal → Negotiation is legal. → Next action: SALES agrees the option and the price.'],
-          ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', 'SALES moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: SALES creates the Sales order from the option the customer accepted.'],
-          ['PO', 'The Sales order has been SENT to the customer — this is “won”.', 'PO sent', 'SALES reaches this by sending the Sales order (with bank details). The “won” moment — but it provisions NOTHING yet, and the customer has neither agreed nor paid. → Next action: KẾ TOÁN ONLY confirms the payment against the bank statement.'],
-          ['Invoice', 'Customer paid and Accounting issued the VAT e-invoice — closed', 'Payment confirmed + invoice issued', 'KẾ TOÁN ONLY reaches this, by issuing the VAT e-invoice after confirming payment. SYSTEM then closes the deal won, flips customer status to Existing, starts the 12-month clock and releases provisioning. Terminal — no further action on the deal.'],
-          ['Lost', 'Ended without a PO — declined / competitor / budget cut / went silent', 'A human closes it and picks a reason', 'SALES ONLY, by hand, with a reason — SYSTEM never auto-closes a deal however long it sits (a stale deal is flagged rotting, not lost). → To re-open: SALES moves it back to an earlier stage; a win-back is a NEW deal on the same company.'],
-        ],
-      },
-      items: [
-        'Invoice and Lost are terminal; a Lost deal can be re-opened to an earlier stage, and win-back means a NEW deal on the same company.',
-        'A company appears on the board as soon as a quotation is CREATED for it — Draft included. Writing the quote is the proposal work, so hiding it until Send would leave live deals invisible.',
-      ],
-    },
-    {
       label: 'Record & document numbering — the whole scheme',
       text: 'Two different kinds of identifier, and they follow OPPOSITE rules on purpose. A RECORD id (a company) must not be guessable, because it is long-lived and its sequence would reveal how many customers we have. A DOCUMENT number must be sequential and date-stamped, because that is what makes it filable, referenceable on the phone, and — for the VAT invoice — legal.',
       table: {
@@ -93,265 +74,6 @@ export const crm: BuildModule = {
       warn: 'Open question — the Sales order and the Invoice both currently start with INV-, inherited from the client’s live system. Two different documents sharing a prefix is a real ambiguity in support and in exports. Recommend renaming the sales order to SO-{seq6}/{MM}/{YYYY}; needs client confirmation because existing documents already carry INV-.',
     },
     {
-      label: 'Company ID — format CO-XXXXXXX',
-      text: 'Every company gets a permanent public identifier the moment it is created: the prefix CO- plus 7 characters. It is assigned by the system, never typed, and never changes for the life of the company (lead → customer → churn → win-back). It is NOT the database key — the database keeps its own bigint primary key and the ID is a reversible encoding of it.\n\nThe breakdown below is the PARSE CONTRACT: it tells the developer which characters decode back to the key and which one is the checksum, so validation is not guesswork.',
-      table: {
-        cols: ['Part', 'Length', 'In CO-P9FCEPD', 'What it is'],
-        rows: [
-          ['CO-', '3', 'CO-', 'Fixed prefix, so an ID is self-describing in a log, an export or a support ticket'],
-          ['Payload', '6 chars', 'P9FCEP', 'The internal key, scrambled then encoded in Crockford Base32 — decodes back to the bigint key'],
-          ['Check character', '1 char', 'D', 'Computed from the 6 payload chars. Rejects a mistyped ID instead of opening the wrong company'],
-        ],
-      },
-      items: [
-        'WHY THIS AND NOT JUST 7 RANDOM BASE32 CHARS: it IS 7 Base32 chars — capacity was never in question. The point is what the seven are. ONE of them is a CHECK character (catches a mistyped ID before it opens the wrong company); the other SIX are the database key run through a reversible scramble, not random. That buys two things random codes cannot: uniqueness BY CONSTRUCTION (no unique-index clash, no collision-and-retry loop on insert) and a code that decodes straight back to the row. Seven random chars would instead need a collision check + regenerate loop, and give zero typo protection unless you still reserve a check char — at which point it is this scheme with a worse failure mode. So this is not "more than 7 letters"; it is those 7 letters, chosen so they can never collide and a fat-finger is rejected.',
-        'ALPHABET (Crockford Base32, 32 symbols, uppercase): 0 1 2 3 4 5 6 7 8 9 A B C D E F G H J K M N P Q R S T V W X Y Z — note I, L, O and U are absent, so 1/I/l and 0/O can never be confused.',
-        'WORKED EXAMPLES — internal key → company ID (a developer can test an implementation against these exact values): 1 → CO-1MQJXE4 · 2 → CO-33TZVKS · 3 → CO-4JYCSRG · 1042 → CO-Y2FKY36 · 999,999 → CO-9BJ7V4W · 12,345,678 → CO-ZWH0QF9. Consecutive keys land far apart, which is what hides the customer count.',
-        'VALIDATION EXAMPLES — CO-Y2FKY36 accepted · y2fky36 accepted (lowercase + prefix optional) · CO-Y2FKY3Z REJECTED (check character fails, a typo must never resolve to another company) · CO-Y2FKY36 with O typed for 0 accepted (I/L→1, O→0, U→V are folded on input).',
-        'ALGORITHM: payload = base32( (key × 0x2F1B3C5 + 0x5A17E9) mod 2^30 ), 6 chars, zero-padded left. The multiplier is odd, so it is invertible mod 2^30 — that is what makes decoding possible AND guarantees no two keys ever collide. Check char = ALPHABET[ Σ(index(payload[i]) × (i+2)) mod 32 ].',
-        'Reference implementation with tests already exists: src/lib/companyId.ts — companyId(key) and parseCompanyId(code).',
-        'CAPACITY: 32^6 − 1 = 1,073,741,823 companies (~1.07 billion). For scale, Vietnam has roughly 1 million active registered enterprises, so this is about 1,000× the entire national market.',
-        'Uniqueness is by CONSTRUCTION, not by luck: the encoding is a bijection over the key space, so two different keys can never produce the same ID. There is no collision check to get wrong and no retry loop.',
-        'The payload is scrambled (multiply by an odd constant mod 2^30) so consecutive companies land far apart. An ID therefore does not reveal how many companies exist, and nobody can guess the next one.',
-        'Input is tolerant, output is strict: lookups are case-insensitive, the CO- prefix is optional, and I/L→1, O→0, U→V are folded — but a bad check character is REJECTED, never resolved to a different company. Stored and displayed always uppercase.',
-        'The tax code (MST) stays a separate field and remains the business de-duplication key — it is a government identifier we do not control, so it is never the primary ID.',
-      ],
-      warn: 'The ID is immutable. Never re-issue, re-sequence or “tidy up” company IDs — quotations, orders, invoices, contracts and audit-log entries all reference it, so changing one silently breaks the paper trail.',
-    },
-    {
-      label: 'Company ID — where it is actually used',
-      text: 'The ID is a lookup key, not something a rep reads all day. It is deliberately NOT a column on the Companies list — a rep scans by name, so a column of random codes would cost width and give nothing back. It has to be findable, though: support gets given an ID and has to land on the record.',
-      table: {
-        cols: ['Surface', 'Shown?', 'Why'],
-        rows: [
-          ['Company detail — header', 'Yes', 'Confirms you are on the right record; the string support quotes back'],
-          ['Company detail — Basic info, first row', 'Yes', 'Copyable field, next to legal name and MST'],
-          ['Companies list — search box', 'Searchable, not displayed', 'Paste an ID and the row is found, without a column of codes'],
-          ['Companies list — as a column', 'NO', 'A rep scans by company name; a code column costs width and earns nothing'],
-          ['Record URL', 'Yes — /companies/CO-P9FCEPD', 'Shareable, and does not leak a sequential database key'],
-          ['Exports (CSV / Excel)', 'Yes', 'The join key when the client reconciles our data against theirs'],
-          ['Quotation / PO / invoice PDFs', 'NO', 'Documents identify the customer by LEGAL NAME + MST — those are the legally meaningful fields'],
-        ],
-      },
-      items: [
-        'Search must match the ID even though no cell prints it — the search box says “company ID”, so it has to be true. Same for MST, legal name and the contact’s name.',
-        'Search input is forgiving: lowercase, missing CO- prefix, and I/L→1 O→0 U→V folded — because the ID usually arrives pasted from an email or read out over the phone.',
-      ],
-    },
-    {
-      label: 'Company detail — Basic info card: what belongs here, and how it is edited',
-      text: 'One card holds the company IDENTITY. Everything about PEOPLE lives on the Contacts tab and everything about what they BOUGHT lives on Products & billing — so no contact name, email or phone appears on this card. A “primary contact” copy here would be a second place to update and would drift from the Contacts tab within a week.',
-      table: {
-        cols: ['Field', 'Editable', 'Input', 'Note'],
-        rows: [
-          ['Company ID', 'NEVER', '—', 'System-assigned at creation, permanent.'],
-          ['Legal name', 'Yes', 'Text', 'Required. As written on the MST registration.'],
-          ['Short name', 'Yes', 'Text', 'Optional. Empty falls back to the legal name everywhere.'],
-          ['Tax code (MST)', 'Yes', 'Text', 'Duplicate check on save — see the MST edge case.'],
-          ['Công ty mẹ', 'Yes', 'Select — company', 'The DIRECT parent only. Empty = standalone or group root.'],
-          ['Industry', 'Yes', 'Select — Master data', 'Its own field, NOT joined to size.'],
-          ['Company size', 'Yes', 'Select — band', 'Its own field: the two are filtered separately.'],
-          ['Company tags', 'Yes', 'Tag picker', 'Editorial labels, many per company.'],
-          ['Quốc tịch / Country', 'Yes', 'Select — Master data', 'Gates the province field below.'],
-          ['Tỉnh / Thành phố', 'Yes', 'Select — VN provinces', 'Shown ONLY when country = Việt Nam.'],
-          ['Address', 'Yes', 'Text', 'Required for every country — it prints on the documents.'],
-          ['Website', 'Yes', 'Text', 'Sits AFTER address. Read mode renders it as a link.'],
-          ['Lead source', 'Yes', 'Select — Master data', 'How the company first reached us.'],
-          ['Sales owner', 'Yes', 'Select — user', 'Reassignment is an audited change.'],
-          ['Products interested', 'Yes', 'Checkboxes', 'Pre-sale INTENT. What they actually bought is a different fact, on Products & billing.'],
-          ['Estimated deal value', 'Yes', 'Number (₫)', 'The rep’s own estimate; the quotation total supersedes it.'],
-          ['Description', 'Yes', 'Text', 'Free notes about the company.'],
-        ],
-      },
-      items: [
-        'ONE Edit toggle for the whole card, not a pencil per row: Edit turns every editable row into its input, Cancel reverts all of them, Save writes all of them. Fourteen independent inline editors is fourteen chances to leave one half-saved.',
-        'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
-        'The card and the New-company form must expose the SAME field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole.',
-        'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
-      ],
-    },
-    {
-      label: 'MST check — three outcomes, and the affiliate list that replaces the warning',
-      text: 'The check runs on the tax code as it is typed. Only an identical FULL MST is a duplicate and blocks the save. A shared 10-digit root is NOT a duplicate — it is the same legal entity’s branches, or two companies that happen to collide — so the form does not judge it. It lists every company on that root and lets the rep link, in either direction, or ignore it. Blocking here is what would stop sales entering a legitimate new customer.',
-      table: {
-        cols: ['Outcome', 'What the rep sees', 'Blocks the save?'],
-        rows: [
-          ['Identical full MST', 'Error naming the existing company, with a link to open it', 'YES — the company already exists'],
-          ['Same 10-digit root', 'A LIST of every company on that root: name, full MST, location, sales owner. Each row offers two link directions.', 'No'],
-          ['Near-identical legal name on a different MST', 'The same list, matched on name', 'No'],
-          ['No match', 'Nothing at all', 'No'],
-        ],
-      },
-      items: [
-        'Each row has TWO buttons, and they have deliberately different cardinality: “↑ Là con của” (the new company is a subsidiary of this one) can be set on at most ONE row — choosing another releases the first — while “↓ Là mẹ của” (the new company is the parent of this one) can be set on many rows at once. That mirrors the data: one parentCompanyId per record, any number of children.',
-        'A running summary states the outcome in words — “Sẽ liên kết: công ty con của X, công ty mẹ của Y, Z” — so the rep never has to read the button states back to know what will be saved.',
-        'Using both directions at once is legal: it means the new company sits in the middle of a group. It is also the only way to describe a loop, so the save validates the whole chain and rejects a link that would make a company its own ancestor.',
-        'Linking is optional and never blocks the save. A rep who ignores the list creates a standalone record, which is the correct outcome for a genuine MST collision.',
-        'Branch (same 10-digit root, -001 suffix) and subsidiary (a different MST) are stored identically — one parentCompanyId. The label shown is derived from comparing the two tax codes.',
-      ],
-      warn: 'Nothing is inherited across the link, in any direction: each record keeps its own MST, package/quota, quotations, VAT invoices, users and sales owner. A branch can never spend its parent’s quota.',
-    },
-    {
-      label: 'MST lookup — auto-fill from the tax authority',
-      text: 'Once 10 digits are entered, a “Tra cứu” button queries the Vietnamese tax registry and fills legal name, registered address and business line. It is a convenience, not a gate: every field it fills stays editable, and the form saves with or without it.',
-      items: [
-        'The registered address is the REGISTERED office, which is frequently not where the people work. The rep must be able to overwrite it — a locked auto-filled address would put the wrong address on every invoice.',
-        'The lookup must never block the save: if the service is down, slow, or returns nothing, the rep types the fields by hand and carries on. Show the failure, do not trap the form.',
-        'Only fill EMPTY fields. Re-running the lookup must not silently overwrite something the rep has already corrected.',
-        'Record which fields came from the lookup and when, so a later mismatch can be traced to the source.',
-      ],
-      warn: 'Feasibility is an open question for the BA. There is no free, official, guaranteed public API — data comes from commercial providers (invoice/e-signature vendors such as VNPT, Viettel, MISA, or resellers of the General Department of Taxation feed), and terms, cost, rate limits and uptime vary. Decide: paid provider, or drop the button. Build the form so the answer changes one call, not the flow.',
-    },
-    {
-      label: 'New company is a PAGE, and what it asks for',
-      text: 'Creating a company is a screen of its own, not a dialog: it is long enough to need the whole viewport, it can be linked to and reloaded, and it is reached three ways — “+ New company” on the list, “+ New lead” on the pipeline, and “+ Thêm công ty con” on a company record (which locks the parent). Four sections, in this order.',
-      table: {
-        cols: ['Section', 'Holds', 'Required in it'],
-        rows: [
-          ['Company information', 'Legal name, short name, MST (+ lookup + affiliate list), industry, size, tags, country, province, address (+ map picker), website', 'Legal name · Tax code (MST)'],
-          ['Company verification document', 'Business licence / tax registration / signed contract upload', 'None at creation — see below'],
-          ['Primary contact', 'Name, title, phone, email', 'Name · Phone · Email'],
-          ['Sales', 'Lead source, sales owner, products interested, estimated value, description', 'None'],
-        ],
-      },
-      items: [
-        'Phone AND email are both required on the primary contact: a contact nobody can reach is not a contact, and one channel is not enough when the other bounces.',
-        'The Company ID is assigned on save and is not mentioned on the form — a field the rep can neither fill nor change is noise while they are filling one in. It appears on the record afterwards.',
-        'Address gets an optional “Chọn trên bản đồ” picker storing coordinates alongside the typed text. Sales use the pin to find the office; the DOCUMENTS always print the typed address, never the map’s.',
-        'The form and the Basic-info card on the record must expose the same field set — a field that can only be set at creation, or only after, is a data hole.',
-      ],
-    },
-    {
-      label: 'Company verification document',
-      text: 'The document that proves the tax code belongs to them — business licence (giấy phép kinh doanh), tax registration certificate, or a signed contract. Uploaded on the create page, and again at any time from the company record.',
-      table: {
-        cols: ['Stage', 'Rule'],
-        rows: [
-          ['At creation', 'Optional. Requiring it here would block a rep entering a lead they just met at an event.'],
-          ['Selling — quotation, PO', 'Optional. Warn, do not block.'],
-          ['Issuing the VAT e-invoice', 'REQUIRED and approved. This is the point where the tax identity has to be real.'],
-          ['Approval', 'Kế toán approves or rejects, with a reason. Status: Chờ duyệt → Đã duyệt / Từ chối.'],
-        ],
-      },
-      items: [
-        'Several files per company, each with its own status — a licence can be superseded when the company re-registers, and the old one stays for the audit trail.',
-        'PDF / JPG / PNG, 10MB per file.',
-      ],
-    },
-    {
-      label: 'Công ty con — the UI, in both directions',
-      text: 'The parent/subsidiary relationship is stored ONCE, as parentCompanyId on the child, pointing at its direct parent. There is no “subsidiaries” list to maintain on the parent — that side is derived by querying children.\n\nSo the create form has a “Công ty mẹ” field and deliberately NO “công ty con” field. A subsidiary field would be a second way to write the same relationship, and the two would eventually disagree; it is also usually unfillable, because when a parent is being created its subsidiaries are not records yet. The parent → child direction is an ACTION, not a field: “+ Thêm công ty con” on the parent record opens this same form with the parent pre-filled and locked.',
-      table: {
-        cols: ['Case', 'Where it is done', 'Screen'],
-        rows: [
-          ['Create a subsidiary — from the subsidiary', 'New-company form → Công ty mẹ (tuỳ chọn)', 'A subsidiary is created exactly like any other company; picking a parent is one field on the same form.'],
-          ['Create a subsidiary — from the parent', 'Company detail → Công ty liên kết → + Thêm công ty con', 'Opens the SAME New-company form, titled “Thêm công ty con”, with Công ty mẹ pre-filled and locked (shown as a fixed row, not a picker). This is the answer to “where is the công ty con field” — it is an action, not a field.'],
-          ['Attach or move an existing company', 'Company detail → Basic info → Edit → Công ty mẹ', 'Also how a company is detached: clear the field.'],
-          ['See a company’s parent', 'Company detail → Basic info → Công ty mẹ', 'One row, links to the parent record.'],
-          ['See a company’s subsidiaries', 'Company detail → “Công ty liên kết — Affiliated companies”', 'DERIVED from the children — never typed. Shows the group tree with each member’s status.'],
-          ['See a whole group at once', 'Companies list → click a group tag', 'A banner appears (“🏢 Tập đoàn …”) and the list narrows to that group at every level, across sales owners, with a “Bỏ lọc” to clear it.'],
-        ],
-      },
-      items: [
-        'Nothing is inherited down the tree: each entity has its own tax code, account, quota, membership tier and sales owner, and a subsidiary can never spend its parent’s quota.',
-        'A company may not be its own ancestor — reject a parent choice that would create a cycle, at any depth.',
-        'The parent picker excludes the company itself, and the list is searchable: with 5,000 companies a plain dropdown is unusable.',
-        'The Công ty liên kết card renders on EVERY company, including a standalone one with no parent and no children — it reads “Đứng độc lập / Chưa thuộc tập đoàn nào”. Hiding the card there would leave no way to start a group.',
-        'Both directions are offered on that card, and they are not symmetrical: “+ Thêm công ty con” CREATES a record (the subsidiary does not exist yet), while “↑ Gán công ty mẹ” only LINKS an existing one. Either way, the value written is parentCompanyId on the child.',
-      ],
-    },
-    {
-      label: 'Contact people vs login users — two independent lists',
-      text: 'A company carries TWO separate populations of people, and neither is ever generated from the other. Confusing them is what makes CRMs rot: sales loses the accountant who has no login, and the seat count fills with people nobody ever spoke to.',
-      table: {
-        cols: ['', 'Contact person', 'Login user'],
-        rows: [
-          ['What it is', 'Someone we do business with', 'A login on the Company site'],
-          ['Owned by', 'Sales (CRM record)', 'The customer’s HR Manager'],
-          ['Needs a login?', 'No — most never have one', 'Yes, that is what it IS'],
-          ['Consumes a seat?', 'No', 'Yes — 1 of the 4 seats'],
-          ['Typical example', 'CFO who signs off · accountant who receives invoices', 'HR Specialist the customer invited themselves'],
-        ],
-      },
-      items: [
-        'Where the same human is both, the two rows are LINKED and the UI shows 🔗. The link is informational — deleting or disabling one never touches the other.',
-        'A contact can be promoted with “Invite as user”, which creates a user row and links it. That is an explicit action, never automatic.',
-        'Exactly ONE contact is the PRIMARY contact — the person quotations, orders and invoices are addressed to. A separate optional flag marks decision makers.',
-      ],
-      warn: 'Never auto-create one from the other, and never delete in pairs. A user leaving the seat does not delete the sales relationship; removing a contact must not lock someone out of the product.',
-    },
-    {
-      label: 'Contact status — FIVE values, each one an instruction',
-      text: 'The status exists to stop wasted outreach and compliance mistakes, so every value answers “what do I do about this person now?”. Two situations that lead to the same action are ONE status — the sub-reason goes in the note, where a human reads it.',
-      table: {
-        cols: ['Status', 'Vietnamese', 'What it means', 'What the rep does'],
-        rows: [
-          ['Active', 'Đang liên hệ', 'Our working contact — reachable and expecting to hear from us', 'Call or email as normal'],
-          ['Needs verifying', 'Cần xác minh', 'Details not confirmed — from a name card / web form, or the email has started bouncing', 'Confirm email + phone before this contact goes on a quotation'],
-          ['Paused', 'Tạm dừng liên hệ', 'On leave, or they asked us to come back later — still our contact, just not now', 'Do not chase until the resume date (required); use the cover person if urgent'],
-          ['No longer here', 'Không còn phụ trách', 'Left the company, retired, or moved department — either way they no longer buy from us', 'Find the successor; record where they went if known'],
-          ['Do not contact', 'Không liên hệ', 'They asked not to be contacted — a compliance flag, not an opinion', 'No outreach at all; only a manager can clear it'],
-        ],
-      },
-      items: [
-        'Collapsed on purpose: "on leave" and "asked us to come back" both mean WAIT, so they are one status (Paused). "Left", "retired" and "moved department" all mean FIND THE SUCCESSOR, so they are one status (No longer here). "Never verified" and "email now bouncing" both mean FIX THE DETAILS (Needs verifying). Nine statuses that produced five behaviours were five statuses wearing costumes.',
-        'No longer here surfaces a “Find successor” action, and can carry WHERE they went — the person who bought from us is now buying for someone else, which is the cheapest warm lead in the system.',
-        'A company with no Active contact is a silent churn risk and belongs in Needs attention, whatever its revenue looks like.',
-        'Paused requires a resume date; without one it is just a rep avoiding a call.',
-        'Do not contact suppresses automated email as well as manual outreach (PDPA-style consent withdrawal) and cannot be cleared by a rep alone.',
-        'A contact is never hard-deleted — status is what changes, so the history of who we dealt with stays intact.',
-      ],
-    },
-    {
-      label: 'Contact flags — the role a contact plays, separate from their status',
-      text: 'Status says whether we can reach the person; flags say what they are FOR. A company usually needs two different people on the paperwork, so both flags are set independently.',
-      table: {
-        cols: ['Flag', 'Who it usually is', 'What the system does with it'],
-        rows: [
-          ['PRIMARY (exactly one)', 'The HR Manager / buyer', 'Quotations and orders are addressed to them; they are the contact shown on the company row'],
-          ['BILLING', 'Kế toán trưởng — often never speaks to Sales', 'Receives the VAT e-invoice and payment chasing'],
-          ['◆ Decision maker', 'Director / CFO who signs off', 'Read-only marker for the rep — no automation hangs off it'],
-        ],
-      },
-      items: [
-        'PRIMARY and BILLING are frequently different humans — an invoice sent to the buyer instead of the accountant is a real cause of late payment.',
-        'The company Overview shows a People summary (contacts + login users, with the unreachable count); the full two lists live on the record’s “Contacts & users” tab.',
-      ],
-    },
-    {
-      label: 'Quốc tịch (country) — and the address fields it gates',
-      text: 'Quốc tịch is the country the company is REGISTERED in, not where its office happens to be. It is asked on the New-company form and shown on the company record, and it decides whether the Vietnamese province picker appears at all. The country list is Master data (System → Master data → Country), never free text.',
-      table: {
-        cols: ['Field', 'Vietnamese company', 'Foreign company', 'Source'],
-        rows: [
-          ['Quốc tịch / Country', 'Việt Nam (the default)', 'Any other country', 'Master data → Country'],
-          ['Tỉnh / Thành phố · City', 'REQUIRED — pick a province', 'Not shown at all', 'Master data → Locations (63 provinces)'],
-          ['Address', 'REQUIRED — số nhà, đường, phường/xã, quận/huyện', 'REQUIRED — street, city, postal code, country', 'Free text'],
-        ],
-      },
-      items: [
-        'Address is asked for EVERY country — a quotation, order, invoice and contract all print it, so it can never be optional.',
-        'A foreign company writes its city INTO the address, because a province dropdown of Vietnamese provinces cannot express “Seoul” or “Singapore”. The form says so explicitly rather than leaving an unusable empty picker on screen.',
-        'The Companies list Location column and its Location filter read the Vietnamese province. A foreign company therefore has no city to group by — that is expected, not missing data.',
-        'Quốc tịch is a property of the COMPANY, not of a contact or a job. A Korean-owned company registered in Vietnam is Việt Nam; use the Company tag “Korean company” for the ownership angle, which is a separate, editorial fact.',
-      ],
-      warn: 'Do not infer the country from the tax code or the address. MST only exists for Vietnamese entities, and an address string is not parseable — so quốc tịch is always an explicit choice.',
-    },
-    {
-      label: 'Company NAME — what is displayed vs what is stored',
-      text: 'A company stores a legal name and an optional short (brand) name. Every list and card shows the SHORT name, falling back to the legal name when it is empty — one rule, so the same company never reads two different ways on two screens.',
-      table: {
-        cols: ['Surface', 'Shows', 'Falls back to'],
-        rows: [
-          ['Companies list', 'Short name', 'Legal name'],
-          ['Pipeline board card', 'Short name', 'Legal name'],
-          ['Company detail header', 'Short name', 'Legal name'],
-          ['Quotation / order / invoice', 'LEGAL name always', '— (never the short name)'],
-        ],
-      },
-      warn: 'Documents are the exception and must use the LEGAL name: a quotation, order or VAT invoice is a legal instrument, so “Tiki” is never acceptable where “Công ty TNHH TIKI” is required.',
-    },
-    {
       label: 'A company has TWO statuses — they answer different questions',
       table: {
         cols: ['Axis', 'Question it answers', 'Values', 'Stored?'],
@@ -361,22 +83,6 @@ export const crm: BuildModule = {
         ],
       },
       warn: 'The two axes are independent and must never be wired to each other. Losing a deal does NOT change customer status; winning one does NOT by itself make them Existing (the invoice does). A company can be Existing AND in Negotiation at the same time — that is a healthy account.',
-    },
-    {
-      label: 'Customer status values — exactly three',
-      text: 'Driven by the INVOICE, not the order. New means “has never bought anything from us”, so every company starts there the moment it is created — there is no separate Prospect status.',
-      table: {
-        cols: ['Status', 'Means', 'Moves in when', 'Rule'],
-        rows: [
-          ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM', 'SYSTEM sets this at creation — SALES never picks it, and there is no field to. Leaves only when KẾ TOÁN issues the first VAT e-invoice; never on a sent quotation or a confirmed order alone. → Next action: SALES quotes them.'],
-          ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued', 'SYSTEM flips it on invoice.issued. One-way: a win-back after Churn returns here, never to New. SALES may override only with a reason, and SYSTEM logs the override. → Next action: SALES works the renewal before the 12-month clock runs out.'],
-          ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice', 'SYSTEM sets this 12 months past lastInvoicedAt with no new order — nobody clicks it. The same record looping back; a won win-back returns it to Existing, never a new record. → Next action: SALES runs the win-back on the quarterly churn cadence.'],
-        ],
-      },
-      items: [
-        'Churn is the SAME record looping back for win-back, never a new company. A won win-back returns it to Existing, never to New — “never bought” can only ever be true once.',
-        'New is not a synonym for “no login”. Whether an account exists is a separate fact (accountId), driven by activation; a company can be New for years while being quoted repeatedly.',
-      ],
     },
     {
       label: 'Status colour — RED is reserved for “act today”, never for a lifecycle state',
@@ -397,66 +103,6 @@ export const crm: BuildModule = {
       warn: 'If red ever appears on more than one kind of thing, it stops meaning “act today” and the whole row becomes unreadable. Any new red must displace an existing one, not join it.',
     },
     {
-      label: 'Membership tier — a THIRD axis, and the only one that is pure arithmetic',
-      text: 'Chương trình Khách hàng Thân thiết. The tier is a function of ONE number: the value of the orders this company paid for inside the current programme year. It is never typed and never granted by a rep, and it is independent of the other two axes — a Churn company holds no tier, and an Existing company can be Kim Cương while a deal sits in Negotiation.',
-      table: {
-        cols: ['Danh hiệu', 'Tích lũy trong năm — từ', 'Đến dưới'],
-        rows: [
-          ['— (chưa có hạng)', '0 ₫', '30.000.000 ₫'],
-          ['Thành viên / Member', '30.000.000 ₫', '50.000.000 ₫'],
-          ['Đồng / Bronze', '50.000.000 ₫', '100.000.000 ₫'],
-          ['Bạc / Silver', '100.000.000 ₫', '200.000.000 ₫'],
-          ['Vàng / Gold', '200.000.000 ₫', '300.000.000 ₫'],
-          ['Kim Cương / Diamond', '300.000.000 ₫', '— (không giới hạn)'],
-        ],
-      },
-      items: [
-        'Only the LOWER bound of each band is stored — "đến dưới" is read from the next band up, so the bands can never overlap or leave a gap.',
-        'Below the first threshold is a real state ("chưa có hạng"), not an error or missing data: most of the book sits there every January.',
-        'Thresholds and the reward catalogue are settings (System → Membership tiers), never code — the programme is re-issued every year and the bands move.',
-        'The tier is per legal entity, like everything else on the company: a subsidiary’s orders never raise its parent’s tier.',
-      ],
-      warn: 'The accumulator RESETS to 0 ₫ on 1 January and nothing carries over — a Kim Cương customer starts the new year with no tier and climbs again. So the tier must never be a plain stored column someone forgets to clear: it is always computed against a YEAR WINDOW, and last year’s figure stays readable as its own row.',
-    },
-    {
-      label: 'A deal is its own record',
-      text: 'The Account/Opportunity split every mature CRM uses. A company has zero, one or many deals over its life — deal #1 won in 2026, deal #2 lost, deal #3 open now.',
-    },
-    {
-      label: 'Sales owner — one current owner, and a full reassignment history',
-      text: 'Every company has EXACTLY ONE current sales owner (account manager), assigned by hand. But the owner CHANGES over an account’s life — a rep leaves, territories are rebalanced, a growing account moves to a key-account rep. The record must keep the whole chain, never silently overwrite it: the company detail shows an Owner history, so anyone can see who held the account when and — the point of the request — WHO reassigned it and why.',
-      table: {
-        cols: ['What the history records', 'Meaning', 'Example'],
-        rows: [
-          ['Owner (current)', 'The one rep responsible now — DERIVED from the newest entry, not a free field that can drift', 'Nguyễn Thị Lan'],
-          ['From → To', 'The tenure window for each owner in the chain', '05/2024 → 02/2025'],
-          ['Reassigned by', 'The ACTOR who performed the handover — a Sales lead, and NOT either the old or new owner', 'Lê Hữu Phong · Sales Lead'],
-          ['Reason', 'Why it moved', 'Previous rep left — handed over'],
-          ['First entry', 'The creation row: who owned it the moment the lead was created', 'Tạo lead (hệ thống)'],
-        ],
-      },
-      items: [
-        'The current owner is DERIVED from the newest history entry — it is never a standalone column that could disagree with the log.',
-        'A reassignment IS the audited change the edit form already writes for “Sales owner” (field · old · new · who · when) — the Owner history is that audit surfaced as a readable timeline instead of a raw log row.',
-        'Only a Sales lead / admin may reassign an owner; a rep cannot quietly pass their own accounts around.',
-        'Reassigning the owner touches NOTHING else — contacts, deals, quota, membership tier and the customer relationship all stay put. It changes who is responsible, not what the customer has.',
-        'Parent and subsidiary owners are independent (see the edge case): moving the parent’s owner never moves the subsidiary’s.',
-        'A brand-new lead shows a SINGLE entry — whoever created it still owns it. “Never reassigned” is a real state, not missing history.',
-      ],
-      warn: 'The owner history is append-only. Never edit or delete a past tenure to “tidy up”: quotations, sales targets and commission all reference who owned the account at the time, so rewriting it breaks the trail.',
-    },
-    {
-      label: 'Leaving the pipeline — exactly two ways, both a DEAL closing',
-      table: {
-        cols: ['Way out', 'Trigger', 'Where the company lands'],
-        rows: [
-          ['Closed-won', 'VAT e-invoice issued', 'Customer status Existing'],
-          ['Closed-lost', 'A human marks it, with a reason', 'NURTURE list — customer status unchanged (still New if they never bought, still Existing if they had), no open deal, with a re-engage date'],
-        ],
-      },
-      warn: 'Inactivity alone never removes a company from the pipeline and a deal is NEVER auto-closed as Lost — it only gets flagged so a human is forced to decide.',
-    },
-    {
       label: 'Quote-to-cash — one document chain, each step created from the previous',
       text: 'Nothing is retyped between steps, and nothing is provisioned before the invoice (client T&C clause 3).',
       table: {
@@ -474,69 +120,6 @@ export const crm: BuildModule = {
         '“Sent” is a state a human declares, not something only our mailer can produce — reps routinely send a PDF by Zalo or from their own mail client.',
         'Separation of duties: Sales creates/sends quotations and confirms orders; Accounting ALONE confirms money landed and issues the VAT e-invoice. That confirmation is the control that stops provisioning against an unverified payment.',
       ],
-    },
-    {
-      label: 'Quotation expiry — ALWAYS the end of the month',
-      text: 'A quotation does not live for a fixed number of days. It expires on the LAST DAY OF THE MONTH it was created in, whatever date that is — raised 02/07 or raised 28/07, both lapse on 31/07. Every quotation issued in a month therefore dies together, which is what ties pricing, discounts and promotions to one monthly policy cycle instead of to hundreds of rolling per-quote deadlines.',
-      table: {
-        cols: ['Created', 'Expires', 'Days valid'],
-        rows: [
-          ['02/07/2026', '31/07/2026', '29'],
-          ['20/07/2026', '31/07/2026', '11'],
-          ['28/07/2026', '31/07/2026', '3'],
-          ['01/08/2026', '31/08/2026', '30'],
-        ],
-      },
-      items: [
-        'DERIVED, never typed. expiryDate = last day of month(createdAt). There is no validity-days setting to get wrong, and no nightly job can leave a quotation stale — a quotation is expired when today > expiryDate, computed on read.',
-        'Consequence the rep must see: validity SHRINKS through the month. The builder shows the expiry date and the days remaining next to it, so a quote raised on the 28th visibly says "3 days" rather than looking the same as one raised on the 2nd.',
-        'The rot clock is deliberately NOT anchored to expiry any more. With a fixed 14-day validity the two could be aligned; with month-end they cannot, or a quote raised late in the month would turn red almost the moment it was sent. Expiry runs on the calendar, rot runs on contact.',
-        'Expiring still moves nothing on its own: the deal stays where it is and a HUMAN either extends validity, revises to v2, or closes the deal as Lost. A re-issued v2 gets a fresh end-of-month date — which, if it is re-issued in a new month, is the end of THAT month.',
-        'UNRESOLVED — a quotation raised on the 30th is valid for one day. Either roll quotations raised in the last few days of a month to the end of the NEXT month, or accept the short window. This needs a business answer before build.',
-      ],
-    },
-    {
-      label: 'Quotation status — exactly four',
-      text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the Sales order is created from the accepted option.',
-      table: {
-        cols: ['Status', 'Means', 'Rule'],
-        rows: [
-          ['Draft', 'Being written — editable, not yet out', 'SALES builds and edits it; the only editable status. Creating it puts the deal on the board at PROPOSAL immediately, so a draft already counts in the pipeline — abandoning one therefore needs the deal closing as Lost, it does not just evaporate. → Next action: SALES clicks “Mark as sent”.'],
-          ['Sent', 'Delivered to the customer, awaiting their pick', 'SALES declares this by clicking “Mark as sent” — reps routinely deliver the PDF by Zalo or from their own mailbox, so the status cannot depend on our mailer firing. Immutable from here; this is what puts the deal on the board at Proposal. → Next action: SALES clicks “Issue PO” and picks the option the customer chose.'],
-          ['Issued to PO', 'An option was accepted and the Sales order was created from it', 'Reached automatically the moment SALES creates the Sales order. Terminal success — no further action on the quotation.'],
-          ['Expired', 'Offer lapsed past its expiry date and closed out with no PO', 'SYSTEM sets this on the expiry date — nobody clicks it, and expiring never moves the deal in the pipeline. → To re-open: SALES extends validity or revises to v2.'],
-        ],
-      },
-      warn: 'Only Draft is editable. A Sent quotation is immutable — a change is a new version, never an edit.',
-    },
-    {
-      label: 'Sales order / PO status',
-      text: 'The status carried on the Sales order record and the Order list. An order is created from exactly one accepted quotation option and carries that option’s lines forward unchanged.',
-      table: {
-        cols: ['Status', 'Means', 'Rule'],
-        rows: [
-          ['Draft', 'The order copied from the accepted option, not yet sent', 'SALES creates and edits it. Editable only while Draft; the source quotation must be accepted and NOT expired. → Next action: SALES clicks “Gửi khách xác nhận”.'],
-          ['Sent', 'Order PDF + payment request sent to the customer', 'SALES sent it, with bank details, because payment comes first. THIS IS THE “WON” MOMENT — the deal moves to the PO stage here. It provisions NOTHING (clause 3), and the customer has not paid yet; if they never pay it goes to collections, not Lost. Optional evidence — customerPoNumber / confirmedAt — is recorded here when a customer’s procurement issues a formal PO. → Next action: KẾ TOÁN ONLY clicks “Xác nhận đã thanh toán”.'],
-          ['Paid', 'Accounting confirmed the payment against the bank statement', 'KẾ TOÁN ONLY may set this — Sales can record a receipt, but only Accounting confirms the money landed. The PO enters Accounting’s To-invoice queue automatically. → Next action: KẾ TOÁN ONLY clicks “Xuất hóa đơn”.'],
-          ['Invoiced', 'A VAT e-invoice has been issued against the order', 'KẾ TOÁN issued it. Terminal — the deal closes, customer status leaves Prospect, the 12-month clock starts and provisioning is released. One order may carry more than one invoice under a 50/50 term.'],
-          ['Cancelled', 'The order was cancelled with a reason', 'SALES cancels, and only until a payment is confirmed. After that the correction is a credit note by KẾ TOÁN, never a cancellation.'],
-        ],
-      },
-      warn: 'SENDING the PO is the “won” moment but provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Trade-off accepted here: a deal counts as won before the customer has agreed or paid, so the PO column will always hold some deals that never convert.',
-    },
-    {
-      label: 'Invoice (VAT e-invoice) status',
-      text: 'The status on the Invoice list. The VAT e-invoice is the only fiscal document in the chain, issued from a PO only AFTER Accounting has confirmed the payment (T&C clause 3), and issuing it is the event that closes the deal and releases provisioning.',
-      table: {
-        cols: ['Status', 'Means', 'Rule'],
-        rows: [
-          ['Issued', 'The provider signed it and returned the legal number', 'KẾ TOÁN ONLY issues it, and only from a PO with a confirmed payment (clause 3, enforced server-side). Immutable. This is the event that closes the deal, moves the company out of Prospect, starts the 12-month clock and releases provisioning.'],
-          ['Cancelled / replaced', 'A wrong invoice was cancelled and superseded', 'KẾ TOÁN ONLY. Corrections go through cancel + biên bản + re-issue, never an edit (VN regulation). Both invoices stay on record, linked.'],
-          ['— Issuing (transient)', 'The provider call is in flight — seconds, not a state anyone browses', 'SYSTEM. invoice.issued must be idempotent on the invoice ID: a timeout + retry must never produce two legal numbers nor grant double quota.'],
-          ['— Provider error (transient)', 'The provider call failed', 'SYSTEM surfaces it to KẾ TOÁN to retry. Retry must be safe for the same reason.'],
-        ],
-      },
-      warn: 'Issued invoices are immutable. A correction is always cancel + credit note + re-issue — never an edit.',
     },
     {
       label: 'Issuer identity — one setting, every document (System → Company information)',
@@ -644,175 +227,6 @@ export const crm: BuildModule = {
         'REVERSAL — unanswered, and it blocks build: if an invoice is cancelled and replaced, what happens to quota already granted, especially once partly consumed? Options: claw back the unused portion · leave it and reconcile on the credit note · block cancellation once any quota is consumed.',
       ],
     },
-    {
-      label: 'LAST CONTACT (idle) — what it is',
-      text: 'An INDEPENDENT field on the company, deliberately unrelated to the pipeline: idle = today − the date of the last CONTACT with the client. It answers one question only — “how long since anyone talked to them?” — so it is defined for every company, with or without a deal. It never blanks out.',
-      items: [
-        'Resets ONLY on real human contact: a logged activity (chat / call / meeting) or a document actually sent or confirmed to the client.',
-        'Must NOT reset on system events: auto-reminders, provisioning, quota decrements, page publishes, housekeeping stage changes — otherwise a silent client looks healthy.',
-        'ONE rule everywhere — same definition, thresholds table and display on the Companies list and the Pipeline board, so a number never means two different things in two places.',
-      ],
-    },
-    {
-      label: 'IDLE — thresholds by expected contact cadence',
-      text: 'One formula reading a settings table, not per-stage logic in code. A company with an open deal always uses the Open deal row — the live opportunity sets the pace.',
-      table: {
-        cols: ['Relationship type', 'Expected cadence', 'Amber (needs a touch)', 'Red (at risk / escalate)'],
-        rows: [
-          ['Open deal — any stage', 'Weekly', '7 days', '14 days'],
-          ['Existing — onboarding, first 90 days after the first invoice', 'Fortnightly', '14 days', '30 days'],
-          ['Existing — active paid service', 'Monthly', '30 days', '60 days'],
-          ['New (never bought), no open deal — nurture', 'Monthly', '30 days', '60 days'],
-          ['Churn / win-back', 'Quarterly', '60 days', '90 days'],
-        ],
-      },
-    },
-    {
-      label: 'LAST CONTACT — the column shows a DATE, not a gap',
-      text: 'The column is called “Last contact” and it shows the date of that contact — 05/07/2026. It used to show the gap (“1m 4d”), which made the reader do two conversions: from a duration back to a date, and from a date back to “is that bad?”. The date answers the first directly, and the health dot answers the second, so neither has to be worked out.',
-      table: {
-        cols: ['State', 'Shows as', 'Example'],
-        rows: [
-          ['Contacted at some point', 'dd/mm/yyyy of the newest SALES activity', '05/07/2026'],
-          ['No contact ever logged', 'A distinct state, never a date and never 0', '“Chưa liên hệ” — red'],
-          ['Anywhere a DURATION is what is being said', 'Days, rolling up past 30 days', '“12d ago” · “2m 4d ago” on the activity trail'],
-        ],
-      },
-      items: [
-        'The coloured dot beside the date is unchanged: green / amber / red from the same cadence thresholds. The date says WHEN, the dot says WHETHER IT IS LATE — the reader should not have to subtract to learn the second.',
-        'The gap in days moves into the tooltip, together with the threshold being applied: “Liên hệ gần nhất 05/07/2026 — 34 ngày trước. Existing expects monthly contact: amber from 30d, red from 60d.”',
-        'THE KANBAN CARD IS THE EXCEPTION: dd/mm with no year, no dot and no colour. A card already carries its stage, its value and its owner, so a fourth coloured signal there competes with the stage rather than adding to it — and the year is four characters of noise on a narrow card. The full date, the gap in days and the threshold all stay one hover away, and “Chưa liên hệ” shortens to “—”.',
-        'The health dot and colour stay on the LIST, where the column exists precisely to be scanned for what is late, and there is room for the full date.',
-        'THRESHOLDS are still expressed in days — they are durations, and “amber from 30d” is the natural way to state a rule. Only the read-out is a date.',
-      ],
-      warn: 'The stored value stays a TIMESTAMP; the date is presentation only, and sorting always uses the underlying value so the order is by recency, not by the rendered string.',
-    },
-    {
-      label: 'IDLE — build rules for the developer',
-      items: [
-        'Store a TIMESTAMP `lastContactAt` on the company and compute idle at read time — never store a day counter, it goes stale overnight.',
-        'Sort and filter on the raw timestamp, never the formatted string, or “2m” sorts before “9d”.',
-        'The event types that reset idle must be an explicit allowlist in config — this is the single most likely thing to be built wrong.',
-        '`lastContactAt = null` renders “Never contacted” — a DISTINCT state from 0d, and the HIGHQUO-priority follow-up, not the lowest.',
-        'Calendar days, timezone Asia/Ho_Chi_Minh, day boundary at local midnight. Public holidays and Tết are NOT excluded.',
-        'Every threshold lives in settings and is editable by the sales lead without a deploy.',
-      ],
-    },
-    {
-      label: 'IDLE vs DEAL ROT — not the same thing',
-      table: {
-        cols: ['', 'Deal rot (pipeline hygiene)', 'Idle'],
-        rows: [
-          ['Measures', 'Neglect of an opportunity', 'Health of the relationship'],
-          ['Scope', 'Only while a deal is open', 'Always, every company'],
-          ['Thresholds', 'Per stage', 'Per relationship type (table above)'],
-          ['Escalation', 'Flagged rotting → “Needs attention” filter → sales lead', 'Amber / red on the list; drives follow-up queue'],
-        ],
-      },
-      items: ['A won customer has no rot but still has an idle age — which is exactly the early signal for churn.'],
-    },
-    {
-      label: 'Sign-ups from the company site are LEAD CAPTURE, not provisioning',
-      text: 'Each inbound self-registration lands in a Sign-ups triage inbox and must be resolved against the existing company list first. Nothing is provisioned and no account is created from a sign-up.',
-      table: {
-        cols: ['Case', 'Action', 'Result'],
-        rows: [
-          ['New company — no match', 'Create lead', 'Enters the pipeline with customer status New'],
-          ['Matches an existing lead', 'Merge into that lead + notify its owner', 'Never a duplicate record'],
-          ['Existing customer', 'Send a join request to that company’s admin', 'Person becomes a user under the existing account — never a second company'],
-          ['Spam', 'Dismiss', 'Row cleared'],
-        ],
-      },
-      items: ['Matching key order, strongest first: tax code (MST) → email domain → company name. A public domain (gmail, yahoo…) can NEVER auto-match and always needs manual verification — this is the guard against merging two unrelated companies on a shared free-mail domain.'],
-    },
-    {
-      label: 'Sign-ups status',
-      text: 'The status of a row in the Sign-ups triage inbox. Each inbound self-registration is matched against the existing company list first, then resolved into exactly one of the dispositions below.',
-      table: {
-        cols: ['Status', 'Means', 'Rule'],
-        rows: [
-          ['New', 'Unresolved — just arrived and matched, awaiting a disposition', 'SYSTEM creates the row and runs the match; SALES must disposition it. A row cannot be left half-resolved — it stays New until an outcome is recorded.'],
-          ['Resolved', 'An outcome was recorded, with a link to what the row became', 'SALES picks one of three: New company → Create lead · Matches a lead → Merge + notify that lead’s owner · Existing customer → Send a join request to that company’s admin. SYSTEM records the link to whatever the row became.'],
-          ['Dismissed', 'Cleared as spam', 'SALES dismisses it. No record is created and nothing is provisioned.'],
-        ],
-      },
-      warn: 'Triage provisions nothing and creates no account or company — a merge never creates a second company record.',
-    },
-    {
-      label: 'Logging an activity — three types, and who gets the credit',
-      text: 'Sales log what they did on the company record. Three types, because they carry different facts.',
-      table: {
-        cols: ['Type', 'Asks for', 'Notes'],
-        rows: [
-          ['💬 Chat', 'Channel (Zalo · Messenger · Email · SMS · Zalo OA · Phone · Other) + note + attachments', 'Channel is required — “we chatted” without saying where is not a record.'],
-          ['📞 Call', 'Note + attachments', 'Auto-filled from Calio when the call came through it.'],
-          ['🤝 Meeting', 'Date · time · duration · format (their office / our office / Meet / Zoom / other) · note + attachments', 'The only type with a MOMENT of its own — a chat is logged when it happened, a meeting is logged against the slot it was held in. The date is constrained — see the block below. No attendee list: the client side is the contact on the record, our side is whoever logs it.'],
-        ],
-      },
-      items: [
-        'ATTACHMENTS on every type, several per activity: screenshots of a Zalo thread, meeting minutes, photos. They belong to the activity row, not to a separate document library — the point is that the row proves what happened.',
-        'EMAIL is attached two ways: (1) the rep forwards or BCCs the message to a system address (crm@saramin.vn) and the system files it against the company by matching the sender/recipient domain — this is the one reps actually use, because it needs no upload; (2) uploading a saved .eml / .msg file, as the fallback when the address is not reachable.',
-        'The composer explains none of this: the control is labelled “Đính kèm” and nothing more. How email forwarding works belongs in onboarding and in this document, not in a paragraph every rep reads once and then scrolls past forever.',
-        'Every activity is stamped with the ACCOUNT that performed it — NOT the company’s sales owner. A colleague covering for a busy owner is the one shown, and the one the KPI counts. The composer states whose KPI it will land on before the rep saves.',
-        'The activity table shows that account by name, with the side it acted for underneath, and marks a row “hỗ trợ” when the performer is not the company’s owner — so a sales lead can see help being given without opening anything.',
-        'Idle still counts from the newest SALES row regardless of who performed it: any colleague’s contact is contact.',
-      ],
-    },
-    {
-      label: 'Meeting date — the allowed window',
-      text: 'The meeting date can be backdated, but only inside the CURRENT month. Two different abuses are being prevented, and they need different answers.',
-      table: {
-        cols: ['Date chosen', 'Allowed?', 'Why'],
-        rows: [
-          ['Today', 'Yes', 'The normal case.'],
-          ['Earlier this month', 'Yes', 'Writing a meeting up a few days late is ordinary work — forcing today’s date would make the record wrong.'],
-          ['Any day in a previous month', 'NO', 'That month is a closed KPI period. Backdating into it changes a number that has already been reported.'],
-          ['Any future date', 'NO', 'An activity log records what HAPPENED. A meeting that has not happened yet is a plan, not an activity — and a future date would push Last contact to a date that has not arrived.'],
-        ],
-      },
-      items: [
-        'The picker ENFORCES it rather than validating after the fact: days outside the window are disabled, and the field states the range under it — “Từ 01/08/2026 đến hôm nay”.',
-        'The boundary is the 1st of the current month, NOT a rolling 30 days. The rule exists to protect the closed reporting period, so it moves with the calendar — on 01/09 the whole of August closes at once.',
-        'This constrains the meeting DATE only. The created-at stamp is always the real moment of saving, and BOTH are stored: a meeting held on the 3rd and written up on the 7th keeps both facts, which is what makes late write-ups auditable instead of invisible.',
-        'Same window applies to Chat and Call if they are ever given an explicit date field. Today they are stamped at the moment of saving and have no date field at all.',
-      ],
-      warn: 'Open question for the client: may anyone log into a closed month — a sales lead, an admin, nobody? Recommend nobody, and handle corrections as a note on the current month instead, so a reported number never changes after it has been reported.',
-    },
-    {
-      label: 'Search on the Companies list — a rep lists only their own book, but can REACH any customer by name',
-      text: 'In Sales view the list is ONLY the rep’s own book — there is NO “whole system” mode for a rep to browse everyone’s customers. But a rep must still be able to REACH one specific customer they know exists; otherwise “not in my list” reads as “does not exist” and they re-create a company that already has an owner. So the search box does double duty: it filters my own book, and — the point of the request — it surfaces matches OUTSIDE my book as direct links into that one record, never as a browsable list.',
-      items: [
-        'REMOVED: the old “Của tôi · Toàn hệ thống” toggle. A rep cannot list the whole system’s customers. Seeing every customer is the Sales-lead view — a separate role, not a switch on the rep’s own list.',
-        'The placeholder states the book, its count, and the reach: “Tìm trong 28 công ty của tôi · gõ tên / MST để mở nhanh một KH bất kỳ…”.',
-        'REACH, NOT BROWSE: when the query matches companies owned by someone else, a small block appears under the search with up to a handful of exact matches, each a direct link straight into that customer’s record (“… do sales khác phụ trách · Mở →”). It requires a real query (≥ 2 characters) — an empty box never enumerates other reps’ books.',
-        'Each surfaced match shows Company ID + MST + owner, so a colleague’s record is never mistaken for one of yours and the rep opens the right one.',
-        'Search matches name, short name, legal name, MST, Company ID, contact and domain — including fields the table does not print. A box that promises “MST, company ID” has to match them.',
-      ],
-      warn: 'What a rep may DO with another rep’s company is a separate permission question from what they may FIND. Recommend: reach + open read-only, but no edit and no logging activity without a re-assignment. Needs the client’s decision.',
-    },
-    {
-      label: 'Activities on the company record — SALES activity only',
-      text: 'The activity panel holds contact with the client and nothing else: chats, calls, and documents actually sent to or confirmed by them. It is NOT a merged “everything that happened” feed.',
-      table: {
-        cols: ['Type', 'Sales must provide', 'Integration'],
-        rows: [
-          ['Chat', 'Channel (Zalo · Facebook Messenger · Email · SMS · Zalo OA · Phone) + a note', '—'],
-          ['Call', 'A note; duration / outcome / recording arrive automatically', 'Placed & auto-logged via Calio'],
-          ['Document sent / confirmed', 'Nothing — written when the rep sends a quotation or confirms an order', 'From the document chain'],
-        ],
-      },
-      items: [
-        'System and usage events are EXCLUDED: CV unlocked, job published, company page published, payment received, products provisioned, account activated. Each already has its own tab on the record (Resume activity · Jobs · Company page · Products & billing), so nothing is lost by keeping them out.',
-        'The newest row in this panel is what idle counts from. That is the whole reason for the exclusion — if a nightly provisioning job or a customer’s own CV unlock could land here, a client nobody has spoken to in two months would read as freshly touched.',
-        'A company with no logged activity shows “Never contacted” — an explicit state and the highest-priority follow-up, never an empty table.',
-        'Not to be confused with the DEAL timeline, which is a different surface: that one does carry decay markers (quotation auto-expired, escalation, rot-state changes) because the sales lead needs to see them. Company-level sales activity stays clean; deal-level keeps its markers. Do not merge the two.',
-      ],
-      warn: 'Do not “fix” this later by merging system events back in for a fuller timeline. The merged feed is the version that was removed, and it silently breaks idle, the follow-up queue and the churn early-warning that all read from it.',
-    },
-    {
-      label: 'Pipeline hygiene',
-      text: 'Each stage has its own inactivity threshold (days since the last meaningful activity). Past it the deal is flagged rotting — amber then red — lands in a “Needs attention” filter, then escalates to the sales lead. Thresholds live in settings, not in code.',
-    },
     'One company record throughout: created in the CRM with customer status New. It has no login and is invisible to jobseekers until it is activated. No duplicate company records.',
     'On PO (won), hand off to Account management for activation (create account → provision products/quota → company page for Job Posting). Activation itself lives in the Account management module, not here.',
   ],
@@ -825,6 +239,453 @@ export const crm: BuildModule = {
       ready: true,
       mockup: 'crm-customer',
       detail: {
+        requirements: [
+        {
+          label: 'Company ID — format CO-XXXXXXX',
+          text: 'Every company gets a permanent public identifier the moment it is created: the prefix CO- plus 7 characters. It is assigned by the system, never typed, and never changes for the life of the company (lead → customer → churn → win-back). It is NOT the database key — the database keeps its own bigint primary key and the ID is a reversible encoding of it.\n\nThe breakdown below is the PARSE CONTRACT: it tells the developer which characters decode back to the key and which one is the checksum, so validation is not guesswork.',
+          table: {
+            cols: ['Part', 'Length', 'In CO-P9FCEPD', 'What it is'],
+            rows: [
+              ['CO-', '3', 'CO-', 'Fixed prefix, so an ID is self-describing in a log, an export or a support ticket'],
+              ['Payload', '6 chars', 'P9FCEP', 'The internal key, scrambled then encoded in Crockford Base32 — decodes back to the bigint key'],
+              ['Check character', '1 char', 'D', 'Computed from the 6 payload chars. Rejects a mistyped ID instead of opening the wrong company'],
+            ],
+          },
+          items: [
+            'WHY THIS AND NOT JUST 7 RANDOM BASE32 CHARS: it IS 7 Base32 chars — capacity was never in question. The point is what the seven are. ONE of them is a CHECK character (catches a mistyped ID before it opens the wrong company); the other SIX are the database key run through a reversible scramble, not random. That buys two things random codes cannot: uniqueness BY CONSTRUCTION (no unique-index clash, no collision-and-retry loop on insert) and a code that decodes straight back to the row. Seven random chars would instead need a collision check + regenerate loop, and give zero typo protection unless you still reserve a check char — at which point it is this scheme with a worse failure mode. So this is not "more than 7 letters"; it is those 7 letters, chosen so they can never collide and a fat-finger is rejected.',
+            'ALPHABET (Crockford Base32, 32 symbols, uppercase): 0 1 2 3 4 5 6 7 8 9 A B C D E F G H J K M N P Q R S T V W X Y Z — note I, L, O and U are absent, so 1/I/l and 0/O can never be confused.',
+            'WORKED EXAMPLES — internal key → company ID (a developer can test an implementation against these exact values): 1 → CO-1MQJXE4 · 2 → CO-33TZVKS · 3 → CO-4JYCSRG · 1042 → CO-Y2FKY36 · 999,999 → CO-9BJ7V4W · 12,345,678 → CO-ZWH0QF9. Consecutive keys land far apart, which is what hides the customer count.',
+            'VALIDATION EXAMPLES — CO-Y2FKY36 accepted · y2fky36 accepted (lowercase + prefix optional) · CO-Y2FKY3Z REJECTED (check character fails, a typo must never resolve to another company) · CO-Y2FKY36 with O typed for 0 accepted (I/L→1, O→0, U→V are folded on input).',
+            'ALGORITHM: payload = base32( (key × 0x2F1B3C5 + 0x5A17E9) mod 2^30 ), 6 chars, zero-padded left. The multiplier is odd, so it is invertible mod 2^30 — that is what makes decoding possible AND guarantees no two keys ever collide. Check char = ALPHABET[ Σ(index(payload[i]) × (i+2)) mod 32 ].',
+            'Reference implementation with tests already exists: src/lib/companyId.ts — companyId(key) and parseCompanyId(code).',
+            'CAPACITY: 32^6 − 1 = 1,073,741,823 companies (~1.07 billion). For scale, Vietnam has roughly 1 million active registered enterprises, so this is about 1,000× the entire national market.',
+            'Uniqueness is by CONSTRUCTION, not by luck: the encoding is a bijection over the key space, so two different keys can never produce the same ID. There is no collision check to get wrong and no retry loop.',
+            'The payload is scrambled (multiply by an odd constant mod 2^30) so consecutive companies land far apart. An ID therefore does not reveal how many companies exist, and nobody can guess the next one.',
+            'Input is tolerant, output is strict: lookups are case-insensitive, the CO- prefix is optional, and I/L→1, O→0, U→V are folded — but a bad check character is REJECTED, never resolved to a different company. Stored and displayed always uppercase.',
+            'The tax code (MST) stays a separate field and remains the business de-duplication key — it is a government identifier we do not control, so it is never the primary ID.',
+          ],
+          warn: 'The ID is immutable. Never re-issue, re-sequence or “tidy up” company IDs — quotations, orders, invoices, contracts and audit-log entries all reference it, so changing one silently breaks the paper trail.',
+        },
+        {
+          label: 'Company ID — where it is actually used',
+          text: 'The ID is a lookup key, not something a rep reads all day. It is deliberately NOT a column on the Companies list — a rep scans by name, so a column of random codes would cost width and give nothing back. It has to be findable, though: support gets given an ID and has to land on the record.',
+          table: {
+            cols: ['Surface', 'Shown?', 'Why'],
+            rows: [
+              ['Company detail — header', 'Yes', 'Confirms you are on the right record; the string support quotes back'],
+              ['Company detail — Basic info, first row', 'Yes', 'Copyable field, next to legal name and MST'],
+              ['Companies list — search box', 'Searchable, not displayed', 'Paste an ID and the row is found, without a column of codes'],
+              ['Companies list — as a column', 'NO', 'A rep scans by company name; a code column costs width and earns nothing'],
+              ['Record URL', 'Yes — /companies/CO-P9FCEPD', 'Shareable, and does not leak a sequential database key'],
+              ['Exports (CSV / Excel)', 'Yes', 'The join key when the client reconciles our data against theirs'],
+              ['Quotation / PO / invoice PDFs', 'NO', 'Documents identify the customer by LEGAL NAME + MST — those are the legally meaningful fields'],
+            ],
+          },
+          items: [
+            'Search must match the ID even though no cell prints it — the search box says “company ID”, so it has to be true. Same for MST, legal name and the contact’s name.',
+            'Search input is forgiving: lowercase, missing CO- prefix, and I/L→1 O→0 U→V folded — because the ID usually arrives pasted from an email or read out over the phone.',
+          ],
+        },
+        {
+          label: 'Company detail — Basic info card: what belongs here, and how it is edited',
+          text: 'One card holds the company IDENTITY. Everything about PEOPLE lives on the Contacts tab and everything about what they BOUGHT lives on Products & billing — so no contact name, email or phone appears on this card. A “primary contact” copy here would be a second place to update and would drift from the Contacts tab within a week.',
+          table: {
+            cols: ['Field', 'Editable', 'Input', 'Note'],
+            rows: [
+              ['Company ID', 'NEVER', '—', 'System-assigned at creation, permanent.'],
+              ['Legal name', 'Yes', 'Text', 'Required. As written on the MST registration.'],
+              ['Short name', 'Yes', 'Text', 'Optional. Empty falls back to the legal name everywhere.'],
+              ['Tax code (MST)', 'Yes', 'Text', 'Duplicate check on save — see the MST edge case.'],
+              ['Công ty mẹ', 'Yes', 'Select — company', 'The DIRECT parent only. Empty = standalone or group root.'],
+              ['Industry', 'Yes', 'Select — Master data', 'Its own field, NOT joined to size.'],
+              ['Company size', 'Yes', 'Select — band', 'Its own field: the two are filtered separately.'],
+              ['Company tags', 'Yes', 'Tag picker', 'Editorial labels, many per company.'],
+              ['Quốc tịch / Country', 'Yes', 'Select — Master data', 'Gates the province field below.'],
+              ['Tỉnh / Thành phố', 'Yes', 'Select — VN provinces', 'Shown ONLY when country = Việt Nam.'],
+              ['Address', 'Yes', 'Text', 'Required for every country — it prints on the documents.'],
+              ['Website', 'Yes', 'Text', 'Sits AFTER address. Read mode renders it as a link.'],
+              ['Lead source', 'Yes', 'Select — Master data', 'How the company first reached us.'],
+              ['Sales owner', 'Yes', 'Select — user', 'Reassignment is an audited change.'],
+              ['Products interested', 'Yes', 'Checkboxes', 'Pre-sale INTENT. What they actually bought is a different fact, on Products & billing.'],
+              ['Estimated deal value', 'Yes', 'Number (₫)', 'The rep’s own estimate; the quotation total supersedes it.'],
+              ['Description', 'Yes', 'Text', 'Free notes about the company.'],
+            ],
+          },
+          items: [
+            'ONE Edit toggle for the whole card, not a pencil per row: Edit turns every editable row into its input, Cancel reverts all of them, Save writes all of them. Fourteen independent inline editors is fourteen chances to leave one half-saved.',
+            'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
+            'The card and the New-company form must expose the SAME field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole.',
+            'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
+          ],
+        },
+        {
+          label: 'MST check — three outcomes, and the affiliate list that replaces the warning',
+          text: 'The check runs on the tax code as it is typed. Only an identical FULL MST is a duplicate and blocks the save. A shared 10-digit root is NOT a duplicate — it is the same legal entity’s branches, or two companies that happen to collide — so the form does not judge it. It lists every company on that root and lets the rep link, in either direction, or ignore it. Blocking here is what would stop sales entering a legitimate new customer.',
+          table: {
+            cols: ['Outcome', 'What the rep sees', 'Blocks the save?'],
+            rows: [
+              ['Identical full MST', 'Error naming the existing company, with a link to open it', 'YES — the company already exists'],
+              ['Same 10-digit root', 'A LIST of every company on that root: name, full MST, location, sales owner. Each row offers two link directions.', 'No'],
+              ['Near-identical legal name on a different MST', 'The same list, matched on name', 'No'],
+              ['No match', 'Nothing at all', 'No'],
+            ],
+          },
+          items: [
+            'Each row has TWO buttons, and they have deliberately different cardinality: “↑ Là con của” (the new company is a subsidiary of this one) can be set on at most ONE row — choosing another releases the first — while “↓ Là mẹ của” (the new company is the parent of this one) can be set on many rows at once. That mirrors the data: one parentCompanyId per record, any number of children.',
+            'A running summary states the outcome in words — “Sẽ liên kết: công ty con của X, công ty mẹ của Y, Z” — so the rep never has to read the button states back to know what will be saved.',
+            'Using both directions at once is legal: it means the new company sits in the middle of a group. It is also the only way to describe a loop, so the save validates the whole chain and rejects a link that would make a company its own ancestor.',
+            'Linking is optional and never blocks the save. A rep who ignores the list creates a standalone record, which is the correct outcome for a genuine MST collision.',
+            'Branch (same 10-digit root, -001 suffix) and subsidiary (a different MST) are stored identically — one parentCompanyId. The label shown is derived from comparing the two tax codes.',
+          ],
+          warn: 'Nothing is inherited across the link, in any direction: each record keeps its own MST, package/quota, quotations, VAT invoices, users and sales owner. A branch can never spend its parent’s quota.',
+        },
+        {
+          label: 'MST lookup — auto-fill from the tax authority',
+          text: 'Once 10 digits are entered, a “Tra cứu” button queries the Vietnamese tax registry and fills legal name, registered address and business line. It is a convenience, not a gate: every field it fills stays editable, and the form saves with or without it.',
+          items: [
+            'The registered address is the REGISTERED office, which is frequently not where the people work. The rep must be able to overwrite it — a locked auto-filled address would put the wrong address on every invoice.',
+            'The lookup must never block the save: if the service is down, slow, or returns nothing, the rep types the fields by hand and carries on. Show the failure, do not trap the form.',
+            'Only fill EMPTY fields. Re-running the lookup must not silently overwrite something the rep has already corrected.',
+            'Record which fields came from the lookup and when, so a later mismatch can be traced to the source.',
+          ],
+          warn: 'Feasibility is an open question for the BA. There is no free, official, guaranteed public API — data comes from commercial providers (invoice/e-signature vendors such as VNPT, Viettel, MISA, or resellers of the General Department of Taxation feed), and terms, cost, rate limits and uptime vary. Decide: paid provider, or drop the button. Build the form so the answer changes one call, not the flow.',
+        },
+        {
+          label: 'New company is a PAGE, and what it asks for',
+          text: 'Creating a company is a screen of its own, not a dialog: it is long enough to need the whole viewport, it can be linked to and reloaded, and it is reached three ways — “+ New company” on the list, “+ New lead” on the pipeline, and “+ Thêm công ty con” on a company record (which locks the parent). Four sections, in this order.',
+          table: {
+            cols: ['Section', 'Holds', 'Required in it'],
+            rows: [
+              ['Company information', 'Legal name, short name, MST (+ lookup + affiliate list), industry, size, tags, country, province, address (+ map picker), website', 'Legal name · Tax code (MST)'],
+              ['Company verification document', 'Business licence / tax registration / signed contract upload', 'None at creation — see below'],
+              ['Primary contact', 'Name, title, phone, email', 'Name · Phone · Email'],
+              ['Sales', 'Lead source, sales owner, products interested, estimated value, description', 'None'],
+            ],
+          },
+          items: [
+            'Phone AND email are both required on the primary contact: a contact nobody can reach is not a contact, and one channel is not enough when the other bounces.',
+            'The Company ID is assigned on save and is not mentioned on the form — a field the rep can neither fill nor change is noise while they are filling one in. It appears on the record afterwards.',
+            'Address gets an optional “Chọn trên bản đồ” picker storing coordinates alongside the typed text. Sales use the pin to find the office; the DOCUMENTS always print the typed address, never the map’s.',
+            'The form and the Basic-info card on the record must expose the same field set — a field that can only be set at creation, or only after, is a data hole.',
+          ],
+        },
+        {
+          label: 'Company verification document',
+          text: 'The document that proves the tax code belongs to them — business licence (giấy phép kinh doanh), tax registration certificate, or a signed contract. Uploaded on the create page, and again at any time from the company record.\n\nA document has NO STATUS. It is on the record or it is not, and the file list already says which — a per-file Chờ duyệt / Đã duyệt badge added a second state to read without adding anything to act on, and it implied a review queue with no owner and no screen.',
+          table: {
+            cols: ['Stage', 'Rule'],
+            rows: [
+              ['At creation', 'Optional. Requiring it here would block a rep entering a lead they just met at an event.'],
+              ['Selling — quotation, PO', 'Optional. Warn, do not block.'],
+              ['Issuing the VAT e-invoice', 'REQUIRED to be on file. This is the point where the tax identity has to be real.'],
+            ],
+          },
+          items: [
+            'Several files per company. A licence can be superseded when the company re-registers; the old one stays for the audit trail rather than being replaced.',
+            'PDF / JPG / PNG, 10MB per file.',
+            'The card shows the file count, the files themselves, and — when there are none — one warning that invoicing will be blocked. Nothing else.',
+          ],
+        },
+        {
+          label: 'Công ty con — the UI, in both directions',
+          text: 'The parent/subsidiary relationship is stored ONCE, as parentCompanyId on the child, pointing at its direct parent. There is no “subsidiaries” list to maintain on the parent — that side is derived by querying children.\n\nSo the create form has a “Công ty mẹ” field and deliberately NO “công ty con” field. A subsidiary field would be a second way to write the same relationship, and the two would eventually disagree; it is also usually unfillable, because when a parent is being created its subsidiaries are not records yet. The parent → child direction is an ACTION, not a field: “+ Thêm công ty con” on the parent record opens this same form with the parent pre-filled and locked.',
+          table: {
+            cols: ['Case', 'Where it is done', 'Screen'],
+            rows: [
+              ['Create a subsidiary — from the subsidiary', 'New-company form → Công ty mẹ (tuỳ chọn)', 'A subsidiary is created exactly like any other company; picking a parent is one field on the same form.'],
+              ['Create a subsidiary — from the parent', 'Company detail → Công ty liên kết → + Thêm công ty con', 'Opens the SAME New-company form, titled “Thêm công ty con”, with Công ty mẹ pre-filled and locked (shown as a fixed row, not a picker). This is the answer to “where is the công ty con field” — it is an action, not a field.'],
+              ['Attach or move an existing company', 'Company detail → Basic info → Edit → Công ty mẹ', 'Also how a company is detached: clear the field.'],
+              ['See a company’s parent', 'Company detail → Basic info → Công ty mẹ', 'One row, links to the parent record.'],
+              ['See a company’s subsidiaries', 'Company detail → “Công ty liên kết — Affiliated companies”', 'DERIVED from the children — never typed. Shows the group tree with each member’s status.'],
+              ['See a whole group at once', 'Companies list → click a group tag', 'A banner appears (“🏢 Tập đoàn …”) and the list narrows to that group at every level, across sales owners, with a “Bỏ lọc” to clear it.'],
+            ],
+          },
+          items: [
+            'Nothing is inherited down the tree: each entity has its own tax code, account, quota, membership tier and sales owner, and a subsidiary can never spend its parent’s quota.',
+            'A company may not be its own ancestor — reject a parent choice that would create a cycle, at any depth.',
+            'The parent picker excludes the company itself, and the list is searchable: with 5,000 companies a plain dropdown is unusable.',
+            'The Công ty liên kết card renders on EVERY company, including a standalone one with no parent and no children — it reads “Đứng độc lập / Chưa thuộc tập đoàn nào”. Hiding the card there would leave no way to start a group.',
+            'Both directions are offered on that card, and they are not symmetrical: “+ Thêm công ty con” CREATES a record (the subsidiary does not exist yet), while “↑ Gán công ty mẹ” only LINKS an existing one. Either way, the value written is parentCompanyId on the child.',
+          ],
+        },
+        {
+          label: 'Contact people vs login users — two independent lists',
+          text: 'A company carries TWO separate populations of people, and neither is ever generated from the other. Confusing them is what makes CRMs rot: sales loses the accountant who has no login, and the seat count fills with people nobody ever spoke to.',
+          table: {
+            cols: ['', 'Contact person', 'Login user'],
+            rows: [
+              ['What it is', 'Someone we do business with', 'A login on the Company site'],
+              ['Owned by', 'Sales (CRM record)', 'The customer’s HR Manager'],
+              ['Needs a login?', 'No — most never have one', 'Yes, that is what it IS'],
+              ['Consumes a seat?', 'No', 'Yes — 1 of the 4 seats'],
+              ['Typical example', 'CFO who signs off · accountant who receives invoices', 'HR Specialist the customer invited themselves'],
+            ],
+          },
+          items: [
+            'Where the same human is both, the two rows are LINKED and the UI shows 🔗. The link is informational — deleting or disabling one never touches the other.',
+            'A contact can be promoted with “Invite as user”, which creates a user row and links it. That is an explicit action, never automatic.',
+            'Exactly ONE contact is the PRIMARY contact — the person quotations, orders and invoices are addressed to. A separate optional flag marks decision makers.',
+          ],
+          warn: 'Never auto-create one from the other, and never delete in pairs. A user leaving the seat does not delete the sales relationship; removing a contact must not lock someone out of the product.',
+        },
+        {
+          label: 'Contact status — FIVE values, each one an instruction',
+          text: 'The status exists to stop wasted outreach and compliance mistakes, so every value answers “what do I do about this person now?”. Two situations that lead to the same action are ONE status — the sub-reason goes in the note, where a human reads it.',
+          table: {
+            cols: ['Status', 'Vietnamese', 'What it means', 'What the rep does'],
+            rows: [
+              ['Active', 'Đang liên hệ', 'Our working contact — reachable and expecting to hear from us', 'Call or email as normal'],
+              ['Needs verifying', 'Cần xác minh', 'Details not confirmed — from a name card / web form, or the email has started bouncing', 'Confirm email + phone before this contact goes on a quotation'],
+              ['Paused', 'Tạm dừng liên hệ', 'On leave, or they asked us to come back later — still our contact, just not now', 'Do not chase until the resume date (required); use the cover person if urgent'],
+              ['No longer here', 'Không còn phụ trách', 'Left the company, retired, or moved department — either way they no longer buy from us', 'Find the successor; record where they went if known'],
+              ['Do not contact', 'Không liên hệ', 'They asked not to be contacted — a compliance flag, not an opinion', 'No outreach at all; only a manager can clear it'],
+            ],
+          },
+          items: [
+            'Collapsed on purpose: "on leave" and "asked us to come back" both mean WAIT, so they are one status (Paused). "Left", "retired" and "moved department" all mean FIND THE SUCCESSOR, so they are one status (No longer here). "Never verified" and "email now bouncing" both mean FIX THE DETAILS (Needs verifying). Nine statuses that produced five behaviours were five statuses wearing costumes.',
+            'No longer here surfaces a “Find successor” action, and can carry WHERE they went — the person who bought from us is now buying for someone else, which is the cheapest warm lead in the system.',
+            'A company with no Active contact is a silent churn risk and belongs in Needs attention, whatever its revenue looks like.',
+            'Paused requires a resume date; without one it is just a rep avoiding a call.',
+            'Do not contact suppresses automated email as well as manual outreach (PDPA-style consent withdrawal) and cannot be cleared by a rep alone.',
+            'A contact is never hard-deleted — status is what changes, so the history of who we dealt with stays intact.',
+          ],
+        },
+        {
+          label: 'Contact flags — the role a contact plays, separate from their status',
+          text: 'Status says whether we can reach the person; flags say what they are FOR. A company usually needs two different people on the paperwork, so both flags are set independently.',
+          table: {
+            cols: ['Flag', 'Who it usually is', 'What the system does with it'],
+            rows: [
+              ['PRIMARY (exactly one)', 'The HR Manager / buyer', 'Quotations and orders are addressed to them; they are the contact shown on the company row'],
+              ['BILLING', 'Kế toán trưởng — often never speaks to Sales', 'Receives the VAT e-invoice and payment chasing'],
+              ['◆ Decision maker', 'Director / CFO who signs off', 'Read-only marker for the rep — no automation hangs off it'],
+            ],
+          },
+          items: [
+            'PRIMARY and BILLING are frequently different humans — an invoice sent to the buyer instead of the accountant is a real cause of late payment.',
+            'The company Overview shows a People summary (contacts + login users, with the unreachable count); the full two lists live on the record’s “Contacts & users” tab.',
+          ],
+        },
+        {
+          label: 'Quốc tịch (country) — and the address fields it gates',
+          text: 'Quốc tịch is the country the company is REGISTERED in, not where its office happens to be. It is asked on the New-company form and shown on the company record, and it decides whether the Vietnamese province picker appears at all. The country list is Master data (System → Master data → Country), never free text.',
+          table: {
+            cols: ['Field', 'Vietnamese company', 'Foreign company', 'Source'],
+            rows: [
+              ['Quốc tịch / Country', 'Việt Nam (the default)', 'Any other country', 'Master data → Country'],
+              ['Tỉnh / Thành phố · City', 'REQUIRED — pick a province', 'Not shown at all', 'Master data → Locations (63 provinces)'],
+              ['Address', 'REQUIRED — số nhà, đường, phường/xã, quận/huyện', 'REQUIRED — street, city, postal code, country', 'Free text'],
+            ],
+          },
+          items: [
+            'Address is asked for EVERY country — a quotation, order, invoice and contract all print it, so it can never be optional.',
+            'A foreign company writes its city INTO the address, because a province dropdown of Vietnamese provinces cannot express “Seoul” or “Singapore”. The form says so explicitly rather than leaving an unusable empty picker on screen.',
+            'The Companies list Location column and its Location filter read the Vietnamese province. A foreign company therefore has no city to group by — that is expected, not missing data.',
+            'Quốc tịch is a property of the COMPANY, not of a contact or a job. A Korean-owned company registered in Vietnam is Việt Nam; use the Company tag “Korean company” for the ownership angle, which is a separate, editorial fact.',
+          ],
+          warn: 'Do not infer the country from the tax code or the address. MST only exists for Vietnamese entities, and an address string is not parseable — so quốc tịch is always an explicit choice.',
+        },
+        {
+          label: 'Company NAME — what is displayed vs what is stored',
+          text: 'A company stores a legal name and an optional short (brand) name. Every list and card shows the SHORT name, falling back to the legal name when it is empty — one rule, so the same company never reads two different ways on two screens.',
+          table: {
+            cols: ['Surface', 'Shows', 'Falls back to'],
+            rows: [
+              ['Companies list', 'Short name', 'Legal name'],
+              ['Pipeline board card', 'Short name', 'Legal name'],
+              ['Company detail header', 'Short name', 'Legal name'],
+              ['Quotation / order / invoice', 'LEGAL name always', '— (never the short name)'],
+            ],
+          },
+          warn: 'Documents are the exception and must use the LEGAL name: a quotation, order or VAT invoice is a legal instrument, so “Tiki” is never acceptable where “Công ty TNHH TIKI” is required.',
+        },
+        {
+          label: 'Customer status values — exactly three',
+          text: 'Driven by the INVOICE, not the order. New means “has never bought anything from us”, so every company starts there the moment it is created — there is no separate Prospect status.',
+          table: {
+            cols: ['Status', 'Means', 'Moves in when', 'Rule'],
+            rows: [
+              ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM', 'SYSTEM sets this at creation — SALES never picks it, and there is no field to. Leaves only when KẾ TOÁN issues the first VAT e-invoice; never on a sent quotation or a confirmed order alone. → Next action: SALES quotes them.'],
+              ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued', 'SYSTEM flips it on invoice.issued. One-way: a win-back after Churn returns here, never to New. SALES may override only with a reason, and SYSTEM logs the override. → Next action: SALES works the renewal before the 12-month clock runs out.'],
+              ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice', 'SYSTEM sets this 12 months past lastInvoicedAt with no new order — nobody clicks it. The same record looping back; a won win-back returns it to Existing, never a new record. → Next action: SALES runs the win-back on the quarterly churn cadence.'],
+            ],
+          },
+          items: [
+            'Churn is the SAME record looping back for win-back, never a new company. A won win-back returns it to Existing, never to New — “never bought” can only ever be true once.',
+            'New is not a synonym for “no login”. Whether an account exists is a separate fact (accountId), driven by activation; a company can be New for years while being quoted repeatedly.',
+          ],
+        },
+        {
+          label: 'Membership tier — a THIRD axis, and the only one that is pure arithmetic',
+          text: 'Chương trình Khách hàng Thân thiết. The tier is a function of ONE number: the value of the orders this company paid for inside the current programme year. It is never typed and never granted by a rep, and it is independent of the other two axes — a Churn company holds no tier, and an Existing company can be Kim Cương while a deal sits in Negotiation.',
+          table: {
+            cols: ['Danh hiệu', 'Tích lũy trong năm — từ', 'Đến dưới'],
+            rows: [
+              ['— (chưa có hạng)', '0 ₫', '30.000.000 ₫'],
+              ['Thành viên / Member', '30.000.000 ₫', '50.000.000 ₫'],
+              ['Đồng / Bronze', '50.000.000 ₫', '100.000.000 ₫'],
+              ['Bạc / Silver', '100.000.000 ₫', '200.000.000 ₫'],
+              ['Vàng / Gold', '200.000.000 ₫', '300.000.000 ₫'],
+              ['Kim Cương / Diamond', '300.000.000 ₫', '— (không giới hạn)'],
+            ],
+          },
+          items: [
+            'Only the LOWER bound of each band is stored — "đến dưới" is read from the next band up, so the bands can never overlap or leave a gap.',
+            'Below the first threshold is a real state ("chưa có hạng"), not an error or missing data: most of the book sits there every January.',
+            'Thresholds and the reward catalogue are settings (System → Membership tiers), never code — the programme is re-issued every year and the bands move.',
+            'The tier is per legal entity, like everything else on the company: a subsidiary’s orders never raise its parent’s tier.',
+          ],
+          warn: 'The accumulator RESETS to 0 ₫ on 1 January and nothing carries over — a Kim Cương customer starts the new year with no tier and climbs again. So the tier must never be a plain stored column someone forgets to clear: it is always computed against a YEAR WINDOW, and last year’s figure stays readable as its own row.',
+        },
+        {
+          label: 'Sales owner — one current owner, and a full reassignment history',
+          text: 'Every company has EXACTLY ONE current sales owner (account manager), assigned by hand. But the owner CHANGES over an account’s life — a rep leaves, territories are rebalanced, a growing account moves to a key-account rep. The record must keep the whole chain, never silently overwrite it: the company detail shows an Owner history, so anyone can see who held the account when and — the point of the request — WHO reassigned it and why.',
+          table: {
+            cols: ['What the history records', 'Meaning', 'Example'],
+            rows: [
+              ['Owner (current)', 'The one rep responsible now — DERIVED from the newest entry, not a free field that can drift', 'Nguyễn Thị Lan'],
+              ['From → To', 'The tenure window for each owner in the chain', '05/2024 → 02/2025'],
+              ['Reassigned by', 'The ACTOR who performed the handover — a Sales lead, and NOT either the old or new owner', 'Lê Hữu Phong · Sales Lead'],
+              ['Reason', 'Why it moved', 'Previous rep left — handed over'],
+              ['First entry', 'The creation row: who owned it the moment the lead was created', 'Tạo lead (hệ thống)'],
+            ],
+          },
+          items: [
+            'The current owner is DERIVED from the newest history entry — it is never a standalone column that could disagree with the log.',
+            'A reassignment IS the audited change the edit form already writes for “Sales owner” (field · old · new · who · when) — the Owner history is that audit surfaced as a readable timeline instead of a raw log row.',
+            'Only a Sales lead / admin may reassign an owner; a rep cannot quietly pass their own accounts around.',
+            'Reassigning the owner touches NOTHING else — contacts, deals, quota, membership tier and the customer relationship all stay put. It changes who is responsible, not what the customer has.',
+            'Parent and subsidiary owners are independent (see the edge case): moving the parent’s owner never moves the subsidiary’s.',
+            'A brand-new lead shows a SINGLE entry — whoever created it still owns it. “Never reassigned” is a real state, not missing history.',
+          ],
+          warn: 'The owner history is append-only. Never edit or delete a past tenure to “tidy up”: quotations, sales targets and commission all reference who owned the account at the time, so rewriting it breaks the trail.',
+        },
+        {
+          label: 'Search on the Companies list — a rep lists only their own book, but can REACH any customer by name',
+          text: 'In Sales view the list is ONLY the rep’s own book — there is NO “whole system” mode for a rep to browse everyone’s customers. But a rep must still be able to REACH one specific customer they know exists; otherwise “not in my list” reads as “does not exist” and they re-create a company that already has an owner. So the search box does double duty: it filters my own book, and — the point of the request — it surfaces matches OUTSIDE my book as direct links into that one record, never as a browsable list.',
+          items: [
+            'REMOVED: the old “Của tôi · Toàn hệ thống” toggle. A rep cannot list the whole system’s customers. Seeing every customer is the Sales-lead view — a separate role, not a switch on the rep’s own list.',
+            'The placeholder states the book, its count, and the reach: “Tìm trong 28 công ty của tôi · gõ tên / MST để mở nhanh một KH bất kỳ…”.',
+            'REACH, NOT BROWSE: when the query matches companies owned by someone else, a small block appears under the search with up to a handful of exact matches, each a direct link straight into that customer’s record (“… do sales khác phụ trách · Mở →”). It requires a real query (≥ 2 characters) — an empty box never enumerates other reps’ books.',
+            'Each surfaced match shows Company ID + MST + owner, so a colleague’s record is never mistaken for one of yours and the rep opens the right one.',
+            'Search matches name, short name, legal name, MST, Company ID, contact and domain — including fields the table does not print. A box that promises “MST, company ID” has to match them.',
+          ],
+          warn: 'What a rep may DO with another rep’s company is a separate permission question from what they may FIND. Recommend: reach + open read-only, but no edit and no logging activity without a re-assignment. Needs the client’s decision.',
+        },
+        {
+          label: 'Activities on the company record — SALES activity only',
+          text: 'The activity panel holds contact with the client and nothing else: chats, calls, and documents actually sent to or confirmed by them. It is NOT a merged “everything that happened” feed.',
+          table: {
+            cols: ['Type', 'Sales must provide', 'Integration'],
+            rows: [
+              ['Chat', 'Channel (Zalo · Facebook Messenger · Email · SMS · Zalo OA · Phone) + a note', '—'],
+              ['Call', 'A note; duration / outcome / recording arrive automatically', 'Placed & auto-logged via Calio'],
+              ['Document sent / confirmed', 'Nothing — written when the rep sends a quotation or confirms an order', 'From the document chain'],
+            ],
+          },
+          items: [
+            'System and usage events are EXCLUDED: CV unlocked, job published, company page published, payment received, products provisioned, account activated. Each already has its own tab on the record (Resume activity · Jobs · Company page · Products & billing), so nothing is lost by keeping them out.',
+            'The newest row in this panel is what idle counts from. That is the whole reason for the exclusion — if a nightly provisioning job or a customer’s own CV unlock could land here, a client nobody has spoken to in two months would read as freshly touched.',
+            'A company with no logged activity shows “Never contacted” — an explicit state and the highest-priority follow-up, never an empty table.',
+            'Not to be confused with the DEAL timeline, which is a different surface: that one does carry decay markers (quotation auto-expired, escalation, rot-state changes) because the sales lead needs to see them. Company-level sales activity stays clean; deal-level keeps its markers. Do not merge the two.',
+          ],
+          warn: 'Do not “fix” this later by merging system events back in for a fuller timeline. The merged feed is the version that was removed, and it silently breaks idle, the follow-up queue and the churn early-warning that all read from it.',
+        },
+        {
+          label: 'Logging an activity — three types, and who gets the credit',
+          text: 'Sales log what they did on the company record. Three types, because they carry different facts.',
+          table: {
+            cols: ['Type', 'Asks for', 'Notes'],
+            rows: [
+              ['💬 Chat', 'Channel (Zalo · Messenger · Email · SMS · Zalo OA · Phone · Other) + note + attachments', 'Channel is required — “we chatted” without saying where is not a record.'],
+              ['📞 Call', 'Note + attachments', 'Auto-filled from Calio when the call came through it.'],
+              ['🤝 Meeting', 'Date · time · duration · format (their office / our office / Meet / Zoom / other) · note + attachments', 'The only type with a MOMENT of its own — a chat is logged when it happened, a meeting is logged against the slot it was held in. The date is constrained — see the block below. No attendee list: the client side is the contact on the record, our side is whoever logs it.'],
+            ],
+          },
+          items: [
+            'ATTACHMENTS on every type, several per activity: screenshots of a Zalo thread, meeting minutes, photos. They belong to the activity row, not to a separate document library — the point is that the row proves what happened.',
+            'EMAIL is attached two ways: (1) the rep forwards or BCCs the message to a system address (crm@saramin.vn) and the system files it against the company by matching the sender/recipient domain — this is the one reps actually use, because it needs no upload; (2) uploading a saved .eml / .msg file, as the fallback when the address is not reachable.',
+            'The composer explains none of this: the control is labelled “Đính kèm” and nothing more. How email forwarding works belongs in onboarding and in this document, not in a paragraph every rep reads once and then scrolls past forever.',
+            'Every activity is stamped with the ACCOUNT that performed it — NOT the company’s sales owner. A colleague covering for a busy owner is the one shown, and the one the KPI counts. The composer states whose KPI it will land on before the rep saves.',
+            'The activity table shows that account by name, with the side it acted for underneath, and marks a row “hỗ trợ” when the performer is not the company’s owner — so a sales lead can see help being given without opening anything.',
+            'Idle still counts from the newest SALES row regardless of who performed it: any colleague’s contact is contact.',
+          ],
+        },
+        {
+          label: 'Meeting date — the allowed window',
+          text: 'The meeting date can be backdated, but only inside the CURRENT month. Two different abuses are being prevented, and they need different answers.',
+          table: {
+            cols: ['Date chosen', 'Allowed?', 'Why'],
+            rows: [
+              ['Today', 'Yes', 'The normal case.'],
+              ['Earlier this month', 'Yes', 'Writing a meeting up a few days late is ordinary work — forcing today’s date would make the record wrong.'],
+              ['Any day in a previous month', 'NO', 'That month is a closed KPI period. Backdating into it changes a number that has already been reported.'],
+              ['Any future date', 'NO', 'An activity log records what HAPPENED. A meeting that has not happened yet is a plan, not an activity — and a future date would push Last contact to a date that has not arrived.'],
+            ],
+          },
+          items: [
+            'The picker ENFORCES it rather than validating after the fact: days outside the window are disabled, and the field states the range under it — “Từ 01/08/2026 đến hôm nay”.',
+            'The boundary is the 1st of the current month, NOT a rolling 30 days. The rule exists to protect the closed reporting period, so it moves with the calendar — on 01/09 the whole of August closes at once.',
+            'This constrains the meeting DATE only. The created-at stamp is always the real moment of saving, and BOTH are stored: a meeting held on the 3rd and written up on the 7th keeps both facts, which is what makes late write-ups auditable instead of invisible.',
+            'Same window applies to Chat and Call if they are ever given an explicit date field. Today they are stamped at the moment of saving and have no date field at all.',
+          ],
+          warn: 'Open question for the client: may anyone log into a closed month — a sales lead, an admin, nobody? Recommend nobody, and handle corrections as a note on the current month instead, so a reported number never changes after it has been reported.',
+        },
+        {
+          label: 'LAST CONTACT (idle) — what it is',
+          text: 'An INDEPENDENT field on the company, deliberately unrelated to the pipeline: idle = today − the date of the last CONTACT with the client. It answers one question only — “how long since anyone talked to them?” — so it is defined for every company, with or without a deal. It never blanks out.',
+          items: [
+            'Resets ONLY on real human contact: a logged activity (chat / call / meeting) or a document actually sent or confirmed to the client.',
+            'Must NOT reset on system events: auto-reminders, provisioning, quota decrements, page publishes, housekeeping stage changes — otherwise a silent client looks healthy.',
+            'ONE rule everywhere — same definition, thresholds table and display on the Companies list and the Pipeline board, so a number never means two different things in two places.',
+          ],
+        },
+        {
+          label: 'IDLE — thresholds by expected contact cadence',
+          text: 'One formula reading a settings table, not per-stage logic in code. A company with an open deal always uses the Open deal row — the live opportunity sets the pace.',
+          table: {
+            cols: ['Relationship type', 'Expected cadence', 'Amber (needs a touch)', 'Red (at risk / escalate)'],
+            rows: [
+              ['Open deal — any stage', 'Weekly', '7 days', '14 days'],
+              ['Existing — onboarding, first 90 days after the first invoice', 'Fortnightly', '14 days', '30 days'],
+              ['Existing — active paid service', 'Monthly', '30 days', '60 days'],
+              ['New (never bought), no open deal — nurture', 'Monthly', '30 days', '60 days'],
+              ['Churn / win-back', 'Quarterly', '60 days', '90 days'],
+            ],
+          },
+        },
+        {
+          label: 'LAST CONTACT — the column shows a DATE, not a gap',
+          text: 'The column is called “Last contact” and it shows the date of that contact — 05/07/2026. It used to show the gap (“1m 4d”), which made the reader do two conversions: from a duration back to a date, and from a date back to “is that bad?”. The date answers the first directly, and the health dot answers the second, so neither has to be worked out.',
+          table: {
+            cols: ['State', 'Shows as', 'Example'],
+            rows: [
+              ['Contacted at some point', 'dd/mm/yyyy of the newest SALES activity', '05/07/2026'],
+              ['No contact ever logged', 'A distinct state, never a date and never 0', '“Chưa liên hệ” — red'],
+              ['Anywhere a DURATION is what is being said', 'Days, rolling up past 30 days', '“12d ago” · “2m 4d ago” on the activity trail'],
+            ],
+          },
+          items: [
+            'The coloured dot beside the date is unchanged: green / amber / red from the same cadence thresholds. The date says WHEN, the dot says WHETHER IT IS LATE — the reader should not have to subtract to learn the second.',
+            'The gap in days moves into the tooltip, together with the threshold being applied: “Liên hệ gần nhất 05/07/2026 — 34 ngày trước. Existing expects monthly contact: amber from 30d, red from 60d.”',
+            'THE KANBAN CARD IS THE EXCEPTION: dd/mm with no year, no dot and no colour. A card already carries its stage, its value and its owner, so a fourth coloured signal there competes with the stage rather than adding to it — and the year is four characters of noise on a narrow card. The full date, the gap in days and the threshold all stay one hover away, and “Chưa liên hệ” shortens to “—”.',
+            'The health dot and colour stay on the LIST, where the column exists precisely to be scanned for what is late, and there is room for the full date.',
+            'THRESHOLDS are still expressed in days — they are durations, and “amber from 30d” is the natural way to state a rule. Only the read-out is a date.',
+          ],
+          warn: 'The stored value stays a TIMESTAMP; the date is presentation only, and sorting always uses the underlying value so the order is by recency, not by the rendered string.',
+        },
+        {
+          label: 'IDLE — build rules for the developer',
+          items: [
+            'Store a TIMESTAMP `lastContactAt` on the company and compute idle at read time — never store a day counter, it goes stale overnight.',
+            'Sort and filter on the raw timestamp, never the formatted string, or “2m” sorts before “9d”.',
+            'The event types that reset idle must be an explicit allowlist in config — this is the single most likely thing to be built wrong.',
+            '`lastContactAt = null` renders “Never contacted” — a DISTINCT state from 0d, and the HIGHQUO-priority follow-up, not the lowest.',
+            'Calendar days, timezone Asia/Ho_Chi_Minh, day boundary at local midnight. Public holidays and Tết are NOT excluded.',
+            'Every threshold lives in settings and is editable by the sales lead without a deploy.',
+          ],
+        },
+        ],
         description:
           'ONE list of every company — the single source of truth. Each record carries TWO status dimensions: a pipeline stage (the current deal: Proposal → Qualified → Negotiation → PO → Invoice / Lost) shown on the Pipeline board, and a customer status (account health: New → Existing → Churn) shown on this directory. The Pipeline board is the SAME list grouped by stage. There is no separate "account list" — Account management (users, products, public page) is just sections on this same record, shown only for customers who bought them. No duplicate company. Corporate groups are modelled INSIDE this list, not beside it: every company — parent, subsidiary, sub-subsidiary — is its own record with its own tax code, its own account, its own billing and its own owner, linked upward by a single parentCompanyId. The link is navigation and context only; nothing is shared or inherited down the tree.',
         userStory:
@@ -967,6 +828,59 @@ export const crm: BuildModule = {
       ready: true,
       mockup: 'crm-pipeline',
       detail: {
+        requirements: [
+        {
+          label: 'Pipeline stages (the kanban)',
+          text: 'The board mirrors the document chain. A card carries deal value + owner. Stage lives on the DEAL, never on the company.',
+          table: {
+            cols: ['Stage', 'What it means', 'Entered when', 'Rule'],
+            rows: [
+              ['Proposal', 'A quotation exists for this company — being written or already out', 'Quotation CREATED (Draft)', 'SYSTEM puts the card here the moment SALES creates the quotation, while it is still Draft — the stage is a consequence, never a manual drag. Working on a quote IS the proposal activity, so the deal is visible on the board from the first keystroke rather than appearing only once it is sent. → Next action: SALES finishes it and clicks “Mark as sent”, then chases a reply.'],
+              ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies', 'SALES moves the card when the customer engages. May be skipped entirely — Proposal → Negotiation is legal. → Next action: SALES agrees the option and the price.'],
+              ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', 'SALES moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: SALES creates the Sales order from the option the customer accepted.'],
+              ['PO', 'The Sales order has been SENT to the customer — this is “won”.', 'PO sent', 'SALES reaches this by sending the Sales order (with bank details). The “won” moment — but it provisions NOTHING yet, and the customer has neither agreed nor paid. → Next action: KẾ TOÁN ONLY confirms the payment against the bank statement.'],
+              ['Invoice', 'Customer paid and Accounting issued the VAT e-invoice — closed', 'Payment confirmed + invoice issued', 'KẾ TOÁN ONLY reaches this, by issuing the VAT e-invoice after confirming payment. SYSTEM then closes the deal won, flips customer status to Existing, starts the 12-month clock and releases provisioning. Terminal — no further action on the deal.'],
+              ['Lost', 'Ended without a PO — declined / competitor / budget cut / went silent', 'A human closes it and picks a reason', 'SALES ONLY, by hand, with a reason — SYSTEM never auto-closes a deal however long it sits (a stale deal is flagged rotting, not lost). → To re-open: SALES moves it back to an earlier stage; a win-back is a NEW deal on the same company.'],
+            ],
+          },
+          items: [
+            'Invoice and Lost are terminal; a Lost deal can be re-opened to an earlier stage, and win-back means a NEW deal on the same company.',
+            'A company appears on the board as soon as a quotation is CREATED for it — Draft included. Writing the quote is the proposal work, so hiding it until Send would leave live deals invisible.',
+          ],
+        },
+        {
+          label: 'A deal is its own record',
+          text: 'The Account/Opportunity split every mature CRM uses. A company has zero, one or many deals over its life — deal #1 won in 2026, deal #2 lost, deal #3 open now.',
+        },
+        {
+          label: 'Leaving the pipeline — exactly two ways, both a DEAL closing',
+          table: {
+            cols: ['Way out', 'Trigger', 'Where the company lands'],
+            rows: [
+              ['Closed-won', 'VAT e-invoice issued', 'Customer status Existing'],
+              ['Closed-lost', 'A human marks it, with a reason', 'NURTURE list — customer status unchanged (still New if they never bought, still Existing if they had), no open deal, with a re-engage date'],
+            ],
+          },
+          warn: 'Inactivity alone never removes a company from the pipeline and a deal is NEVER auto-closed as Lost — it only gets flagged so a human is forced to decide.',
+        },
+        {
+          label: 'Pipeline hygiene',
+          text: 'Each stage has its own inactivity threshold (days since the last meaningful activity). Past it the deal is flagged rotting — amber then red — lands in a “Needs attention” filter, then escalates to the sales lead. Thresholds live in settings, not in code.',
+        },
+        {
+          label: 'IDLE vs DEAL ROT — not the same thing',
+          table: {
+            cols: ['', 'Deal rot (pipeline hygiene)', 'Idle'],
+            rows: [
+              ['Measures', 'Neglect of an opportunity', 'Health of the relationship'],
+              ['Scope', 'Only while a deal is open', 'Always, every company'],
+              ['Thresholds', 'Per stage', 'Per relationship type (table above)'],
+              ['Escalation', 'Flagged rotting → “Needs attention” filter → sales lead', 'Amber / red on the list; drives follow-up queue'],
+            ],
+          },
+          items: ['A won customer has no rot but still has an idle age — which is exactly the early signal for churn.'],
+        },
+        ],
         description:
           'The sales team’s home screen: a kanban of customer deals grouped by stage, following the document flow Proposal → Qualified → Negotiation → PO → Invoice (+ Lost). Each column shows a deal count and total value. A rep drags a card forward as a deal progresses; reaching PO (the Purchase Order) is the "won" trigger to activate the company as a real customer.',
         userStory:
@@ -1326,9 +1240,49 @@ export const crm: BuildModule = {
           'Sent + offer lapsed (past the expiry date — the flag that forces a human decision)',
           'Issued to PO (an option was accepted and the Sales order was created from it — terminal success)',
           'Expired (lapsed and closed out with no PO — terminal until extended or revised)',
-        ],        sections: [
+        ],        requirements: [
+        {
+          label: 'Quotation expiry — ALWAYS the end of the month',
+          text: 'A quotation does not live for a fixed number of days. It expires on the LAST DAY OF THE MONTH it was created in, whatever date that is — raised 02/07 or raised 28/07, both lapse on 31/07. Every quotation issued in a month therefore dies together, which is what ties pricing, discounts and promotions to one monthly policy cycle instead of to hundreds of rolling per-quote deadlines.',
+          table: {
+            cols: ['Created', 'Expires', 'Days valid'],
+            rows: [
+              ['02/07/2026', '31/07/2026', '29'],
+              ['20/07/2026', '31/07/2026', '11'],
+              ['28/07/2026', '31/07/2026', '3'],
+              ['01/08/2026', '31/08/2026', '30'],
+            ],
+          },
+          items: [
+            'DERIVED, never typed. expiryDate = last day of month(createdAt). There is no validity-days setting to get wrong, and no nightly job can leave a quotation stale — a quotation is expired when today > expiryDate, computed on read.',
+            'Consequence the rep must see: validity SHRINKS through the month. The builder shows the expiry date and the days remaining next to it, so a quote raised on the 28th visibly says "3 days" rather than looking the same as one raised on the 2nd.',
+            'The rot clock is deliberately NOT anchored to expiry any more. With a fixed 14-day validity the two could be aligned; with month-end they cannot, or a quote raised late in the month would turn red almost the moment it was sent. Expiry runs on the calendar, rot runs on contact.',
+            'Expiring still moves nothing on its own: the deal stays where it is and a HUMAN either extends validity, revises to v2, or closes the deal as Lost. A re-issued v2 gets a fresh end-of-month date — which, if it is re-issued in a new month, is the end of THAT month.',
+            'UNRESOLVED — a quotation raised on the 30th is valid for one day. Either roll quotations raised in the last few days of a month to the end of the NEXT month, or accept the short window. This needs a business answer before build.',
+          ],
+        },
+        {
+          label: 'Quotation status — exactly four',
+          text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the Sales order is created from the accepted option.',
+          table: {
+            cols: ['Status', 'Means', 'Rule'],
+            rows: [
+              ['Draft', 'Being written — editable, not yet out', 'SALES builds and edits it; the only editable status. Creating it puts the deal on the board at PROPOSAL immediately, so a draft already counts in the pipeline — abandoning one therefore needs the deal closing as Lost, it does not just evaporate. → Next action: SALES clicks “Mark as sent”.'],
+              ['Sent', 'Delivered to the customer, awaiting their pick', 'SALES declares this by clicking “Mark as sent” — reps routinely deliver the PDF by Zalo or from their own mailbox, so the status cannot depend on our mailer firing. Immutable from here; this is what puts the deal on the board at Proposal. → Next action: SALES clicks “Issue PO” and picks the option the customer chose.'],
+              ['Issued to PO', 'An option was accepted and the Sales order was created from it', 'Reached automatically the moment SALES creates the Sales order. Terminal success — no further action on the quotation.'],
+              ['Expired', 'Offer lapsed past its expiry date and closed out with no PO', 'SYSTEM sets this on the expiry date — nobody clicks it, and expiring never moves the deal in the pipeline. → To re-open: SALES extends validity or revises to v2.'],
+            ],
+          },
+          warn: 'Only Draft is editable. A Sent quotation is immutable — a change is a new version, never an edit.',
+        },
+        ],
+        sections: [
           {
             heading: 'What prints on the page — block by block, top to bottom',
+            // Pinned under Overview, above "UI fields": this IS the document being
+            // specified, so it has to be read before the field list — not five
+            // blocks below the backend contract.
+            early: true,
             items: [
               '1 · Issuer letterhead + logo — CÔNG TY TNHH DAOUKIWOOM INNOVATION / DAOUKIWOOM INNOVATION COMPANY LIMITED, the VN and EN address, https://topdev.vn, and the Saramin logo. From System → Company information (issuer), never typed here.',
               '2 · "Báo giá bởi / Proposed by" — the signed-in rep’s name + email.',
@@ -1467,6 +1421,23 @@ export const crm: BuildModule = {
       mockup: 'admin-purchase-orders',
       notes: 'PO → payment → invoice → contract cluster needs backend build together if in launch scope. NAMING: in standard B2B the customer issues the PO to us; the document WE send back is an Order Confirmation / Sales Order. Modelled here as one Sales Order record that can also hold the customer’s own PO number + file, so both practices are covered.',
       detail: {
+        requirements: [
+        {
+          label: 'Sales order / PO status',
+          text: 'The status carried on the Sales order record and the Order list. An order is created from exactly one accepted quotation option and carries that option’s lines forward unchanged.',
+          table: {
+            cols: ['Status', 'Means', 'Rule'],
+            rows: [
+              ['Draft', 'The order copied from the accepted option, not yet sent', 'SALES creates and edits it. Editable only while Draft; the source quotation must be accepted and NOT expired. → Next action: SALES clicks “Gửi khách xác nhận”.'],
+              ['Sent', 'Order PDF + payment request sent to the customer', 'SALES sent it, with bank details, because payment comes first. THIS IS THE “WON” MOMENT — the deal moves to the PO stage here. It provisions NOTHING (clause 3), and the customer has not paid yet; if they never pay it goes to collections, not Lost. Optional evidence — customerPoNumber / confirmedAt — is recorded here when a customer’s procurement issues a formal PO. → Next action: KẾ TOÁN ONLY clicks “Xác nhận đã thanh toán”.'],
+              ['Paid', 'Accounting confirmed the payment against the bank statement', 'KẾ TOÁN ONLY may set this — Sales can record a receipt, but only Accounting confirms the money landed. The PO enters Accounting’s To-invoice queue automatically. → Next action: KẾ TOÁN ONLY clicks “Xuất hóa đơn”.'],
+              ['Invoiced', 'A VAT e-invoice has been issued against the order', 'KẾ TOÁN issued it. Terminal — the deal closes, customer status leaves Prospect, the 12-month clock starts and provisioning is released. One order may carry more than one invoice under a 50/50 term.'],
+              ['Cancelled', 'The order was cancelled with a reason', 'SALES cancels, and only until a payment is confirmed. After that the correction is a credit note by KẾ TOÁN, never a cancellation.'],
+            ],
+          },
+          warn: 'SENDING the PO is the “won” moment but provisions NOTHING — no account, no quota, no company page — until the Accounting-confirmed payment and the issued invoice. Trade-off accepted here: a deal counts as won before the customer has agreed or paid, so the PO column will always hold some deals that never convert.',
+        },
+        ],
         description:
           'The order is what turns an accepted quotation option into a committed, billable order. It is created from exactly one accepted option — never from the whole quotation — and it carries that option’s lines forward unchanged. Two real-world variants both land on this one record: customers with a procurement process send us their own PO (we attach its number and file), and customers without one simply confirm the order we send them. Once confirmed, the order is what Accounting bills and what Account management provisions against.',
         userStory:
@@ -1589,6 +1560,22 @@ export const crm: BuildModule = {
       ready: true,
       mockup: 'admin-invoices',
       detail: {
+        requirements: [
+        {
+          label: 'Invoice (VAT e-invoice) status',
+          text: 'The status on the Invoice list. The VAT e-invoice is the only fiscal document in the chain, issued from a PO only AFTER Accounting has confirmed the payment (T&C clause 3), and issuing it is the event that closes the deal and releases provisioning.',
+          table: {
+            cols: ['Status', 'Means', 'Rule'],
+            rows: [
+              ['Issued', 'The provider signed it and returned the legal number', 'KẾ TOÁN ONLY issues it, and only from a PO with a confirmed payment (clause 3, enforced server-side). Immutable. This is the event that closes the deal, moves the company out of Prospect, starts the 12-month clock and releases provisioning.'],
+              ['Cancelled / replaced', 'A wrong invoice was cancelled and superseded', 'KẾ TOÁN ONLY. Corrections go through cancel + biên bản + re-issue, never an edit (VN regulation). Both invoices stay on record, linked.'],
+              ['— Issuing (transient)', 'The provider call is in flight — seconds, not a state anyone browses', 'SYSTEM. invoice.issued must be idempotent on the invoice ID: a timeout + retry must never produce two legal numbers nor grant double quota.'],
+              ['— Provider error (transient)', 'The provider call failed', 'SYSTEM surfaces it to KẾ TOÁN to retry. Retry must be safe for the same reason.'],
+            ],
+          },
+          warn: 'Issued invoices are immutable. A correction is always cancel + credit note + re-issue — never an edit.',
+        },
+        ],
         description:
           'The closing document, and the only fiscal one in the chain. Issued from a PO AFTER Accounting has confirmed the payment — never before (T&C clause 3) — so it is proof of a completed sale rather than a request for one.\n\nIssuing it is the single most consequential click in the module: it closes the deal, moves the company out of Prospect, starts the 12-month activation window, and releases provisioning.',
         userStory:
@@ -1672,6 +1659,35 @@ export const crm: BuildModule = {
       notes: 'Inbound self-registrations from the Company site are LEAD CAPTURE, not provisioning. Every row must be resolved against the existing company list before anything is created.',
       mockup: 'crm-signups',
       detail: {
+        requirements: [
+        {
+          label: 'Sign-ups from the company site are LEAD CAPTURE, not provisioning',
+          text: 'Each inbound self-registration lands in a Sign-ups triage inbox and must be resolved against the existing company list first. Nothing is provisioned and no account is created from a sign-up.',
+          table: {
+            cols: ['Case', 'Action', 'Result'],
+            rows: [
+              ['New company — no match', 'Create lead', 'Enters the pipeline with customer status New'],
+              ['Matches an existing lead', 'Merge into that lead + notify its owner', 'Never a duplicate record'],
+              ['Existing customer', 'Send a join request to that company’s admin', 'Person becomes a user under the existing account — never a second company'],
+              ['Spam', 'Dismiss', 'Row cleared'],
+            ],
+          },
+          items: ['Matching key order, strongest first: tax code (MST) → email domain → company name. A public domain (gmail, yahoo…) can NEVER auto-match and always needs manual verification — this is the guard against merging two unrelated companies on a shared free-mail domain.'],
+        },
+        {
+          label: 'Sign-ups status',
+          text: 'The status of a row in the Sign-ups triage inbox. Each inbound self-registration is matched against the existing company list first, then resolved into exactly one of the dispositions below.',
+          table: {
+            cols: ['Status', 'Means', 'Rule'],
+            rows: [
+              ['New', 'Unresolved — just arrived and matched, awaiting a disposition', 'SYSTEM creates the row and runs the match; SALES must disposition it. A row cannot be left half-resolved — it stays New until an outcome is recorded.'],
+              ['Resolved', 'An outcome was recorded, with a link to what the row became', 'SALES picks one of three: New company → Create lead · Matches a lead → Merge + notify that lead’s owner · Existing customer → Send a join request to that company’s admin. SYSTEM records the link to whatever the row became.'],
+              ['Dismissed', 'Cleared as spam', 'SALES dismisses it. No record is created and nothing is provisioned.'],
+            ],
+          },
+          warn: 'Triage provisions nothing and creates no account or company — a merge never creates a second company record.',
+        },
+        ],
         description:
           'A triage inbox for people who register themselves on the Company site. Nothing is provisioned and no account is created from a sign-up — each row is matched against the existing company list and then resolved into exactly one of four outcomes. This is the guard that stops the company list filling with duplicates and stops a stranger being handed an existing customer’s account.',
         userStory:

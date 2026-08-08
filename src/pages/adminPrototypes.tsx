@@ -3904,37 +3904,31 @@ function OwnerHistory({ c }: { c: Company }) {
 }
 
 /* ── Verification documents — proof the MST belongs to them (giấy phép KD, giấy
-   chứng nhận đăng ký thuế, hợp đồng đã ký). Optional at creation, but REQUIRED +
-   approved before the first VAT e-invoice. Uploaded at creation AND managed here
-   on the record. Mirrors the CRM requirement "Company verification document". */
-type CoDocStatus = 'approved' | 'pending' | 'rejected'
-type CoDoc = { name: string; status: CoDocStatus; note?: string }
-const DOC_PILL: Record<CoDocStatus, { tone: StatusTone; label: string }> = {
-  approved: { tone: 'active', label: 'Đã duyệt' },
-  pending: { tone: 'pending', label: 'Chờ duyệt' },
-  rejected: { tone: 'rejected', label: 'Từ chối' },
-}
+   chứng nhận đăng ký thuế, hợp đồng đã ký). Uploaded at creation AND managed here
+   on the record.
+
+   NO approval status. A file is either on the record or it is not, and that single
+   fact is already visible from the list itself — a per-file Chờ duyệt / Đã duyệt
+   badge added a second state to read without adding anything to act on, and it
+   implied a review queue nobody owns. */
+type CoDoc = { name: string; note?: string }
 function companyDocs(c: Company): CoDoc[] {
-  // Anyone ever invoiced has an approved licence on file; a churned customer keeps
-  // theirs (it does not un-verify). A deal that reached PO is collecting the
-  // document — it sits Chờ duyệt. An early lead has none yet.
+  // Anyone ever invoiced has their licence on file; a churned customer keeps theirs.
+  // A deal that reached PO is collecting it. An early lead has none yet.
   if (c.account === 'Existing' || c.account === 'Churn') return [
-    { name: 'giay-phep-kinh-doanh.pdf', status: 'approved', note: `Kế toán duyệt · ${c.since}` },
-    { name: 'giay-chung-nhan-dang-ky-thue.pdf', status: 'approved' },
+    { name: 'giay-phep-kinh-doanh.pdf', note: `Tải lên ${c.since}` },
+    { name: 'giay-chung-nhan-dang-ky-thue.pdf' },
   ]
-  if (isCustomer(c)) return [{ name: 'giay-phep-kinh-doanh.pdf', status: 'pending' }]
+  if (isCustomer(c)) return [{ name: 'giay-phep-kinh-doanh.pdf' }]
   return []
 }
 function CompanyDocs({ c }: { c: Company }) {
   const [docs, setDocs] = useState<CoDoc[]>(() => companyDocs(c))
-  const add = () => setDocs((d) => [...d, { name: `tai-lieu-${d.length + 1}.pdf`, status: 'pending' }])
-  const allApproved = docs.length > 0 && docs.every((d) => d.status === 'approved')
+  const add = () => setDocs((d) => [...d, { name: `tai-lieu-${d.length + 1}.pdf` }])
   return (
     <DetailCard
       title="Verification documents"
-      action={docs.length === 0
-        ? <Pill tone="rejected">Chưa có</Pill>
-        : allApproved ? <Pill tone="active">Đã duyệt</Pill> : <Pill tone="pending">Chờ duyệt</Pill>}
+      action={<span className="text-[11px] text-faint">{docs.length} tệp</span>}
     >
       <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-4 text-center">
         <p className="text-[12px] font-medium text-ink">Kéo thả hoặc <button onClick={add} className="text-brand hover:underline">chọn tệp</button></p>
@@ -3949,7 +3943,6 @@ function CompanyDocs({ c }: { c: Company }) {
                 <a href="#" onClick={(e) => e.preventDefault()} className="block truncate text-[11.5px] font-medium text-brand hover:underline">{d.name}</a>
                 {d.note && <p className="truncate text-[10px] text-faint">{d.note}</p>}
               </div>
-              <Pill tone={DOC_PILL[d.status].tone}>{DOC_PILL[d.status].label}</Pill>
               <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
             </div>
           ))}
@@ -3957,7 +3950,7 @@ function CompanyDocs({ c }: { c: Company }) {
       )}
       {docs.length === 0
         ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Chưa có tài liệu xác minh — vẫn bán được, nhưng sẽ bị chặn ở bước <b>xuất hoá đơn VAT</b>.</p>
-        : <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Không bắt buộc lúc tạo, nhưng <b className="text-ink/70">bắt buộc + đã duyệt trước khi xuất hoá đơn VAT</b>. Kế toán duyệt; bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>}
+        : <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>}
     </DetailCard>
   )
 }
@@ -6886,13 +6879,12 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
                   <div key={i} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5">
                     <span className="text-[13px]">📄</span>
                     <span className="min-w-0 flex-1 truncate text-[11.5px] text-ink/80">{d}</span>
-                    <Pill tone="pending">Chờ duyệt</Pill>
                     <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="text-[11px] text-faint hover:text-ink">✕</button>
                   </div>
                 ))}
               </div>
             )}
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Không bắt buộc lúc tạo, nhưng <b className="text-ink/70">bắt buộc trước khi xuất hoá đơn VAT</b>. Kế toán duyệt; công ty chưa duyệt vẫn bán được nhưng bị cảnh báo ở bước hoá đơn.</p>
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Không bắt buộc lúc tạo — có thể tải lên bất cứ lúc nào từ hồ sơ công ty.</p>
           </div>
         </JobGroup>
 
