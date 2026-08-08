@@ -171,26 +171,72 @@ export const crm: BuildModule = {
       ],
     },
     {
-      label: 'MST duplicate check — the two buttons, and what each one writes',
-      text: 'The check runs on the tax code as it is typed and has THREE outcomes, not two. Only an identical FULL MST is a duplicate and blocks the save. A shared 10-digit root with a different suffix, or a near-identical legal name on a different MST, is almost always an affiliate — the system flags it and offers a link, and the rep answers with one of two buttons. Blocking either of those is what would stop sales entering a legitimate new customer.',
+      label: 'MST check — three outcomes, and the affiliate list that replaces the warning',
+      text: 'The check runs on the tax code as it is typed. Only an identical FULL MST is a duplicate and blocks the save. A shared 10-digit root is NOT a duplicate — it is the same legal entity’s branches, or two companies that happen to collide — so the form does not judge it. It lists every company on that root and lets the rep link, in either direction, or ignore it. Blocking here is what would stop sales entering a legitimate new customer.',
       table: {
-        cols: ['Outcome', 'What the rep sees', 'What the button writes', 'Can the record be saved?'],
+        cols: ['Outcome', 'What the rep sees', 'Blocks the save?'],
         rows: [
-          ['Identical full MST', 'Blocking error naming the existing company, with a link to open it', 'Nothing — there is no button', 'NO. The company already exists.'],
-          ['Same 10-digit root, different suffix (0328xxxxxx vs 0328xxxxxx-001)', 'Amber warning naming the match: company, MST, sales owner', '“Liên kết làm chi nhánh của công ty này” → parentCompanyId = the match', 'Yes'],
-          ['Same root, but genuinely unrelated', 'The same amber warning', '“Không liên quan — tạo độc lập” → parentCompanyId stays empty; the override is written to history', 'Yes'],
-          ['Near-identical legal name on a different MST ("… Miền Nam", "… Hà Nội")', 'The same amber warning, matched on name instead of MST', 'Either button, same as above', 'Yes'],
+          ['Identical full MST', 'Error naming the existing company, with a link to open it', 'YES — the company already exists'],
+          ['Same 10-digit root', 'A LIST of every company on that root: name, full MST, location, sales owner. Each row offers two link directions.', 'No'],
+          ['Near-identical legal name on a different MST', 'The same list, matched on name', 'No'],
+          ['No match', 'Nothing at all', 'No'],
         ],
       },
       items: [
-        'Answering REPLACES the warning with what was decided — green “Sẽ tạo làm chi nhánh của …” or a neutral “Tạo bản ghi độc lập”. An unanswered warning must never just sit there next to a filled-in form; the rep has to be able to see which way it went.',
-        'Both answers are reversible until Save (“Bỏ liên kết” / “Hoàn tác”). A mis-click must not force the rep to close the form and retype everything.',
-        'Linking as a branch FILLS the Công ty mẹ field and locks it, labelled “Từ liên kết chi nhánh” — so there is one visible source of that value, not two controls that can disagree.',
-        'Neither answer is required to save. The warning is advice; only an identical full MST blocks.',
-        '“Không liên quan” is recorded against the record with who decided and when, so the same pair does not get re-flagged on every later edit.',
-        'Branch (same 10-digit root, -001 suffix) and subsidiary (a completely different MST) are stored the same way — one parentCompanyId. The distinction is derived from the tax codes for display only.',
+        'Each row has TWO buttons, and they have deliberately different cardinality: “↑ Là con của” (the new company is a subsidiary of this one) can be set on at most ONE row — choosing another releases the first — while “↓ Là mẹ của” (the new company is the parent of this one) can be set on many rows at once. That mirrors the data: one parentCompanyId per record, any number of children.',
+        'A running summary states the outcome in words — “Sẽ liên kết: công ty con của X, công ty mẹ của Y, Z” — so the rep never has to read the button states back to know what will be saved.',
+        'Using both directions at once is legal: it means the new company sits in the middle of a group. It is also the only way to describe a loop, so the save validates the whole chain and rejects a link that would make a company its own ancestor.',
+        'Linking is optional and never blocks the save. A rep who ignores the list creates a standalone record, which is the correct outcome for a genuine MST collision.',
+        'Branch (same 10-digit root, -001 suffix) and subsidiary (a different MST) are stored identically — one parentCompanyId. The label shown is derived from comparing the two tax codes.',
       ],
-      warn: 'Nothing is inherited down the link, in either case: the new record keeps its own MST, package/quota, quotations, VAT invoices, users and sales owner. The link is for lookup and navigation only — a branch can never spend its parent’s quota.',
+      warn: 'Nothing is inherited across the link, in any direction: each record keeps its own MST, package/quota, quotations, VAT invoices, users and sales owner. A branch can never spend its parent’s quota.',
+    },
+    {
+      label: 'MST lookup — auto-fill from the tax authority',
+      text: 'Once 10 digits are entered, a “Tra cứu” button queries the Vietnamese tax registry and fills legal name, registered address and business line. It is a convenience, not a gate: every field it fills stays editable, and the form saves with or without it.',
+      items: [
+        'The registered address is the REGISTERED office, which is frequently not where the people work. The rep must be able to overwrite it — a locked auto-filled address would put the wrong address on every invoice.',
+        'The lookup must never block the save: if the service is down, slow, or returns nothing, the rep types the fields by hand and carries on. Show the failure, do not trap the form.',
+        'Only fill EMPTY fields. Re-running the lookup must not silently overwrite something the rep has already corrected.',
+        'Record which fields came from the lookup and when, so a later mismatch can be traced to the source.',
+      ],
+      warn: 'Feasibility is an open question for the BA. There is no free, official, guaranteed public API — data comes from commercial providers (invoice/e-signature vendors such as VNPT, Viettel, MISA, or resellers of the General Department of Taxation feed), and terms, cost, rate limits and uptime vary. Decide: paid provider, or drop the button. Build the form so the answer changes one call, not the flow.',
+    },
+    {
+      label: 'New company is a PAGE, and what it asks for',
+      text: 'Creating a company is a screen of its own, not a dialog: it is long enough to need the whole viewport, it can be linked to and reloaded, and it is reached three ways — “+ New company” on the list, “+ New lead” on the pipeline, and “+ Thêm công ty con” on a company record (which locks the parent). Four sections, in this order.',
+      table: {
+        cols: ['Section', 'Holds', 'Required in it'],
+        rows: [
+          ['Company information', 'Legal name, short name, MST (+ lookup + affiliate list), industry, size, tags, country, province, address (+ map picker), website', 'Legal name · Tax code (MST)'],
+          ['Company verification document', 'Business licence / tax registration / signed contract upload', 'None at creation — see below'],
+          ['Primary contact', 'Name, title, phone, email', 'Name · Phone · Email'],
+          ['Sales', 'Lead source, sales owner, products interested, estimated value, description', 'None'],
+        ],
+      },
+      items: [
+        'Phone AND email are both required on the primary contact: a contact nobody can reach is not a contact, and one channel is not enough when the other bounces.',
+        'The Company ID is assigned on save and is not mentioned on the form — a field the rep can neither fill nor change is noise while they are filling one in. It appears on the record afterwards.',
+        'Address gets an optional “Chọn trên bản đồ” picker storing coordinates alongside the typed text. Sales use the pin to find the office; the DOCUMENTS always print the typed address, never the map’s.',
+        'The form and the Basic-info card on the record must expose the same field set — a field that can only be set at creation, or only after, is a data hole.',
+      ],
+    },
+    {
+      label: 'Company verification document',
+      text: 'The document that proves the tax code belongs to them — business licence (giấy phép kinh doanh), tax registration certificate, or a signed contract. Uploaded on the create page, and again at any time from the company record.',
+      table: {
+        cols: ['Stage', 'Rule'],
+        rows: [
+          ['At creation', 'Optional. Requiring it here would block a rep entering a lead they just met at an event.'],
+          ['Selling — quotation, PO', 'Optional. Warn, do not block.'],
+          ['Issuing the VAT e-invoice', 'REQUIRED and approved. This is the point where the tax identity has to be real.'],
+          ['Approval', 'Kế toán approves or rejects, with a reason. Status: Chờ duyệt → Đã duyệt / Từ chối.'],
+        ],
+      },
+      items: [
+        'Several files per company, each with its own status — a licence can be superseded when the company re-registers, and the old one stays for the audit trail.',
+        'PDF / JPG / PNG, 10MB per file.',
+      ],
     },
     {
       label: 'Công ty con — the UI, in both directions',
@@ -579,7 +625,7 @@ export const crm: BuildModule = {
       ],
     },
     {
-      label: 'IDLE — what it is',
+      label: 'LAST CONTACT (idle) — what it is',
       text: 'An INDEPENDENT field on the company, deliberately unrelated to the pipeline: idle = today − the date of the last CONTACT with the client. It answers one question only — “how long since anyone talked to them?” — so it is defined for every company, with or without a deal. It never blanks out.',
       items: [
         'Resets ONLY on real human contact: a logged activity (chat / call / meeting) or a document actually sent or confirmed to the client.',
@@ -602,16 +648,23 @@ export const crm: BuildModule = {
       },
     },
     {
-      label: 'IDLE — display rule (one rule, adaptive unit)',
+      label: 'LAST CONTACT — the column shows a DATE, not a gap',
+      text: 'The column is called “Last contact” and it shows the date of that contact — 05/07/2026. It used to show the gap (“1m 4d”), which made the reader do two conversions: from a duration back to a date, and from a date back to “is that bad?”. The date answers the first directly, and the health dot answers the second, so neither has to be worked out.',
       table: {
-        cols: ['Gap', 'Shows as', 'Example'],
+        cols: ['State', 'Shows as', 'Example'],
         rows: [
-          ['Under 30 days', 'Whole days', '3d · 12d · 29d'],
-          ['30 days and over', 'Months + remainder', '1m · 1m 18d · 3m 2d'],
-          ['No contact ever logged', 'A distinct state, not 0d', '“Never contacted”'],
+          ['Contacted at some point', 'dd/mm/yyyy of the newest SALES activity', '05/07/2026'],
+          ['No contact ever logged', 'A distinct state, never a date and never 0', '“Chưa liên hệ” — red'],
+          ['Anywhere a DURATION is what is being said', 'Days, rolling up past 30 days', '“12d ago” · “2m 4d ago” on the activity trail'],
         ],
       },
-      warn: 'Never show a raw day count above 30 — “92d” is unreadable where “3m 2d” is instant. The stored value stays a timestamp; days/months is presentation only, and sorting always uses the underlying value.',
+      items: [
+        'The coloured dot beside the date is unchanged: green / amber / red from the same cadence thresholds. The date says WHEN, the dot says WHETHER IT IS LATE — the reader should not have to subtract to learn the second.',
+        'The gap in days moves into the tooltip, together with the threshold being applied: “Liên hệ gần nhất 05/07/2026 — 34 ngày trước. Existing expects monthly contact: amber from 30d, red from 60d.”',
+        'On a card, where there is no column header to carry the meaning, the pill says it: “Liên hệ 05/07/2026”.',
+        'THRESHOLDS are still expressed in days — they are durations, and “amber from 30d” is the natural way to state a rule. Only the read-out is a date.',
+      ],
+      warn: 'The stored value stays a TIMESTAMP; the date is presentation only, and sorting always uses the underlying value so the order is by recency, not by the rendered string.',
     },
     {
       label: 'IDLE — build rules for the developer',
@@ -663,6 +716,37 @@ export const crm: BuildModule = {
         ],
       },
       warn: 'Triage provisions nothing and creates no account or company — a merge never creates a second company record.',
+    },
+    {
+      label: 'Logging an activity — three types, and who gets the credit',
+      text: 'Sales log what they did on the company record. Three types, because they carry different facts.',
+      table: {
+        cols: ['Type', 'Asks for', 'Notes'],
+        rows: [
+          ['💬 Chat', 'Channel (Zalo · Messenger · Email · SMS · Zalo OA · Phone · Other) + note + attachments', 'Channel is required — “we chatted” without saying where is not a record.'],
+          ['📞 Call', 'Note + attachments', 'Auto-filled from Calio when the call came through it.'],
+          ['🤝 Meeting', 'Date · time · duration · format (their office / our office / Meet / Zoom / other) · attendees · note + attachments', 'The only type with a scheduled MOMENT of its own — a chat is logged when it happened, a meeting is logged against the slot it was held in.'],
+        ],
+      },
+      items: [
+        'ATTACHMENTS on every type, several per activity: screenshots of a Zalo thread, meeting minutes, photos. They belong to the activity row, not to a separate document library — the point is that the row proves what happened.',
+        'EMAIL is attached two ways: (1) the rep forwards or BCCs the message to a system address (crm@saramin.vn) and the system files it against the company by matching the sender/recipient domain — this is the one reps actually use, because it needs no upload; (2) uploading a saved .eml / .msg file, as the fallback when the address is not reachable.',
+        'Every activity is stamped with the ACCOUNT that performed it — NOT the company’s sales owner. A colleague covering for a busy owner is the one shown, and the one the KPI counts. The composer states whose KPI it will land on before the rep saves.',
+        'The activity table shows that account by name, with the side it acted for underneath, and marks a row “hỗ trợ” when the performer is not the company’s owner — so a sales lead can see help being given without opening anything.',
+        'Idle still counts from the newest SALES row regardless of who performed it: any colleague’s contact is contact.',
+      ],
+    },
+    {
+      label: 'Search on the Companies list — a rep lists only their own book, but can REACH any customer by name',
+      text: 'In Sales view the list is ONLY the rep’s own book — there is NO “whole system” mode for a rep to browse everyone’s customers. But a rep must still be able to REACH one specific customer they know exists; otherwise “not in my list” reads as “does not exist” and they re-create a company that already has an owner. So the search box does double duty: it filters my own book, and — the point of the request — it surfaces matches OUTSIDE my book as direct links into that one record, never as a browsable list.',
+      items: [
+        'REMOVED: the old “Của tôi · Toàn hệ thống” toggle. A rep cannot list the whole system’s customers. Seeing every customer is the Sales-lead view — a separate role, not a switch on the rep’s own list.',
+        'The placeholder states the book, its count, and the reach: “Tìm trong 28 công ty của tôi · gõ tên / MST để mở nhanh một KH bất kỳ…”.',
+        'REACH, NOT BROWSE: when the query matches companies owned by someone else, a small block appears under the search with up to a handful of exact matches, each a direct link straight into that customer’s record (“… do sales khác phụ trách · Mở →”). It requires a real query (≥ 2 characters) — an empty box never enumerates other reps’ books.',
+        'Each surfaced match shows Company ID + MST + owner, so a colleague’s record is never mistaken for one of yours and the rep opens the right one.',
+        'Search matches name, short name, legal name, MST, Company ID, contact and domain — including fields the table does not print. A box that promises “MST, company ID” has to match them.',
+      ],
+      warn: 'What a rep may DO with another rep’s company is a separate permission question from what they may FIND. Recommend: reach + open read-only, but no edit and no logging activity without a re-assignment. Needs the client’s decision.',
     },
     {
       label: 'Activities on the company record — SALES activity only',
@@ -758,7 +842,7 @@ export const crm: BuildModule = {
           },
         ],
         behaviors: [
-          'The directory filters by customer status (New / Existing / Churn), owner, industry, activity (has quote/PO/invoice/contract); Sales sees their own book, Sales-lead sees the whole team.',
+          'The directory filters by customer status (New / Existing / Churn), owner, industry, activity (has quote/PO/invoice/contract); Sales sees ONLY their own book (no whole-system list), reaching any other customer solely by direct search; Sales-lead sees the whole team.',
           'The list carries a Tier column — the membership badge plus the accumulated-in-year figure beneath it — and the record carries a Membership block with the gap to the next band. Both are read-only: the tier is computed, never set here; the thresholds and the reward catalogue are configured in System → Membership tiers.',
           'The Pipeline board is this same list grouped by pipeline stage — a view, not a second dataset.',
           'Row → the company record: contact, deal(s), quote/PO/invoice history, and — for customers — its account, products/quota, users, and public page as sections.',

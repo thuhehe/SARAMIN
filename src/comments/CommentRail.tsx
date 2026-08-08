@@ -400,7 +400,6 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
     allThreads,
     truncated,
     docKey,
-    share,
     member,
     error,
     signOut,
@@ -759,8 +758,7 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         {/* A member is already named by their account — asking again
             would invite two names for one person. */}
         {member ? <MemberBadge member={member} /> : <NameField />}
-        <div className="flex items-center justify-between text-[10px] text-faint">
-          <span>{share ? `${share.projectKey} · BB PM` : 'BB PM'}</span>
+        <div className="flex items-center justify-end text-[10px] text-faint">
           <span className="flex gap-2">
             <button type="button" onClick={refresh} className="hover:text-ink">
               Refresh
