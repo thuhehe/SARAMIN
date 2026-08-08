@@ -10,25 +10,29 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Surface', 'What it is', 'Gate'],
         rows: [
-          ['Create CV — Jobseeker', 'Online builder + uploaded CV; “My CVs” on My page', '—'],
+          ['Create CV — Jobseeker', 'Add a CV: upload a file, or build a Saramin CV; “My CVs” on My page', '—'],
+          ['CV compare — Jobseeker', 'After an upload is converted: the PDF beside the structured version, gaps flagged inline', '—'],
           ['Resume list — Admin', 'HQ oversight of the CV pool', 'HQ role'],
           ['Create resume — Admin', 'HQ registers a candidate: upload + CV Convert, or the Builder wizard', 'HQ role'],
           ['Resume list — Companies', 'CV search / talent search', 'Package + candidate visibility consent'],
         ],
       },
-      items: ['One jobseeker = one primary CV in Phase 1 — to CONFIRM with the client.'],
+      items: ['Up to 3 CVs per jobseeker, exactly ONE of them searchable — decided; see the data model below.'],
     },
     {
-      label: 'The Saramin Standard Resume is the ONE model every route normalises to',
-      text: 'A resume can arrive four ways — a candidate uploads a CV, a candidate builds one online, HQ uploads a CV on their behalf, HQ types one in. All four produce the same object: a CV document plus one Saramin Standard Resume (12 sections + job preferences + tags). Nothing downstream may branch on which route was used.',
+      label: 'Route never leaks: four ways in, one shape out',
+      text: 'A resume arrives four ways — candidate uploads · candidate builds · HQ uploads on their behalf · HQ types one in. All four end as the same thing: a CV document plus one structured CV-content record. Nothing downstream may branch on which route was used.',
       table: {
         cols: ['Route', 'Document set', 'How the structured layer is produced'],
         rows: [
-          ['Upload (candidate or HQ)', 'original CV; + generated Saramin CV only after the OPTIONAL convert offer', 'CV Convert pipeline — parse, extract, AI-tag, generate'],
-          ['Builder (candidate or HQ)', 'generated Saramin CV only', 'the typed fields, plus AI tagging over the body'],
+          ['Upload (candidate or HQ)', 'the original file; a generated Saramin CV only if the OPTIONAL convert offer is accepted', 'CV Convert pipeline — parse, extract, AI-tag, generate'],
+          ['Build (candidate or HQ)', 'generated Saramin CV only', 'the typed fields, plus AI tagging over the body'],
         ],
       },
-      warn: 'Search, matching and the employer-facing CV all read the standard model — never the route. If a Builder resume behaves differently in CV search from an uploaded one, the boundary has leaked.',
+      items: [
+        'The “Saramin Standard Resume” (12 sections + preferences + tags, `standardJson`) is the RENDERED CONTRACT — the shape a resume is serialised to and read back in. It is not a third storage location: identity and preferences resolve from the Profile, career content from the CV record (see the data model below).',
+      ],
+      warn: 'Search, matching and the employer-facing CV all read the structured layer — never the route. If a built CV behaves differently in CV search from an uploaded one, the boundary has leaked.',
     },
     {
       label: 'DATA MODEL (decided): CANDIDATE DATA = 3 groups — Basic information · Work preference · CV content',
@@ -55,14 +59,14 @@ export const resumeManagement: BuildModule = {
     },
     {
       label: 'Add a new CV — ONE entry, two routes, shared everywhere',
-      text: 'Everywhere a candidate adds a CV — the My CVs page AND Apply → “Add a new CV” — opens the SAME flow: a single “Add new CV” action offering (1) Upload a CV or (2) Build a Saramin CV. The two surfaces must never diverge.',
+      text: 'Everywhere a candidate adds a CV — the My CVs page AND Apply → “Add a new CV” — opens the SAME flow: a single “Add new CV” action offering (1) Upload a CV or (2) Build a Saramin CV. The two surfaces must never diverge. The two routes answer two different intents, and the wording must respect that: upload means “my PDF is there, that’s it”, build means “make me the searchable one”.',
       table: {
         cols: ['Step', 'What happens'],
         rows: [
-          ['Upload a CV', 'AI reads the file and fills the Standard Resume — the candidate does NOT re-type what the CV already contains.'],
-          ['Review = COMPARE', 'A full-screen side-by-side: the uploaded PDF on the LEFT, the same information restructured as a Saramin CV on the RIGHT. Gaps are flagged inline in the structure (the candidate reads missing details straight off their own PDF); AI-SUGGESTED skills appear as one-tap add chips.'],
-          ['Document choice', 'Save my PDF only · Saramin CV only · BOTH (each saved document counts toward the 3-CV cap). The confirmed information is saved to the CV record regardless of the choice.'],
-          ['Build a Saramin CV', 'For candidates with no file: the guided builder produces the document + the Standard Resume directly (no extraction step).'],
+          ['Upload a CV', 'The file is saved as a CV in ONE step, byte-identical, immediately usable for applying. No extraction is forced on the candidate here.'],
+          ['Convert? — an OFFER, not a step', 'Right after saving: “Also create a Saramin CV from it?” Accepting runs the CV Convert pipeline and moves the candidate onto the build route. Declining costs nothing and leaves a complete, usable CV; the offer stays available from My CVs. Asked ONCE — never a recurring nag.'],
+          ['Review = COMPARE (only if converting)', 'Side-by-side: the uploaded PDF on the LEFT as a small reference, the same information restructured as a Saramin CV on the RIGHT as the main subject. Gaps are flagged inline in the structure (the candidate reads missing details straight off their own PDF); AI-SUGGESTED skills appear as one-tap add chips. One Save — the original PDF is untouched and stays in My CVs either way.'],
+          ['Build a Saramin CV', 'For candidates with no file: the guided builder produces the document + the structured record directly. It ALSO offers “Upload & pre-fill” — the same pipeline, entered from the other end, landing on the same compare screen.'],
         ],
       },
       items: [
@@ -89,47 +93,46 @@ export const resumeManagement: BuildModule = {
         'Progressive & skippable: collect the minimum to start, let the candidate browse/apply immediately, then raise completeness over time. Nothing in onboarding blocks applying.',
         'Motivate with carrots, not required-asterisks: show the payoff at each step (“12,400 jobs match your info so far”, “+40% recruiter views”) — the Saramin-KR pattern. This is also why a partly-filled profile reads as a guided to-do list, not a broken page.',
       ],
-      warn: 'Do NOT rebuild VietnamWorks’ long basic-info form. Rich data comes from AI extraction + progressive nudges, never a wall of required fields at sign-up.',
+      warn: 'Do NOT rebuild VietnamWorks’ long basic-info form at SIGN-UP. Rich data comes from AI extraction + progressive nudges, never a wall of required fields at registration.\n\n⚠️ UNRESOLVED CONFLICT with Application management → Apply flow: this block says DROP marital status, gender, nationality, current salary, district and the benefits picker. The apply form currently COLLECTS all of them (~24 fields), modelled on VietnamWorks at the client’s direction. Both cannot be right. Either the drop-list is onboarding-only and those fields are legitimately asked at apply time — in which case say so here — or the apply form needs trimming to match. Needs one decision, applied in both modules.',
     },
     {
-      label: 'CV search is a DISCOVERY task first',
-      text: 'How the CV pool is structured, indexed, searched and ranked must be researched before any build. See the “Resume list — Companies” feature.',
-    },
-    {
-      label: 'Do NOT burden candidates with heavy TYPING',
-      text: 'The structured data needed for matching and CV search is EXTRACTED from the uploaded CV by AI — not typed by the user. See “CV data & matching architecture”.',
-      items: [
-        'The objection is to typing, NOT to a complete profile. The apply form collects the full profile (~24 fields, grouped) — every field the CV can supply arrives pre-filled, and the candidate confirms rather than types. See Application management → Apply flow.',
-        'Read the rule as: never ask for anything a CV already contains. A pre-filled field costs a glance; the same field blank costs a candidate.',
-      ],
-      warn: 'This rule DEPENDS on extraction being live. With the parser off, a pre-filled confirmation form degrades into a 24-field blank form at the exact moment a candidate is trying to apply — flagged as an open question on Apply flow.',
-    },
-    {
-      label: 'Why we parse the CV into a structured database (not just store the PDF)',
-      text: 'A PDF is opaque to software — you cannot search, filter, rank or match on it. Parsing every CV into one structured Candidate Profile is the foundation that unlocks the whole employer side.',
+      label: 'THE PRINCIPLE: extract, don’t ask — and why a PDF alone is worthless',
+      text: 'A PDF is opaque to software: you cannot search, filter, rank or match on it. So every CV is parsed into structured candidate data — and that data is EXTRACTED by AI, not typed by the candidate. Both halves matter: without the structure the employer side does not exist, and without extraction the candidate abandons the form.',
       table: {
         cols: ['Capability', 'Needs structured data because…'],
         rows: [
           ['CV search (the paid feature)', 'Recruiters search by facets — title, skills, years, location. A PDF has no facets.'],
-          ['CV ↔ JD match score', 'A % fit is computed by comparing profile fields to the job’s fields — impossible on raw text.'],
+          ['CV ↔ JD match score', 'A % fit is computed by comparing candidate fields to the job’s fields — impossible on raw text.'],
           ['Filter & rank a large pool', 'Narrow thousands of CVs and order them by relevance / recency / completeness.'],
           ['Recommendations & alerts', 'Suggest jobs to candidates, surface new matching CVs to recruiters.'],
-          ['Quick-apply autofill', 'Pre-fill the application from the profile so applying is one tap.'],
+          ['Quick-apply autofill', 'Pre-fill the application so applying is one tap.'],
           ['Pool quality & dedup', 'Completeness scoring, spotting duplicate / thin CVs.'],
           ['Market analytics', 'What skills the pool holds vs. what employers demand.'],
         ],
       },
-      warn: 'This is the foundation feature: CV search, matching and recommendations ALL depend on it. It is the first thing to assign — see “CV data & matching architecture” → Kick-off.',
+      items: [
+        'The objection is to TYPING, not to complete data. A form may be long if it arrives PRE-FILLED — the candidate confirms rather than types. Read the rule as: never ask for anything a CV already contains.',
+        'A pre-filled field costs a glance; the same field blank costs a candidate.',
+        'Corollary — DERIVE rather than ask: years of experience from work history, seniority from titles + years, highest degree from education. Asking for a number the CV already implies is the same mistake as asking for the CV again.',
+      ],
+      warn: 'This principle DEPENDS on extraction being live. With the parser off, every pre-filled form degrades into a blank one at the worst possible moment — and the fields we justified by “it’s only a confirmation” become real work. Phase-1 must either ship the parser or ship a reduced field set; see Apply flow → open questions.',
     },
     {
-      label: 'CV visibility (candidate-owned)',
+      label: 'CV search is a DISCOVERY task before it is a build task',
+      text: 'How the CV pool is structured, indexed, searched and ranked must be researched before any build — see “Resume list — Companies”, and “CV data & matching architecture” → Kick-off for the research spike. That spike is the first thing to assign: CV search, matching and recommendations all sit on top of it.',
+    },
+    {
+      label: 'CV visibility (candidate-owned) — ONE account-level switch',
       table: {
         cols: ['Status', 'Means', 'Rule'],
         rows: [
-          ['Discoverable', 'The primary CV can appear in employer CV search as a LOCKED preview; a company must spend an unlock to see the full CV.', 'Can only be changed by the candidate — no system action and no HQ action may flip it.'],
-          ['Hidden', 'The candidate does not appear in employer search at all; applying still works.', 'Candidate-set only; Hidden takes effect on the search index synchronously.'],
+          ['Discoverable', 'The candidate appears in employer CV search as a LOCKED preview built from their Profile + searchable CV; a company must spend an unlock to see the full CV and contact details.', 'Can only be changed by the candidate — no system action and no HQ action may flip it.'],
+          ['Hidden', 'The candidate does not appear in employer search at all; applying still works, and applications already sent are unaffected.', 'Candidate-set only; Hidden takes effect on the search index synchronously, not at the next re-index.'],
         ],
       },
+      items: [
+        'Visibility is ACCOUNT-level, not per-CV. The per-CV control in My CVs answers a different question — WHICH of the candidate’s CVs feeds search and is delivered on an unlock — and must not be worded as if it were a visibility toggle.',
+      ],
     },
     {
       label: 'CV moderation status (HQ-owned)',
@@ -252,7 +255,7 @@ export const resumeManagement: BuildModule = {
           'Visibility consent is explicit and defaults to the safer value; uploading a CV is not consent to be discovered by employers.',
           'File types are restricted to PDF / DOC / DOCX and scanned for malware before they are ever served to an employer.',
           'The document served to an employer is the snapshot attached to their application, not the candidate’s latest edit (see Application management).',
-          'Phase-1 assumes one primary CV per candidate — flagged for confirmation in the module requirements.',
+          'Up to 3 CVs per candidate, exactly ONE of them searchable — decided; see the module data model.',
         ],
         states: [
           'Route choice',
@@ -305,7 +308,7 @@ export const resumeManagement: BuildModule = {
           'A newly uploaded CV is not discoverable in employer search until visibility consent is given.',
         ],
         openQuestions: [
-          'Is one primary CV per candidate firm for Phase-1, or should multiple CVs be supported from the start?',
+          'The 3-CV cap is decided — is 3 the right number, and what happens when a candidate wants a 4th (replace-oldest vs. hard stop)?',
           'Which builder templates does the client want, and who designs them?',
           'Do we localise the builder output (a VI CV and an EN CV from the same data)?',
           'For Phase-1 without AI, how many fields is it acceptable to ask for after an upload?',
@@ -359,7 +362,7 @@ export const resumeManagement: BuildModule = {
           {
             heading: 'Visibility — one switch, stated consequences',
             items: [
-              'Discoverable — the primary CV can appear in employer CV search as a LOCKED preview; a company must spend an unlock to see the full CV and contact details.',
+              'Discoverable — the candidate appears in employer CV search as a LOCKED preview built from their Profile + searchable CV; a company must spend an unlock to see the full CV and contact details.',
               'Hidden — the candidate does not appear in employer search at all. Applying still works, and an application still delivers the CV to that employer.',
               'Turning Hidden on removes the candidate from the search index immediately, not at the next re-index — a privacy control that lags is not a control.',
               'Hidden never affects applications already sent, and the screen says so, because "hide me" is easily read as "recall everything".',
@@ -414,7 +417,7 @@ export const resumeManagement: BuildModule = {
           ],
           integrations: ['CV search index (synchronous removal on Hidden)', 'Products & packages (unlock consumption)', 'Object storage'],
           notes:
-            'Enforce one primary CV with a partial unique index rather than application logic. The visibility flag must be honoured by the search index itself, not filtered at read time — filtering after the fact is how a hidden candidate ends up in a result count.',
+            'Enforce exactly one SEARCHABLE CV per jobseeker with a partial unique index rather than application logic. The visibility flag must be honoured by the search index itself, not filtered at read time — filtering after the fact is how a hidden candidate ends up in a result count.',
         },
         acceptance: [
           'Setting a CV primary changes what quick apply attaches.',
@@ -1126,7 +1129,7 @@ export const resumeManagement: BuildModule = {
           notes:
             'STARTING SKETCH ONLY — to be confirmed by the research. The point of the discovery task is to decide the real shape of this. Search likely needs a dedicated index (e.g. full-text / faceted) separate from the primary CV store.',
           dataModel: [
-            { name: 'cvId', type: 'uuid', notes: 'one primary CV per seeker (Phase-1) — confirm' },
+            { name: 'cvId', type: 'uuid', notes: 'the searchable CV — one per seeker (up to 3 held)' },
             { name: 'seekerId', type: 'uuid' },
             { name: 'title / desiredPosition', type: 'string', notes: 'primary keyword field' },
             { name: 'skills', type: 'string[]', notes: 'tag/faceted — a key search facet; needs normalisation' },
