@@ -534,16 +534,27 @@ function CompletenessBar() {
    builder — the two screens must offer the same sections in the same order with
    the same stated payoff, or the candidate is told two different stories about
    what a complete CV is. Field lists for these live in SECTION_EDITORS. */
+/* ── CV completeness weights — they must total exactly 100%.
+   Weighted by what a recruiter actually filters and reads: work history is the
+   single biggest signal, skills are the #1 search facet, then education, then
+   the summary. The eight optional sections share the remaining 25%. ── */
+export const CORE_CV_SECTIONS: { title: string; pct: string }[] = [
+  { title: 'Work experience', pct: '30%' },
+  { title: 'Skills', pct: '20%' },
+  { title: 'Education', pct: '15%' },
+  { title: 'About', pct: '10%' },
+] // = 75%
+
 export const OPTIONAL_CV_SECTIONS: { title: string; pct: string; desc: string; icon: string }[] = [
-  { title: 'Foreign Language', pct: '10%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
+  { title: 'Foreign Language', pct: '6%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
   { title: 'Highlight Project', pct: '5%', desc: 'Showcase your highlight project', icon: '📁' },
-  { title: 'Certificates', pct: '5%', desc: 'Provide evidence of your specific expertise and skills', icon: '📜' },
-  { title: 'Awards', pct: '5%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
+  { title: 'Certificates', pct: '4%', desc: 'Provide evidence of your specific expertise and skills', icon: '📜' },
+  { title: 'Awards', pct: '3%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
   { title: 'Activities', pct: '3%', desc: 'Volunteering, clubs & communities you take part in', icon: '🎯' },
   { title: 'Publications', pct: '2%', desc: 'Articles or papers you have published', icon: '📰' },
-  { title: 'References', pct: '3%', desc: 'People who can vouch for your work', icon: '👥' },
-  { title: 'Recommendations', pct: '5%', desc: 'Ask colleagues to recommend you', icon: '⭐' },
-]
+  { title: 'References', pct: '1%', desc: 'People who can vouch for your work', icon: '👥' },
+  { title: 'Recommendations', pct: '1%', desc: 'Ask colleagues to recommend you', icon: '⭐' },
+] // = 25%  →  75 + 25 = 100%
 
 /** Empty-section prompt with an impact ↑% (why it's worth filling). */
 function EmptySection({ title, desc, pct, icon, onAdd }: { title: string; desc: string; pct: string; icon: string; onAdd?: () => void }) {
@@ -1117,57 +1128,23 @@ function CreateCvScreen() {
             <Btn onClick={() => go('js-cv-compare')}>⬆ Upload &amp; pre-fill</Btn>
           </div>
 
-          {/* profile header — the top of the KR reference: identity from Profile */}
-          <div className="rounded-xl border border-line bg-surface p-4">
-            <div className="flex items-start gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 text-[17px] font-bold text-ink">
-                  Trần Minh Anh
-                  <span className="rounded-md border border-line px-2 py-0.5 text-[10.5px] font-medium text-muted">Trưởng nhóm ▾</span>
-                </p>
-                {/* ALL the Profile (= onboarding) fields — read-only here, edited on My Profile */}
-                <div className="mt-2 grid gap-x-6 gap-y-1 text-[11.5px] sm:grid-cols-2">
-                  {/* Unmasked: this is the candidate looking at their OWN CV.
-                      Masking belongs on employer-facing surfaces (locked search
-                      previews), not here — hiding it from the owner only makes it
-                      harder to check the address employers will contact. */}
-                  <p className="text-ink/80">✉ minhanh@email.com · 📱 0901 234 567</p>
-                  <p className="text-ink/80">💼 Desired: <b>Senior Product Designer</b></p>
-                  <p className="text-ink/80">📍 Hồ Chí Minh · Hà Nội <span className="text-faint">· open to relocating</span></p>
-                  <p className="text-ink/80">🏭 IT / Software · FMCG</p>
-                  <p className="text-ink/80">💰 20 – 30 tr</p>
-                  <p className="text-ink/80">📈 4 yrs · 🎓 Bachelor · 🟢 Open now</p>
-                </div>
-              </div>
-              <div className="grid h-16 w-14 shrink-0 place-items-center rounded-md border border-line bg-canvas text-[18px]">🙂</div>
-              <span className="cursor-pointer text-[13px] text-muted">✎</span>
-            </div>
-          </div>
+          {/* Profile summary — the SAME component as My CVs. Read-only here:
+              this is Profile data, not CV content, so the builder shows it rather
+              than asking for it again. */}
+          <ProfileSummaryCard />
 
-          {/* Education — essential; PRE-FILLED with the CV content from My Profile */}
+          {/* About — FIRST: the CV opens with who this person is, then the history */}
           <div>
-            <SectionHead title="Education" essential actions={['Add']} />
-            <div className="mt-3 space-y-2">
-              {([
-                ['University of Economics HCMC', 'Bachelor · Business Information Systems', '2016 – 2020'],
-                ['FPT Arena Multimedia', 'Diploma · Graphic & Digital Design', '2015 – 2016'],
-              ] as [string, string, string][]).map(([school, deg, dates]) => (
-                <div key={school} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] font-semibold text-ink">{school}</p>
-                    <p className="text-[11.5px] text-ink/80">{deg}</p>
-                    <p className="text-[11px] text-faint">{dates}</p>
-                  </div>
-                  <span className="cursor-pointer text-[12px] text-muted">✎</span>
-                </div>
-              ))}
+            <SectionHead title="About" actions={[]} />
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
+              <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink/80">Product designer with 4+ years across web and mobile products at agency and in-house teams. I turn user research into clean, usable interfaces and maintain scalable design systems.</p>
+              <span className="cursor-pointer text-[12px] text-muted">✎</span>
             </div>
           </div>
 
           {/* Work experience — PRE-FILLED with the CV content from My Profile */}
           <div>
-            <SectionHead title="Work experience" actions={['Import certified experience', 'Add']} />
+            <SectionHead title="Work experience" actions={['Add']} />
             <div className="mt-3 space-y-2">
               {([
                 ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.', ['User Research', 'Design Systems', 'Figma']],
@@ -1188,30 +1165,32 @@ function CreateCvScreen() {
             </div>
           </div>
 
-          {/* Skills — PRE-FILLED with years; the AI suggestions stay */}
+          {/* Education — sits BELOW work experience: for an experienced candidate
+              the history is the headline, the degree is the footnote. */}
           <div>
-            <SectionHead title="Skills" actions={['Add']} />
-            <div className="mt-3 rounded-xl border border-line bg-surface p-3.5">
-              <div className="flex flex-wrap gap-1.5">
-                {([['User Experience (UX)', '4 yrs'], ['Interaction Design', '4 yrs'], ['Design Systems', '3 yrs'], ['Product Design', '3 yrs'], ['User Research', '2 yrs']] as [string, string][]).map(([s, y]) => (
-                  <span key={s} className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80"><b className="font-semibold text-ink">{s}</b> ({y})</span>
-                ))}
-              </div>
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-brand-soft/50 px-2.5 py-2">
-                <span className="text-[11px] font-medium text-brand">✨ people in your role often list:</span>
-                {['Figma', 'Wireframing', 'Prototyping'].map((s) => <span key={s} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand">＋ {s}</span>)}
-                <span className="cursor-pointer text-[10.5px] font-medium text-brand">more →</span>
-              </div>
+            <SectionHead title="Education" essential actions={['Add']} />
+            <div className="mt-3 space-y-2">
+              {([
+                ['University of Economics HCMC', 'Bachelor · Business Information Systems', '2016 – 2020'],
+                ['FPT Arena Multimedia', 'Diploma · Graphic & Digital Design', '2015 – 2016'],
+              ] as [string, string, string][]).map(([school, deg, dates]) => (
+                <div key={school} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12.5px] font-semibold text-ink">{school}</p>
+                    <p className="text-[11.5px] text-ink/80">{deg}</p>
+                    <p className="text-[11px] text-faint">{dates}</p>
+                  </div>
+                  <span className="cursor-pointer text-[12px] text-muted">✎</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* About — PRE-FILLED with the CV content from My Profile */}
+          {/* Skills — PRE-FILLED with years; the AI suggestions stay */}
           <div>
-            <SectionHead title="About" actions={[]} />
-            <div className="mt-3 flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
-              <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink/80">Product designer with 4+ years across web and mobile products at agency and in-house teams. I turn user research into clean, usable interfaces and maintain scalable design systems.</p>
-              <span className="cursor-pointer text-[12px] text-muted">✎</span>
-            </div>
+            <SectionHead title="Skills" actions={['Add']} />
+            <CvSkillsField />
           </div>
 
           {/* ── Optional sections — ALL EIGHT are always on the page, exactly as
@@ -1271,13 +1250,20 @@ function CreateCvScreen() {
               <p className="text-[15px] font-bold text-brand">85%</p>
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full w-[85%] rounded-full bg-brand" /></div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted">Your CV is usable just by entering <span className="font-medium text-brand">basic information and education</span>!</p>
+            {/* the weights are not arbitrary — say what they mean, in the UI */}
+            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+              Each section is worth what it adds to being <b className="font-medium text-ink/70">found and shortlisted</b> — the % is how much employer search and job matching read it.
+            </p>
 
-            {/* the item list — required first, then the CV sections, then optional +/− */}
+            {/* the item list — ONE pattern for every section: a green check when it
+                has content. No "required" chip: the CV sections read the same way,
+                and completeness already says what is missing. */}
             <div className="mt-3 space-y-0.5 border-t border-line-soft pt-3">
-              <div className="flex items-center justify-between rounded-md bg-emerald-50 px-2 py-1.5"><span className="text-[12px] font-semibold text-emerald-700">Education</span><span className="text-[10px] font-bold text-emerald-600">✓ REQUIRED</span></div>
-              {['Work experience', 'Skills', 'About'].map((s) => (
-                <div key={s} className="flex items-center justify-between px-2 py-1.5"><span className="text-[12px] text-ink/80">{s}</span><span className="text-[11px] text-emerald-500">✓</span></div>
+              {CORE_CV_SECTIONS.map(({ title, pct }) => (
+                <div key={title} className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-[12px] text-ink/80">{title} <span className="text-[10px] text-faint">{pct}</span></span>
+                  <span className="text-[11px] text-emerald-500">✓</span>
+                </div>
               ))}
               {OPTIONAL.map((s) => {
                 const on = extra.includes(s)
@@ -1303,7 +1289,6 @@ function CreateCvScreen() {
       <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t border-line bg-surface px-5 py-3">
         <p className="shrink-0 text-[12.5px] font-bold text-ink">CV Title</p>
         <div className="min-w-[220px] flex-1 rounded-md border-2 border-brand/50 px-3 py-2 text-[12px] text-faint">CV title (if left blank, a default title is saved automatically)</div>
-        <span className="cursor-pointer text-[12px] font-semibold text-violet-600">✨ Get AI CV Coaching</span>
         <Btn>CV Preview</Btn>
         <Btn primary onClick={() => go('js-my-cvs')}>Completed</Btn>
       </div>
@@ -1577,6 +1562,110 @@ function CrmCompanyPageScreen() {
   )
 }
 
+/* ── CV skills — ONE flat list of taxonomy-backed tags, nothing else ─────────
+   No years, no featured/star, no per-role attachment. A CvSkill is a pure link
+   row: this CV has this skill.
+
+   What that costs and what covers it:
+   · ranking loses per-skill depth — but total years of experience still lives on
+     the Profile (Basic information), so seniority is known, just not per skill;
+   · "which skills to show" is no longer the candidate's job to curate — a search
+     result shows the ones that overlap the job being matched, which is more
+     useful than a static top-5 and needs no UI at all. */
+function CvSkillsField() {
+  const [skills, setSkills] = useState<string[]>([
+    'User Experience (UX)', 'Interaction Design', 'Design Systems', 'Product Design', 'User Research',
+  ])
+  const SUGGESTED = ['Figma', 'Wireframing', 'Prototyping']
+
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-surface p-3.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {skills.map((s) => (
+          <span key={s} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80">
+            <b className="font-semibold text-ink">{s}</b>
+            <span onClick={() => setSkills((a) => a.filter((x) => x !== s))} className="cursor-pointer text-[10px] text-faint hover:text-ink">×</span>
+          </span>
+        ))}
+        <button className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-medium text-brand hover:border-brand">＋ Add skill</button>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-brand-soft/50 px-2.5 py-2">
+        <span className="text-[11px] font-medium text-brand">✨ people in your role often list:</span>
+        {SUGGESTED.filter((s) => !skills.includes(s)).map((s) => (
+          <span key={s} onClick={() => setSkills((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand">＋ {s}</span>
+        ))}
+        {SUGGESTED.every((s) => skills.includes(s)) && <span className="text-[10.5px] text-muted">All added 🎉</span>}
+        <span className="cursor-pointer text-[10.5px] font-medium text-brand">more →</span>
+      </div>
+
+      <p className="mt-2 text-[10.5px] text-faint">Skills autocomplete against the canonical Skill taxonomy — the same list employers pick from, which is what lets a job match your CV.</p>
+    </div>
+  )
+}
+
+/* ── Profile summary — Basic information + Work preference ───────────────────
+   ONE component, rendered on BOTH My CVs and the Create-CV builder. The two
+   screens must never disagree about what the profile holds, so the field lists
+   live here and nowhere else — edit this and both surfaces change.
+
+   Basic information = the 9 fields the edit popup writes. Work preference = the
+   five recruiter-facing facts, as tiles. Both are PROFILE data (1 per jobseeker),
+   never CV content — which is why the builder shows them read-only above the CV
+   sections rather than asking for them again. */
+const PROFILE_BASIC: [string, string][] = [
+  ['Email', 'minhanh@email.com'],
+  ['Điện thoại', '0901 234 567'],
+  ['Ngày sinh', '12/04/1996'],
+  ['Quốc tịch', 'Việt Nam'],
+  ['Giới tính', 'Nữ'],
+  ['Tình trạng hôn nhân', 'Độc thân'],
+  ['Học vấn cao nhất', 'Cử nhân'],
+  ['Số năm kinh nghiệm', '4 năm'],
+]
+const PROFILE_PREFS: [string, string, string][] = [
+  ['🔧', 'Vị trí mong muốn', 'Senior Product Designer'],
+  ['🗂', 'Ngành nghề', 'Design'],
+  ['🏭', 'Lĩnh vực', 'IT / Software · FMCG'],
+  ['📍', 'Nơi làm việc', 'Hồ Chí Minh · Hà Nội'],
+  ['💰', 'Lương mong muốn', '20 – 30 triệu'],
+]
+
+function ProfileSummaryCard({ onEdit }: { onEdit?: () => void }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface">
+      {/* — BASIC INFORMATION — all 9 fields, exactly the set the edit popup writes — */}
+      <div className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="text-[15px] font-bold text-ink">Trần Minh Anh</p>
+          {onEdit && (
+            <span onClick={onEdit} className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit</span>
+          )}
+        </div>
+        <p className="mt-2 mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Basic information</p>
+        <div className="grid gap-x-6 gap-y-1 text-[11.5px] text-ink/80 sm:grid-cols-2 lg:grid-cols-3">
+          {PROFILE_BASIC.map(([k, v]) => (
+            <p key={k}><span className="text-faint">{k}</span> <b className="font-medium text-ink">{v}</b></p>
+          ))}
+        </div>
+      </div>
+
+      {/* — WORK PREFERENCE — the five recruiter-facing facts, as tiles — */}
+      <div className="border-t border-line-soft px-4 pb-4 pt-3">
+        <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {PROFILE_PREFS.map(([icon, label, value]) => (
+            <div key={label} className="rounded-lg border border-line p-2.5">
+              <p className="flex items-center gap-1 text-[10.5px] text-faint">{icon} {label}</p>
+              <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── My CVs — the CV documents list + the single "Add new CV" flow (Upload / Build).
    One profile, many documents: AI reads an uploaded file to fill the shared profile;
    the file stays as-is by default, optionally re-formatted as a Saramin CV. Same flow
@@ -1652,7 +1741,6 @@ function UploadedCvDoc({ highlightDates, compact }: { highlightDates?: boolean; 
 function AddCvScreen() {
   const go = useNav()
   const [step, setStep] = useState<'choose' | 'upload' | 'saved' | 'reading'>('choose')
-  const [chosen, setChosen] = useState(false)
   return (
     <div>
       <JsHeader active="CV & Profile" />
@@ -1678,63 +1766,63 @@ function AddCvScreen() {
           </>
         )}
 
-        {/* Upload — ONE column, centred. The file is the whole subject of this
-            step, so it sits in the middle of the page with the actions under it
-            rather than pushed to one side by an empty second column. */}
+        {/* Upload — just the picker. Choosing a file goes STRAIGHT to the result
+            screen: a confirm-this-file step adds a click and tells the user
+            nothing they don't already know. */}
         {step === 'upload' && (
           <>
             <p className="text-center text-[18px] font-bold text-ink">Upload a CV</p>
             <div className="mx-auto mt-4 max-w-[520px]">
-              {!chosen ? (
-                <div onClick={() => setChosen(true)} className="grid min-h-[300px] cursor-pointer place-items-center rounded-xl border-2 border-dashed border-line py-14 text-center hover:border-brand/50">
-                  <div>
-                    <p className="text-[26px]">📄</p>
-                    <p className="mt-1.5 text-[13px] font-medium text-brand">Choose a file or drop it here</p>
-                    <p className="mt-0.5 text-[11.5px] text-faint">.pdf, .doc, .docx · max 3MB · no password</p>
-                  </div>
+              <div onClick={() => setStep('saved')} className="grid min-h-[300px] cursor-pointer place-items-center rounded-xl border-2 border-dashed border-line py-14 text-center hover:border-brand/50">
+                <div>
+                  <p className="text-[26px]">📄</p>
+                  <p className="mt-1.5 text-[13px] font-medium text-brand">Choose a file or drop it here</p>
+                  <p className="mt-0.5 text-[11.5px] text-faint">.pdf, .doc, .docx · max 3MB · no password</p>
                 </div>
-              ) : (
-                <>
-                  {/* the full document — the user is about to commit this exact file */}
-                  <UploadedCvDoc />
-                  <p onClick={() => setChosen(false)} className="mt-1.5 text-center text-[11px] font-medium text-brand cursor-pointer">↺ Choose a different file</p>
-                </>
-              )}
-              <div className="mt-5 flex justify-center gap-2">
-                <Btn onClick={() => { setChosen(false); setStep('choose') }}>Back</Btn>
-                <Btn primary onClick={() => setStep('saved')}>Save my PDF</Btn>
+              </div>
+              <div className="mt-5 flex justify-center">
+                <Btn onClick={() => setStep('choose')}>Back</Btn>
               </div>
             </div>
           </>
         )}
 
-        {/* Saved — the upload intent is DONE here. The Saramin conversion is a
-            separate offer, not a step: accepting moves the user onto the
-            create-Saramin-CV path; declining costs nothing. */}
+        {/* Uploaded — the file is in. Two ways forward, weighted equally in the
+            layout: keep it as it is, or convert it into a Saramin CV. */}
         {step === 'saved' && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* left — the saved document itself, in full: proof of what "saved
-                as-is" means, not just a green sentence about it */}
-            <UploadedCvDoc />
-            <div className="flex flex-col gap-4">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <p className="text-[14px] font-bold text-emerald-800">✓ CV_TranMinhAnh.pdf is in My CVs</p>
-                <p className="mt-1 text-[12px] text-emerald-900/80">Saved exactly as uploaded — recruiters download this file as-is. You can apply with it right now.</p>
-              </div>
-              <div className="rounded-xl border border-brand/40 bg-brand-soft/40 p-4">
-                <p className="text-[13.5px] font-bold text-ink">✨ Also create a Saramin CV from it?</p>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                  AI reads your PDF and builds a structured, searchable version beside it — this is what recruiter search reads.
-                  Your PDF is never changed.
-                </p>
-                <div className="mt-3 flex flex-wrap justify-end gap-2">
-                  <Btn onClick={() => go('js-my-cvs')}>No thanks — I’m done</Btn>
-                  <Btn primary onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert with AI</Btn>
-                </div>
-              </div>
-              <p className="text-[10.5px] text-faint">Not now? You can convert any time from My CVs.</p>
+          <>
+            <div className="mx-auto max-w-[560px] text-center">
+              <p className="text-[22px]">✅</p>
+              <p className="mt-1 text-[18px] font-bold text-ink">CV_TranMinhAnh.pdf uploaded</p>
+              <p className="mt-1 text-[12px] text-muted">It’s in My CVs and ready to apply with. What would you like to do with it?</p>
             </div>
-          </div>
+
+            <div className="mx-auto mt-5 grid max-w-[720px] gap-4 sm:grid-cols-2">
+              {/* option A — keep the file as-is */}
+              <div className="flex flex-col rounded-xl border border-line p-4">
+                <div className="mb-2.5 grid h-10 w-10 place-items-center rounded-lg bg-canvas text-[18px]">📄</div>
+                <p className="text-[13.5px] font-bold text-ink">Keep it as my CV</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">Saved exactly as uploaded — recruiters download this file as-is, unchanged. You can apply with it right now.</p>
+                <div className="mt-3 flex-1" />
+                <Btn onClick={() => go('js-my-cvs')}>Done — go to My CVs</Btn>
+              </div>
+              {/* option B — convert */}
+              <div className="flex flex-col rounded-xl border-2 border-brand/40 bg-brand-soft/30 p-4">
+                <div className="mb-2.5 grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-[18px]">✨</div>
+                <p className="flex items-center gap-1.5 text-[13.5px] font-bold text-ink">Convert to a Saramin CV <span className="rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-semibold text-white">Recommended</span></p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">AI reads your PDF and builds a structured version beside it — this is what recruiter search reads. Your PDF is never changed.</p>
+                <div className="mt-3 flex-1" />
+                <Btn primary onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert with AI</Btn>
+              </div>
+            </div>
+
+            {/* the file itself, below the decision — proof of what was saved */}
+            <div className="mx-auto mt-5 max-w-[520px]">
+              <p className="mb-1.5 text-center text-[10.5px] font-semibold uppercase tracking-wide text-faint">What you uploaded</p>
+              <UploadedCvDoc />
+              <p className="mt-2 text-center text-[10.5px] text-faint">Not converting now? You can do it any time from My CVs.</p>
+            </div>
+          </>
         )}
 
         {step === 'reading' && (
@@ -1753,8 +1841,9 @@ function AddCvScreen() {
 function MyCvsScreen() {
   const go = useNav()
   const [searchable, setSearchable] = useState(0)
+  const [editing, setEditing] = useState<null | 'basic'>(null)
   const cvs = [
-    { name: 'Product Designer CV', kind: 'Uploaded PDF', meta: 'CV_TranMinhAnh.pdf · 26/07/2026 · 1.2 MB', icon: '📄' },
+    { name: 'Product Designer CV', kind: 'Uploaded', meta: '26/07/2026 · 1.2 MB', icon: '📄' },
     { name: 'Business Developer CV', kind: 'Saramin template', meta: 'Generated 26/07/2026', icon: '📃' },
   ]
 
@@ -1766,66 +1855,12 @@ function MyCvsScreen() {
 
         {/* main */}
         <div className="space-y-4">
-          {/* ── Profile summary — two named groups, Saramin-KR structure:
-                 BASIC INFORMATION (who you are + how to reach you) then
-                 WORK PREFERENCE (the five facts a recruiter filters on, as
-                 tiles). Splitting them stops the card reading as one undifferentiated
-                 field dump, and the tiles make the preference set scannable. ── */}
-          <div className="rounded-xl border border-line bg-surface">
-            {/* — Basic information — */}
-            <div className="flex flex-wrap items-start justify-between gap-2 p-4">
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-ink">
-                  Trần Minh Anh
-                  <span className="rounded bg-brand px-1.5 py-0.5 text-[9.5px] font-semibold text-white">Đang bật tìm kiếm</span>
-                </p>
-                <p className="mt-0.5 text-[11.5px] text-muted">
-                  1996 (30 tuổi)
-                  <span className="ml-2 inline-flex items-center gap-1 rounded bg-canvas px-1.5 py-0.5 text-[10px] text-faint">🔒 Hồ sơ của bạn</span>
-                </p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-                  Personal information is shown to a company only when they view your CV or send you a proposal.
-                </p>
-                <div className="mt-2 grid gap-x-6 gap-y-0.5 text-[11.5px] text-ink/80 sm:grid-cols-2">
-                  <p><span className="text-faint">Email</span> minhanh@email.com</p>
-                  <p><span className="text-faint">Điện thoại</span> 0901 234 567</p>
-                </div>
-              </div>
-              <span onClick={() => go('js-profile-cv')} className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit profile</span>
-            </div>
-
-            {/* — Work preference — the five recruiter-facing facts, as tiles — */}
-            <div className="border-t border-line-soft px-4 pb-4 pt-3">
-              <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {([
-                  ['💼', 'Kinh nghiệm', '4 năm · Trưởng nhóm'],
-                  ['🎓', 'Học vấn', 'Cử nhân'],
-                  ['🔧', 'Vị trí mong muốn', 'Senior Product Designer'],
-                  ['💰', 'Lương mong muốn', '20 – 30 triệu'],
-                  ['📍', 'Nơi làm việc', 'Hồ Chí Minh · Hà Nội'],
-                ] as [string, string, string][]).map(([icon, label, value]) => (
-                  <div key={label} className="rounded-lg border border-line p-2.5">
-                    <p className="flex items-center gap-1 text-[10.5px] text-faint">{icon} {label}</p>
-                    <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-[10.5px] text-faint">🏭 IT / Software · FMCG <span className="mx-1">·</span> 🟢 Sẵn sàng đi làm <span className="mx-1">·</span> open to relocating</p>
-            </div>
-
-            {/* the counters that make this a homepage, not a form */}
-            <div className="flex flex-wrap gap-2 border-t border-line-soft px-4 py-3">
-              {([['Đề xuất nhận được', '0'], ['Lượt xem CV', '3'], ['Đã ứng tuyển', '5']] as [string, string][]).map(([k, v]) => (
-                <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/40 px-3 py-1 text-[11px] text-muted">{k} <b className="text-ink">{v}</b></span>
-              ))}
-            </div>
-          </div>
+          {/* Profile summary — SHARED with the Create-CV builder (ProfileSummaryCard) */}
+          <ProfileSummaryCard onEdit={() => setEditing('basic')} />
 
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[15px] font-bold text-ink">My CVs <span className="text-[11px] font-normal text-faint">· {cvs.length} of 3</span></p>
-              <p className="max-w-md text-[11.5px] text-faint">Create a CV by uploading a PDF or building one manually. Exactly one CV is searchable by recruiters.</p>
             </div>
             <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>
           </div>
@@ -1848,20 +1883,52 @@ function MyCvsScreen() {
                 </label>
                 <div className="hidden shrink-0 items-center gap-3 text-[11px] font-medium text-brand sm:flex">
                   <span className="cursor-pointer">View</span>
+                  <span className="cursor-pointer">Đổi tên</span>
+                  <span className="cursor-pointer">Tải xuống</span>
                   <span className="cursor-pointer text-muted">Delete</span>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* what search actually reads — the 2-table logic, stated plainly */}
-          <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-4">
-            <p className="text-[12px] font-semibold text-ink">What recruiters find</p>
-            <p className="mt-0.5 text-[11.5px] text-muted">Recruiter search reads your <b>Profile</b> (desired job, location, experience — from onboarding) together with your <b>searchable CV</b> (work history, education, skills). Turning “Cho phép tìm kiếm” on another CV moves it — only one CV is searchable at a time.</p>
-          </div>
         </div>
       </div>
 
+      {/* ── Edit Basic information — the 9 fields, and only those ── */}
+      {editing === 'basic' && (
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
+          <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <p className="text-[14px] font-bold text-ink">Edit basic information</p>
+              <span className="cursor-pointer text-faint" onClick={() => setEditing(null)}>✕</span>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
+              <div className="grid grid-cols-2 gap-2.5">
+                {([
+                  ['Full name', 'Trần Minh Anh'],
+                  ['Email', 'minhanh@email.com'],
+                  ['Phone', '0901 234 567'],
+                  ['Nationality', 'Việt Nam'],
+                  ['Gender', 'Nữ'],
+                  ['Marital status', 'Độc thân'],
+                  ['Date of birth', '12/04/1996'],
+                  ['Highest education', 'Cử nhân'],
+                  ['Years of work experience', '4 năm'],
+                ] as [string, string][]).map(([label, value], i) => (
+                  <div key={label} className={cn(i === 0 && 'col-span-2')}>
+                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<span className="text-rose-500"> *</span></p>
+                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{value}<span className="text-faint">▾</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+              <Btn onClick={() => setEditing(null)}>Cancel</Btn>
+              <Btn primary onClick={() => setEditing(null)}>Save</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

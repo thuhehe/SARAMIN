@@ -10258,6 +10258,73 @@ function ChipField({ label, req, chips, placeholder, hint, extra }: { label: Rea
   )
 }
 
+/* ── Job skills — ONE field ──────────────────────────────────────────────────
+   A single list, drawn from the canonical Skill taxonomy (never free text — that
+   is what lets a JD skill join to a CV skill).
+
+   Skills RANK candidates, they do not exclude anyone: a flat list where every
+   entry filtered would narrow the pool to nothing after four or five picks. The
+   candidate line is there so an employer can see how rare their combination is
+   before they publish. */
+const SKILL_POOL: { name: string; sel: number }[] = [
+  { name: 'React', sel: 0.20 },
+  { name: 'TypeScript', sel: 0.35 },
+  { name: 'Node.js', sel: 0.30 },
+  { name: 'ASP.NET Core', sel: 0.10 },
+  { name: '.NET', sel: 0.14 },
+  { name: 'GraphQL', sel: 0.12 },
+  { name: 'Docker', sel: 0.18 },
+  { name: 'Kubernetes', sel: 0.06 },
+  { name: 'AWS', sel: 0.15 },
+  { name: 'Figma', sel: 0.22 },
+]
+const BASE_POOL = 3200
+const SKILL_CAP = 10
+
+function JobSkillsField() {
+  const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'GraphQL'])
+  const [adding, setAdding] = useState(false)
+
+  const sel = (n: string) => SKILL_POOL.find((s) => s.name === n)?.sel ?? 0.25
+  const count = Math.max(1, Math.round(skills.reduce((acc, n) => acc * sel(n), BASE_POOL)))
+  const available = SKILL_POOL.filter((s) => !skills.includes(s.name))
+  const full = skills.length >= SKILL_CAP
+
+  return (
+    <div>
+      <LabelRow label="Skills" req right={<span className={cn('text-[10.5px] tabular-nums', full ? 'font-medium text-amber-600' : 'text-faint')}>{skills.length}/{SKILL_CAP}</span>} />
+      <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5">
+        {skills.map((c) => (
+          <span key={c} className="inline-flex items-center gap-1 rounded border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand">
+            {c}
+            <span onClick={() => setSkills((a) => a.filter((x) => x !== c))} className="cursor-pointer opacity-60 hover:opacity-100">×</span>
+          </span>
+        ))}
+        {!full && <button onClick={() => setAdding((o) => !o)} className="px-1 text-[11.5px] font-medium text-brand">＋ Add skill</button>}
+      </div>
+
+      {adding && (
+        <div className="mt-1 overflow-hidden rounded-md border border-line bg-surface shadow-sm">
+          <p className="border-b border-line-soft bg-canvas/50 px-2.5 py-1 text-[10px] text-faint">From the Skill taxonomy — type to search</p>
+          {available.slice(0, 6).map((s) => (
+            <button
+              key={s.name}
+              onClick={() => { setSkills((a) => [...a, s.name]); setAdding(false) }}
+              className="flex w-full items-center border-b border-line-soft px-2.5 py-1.5 text-left text-[11.5px] text-ink/80 last:border-b-0 hover:bg-canvas/60"
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-1 text-[10.5px] text-faint">
+        <b className="font-medium text-muted tabular-nums">≈ {count.toLocaleString()}</b> candidates have all of these · skills rank candidates, they never exclude anyone.
+      </p>
+    </div>
+  )
+}
+
 /** inline single-value field with optional provenance/confirm markers + hint */
 function FField({ label, req, value, select, hint, extra }: { label: React.ReactNode; req?: boolean; value: string; select?: boolean; hint?: string; extra?: React.ReactNode }) {
   return (
@@ -10288,6 +10355,57 @@ function KVShow({ label, value, shown }: { label: string; value: string; shown: 
 }
 
 /* ── Job detail (read-only) — opened by clicking a job title ─────────────────── */
+/* Who saved this job. HQ asked to see the people behind the Saves number — a
+   save is a demand signal, and a shortlist of warm candidates worth sourcing.
+   Names are candidate PII, so opening one is an audited action like any resume view. */
+type Saver = { name: string; title: string; exp: string; location: string; when: string; applied: boolean }
+const JOB_SAVERS: Saver[] = [
+  { name: 'Nguyễn Văn An', title: 'Frontend Engineer', exp: '4 năm', location: 'Hồ Chí Minh', when: '2 giờ trước', applied: true },
+  { name: 'Trần Thị Bích', title: 'Digital Marketing Executive', exp: '6 năm', location: 'Hà Nội', when: '5 giờ trước', applied: false },
+  { name: 'Lê Hoàng Cường', title: 'Product Manager', exp: '8 năm', location: 'Hồ Chí Minh', when: '1 ngày trước', applied: false },
+  { name: 'Phạm Thu Dung', title: 'Content Strategist', exp: '3 năm', location: 'Đà Nẵng', when: '2 ngày trước', applied: true },
+  { name: 'Vũ Minh Đức', title: 'Growth Marketing', exp: '5 năm', location: 'Hồ Chí Minh', when: '3 ngày trước', applied: false },
+]
+
+function SavedByCard({ job }: { job: JobRow }) {
+  const [open, setOpen] = useState(false)
+  if (!job.saves) {
+    return (
+      <DetailCard title="Saved by" action={<span className="text-[11px] text-faint">0 jobseekers</span>}>
+        <p className="text-[12px] text-muted">Chưa có ai lưu tin này.</p>
+      </DetailCard>
+    )
+  }
+  const shown = open ? JOB_SAVERS : JOB_SAVERS.slice(0, 3)
+  return (
+    <DetailCard title="Saved by" action={<span className="text-[11px] text-faint">{job.saves.toLocaleString('en-US')} jobseekers</span>}>
+      <Table
+        minW={520}
+        cols={[{ label: 'Jobseeker', w: '1.6fr' }, { label: 'Location', w: '0.9fr' }, { label: 'Saved', w: '0.9fr' }, { label: 'Applied?', w: '0.7fr', align: 'r' }]}
+        rows={shown.map((s) => [
+          <div className="min-w-0">
+            <button className="truncate text-left text-[12.5px] font-medium text-brand hover:underline">{s.name}</button>
+            <p className="truncate text-[10.5px] text-faint">{s.title} · {s.exp}</p>
+          </div>,
+          <span className="truncate text-muted">{s.location}</span>,
+          <span className="text-muted">{s.when}</span>,
+          s.applied
+            ? <Pill tone="active">Đã ứng tuyển</Pill>
+            : <span className="text-[11.5px] text-faint">—</span>,
+        ])}
+      />
+      {job.saves > 3 && (
+        <button onClick={() => setOpen((o) => !o)} className="mt-2 text-[11.5px] font-medium text-brand hover:underline">
+          {open ? 'Thu gọn' : `Xem tất cả ${job.saves.toLocaleString('en-US')} người đã lưu →`}
+        </button>
+      )}
+      <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+        🔒 Tên ứng viên là PII — mở hồ sơ từ đây được ghi vào audit log, và chỉ hiện với người có quyền xem ứng viên.
+      </p>
+    </DetailCard>
+  )
+}
+
 function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
   useDetailCrumb(job.title, onBack)
   return (
@@ -10376,6 +10494,8 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
           </div>
           <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — pending client confirmation.</p>
         </DetailCard>
+
+        <SavedByCard job={job} />
 
         <DetailCard title="Internal (HQ only)">
           <p className="text-[12px] leading-relaxed text-muted">Approval context, special instructions, follow-ups… — never shown publicly.</p>
@@ -10626,7 +10746,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           </div>
           <div className={G2}>
             <SelectField label="Industry" req value="FMCG" createLabel="Create industry" options={['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics']} />
-            <ChipField label="Skill" chips={['ASP.NET Core', '.NET', 'React']} placeholder="Add skill…" />
+            <JobSkillsField />
           </div>
           <div>
             <LabelRow label="Working location (up to 3 locations)" req />

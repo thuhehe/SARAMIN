@@ -77,6 +77,33 @@ export const resumeManagement: BuildModule = {
       ],
     },
     {
+      label: 'CV completeness — the weights, and what they are based on',
+      text: 'The completeness meter must total exactly 100%. Weights are derived from ONE rule: a section is worth what it contributes to being FOUND and SHORTLISTED — i.e. how much employer CV search and the CV↔JD match actually read it. That makes every number traceable to a search facet in our own product rather than to taste.',
+      table: {
+        cols: ['Section', 'Weight', 'Basis — what it feeds'],
+        rows: [
+          ['Work experience', '30%', 'Employer filters: years of experience, job title, seniority. Also the largest input to the CV↔JD match. The single biggest signal in any CV.'],
+          ['Skills', '20%', 'The #1 CV-search facet — skill is the field recruiters query most, and the one the matching taxonomy joins on.'],
+          ['Education', '15%', 'A standard employer filter (highest education level), but secondary once a candidate has real experience.'],
+          ['About / summary', '10%', 'Not a filter, but the first thing a recruiter reads after unlocking. Cheap to write, high effect on response.'],
+          ['— core subtotal —', '75%', 'A candidate who fills only the essentials already sees a healthy number, so the meter encourages rather than shames.'],
+          ['Foreign Language', '6%', 'A real employer filter in VN (English level), so it leads the optional set.'],
+          ['Highlight Project · Certificates', '5% · 4%', 'Evidence of skill — read at shortlist time, not filtered on.'],
+          ['Awards · Activities', '3% each', 'Differentiators, rarely filtered.'],
+          ['Publications', '2%', 'Niche outside academia / research roles.'],
+          ['References · Recommendations', '1% each', 'Trust signals, checked late in the process.'],
+          ['— optional subtotal —', '25%', '75 + 25 = 100%.'],
+        ],
+      },
+      items: [
+        'HOW TO DEFEND THESE NUMBERS TO THE CLIENT — the honest framing: they are a reasoned STARTING HEURISTIC, not a research finding. Three legs support them:',
+        '1 · Internal logic (verifiable today): every weight maps to a field our own employer CV search filters on. Rank the fields by how often they appear in a search query and the order falls out — skills, title/years, location, education. Nothing here is a matter of taste.',
+        '2 · Reference benchmark (cheap to verify): LinkedIn "Profile Strength", Indeed and VietnamWorks all run completeness meters and all weight experience + skills highest. The BA can screenshot each — we already have VietnamWorks credits — and put the comparison beside our table. That is observable evidence, not opinion.',
+        '3 · Calibration with our own data (the real evidence, Phase 2): once the pool has traffic, re-derive each weight from the correlation between “section filled” and an actual outcome — recruiter unlock, CV view, or interview. Weight = measured contribution. Until that data exists, no honest source can give exact numbers for OUR market.',
+      ],
+      warn: 'Do NOT present these as researched figures. Present them as: a defensible default derived from our own search facets, benchmarked against LinkedIn / Indeed / VietnamWorks, and scheduled for recalibration against real outcome data in Phase 2. The client is buying the METHOD, not the specific integers — and the method is what makes the numbers replaceable without redesigning anything.',
+    },
+    {
       label: 'Onboarding — CV-first, progressive, extract-don’t-ask',
       text: 'Profile creation at sign-up is short and CV-first, NOT a VietnamWorks-style long form. AI extraction gives us rich search/matching data without heavy typing: collect a small core by hand, get the rest from the CV, nudge the optional extras over time.',
       table: {
@@ -116,6 +143,26 @@ export const resumeManagement: BuildModule = {
         'Corollary — DERIVE rather than ask: years of experience from work history, seniority from titles + years, highest degree from education. Asking for a number the CV already implies is the same mistake as asking for the CV again.',
       ],
       warn: 'This principle DEPENDS on extraction being live. With the parser off, every pre-filled form degrades into a blank one at the worst possible moment — and the fields we justified by “it’s only a confirmation” become real work. Phase-1 must either ship the parser or ship a reduced field set; see Apply flow → open questions.',
+    },
+    {
+      label: 'SKILLS — one taxonomy, two join tables, and nothing else',
+      text: 'Skills are the highest-value facet in CV search and the only field both sides of a match write. They were specified four different ways across this doc; this block is now the single definition. Phase-1 is deliberately small — one canonical list and two join tables. Everything richer is Phase-2.',
+      table: {
+        cols: ['Table', 'Shape', 'Notes'],
+        rows: [
+          ['Skill (taxonomy)', 'id · nameVi · nameEn · aliases[] · isActive', 'THE canonical list. ~500–1,500 rows for the VN market — smaller than instinct says, because aliases absorb the variants (React / ReactJS / React.js are ONE row).'],
+          ['JobSkill', 'jobId · skillId', 'ONE flat list, cap 10. Skills RANK candidates — they never exclude. A flat list where every entry filtered would narrow the pool to nothing after four or five picks.'],
+          ['CvSkill', 'cvId · skillId', 'A pure link row — no years, no featured flag. One flat list per CV, cap 20, enforced on save.'],
+        ],
+      },
+      items: [
+        'BOTH sides reference skillId. Free-text skills on either side are the bug this block exists to prevent — a `text[]` cannot join to a taxonomy reference, and the failure is SILENT: matching just returns nothing and looks like a ranking problem.',
+        'WHICH skills to show is contextual, not curated: a search result or locked preview shows the skills that OVERLAP the job being matched, most relevant first. That is more useful than a candidate-picked top-5 and needs no extra UI or data.',
+        'Skills may be evidenced by work experience, projects, education or certificates — but a CERTIFICATE IS NOT A SKILL. Certificates stay their own section and may attest a skill; they never become taxonomy rows themselves.',
+        'A candidate never types a raw skill: input is autocomplete against the taxonomy, and extraction proposes skills as confirm/reject chips. A free-typed entry resolves to the closest canonical row or is not saved.',
+        'The job form shows a live pool line ("≈ 224 candidates have all of these") so an employer can see how rare their combination is before publishing. Informational, not a gate.',
+      ],
+      warn: 'PHASE-2, explicitly out of scope now — each adds UI weight for a ranking gain we cannot measure yet: (1) must-have / nice-to-have on the job, letting some skills FILTER rather than only rank; (2) per-skill YEARS on the CV; (3) per-role skill attachment (LinkedIn-style), which would derive years and lastUsedAt automatically and unlock recency decay. Phase-1 ranks on skill OVERLAP COUNT plus the profile fields (total years, level, location) — deliberately blunt, and honest about it.',
     },
     {
       label: 'CV search is a DISCOVERY task before it is a build task',
@@ -175,7 +222,7 @@ export const resumeManagement: BuildModule = {
               { name: 'summary', type: 'rich text', notes: 'short "about me"' },
               { name: 'workHistory', type: 'repeatable', notes: 'company, title, from–to (or current), description — the section that drives years-of-experience' },
               { name: 'education', type: 'repeatable', notes: 'school, degree/major, from–to' },
-              { name: 'skills', type: 'tags → taxonomy', required: true, notes: 'must resolve to the canonical Skill taxonomy, not free strings — otherwise search and matching silently fail' },
+              { name: 'skills', type: 'CvSkill[] → Skill taxonomy', required: true, notes: 'skillId only — a pure tag. Autocomplete against the taxonomy, never free strings; see the module SKILLS block' },
               { name: 'languages / certificates', type: 'repeatable', notes: 'optional' },
               { name: 'optional sections', type: 'repeatable ×8', notes: 'Foreign Language · Highlight Project · Certificates · Awards · Activities · Publications · References · Recommendations — the SAME full section set as My Profile, added from the completeness rail. Each renders its real field form (one shared field catalogue with the profile edit sheets), so a CV built here can carry everything the profile can' },
               { name: 'template', type: 'enum', notes: 'a small set of layouts for the generated PDF' },
@@ -740,7 +787,7 @@ export const resumeManagement: BuildModule = {
             group: 'Skills — grouped, not a flat list',
             items: [
               { name: 'group', type: 'string', required: true, notes: 'Frontend · State & Data · Tools · Office · Soft Skills — real CVs group their stack' },
-              { name: 'items', type: 'string[]', required: true, notes: 'comma-entered; each must resolve to the canonical Skill taxonomy, not a free string' },
+              { name: 'items', type: 'skillId[]', required: true, notes: 'references into the Skill taxonomy. Grouping is a DISPLAY concern of the generated PDF only — storage is the flat CvSkill list' },
             ],
           },
           {
@@ -928,8 +975,8 @@ export const resumeManagement: BuildModule = {
           {
             group: 'Skills & languages',
             items: [
-              { name: 'skills', type: 'ref[] → Skill taxonomy', notes: 'THE key facet — must be normalised, never free strings (see “The join”)' },
-              { name: 'skill.yearsUsed / proficiency', type: 'number / enum', notes: 'optional — richer ranking when present' },
+              { name: 'skills', type: 'CvSkill[] → Skill taxonomy', notes: 'THE key facet — must be normalised, never free strings (see “The join”)' },
+              { name: 'totalYearsExperience', type: 'int', notes: 'PROFILE-level, not per skill — this is the seniority signal ranking uses now that CvSkill carries no years' },
               { name: 'languages', type: '{ language, proficiency }[]', notes: 'e.g. English — Professional; a search facet' },
               { name: 'certifications', type: '{ name, issuer, date }[]', notes: 'optional' },
             ],
@@ -1132,7 +1179,7 @@ export const resumeManagement: BuildModule = {
             { name: 'cvId', type: 'uuid', notes: 'the searchable CV — one per seeker (up to 3 held)' },
             { name: 'seekerId', type: 'uuid' },
             { name: 'title / desiredPosition', type: 'string', notes: 'primary keyword field' },
-            { name: 'skills', type: 'string[]', notes: 'tag/faceted — a key search facet; needs normalisation' },
+            { name: 'skills', type: 'skillId[]', notes: 'the indexed facet, denormalised from CvSkill — taxonomy ids, never strings' },
             { name: 'experienceYears', type: 'enum/number', notes: 'derived from work history?' },
             { name: 'location', type: 'enum (province/city)' },
             { name: 'industry / category', type: 'enum' },
