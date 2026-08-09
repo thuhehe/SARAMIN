@@ -26,8 +26,12 @@ export interface Comment {
    * Whether to offer deletion: own comment, or PM/ADMIN moderating. Comes
    * from the server rather than being inferred here, so the button and the
    * rule behind it can't drift apart.
+   *
+   * Optional because the client hands the response through untouched: an
+   * API that stopped sending the field would otherwise read as "nobody may
+   * delete anything" and silently remove every delete button.
    */
-  canDelete: boolean
+  canDelete?: boolean
   resolvedAt: string | null
   resolvedBy: string | null
   createdAt: string

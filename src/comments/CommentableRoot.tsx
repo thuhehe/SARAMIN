@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useComments } from './CommentsProvider'
 import {
   COMMENT_ROOT_ID,
+  NO_COMMENT_ATTR,
   boxesFor,
   resolveAnchor,
   type HighlightBox,
@@ -183,6 +184,13 @@ export function CommentableRoot({ children }: { children: React.ReactNode }) {
     <div id={COMMENT_ROOT_ID} ref={rootRef} className="relative isolate">
       <div
         aria-hidden
+        /*
+         * Opted out of anchoring: it carries no text, but it *is* inside
+         * the root and it repaints whenever the content moves. Anything
+         * watching the root for real content changes has to be able to
+         * tell this layer's own churn apart from the page's.
+         */
+        {...{ [NO_COMMENT_ATTR]: true }}
         /*
          * Over the text, not behind it. This site's content is a stack of
          * opaque cards (`bg-surface`), so a box painted underneath one is

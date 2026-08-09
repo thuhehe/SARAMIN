@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
-  ChevronRight,
   CornerDownRight,
   Link2Off,
   MessageSquare,
@@ -99,19 +98,21 @@ function MemberBadge({ member }: { member: ShareMember }) {
   )
 }
 
-function Key({ children }: { children: React.ReactNode }) {
+function SignOutButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void
+  className?: string
+}) {
   return (
-    <kbd className="rounded border border-line bg-canvas px-1 py-px font-sans text-[9.5px] font-semibold text-muted">
-      {children}
-    </kbd>
-  )
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="sticky top-0 z-[1] -mx-3 bg-canvas/95 px-3 pb-1.5 pt-0.5 text-[10px] font-bold uppercase tracking-widest text-faint backdrop-blur">
-      {children}
-    </p>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-lg border border-line px-2 py-1 text-[10.5px] text-muted transition-colors hover:border-brand hover:text-brand ${className}`}
+    >
+      Sign out
+    </button>
   )
 }
 
@@ -120,7 +121,8 @@ function Bubble({
   onDelete,
 }: {
   comment: Comment
-  onDelete: (id: string) => void
+  /** Omitted for a thread's opening comment — its delete is in the action row. */
+  onDelete?: (id: string) => void
 }) {
   return (
     <div className="group/bubble">
@@ -129,7 +131,7 @@ function Bubble({
         <span className="text-[10px] text-faint">
           {relativeTime(comment.createdAt)}
         </span>
-        {comment.canDelete && (
+        {(comment.canDelete ?? comment.mine) && onDelete && (
           <button
             type="button"
             onClick={() => onDelete(comment.id)}
@@ -292,29 +294,58 @@ function ThreadCard({
       tabIndex={0}
       aria-current={active || undefined}
       className={[
-        'cursor-pointer rounded-xl border p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/40',
-        active ? 'border-brand bg-brand-soft/40' : 'border-line bg-surface',
+        'cursor-pointer rounded-xl border bg-surface p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/40',
+        active ? 'border-brand' : 'border-line',
         resolved && !active ? 'opacity-60' : '',
       ].join(' ')}
     >
+      {/* Resolve sits at the top of an open card, away from the reply
+          actions: it ends the thread rather than adding to it. */}
+      {active && (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void setResolved(thread.id, !resolved)}
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] hover:border-brand hover:text-brand"
+          >
+            {resolved ? (
+              <>
+                <RotateCcw className="h-3 w-3" /> Reopen
+              </>
+            ) : (
+              <>
+                <Check className="h-3 w-3" /> Resolve
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {thread.anchor.quote && (
         <p
+          title={thread.anchor.quote}
           className={[
-            'mb-2 line-clamp-2 border-l-2 pl-2 text-[11px] italic',
+            'mb-2 truncate border-l-2 pl-2 text-[11px] italic',
             orphaned ? 'border-faint text-faint' : 'border-amber-400 text-muted',
           ].join(' ')}
         >
           {thread.anchor.quote}
         </p>
       )}
+      {/* Deliberately not "the text has changed": on a prototype the text
+          is usually still there, just on a screen or table page that isn't
+          currently rendered. Say what we actually know. */}
       {orphaned && (
-        <p className="mb-2 flex items-center gap-1 text-[10px] text-faint">
-          <Link2Off className="h-3 w-3" />
-          The text this was attached to has changed
+        <p className="mb-2 flex items-start gap-1 text-[10px] text-faint">
+          <Link2Off className="mt-px h-3 w-3 shrink-0" />
+          Can’t find this text on screen right now — it may be on another
+          screen, or it may have been edited
         </p>
       )}
 
-      <Bubble comment={thread} onDelete={remove} />
+      {/* The thread's own delete lives in the action row below, not here —
+          replies keep the inline hover button. */}
+      <Bubble comment={thread} />
 
       {thread.replies.length > 0 && (
         <div className="mt-2.5 space-y-2.5 border-l border-line-soft pl-3">
@@ -344,26 +375,38 @@ function ThreadCard({
             />
           </div>
           <div className="mt-2 flex items-center justify-end gap-2">
+            {/* `?? mine`: the client hands the API response through
+                untouched, so a payload without `canDelete` reads as
+                undefined — falsy — and would silently hide this button on
+                comments you plainly wrote yourself. An explicit `false`
+                from the server is still respected. */}
+            {(thread.canDelete ?? thread.mine) && (
+              // Bordered like the others: sitting next to two real buttons,
+              // an unframed icon reads as decoration.
+              <button
+                type="button"
+                onClick={() => void remove(thread.id)}
+                title={thread.mine ? 'Delete thread' : 'Delete as moderator'}
+                aria-label={
+                  thread.mine ? 'Delete thread' : 'Delete as moderator'
+                }
+                className="mr-auto rounded-lg border border-line px-2 py-1 text-muted hover:border-red-500 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => void setResolved(thread.id, !resolved)}
-              className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] hover:border-brand hover:text-brand"
+              onClick={() => setActiveId(null)}
+              className="rounded-lg border border-line px-2 py-1 text-[11px] hover:border-brand hover:text-brand"
             >
-              {resolved ? (
-                <>
-                  <RotateCcw className="h-3 w-3" /> Reopen
-                </>
-              ) : (
-                <>
-                  <Check className="h-3 w-3" /> Resolve
-                </>
-              )}
+              Cancel
             </button>
             <button
               type="button"
               onClick={() => void submitReply()}
               disabled={!reply.trim() || busy}
-              className="rounded-lg bg-brand px-2.5 py-1 text-[11px] font-medium text-white disabled:opacity-40"
+              className="rounded-lg border border-brand px-2.5 py-1 text-[11px] font-medium text-brand disabled:opacity-40"
             >
               {busy ? 'Sending…' : 'Reply'}
             </button>
@@ -382,17 +425,70 @@ function ThreadCard({
 }
 
 /**
- * The right-hand thread list, in two parts.
+ * A counter that bumps whenever the commentable content changes.
  *
- * **This page** is ordered by where each anchor sits in the document, so
- * reading the rail top-to-bottom matches reading the page; orphaned and
- * page-level threads collect at the end where they can't disappear.
+ * Anchor resolution reads the live DOM, so "is this thread orphaned?" is
+ * only ever true *as of the last time it ran*. That was fine when the
+ * content only changed on navigation, but the prototypes swap entire
+ * screens from React state under a single route — walk back to the screen
+ * a comment was left on and its text is in the DOM again, yet the rail
+ * would still be showing the warning it computed on arrival.
+ */
+function useContentRevision(docKey: string): number {
+  const [revision, setRevision] = useState(0)
+
+  useEffect(() => {
+    const root = document.getElementById(COMMENT_ROOT_ID)
+    if (!root) return
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const observer = new MutationObserver((records) => {
+      // The highlight overlay lives inside the root and repaints in
+      // response to this very content — counting it would be a loop.
+      const fromContent = records.some((record) => {
+        const el =
+          record.target instanceof Element
+            ? record.target
+            : record.target.parentElement
+        return el !== null && !el.closest(`[${NO_COMMENT_ATTR}]`)
+      })
+      if (!fromContent) return
+      // A screen swap is hundreds of mutations, and re-resolving every
+      // anchor walks every text node on the page. Debounce rather than
+      // coalescing per frame, so anything that animates the content can't
+      // put that walk on a 60fps loop.
+      clearTimeout(timer)
+      timer = setTimeout(() => setRevision((n) => n + 1), 150)
+    })
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
+    return () => {
+      clearTimeout(timer)
+      observer.disconnect()
+    }
+  }, [docKey])
+
+  return revision
+}
+
+/**
+ * The right-hand thread list: every thread in the project, grouped by the
+ * page it lives on, in left-nav order.
  *
- * **Elsewhere** is every other thread in the project, grouped by page in
- * left-nav order. Without it a question sits unread on a page nobody
- * thinks to revisit — the badge in the nav says a number, and finding out
- * what it says means opening each feature in turn. Clicking one navigates
- * there and scrolls to the quote.
+ * The page you're currently on is one group among the rest, in its own nav
+ * position — not a section pinned to the top. Clicking a card navigates to
+ * its page, and when that page's group was a separate "this page" section
+ * the card appeared to leap across the rail on arrival, which read as the
+ * list reshuffling itself. Its group opens by default and its threads are
+ * the only interactive ones, ordered by where the anchor sits in the
+ * document rather than by age.
+ *
+ * Pages with nothing to show are left out entirely rather than listed
+ * empty — a folder you can open onto nothing is a row of pure noise.
  */
 export function CommentRail({ onClose }: { onClose: () => void }) {
   const {
@@ -403,7 +499,6 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
     member,
     error,
     signOut,
-    refresh,
     activeId,
     setActiveId,
     setResolved,
@@ -411,11 +506,9 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('open')
   const [mineOnly, setMineOnly] = useState(false)
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  )
   const [focus, setFocus] = useState<KeyboardFocus | null>(null)
   const focusSeq = useRef(0)
+  const revision = useContentRevision(docKey)
 
   const { ordered, orphanIds } = useMemo(() => {
     const root = document.getElementById(COMMENT_ROOT_ID)
@@ -427,8 +520,8 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         positions.set(thread.id, range.getBoundingClientRect().top)
       } else if (thread.anchor.quote) {
         // Only a thread that *had* a quote can have lost it. A page-level
-        // comment never had one, and telling its author their text changed
-        // is a lie about a comment that is working exactly as intended.
+        // comment never had one, and telling its author their text is
+        // missing is a lie about a comment working exactly as intended.
         orphans.add(thread.id)
       }
     }
@@ -442,7 +535,7 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       return pa - pb
     })
     return { ordered: sorted, orphanIds: orphans }
-  }, [threads])
+  }, [threads, revision])
 
   const needle = query.trim().toLowerCase()
   const keep = useCallback(
@@ -455,8 +548,9 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
 
   const visible = useMemo(() => ordered.filter(keep), [ordered, keep])
 
-  // Every other page that has something to say, in nav order.
-  const elsewhere = useMemo(() => {
+  // Every page that has something to say, in nav order — the current one
+  // included, sitting in its own position rather than pinned to the top.
+  const groups = useMemo(() => {
     const byDoc = new Map<string, CommentThread[]>()
     for (const thread of allThreads) {
       if (thread.docKey === docKey) continue
@@ -465,32 +559,32 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       list.push(thread)
       byDoc.set(thread.docKey, list)
     }
-    return [...byDoc.entries()]
-      .sort(([a], [b]) => docOrder(a) - docOrder(b))
-      .map(([key, list]) => ({
-        key,
-        ...docLabelParts(key),
-        threads: list.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-      }))
-  }, [allThreads, docKey, keep])
+
+    const built = [...byDoc.entries()].map(([key, list]) => ({
+      key,
+      ...docLabelParts(key),
+      current: false,
+      threads: list.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    }))
+
+    // `visible` is already filtered and in document order. Omitted when
+    // empty, like any other page with nothing to show.
+    if (visible.length > 0) {
+      built.push({
+        key: docKey,
+        ...docLabelParts(docKey),
+        current: true,
+        threads: visible,
+      })
+    }
+
+    return built.sort((a, b) => docOrder(a.key) - docOrder(b.key))
+  }, [allThreads, docKey, keep, visible])
 
   const openCount = allThreads.filter((t) => t.resolvedAt === null).length
   const resolvedCount = allThreads.length - openCount
-  const elsewhereCount = elsewhere.reduce((n, g) => n + g.threads.length, 0)
 
-  /*
-   * Searching overrides the collapsed state rather than clearing it: the
-   * point of typing is to see what matched, and a list of shut folders is
-   * a worse answer than no answer. Clearing the box restores whatever the
-   * reader had opened by hand.
-   */
   const searching = needle.length > 0
-  const toggleGroup = (key: string) =>
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (!next.delete(key)) next.add(key)
-      return next
-    })
 
   /**
    * j / k step through the threads on this page, Enter drops into the
@@ -657,14 +751,13 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
         data-comment-scroll
         className="flex-1 space-y-2.5 overflow-y-auto scroll-thin p-3"
       >
-        <SectionLabel>This page · {visible.length}</SectionLabel>
-        {visible.length === 0 ? (
+        {groups.length === 0 ? (
           <p className="px-1 pb-2 pt-1 text-center text-[11.5px] leading-relaxed text-faint">
             {searching || mineOnly || status !== 'open' ? (
               'Nothing here matches those filters.'
             ) : (
               <>
-                No open comments here.
+                No open comments yet.
                 <br />
                 Select any text, then click{' '}
                 <span className="font-medium text-muted">Comment</span> or
@@ -677,62 +770,60 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
             )}
           </p>
         ) : (
-          visible.map((thread) => (
-            <ThreadCard
-              key={thread.id}
-              thread={thread}
-              orphaned={orphanIds.has(thread.id)}
-              focus={focus?.id === thread.id ? focus : null}
-            />
-          ))
-        )}
-
-        {elsewhereCount > 0 && (
-          <>
-            <SectionLabel>
-              Elsewhere on the site · {elsewhereCount}
-            </SectionLabel>
-            {elsewhere.map((group) => {
-              const open = searching || expanded.has(group.key)
-              return (
-                <div key={group.key} className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.key)}
-                    aria-expanded={open}
-                    title={group.parent ? `${group.parent} › ${group.leaf}` : group.leaf}
-                    className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left hover:bg-surface"
-                  >
-                    <ChevronRight
-                      className={`h-3.5 w-3.5 shrink-0 text-faint transition-transform ${
-                        open ? 'rotate-90' : ''
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      {/* Module above, page below: five features of one
-                          module otherwise read as five identical rows
-                          truncated at the only part that differs. */}
-                      {group.parent && (
-                        <span className="block truncate text-[9.5px] uppercase tracking-wide text-faint">
-                          {group.parent}
-                        </span>
-                      )}
-                      <span className="block truncate text-[11.5px] font-medium text-ink/80">
-                        {group.leaf}
+          groups.map((group) => {
+            // `toggled` records a departure from the default, so one set
+            // serves both directions: the current page starts open, the
+            const holdsSelection = group.threads.some((t) => t.id === activeId)
+            return (
+              <div key={group.key} className="space-y-1.5">
+                <div
+                  title={
+                    group.parent ? `${group.parent} › ${group.leaf}` : group.leaf
+                  }
+                  className="flex w-full items-center gap-1.5 px-1 py-1"
+                >
+                  <span className="min-w-0 flex-1">
+                    {/* Module above, page below: five features of one
+                        module otherwise read as five identical rows
+                        truncated at the only part that differs. */}
+                    {group.parent && (
+                      <span className="block truncate text-[9.5px] uppercase tracking-wide text-faint">
+                        {group.parent}
                       </span>
+                    )}
+                    {/* Tinted only while it holds the open card — being the
+                        page you're on doesn't earn the colour, or every
+                        heading would be the same and mean nothing. */}
+                    <span
+                      className={`block truncate text-[11.5px] font-medium transition-colors ${
+                        holdsSelection ? 'text-brand' : 'text-ink/80'
+                      }`}
+                    >
+                      {group.leaf}
                     </span>
-                    <span className="shrink-0 rounded-full bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-faint">
-                      {group.threads.length}
-                    </span>
-                  </button>
-                  {open &&
-                    group.threads.map((thread) => (
-                      <RemoteThreadCard key={thread.id} thread={thread} />
-                    ))}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-faint">
+                    {group.threads.length}
+                  </span>
                 </div>
-              )
-            })}
-          </>
+                {group.threads.map((thread) =>
+                  // Only the current page's anchors exist in the DOM, so
+                  // only its threads can be opened, replied to, or
+                  // highlighted. The rest are click-to-navigate.
+                  group.current ? (
+                    <ThreadCard
+                      key={thread.id}
+                      thread={thread}
+                      orphaned={orphanIds.has(thread.id)}
+                      focus={focus?.id === thread.id ? focus : null}
+                    />
+                  ) : (
+                    <RemoteThreadCard key={thread.id} thread={thread} />
+                  ),
+                )}
+              </div>
+            )
+          })
         )}
 
         {truncated && (
@@ -744,30 +835,17 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
       </div>
 
       <footer className="space-y-2 border-t border-line bg-surface px-4 py-2.5">
-        {/* The shortcuts only pay off if you know they exist, and this is
-            the one strip of the rail that never scrolls away. */}
-        <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[10px] text-faint">
-          <Key>j</Key>
-          <Key>k</Key>
-          <span>move</span>
-          <Key>↵</Key>
-          <span>reply</span>
-          <Key>r</Key>
-          <span>resolve</span>
-        </p>
-        {/* A member is already named by their account — asking again
-            would invite two names for one person. */}
-        {member ? <MemberBadge member={member} /> : <NameField />}
-        <div className="flex items-center justify-end text-[10px] text-faint">
-          <span className="flex gap-2">
-            <button type="button" onClick={refresh} className="hover:text-ink">
-              Refresh
-            </button>
-            <button type="button" onClick={signOut} className="hover:text-ink">
-              Sign out
-            </button>
-          </span>
-        </div>
+        {/* A member is already named by their account — asking again would
+            invite two names for one person. Either way Sign out shares the
+            row rather than floating under it. */}
+        {member ? (
+          <div className="flex items-center gap-2">
+            <MemberBadge member={member} />
+            <SignOutButton onClick={signOut} className="ml-auto" />
+          </div>
+        ) : (
+          <NameField action={<SignOutButton onClick={signOut} />} />
+        )}
       </footer>
     </aside>
   )

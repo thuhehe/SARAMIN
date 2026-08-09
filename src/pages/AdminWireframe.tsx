@@ -386,12 +386,16 @@ export function AdminWireframe() {
               1fr columns split the slack evenly, which centres the auto column
               between them without absolute positioning — so it can never overlap
               the breadcrumb or the right-hand actions. */}
-          {/* minmax(0,1fr) on BOTH sides, not a bare 1fr: a bare 1fr is
-              minmax(auto,1fr), so the right column — which carries the widest
-              content (History · View full spec · avatar) — grows past its share and
-              shoves the centre column left. Allowing both side tracks to shrink to
-              0 is what keeps the two equal, and therefore the search truly centred. */}
-          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,420px)_minmax(0,1fr)] items-center">
+          {/* Three tracks, and the numbers matter:
+              · both side tracks are 1fr so they always resolve EQUAL — that, not
+                absolute positioning, is what puts the middle track dead centre;
+              · they carry a 150px MINIMUM so the right-hand actions (History ·
+                View full spec · avatar) can never be squeezed under the search;
+              · the centre is minmax(0,420px), so when the bar gets tight the SEARCH
+                gives up width rather than the breadcrumb or the actions.
+              A bare `1fr` would be minmax(auto,1fr): the wider right column would
+              then outgrow its share and shove the search off-centre. */}
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(210px,1fr)_minmax(0,420px)_minmax(210px,1fr)] items-center">
             <div className="flex min-w-0 items-center gap-2.5 px-3">
               {/* Breadcrumb. On a detail view the page segment becomes the way BACK,
                   and the record itself is the last crumb — so no page needs its own
