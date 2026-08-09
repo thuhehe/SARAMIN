@@ -14,7 +14,7 @@
  * depth template.
  */
 
-export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail, Requirement, RequirementBlock, ReqTable } from './build/types'
+export type { Site, Scope, BuildFeature, BuildModule, FeatureDetail, Requirement, RequirementBlock, ReqTable, BulletItem, KeyPoint } from './build/types'
 export { SITE_META, SCOPE_META, READY_META } from './build/types'
 
 import type { BuildModule } from './build/types'

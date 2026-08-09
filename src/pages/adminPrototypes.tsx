@@ -37,6 +37,23 @@ export function useDetailCrumb(label: string, onBack: () => void) {
 export const ScreenNavCtx = createContext<(specId: string, record?: string) => void>(() => {})
 /** The record the shell wants this page to open on arrival, if any. */
 export const OpenRecordCtx = createContext<string | null>(null)
+/* The page title row owns the primary create action, so the shell has to be able
+   to trigger a create that REPLACES the page (company, job) as well as one that
+   opens a modal. A bumped counter is the signal; the page decides what to do. */
+export const CreateSignalCtx = createContext(0)
+
+/* ── Read-only record ─────────────────────────────────────────────────────────
+   A rep can REACH a colleague's company through search (that is what stops
+   duplicates being created) but may not ACT on it. Carried as context rather than
+   a prop threaded through eight components: the detail page is deep, and a new
+   button added to a nested card would otherwise quietly stay writable.
+
+   Read stays fully open — every tab, every figure. Only WRITE is withdrawn, and
+   the way back is an explicit reassignment, not a silent edit. */
+const ReadOnlyCtx = createContext(false)
+const useReadOnly = () => useContext(ReadOnlyCtx)
+/** Uniform reason text, so every disabled control explains itself the same way. */
+const RO_HINT = 'Chỉ đọc — công ty này do sales khác phụ trách. Yêu cầu chuyển giao để chỉnh sửa.'
 
 /* ── shared bits ──────────────────────────────────────────────────────────── */
 type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
@@ -62,27 +79,15 @@ function Pill({ tone, children }: { tone: StatusTone; children: React.ReactNode 
   )
 }
 
-function Tab({ label, count, active }: { label: string; count?: number; active?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] transition-colors',
-        active ? 'bg-brand-soft font-medium text-brand' : 'text-muted hover:bg-canvas/70',
-      )}
-    >
-      {label}
-      {count != null && (
-        <span className={cn('rounded-full px-1.5 text-[10px]', active ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{count}</span>
-      )}
-    </span>
-  )
-}
-
 /* One search box per list, first control on the filter row. It matches against
    EVERY column's rendered text (see `cellText`), which is what people expect from a
    single box above a table — no field picker to learn, and no guessing which column
    a value lives in. */
-function TableSearch({ q, onChange, placeholder }: { q: string; onChange: (v: string) => void; placeholder?: string }) {
+function TableSearch({ q, onChange, placeholder, dropdown }: { q: string; onChange: (v: string) => void; placeholder?: string
+  /** Results the TABLE cannot show, hung under the input as a transient panel.
+      Anchored to the box on purpose: it is a property of the query, so it appears
+      and disappears with the query rather than becoming a second list on the page. */
+  dropdown?: React.ReactNode }) {
   return (
     <div className="relative shrink-0">
       <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
@@ -101,48 +106,60 @@ function TableSearch({ q, onChange, placeholder }: { q: string; onChange: (v: st
           ✕
         </button>
       )}
+      {dropdown}
     </div>
   )
 }
 
 function TabBar({
-  tabs,
   q,
   onQ,
   action,
+  leading,
   filters,
   searchHint,
   searchScope,
+  sort,
   outOfScope,
 }: {
-  tabs?: { label: string; count?: number; active?: boolean }[]
   q: string
   onQ: (v: string) => void
   /** the list's create button — on this row so a list never needs a header strip of its own */
   action?: React.ReactNode
+  /** whatever the page wants in FRONT of the search box on the same row — the
+      Sales view / Sales lead view switcher, for instance. */
+  leading?: React.ReactNode
   /** filter controls, rendered on their own line under the search */
   filters?: React.ReactNode
   /** tells the reader what the box actually matches on this list */
   searchHint?: string
   /** scope control, rendered immediately after the box so the two read as one thing */
   searchScope?: React.ReactNode
-  /** rendered under the search row when the query has matches outside the scope */
+  /** sort control — sits at the end of the filter row, where "how is this ordered?"
+      is asked after "which rows?" */
+  sort?: React.ReactNode
+  /** panel hung under the search box when the query reaches records the table
+      itself may not list */
   outOfScope?: React.ReactNode
 }) {
   return (
     <div className="mb-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap items-center gap-1">{tabs?.map((t, i) => <Tab key={i} {...t} />)}</div>
-        {action && <div className="ml-auto">{action}</div>}
-      </div>
-      {/* Search leads the filter row: it is the control people reach for first, and
-          keeping both on one line means one place to narrow a list down. */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <TableSearch q={q} onChange={onQ} placeholder={searchHint} />
+      {/* ONE row for the whole header: whatever the page puts in front (a view
+          switcher), then Search · Filter · Sort, then the create action pushed to
+          the right. Two rows for four controls spent a line of the page on
+          alignment. No tab strip — status is one filter among several, so it lives
+          in the Filter panel with the rest. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {leading}
+        <TableSearch q={q} onChange={onQ} placeholder={searchHint} dropdown={outOfScope} />
         {searchScope}
         {filters}
+        {/* Sort sits WITH the filters, not pushed to the far edge: narrowing a list
+            and ordering it are the same job, and a control alone on the right reads
+            as belonging to the table rather than to the toolbar. */}
+        {sort}
+        {action && <span className="ml-auto">{action}</span>}
       </div>
-      {outOfScope}
     </div>
   )
 }
@@ -163,6 +180,72 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </label>
+  )
+}
+
+/**
+ * All the field filters behind ONE control, so the toolbar reads Search · Filter ·
+ * Sort and nothing else. Five selects sitting open on the row cost a line of the
+ * page permanently to serve a narrowing that happens occasionally — and the row
+ * grew every time a filter was added. The button carries the active count, so the
+ * fact that a list IS filtered stays visible with the panel closed.
+ */
+function FilterBar({ count, onClear, children, disabled }: { count: number; onClear: () => void; children?: React.ReactNode
+  /** No column on this list is categorical — every value is unique, so there is
+      nothing to narrow by. The control still renders, greyed with a reason: a
+      toolbar that changes shape from page to page is harder to learn than one
+      control that is occasionally unavailable. */
+  disabled?: boolean }) {
+  const [open, setOpen] = useState(false)
+  if (disabled) {
+    return (
+      <span title="Danh sách này không có cột nào để lọc — mọi giá trị đều khác nhau." className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-line bg-canvas px-2.5 py-1 text-[11.5px] font-medium text-faint">
+        ▽ Filter <span>▾</span>
+      </span>
+    )
+  }
+  return (
+    <span className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium', count > 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}
+      >
+        ▽ Filter
+        {count > 0 && <span className="rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">{count}</span>}
+        <span className="text-faint">▾</span>
+      </button>
+      {open && (
+        <>
+          {/* click-away, so the panel behaves like a menu rather than a thing you
+              have to remember to close */}
+          <span className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <span className="absolute left-0 top-full z-20 mt-1 block w-[260px] overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+            <span className="flex items-center justify-between border-b border-line-soft bg-canvas/60 px-2.5 py-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Lọc danh sách</span>
+              {count > 0 && <button onClick={onClear} className="text-[10.5px] font-medium text-brand hover:underline">Xoá tất cả</button>}
+            </span>
+            <span className="block space-y-2 p-2.5">{children}</span>
+          </span>
+        </>
+      )}
+    </span>
+  )
+}
+
+/** One row inside the Filter panel — label above, full-width select. */
+function FilterRow({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <span className="block">
+      <span className="mb-0.5 block text-[10.5px] text-faint">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn('w-full cursor-pointer rounded-md border bg-surface px-2 py-1 text-[11.5px] outline-none focus:border-brand', value ? 'border-brand font-medium text-brand' : 'border-line text-ink')}
+      >
+        <option value="">Tất cả</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </span>
   )
 }
 
@@ -247,7 +330,11 @@ function cellText(n: React.ReactNode): string {
 /** lowercase + diacritics stripped, so "cong ty" finds "Công ty". */
 const searchKey = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-function ListPage({ tabs, cols, rows, minW, action, filters, searchHint, searchExtra, total, searchScope, outOfScope }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode; filters?: React.ReactNode; searchHint?: string
+function ListPage({ tabs, cols, rows, minW, action, leading, filters, searchHint, searchExtra, total, searchScope, sort, outOfScope }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode; filters?: React.ReactNode; searchHint?: string
+  /** sort control, rendered at the end of the filter row */
+  sort?: React.ReactNode
+  /** rendered in FRONT of the search box, on the same row */
+  leading?: React.ReactNode
   /** per-row text the search should match but the table does not print — e.g. the
       company ID and MST. Without it a placeholder promising "search by ID" lies. */
   searchExtra?: string[]
@@ -263,13 +350,102 @@ function ListPage({ tabs, cols, rows, minW, action, filters, searchHint, searchE
   outOfScope?: (q: string) => React.ReactNode }) {
   const [q, setQ] = useState('')
   const [size, setSize] = useState(20)
+  /* Status filter + sort derived here rather than at 28 call sites. A list that
+     passes its own `filters` / `sort` keeps them; everything else gets the same
+     toolbar for free, which is the only way "every table looks the same" survives
+     the next screen someone adds. */
+  const [tabPick, setTabPick] = useState('')
+  /** column index → chosen value, for the filters derived from the columns */
+  const [colPick, setColPick] = useState<Record<number, string>>({})
+  const [ord, setOrd] = useState<'none' | 'asc' | 'desc'>('none')
+
   const query = searchKey(q.trim())
-  const matched = query
+  let matched = query
     ? rows.filter((r, i) => searchKey([r.map(cellText).join(' '), searchExtra?.[i] ?? ''].join(' ')).includes(query))
     : rows
+
+  /* Tabs became a Status filter. The match runs on the row's RENDERED text — the
+     same text the search box already reads — so no list has to hand over a parallel
+     copy of its data just to be filterable. */
+  const tabOpts = (tabs ?? []).map((t) => t.label).filter((l) => l.toLowerCase() !== 'all')
+  if (tabPick) {
+    const key = searchKey(tabPick)
+    matched = matched.filter((r) => r.some((c) => searchKey(cellText(c)).trim() === key))
+  }
+  /* Options are read from the rows BEFORE the column filters apply — otherwise
+     picking a value collapses its own dropdown to that one option and there is no
+     way back. */
+  const matchedBase = matched
+  for (const [ci, v] of Object.entries(colPick)) {
+    if (!v) continue
+    matched = matched.filter((r) => cellText(r[Number(ci)]).trim() === v)
+  }
+
+  /* Generic ordering by the first column — the one a list is named by. "Mặc định"
+     keeps the order the page chose, which is usually meaningful (newest first,
+     most-idle first), so it stays the default and is always reachable again. */
+  if (ord !== 'none') {
+    const key = (r: React.ReactNode[]) => cellText(r[0]).trim().toLowerCase()
+    matched = matched.slice().sort((a, b) => (ord === 'asc' ? 1 : -1) * key(a).localeCompare(key(b), 'vi'))
+  }
+
+  /* Columns worth filtering by, discovered from the rendered rows: a column whose
+     values REPEAT and come from a small set is a category; one where every row
+     differs is an identity or a number, and a dropdown of 40 unique values is not a
+     filter. Column 0 is skipped — it is what the list is named by, which is what the
+     search box is for. */
+  /* Labels already spoken for — the tab-derived Status filter, most often. A second
+     row called "Status" listing slightly different values is worse than no row. */
+  const takenLabels = new Set(tabOpts.length > 0 ? ['status', 'trạng thái'] : [])
+  const autoCols = cols
+    .map((c, ci) => {
+      if (ci === 0) return null
+      const lower = c.label.trim().toLowerCase()
+      if (takenLabels.has(lower)) return null
+      takenLabels.add(lower)
+      const vals = matchedBase.map((r) => cellText(r[ci]).trim()).filter(Boolean)
+      const uniqVals = [...new Set(vals)]
+      const ok = uniqVals.length >= 2 && uniqVals.length <= 8 && vals.length > uniqVals.length
+        && uniqVals.every((v) => v.length <= 24 && !/^[\d.,\s₫%/-]+$/.test(v))
+      return ok ? { label: c.label, ci, options: uniqVals.sort((a, b) => a.localeCompare(b, 'vi')) } : null
+    })
+    .filter(Boolean)
+    .slice(0, 4) as { label: string; ci: number; options: string[] }[]
+
+  const activeAuto = Object.values(colPick).filter(Boolean).length
+  const derivedFilters = filters ?? ((tabOpts.length > 0 || autoCols.length > 0) ? (
+    <FilterBar count={(tabPick ? 1 : 0) + activeAuto} onClear={() => { setTabPick(''); setColPick({}) }}>
+      {tabOpts.length > 0 && <FilterRow label="Status" value={tabPick} onChange={setTabPick} options={tabOpts} />}
+      {autoCols.map((c) => (
+        <FilterRow
+          key={c.ci}
+          label={c.label}
+          value={colPick[c.ci] ?? ''}
+          onChange={(v) => setColPick((p) => ({ ...p, [c.ci]: v }))}
+          options={c.options}
+        />
+      ))}
+    </FilterBar>
+  ) : <FilterBar count={0} onClear={() => {}} disabled />)
+
+  const derivedSort = sort ?? (
+    <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
+      <span className="text-faint">Sắp xếp</span>
+      <select
+        value={ord}
+        onChange={(e) => setOrd(e.target.value as 'none' | 'asc' | 'desc')}
+        className="cursor-pointer bg-transparent text-[11.5px] font-medium text-ink outline-none"
+      >
+        <option value="none">Mặc định</option>
+        <option value="asc">{cols[0]?.label ?? 'A'} A → Z</option>
+        <option value="desc">{cols[0]?.label ?? 'A'} Z → A</option>
+      </select>
+    </label>
+  )
+
   return (
     <div>
-      <TabBar tabs={tabs} q={q} onQ={setQ} action={action} filters={filters} searchHint={searchHint} searchScope={searchScope} outOfScope={q.trim() ? outOfScope?.(q.trim()) : null} />
+      <TabBar q={q} onQ={setQ} action={action} leading={leading} filters={derivedFilters} searchHint={searchHint} searchScope={searchScope} sort={derivedSort} outOfScope={q.trim() ? outOfScope?.(q.trim()) : null} />
       {/* Result count sits directly on top of the table it describes — how many rows
           the current search/filters left, against the whole list. */}
       <p className="mb-1.5 text-[11px] text-faint">
@@ -1839,12 +2015,12 @@ const COMPANIES: Company[] = [
   { name: 'Công ty CP Tân Hưng Foods', shortName: 'Tân Hưng', legalName: 'Công ty Cổ phần Thực phẩm Tân Hưng', country: 'Việt Nam', tax: '0330xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Long An', contact: 'Mr. Ngô Bá Thành · HC-NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Payment 24d overdue — escalate', idle: 24, note: 'Accounting has chased twice; no transfer.', revenue: 45_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 10, cvLeft: 50, cvTotal: 50, hasPage: false, jobs: 0, domain: 'tanhungfoods.vn', since: '05/07/2026' },
   // More Qualified cover — idle spans fresh / amber / red (8d / 15d) across all three reps
   { name: 'Công ty CP Dệt may Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Dệt may Phương Nam', country: 'Việt Nam', tax: '0331xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Quận 12, HCMC', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Hồng Nhung · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 4, note: 'Wants Basic Plus vs Basic breakdown.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuongnamtex.vn', since: '—' },
-  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 11, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
+  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 132, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
   { name: 'Galaxy Media', shortName: 'Galaxy', legalName: 'Công ty Cổ phần Truyền thông Galaxy', country: 'Việt Nam', tax: '0333xxxxxx', industry: 'Truyền thông', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Đặng Thảo My · TA Lead', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase — 3 calls unanswered', idle: 19, note: 'Went quiet after the discovery call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'galaxymedia.vn', since: '—' },
   // More Proposal cover — includes a quotation that has already lapsed past its 14-day validity
   { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
   { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
-  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 27, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
+  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 126, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
   // More Negotiation cover — long internal-approval cycles, so the reds run deep here
   { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
   { name: 'Công ty CP Bán lẻ Thiên Hà', shortName: 'Thiên Hà', legalName: 'Công ty Cổ phần Bán lẻ Thiên Hà', country: 'Việt Nam', tax: '0338xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Đỗ Nhật Trường · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send v3 quote at 12% discount', idle: 26, note: 'Board meets month-end to approve.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thienharetail.vn', since: '—' },
@@ -1924,7 +2100,12 @@ const daysSince = (dmy: string) => {
 }
 // A company shows a pipeline step only while a deal is open (before it closes at
 // Invoice, or dies at Lost). Settled customers show "—".
-const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost'
+/* On the board or not. Three ways off it, and only one of them is a decision:
+   closed-won (Invoice), closed-lost (Lost, by a human with a reason), and the
+   quotation EXPIRING. The quotation is the reason the card exists, so when it
+   lapses the card goes with it — but that is not Lost: no reason, no decision,
+   customer status untouched, and a new quotation puts them straight back. */
+const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost' && !c.quoteLapsed
 const revFmt = (v: number) => (v === 0 ? '—' : (v / 1e6).toFixed(0) + 'M ₫')
 
 /* ── Create-PO gate ───────────────────────────────────────────────────────────
@@ -1966,15 +2147,17 @@ const IDLE_RULE: Record<Cadence, { amber: number; red: number; cadence: string }
   nurture:     { amber: 30, red: 60, cadence: 'monthly' },     // New (never bought), no open deal
   churn:       { amber: 60, red: 90, cadence: 'quarterly' },   // win-back
 }
-/** Which cadence row a company is judged against. Open deal wins over everything. */
-/* "Needs attention" = the rows a rep must DO something about today. One definition,
-   used by the filter, its count and the pipeline board — so the number never
-   disagrees with the list it filters. */
-function needsAttention(c: Company): boolean {
-  if (c.quoteLapsed) return true                                  // offer expired, decide
-  if (c.idle === null) return true                                // never contacted
-  if (idleOf(c.idle, cadenceOf(c)) === 'red') return true         // past its red threshold
-  return !companyContacts(c).some((p) => p.status === 'Active')   // nobody reachable left
+/* Sort options for the Companies list. The default is "chưa liên hệ lâu nhất" —
+   with the Needs-attention filter gone, ordering by neglect is what puts the rows a
+   rep must act on at the top, without spending a colour channel on every row.
+   Never-contacted (idle null) sorts first: it is the highest-priority follow-up. */
+type CoSort = 'contact-old' | 'contact-new' | 'name' | 'revenue'
+const idleRank = (c: Company) => (c.idle === null ? Infinity : c.idle)
+const CO_SORTS: Record<CoSort, { label: string; cmp: (a: Company, b: Company) => number }> = {
+  'contact-old': { label: 'Chưa liên hệ lâu nhất', cmp: (a, b) => idleRank(b) - idleRank(a) },
+  'contact-new': { label: 'Liên hệ gần đây nhất', cmp: (a, b) => idleRank(a) - idleRank(b) },
+  name: { label: 'Tên công ty A → Z', cmp: (a, b) => coLabel(a).localeCompare(coLabel(b), 'vi') },
+  revenue: { label: 'Doanh thu cao nhất', cmp: (a, b) => b.revenue - a.revenue },
 }
 
 function cadenceOf(c: Company): Cadence {
@@ -2170,16 +2353,6 @@ type TierRow = (typeof TIERS)[number]
 const TIER_YEAR = 2026
 const TIER_RESET = '01/01/2027'
 
-/* The reward catalogue. One row per benefit, one cell per tier; a blank cell means
-   the tier does NOT get that benefit — it is a real answer, not missing data. Every
-   figure here is a setting, editable per programme year without a release. */
-const TIER_BENEFITS: { name: string; by: Record<Tier, string> }[] = [
-  { name: 'Voucher giảm giá — áp cho 01 đơn hàng tiếp theo', by: { Member: '1.000.000 ₫', Bronze: 'tối đa 3.000.000 ₫', Silver: 'tối đa 5.000.000 ₫', Gold: 'tối đa 10.000.000 ₫', Diamond: 'tối đa 15.000.000 ₫' } },
-  { name: 'Top Companies — trang Thị trường IT Việt Nam', by: { Member: '30 ngày', Bronze: '90 ngày', Silver: '180 ngày', Gold: '270 ngày', Diamond: '365 ngày' } },
-  { name: 'Bài đăng truyền thông Facebook', by: { Member: '—', Bronze: '1 bài', Silver: '2 bài', Gold: '3 bài', Diamond: '4 bài' } },
-  { name: 'Banner trang kết quả tìm kiếm', by: { Member: '—', Bronze: '—', Silver: '1 banner', Gold: '1 banner', Diamond: '1 banner' } },
-]
-
 /** Cumulative paid-order value inside the CURRENT programme year — the only input to
     the tier. Demo-only derivation: a company whose first invoice landed this year has
     all of its revenue in-year; an older account keeps a stable share of its lifetime;
@@ -2282,16 +2455,32 @@ const groupRootOf = (c: Company) => ancestorsOf(c)[0] ?? c
 const groupOf = (root: Company) => COMPANIES.filter((x) => groupRootOf(x).name === root.name)
 /** True when the company is part of a group at all (has a parent or any children). */
 const inGroup = (c: Company) => Boolean(c.parent) || childrenOf(c).length > 0
-/** Branch (shares the parent's tax root) vs subsidiary (its own tax code). Derived from
-    the data — never a field someone has to remember to set. */
-const affiliateKind = (c: Company, parent: Company) =>
-  taxRoot(c.tax) === taxRoot(parent.tax) ? 'Chi nhánh' : 'Công ty con'
+
+/* A company can hold BOTH roles at once — Đông Phong sits under Trường Sơn and has
+   Kim Long Steel under it. A binary "parent OR child" label hid that middle layer
+   entirely, so every mid-tier company read as a leaf. */
+const coRoles = (c: Company): string[] => {
+  const r: string[] = []
+  if (c.parent) r.push('công ty con')
+  if (childrenOf(c).length > 0) r.push('công ty mẹ')
+  return r
+}
+/* A CHI NHÁNH is a dependent unit (đơn vị phụ thuộc), not a separate legal entity —
+   its tax code is the company's 10-digit root plus a suffix (…-001). Having no legal
+   personality, it cannot own capital in another company, so it can never be a công ty
+   mẹ. Điều 195 defines the mẹ/con relationship by CONTROL (vốn / quyền bổ nhiệm /
+   quyền sửa điều lệ), all of which a branch is incapable of holding. A company may
+   well be both mẹ and con at once — that is a normal multi-tier group — but a branch
+   may only ever be the child end. */
 
 function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: Company) => void; showOwner?: boolean; rows?: Company[] }) {
   return (
     <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, minmax(130px,1fr))' }}>
       {CO_ORDER.map((st) => {
-        const list = rows.filter((c) => c.status === st)
+        /* An expired quotation takes the company OFF the board — the quotation is
+           why the card exists. The closed columns are unaffected: a deal that
+           reached Invoice or Lost was resolved by a person, not by a lapse. */
+        const list = rows.filter((c) => c.status === st && (!c.quoteLapsed || st === 'Invoice' || st === 'Lost'))
         const total = list.reduce((s, c) => s + coValue(c), 0)
         return (
           <div key={st} className="rounded-lg border border-line bg-canvas/40 p-2">
@@ -2308,8 +2497,11 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
                     bordered tag, not plain text, so it reads as a category the board
                     can be filtered by rather than as a second line of the name. */}
                 <span className="mt-1 inline-block max-w-full truncate rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] text-muted">{c.industry}</span>
-                <div className="mt-1 flex items-center justify-between gap-1">
-                  <p className="text-[10.5px] text-muted tabular-nums">{vnd(coValue(c))}</p>
+                {/* A board column is ~130px: name, industry, value and idle are all
+                    that survive truncation. Option count and next step live on the
+                    record, one click away. */}
+                <div className="mt-1.5 flex items-baseline justify-between gap-1">
+                  <p className="min-w-0 truncate text-[11.5px] font-semibold text-ink tabular-nums">{vnd(coValue(c))}</p>
                   <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} compact /></span>
                 </div>
                 {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
@@ -2336,11 +2528,163 @@ function QuotaBar({ left, total }: { left: number; total: number }) {
    company's sales owner — because whoever does the work is who the KPI counts. */
 const ME = 'Nguyễn Thị Lan'
 
+/* ── Global company search ───────────────────────────────────────────────────
+   One search box in the shell, reachable from every page. The Companies list has
+   its own search, but that one narrows a LIST the rep is already looking at; this
+   one answers a different question — "does this customer exist at all, and where
+   is it?" — from wherever they happen to be.
+
+   Deliberately unscoped: it searches EVERY company, not the signed-in rep's book.
+   A rep who cannot find a customer because it belongs to a colleague creates it
+   again, and a duplicate MST costs far more than the privacy of a company name.
+   What the rep gets is REACH: one record, opened by name / MST / Company ID.
+   Browsing someone else's book is still not possible — there is no listing here,
+   the result set is capped, and it dies with the query.
+
+   Companies only. A quotation or a PO is always reached THROUGH its company, and
+   a box that answers with four kinds of record needs the user to read every row
+   before they can act on any of them. */
+export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, record: string) => void }) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const [cursor, setCursor] = useState(0)
+  const box = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+
+  /* ⌘K / Ctrl-K from anywhere. The shortcut is printed in the box: a hotkey nobody
+     can see is a hotkey nobody uses. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); input.current?.focus(); input.current?.select() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // clicking anywhere else dismisses the results without clearing the query
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false) }
+    window.addEventListener('mousedown', onDown)
+    return () => window.removeEventListener('mousedown', onDown)
+  }, [])
+
+  useEffect(() => { setCursor(0) }, [q])
+
+  const ql = searchKey(q.trim())
+  /* Identity fields plus the contact's NAME — not their job title, and not the
+     city. "Trưởng phòng HC-NS" and "HCMC" are on almost every record, so matching
+     them turns a search into a way to page through everyone's book, which is the
+     one thing this box must not become. */
+  const hay = (c: Company) => searchKey([coLabel(c), c.name, c.legalName, c.tax, companyId(coKey(c)), c.contact.split('·')[0], c.domain].join(' '))
+  const all = ql.length >= 2 ? COMPANIES.filter((c) => hay(c).includes(ql)) : []
+  const hits = all.slice(0, 7)
+
+  /* Hands the shell the Company ID, not the row: the shell switches to Companies
+     and that page resolves the id, so the breadcrumb names Companies and Back
+     returns to the Companies list — not to whatever page the search was used on. */
+  const go = (c: Company) => {
+    setOpen(false)
+    setQ('')
+    input.current?.blur()
+    onOpen('admin-company-list', companyId(coKey(c)))
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setQ(''); setOpen(false); input.current?.blur(); return }
+    if (!hits.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor((i) => (i + 1) % hits.length) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setCursor((i) => (i - 1 + hits.length) % hits.length) }
+    if (e.key === 'Enter') { e.preventDefault(); go(hits[cursor]) }
+  }
+
+  return (
+    <div ref={box} className="relative min-w-0 flex-1">
+      <div className={cn('flex items-center gap-2 rounded-lg border bg-canvas px-2.5 py-1.5 transition-colors', open ? 'border-brand/50 bg-surface' : 'border-line hover:border-ink/25')}>
+        <span className="shrink-0 text-[12px] text-faint">🔍</span>
+        <input
+          ref={input}
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Search any company — name, tax code, company ID…"
+          className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-faint"
+        />
+        {q ? (
+          <button onClick={() => { setQ(''); input.current?.focus() }} className="shrink-0 text-[12px] text-faint hover:text-ink" aria-label="Clear search">✕</button>
+        ) : (
+          <span className="hidden shrink-0 rounded border border-line px-1.5 py-px font-mono text-[10px] text-faint lg:inline">⌘K</span>
+        )}
+      </div>
+
+      {open && q.trim() && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+          {ql.length < 2 ? (
+            <p className="px-3 py-2.5 text-[11.5px] text-muted">Type at least <b className="text-ink">2 characters</b> — company name, tax code (MST) or Company ID.</p>
+          ) : hits.length === 0 ? (
+            <div className="px-3 py-2.5">
+              <p className="text-[11.5px] text-muted">No company matches “<b className="text-ink">{q.trim()}</b>”.</p>
+              {/* The point of searching before creating: this line is what stops the
+                  rep from making a duplicate they could not find. */}
+              <p className="mt-0.5 text-[10.5px] text-faint">Checked every company, including other reps’ — if it is not here, it does not exist yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 border-b border-line-soft bg-canvas/60 px-3 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Companies</span>
+                <span className="ml-auto text-[10.5px] text-faint">{hits.length}/{all.length} result{all.length === 1 ? '' : 's'}</span>
+              </div>
+              <div className="max-h-[320px] overflow-y-auto p-1">
+                {hits.map((c, i) => (
+                  <button
+                    key={c.name}
+                    onMouseEnter={() => setCursor(i)}
+                    onClick={() => go(c)}
+                    className={cn('flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left', i === cursor ? 'bg-canvas' : 'hover:bg-canvas')}
+                  >
+                    <span className="mt-px text-[12px]">🏢</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="min-w-0 truncate text-[12.5px] font-medium text-ink">{coLabel(c)}</span>
+                        <Pill tone={AC_STATUS[c.account].tone}>{c.account}</Pill>
+                        {/* Pipeline is a second, independent axis — a rep opening a
+                            record wants to know if a deal is live on it. */}
+                        {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+                      </span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-faint">
+                        <span className="font-mono">{companyId(coKey(c))}</span>
+                        <span>·</span>
+                        <span>MST {c.tax}</span>
+                        <span>·</span>
+                        <span>👤 {c.owner}{c.owner === ME && <span className="text-brand"> (you)</span>}</span>
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 border-t border-line-soft bg-canvas/60 px-3 py-1.5 text-[10px] text-faint">
+                <span><b className="font-mono text-muted">↑↓</b> navigate</span>
+                <span><b className="font-mono text-muted">↵</b> open</span>
+                <span><b className="font-mono text-muted">esc</b> close</span>
+                {all.length > hits.length && <span className="ml-auto">Refine to see the other {all.length - hits.length}</span>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AdminCompanyList() {
   const [open, setOpen] = useState<Company | null>(null)
+  /* The "+ New company" button lives on the page title row (shell PRIMARY_ACTION),
+     so the shell signals the intent and this page enters create mode. */
+  const createSignal = useContext(CreateSignalCtx)
   /* Creating a company REPLACES the list rather than floating over it — the form is
      long enough to need the whole viewport. Same pattern as job create. */
   const [creating, setCreating] = useState(false)
+  useEffect(() => { if (createSignal) setCreating(true) }, [createSignal])
   const [view, setView] = useState<'me' | 'team'>('me')
   // Group filter — the whole tree under one root. Deliberately NOT an owner filter:
   // a group can span several reps, so filtering by group has to ignore the view
@@ -2353,60 +2697,43 @@ function AdminCompanyList() {
   const [fStatus, setFStatus] = useState('')
   const [fPipeline, setFPipeline] = useState('')
   const [fOwner, setFOwner] = useState('')
-  const [attentionOnly, setAttentionOnly] = useState(false)
-  if (open) return <CompanyDetail c={open} onBack={() => setOpen(null)} onOpen={setOpen} />
+  const [sort, setSort] = useState<CoSort>('contact-old')
+  const goTo = useContext(ScreenNavCtx)
+  /* Arrived from the shell's global search (or any cross-page link): open that
+     company. Matched on Company ID first, then on the raw name, so a caller can
+     hand either. */
+  const handed = useContext(OpenRecordCtx)
+  const linked = handed ? COMPANIES.find((c) => companyId(coKey(c)) === handed || c.name === handed) ?? null : null
+  const showing = open ?? linked
+  if (showing) return <CompanyDetail c={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-company-list') }} onOpen={setOpen} />
 
   /* A Sales rep only ever LISTS their own book — there is no "whole system" scope to
      browse everyone's customers. What they still get is a search that can REACH any
-     single customer by name / MST / ID and open its record (see `outOfScope`), so a
-     rep who knows a company exists never has to re-create it. The Sales-lead view is
-     the role that legitimately sees the whole team. */
+     single customer by name / MST / ID and open its record — the list's own
+     `outOfScope` dropdown, and the shell-wide GlobalCompanySearch — so a rep who
+     knows a company exists never has to re-create it. The Sales-lead view is the
+     role that legitimately sees the whole team. */
   const mine = view === 'me'
   const base = group ? groupOf(group) : mine ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
   // once the list can show other reps' companies (team, or a cross-rep group), the owner column has to be there
   const showOwner = view === 'team' || Boolean(group)
   const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
-  const rows = base.filter((c) =>
-    (!fIndustry || c.industry === fIndustry) &&
-    (!fLocation || coCity(c) === fLocation) &&
-    (!fStatus || c.account === fStatus) &&
-    (!fPipeline || (fPipeline === 'Not in pipeline' ? !inPipeline(c) : inPipeline(c) && c.status === fPipeline)) &&
-    (!fOwner || c.owner === fOwner) &&
-    (!attentionOnly || needsAttention(c)),
-  )
-  const activeFilters = [fIndustry, fLocation, fStatus, fPipeline, fOwner].filter(Boolean).length + (attentionOnly ? 1 : 0)
-  const clearAll = () => { setFIndustry(''); setFLocation(''); setFStatus(''); setFPipeline(''); setFOwner(''); setAttentionOnly(false) }
-  const stats = view === 'me'
-    ? [
-        { label: 'Revenue vs target (Q3)', value: '72%', delta: '₫720M / ₫1.0B', up: true },
-        { label: 'Activity today', value: '38 / 50', delta: '12 below target', up: false },
-        { label: 'In pipeline', value: '12', delta: '₫1.6B open', up: true },
-        { label: 'My customers', value: '84' },
-        { label: 'Churn risk', value: '5', delta: '+1 to win back', up: false },
-      ]
-    : [
-        { label: 'Revenue vs target (Q3)', value: '84%', delta: '₫12.4B / ₫14.8B', up: true },
-        { label: 'Activity today', value: '227 / 300', delta: '73 below target', up: false },
-        { label: 'In pipeline', value: '108', delta: '₫18.2B open', up: true },
-        { label: 'Total customers', value: '512' },
-        { label: 'Churned (12mo)', value: '30', delta: '5.9% of base', up: false },
-      ]
-
+  const rows = base
+    .filter((c) =>
+      (!fIndustry || c.industry === fIndustry) &&
+      (!fLocation || coCity(c) === fLocation) &&
+      (!fStatus || c.account === fStatus) &&
+      (!fPipeline || (fPipeline === 'Not in pipeline' ? !inPipeline(c) : inPipeline(c) && c.status === fPipeline)) &&
+      (!fOwner || c.owner === fOwner),
+    )
+    .slice()
+    .sort(CO_SORTS[sort].cmp)
+  const activeFilters = [fIndustry, fLocation, fStatus, fPipeline, fOwner].filter(Boolean).length
+  const clearAll = () => { setFIndustry(''); setFLocation(''); setFStatus(''); setFPipeline(''); setFOwner('') }
   if (creating) return <CompanyCreatePage onBack={() => setCreating(false)} />
 
   return (
     <div>
-      {/* Sales vs Sales-lead view switcher */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
-          <button onClick={() => setView('me')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'me' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales view</button>
-          <button onClick={() => setView('team')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'team' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales lead view</button>
-        </div>
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New company</button>
-      </div>
-
-      <div className="mb-4"><StatCards cards={stats} row /></div>
-
       {/* Group filter banner — only ever visible once a rep has clicked a group tag,
           so the default list stays exactly as it was. */}
       {group && (
@@ -2418,8 +2745,28 @@ function AdminCompanyList() {
       )}
 
 
+      {/* The view switcher decides WHICH list this is, so it reads first — before the
+          controls that narrow it — and shares the header row with them. */}
       <ListPage
-        minW={showOwner ? 1520 : 1380}
+        minW={showOwner ? 1640 : 1500}
+        leading={
+          <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+            <button onClick={() => setView('me')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'me' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales view</button>
+            <button onClick={() => setView('team')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'team' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales lead view</button>
+          </span>
+        }
+        sort={
+          <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
+            <span className="text-faint">Sắp xếp</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as CoSort)}
+              className="max-w-[170px] cursor-pointer bg-transparent text-[11.5px] font-medium text-ink outline-none"
+            >
+              {(Object.keys(CO_SORTS) as CoSort[]).map((k) => <option key={k} value={k}>{CO_SORTS[k].label}</option>)}
+            </select>
+          </label>
+        }
         /* rows are already narrowed by the filter row, so Total means the book of
            business, not what survived the filters */
         total={base.length}
@@ -2432,61 +2779,92 @@ function AdminCompanyList() {
            "does not exist" and they re-create a company that already has an owner.
            So nothing is LISTED here: matches outside the book surface as direct links
            straight into that customer's record, and only when the query is specific. */
+        /* A rep cannot BROWSE the whole system, but must be able to REACH one
+           customer they know exists — otherwise "not in my list" reads as "does not
+           exist" and they re-create a company that already has an owner.
+
+           So this is a dropdown on the query, not a second list on the page. It is
+           neutral, not a warning: finding a colleague's customer is a success. It
+           needs a real query, it is capped, and it dies with the query — three
+           things that keep "reach" from quietly becoming "browse". */
         outOfScope={(q) => {
           if (!mine) return null
           const ql = searchKey(q)
-          if (ql.length < 2) return null
-          const hay = (c: Company) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' '))
-          const hits = COMPANIES.filter((c) => c.owner !== ME && hay(c).includes(ql)).slice(0, 6)
-          if (!hits.length) return null
-          return (
-            <div className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
-              <p className="mb-1.5">
-                <b>{hits.length} công ty</b> khớp “{q}” do <b>sales khác</b> phụ trách — không nằm trong sổ của bạn. Bạn không duyệt được danh sách toàn hệ thống, nhưng nếu biết tên KH thì mở trực tiếp được:
-              </p>
-              <div className="space-y-1">
-                {hits.map((c) => (
-                  <button
-                    key={c.name}
-                    onClick={() => setOpen(c)}
-                    className="flex w-full items-center gap-2 rounded-md border border-amber-200 bg-surface px-2.5 py-1.5 text-left hover:border-amber-400"
-                  >
-                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{coLabel(c)}</span>
-                    <span className="hidden shrink-0 font-mono text-[10px] text-faint md:inline">{companyId(coKey(c))}</span>
-                    <span className="shrink-0 text-[10.5px] text-muted">MST {c.tax}</span>
-                    <span className="shrink-0 text-[10.5px] text-muted">· {c.owner}</span>
-                    <span className="shrink-0 font-medium text-brand">Mở →</span>
-                  </button>
-                ))}
+          const inBook = rows.filter((c) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' ')).includes(ql)).length
+          if (ql.length < 2) {
+            return (
+              <div className="absolute left-0 top-full z-20 mt-1 w-[340px] rounded-lg border border-line bg-surface p-2.5 text-[11px] text-muted shadow-lg">
+                Gõ ít nhất <b className="text-ink">2 ký tự</b> để tìm ngoài sổ của bạn — tên, MST hoặc Company ID.
               </div>
+            )
+          }
+          const hay = (c: Company) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' '))
+          const all = COMPANIES.filter((c) => c.owner !== ME && hay(c).includes(ql))
+          const hits = all.slice(0, 5)
+          return (
+            <div className="absolute left-0 top-full z-20 mt-1 w-[420px] overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+              <div className="flex items-center gap-2 border-b border-line-soft bg-canvas/60 px-2.5 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Ngoài sổ của bạn</span>
+                <span className="ml-auto text-[10.5px] text-faint">{all.length ? `${hits.length}/${all.length}` : '0'} kết quả</span>
+              </div>
+              {hits.length > 0 ? (
+                <div className="max-h-[260px] overflow-y-auto p-1">
+                  {hits.map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => setOpen(c)}
+                      className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-canvas"
+                    >
+                      <span className="mt-px text-[12px]">🏢</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="min-w-0 truncate text-[12px] font-medium text-ink">{coLabel(c)}</span>
+                          <Pill tone={AC_STATUS[c.account].tone}>{c.account}</Pill>
+                        </span>
+                        {/* Company ID + MST + owner: enough to be certain this is the
+                            right record before opening it, and to know whose it is. */}
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-faint">
+                          <span className="font-mono">{companyId(coKey(c))}</span>
+                          <span>· MST {c.tax}</span>
+                          <span>· 👤 {c.owner}</span>
+                        </span>
+                      </span>
+                      <span className="mt-0.5 shrink-0 text-[10.5px] font-medium text-brand">Xem hồ sơ →</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                /* Nothing anywhere is the moment a duplicate gets created, so the
+                   create action lives right here rather than back up on the toolbar. */
+                <div className="p-2.5">
+                  <p className="text-[11px] text-muted">Không có công ty nào khớp “{q}” — kể cả ngoài sổ của bạn.</p>
+                  {inBook === 0 && (
+                    <button onClick={() => setCreating(true)} className="mt-1.5 rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">+ Tạo công ty mới</button>
+                  )}
+                </div>
+              )}
+              {all.length > hits.length && (
+                <p className="border-t border-line-soft bg-canvas/60 px-2.5 py-1.5 text-[10px] leading-relaxed text-faint">
+                  Chỉ hiện {hits.length} kết quả đầu — gõ chính xác hơn (MST hoặc Company ID) thay vì duyệt danh sách.
+                </p>
+              )}
             </div>
           )
         }}
         filters={
-          <>
-            <FilterSelect label="Industry" value={fIndustry} onChange={setFIndustry} options={uniq(base.map((c) => c.industry))} />
-            <FilterSelect label="Location" value={fLocation} onChange={setFLocation} options={uniq(base.map(coCity))} />
-            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={Object.keys(AC_STATUS)} />
-            <FilterSelect label="Pipeline" value={fPipeline} onChange={setFPipeline} options={[...CO_ORDER, 'Not in pipeline']} />
-            {showOwner && <FilterSelect label="Owner" value={fOwner} onChange={setFOwner} options={uniq(base.map((c) => c.owner))} />}
-            {/* The one filter that is a job rather than a field: everything to act on. */}
-            <button
-              onClick={() => setAttentionOnly((v) => !v)}
-              title="Idle past its red threshold, a lapsed quotation, never contacted, or no reachable contact left"
-              className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11.5px]', attentionOnly ? 'border-rose-300 bg-rose-50 font-medium text-rose-700' : 'border-line bg-surface text-muted hover:border-ink/30')}
-            >
-              ⚠ Needs attention
-              <span className={cn('rounded-full px-1.5 text-[10px]', attentionOnly ? 'bg-rose-600 text-white' : 'bg-canvas text-faint')}>{base.filter(needsAttention).length}</span>
-            </button>
-            {activeFilters > 0 && (
-              <button onClick={clearAll} className="ml-auto rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">
-                Clear {activeFilters} filter{activeFilters > 1 ? 's' : ''} ✕
-              </button>
-            )}
-          </>
+          <FilterBar count={activeFilters} onClear={clearAll}>
+            <FilterRow label="Industry" value={fIndustry} onChange={setFIndustry} options={uniq(base.map((c) => c.industry))} />
+            <FilterRow label="Location" value={fLocation} onChange={setFLocation} options={uniq(base.map(coCity))} />
+            <FilterRow label="Status" value={fStatus} onChange={setFStatus} options={Object.keys(AC_STATUS)} />
+            <FilterRow label="Pipeline" value={fPipeline} onChange={setFPipeline} options={[...CO_ORDER, 'Not in pipeline']} />
+            {showOwner && <FilterRow label="Owner" value={fOwner} onChange={setFOwner} options={uniq(base.map((c) => c.owner))} />}
+          </FilterBar>
         }
         cols={[
           { label: 'Company', w: '1.4fr' },
+          // The permanent public identifier — what support quotes back and what an
+          // export joins on. Sits next to the name so a row can be identified.
+          { label: 'Company ID', w: '0.85fr' },
           { label: 'Industry', w: '0.9fr' },
           { label: 'Location', w: '0.9fr' },
           { label: 'Status', w: '0.8fr' },
@@ -2513,10 +2891,11 @@ function AdminCompanyList() {
                 onClick={() => setGroup(groupRootOf(c))}
                 className="mt-0.5 block max-w-full truncate text-left text-[10px] text-faint hover:text-brand hover:underline"
               >
-                🏢 {coLabel(groupRootOf(c))}{c.parent ? ` · ${affiliateKind(c, coByName(c.parent)!).toLowerCase()}` : ' · công ty mẹ'}
+                🏢 {coLabel(groupRootOf(c))} · {coRoles(c).join(' · ')}
               </button>
             )}
           </div>,
+          <span className="truncate font-mono text-[11px] text-muted">{companyId(coKey(c))}</span>,
           <span className="truncate">{c.industry}</span>,
           <span className="truncate">{c.address}</span>,
           <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>,
@@ -2526,13 +2905,18 @@ function AdminCompanyList() {
             <TierPill tier={tierOf(c)} />
           </div>,
           inPipeline(c) ? (
-            <span className="flex min-w-0 flex-wrap items-center gap-1">
-              <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>
-              {c.quoteLapsed && <span title="The sent quotation has passed its expiry date — reissue or close the deal." className="text-[10.5px] font-medium text-rose-600">⚠ lapsed</span>}
+            <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>
+          ) : c.quoteLapsed ? (
+            /* Off the board, but for a reason worth acting on — and NOT Lost. Saying
+               only "—" here would hide a live prospect whose offer simply ran out. */
+            <span title="Báo giá đã hết hạn cuối tháng — công ty rời pipeline. Tạo báo giá mới (hoặc bản v2) để đưa lại vào Proposal." className="min-w-0 truncate text-[10.5px] font-medium text-amber-600">
+              Báo giá hết hạn
             </span>
           ) : <span className="text-faint">—</span>,
           ...(showOwner ? [<span className="truncate">{c.owner}</span>] : []),
-          <Idle days={c.idle} kind={cadenceOf(c)} />,
+          // Plain date — no rot dot, no colour. Urgency lives on the Pipeline board
+          // and in the sort, not as a third colour channel on every row.
+          <Idle days={c.idle} kind={cadenceOf(c)} compact />,
           <span className="truncate text-muted">{c.note}</span>,
           <span className="tabular-nums">{revFmt(c.revenue)}</span>,
           <span className="tabular-nums">{revFmt(coLastRevenue(c))}</span>,
@@ -3299,7 +3683,11 @@ function companyActivity(c: Company): CoEvent[] {
 /* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
 const CHAT_CHANNELS = ['Zalo', 'Facebook Messenger', 'Email', 'SMS', 'Zalo OA', 'Phone', 'Other']
 /** Attachment tray shared by every activity type — images and forwarded emails. */
-function AttachRow({ atts, onAdd, onDrop }: { atts: CoAtt[]; onAdd: (a: CoAtt) => void; onDrop: (i: number) => void }) {
+/* What may be attached depends on the activity: a chat is screenshots (you cannot
+   attach an email to a Zalo thread), a meeting can carry both a photo of the room
+   and the follow-up email. A CALL gets no attach row at all — Calio syncs the
+   recording and outcome automatically, so a manual control there is noise. */
+function AttachRow({ atts, onAdd, onDrop, allow = ['image', 'email'] }: { atts: CoAtt[]; onAdd: (a: CoAtt) => void; onDrop: (i: number) => void; allow?: CoAtt['kind'][] }) {
   const n = atts.filter((a) => a.kind === 'image').length
   return (
     <div>
@@ -3312,14 +3700,15 @@ function AttachRow({ atts, onAdd, onDrop }: { atts: CoAtt[]; onAdd: (a: CoAtt) =
             <button onClick={() => onDrop(i)} className="ml-0.5 text-faint hover:text-ink">✕</button>
           </span>
         ))}
-        <button onClick={() => onAdd({ kind: 'image', label: `anh-${n + 1}.png` })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Ảnh</button>
-        <button onClick={() => onAdd({ kind: 'email', label: 'RE- trao đổi.eml' })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Email</button>
+        {allow.includes('image') && <button onClick={() => onAdd({ kind: 'image', label: `anh-${n + 1}.png` })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Ảnh</button>}
+        {allow.includes('email') && <button onClick={() => onAdd({ kind: 'email', label: 'RE- trao đổi.eml' })} className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">+ Email</button>}
       </div>
     </div>
   )
 }
 
 function CompanyActivities({ c }: { c: Company }) {
+  const ro = useReadOnly()
   const [kind, setKind] = useState<null | 'chat' | 'call' | 'meeting'>(null)
   const [channel, setChannel] = useState('Zalo')
   const [note, setNote] = useState('')
@@ -3329,17 +3718,15 @@ function CompanyActivities({ c }: { c: Company }) {
   const [mins, setMins] = useState('60')
   const [place, setPlace] = useState('Tại văn phòng khách hàng')
   const [logged, setLogged] = useState<CoEvent[]>([])
-  /** which kinds are shown — all three by default, so nothing is hidden by surprise */
-  const [show, setShow] = useState<Set<CoKind>>(new Set<CoKind>(['sales', 'client', 'system']))
+  /* SINGLE-select, not a set of toggles. The old chips were multi-select, so tapping
+     "Sales" while everything was on REMOVED sales — the opposite of what a tap looks
+     like it should do. One active view at a time is what a tab bar promises.
+     Defaults to Sales: contact with the client is what this panel is read for, and
+     it is the only kind that resets Idle. */
+  const [feed, setFeed] = useState<'sales' | 'client' | 'system' | 'all'>('sales')
   const all = [...logged, ...companyActivity(c)]
-  const rows = all.filter((e) => show.has(e.kind))
-  const toggle = (k: CoKind) =>
-    setShow((prev) => {
-      const next = new Set(prev)
-      // never let the reader end up with an empty feed and no way back
-      if (next.has(k)) { if (next.size > 1) next.delete(k) } else next.add(k)
-      return next
-    })
+  const rows = feed === 'all' ? all : all.filter((e) => e.kind === feed)
+  const countOf = (k: CoKind) => all.filter((e) => e.kind === k).length
 
   const save = () => {
     const base = { time: 'just now', kind: 'sales' as CoKind, days: 0, by: ME, atts: atts.length ? atts : undefined }
@@ -3359,7 +3746,18 @@ function CompanyActivities({ c }: { c: Company }) {
     // min-w-0 so the trail's table scrolls inside this column instead of forcing
     // the whole Overview grid wider than the page.
     <div className="min-w-0 space-y-4">
-      {/* composer */}
+      {/* composer — withdrawn on a colleague's record. Logging an activity is the
+          one write that would corrupt someone else's numbers: it stamps THEIR
+          company with MY contact and resets THEIR idle clock. The trail below
+          stays fully readable. */}
+      {ro ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 px-3.5 py-2.5">
+          <span className="text-[13px]">🔒</span>
+          <span className="text-[11.5px] leading-relaxed text-muted">
+            Không ghi nhận hoạt động trên công ty của sales khác — việc này sẽ reset <b className="text-ink/70">Idle</b> của họ và ghi tên bạn vào sổ của họ.
+          </span>
+        </div>
+      ) : (
       <div className="rounded-xl border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
           <p className="text-[12.5px] font-bold">Log an activity</p>
@@ -3388,7 +3786,8 @@ function CompanyActivities({ c }: { c: Company }) {
                 <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note <span className="text-rose-500">*</span></label>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder={`What did you discuss on ${channel}?`} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
               </div>
-              <AttachRow atts={atts} onAdd={addAtt} onDrop={dropAtt} />
+              {/* Screenshots only — an email is its own thread, not an attachment to a chat. */}
+              <AttachRow atts={atts} onAdd={addAtt} onDrop={dropAtt} allow={['image']} />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setKind(null)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
                 <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Log chat</button>
@@ -3447,7 +3846,8 @@ function CompanyActivities({ c }: { c: Company }) {
                 <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note</label>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call summary / next step… (auto-filled from Calio when available)" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
               </div>
-              <AttachRow atts={atts} onAdd={addAtt} onDrop={dropAtt} />
+              {/* No attach row: Calio syncs the recording and outcome onto the call
+                  automatically, so a manual attach control here is dead weight. */}
               <div className="flex justify-end gap-2">
                 <button onClick={() => setKind(null)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
                 <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Log call</button>
@@ -3457,42 +3857,55 @@ function CompanyActivities({ c }: { c: Company }) {
 
         </div>
       </div>
+      )}
 
       {/* history — table so the whole trail is scannable at a glance */}
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px] font-semibold text-ink">Activity <span className="font-normal text-muted">— everything that happened on this account</span></p>
-          <span className="text-[11px] text-faint">newest first · {rows.length} of {all.length}</span>
+
         </div>
-        {/* Filter by WHO caused it. All three on by default — the feed is the full
-            history; the chips are for reading it, not for hiding parts of it. */}
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          {/* "All" is both a state and a reset — one click back to the whole trail,
-              so a reader can never get stranded in a partial view. */}
-          <button
-            onClick={() => setShow(new Set<CoKind>(['sales', 'client', 'system']))}
-            className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', show.size === 3 ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
-          >
-            All
-          </button>
-          {(['sales', 'client', 'system'] as CoKind[]).map((k) => {
-            const on = show.has(k)
-            return (
-              <button
-                key={k}
-                onClick={() => toggle(k)}
-                title={KIND_META[k].hint}
-                className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
-              >
-                {KIND_META[k].label}
-              </button>
-            )
-          })}
+        {/* One active view at a time. Sales sits first and is the default because it
+            is the reason the panel exists; Client and System are context. */}
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-lg border border-line">
+            {([
+              { k: 'sales' as const, label: 'Sales', n: countOf('sales') },
+              { k: 'client' as const, label: 'Client', n: countOf('client') },
+              { k: 'system' as const, label: 'System', n: countOf('system') },
+              { k: 'all' as const, label: 'Tất cả', n: all.length },
+            ]).map((t, i) => {
+              const on = feed === t.k
+              return (
+                <button
+                  key={t.k}
+                  onClick={() => setFeed(t.k)}
+                  title={t.k === 'all' ? 'Toàn bộ dòng thời gian' : KIND_META[t.k].hint}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11.5px] transition-colors',
+                    i > 0 && 'border-l border-line',
+                    on ? 'bg-brand font-medium text-white' : 'text-muted hover:bg-canvas',
+                  )}
+                >
+                  {t.label}
+                  <span className={cn('rounded-full px-1.5 text-[10px] tabular-nums', on ? 'bg-white/25 text-white' : 'bg-canvas text-faint')}>{t.n}</span>
+                </button>
+              )
+            })}
+          </div>
+          {feed === 'sales' && <span className="text-[10.5px] text-faint">Chat · call · meeting · tài liệu đã gửi — chỉ nhóm này reset Idle.</span>}
         </div>
-        {rows.length === 0 ? (
+        {/* "Never contacted" is an ALARM about the relationship, so it may only fire
+            when there is genuinely no sales activity — not merely because the reader
+            is standing on an empty Client or System tab. */}
+        {rows.length === 0 && countOf('sales') === 0 ? (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/50 px-3.5 py-4 text-center">
             <p className="text-[12.5px] font-medium text-rose-700">Never contacted</p>
             <p className="mt-0.5 text-[11.5px] text-rose-700/80">No sales activity has ever been logged for this company — the highest-priority follow-up, not the lowest.</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line bg-canvas/40 px-3.5 py-4 text-center">
+            <p className="text-[12px] text-muted">Chưa có hoạt động nào thuộc nhóm <b className="text-ink/70">{feed === 'client' ? 'Client' : 'System'}</b> cho công ty này.</p>
           </div>
         ) : (
           <Table
@@ -3507,10 +3920,7 @@ function CompanyActivities({ c }: { c: Company }) {
                  counts this name — a colleague covering for the owner gets the credit. */
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-[11.5px] font-medium text-ink/80">{e.by}</span>
-                <span className="flex items-center gap-1 text-[10px] text-faint">
-                  {KIND_META[e.kind].label}
-                  {e.kind === 'sales' && e.by !== c.owner && <span className="rounded bg-amber-100 px-1 py-px font-medium text-amber-700">hỗ trợ</span>}
-                </span>
+                <span className="text-[10px] text-faint">{KIND_META[e.kind].label}</span>
               </span>,
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="text-muted">{e.sub}</span>
@@ -3531,7 +3941,7 @@ function CompanyActivities({ c }: { c: Company }) {
         <p className="mt-2 text-[11px] leading-relaxed text-faint">
           One trail for the whole account: <b>Sales</b> (what we did), <b>Client</b> (what the customer did — posted a job, opened a CV, paid) and <b>System</b> (invoice issued, products provisioned, quota warnings).
           <b> Idle counts from the newest Sales row only</b>, so a client opening a CV can never make a silent account look freshly contacted. PII actions (CV unlocks) are always audited.
-          <b className="text-ink/70"> Who</b> is the account that actually performed the activity, not the company’s sales owner — that is the account the KPI counts, so a colleague covering for a busy owner gets the credit (marked <span className="rounded bg-amber-100 px-1 py-px text-[10px] font-medium text-amber-700">hỗ trợ</span>).
+          <b className="text-ink/70"> Who</b> is the account that actually performed the activity, not the company’s sales owner — that is the account the KPI counts, so a colleague covering for a busy owner gets the credit.
         </p>
       </div>
     </div>
@@ -3615,6 +4025,7 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
 
 /* jobseeker company page — editor + draft preview, shared by Overview + its tab */
 function CompanyPageEditor({ c }: { c: Company }) {
+  const ro = useReadOnly()
   if (!c.jobPosting) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-6 text-center">
@@ -3641,7 +4052,9 @@ function CompanyPageEditor({ c }: { c: Company }) {
         {c.hasPage && <CompanyPagePreview c={c} />}
       </div>
       <div className="flex flex-wrap gap-2">
-        {c.hasPage ? (
+        {ro ? (
+          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">🔒 Chỉ đọc — không sửa trang của công ty do sales khác phụ trách.</span>
+        ) : c.hasPage ? (
           <>
             <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Save changes</button>
             <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">↗ View live</button>
@@ -3700,8 +4113,8 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
                 <span className="flex min-w-0 items-center" style={{ paddingLeft: depth * 18 }}>
                   {depth > 0 && <span className="mr-1.5 shrink-0 text-faint">└</span>}
                   <span className={cn('min-w-0 truncate', isCurrent ? 'font-semibold text-brand' : 'text-ink/80')}>{coLabel(c)}</span>
-                  {depth === 0 && <span className="ml-1.5 shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted">Công ty mẹ</span>}
-                  {depth > 0 && <span className="ml-1.5 shrink-0"><Pill tone={affiliateKind(root, c) === 'Chi nhánh' ? 'draft' : 'neutral'}>{affiliateKind(root, c)}</Pill></span>}
+                  {depth > 0 && <span className="ml-1.5 shrink-0"><Pill tone="neutral">Công ty con</Pill></span>}
+                  {childrenOf(c).length > 0 && <span className="ml-1.5 shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted">Công ty mẹ</span>}
                 </span>
                 <span className="truncate font-mono text-[11px] text-muted">{c.tax}</span>
                 <span className="min-w-0 truncate">{t ? <TierPill tier={t} en /> : <span className="text-[11px] text-faint">Chưa có hạng</span>}</span>
@@ -3720,8 +4133,229 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
   )
 }
 
-function AffiliatedCompanies({ c, onOpen, onAddChild }: { c: Company; onOpen?: (x: Company) => void; onAddChild?: () => void }) {
+/* ── Link an EXISTING company as parent or child ───────────────────────────
+   Two directions, one stored field. Whichever way the rep thinks about it
+   ("this belongs to X" vs "X belongs to this"), the write is always the same:
+   parentCompanyId on the CHILD. The modal makes that explicit — it shows the
+   resulting mẹ → con pair before saving, so nobody has to work out which record
+   actually changes. Every link is simply CÔNG TY CON: the old chi-nhánh /
+   công-ty-con split was derived from the tax root and changed nothing a rep could
+   act on, so it is gone. Companies sharing the 10-digit tax root are still
+   surfaced FIRST in the picker, as the strongest hint of the same legal entity. */
+function LinkAffiliateModal({ c, onClose }: { c: Company; onClose: () => void }) {
+  const [dir, setDir] = useState<'parent' | 'child'>('parent')
+  const [q, setQ] = useState('')
+  const [pick, setPick] = useState<Company | null>(null)
+
+  // Cycle guard: for "c is a child of X", X may not sit under c; for "c is the
+  // parent of X", X may not be an ancestor of c. Without this a group can be
+  // linked into a loop that the ancestor walk would then have to survive. The loop
+  // is also what Điều 195 forbids outright (a con may not hold capital in its mẹ),
+  // so this guard is a legal rule, not only a data-integrity one.
+  const candidates = COMPANIES.filter((x) => {
+    if (x.name === c.name) return false
+    if (dir === 'parent') return !ancestorsOf(x).some((a) => a.name === c.name)
+    return !ancestorsOf(c).some((a) => a.name === x.name)
+  }).filter((x) => {
+    const k = searchKey(q.trim())
+    return !k || searchKey([coLabel(x), x.legalName, x.tax, companyId(coKey(x))].join(' ')).includes(k)
+  }).sort((a, b) => Number(taxRoot(b.tax) === taxRoot(c.tax)) - Number(taxRoot(a.tax) === taxRoot(c.tax)))
+
+  // Whichever direction was chosen, resolve it to the one pair that gets stored.
+  const parent = dir === 'parent' ? pick : c
+  const child = dir === 'parent' ? c : pick
+  // Re-parenting an existing child is allowed, but it MOVES the record out of its
+  // current group — say so rather than letting the tree silently change shape.
+  const moving = child?.parent ? coByName(child.parent) : undefined
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Gán quan hệ tập đoàn</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+          <div>
+            <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Quan hệ</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                { k: 'parent' as const, t: `${coLabel(c)} là CÔNG TY CON`, s: 'Chọn công ty mẹ của công ty này', off: false },
+                { k: 'child' as const, t: `${coLabel(c)} là CÔNG TY MẸ`, s: 'Chọn công ty con trực thuộc', off: false },
+              ]).map((o) => (
+                <button
+                  key={o.k}
+                  onClick={() => { if (o.off) return; setDir(o.k); setPick(null) }}
+                  disabled={o.off}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-left',
+                    o.off ? 'cursor-not-allowed border-line bg-canvas/50 opacity-60' : dir === o.k ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40',
+                  )}
+                >
+                  <span className="flex items-center gap-2"><Radio on={dir === o.k && !o.off} /><span className="text-[12px] font-semibold text-ink">{o.t}</span></span>
+                  <span className="mt-0.5 block pl-6 text-[11px] text-muted">{o.s}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 text-[11.5px] font-medium text-ink/80">
+              {dir === 'parent' ? 'Công ty mẹ' : 'Công ty con'} <span className="text-rose-500">*</span>
+            </p>
+            {/* The 10-digit tax root is the strongest signal two records are the same
+                legal entity, so those companies are surfaced first and labelled —
+                the rep should not have to notice the MST match themselves. */}
+            <p className="mb-1.5 text-[10.5px] leading-relaxed text-faint">
+              Gợi ý đầu danh sách là các công ty <b className="text-ink/70">trùng 10 số gốc MST</b> với {coLabel(c)} (<span className="font-mono">{taxRoot(c.tax)}</span>) — thường là cùng một pháp nhân. Vẫn tìm được mọi công ty khác bên dưới.
+            </p>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Tìm theo tên, MST hoặc Company ID…"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand"
+            />
+            <div className="mt-1.5 max-h-[200px] space-y-1 overflow-y-auto">
+              {candidates.slice(0, 8).map((x) => {
+                const sameRoot = taxRoot(x.tax) === taxRoot(c.tax)
+                return (
+                <button
+                  key={x.name}
+                  onClick={() => setPick(x)}
+                  className={cn('flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left', pick?.name === x.name ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}
+                >
+                  <Radio on={pick?.name === x.name} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="min-w-0 truncate text-[12px] font-medium text-ink">{coLabel(x)}</span>
+                      {sameRoot && <span className="shrink-0 rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9.5px] font-medium text-amber-700">cùng gốc MST</span>}
+                    </span>
+                    <span className="block truncate text-[10.5px] text-faint">MST {x.tax} · {companyId(coKey(x))} · 👤 {x.owner}</span>
+                  </span>
+                </button>
+                )
+              })}
+              {candidates.length === 0 && <p className="rounded-md bg-canvas/60 px-2 py-3 text-center text-[11px] text-faint">Không có công ty phù hợp — đã loại công ty hiện tại và mọi lựa chọn sẽ tạo vòng lặp sở hữu.</p>}
+            </div>
+          </div>
+
+          {pick && parent && child && (
+            <div className="rounded-lg border border-line bg-canvas/40 p-3">
+              <p className="mb-1.5 text-[11.5px] font-semibold text-ink/70">Sau khi lưu</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+                <span className="font-medium text-ink">{coLabel(parent)}</span>
+                <span className="rounded border border-line bg-canvas px-1 text-[10px] text-muted">Công ty mẹ</span>
+                <span className="text-faint">›</span>
+                <span className="font-medium text-ink">{coLabel(child)}</span>
+                <Pill tone="neutral">Công ty con</Pill>
+              </div>
+              {moving && (
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+                  ⚠️ {coLabel(child)} đang trực thuộc <b>{coLabel(moving)}</b>. Lưu thay đổi này sẽ <b>chuyển</b> công ty sang tập đoàn mới — ghi vào audit log.
+                </p>
+              )}
+            </div>
+          )}
+
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={onClose} disabled={!pick} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Lưu liên kết</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Unlink ONE parent→child edge. Named from both ends because "unlink this company"
+   is ambiguous on a middle node — Đông Phong sits under Trường Sơn and above Kim
+   Long, and cutting the edge above it is a different act from cutting the one below.
+
+   The consequence that has to be on screen: descendants travel WITH the child. Cut
+   Trường Sơn → Đông Phong and Kim Long does not become a root; it stays under Đông
+   Phong, which becomes the root of a new group. */
+function UnlinkAffiliateModal({ parent, child, onClose }: { parent: Company; child: Company; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  const descendants = (() => {
+    const out: Company[] = []
+    const walk = (n: Company) => childrenOf(n).forEach((k) => { out.push(k); walk(k) })
+    walk(child)
+    return out
+  })()
+  const childKeepsGroup = descendants.length > 0
+  const parentLeftAlone = childrenOf(parent).length === 1 && !parent.parent
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[520px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Gỡ quan hệ mẹ / con</p>
+            <p className="text-[11px] text-muted">Chỉ gỡ liên kết. Không công ty nào bị xoá.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          <div className="rounded-lg border border-line bg-canvas/40 p-3">
+            <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+              <span className="font-medium text-ink">{coLabel(parent)}</span>
+              <span className="rounded border border-line bg-canvas px-1 text-[10px] text-muted">Công ty mẹ</span>
+              <span className="text-rose-500 line-through">›</span>
+              <span className="font-medium text-ink">{coLabel(child)}</span>
+              <Pill tone="neutral">Công ty con</Pill>
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-faint">MST {parent.tax} · MST {child.tax} — hai pháp nhân riêng, không thay đổi.</p>
+          </div>
+
+          <div className="rounded-lg border border-line px-3 py-2.5">
+            <p className="mb-1.5 text-[11.5px] font-semibold text-ink/70">Sau khi gỡ</p>
+            <ul className="space-y-1 text-[11.5px] leading-relaxed text-muted">
+              <li>· <b className="text-ink/80">{coLabel(child)}</b> {childKeepsGroup ? 'trở thành gốc của một tập đoàn mới' : 'trở thành công ty độc lập'}.</li>
+              {childKeepsGroup && (
+                <li>· <b className="text-ink/80">{descendants.length} công ty cấp dưới</b> ({descendants.map(coLabel).join(', ')}) đi theo {coLabel(child)} — không bị gỡ.</li>
+              )}
+              {parentLeftAlone && <li>· <b className="text-ink/80">{coLabel(parent)}</b> không còn công ty con nào.</li>}
+              <li>· MST, hợp đồng, quota, báo giá và hoá đơn của cả hai <b className="text-ink/80">giữ nguyên</b> — quan hệ tập đoàn chưa bao giờ gộp doanh thu.</li>
+            </ul>
+          </div>
+
+          <div>
+            <FLabel req>Lý do gỡ</FLabel>
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="VD: gán nhầm tập đoàn · đã thoái vốn · tách pháp nhân"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+            />
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Ghi vào audit log cùng người thực hiện — quan hệ tập đoàn đổi chủ sở hữu báo cáo, nên luôn phải truy được ai đổi và vì sao.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Hủy</button>
+          <button
+            onClick={onClose}
+            disabled={!reason.trim()}
+            className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-[13px] font-semibold text-rose-600 hover:bg-rose-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Gỡ quan hệ
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
+  const ro = useReadOnly()
   const [chart, setChart] = useState(false)
+  const [linking, setLinking] = useState(false)
+  /** The relationship being removed: {parent, child} — always named from both ends,
+      never "unlink this", so the confirm can say exactly which edge is cut. */
+  const [unlinking, setUnlinking] = useState<{ parent: Company; child: Company } | null>(null)
 
   const chain = ancestorsOf(c)
   const kids = childrenOf(c)
@@ -3731,38 +4365,63 @@ function AffiliatedCompanies({ c, onOpen, onAddChild }: { c: Company; onOpen?: (
   return (
     <DetailCard
       title="Công ty liên kết — Affiliated companies"
-      action={
-        inGroup(c)
-          ? <span className="text-[11px] text-faint">{groupOf(root).length} công ty trong tập đoàn</span>
-          : <span className="text-[11px] text-faint">Đứng độc lập</span>
-      }
+      action={inGroup(c) ? <span className="text-[11px] text-faint">{groupOf(root).length} công ty trong tập đoàn</span> : undefined}
     >
-      {/* breadcrumb up to the group root */}
+      {/* Where this company sits in its group, root first. Rendered as a boxed path
+          rather than a run of links: the tail is THIS company, and it has to read as
+          a position rather than as one more thing to click. */}
       {chain.length > 0 && (
-        <div className="mb-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px]">
-          <span className="text-faint">Thuộc:</span>
-          {chain.map((a) => (
-            <span key={a.name} className="flex items-center gap-1.5">
-              <button onClick={() => go(a)} className="font-medium text-brand hover:underline">{coLabel(a)}</button>
-              <span className="text-faint">›</span>
+        <div className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-2.5 py-2">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-faint">Vị trí trong tập đoàn</p>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[11.5px]">
+            {chain.map((a, i) => (
+              <span key={a.name} className="flex items-center gap-1">
+                {i === 0 && <span className="text-[11px]">🏢</span>}
+                <button onClick={() => go(a)} className="font-medium text-brand hover:underline">{coLabel(a)}</button>
+                <span className="text-faint">›</span>
+              </span>
+            ))}
+            <span className="rounded bg-brand-soft px-1.5 py-0.5 font-semibold text-brand">{coLabel(c)}</span>
+            <span className="ml-auto flex items-center gap-2">
+              <span className="text-[10.5px] text-faint">cấp {chain.length + 1}</span>
+              {!ro && (
+                <button
+                  onClick={() => setUnlinking({ parent: chain[chain.length - 1], child: c })}
+                  title={`Gỡ khỏi ${coLabel(chain[chain.length - 1])}`}
+                  className="rounded border border-line px-1.5 py-0.5 text-[10.5px] font-medium text-muted hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  ⛓️‍💥 Gỡ khỏi mẹ
+                </button>
+              )}
             </span>
-          ))}
-          <span className="font-medium text-ink">{coLabel(c)}</span>
+          </div>
         </div>
       )}
 
       {kids.length > 0 ? (
         <div className="space-y-1.5">
           {kids.map((k) => (
-            <button key={k.name} onClick={() => go(k)} className="flex w-full items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 text-left hover:border-brand/40">
-              <div className="min-w-0">
-                <p className="truncate text-[12px] font-medium text-ink">{coLabel(k)}</p>
+            <div key={k.name} className="flex w-full items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 hover:border-brand/40">
+              <button onClick={() => go(k)} className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[12px] font-medium text-ink hover:text-brand hover:underline">{coLabel(k)}</p>
                 <p className="truncate text-[10.5px] text-faint">MST {k.tax} · 👤 {k.owner}</p>
-              </div>
-              <span className="shrink-0">
-                <Pill tone={affiliateKind(k, c) === 'Chi nhánh' ? 'draft' : 'neutral'}>{affiliateKind(k, c)}</Pill>
+              </button>
+              {/* One label. A "chi nhánh" vs "công ty con" split was derived from the
+                  tax code and shown here, but it changed nothing a rep can act on —
+                  both are separate customers with their own MST, quota and invoices. */}
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Pill tone="neutral">Công ty con</Pill>
+                {!ro && (
+                  <button
+                    onClick={() => setUnlinking({ parent: c, child: k })}
+                    title={`Gỡ ${coLabel(k)} khỏi ${coLabel(c)}`}
+                    className="rounded border border-line px-1.5 py-0.5 text-[10.5px] font-medium text-muted hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    Gỡ
+                  </button>
+                )}
               </span>
-            </button>
+            </div>
           ))}
         </div>
       ) : (
@@ -3773,20 +4432,18 @@ function AffiliatedCompanies({ c, onOpen, onAddChild }: { c: Company; onOpen?: (
         </p>
       )}
 
-      {/* Two directions, two actions. Downward CREATES a record (the subsidiary does
-          not exist yet); upward only LINKS an existing one. That asymmetry is why
-          only the parent side is ever stored — see the note at the foot of the card. */}
+      {/* One action only: LINK an existing record, either direction. A subsidiary
+          that does not exist yet is created from the Companies list like any other
+          company — a second create path here would be a second way to make a
+          duplicate, and the group link is not a reason to bypass the MST check. */}
       <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-2.5">
-        <button onClick={onAddChild} className="rounded-md border border-brand/40 bg-brand-soft px-2 py-1 text-[11px] font-semibold text-brand hover:border-brand">+ Thêm công ty con</button>
-        <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">↑ Gán công ty mẹ</button>
+        {!ro && <button onClick={() => setLinking(true)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">🔗 Gán quan hệ mẹ / con</button>}
         {inGroup(c) && <button onClick={() => setChart(true)} className="ml-auto text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>}
       </div>
 
       {chart && <GroupChart root={root} current={c} onClose={() => setChart(false)} onOpen={onOpen} />}
-      <p className="mt-2 rounded-md bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-        Liên kết chỉ để tra cứu và điều hướng — <b>không kế thừa gì</b>. Gói/quota, hợp đồng, báo giá, hoá đơn VAT, user và sales phụ trách đều riêng theo MST của từng công ty.
-        <span className="text-faint"> Chi nhánh = cùng 10 số gốc MST (đuôi -001); công ty con = MST hoàn toàn khác.</span>
-      </p>
+      {linking && <LinkAffiliateModal c={c} onClose={() => setLinking(false)} />}
+      {unlinking && <UnlinkAffiliateModal {...unlinking} onClose={() => setUnlinking(null)} />}
     </DetailCard>
   )
 }
@@ -3797,6 +4454,7 @@ function AffiliatedCompanies({ c, onOpen, onAddChild }: { c: Company; onOpen?: (
  * Options are read from MD_DOMAINS so this stays in sync with Master data.
  */
 function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
+  const ro = useReadOnly()
   const options = MD_DOMAINS.find((d) => d.key === 'company-tag')?.entries ?? ['Korean company', 'Big company']
   const [open, setOpen] = useState(false)
   const [sel, setSel] = useState<string[]>(initial)
@@ -3804,8 +4462,10 @@ function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex min-h-[38px] w-full flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5 text-left"
+        onClick={() => { if (!ro) setOpen((o) => !o) }}
+        disabled={ro}
+        title={ro ? RO_HINT : undefined}
+        className={cn('flex min-h-[38px] w-full flex-wrap items-center gap-1.5 rounded-md border border-line px-2 py-1.5 text-left', ro ? 'cursor-not-allowed bg-canvas/50' : 'bg-surface')}
       >
         {sel.length === 0 && <span className="px-1 text-[12px] text-faint">Select tags…</span>}
         {sel.map((t) => (
@@ -3875,8 +4535,10 @@ function companyOwnerHistory(c: Company): CoOwnerTenure[] {
 
 function OwnerHistory({ c }: { c: Company }) {
   const hist = companyOwnerHistory(c)
+  // No count in the header: a company always has exactly ONE owner. The list is a
+  // tenure history, so "N owners" read as if it could hold several at once.
   return (
-    <DetailCard title="Owner history" action={<span className="text-[11px] text-faint">{hist.length} {hist.length === 1 ? 'owner' : 'owners'}</span>}>
+    <DetailCard title="Owner history">
       <ol className="space-y-2.5">
         {hist.map((t, i) => (
           <li key={i} className="relative pl-4">
@@ -3923,6 +4585,7 @@ function companyDocs(c: Company): CoDoc[] {
   return []
 }
 function CompanyDocs({ c }: { c: Company }) {
+  const ro = useReadOnly()
   const [docs, setDocs] = useState<CoDoc[]>(() => companyDocs(c))
   const add = () => setDocs((d) => [...d, { name: `tai-lieu-${d.length + 1}.pdf` }])
   return (
@@ -3931,7 +4594,7 @@ function CompanyDocs({ c }: { c: Company }) {
       action={<span className="text-[11px] text-faint">{docs.length} tệp</span>}
     >
       <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-4 text-center">
-        <p className="text-[12px] font-medium text-ink">Kéo thả hoặc <button onClick={add} className="text-brand hover:underline">chọn tệp</button></p>
+        <p className="text-[12px] font-medium text-ink">{ro ? 'Chỉ xem tài liệu' : <>Kéo thả hoặc <button onClick={add} className="text-brand hover:underline">chọn tệp</button></>}</p>
         <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">Giấy phép kinh doanh · Giấy chứng nhận đăng ký thuế · Hợp đồng đã ký. PDF, JPG, PNG — tối đa 10MB mỗi tệp.</p>
       </div>
       {docs.length > 0 && (
@@ -3943,7 +4606,7 @@ function CompanyDocs({ c }: { c: Company }) {
                 <a href="#" onClick={(e) => e.preventDefault()} className="block truncate text-[11.5px] font-medium text-brand hover:underline">{d.name}</a>
                 {d.note && <p className="truncate text-[10px] text-faint">{d.note}</p>}
               </div>
-              <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+              {!ro && <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>}
             </div>
           ))}
         </div>
@@ -3964,10 +4627,13 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   const [editInfo, setEditInfo] = useState(false)
   /* "+ Thêm công ty con" swaps in the create PAGE with this company locked as the
      parent, rather than floating a form over the record it came from. */
-  const [addingChild, setAddingChild] = useState(false)
   useDetailCrumb(coLabel(c), onBack)
   const [addingContact, setAddingContact] = useState(false)
   const [quoting, setQuoting] = useState(false)
+  /* Reached from search rather than owned. Read everything, write nothing — see
+     ReadOnlyCtx. Editing state is force-closed so a rep cannot leave the card in
+     edit mode and come back to it on someone else's record. */
+  const ro = c.owner !== ME
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
@@ -3988,10 +4654,22 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
     ...(c.resumeSearch ? [{ key: 'Resumes' as CoTab, label: 'Resumes' }] : []),
   ]
 
-  if (addingChild) return <CompanyCreatePage onBack={() => setAddingChild(false)} lockedParent={c} />
 
   return (
+    <ReadOnlyCtx.Provider value={ro}>
     <div>
+
+      {/* Reached from the search, not from my own book. Reading a colleague's record
+          is allowed and useful — it is what stops a duplicate being created. ACTING
+          on it is not, and saying so here is what makes the read-only rule legible
+          instead of a mystery when a button does nothing. */}
+      {c.owner !== ME && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
+          <span className="text-[13px]">👁</span>
+          <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn đang xem ở chế độ <b className="font-medium text-ink">chỉ đọc</b>.</span>
+          <button className="ml-auto shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">Yêu cầu chuyển giao</button>
+        </div>
+      )}
 
       {/* header */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -4013,16 +4691,22 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           </div>
         </div>
         <div className="flex gap-2">
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Edit</button>
+          {/* Edit and Create-quotation are WRITES — withdrawn on someone else's
+              record. "View on jobseeker" is a read, so it stays. */}
+          {!ro && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Edit</button>}
           {c.hasPage && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">View on jobseeker ↗</button>}
           {/* Tạo báo giá — unconditional, for EVERY company. A quotation is the one
               document that is always legitimate to raise: a first quote for a
               prospect, a renewal for an existing customer, a win-back for a churned
               one. The gated step is the PO, which is raised from an accepted
               quotation option (see the Quotations list), not from here. */}
-          <button onClick={() => setQuoting(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
-            Tạo báo giá / Create quotation
-          </button>
+          {/* …but still only for a company in MY book: quoting someone else's
+              customer is exactly the collision the ownership rule exists to stop. */}
+          {!ro && (
+            <button onClick={() => setQuoting(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
+              Tạo báo giá / Create quotation
+            </button>
+          )}
         </div>
       </div>
 
@@ -4059,7 +4743,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                       <button onClick={() => setEditInfo(false)} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white hover:opacity-90">Save</button>
                     </span>
                   )
-                  : <button onClick={() => setEditInfo(true)} className="text-[11px] text-brand hover:underline">Edit</button>
+                  : ro ? undefined : <button onClick={() => setEditInfo(true)} className="text-[11px] text-brand hover:underline">Edit</button>
               }
             >
               {/* Company ID is system-assigned, so it is never editable — everything
@@ -4135,7 +4819,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
             </DetailCard>
             <CompanyDocs c={c} />
             <OwnerHistory c={c} />
-            <AffiliatedCompanies c={c} onOpen={onOpen} onAddChild={() => setAddingChild(true)} />
+            <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
@@ -4153,7 +4837,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <p className="text-[13px] font-semibold text-ink">Contact people <span className="font-normal text-muted">— who we do business with</span></p>
                 <p className="text-[11px] text-faint">Owned by Sales. A contact does not need a login, and is never created from one.</p>
               </div>
-              <button onClick={() => setAddingContact(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Add contact</button>
+              {!ro && <button onClick={() => setAddingContact(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Add contact</button>}
             </div>
             {/* No Actions column: the name is the link and every action lives in the
                 contact panel, so the row stays scannable and the note gets the width. */}
@@ -4200,7 +4884,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className={cn('text-[11px] font-medium', full ? 'text-amber-700' : 'text-faint')}>{team.length}/{MAX_SEATS} seats</span>
-              <button onClick={() => setInviting(true)} disabled={full} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">+ Invite user</button>
+              {!ro && <button onClick={() => setInviting(true)} disabled={full} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">+ Invite user</button>}
             </div>
           </div>
           {noProducts && <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">Subscription expired — logins remain but are read-only until the account is renewed.</p>}
@@ -4211,7 +4895,11 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               <Pill tone={u.role === 'Admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
               <Pill tone={u.status === 'Active' ? 'active' : 'pending'}>{u.status}</Pill>,
               <span className="text-[11.5px] text-muted">{u.last}</span>,
-              u.status === 'Invited'
+              // Managing another rep's customer's logins is a write, so the whole
+              // Actions cell collapses to "—" rather than showing dead buttons.
+              ro
+                ? <span className="text-[11px] text-faint" title={RO_HINT}>—</span>
+                : u.status === 'Invited'
                 ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
                 : u.role === 'Admin'
                   ? <RowAction>Change role</RowAction>
@@ -4241,7 +4929,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 cols={[{ label: 'Doc', w: '1.1fr' }, { label: 'Type', w: '1fr' }, { label: 'Amount', w: '1fr', align: 'r' }, { label: 'Status', w: '1fr', align: 'r' }]}
                 rows={[
                   ['ORD-5521', 'Order', '37,800,000 ₫', <Pill tone="active">Fulfilled</Pill>],
-                  ['INV-3390', 'Invoice', '37,800,000 ₫', <Pill tone="active">Paid</Pill>],
+                  ['INV-003390-07-2026', 'Invoice', '37,800,000 ₫', <Pill tone="active">Paid</Pill>],
                   ['PAY-1042', 'Payment', '37,800,000 ₫', <Pill tone="neutral">Bank transfer</Pill>],
                 ]}
               />
@@ -4341,6 +5029,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       {addingContact && <AddContactModal c={c} onClose={() => setAddingContact(false)} />}
       {quoting && <NewQuotationModal company={c.name} onClose={() => setQuoting(false)} />}
     </div>
+    </ReadOnlyCtx.Provider>
   )
 }
 
@@ -6349,6 +7038,31 @@ function vnWords(n: number) {
   return s.charAt(0).toUpperCase() + s.slice(1) + ' đồng'
 }
 
+/** The PDF's English "In words:" line. 6,588,000 → "Six million five hundred
+    eighty-eight thousand VND." Same generated-never-typed rule as vnWords. */
+const EN_ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+function enRead3(n: number): string {
+  const h = Math.floor(n / 100), r = n % 100
+  const out: string[] = []
+  if (h) out.push(`${EN_ONES[h]} hundred`)
+  if (r < 20) { if (r) out.push(EN_ONES[r]) }
+  else {
+    const t = Math.floor(r / 10), u = r % 10
+    out.push(u ? `${EN_TENS[t]}-${EN_ONES[u]}` : EN_TENS[t])
+  }
+  return out.join(' ')
+}
+function enWords(n: number) {
+  if (n <= 0) return 'Zero VND'
+  const g: number[] = []
+  for (let x = n; x > 0; x = Math.floor(x / 1000)) g.unshift(x % 1000)
+  const scales = ['', 'thousand', 'million', 'billion']
+  const parts = g.map((v, i) => (v === 0 ? '' : `${enRead3(v)} ${scales[g.length - 1 - i]}`.trim())).filter(Boolean)
+  const s = parts.join(' ')
+  return s.charAt(0).toUpperCase() + s.slice(1) + ' VND'
+}
+
 type QLine = { cat: number; qty: number; price: number; disc: number; gift: boolean }
 type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number }
 const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
@@ -6482,9 +7196,11 @@ function QuoteCompanyCard({ c }: { c: Company }) {
           <p className="text-[13px] font-semibold text-ink">{coLabel(c)} <span className="text-[11px] font-normal text-muted">· ID {coId(c)}</span></p>
           <p className="truncate text-[11px] text-muted">{c.industry} · {c.size} staff · {c.address}</p>
         </div>
+        {/* Customer status only. The pipeline STAGE is a property of the deal, and
+            on a quotation the deal's stage is already implied by the quotation's own
+            status — two stage-ish badges on one card is one too many. */}
         <span className="ml-auto flex shrink-0 items-center gap-2">
           {c.account && <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>}
-          {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
         </span>
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-line pt-2.5 sm:grid-cols-4">
@@ -6551,6 +7267,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
               Billing data (legal name, MST, address) is READ from that record, so
               there is no separate VAT-billing form to keep in sync. */}
           <Section title="2 · Khách hàng / Client" />
+          {/* Opened from a company record, the company is already decided — showing a
+              picker there invites changing it, which is exactly what must not happen.
+              The confirmation card below carries the details either way. */}
+          {!initialCompany && (
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">
               Company<span className="text-rose-500"> *</span>
@@ -6561,6 +7281,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
               {COMPANIES.map((c) => <option key={c.name} value={c.name}>{coLabel(c)} · {coId(c)}</option>)}
             </select>
           </div>
+          )}
           {co
             ? <QuoteCompanyCard c={co} />
             : <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] text-faint">Pick a company to confirm its details, contact and billing data.</p>}
@@ -6721,10 +7442,12 @@ function MstMatchRow({ m, rel, onSet }: {
  * New-company screen — a full page, not a modal: it is long enough that a rep needs
  * the whole viewport, and it can be linked to and reloaded.
  *
- * `lockedParent` is set when it is opened from a parent's "+ Thêm công ty con": the
- * parent is then already known and shown as a fixed row. There is deliberately no
- * "công ty con" field — a subsidiary is linked from the MST list below, or created
- * from the parent's own record.
+ * `lockedParent` pre-fills the parent as a fixed row. Nothing sets it today: the
+ * "+ Thêm công ty con" shortcut was removed so that every company is created
+ * through this one page and passes the same MST duplicate check — a second create
+ * path is a second way to make a duplicate. The prop stays because the linked-from-
+ * parent flow is a plausible addition; the group link itself is made with
+ * "Gán quan hệ mẹ / con" on the company record.
  */
 function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; lockedParent?: Company }) {
   useDetailCrumb(lockedParent ? `Thêm công ty con · ${coLabel(lockedParent)}` : 'New company', onBack)
@@ -7057,6 +7780,20 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
    validity. The flags live in the data and surface on the DETAIL page; the list
    stays scannable and shows the status pill alone. */
 type QuoteStatus = 'Draft' | 'Sent' | 'Issued to PO' | 'Expired'
+/* Expiry first by default: every quotation dies at month-end, so "what runs out
+   soonest" is the only ordering that tells a rep what to chase today. */
+type QuoteSort = 'expires' | 'created' | 'value'
+const QUOTE_SORTS: Record<QuoteSort, { label: string; cmp: (a: Quote, b: Quote) => number }> = {
+  expires: { label: 'Sắp hết hạn trước', cmp: (a, b) => dmy(a.expires) - dmy(b.expires) },
+  created: { label: 'Mới tạo trước', cmp: (a, b) => dmy(b.created) - dmy(a.created) },
+  value: { label: 'Giá trị cao nhất', cmp: (a, b) => b.value - a.value },
+}
+/** "20/07/2026" → a sortable number. A dash (no date) sorts last. */
+function dmy(d: string): number {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d.trim())
+  return m ? Number(m[3] + m[2] + m[1]) : Number.MAX_SAFE_INTEGER
+}
+
 type Quote = {
   code: string; customer: string; co?: string; products: number[]; options: number
   value: number; status: QuoteStatus; created: string; expires: string
@@ -7064,7 +7801,15 @@ type Quote = {
 }
 const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
 const QUOTES: Quote[] = [
-  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0], options: 2, value: 6_588_000, status: 'Sent', created: '20/07/2026', expires: '31/07/2026' },
+  /* Three options — Basic Plus (the one we RECOMMEND), Basic as the cheaper
+     alternative, Premium as the upsell. The client's own file had two; a third is
+     the case the document has to prove it handles, since the rule is 1–3
+     ALTERNATIVES that are never summed.
+     value = 10,584,000 = the HIGHEST option (Premium), per the documented rule —
+     NOT the recommended one. This row is deliberately the worked example of the
+     open question in the spec: recommended ≠ highest, and the two give different
+     pipeline totals. */
+  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0, 2], options: 3, value: 10_584_000, status: 'Sent', created: '20/07/2026', expires: '31/07/2026' },
   { code: 'QUO-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '31/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
   { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '30/06/2026', acceptedOpt: 1 },
   { code: 'QUO-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
@@ -7082,13 +7827,411 @@ function ProductCell({ ids }: { ids: number[] }) {
   )
 }
 
+/* ── Export quotation to PDF ───────────────────────────────────────────────────
+   The document the customer actually receives. Content is a faithful reproduction
+   of the client's live PDF (EST-009909-07-2026) — every block, every field, both
+   languages, nothing added and nothing dropped. What is REFINED here is only the
+   presentation:
+
+     · bilingual pairs are stacked (VN primary, EN muted underneath) instead of
+       being run together on one line — the single biggest readability win;
+     · the two customer blocks become side-by-side cards instead of wrapped prose;
+     · line tables get real columns, tabular figures and right-aligned money;
+     · each option is a self-contained card with its own totals box, because the
+       options are ALTERNATIVES and the document must never look like it sums;
+     · terms become numbered clauses with a VN/EN pair each.
+
+   Everything printed is derived (line totals, VAT, total-after-VAT, amount in
+   words, benefit lists) — see the "What prints on the page" spec section. */
+const ISSUER = {
+  nameVi: 'CÔNG TY TNHH DAOUKIWOOM INNOVATION',
+  nameEn: 'DAOUKIWOOM INNOVATION COMPANY LIMITED',
+  addrVi: 'Tầng 12, 13 & 14, Tòa nhà AP, 518B Điện Biên Phủ, Phường Thạnh Mỹ Tây, Thành phố Hồ Chí Minh, Việt Nam',
+  addrEn: 'Level 12, 13 & 14, AP Tower, 518B Dien Bien Phu Street, Thanh My Tay Ward, Ho Chi Minh City, Vietnam',
+  web: 'https://topdev.vn',
+  support: 'customercare@topdev.vn',
+  brand: 'TopDev',
+}
+
+/** One bilingual label: Vietnamese leads, English sits under it, muted. */
+function Bi({ vi, en, className, enClass }: { vi: string; en: string; className?: string; enClass?: string }) {
+  return (
+    <span className={cn('block', className)}>
+      <span className="block">{vi}</span>
+      <span className={cn('block text-[0.85em] font-normal italic text-slate-500', enClass)}>{en}</span>
+    </span>
+  )
+}
+
+const pdfNum = (n: number) => n.toLocaleString('en-US')
+/** "20/07/2026" → "Ngày 20 tháng 07 năm 2026 / July 20th, 2026" */
+function signDate(d: string) {
+  const [dd, mm, yyyy] = d.split('/')
+  const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const n = Number(dd)
+  const ord = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'
+  return { vi: `Ngày ${dd} tháng ${mm} năm ${yyyy}`, en: `${EN[Number(mm) - 1]} ${n}${ord}, ${yyyy}` }
+}
+
+/* T&C — verbatim from the client's PDF, split into VN/EN pairs so each clause can
+   be read in one language without the other interleaved. Six clauses, in order. */
+const QUOTE_TERMS: { vi: string[]; en: string[] }[] = [
+  { vi: ['Giá đã bao gồm 8% thuế VAT.'], en: ['Price is inclusive of 8% VAT.'] },
+  {
+    vi: ['Báo giá bao gồm chính sách chiết khấu, ưu đãi và quà tặng có hiệu lực áp dụng cho khách hàng đến hết ngày hết hạn được đề cập phía trên. Sau thời gian này, các chính sách có thể thay đổi dựa trên các chương trình khách hàng chính thức khác do TopDev áp dụng.'],
+    en: ['The quote includes discounts, incentives and gifts valid for customers until the expiration date mentioned above. After this time, policies may change based on other official promotions programs applied by TopDev.'],
+  },
+  {
+    vi: ['Dịch vụ được kích hoạt sau khi khách hàng thanh toán đơn hàng & hóa đơn cho đơn hàng được xuất.'],
+    en: ['The service will be activated after the customer completes the payment & the invoice is issued.'],
+  },
+  {
+    vi: [
+      'Thời hạn dịch vụ:',
+      '– Đối với dịch vụ tin đăng: Dịch vụ đã mua phải được kích hoạt trong vòng 12 tháng kể từ ngày xuất hóa đơn.',
+      '– Đối với dịch vụ tìm kiếm hồ sơ: Dịch vụ đã mua phải được kích hoạt trong vòng 12 tháng kể từ ngày xuất hóa đơn.',
+      '– Thời gian trên không áp dụng cho các trường hợp tin đăng thuộc chương trình ưu đãi với quy định khác về thời gian sử dụng.',
+      '– Sau thời gian tương ứng nêu trên, bất kỳ dịch vụ nào đã mua nhưng chưa được kích hoạt sẽ không còn giá trị sử dụng nếu không có thỏa thuận khác được xác nhận.',
+    ],
+    en: [
+      'Service term:',
+      '– Job posting service: The purchased service must be activated within 12 months from the date the invoice is issued.',
+      '– Search CV service: The purchased service must be activated within 12 months from the date the invoice is issued.',
+      '– The above time does not apply to cases of job posts applied to promotional programs with different regulations on usage time.',
+      '– After this period, any service purchased but not activated will no longer be valid unless other agreements have been confirmed.',
+    ],
+  },
+  {
+    vi: [
+      'Thời hạn sử dụng sau khi kích hoạt dịch vụ (được áp dụng cho cả dịch vụ đặt mua và dịch vụ tặng kèm):',
+      '– Dịch vụ đăng tin: 30 ngày đăng tin chính thức.',
+      '– Tìm kiếm hồ sơ: 30 ngày hoặc 90 ngày tương ứng với dịch vụ đặt mua.',
+      '– Quà tặng kèm: theo ghi chú quà tặng phía trên.',
+    ],
+    en: [
+      'Usage period after activating the service (applicable to both service and bonus service):',
+      '– Job Posting service: 30 days for official posting.',
+      '– Search CV: 30 days or 90 days corresponding to the ordered service.',
+      '– Employer Branding gift: according to note information above.',
+    ],
+  },
+  {
+    vi: [`TopDev cam kết chính sách giá & ưu đãi tại thời điểm báo giá là tốt nhất dành cho khách hàng theo chương trình khách hàng thân thiết & chính sách hiện hành (trừ trường hợp thay đổi thuế suất VAT theo quy định Nhà nước). Liên hệ hỗ trợ: ${ISSUER.support}.`],
+    en: [`We commit that the price policy & incentives at the time of quotation are the best offer for you according to the loyalty program & current policies (except for changes in VAT rates according to State regulations). Contact support: ${ISSUER.support}.`],
+  },
+]
+
+type PdfLine = { name: string; unitVi: string; unitEn: string; qty: number; price: number; disc: number; gift: boolean }
+type PdfOption = { n: number; title: string; lines: PdfLine[]; sub: number; vat: number; total: number; feats: { name: string; items: string[] }[] }
+
+/** Build the printable options from the quotation — paid line + its gift line, as
+    the client's document does. Gift lines print at 0 ₫ but are real entitlements. */
+function pdfOptions(q: Quote): PdfOption[] {
+  return Array.from({ length: Math.max(1, q.options) }, (_, i) => {
+    const cat = QUOTE_CATALOG[q.products[i % q.products.length]]
+    /* LINES DRIVE THE TOTAL, never the reverse. Back-solving quantity from the
+       quotation's value made every option's quantity shift whenever the value
+       changed — add a pricier third option and Option 1 silently became "2 tin".
+       Quantity is a property of the option; the value is derived FROM the options
+       (the highest one), not the other way round. */
+    const qty = 1
+    const lines: PdfLine[] = [
+      { name: cat.vi, unitVi: cat.unitVi, unitEn: cat.unitEn, qty, price: cat.price, disc: 0, gift: false },
+      { name: `${cat.vi} (Tặng)`, unitVi: cat.unitVi, unitEn: cat.unitEn, qty: 1, price: 0, disc: 0, gift: true },
+    ]
+    const sub = lines.reduce((s, l) => s + (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100))), 0)
+    const vat = Math.round(sub * VAT_RATE / 100)
+    return {
+      n: i + 1,
+      title: lines.map((l) => l.name).join(' + '),
+      lines,
+      sub,
+      vat,
+      total: sub + vat,
+      feats: [
+        { name: cat.vi, items: cat.feats },
+        { name: `${cat.vi} (Tặng)`, items: cat.feats },
+      ],
+    }
+  })
+}
+
+/* Saramin wordmark, inlined as a path rather than hotlinked from saramin.co.kr:
+   a document must render identically offline, in print and a year from now, which
+   a remote asset cannot promise. Brand blue #2D65F2, taken from the live site. */
+const SARAMIN_BLUE = '#2D65F2'
+const SARAMIN_MARK_D = 'M29.1,24.5L29.1,24.5c-0.4,0.3-1.5,0.9-3.5,0.9c-2.1,0-3.3-0.9-3.3-2.4c0-1.4,1.3-2.3,3.2-2.3 c1.3,0,2.4,0.2,3.5,0.5h0.1C29.1,21.2,29.1,24.5,29.1,24.5z M19.1,13.4c0,0.6,0.3,1.2,0.7,1.5c0.6,0.4,1.4,0.5,2.4,0.2 c0.9-0.3,2.1-0.6,3.4-0.6c2.4,0,3.4,0.8,3.4,2.8v1h-0.1c-1.3-0.3-2.3-0.5-3.9-0.5c-6.6,0-7.1,4.2-7.1,5.5c0,2.9,1.9,5.9,7.3,5.9 c4.2,0,6.7-1.4,7.4-1.9c0.6-0.4,0.8-0.8,0.8-1.5v-8.4c0-4.5-2.6-6.8-7.7-6.8c-2.1,0-4.1,0.4-5.1,0.8S19.1,12.5,19.1,13.4z M80.9,12.6L80.9,12.6c-1.3-1.4-2.9-2-5.1-2c-2.3,0-4.7,0.7-6.3,1.9c-0.7,0.5-0.9,0.9-0.9,1.6v12.7c0,1.2,1,2.3,2.2,2.3 c1.3,0,2.2-1,2.2-2.3v-11l0.1-0.1c0.3-0.2,1.3-0.8,2.8-0.8c1.9,0,2.9,1.1,2.9,3.2v8.8c0,1.2,1,2.3,2.2,2.3c1.3,0,2.2-1,2.2-2.3V15.8 l0.1-0.1c0.3-0.2,1.3-0.8,2.8-0.8c1.9,0,2.9,1.1,2.9,3.2v8.8c0,1.2,1,2.3,2.2,2.3c1.3,0,2.3-1,2.3-2.3V18c0-5-2.3-7.4-7.2-7.4 C84.5,10.6,82.6,11.3,80.9,12.6L80.9,12.6L80.9,12.6z M60.6,24.5L60.6,24.5c-0.4,0.3-1.5,0.9-3.5,0.9c-2.1,0-3.3-0.9-3.3-2.4 c0-1.4,1.3-2.3,3.2-2.3c1.3,0,2.4,0.2,3.5,0.5h0.1C60.6,21.3,60.6,24.5,60.6,24.5z M50.6,13.4c0,0.6,0.3,1.2,0.7,1.5 c0.6,0.4,1.4,0.5,2.4,0.2c0.9-0.3,2.1-0.6,3.4-0.6c2.4,0,3.4,0.8,3.4,2.8v1h-0.1c-1.3-0.3-2.3-0.5-3.9-0.5c-6.6,0-7.1,4.2-7.1,5.5 c0,2.9,1.9,5.9,7.3,5.9c4.2,0,6.7-1.4,7.4-1.9c0.6-0.4,0.8-0.8,0.8-1.5v-8.4c0-4.5-2.6-6.8-7.7-6.8c-2.1,0-4.2,0.4-5.1,0.8 C51.1,11.8,50.6,12.5,50.6,13.4z M46.3,10.9c-0.7-0.2-1.8-0.3-3-0.3c-3.9,0-6.1,2.1-6.1,5.8V27c0,1.2,1,2.1,2.2,2.1l0,0l0,0l0,0 c1.3,0,2.3-1,2.3-2.2v-9.7c0-1.5,0.6-2.3,1.9-2.3c0.6,0,1.1,0.1,1.6,0.2c0.4,0.1,0.7,0.1,1.1,0.1c1.4,0,2.1-1.2,2.1-2.1 C48.4,12,47.6,11.2,46.3,10.9 M10.7,18.4l-2.8-0.6c-1.5-0.3-2.2-0.8-2.2-1.7c0-0.5,0.3-1.6,2.6-1.6c1,0,2.4,0.3,3.3,0.8 c1.1,0.6,2.3,0.5,2.9-0.3c0.4-0.4,0.6-1,0.5-1.6c0-0.4-0.2-0.9-0.7-1.4c-1.1-0.9-3.5-1.6-5.9-1.6c-4.3,0-7.1,2.3-7.1,5.7 c0,3.3,2.8,4.7,5.1,5.3c0.8,0.2,1.2,0.3,1.7,0.4c0.3,0.1,0.7,0.1,1.2,0.2c1.5,0.3,2.1,0.9,2.1,1.8c0,0.6-0.4,1.7-2.8,1.7 c-1.7,0-3.5-0.5-4.6-1.2C3.7,24.2,3.3,24,2.8,24c-0.6,0-1.2,0.3-1.6,0.8c-0.6,0.8-0.4,2.1,0.4,2.8c0.7,0.6,2.9,2,6.9,2 c4.3,0,7.2-2.4,7.2-6C15.8,20.9,14.1,19.2,10.7,18.4 M99.6,8.5c-1.2,0-2.1,1-2.1,2.2v11.9c0,1.2,1,2.2,2.1,2.2c1.2,0,2.1-1,2.1-2.2 V10.7C101.7,9.5,100.8,8.5,99.6,8.5 M99.6,0c-1.8,0-3.2,1.3-3.2,3.1s1.4,3.2,3.2,3.2c1.7,0,3.2-1.5,3.2-3.2 C102.8,1.4,101.4,0,99.6,0 M113.6,10.6c-4.5,0-6.9,1.6-7.3,1.9c-0.6,0.4-0.8,0.8-0.8,1.6v12.8c0,1.2,1,2.3,2.2,2.3 c1.3,0,2.2-1,2.2-2.3V15.7l0,0c0.7-0.4,2-0.8,3.5-0.8c1.7,0,3.5,0.9,3.5,3.3v8.7c0,1.2,1,2.3,2.2,2.3c1.3,0,2.2-1,2.2-2.3V18 C121.5,13.2,118.8,10.6,113.6,10.6'
+function SaraminMark({ width = 104, fill = SARAMIN_BLUE }: { width?: number; fill?: string }) {
+  return (
+    <svg viewBox="0 0 123.3 31" width={width} height={(width * 31) / 123.3} role="img" aria-label="Saramin">
+      <path d={SARAMIN_MARK_D} fill={fill} fillRule="evenodd" />
+    </svg>
+  )
+}
+
+/** The A4 sheet. Rendered at 794px (210mm @96dpi) and scaled by the viewer. */
+function QuotationPdfDoc({ q, co }: { q: Quote; co?: Company }) {
+  const opts = pdfOptions(q)
+  const rep = co?.owner ?? 'Nguyễn Thị Lan'
+  const contact = co?.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0] ?? q.customer
+  const sd = signDate(q.created)
+  const COLS = '28px minmax(0,2.6fr) 58px 46px 84px 58px 92px'
+
+  return (
+    <div className="mx-auto bg-white text-slate-800 shadow-xl" style={{ width: 794 }}>
+      <div className="px-[52px] py-[44px]">
+        {/* ── letterhead ─────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-3">
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-bold leading-snug text-slate-900">{ISSUER.nameVi}</p>
+            <p className="text-[11px] font-medium italic leading-snug text-slate-500">{ISSUER.nameEn}</p>
+            <p className="mt-1.5 text-[9.5px] leading-relaxed text-slate-600">{ISSUER.addrVi}</p>
+            <p className="text-[9.5px] italic leading-relaxed text-slate-400">{ISSUER.addrEn}</p>
+            <p className="mt-1 text-[9.5px] font-medium text-sky-700">{ISSUER.web}</p>
+          </div>
+          {/* Group brand on the document: Saramin is the parent, TopDev the brand
+              the customer buys on — both belong here, in that order. */}
+          <div className="shrink-0 pt-0.5 text-right">
+            <SaraminMark width={104} />
+            <p className="mt-1.5 border-t border-slate-200 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {ISSUER.brand} Vietnam
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-2 text-[9.5px] text-slate-600">
+          <span className="text-slate-400">Báo giá bởi / Proposed by:</span> <b className="text-slate-800">{rep}</b> | {rep.split(' ').pop()?.toLowerCase()}@topdev.vn
+        </p>
+
+        {/* ── title band ───────────────────────────────────────────────
+            A black slab is loud without being informative. This is the same
+            content on paper-white with a single brand rule down the left: the
+            title reads as a title, the number stays monospaced and findable, and
+            the two dates sit in their own labelled cells so "hết hạn" — the one
+            date that actually constrains the customer — can be picked out. */}
+        <div className="mt-5 flex items-stretch justify-between gap-6 border-y border-slate-200 py-3.5">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span className="h-full w-[3px] shrink-0 rounded-full" style={{ backgroundColor: SARAMIN_BLUE }} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2.5">
+                <p className="text-[26px] font-black leading-none tracking-tight text-slate-900">BÁO GIÁ</p>
+                <p className="text-[10.5px] font-semibold tracking-[0.28em] text-slate-400">PROPOSAL</p>
+              </div>
+              <p className="mt-2 inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11.5px] font-bold tracking-tight" style={{ color: SARAMIN_BLUE }}>
+                {q.code}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            {([
+              { vi: 'Ngày báo giá', en: 'Proposal Date', v: q.created, accent: false },
+              { vi: 'Ngày hết hạn', en: 'Expiry Date', v: q.expires, accent: true },
+            ]).map((d) => (
+              <div
+                key={d.en}
+                className={cn('min-w-[104px] rounded-md border px-2.5 py-1.5 text-right', d.accent ? 'border-slate-300 bg-slate-50' : 'border-slate-200')}
+              >
+                <span className="block text-[8.5px] font-semibold uppercase tracking-wide text-slate-500">{d.vi}</span>
+                <span className="block text-[8.5px] italic text-slate-400">{d.en}</span>
+                <b className={cn('mt-1 block text-[12.5px] tabular-nums', d.accent ? 'text-slate-900' : 'text-slate-700')}>{d.v}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── customer + VAT billing, side by side ───────────────────── */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <Bi vi="Thông tin khách hàng" en="Client information" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
+            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
+              <div><dt className="text-slate-400">Tên khách hàng / Client name</dt><dd className="font-semibold text-slate-800">{contact}</dd></div>
+              <div><dt className="text-slate-400">Email</dt><dd className="font-medium text-slate-700">{co ? `${contact.split(' ').pop()?.toLowerCase()}@${co.domain}` : '—'}</dd></div>
+              <div><dt className="text-slate-400">Số điện thoại / Phone number</dt><dd className="font-medium tabular-nums text-slate-700">0978 490 363</dd></div>
+            </dl>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <Bi vi="Thông tin xuất hóa đơn VAT" en="Billing information for VAT-invoice" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
+            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
+              <div><dt className="text-slate-400">Tên công ty / Company name</dt><dd className="font-semibold uppercase text-slate-800">{co?.legalName ?? q.customer}</dd></div>
+              <div><dt className="text-slate-400">Địa chỉ ĐKKD / Billing Address</dt><dd className="font-medium text-slate-700">{co?.address ?? '—'}</dd></div>
+              <div><dt className="text-slate-400">Mã số thuế / Tax code</dt><dd className="font-medium tabular-nums text-slate-700">{co?.tax ?? '—'}</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        {/* ── options ────────────────────────────────────────────────── */}
+        {opts.map((o) => (
+          <section key={o.n} className="mt-5">
+            {/* Options are ALTERNATIVES. With three of them the reader needs to know
+                which one we are actually proposing, so the recommended one is named
+                — without implying the others are unavailable. */}
+            <div
+              className="flex items-start justify-between gap-3 rounded-t-lg border border-b-0 px-3.5 py-2"
+              style={{
+                borderColor: o.n === 1 ? `${SARAMIN_BLUE}33` : '#E2E8F0',
+                backgroundColor: o.n === 1 ? `${SARAMIN_BLUE}0F` : '#F8FAFC',
+                borderLeft: `3px solid ${o.n === 1 ? SARAMIN_BLUE : '#94A3B8'}`,
+              }}
+            >
+              <p className="min-w-0 text-[10.5px] leading-snug">
+                <span className="font-bold" style={{ color: o.n === 1 ? SARAMIN_BLUE : '#475569' }}>Option {o.n}</span>
+                <span className="ml-1.5 text-slate-600">{o.title}</span>
+              </p>
+              {o.n === 1 && (
+                <span className="shrink-0 rounded px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wide text-white" style={{ backgroundColor: SARAMIN_BLUE }}>
+                  Đề xuất · Recommended
+                </span>
+              )}
+            </div>
+            <div className="rounded-b-lg border border-t-0 border-slate-200">
+              {/* header row */}
+              <div className="grid items-end gap-x-2 border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-[8.5px] font-bold uppercase leading-tight text-slate-600" style={{ gridTemplateColumns: COLS }}>
+                <Bi vi="STT" en="No." />
+                <Bi vi="Dịch vụ" en="Type of service" />
+                <Bi vi="Đơn vị tính" en="Unit" />
+                <Bi vi="Số lượng" en="Quantity" />
+                <Bi vi="Đơn giá" en="Unit price" className="text-right" />
+                <Bi vi="Giảm giá" en="Discount" className="text-right" />
+                <Bi vi="Tổng giá" en="Total price" className="text-right" />
+              </div>
+              {o.lines.map((l, i) => (
+                <div key={i} className="grid items-center gap-x-2 border-b border-slate-100 px-3 py-2 text-[10px]" style={{ gridTemplateColumns: COLS }}>
+                  <span className="text-slate-400 tabular-nums">{i + 1}</span>
+                  <span className="min-w-0">
+                    <span className="block leading-snug text-slate-800">{l.name}</span>
+                    {l.gift && <span className="mt-0.5 inline-block rounded border border-emerald-200 bg-emerald-50 px-1 py-px text-[8px] font-semibold text-emerald-700">QUÀ TẶNG · GIFT</span>}
+                  </span>
+                  <span className="leading-tight text-slate-500">{l.unitVi}<span className="block text-[8.5px] italic text-slate-400">{l.unitEn}</span></span>
+                  <span className="tabular-nums text-slate-700">{l.qty}</span>
+                  <span className="text-right tabular-nums text-slate-700">{pdfNum(l.price)}</span>
+                  <span className="text-right tabular-nums text-slate-500">{l.disc}%</span>
+                  <span className="text-right font-semibold tabular-nums text-slate-900">{pdfNum(l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))}</span>
+                </div>
+              ))}
+              {/* totals — right-aligned block, never a grand total across options */}
+              <div className="flex justify-end px-3 py-2.5">
+                <div className="w-[300px] text-[10px]">
+                  <div className="flex items-center justify-between py-1">
+                    <Bi vi="Tạm tính" en="Subtotal" className="text-slate-500" />
+                    <span className="tabular-nums text-slate-700">{pdfNum(o.sub)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-200 py-1">
+                    <span className="text-slate-500">Thuế GTGT ({VAT_RATE}%)</span>
+                    <span className="tabular-nums text-slate-700">{pdfNum(o.vat)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t-2 border-slate-800 pt-1.5">
+                    <Bi vi={`Tổng đơn hàng sau thuế VAT ${VAT_RATE}%`} en={`Total price after VAT ${VAT_RATE}%`} className="text-[9.5px] font-bold text-slate-800" />
+                    <span className="shrink-0 pl-2 text-[13px] font-black tabular-nums text-slate-900">{pdfNum(o.total)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-[9.5px] leading-relaxed">
+                <p className="text-slate-700"><span className="font-semibold">Bằng chữ:</span> {vnWords(o.total)}.</p>
+                <p className="italic text-slate-400"><span className="font-semibold not-italic">In words:</span> {enWords(o.total)}.</p>
+              </div>
+            </div>
+
+            {/* benefits per package */}
+            {o.feats.map((f, i) => (
+              <div key={i} className="mt-2 rounded-lg border border-slate-200 px-3 py-2">
+                <p className="text-[9.5px] font-bold text-slate-700">
+                  Quyền lợi gói {f.name} trên TopDev.vn
+                  <span className="block font-medium italic text-slate-400">Features of {f.name} Package on TopDev.vn</span>
+                </p>
+                <ol className="mt-1.5 space-y-0.5">
+                  {f.items.map((it, j) => (
+                    <li key={j} className="flex gap-1.5 text-[9.5px] leading-relaxed text-slate-600">
+                      <span className="shrink-0 tabular-nums text-slate-400">{j + 1}.</span>{it}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </section>
+        ))}
+
+        {/* ── terms & conditions ─────────────────────────────────────── */}
+        <section className="mt-6 break-before-page">
+          <Bi vi="Điều khoản và điều kiện" en="Terms & Conditions" className="border-b-2 border-slate-800 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-900" />
+          <ol className="mt-2.5 space-y-2.5">
+            {QUOTE_TERMS.map((t, i) => (
+              <li key={i} className="flex gap-2 text-[9.5px] leading-relaxed">
+                <span className="shrink-0 font-bold tabular-nums text-slate-400">{i + 1}.</span>
+                <span className="min-w-0">
+                  {t.vi.map((p, j) => <span key={j} className={cn('block text-slate-700', j > 0 && 'pl-2')}>{p}</span>)}
+                  {t.en.map((p, j) => <span key={j} className={cn('block italic text-slate-400', j > 0 && 'pl-2')}>{p}</span>)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* ── signature ──────────────────────────────────────────────── */}
+        <div className="mt-8 flex justify-end">
+          <div className="w-[260px] text-center">
+            <Bi vi={`Đại diện ${ISSUER.brand}`} en={ISSUER.brand} className="text-[10px] font-bold text-slate-800" />
+            <p className="mt-0.5 text-[9.5px] text-slate-600">{sd.vi}</p>
+            <p className="text-[9.5px] italic text-slate-400">{sd.en}</p>
+            <div className="mt-12 border-t border-slate-400 pt-1 text-[9px] text-slate-500">Authorized Signature</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Viewer chrome around the sheet: zoom, the generated file name, print and
+   download. Deliberately NOT an editor — a quotation is composed in the builder;
+   this screen only renders it and hands over the file. The rep then sends that
+   file themselves and records it with "Mark as sent". */
+function QuotationPdfModal({ q, co, onClose }: { q: Quote; co?: Company; onClose: () => void }) {
+  const [zoom, setZoom] = useState(0.85)
+  const file = `${q.code}.pdf`
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-2.5 text-white">
+        <span className="text-[13px] font-semibold">Xuất PDF / Export quotation</span>
+        <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px]">{file}</span>
+        <span className="hidden text-[11px] text-slate-400 sm:inline">A4 · dọc / portrait · {q.options} option{q.options > 1 ? 's' : ''}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center overflow-hidden rounded-md border border-slate-600">
+            <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">−</button>
+            <span className="min-w-[46px] px-1 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">+</button>
+          </div>
+          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">🖨 In / Print</button>
+          {/* Download is the primary action now: the rep sends the file themselves,
+              through their own mailbox or Zalo, and records that with "Mark as sent". */}
+          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">⬇ Tải PDF</button>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-slate-300 hover:bg-white/10">✕</button>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div style={{ width: 794 * zoom, margin: '0 auto' }}>
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: 794 }}>
+            <QuotationPdfDoc q={q} co={co} />
+          </div>
+        </div>
+      </div>
+      <p className="border-t border-slate-700 bg-slate-900 px-4 py-2 text-[10.5px] leading-relaxed text-slate-400">
+        Nội dung y hệt bản PDF khách đang dùng — chỉ tinh chỉnh trình bày: cặp Việt/Anh xếp chồng thay vì viết liền, bảng có cột và số canh phải, mỗi option là một khối riêng có tổng riêng (các option là <b className="text-slate-200">lựa chọn thay thế</b>, không bao giờ cộng lại).
+      </p>
+    </div>
+  )
+}
+
 /* Quotation detail. The list stays scannable, so every exception lives here: the
    approval gate, a lapsed offer, a superseded version, and which option the
    customer actually accepted. Read-only — changes go through Edit, which reopens
    the builder, because a Sent quotation is immutable and revising it makes a v2. */
-function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => void; onCreatePO: (c: Company) => void }) {
+function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onBack: () => void; onCreatePO: (c: Company) => void; onDuplicate?: (companyName: string) => void }) {
   useDetailCrumb(q.code, onBack)
+  /* Resolve the quotation's company against the real records. `co` on a quotation
+     is written as the legal name, and older rows carry only `customer` — so match
+     on any of the names a company is known by. Without this the duplicate dialog
+     opens on "— Chọn công ty —" for a quotation that plainly belongs to someone. */
   const co = COMPANIES.find((x) => x.name === q.co)
+    ?? COMPANIES.find((x) => x.legalName === q.co || x.name === q.customer || x.legalName === q.customer || x.shortName === q.customer)
   /* Issue PO shows on every SENT quotation — that is the only state where an order
      can follow. It is disabled on a lapsed offer: the discounts and gifts expired
      with the validity date (T&C clause 2), so extend or re-issue as v2 first. */
@@ -7099,8 +8242,27 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
      nothing to ask; with several the rep must pick one, because an order copies
      exactly ONE option forward. */
   const [picking, setPicking] = useState(false)
-  const opts = q.products.map((p, i) => {
-    const qty = Math.max(1, Math.round(q.value / (1 + VAT_RATE / 100) / QUOTE_CATALOG[p].price))
+  /* Duplicate ≠ revise. Revise makes v2 of THIS quotation and supersedes it —
+     same deal, same company. Duplicate starts a brand-new quotation, on any
+     company, with no link back beyond a "copied from" reference. Using duplicate
+     where revise was meant leaves two live quotes on one deal. */
+  const [duping, setDuping] = useState(false)
+  /* Defaults to THIS quotation's company: re-quoting the same customer after one
+     lapsed is the common case, and quoting a different company is the exception the
+     rep opts into. Starting empty made every duplicate ask a question that already
+     has an answer. */
+  const [dupCo, setDupCo] = useState('')
+  const [pdf, setPdf] = useState(false)
+  /** what the dialog acts on: the rep's pick if they made one, else this company. */
+  const dupTarget = dupCo || co?.name || ''
+  /* Build ONE card per declared option. Deriving from q.products instead would
+     render 2 cards for a quotation that says it has 3 — and the Issue-PO picker
+     would then offer fewer choices than the customer was actually given. */
+  const opts = Array.from({ length: Math.max(1, q.options) }, (_, i) => {
+    const p = q.products[i % q.products.length]
+    // Same rule as the printed document: lines drive the total. Quantity is never
+    // back-solved from q.value, or the detail and the PDF disagree on the figures.
+    const qty = 1
     const sub = qty * QUOTE_CATALOG[p].price
     const vat = Math.round(sub * VAT_RATE / 100)
     return { n: i + 1, p, qty, sub, vat, total: sub + vat }
@@ -7118,8 +8280,14 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
           <p className="text-[11.5px] text-muted">{q.customer} · {q.options} options · giá trị {q.value.toLocaleString('en-US')} ₫</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Preview PDF</button>
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">Export</button>
+          {/* One action, not two: "preview" and "export" render the SAME document —
+              the viewer is where the file is downloaded from, so a rep can never
+              send a PDF they have not looked at. */}
+          <button onClick={() => setPdf(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">📄 Xuất PDF / Export</button>
+          {/* Available in EVERY status — the commonest use is re-quoting an expired
+              or lost offer, so restricting it to live quotations would remove it
+              exactly when it is most wanted. */}
+          <button onClick={() => setDuping(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">⧉ Nhân bản / Duplicate</button>
           {/* Sales declares "sent" — reps routinely deliver the PDF by Zalo or from
               their own mail client, so it cannot depend on our mailer firing. */}
           {q.status === 'Draft' && (
@@ -7127,9 +8295,9 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
           )}
           {q.status === 'Sent' && (
             <button
-              onClick={() => { if (!canPO || !co) return; if (q.products.length > 1) setPicking(true); else onCreatePO(co) }}
+              onClick={() => { if (!canPO || !co) return; if (opts.length > 1) setPicking(true); else onCreatePO(co) }}
               disabled={!canPO}
-              title={canPO ? (q.products.length > 1 ? 'Chọn option khách đã chốt, rồi tạo PO' : 'Raise the sales order from this option') : `Offer lapsed ${q.expires} — extend validity or re-issue as v2 first`}
+              title={canPO ? (opts.length > 1 ? 'Chọn option khách đã chốt, rồi tạo PO' : 'Raise the sales order from this option') : `Offer lapsed ${q.expires} — extend validity or re-issue as v2 first`}
               className={cn('rounded-lg px-3 py-1.5 text-[12px] font-semibold', canPO ? 'bg-brand text-white hover:opacity-90' : 'border border-line bg-canvas text-faint')}
             >
               Issue PO →
@@ -7149,6 +8317,9 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
         <InfoBit label="Ngày hết hạn / Expires" value={q.expires} hint={q.lapsed ? 'lapsed' : q.expires === '—' ? 'not sent yet' : undefined} />
         <InfoBit label="Báo giá bởi / Proposed by" value={co?.owner ?? 'Nguyễn Thị Lan'} />
         <InfoBit label="Số option" value={String(q.options)} hint="alternatives, never summed" />
+        {/* ONE option's total-after-VAT, never a sum: the accepted option once the
+            customer decides, else the HIGHEST option. Deliberately not the
+            "recommended" one — that swap is still an open question in the spec. */}
         <InfoBit label="Giá trị / Value" value={`${q.value.toLocaleString('en-US')} ₫`} hint={q.acceptedOpt ? 'accepted option' : 'highest option'} />
       </div>
 
@@ -7183,6 +8354,53 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
         ))}
       </div>
       <p className="mt-2 text-[11px] text-faint">Options are alternatives — no grand total exists, and reporting never sums them.</p>
+
+      {duping && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+          <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+              <div>
+                <p className="text-[15px] font-bold">Nhân bản báo giá</p>
+                <p className="text-[11px] text-muted">Tạo một báo giá MỚI từ {q.code} — số mới, ngày mới, trạng thái Nháp.</p>
+              </div>
+              <button onClick={() => setDuping(false)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+            </div>
+
+            <div className="space-y-3.5 p-5">
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Báo giá cho công ty<span className="text-rose-500"> *</span></label>
+                <select value={dupTarget} onChange={(e) => setDupCo(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  {!co && <option value="">— Chọn công ty —</option>}
+                  {COMPANIES.map((c) => <option key={c.name} value={c.name}>{coLabel(c)} · {coId(c)}</option>)}
+                </select>
+                <p className="mt-1 text-[10.5px] text-faint">
+                  {!dupTarget
+                    ? 'Chọn công ty sẽ nhận bản báo giá mới.'
+                    : dupTarget === co?.name
+                      ? 'Giữ nguyên công ty của báo giá này — dùng khi báo lại sau khi bản cũ hết hạn hoặc bị từ chối. Đổi ở trên nếu muốn chào cho khách khác.'
+                      : 'Khác công ty — dùng khi chào cùng gói cho khách khác. Thông tin xuất hóa đơn sẽ lấy theo công ty mới.'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                <b className="text-ink/70">Không sao chép:</b> số báo giá, ngày báo giá, ngày hết hạn, trạng thái gửi, option khách đã chốt,
+                và liên kết tới PO. Bản sao luôn bắt đầu ở <b className="text-ink/70">Nháp</b> với hạn <b className="text-ink/70">cuối tháng tạo</b>.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+              <button onClick={() => setDuping(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Hủy</button>
+              <button
+                disabled={!dupTarget}
+                onClick={() => { setDuping(false); onDuplicate?.(dupTarget) }}
+                className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', dupTarget ? 'bg-brand hover:opacity-90' : 'bg-line')}
+              >
+                Tạo bản sao →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {picking && co && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -7219,6 +8437,8 @@ function QuotationDetail({ q, onBack, onCreatePO }: { q: Quote; onBack: () => vo
           </div>
         </div>
       )}
+
+      {pdf && <QuotationPdfModal q={q} co={co} onClose={() => setPdf(false)} />}
     </div>
   )
 }
@@ -7229,6 +8449,11 @@ function AdminQuotes() {
      action is ever valid. Company detail carries "Create quotation" instead. */
   const [poFor, setPoFor] = useState<Company | null>(null)
   const [open, setOpen] = useState<Quote | null>(null)
+  /* Duplicating hands the copy straight to the builder, pre-filled with the target
+     company — the rep lands on an editable draft rather than a confirmation. */
+  const [dupFor, setDupFor] = useState<string | null>(null)
+  const [fStatus, setFStatus] = useState('')
+  const [qSort, setQSort] = useState<QuoteSort>('expires')
   const goTo = useContext(ScreenNavCtx)
   /* Arrived via a cross-page link (e.g. from a PO row): open that quotation. Falls
      back to a stub so a PO can always link to its source even if the quotation is
@@ -7242,9 +8467,22 @@ function AdminQuotes() {
       }
     : null
   const showing = open ?? linked
-  if (showing) return <QuotationDetail q={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-quotes') }} onCreatePO={setPoFor} />
+  if (showing) return (
+    <>
+      <QuotationDetail q={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-quotes') }} onCreatePO={setPoFor} onDuplicate={setDupFor} />
+      {dupFor && <NewQuotationModal company={dupFor} onClose={() => setDupFor(null)} />}
+      {poFor && <CreatePOModal c={poFor} onClose={() => setPoFor(null)} />}
+    </>
+  )
 
-  const rows = QUOTES.map((q) => {
+  /* Status left the tab strip and moved into Filter, so this list carries the same
+     Search · Filter · Sort toolbar as Companies. Tabs made status the ONE dimension
+     worth narrowing by and spent a whole row saying so. */
+  const shown = QUOTES
+    .filter((q) => !fStatus || q.status === fStatus)
+    .slice()
+    .sort(QUOTE_SORTS[qSort].cmp)
+  const rows = shown.map((q) => {
     return [
       <button onClick={() => setOpen(q)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{q.code}</button>,
       <span className="truncate">{q.customer}</span>,
@@ -7261,7 +8499,25 @@ function AdminQuotes() {
     <div>
       {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
       <ListPage
-        tabs={[{ label: 'All', count: 92, active: true }, { label: 'Draft', count: 11 }, { label: 'Sent', count: 34 }, { label: 'Issued to PO', count: 41 }, { label: 'Expired', count: 6 }]}
+        total={QUOTES.length}
+        searchHint="Tìm số báo giá, khách hàng…"
+        filters={
+          <FilterBar count={fStatus ? 1 : 0} onClear={() => setFStatus('')}>
+            <FilterRow label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Sent', 'Issued to PO', 'Expired']} />
+          </FilterBar>
+        }
+        sort={
+          <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
+            <span className="text-faint">Sắp xếp</span>
+            <select
+              value={qSort}
+              onChange={(e) => setQSort(e.target.value as QuoteSort)}
+              className="max-w-[170px] cursor-pointer bg-transparent text-[11.5px] font-medium text-ink outline-none"
+            >
+              {(Object.keys(QUOTE_SORTS) as QuoteSort[]).map((k) => <option key={k} value={k}>{QUOTE_SORTS[k].label}</option>)}
+            </select>
+          </label>
+        }
         cols={[
           { label: 'Quotation', w: '1.4fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Products', w: '1.2fr' },
           { label: 'Options', w: '0.6fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1fr' },
@@ -7280,9 +8536,9 @@ function AdminQuotes() {
    That is why there are only two statuses. */
 type Inv = { code: string; legal: string; customer: string; co?: string; po: string; payment: string; total: number; issued: string; activateBy: string; cancelled?: boolean; replacedBy?: string; product: number; qty: number; issuer: string }
 const INVOICES: Inv[] = [
-  { code: 'INV-3390', legal: '1C26TAA/0041', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', po: 'INV-005863/07/2026', payment: 'PAY-1042', total: 37_800_000, issued: '26/07/2026', activateBy: '26/07/2027', product: 1, qty: 5, issuer: 'Lê Thị Kế Toán' },
-  { code: 'INV-3389', legal: '1C26TAA/0040', customer: 'Công ty CP Trường Sơn', co: 'Công ty CP Trường Sơn', po: 'INV-005859/07/2026', payment: 'PAY-1044', total: 73_929_353, issued: '24/07/2026', activateBy: '24/07/2027', product: 2, qty: 7, issuer: 'Lê Thị Kế Toán' },
-  { code: 'INV-3388', legal: '1C26TAA/0039', customer: 'Hồng Đức', po: 'INV-005855/07/2026', payment: 'PAY-1039', total: 139_609_357, issued: '06/07/2026', activateBy: '—', cancelled: true, replacedBy: 'INV-3391 · 1C26TAA/0042', product: 2, qty: 14, issuer: 'Lê Thị Kế Toán' },
+  { code: 'INV-003390-07-2026', legal: '1C26TAA/0041', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', po: 'PO-005863-07-2026', payment: 'PAY-1042', total: 37_800_000, issued: '26/07/2026', activateBy: '26/07/2027', product: 1, qty: 5, issuer: 'Lê Thị Kế Toán' },
+  { code: 'INV-003389-07-2026', legal: '1C26TAA/0040', customer: 'Công ty CP Trường Sơn', co: 'Công ty CP Trường Sơn', po: 'PO-005859-07-2026', payment: 'PAY-1044', total: 73_929_353, issued: '24/07/2026', activateBy: '24/07/2027', product: 2, qty: 7, issuer: 'Lê Thị Kế Toán' },
+  { code: 'INV-003388-07-2026', legal: '1C26TAA/0039', customer: 'Hồng Đức', po: 'PO-005855-07-2026', payment: 'PAY-1039', total: 139_609_357, issued: '06/07/2026', activateBy: '—', cancelled: true, replacedBy: 'INV-003391-07-2026 · 1C26TAA/0042', product: 2, qty: 14, issuer: 'Lê Thị Kế Toán' },
 ]
 
 function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
@@ -7407,7 +8663,7 @@ function AdminInvoices() {
   )
 }
 /* ── Purchase order ───────────────────────────────────────────────────────────
-   Code format and page layout follow the client's live system: INV-{seq6}/{MM}/
+   Page layout follows the client's live system. Numbering is PO-{seq6}-{MM}-
    {YYYY}, issuer block on the left, recipient + dates on the right, line items
    with the package benefits printed inline.
 
@@ -7451,13 +8707,13 @@ function poNext(step: PoStep) {
 }
 type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; due: string; seller: string; product: number; qty: number }
 const POS: Po[] = [
-  { code: 'INV-005864/07/2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
-  { code: 'INV-005863/07/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
-  { code: 'INV-005862/07/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
-  { code: 'INV-005861/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
-  { code: 'INV-005860/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  { code: 'INV-005859/07/2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
-  { code: 'INV-005858/07/2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
+  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
+  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
+  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  { code: 'PO-005859-07-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
+  { code: 'PO-005858-07-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
 const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active', cancelled: 'rejected' }
 
@@ -8210,8 +9466,8 @@ const MD_DOMAINS: MDDomain[] = [
     entries: [
       'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
       'Quotation — QUO-{seq6}-{MM}-{YYYY} · e.g. QUO-009909-07-2026 · sequential',
-      'Sales order / PO — INV-{seq6}/{MM}/{YYYY} · e.g. INV-005864/07/2026 · sequential · ⚠ shares the INV- prefix with the invoice (client’s live format — open question)',
-      'Invoice, internal — INV-{seq} · e.g. INV-3390 · sequential',
+      'Sales order / PO — PO-{seq6}-{MM}-{YYYY} · e.g. PO-005864-07-2026 · sequential',
+      'Invoice, internal — INV-{seq6}-{MM}-{YYYY} · e.g. INV-003390-07-2026 · sequential',
       'Invoice, legal series — issued by the e-invoice provider · e.g. 1C26TAA/0041 · sequential and gapless, required by law',
       'Customer’s own PO number — free text, recorded exactly as given · e.g. PO-VP/2026/044',
     ],
@@ -8439,7 +9695,7 @@ function AdminIssuer() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             <LField label="Quotation no. format" value="QUO-{seq}-{MM}-{YYYY}" hint="Gapless sequence." />
-            <LField label="Sales order no. format" value="SO-{seq}-{MM}-{YYYY}" />
+            <LField label="Sales order no. format" value="PO-{seq6}-{MM}-{YYYY}" hint="Same shape as quotation and invoice — only the prefix differs." />
             <LField label="Support email" value="customercare@topdev.vn" hint="Printed in T&C clause 6." />
           </div>
         </JobGroup>
@@ -8521,31 +9777,31 @@ function AdminMembership() {
 
         {/* ── Reward catalogue ─────────────────────────────────────────────── */}
         <JobGroup title="Danh mục quyền lợi theo hạng">
-          <Table
-            minW={880}
-            cols={[
-              { label: 'Quyền lợi', w: '1.8fr' },
-              ...TIERS.map((t) => ({ label: t.vi, w: '1fr', align: 'r' as const })),
-            ]}
-            rows={TIER_BENEFITS.map((b) => [
-              <span className="min-w-0 truncate text-[12px] text-ink/80" title={b.name}>{b.name}</span>,
-              // Every cell is an input, including the not-granted ones. An EMPTY input is
-              // how "this tier does not get this benefit" is expressed — the same encoding
-              // as the absent MembershipBenefitGrant row — so it can never be confused
-              // with a zero-value benefit.
-              ...TIERS.map((t) => (
-                <input
-                  readOnly
-                  value={b.by[t.key] === '—' ? '' : b.by[t.key]}
-                  placeholder="—"
-                  className="w-full rounded-md border border-line bg-surface px-2 py-1 text-right text-[11.5px] tabular-nums text-ink placeholder:text-faint"
-                />
-              )),
-            ])}
-          />
+          {/* A matrix of benefit × tier implied the system grants and tracks each cell.
+              It does not — quyền lợi are agreed and delivered by hand — so this is a
+              note per tier that CSKH writes and reads, not data anything computes. */}
+          <div className="space-y-2.5">
+            {TIERS.map((t) => (
+              <div key={t.key} className="rounded-lg border border-line">
+                <div className="flex items-center gap-2 border-b border-line-soft bg-canvas/50 px-3 py-2">
+                  <TierPill tier={t} en />
+                  <span className="text-[11px] text-faint">tích lũy ≥ {vnd(t.from)}</span>
+                </div>
+                {/* Rich-text placeholder: the real screen gets bold / list / link. */}
+                <div className="flex items-center gap-1 border-b border-line-soft px-2 py-1 text-[11px] text-faint">
+                  {['B', 'I', 'U', '•', '1.', '🔗'].map((b) => (
+                    <span key={b} className={cn('grid h-5 min-w-5 place-items-center rounded px-1 hover:bg-canvas', b === 'B' && 'font-bold', b === 'I' && 'italic', b === 'U' && 'underline')}>{b}</span>
+                  ))}
+                </div>
+                <div className="px-3 py-2.5 text-[11.5px] leading-relaxed text-faint" style={{ minHeight: 66 }}>
+                  Ghi chú quyền lợi của hạng {t.vi} — CSKH tự nhập và tự theo dõi. Hệ thống không cấp và không trừ quyền lợi tự động.
+                </div>
+              </div>
+            ))}
+          </div>
           <p className="text-[10.5px] leading-relaxed text-faint">
-            Ô <b>để trống</b> nghĩa là hạng đó <b>không có</b> quyền lợi này — là một câu trả lời, không phải dữ liệu còn thiếu,
-            và không bao giờ được hiểu thành “quyền lợi trị giá 0”.
+            Chỉ là ghi chú. Hạng thành viên vẫn được tính tự động từ tích lũy đơn hàng, nhưng <b className="text-ink/70">quyền lợi
+            thì thoả thuận và thực hiện thủ công</b> — không có bản ghi cấp phát nào được sinh ra từ đây.
           </p>
         </JobGroup>
       </div>
@@ -8596,7 +9852,7 @@ function AdminAuditLog() {
     ['10:31', 'Phạm Quang Huy', 'Viewed resume (PII)', 'CV #48211'],
     ['09:58', 'Lê Hữu Phong', 'Approved job', 'Digital Marketing Lead · Tiki'],
     ['09:40', 'Trần Quốc Trung', 'Granted credits (+500)', 'FPT Software'],
-    ['09:12', 'System', 'Issued e-invoice', 'INV-3390'],
+    ['09:12', 'System', 'Issued e-invoice', 'INV-003390-07-2026'],
   ]
   return (
     <ListPage

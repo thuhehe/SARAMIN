@@ -54,7 +54,23 @@ export interface RefDoc {
   note?: string
 }
 
+/**
+ * One key point. A plain string is English-only; the object form is BILINGUAL and
+ * renders Vietnamese first with the English underneath — stacked, never run
+ * together on one line, so each language can be read on its own. Key points are
+ * what a VN developer and a client reviewer both read first, which is exactly the
+ * audience that needs both languages.
+ */
+export type KeyPoint = string | { vi: string; en: string }
+
 /** Deep per-feature spec — authored to be "as detailed as possible". All optional. */
+/**
+ * A bullet, or a labelled GROUP of bullets. Twenty flat bullets is a wall nobody
+ * finishes; the same twenty under five headings is a list a reader can navigate and
+ * come back to. Plain strings still work, so existing lists need no change.
+ */
+export type BulletItem = string | { group: string; items: string[] }
+
 export interface FeatureDetail {
   /** client source documents this requirement was written from. */
   refDocs?: RefDoc[]
@@ -62,12 +78,20 @@ export interface FeatureDetail {
   description?: string
   /** "As a … I want … so that …" */
   userStory?: string
+  /**
+   * The handful of rules a developer must not miss. Rendered directly under
+   * Overview, above everything else including the screen, and styled to be
+   * unmissable — this document is long, and the rules that decide the build get
+   * lost in it. Keep it to 3–6 lines; a key-points list that grows into a second
+   * requirement list stops being read.
+   */
+  keyPoints?: KeyPoint[]
   /** UI fields captured on the screen(s), grouped. */
   uiFields?: FieldGroup[]
   /** interaction / behaviour rules, in order. */
-  behaviors?: string[]
+  behaviors?: BulletItem[]
   /** business / validation rules. */
-  rules?: string[]
+  rules?: BulletItem[]
   /** empty / loading / error / edge states to design for. */
   states?: string[]
   /** backend contract: data model, endpoints, integrations, notes. */
@@ -132,7 +156,10 @@ export interface BuildModule {
    * their business, so keep each entry to the case and the resolution, not the
    * mechanism. Omit rather than pad: an empty highlight reads worse than none.
    */
-  edgeCases?: { label: string; text: string }[]
+  /** Awkward real-world shapes this module answers. `text` may carry blank-line
+      paragraph breaks; `warn` is the rule that must actually be ENFORCED, kept
+      separate so it does not read as more prose. */
+  edgeCases?: { label: string; text: string; warn?: string }[]
   /** authored — what the module must deliver (VN-standard). */
   requirements: Requirement[]
   features: BuildFeature[]

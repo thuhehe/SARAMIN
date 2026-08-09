@@ -171,7 +171,7 @@ export const adminAccess: BuildModule = {
           ['Roles & permissions', 'The permission tree per admin page', 'Super admin'],
           ['Company information', 'Our own issuer identity on every sales document', 'Finance / super admin'],
           ['Products', 'The catalogue — what is sellable and at what price (see Products & Packages)', 'Finance / super admin'],
-          ['Membership tiers', 'The loyalty programme — tier thresholds + reward catalogue, per year (see CRM)', 'Sales lead / marketing'],
+          ['Membership tiers', 'The loyalty programme — tier thresholds, per year, plus a manual benefit note per tier (see CRM)', 'Sales lead / marketing'],
           ['Master data', 'Every reference list (dropdowns + search filters)', 'Operations'],
           ['Audit log', 'The platform-wide change trail', 'Super admin / compliance'],
           ['Environment', 'Feature flags', 'Engineering'],
@@ -213,7 +213,7 @@ export const adminAccess: BuildModule = {
       },
       items: [
         'Only the LOWER bound of a band is stored — "đến dưới" is read from the next band up, so bands can never overlap or leave a gap.',
-        'The reward catalogue is a benefits × tiers matrix (voucher · Top Companies days · Facebook posts · search banner). An empty cell means the tier does NOT get that benefit — a real answer, not missing data.',
+        'Benefits are NOT tracked by the system. Each tier carries a free rich-text note that CSKH writes and reads; quyền lợi are agreed and delivered by hand. A benefits × tiers matrix was rejected because it implied the system grants, counts and decrements each cell — it does none of those.',
         'Editing a threshold re-tiers the affected companies with no release, and the page shows the live per-band company count so the effect is visible before leaving it.',
         'Same principle as Master data and the Tools rate tables: a policy change is an admin edit, never a deployment.',
       ],
@@ -558,11 +558,11 @@ export const adminAccess: BuildModule = {
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'The loyalty programme’s configuration: tier thresholds + reward catalogue, per programme year. The tier itself is COMPUTED and displayed in the CRM (see CRM → Companies).',
+      notes: 'The loyalty programme’s configuration: tier thresholds per programme year, plus a free note per tier recording what that tier gets. The tier itself is COMPUTED and displayed in the CRM (see CRM → Companies); the benefits are delivered by hand.',
       mockup: 'admin-membership',
       detail: {
         description:
-          'The settings page behind Chương trình Khách hàng Thân thiết. Two tables and nothing else: the thresholds that earn a tier, and the reward catalogue each tier unlocks. Both are data because the programme is re-issued every year and the bands move — 2025’s figures already differ from 2026’s, and that must never be a code change. This page configures; it does not display. The tier badge, the accumulated-in-year figure and the gap to the next band live on the company record in the CRM, and the arithmetic that produces them is described here because this is where its inputs are set.',
+          'The settings page behind Chương trình Khách hàng Thân thiết. One table and one note per tier: the thresholds that earn a tier, and free rich text describing what that tier gets. The thresholds are data because the programme is re-issued every year and the bands move — 2025’s figures already differ from 2026’s, and that must never be a code change. The benefits are a NOTE rather than a table because nothing grants, counts or decrements them — CSKH agrees and delivers them by hand. This page configures; it does not display. The tier badge, the accumulated-in-year figure and the gap to the next band live on the company record in the CRM, and the arithmetic that produces them is described here because this is where its inputs are set.',
         userStory:
           'As a sales lead, I want to set the tier thresholds and what each tier gets, so the loyalty programme can be re-issued each year without a release and without anyone maintaining a spreadsheet.',
         uiFields: [
@@ -589,11 +589,10 @@ export const adminAccess: BuildModule = {
             ],
           },
           {
-            group: 'Reward catalogue — benefits × tiers matrix',
+            group: 'Quyền lợi theo hạng — a note per tier, not a matrix',
             items: [
-              { name: 'benefit', type: 'string', required: true, notes: 'Voucher giảm giá (01 đơn tiếp theo) · Top Companies trên trang Thị trường IT · Bài đăng truyền thông Facebook · Banner trang kết quả tìm kiếm' },
-              { name: 'value per tier', type: 'string / int / currency', notes: 'the cell, rendered as an input: 1.000.000 ₫ → tối đa 15.000.000 ₫ · 30 → 365 ngày hiển thị · 1 → 4 bài · 1 banner' },
-              { name: 'empty cell', type: 'note', notes: 'an EMPTY input (dimmed “—” placeholder) means the tier does NOT get that benefit — a real answer, never “not filled in yet” and never a zero. Facebook posts start at Đồng; the search banner starts at Bạc.' },
+              { name: 'benefitNote', type: 'rich text', notes: 'ONE rich-text field per tier (bold / italic / list / link). Free prose — the system neither parses it nor acts on it.' },
+              { name: 'nothing derived', type: 'note', notes: 'No grant record is created here, nothing is counted down, and no downstream screen reads it. It is documentation for the people who deliver the benefit by hand.' },
             ],
           },
         ],
@@ -629,8 +628,7 @@ export const adminAccess: BuildModule = {
             { name: '— MembershipTier (config) —', type: 'config table' },
             { name: 'programmeId / sortOrder', type: 'ref / int', required: true },
             { name: 'labelVi / labelEn / fromAmount', type: 'string / string / bigint', required: true, notes: 'VND minor units. Only the lower bound is stored — the upper bound is the next row’s fromAmount.' },
-            { name: '— MembershipBenefitGrant (config) —', type: 'config table' },
-            { name: 'tierId / benefitId / value', type: 'ref / ref / jsonb', notes: 'NO ROW = that tier does not get that benefit. Absence is the encoding, so a blank cell can never be confused with a zero.' },
+            { name: 'benefitNote', type: 'text', notes: 'On MembershipTier. Rich text, free prose. There is NO MembershipBenefitGrant table — benefits are delivered manually, so there is nothing to grant, count or decrement.' },
             { name: '— CompanyTierCycle (computed) —', type: 'table' },
             { name: 'companyId / programmeId', type: 'ref / ref', required: true, notes: 'UNIQUE together — one row per company per cycle. This composite key IS the reset mechanism.' },
             { name: 'accumulatedAmount / tierId / computedAt', type: 'bigint / ref? / timestamp', required: true, notes: 'tierId nullable = chưa có hạng. A cache of a sum over orders: always rebuildable, never the source of truth.' },

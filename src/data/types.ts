@@ -71,6 +71,8 @@ export interface SpecSection {
   table?: SpecTable
   /** bullet lines */
   items?: string[]
+  /** rendered as a warning-toned callout — for the "must never" rule of a section. */
+  warn?: string
 }
 
 export interface FeatureSpec {

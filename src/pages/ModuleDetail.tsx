@@ -1,10 +1,26 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
-import type { BuildFeature, FeatureDetail, Requirement, ReqTable } from '@/data/buildModules'
+import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { cn } from '@/lib/utils'
+
+/* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
+   mark the words that carry the rule — bold reads as emphasis without SHOUTING,
+   which is hard to scan and reads as anger in a document people work from. */
+function Rich({ t }: { t: string }) {
+  if (!t.includes('**')) return <>{t}</>
+  return (
+    <>
+      {t.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <b key={i} className="font-semibold text-ink">{part.slice(2, -2)}</b>
+          : <span key={i}>{part}</span>,
+      )}
+    </>
+  )
+}
 
 /* ── Requirements ─────────────────────────────────────────────────────────────
    A requirement renders either as one bullet (plain string) or as a labelled
@@ -27,7 +43,7 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
           className={cn('grid gap-x-4 border-t border-line-soft px-3 py-1.5', dense ? 'text-[11.5px]' : 'text-[12.5px]')}
         >
           {r.map((cell, ci) => (
-            <span key={ci} className={ci === 0 ? 'font-medium text-ink' : 'text-ink/75'}>{cell}</span>
+            <span key={ci} className={ci === 0 ? 'font-medium text-ink' : 'text-ink/75'}><Rich t={cell} /></span>
           ))}
         </div>
       ))}
@@ -42,13 +58,13 @@ function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean 
         typeof r === 'string' ? (
           <div key={i} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12.5px] text-muted' : 'text-[13.5px] text-ink/80')}>
             <span className={cn('mt-2 h-1 w-1 shrink-0 rounded-full', dense ? 'bg-faint' : 'bg-brand')} />
-            {r}
+            <Rich t={r} />
           </div>
         ) : (
           <div key={i} className={cn('rounded-xl border border-line bg-surface', dense ? 'px-3 py-2.5' : 'px-4 py-3')}>
-            <p className={cn('font-semibold text-ink', dense ? 'text-[12px]' : 'text-[13px]')}>{r.label}</p>
+            <p className={cn('font-semibold text-ink', dense ? 'text-[12px]' : 'text-[13px]')}><Rich t={r.label} /></p>
             {r.text && (
-              <p className={cn('mt-1 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}>{r.text}</p>
+              <p className={cn('mt-1 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}><Rich t={r.text} /></p>
             )}
             {r.table && <ReqTableView t={r.table} dense={dense} />}
             {r.items && (
@@ -56,14 +72,14 @@ function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean 
                 {r.items.map((it, j) => (
                   <li key={j} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[12.5px] text-ink/75')}>
                     <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-faint" />
-                    {it}
+                    <Rich t={it} />
                   </li>
                 ))}
               </ul>
             )}
             {r.warn && (
               <p className={cn('mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 leading-relaxed text-amber-800', dense ? 'text-[11.5px]' : 'text-[12px]')}>
-                ⚠️ {r.warn}
+                ⚠️ <Rich t={r.warn} />
               </p>
             )}
           </div>
@@ -101,29 +117,67 @@ function SpecBlock({ title, children, note }: { title: string; children: React.R
   )
 }
 
-function Bullets({ items }: { items: string[] }) {
+/** The leaf list — plain bullets, used on its own or inside a group. */
+function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-1.5">
       {items.map((t, i) => (
         <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-ink/80">
           <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-brand" />
-          {t}
+          <Rich t={t} />
         </li>
       ))}
     </ul>
   )
 }
 
-function Ordered({ items }: { items: string[] }) {
+/** Bullets that may be grouped under headings. A flat list stays flat. */
+function Bullets({ items }: { items: BulletItem[] }) {
+  const groups = items.filter((i): i is { group: string; items: string[] } => typeof i !== 'string')
+  const loose = items.filter((i): i is string => typeof i === 'string')
+  if (!groups.length) return <BulletList items={loose} />
+  return (
+    <div className="space-y-4">
+      {loose.length > 0 && <BulletList items={loose} />}
+      {groups.map((g, i) => (
+        <div key={i}>
+          <p className="mb-1.5 border-b border-line-soft pb-1 text-[12px] font-bold uppercase tracking-wide text-ink/60">{g.group}</p>
+          <BulletList items={g.items} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Numbered leaf list. Numbering restarts inside each group — a reader refers to
+    "step 2 of Sending", not to "step 11 of eighteen". */
+function OrderedList({ items }: { items: string[] }) {
   return (
     <ol className="space-y-1.5">
       {items.map((t, i) => (
         <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed text-ink/80">
           <span className="mt-0.5 shrink-0 font-mono text-[11px] text-faint">{i + 1}.</span>
-          {t}
+          <Rich t={t} />
         </li>
       ))}
     </ol>
+  )
+}
+
+function Ordered({ items }: { items: BulletItem[] }) {
+  const groups = items.filter((i): i is { group: string; items: string[] } => typeof i !== 'string')
+  const loose = items.filter((i): i is string => typeof i === 'string')
+  if (!groups.length) return <OrderedList items={loose} />
+  return (
+    <div className="space-y-4">
+      {loose.length > 0 && <OrderedList items={loose} />}
+      {groups.map((g, i) => (
+        <div key={i}>
+          <p className="mb-1.5 border-b border-line-soft pb-1 text-[12px] font-bold uppercase tracking-wide text-ink/60">{g.group}</p>
+          <OrderedList items={g.items} />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -139,11 +193,11 @@ function FieldTable({ groups }: { groups: FieldGroup[] }) {
                 {g.items.map((f, fi) => (
                   <tr key={fi} className="border-b border-line-soft last:border-0">
                     <td className="w-[34%] px-3 py-2 align-top font-mono text-[11.5px] text-ink/80">
-                      {f.name}
+                      <Rich t={f.name} />
                       {f.required && <span className="text-rose-500"> *</span>}
                     </td>
                     <td className="w-[24%] px-3 py-2 align-top text-muted">{f.type}</td>
-                    <td className="px-3 py-2 align-top text-muted">{f.notes}</td>
+                    <td className="px-3 py-2 align-top text-muted"><Rich t={f.notes ?? ''} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -225,14 +279,67 @@ function RefDocs({ docs }: { docs: NonNullable<FeatureDetail['refDocs']> }) {
 function SectionBlock({ s }: { s: NonNullable<FeatureDetail['sections']>[number] }) {
   return (
     <SpecBlock title={s.heading}>
-      {s.text && <p className="mb-2 text-[13px] leading-relaxed text-ink/75">{s.text}</p>}
+      {/* A section's lead may carry blank-line paragraph breaks, same as an overview. */}
+      {s.text && (
+        <div className="mb-2 space-y-2">
+          {s.text.split('\n\n').map((para, i) => (
+            <p key={i} className="text-[13px] leading-relaxed text-ink/75"><Rich t={para.trim()} /></p>
+          ))}
+        </div>
+      )}
       {s.table && <ReqTableView t={s.table} />}
-      {s.items && <Bullets items={s.items} />}
+      {s.items && <div className={cn(s.table && 'mt-3')}><Bullets items={s.items} /></div>}
+      {s.warn && (
+        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[12px] leading-relaxed text-amber-800">
+          ⚠️ {s.warn}
+        </p>
+      )}
     </SpecBlock>
   )
 }
 
-function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
+/**
+ * Key points — the few rules that decide the build, pulled out of a long document
+ * so they cannot be scrolled past. Deliberately loud: numbered, on a coloured card,
+ * directly under Overview. Everything here is ALSO stated in full further down;
+ * this is a signpost, never the only place a rule lives.
+ */
+function KeyPoints({ items }: { items: KeyPoint[] }) {
+  return (
+    <section className="mt-4 overflow-hidden rounded-xl border-2 border-amber-300 bg-amber-50/70">
+      <div className="border-b border-amber-200 bg-amber-100/60 px-4 py-2">
+        <h2 className="text-[12px] font-bold uppercase tracking-widest text-amber-900">
+          ⚠ Điểm cốt lõi — đọc trước khi build
+        </h2>
+        <p className="text-[11px] font-medium italic tracking-wide text-amber-700/80">
+          Key points — read before building
+        </p>
+      </div>
+      <ol className="divide-y divide-amber-200/70">
+        {items.map((t, i) => (
+          <li key={i} className="flex gap-3 px-4 py-2.5">
+            <span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-500 text-[11px] font-bold text-white">
+              {i + 1}
+            </span>
+            {/* Bilingual points stack: Vietnamese leads, English sits underneath in
+                muted italic. Running the two together on one line is what makes a
+                bilingual document unreadable in BOTH languages. */}
+            {typeof t === 'string' ? (
+              <p className="text-[13px] font-medium leading-relaxed text-amber-950"><Rich t={t} /></p>
+            ) : (
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium leading-relaxed text-amber-950"><Rich t={t.vi} /></p>
+                <p className="mt-0.5 text-[12.5px] italic leading-relaxed text-amber-800/70"><Rich t={t.en} /></p>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function FeatureDetailBlocks({ d, screenBlock }: { d: FeatureDetail; screenBlock?: React.ReactNode }) {
   /* A section marked `early` describes what the screen/document actually IS, so it
      belongs directly under Overview — above the field list, not below the backend
      contract. Everything else keeps its place in the trailing group. */
@@ -248,7 +355,7 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
           {d.description && (
             <div className="space-y-2.5">
               {d.description.split('\n\n').map((para, i) => (
-                <p key={i} className="text-[13.5px] leading-relaxed text-ink/80">{para.trim()}</p>
+                <p key={i} className="text-[13.5px] leading-relaxed text-ink/80"><Rich t={para.trim()} /></p>
               ))}
             </div>
           )}
@@ -259,6 +366,17 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
           )}
         </SpecBlock>
       )}
+      {/* Key points sit as high as they can: their whole purpose is to be read
+          before anything else, including the screen. The rules that govern the
+          screen follow immediately — Key points are a signpost TO them, so putting
+          the field list or the mockup in between breaks the thought. */}
+      {d.keyPoints && d.keyPoints.length > 0 && <KeyPoints items={d.keyPoints} />}
+      {d.requirements && (
+        <SpecBlock title="Rules for this screen">
+          <Requirements items={d.requirements} />
+        </SpecBlock>
+      )}
+      {screenBlock}
       {early.map((s, i) => <SectionBlock key={`early-${i}`} s={s} />)}
       {d.uiFields && (
         <SpecBlock title="UI fields">
@@ -268,13 +386,6 @@ function FeatureDetailBlocks({ d }: { d: FeatureDetail }) {
       {d.behaviors && (
         <SpecBlock title="Behaviours">
           <Ordered items={d.behaviors} />
-        </SpecBlock>
-      )}
-      {/* Rules that govern THIS screen. Sits above the generic rule list because a
-          labelled block with a table is what a reader scans for first. */}
-      {d.requirements && (
-        <SpecBlock title="Rules for this screen">
-          <Requirements items={d.requirements} />
         </SpecBlock>
       )}
       {d.rules && (
@@ -362,7 +473,18 @@ export function ModuleDetail() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-amber-950">{e.label}</p>
-                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-900/85">{e.text}</p>
+                  {/* Blank lines are real paragraph breaks — a long edge case reads as
+                      prose instead of one wall of amber text. */}
+                  <div className="mt-0.5 space-y-1.5">
+                    {e.text.split('\n\n').map((para, j) => (
+                      <p key={j} className="text-[12.5px] leading-relaxed text-amber-900/85"><Rich t={para.trim()} /></p>
+                    ))}
+                  </div>
+                  {e.warn && (
+                    <p className="mt-2 rounded-md border border-amber-300 bg-amber-100/70 px-2.5 py-1.5 text-[12px] leading-relaxed text-amber-950">
+                      ⚠️ {e.warn}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}
@@ -397,6 +519,49 @@ export function FeatureDetail() {
   const screen = resolveScreen(f.mockup)
   const href = screen ? mockupHref(screen) : null
 
+  /* The screen sits BELOW Overview (and below Key points), not above them: a reader
+     who lands here needs to know what the screen is for before looking at it, and
+     the key rules before either. This is NOT a second copy of the screen —
+     resolveScreen returns the very component the mockup gallery renders, so a screen
+     is only ever built in one place. The link opens it in that gallery. */
+  const screenBlock = (
+    <SpecBlock
+      title="Screen UI"
+      note={
+        screen ? (
+          <span className="flex items-center gap-3">
+            {/* the route, as plain text — it was the only real information the
+                fake browser chrome carried */}
+            {screen.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{screen.url}</span>}
+            {href && (
+              <Link to={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
+                Open in {screen.src === 'admin' ? 'Admin' : screen.src === 'co' ? 'Company' : 'Jobseeker'} mockups
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </span>
+        ) : (
+          'not wired yet'
+        )
+      }
+    >
+      {screen ? (
+        /* No <Browser> frame here. The SpecBlock card is already a frame, so the
+           chrome was a second border around the first plus a fake URL bar; the
+           URL now sits in the block header. The gallery keeps its chrome, where
+           it is the only frame. */
+        <div className="max-h-[640px] overflow-y-auto scroll-thin">
+          <screen.Comp />
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
+          <ImageIcon className="mx-auto h-5 w-5 text-faint" />
+          <p className="mt-2 text-[13px] text-muted">No screen mockup wired for this feature yet.</p>
+        </div>
+      )}
+    </SpecBlock>
+  )
+
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 pb-16 sm:px-8">
       {/* breadcrumb */}
@@ -413,45 +578,6 @@ export function FeatureDetail() {
         <h1 className="text-[24px] font-bold tracking-tight">{f.name}</h1>
       </div>
 
-      {/* Screen UI — on top, above the requirement detail.
-          This is NOT a second copy of the screen: resolveScreen returns the very
-          component the mockup gallery renders, so there is only ever one place a
-          screen is built. The link opens it in that gallery. */}
-      <SpecBlock
-        title="Screen UI"
-        note={
-          screen ? (
-            <span className="flex items-center gap-3">
-              {/* the route, as plain text — it was the only real information the
-                  fake browser chrome carried */}
-              {screen.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{screen.url}</span>}
-              {href && (
-                <Link to={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
-                  Open in {screen.src === 'admin' ? 'Admin' : screen.src === 'co' ? 'Company' : 'Jobseeker'} mockups
-                  <ExternalLink className="h-3 w-3" />
-                </Link>
-              )}
-            </span>
-          ) : (
-            'not wired yet'
-          )
-        }
-      >
-        {screen ? (
-          /* No <Browser> frame here. The SpecBlock card is already a frame, so the
-             chrome was a second border around the first plus a fake URL bar; the
-             URL now sits in the block header. The gallery keeps its chrome, where
-             it is the only frame. */
-          <div className="max-h-[640px] overflow-y-auto scroll-thin">
-            <screen.Comp />
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
-            <ImageIcon className="mx-auto h-5 w-5 text-faint" />
-            <p className="mt-2 text-[13px] text-muted">No screen mockup wired for this feature yet.</p>
-          </div>
-        )}
-      </SpecBlock>
 
       {f.notes && (
         <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
@@ -460,8 +586,9 @@ export function FeatureDetail() {
         </div>
       )}
 
-      {/* rich per-feature detail */}
-      {f.detail && <FeatureDetailBlocks d={f.detail} />}
+      {/* rich per-feature detail — the screen is handed in so it can be placed
+          after Overview + Key points rather than before them. */}
+      {f.detail ? <FeatureDetailBlocks d={f.detail} screenBlock={screenBlock} /> : screenBlock}
 
       {/* The "Module context" block used to repeat m.requirements at the foot of
           every feature page. Removed: the module page is where those rules live, and

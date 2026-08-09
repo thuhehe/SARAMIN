@@ -17,7 +17,7 @@ import {
 import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewPackageModal, NewQuotationModal, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx } from './adminPrototypes'
+import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewPackageModal, NewQuotationModal, GlobalCompanySearch, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx, CreateSignalCtx } from './adminPrototypes'
 import type { DetailCrumb } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
@@ -239,6 +239,7 @@ const NAV_GROUPS: NavGroup[] = [
    single create action (reports, logs, boards). */
 const PRIMARY_ACTION: Record<string, string> = {
   'admin-catalog': '+ New product',
+  'admin-company-list': '+ New company',
   'admin-bundles': '+ New package',
   'admin-quotes': '+ New quotation',
 }
@@ -269,6 +270,9 @@ export function AdminWireframe() {
      page keeps its own detail state, and the crumb then describes a list while the
      content still shows a record. */
   const [navSeq, setNavSeq] = useState(0)
+  /* Bumped by the title-row create button. Pages whose create REPLACES the list
+     (company, job) listen for it; pages with a modal are handled below. */
+  const [createSeq, setCreateSeq] = useState(0)
   const select = (group: string, item: NavItem) => {
     setWalkthrough(null)
     setDetail(null)
@@ -376,7 +380,18 @@ export function AdminWireframe() {
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center">
+          {/* Three columns, not a flex row: the search has to sit in the MIDDLE of
+              the bar and stay there. With flex it started wherever the breadcrumb
+              ended, so it slid left and right as you moved between pages. The two
+              1fr columns split the slack evenly, which centres the auto column
+              between them without absolute positioning — so it can never overlap
+              the breadcrumb or the right-hand actions. */}
+          {/* minmax(0,1fr) on BOTH sides, not a bare 1fr: a bare 1fr is
+              minmax(auto,1fr), so the right column — which carries the widest
+              content (History · View full spec · avatar) — grows past its share and
+              shoves the centre column left. Allowing both side tracks to shrink to
+              0 is what keeps the two equal, and therefore the search truly centred. */}
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,420px)_minmax(0,1fr)] items-center">
             <div className="flex min-w-0 items-center gap-2.5 px-3">
               {/* Breadcrumb. On a detail view the page segment becomes the way BACK,
                   and the record itself is the last crumb — so no page needs its own
@@ -400,7 +415,16 @@ export function AdminWireframe() {
               </div>
             </div>
 
-            <div className="ml-auto flex h-full items-center">
+            {/* One search for the whole console, in the chrome rather than on a page:
+                "does this company exist, and where is it?" is a question a rep asks
+                from wherever they are, and the answer has to be reachable without
+                first navigating to Companies. Centre column, fixed width — a search
+                box that changes width as the breadcrumb grows is a moving target. */}
+            <div className="hidden w-full min-w-0 md:flex">
+              <GlobalCompanySearch onOpen={goToScreen} />
+            </div>
+
+            <div className="flex h-full items-center justify-self-end">
               <div className="flex h-full items-center gap-2 px-3">
                 <ActivityLogButton page={active.item.label} />
                 {specHref && (
@@ -450,7 +474,7 @@ export function AdminWireframe() {
                     page's verb is whatever that record allows, not "new". */}
                 {!walkthrough && !detail && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
                   <button
-                    onClick={() => setCreating(active.item.specId!)}
+                    onClick={() => { setCreating(active.item.specId!); setCreateSeq((n) => n + 1) }}
                     className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
                   >
                     {PRIMARY_ACTION[active.item.specId]}
@@ -481,7 +505,9 @@ export function AdminWireframe() {
                 <ScreenNavCtx.Provider value={goToScreen}>
                   <OpenRecordCtx.Provider value={openRecord}>
                     <DetailCrumbCtx.Provider value={setDetail}>
-                      <Proto key={`${active.item.specId}-${navSeq}`} />
+                      <CreateSignalCtx.Provider value={createSeq}>
+                        <Proto key={`${active.item.specId}-${navSeq}`} />
+                      </CreateSignalCtx.Provider>
                     </DetailCrumbCtx.Provider>
                   </OpenRecordCtx.Provider>
                 </ScreenNavCtx.Provider>
