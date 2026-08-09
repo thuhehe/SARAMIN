@@ -277,7 +277,7 @@ export const jobseekerUser: BuildModule = {
           'A Suspended account cannot sign in and sees a support message with no internal reason.',
         ],
         openQuestions: [
-          'Do we need phone / OTP sign-in for the Vietnamese market, where phone is often the primary identity?',
+          '[C5] Do we need phone / OTP sign-in for the Vietnamese market, where phone is often the primary identity?',
           'Is 2FA in scope for jobseekers in Phase-1, or employer-side only?',
           'How long may an unverified account live before it is purged?',
           'Should a social provider that releases no email be supported at all, or dropped?',
@@ -694,7 +694,7 @@ export const jobseekerUser: BuildModule = {
         ],
         openQuestions: [
           'Is desired salary ever shown to employers in CV search, or used only for matching?',
-          'Is phone verification (OTP) needed in Phase-1?',
+          '[C5] Is phone verification (OTP) needed in Phase-1?',
           'Which fields, if any, are mandatory before a candidate may be discoverable in CV search?',
           'Should a re-parse of an updated CV overwrite extracted fields, or always propose changes?',
         ],

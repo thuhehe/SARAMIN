@@ -1,0 +1,48 @@
+id,group,name_vi,name_en,aliases,is_active
+1001,IT — Software,React,React,ReactJS|React.js|react js|Reactjs,TRUE
+1002,IT — Software,JavaScript,JavaScript,JS|Javascript|ECMAScript|java script,TRUE
+1003,IT — Software,Java,Java,Java SE|Core Java|Java Core,TRUE
+1004,IT — Software,TypeScript,TypeScript,TS|Typescript|type script,TRUE
+1005,IT — Software,Node.js,Node.js,NodeJS|Node|node js|Nodejs,TRUE
+1006,IT — Software,Python,Python,Python3|Python 3,TRUE
+1007,IT — Software,SQL,SQL,Structured Query Language|T-SQL|PL/SQL,TRUE
+1008,IT — Software,.NET,.NET,dotnet|dot net|.Net,TRUE
+1009,IT — Software,ASP.NET Core,ASP.NET Core,ASP.NET|ASPNET Core|asp net core,TRUE
+1010,IT — Software,Docker,Docker,,TRUE
+1011,IT — Software,Kubernetes,Kubernetes,K8s|k8s,TRUE
+1012,IT — Software,AWS,AWS,Amazon Web Services|Amazon AWS,TRUE
+1013,IT — Software,Kiểm thử phần mềm,Software Testing,kiem thu phan mem|QA Testing|Manual Testing|Testing,TRUE
+1014,IT — Software,Phân tích nghiệp vụ,Business Analysis,phan tich nghiep vu|BA|Business Analyst Skills,TRUE
+2001,Design,Figma,Figma,,TRUE
+2002,Design,Thiết kế đồ hoạ,Graphic Design,thiet ke do hoa|Graphics Design|Đồ hoạ|do hoa,TRUE
+2003,Design,Thiết kế UI/UX,UI/UX Design,UIUX|UX/UI|UI UX|thiet ke ui ux|Thiết kế giao diện,TRUE
+2004,Design,Adobe Photoshop,Adobe Photoshop,Photoshop|PTS|Ps,TRUE
+2005,Design,Adobe Illustrator,Adobe Illustrator,Illustrator|Adobe Ai,TRUE
+2006,Design,Nghiên cứu người dùng,User Research,nghien cuu nguoi dung|UX Research,TRUE
+2007,Design,Design System,Design System,Design Systems|Hệ thống thiết kế,TRUE
+3001,Marketing,Digital Marketing,Digital Marketing,Marketing số|marketing so|Tiếp thị số|Online Marketing,TRUE
+3002,Marketing,SEO,SEO,Search Engine Optimization|Tối ưu công cụ tìm kiếm|toi uu cong cu tim kiem,TRUE
+3003,Marketing,Facebook Ads,Facebook Ads,FB Ads|Meta Ads|Quảng cáo Facebook|quang cao facebook,TRUE
+3004,Marketing,Google Ads,Google Ads,Google Adwords|Adwords|Quảng cáo Google|quang cao google,TRUE
+3005,Marketing,Sáng tạo nội dung,Content Marketing,sang tao noi dung|Content|Content Writing|Viết nội dung,TRUE
+3006,Marketing,Nghiên cứu thị trường,Market Research,nghien cuu thi truong,TRUE
+4001,Sales,Bán hàng B2B,B2B Sales,ban hang b2b|Kinh doanh B2B|B2B,TRUE
+4002,Sales,Chăm sóc khách hàng,Customer Service,cham soc khach hang|CSKH|Customer Support|Dịch vụ khách hàng,TRUE
+4003,Sales,Đàm phán,Negotiation,dam phan|Thương lượng,TRUE
+4004,Sales,Phát triển kinh doanh,Business Development,phat trien kinh doanh|BD,TRUE
+5001,Accounting & Finance,Kế toán tổng hợp,General Accounting,ke toan tong hop,TRUE
+5002,Accounting & Finance,Kế toán thuế,Tax Accounting,ke toan thue|Thuế|Kế toán thuế GTGT,TRUE
+5003,Accounting & Finance,Microsoft Excel,Microsoft Excel,Excel|MS Excel|Excel nâng cao|excel nang cao,TRUE
+5004,Accounting & Finance,MISA,MISA,Phần mềm MISA|phan mem misa|MISA SME,TRUE
+5005,Accounting & Finance,SAP,SAP,SAP ERP|SAP FICO,TRUE
+5006,Accounting & Finance,Báo cáo tài chính,Financial Reporting,bao cao tai chinh|BCTC,TRUE
+6001,HR,Tuyển dụng,Recruitment,tuyen dung|Recruiting|Talent Acquisition,TRUE
+6002,HR,Tính lương,Payroll,tinh luong|Bảng lương,TRUE
+6003,HR,Lương thưởng & phúc lợi,Compensation & Benefits,luong thuong va phuc loi|C&B|CandB,TRUE
+6004,HR,Quan hệ lao động,Employee Relations,quan he lao dong|Luật lao động,TRUE
+7001,Office & General,Microsoft Word,Microsoft Word,Word|MS Word,TRUE
+7002,Office & General,Microsoft PowerPoint,Microsoft PowerPoint,PowerPoint|PPT|MS PowerPoint,TRUE
+7003,Office & General,Quản lý dự án,Project Management,quan ly du an|Project Mgmt,TRUE
+7004,Office & General,Làm việc nhóm,Teamwork,lam viec nhom|Team work|Hợp tác|Phối hợp nhóm,TRUE
+7005,Office & General,Giải quyết vấn đề,Problem Solving,giai quyet van de,TRUE
+9001,IT — Software,Flash,Adobe Flash,Macromedia Flash,FALSE

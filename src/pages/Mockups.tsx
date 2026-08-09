@@ -546,15 +546,17 @@ export const CORE_CV_SECTIONS: { title: string; pct: string }[] = [
 ] // = 75%
 
 export const OPTIONAL_CV_SECTIONS: { title: string; pct: string; desc: string; icon: string }[] = [
-  { title: 'Foreign Language', pct: '6%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
-  { title: 'Highlight Project', pct: '5%', desc: 'Showcase your highlight project', icon: '📁' },
+  { title: 'Foreign Language', pct: '7%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
+  { title: 'Highlight projects', pct: '6%', desc: 'Showcase your work — projects, case studies, published pieces', icon: '📁' },
   { title: 'Certificates', pct: '4%', desc: 'Provide evidence of your specific expertise and skills', icon: '📜' },
   { title: 'Awards', pct: '3%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
   { title: 'Activities', pct: '3%', desc: 'Volunteering, clubs & communities you take part in', icon: '🎯' },
-  { title: 'Publications', pct: '2%', desc: 'Articles or papers you have published', icon: '📰' },
   { title: 'References', pct: '1%', desc: 'People who can vouch for your work', icon: '👥' },
   { title: 'Recommendations', pct: '1%', desc: 'Ask colleagues to recommend you', icon: '⭐' },
 ] // = 25%  →  75 + 25 = 100%
+// NOTE: no "Publications" section — it is not a search facet and near-nobody fills
+// it on a general VN job board (Saramin KR and VietnamWorks have none either).
+// Papers and articles belong under Highlight projects.
 
 /** Empty-section prompt with an impact ↑% (why it's worth filling). */
 function EmptySection({ title, desc, pct, icon, onAdd }: { title: string; desc: string; pct: string; icon: string; onAdd?: () => void }) {
@@ -613,7 +615,6 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
   },
   Experience: {
     repeatable: true,
-    intro: 'One entry per role. This section is what your years-of-experience is calculated from.',
     fields: [
       { label: 'Company', req: true, value: 'Lantern Digital' },
       { label: 'Job title', req: true, value: 'Senior Product Designer', hint: 'Resolves to the canonical Title taxonomy so employer filters can match it.' },
@@ -622,8 +623,7 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'From', kind: 'month', req: true, value: '2022-03', half: true },
       { label: 'To', kind: 'month', value: '', hint: 'Leave empty if this is your current role.', half: true },
       { label: 'I currently work here', kind: 'toggle', value: 'on' },
-      { label: 'What you did', kind: 'area', value: '• Led the design system rollout across 4 product teams\n• Ran user research for the checkout redesign', hint: 'One achievement per line. Also a source for skill extraction.' },
-      { label: 'Skills used', kind: 'tags', value: 'Figma, Design systems, User research' },
+      { label: 'What you did', kind: 'area', value: '• Led the design system rollout across 4 product teams\n• Ran user research for the checkout redesign' },
     ],
   },
   Education: {
@@ -634,7 +634,8 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Major', value: 'Business Administration', half: true },
       { label: 'From', kind: 'month', value: '2016-09', half: true },
       { label: 'To', kind: 'month', value: '2020-07', half: true },
-      { label: 'GPA', value: '3.4 / 4.0', half: true, hint: 'Optional.' },
+      { label: 'Score', value: '3.4 / 4.0', half: true },
+      { label: 'Achievement', value: '' },
     ],
   },
   Skills: {
@@ -668,7 +669,6 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
   },
   'Foreign Language': {
     repeatable: true,
-    intro: 'A real employer search facet — especially for KO and JA roles in the VN market.',
     fields: [
       { label: 'Language', kind: 'select', req: true, value: 'English', options: ['English', 'Korean', 'Japanese', 'Chinese', 'Vietnamese'], half: true },
       { label: 'Proficiency', kind: 'select', req: true, value: 'Fluent', options: ['Basic', 'Intermediate', 'Advanced', 'Fluent', 'Native'], half: true },
@@ -676,7 +676,7 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Score / level', value: '7.5', half: true, hint: 'Free text — the scales differ (7.5, 850, N3, 4급).' },
     ],
   },
-  'Highlight Project': {
+  'Highlight projects': {
     repeatable: true,
     fields: [
       { label: 'Project name', req: true, value: '' },
@@ -684,9 +684,8 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Team size', value: '', half: true },
       { label: 'From', kind: 'month', value: '', half: true },
       { label: 'To', kind: 'month', value: '', half: true },
-      { label: 'Tools / tech used', kind: 'tags', value: '' },
       { label: 'What you did and what changed', kind: 'area', value: '', hint: 'An outcome beats a description.' },
-      { label: 'Link (demo / repo / case study)', value: '' },
+      { label: 'Link (demo / repo / case study / publication)', value: '' },
     ],
   },
   Certificates: {
@@ -704,15 +703,15 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
     fields: [
       { label: 'Award name', req: true, value: '' },
       { label: 'Awarded by', value: '', half: true },
-      { label: 'Year', value: '', half: true },
+      { label: 'Issue date', kind: 'month', value: '', half: true },
       { label: 'What it was for', kind: 'area', value: '' },
     ],
   },
   Activities: {
     repeatable: true,
-    intro: 'Volunteering, clubs and communities — useful for fresher profiles with little work history.',
     fields: [
-      { label: 'Organisation / club', req: true, value: '' },
+      { label: 'Tên chương trình', req: true, value: '' },
+      { label: 'Organisation / club', value: '' },
       { label: 'Your role', value: '', half: true },
       { label: 'Still involved', kind: 'toggle', value: '', half: true },
       { label: 'From', kind: 'month', value: '', half: true },
@@ -720,22 +719,13 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'What you did', kind: 'area', value: '' },
     ],
   },
-  Publications: {
-    repeatable: true,
-    fields: [
-      { label: 'Title', req: true, value: '' },
-      { label: 'Publisher / journal', value: '', half: true },
-      { label: 'Date', kind: 'month', value: '', half: true },
-      { label: 'Co-authors', value: '' },
-      { label: 'Link', value: '' },
-    ],
-  },
   References: {
     repeatable: true,
     note: 'This is someone else’s personal data. Ask them first — we show a referee’s contact details only to employers who have unlocked your CV.',
     fields: [
       { label: 'Full name', req: true, value: '' },
-      { label: 'Role & company', req: true, value: '' },
+      { label: 'Job title', req: true, value: '', half: true },
+      { label: 'Company', req: true, value: '', half: true },
       { label: 'Relationship', kind: 'select', value: 'Direct manager', options: ['Direct manager', 'Colleague', 'Client', 'Lecturer', 'Other'], half: true },
       { label: 'Phone', value: '', half: true },
       { label: 'Email', value: '', half: true },
@@ -817,12 +807,6 @@ function EditSheet({ title, onClose }: { title: string; onClose: () => void }) {
               <div className="grid grid-cols-2 gap-x-3 gap-y-3">
                 {spec.fields.map((f) => <EditRow key={f.label} f={f} />)}
               </div>
-              {spec.repeatable && (
-                <button className="w-full rounded-md border border-dashed border-line py-2 text-[11.5px] font-medium text-brand hover:border-brand">
-                  ＋ Add another {title.toLowerCase()} entry
-                </button>
-              )}
-              <p className="text-[10px] text-faint">Saved as a draft as you type — nothing is published until you save.</p>
             </>
           ) : (
             <p className="text-[11px] text-faint">No field list authored for “{title}” yet.</p>
@@ -1044,9 +1028,9 @@ function ProfileCvScreen() {
           {/* ── Experience ── */}
           <CvSection title="Experience" action={ro ? '' : '+ Add'} onAction={() => setEditing('Experience')}>
             {([
-              ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.', ['User Research', 'Design Systems', 'Figma']],
-              ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Designed the payments experience across mobile and web, from research through to handoff.', ['Product Design', 'Prototyping']],
-            ] as [string, string, string, string, string, string[]][]).map(([role, org, dates, loc, desc, skills]) => (
+              ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.'],
+              ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Designed the payments experience across mobile and web, from research through to handoff.'],
+            ] as [string, string, string, string, string][]).map(([role, org, dates, loc, desc]) => (
               <div key={role} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</div>
                 <div className="min-w-0">
@@ -1054,7 +1038,6 @@ function ProfileCvScreen() {
                   <p className="text-[11.5px] text-ink/80">{org}</p>
                   <p className="text-[11px] text-faint">{dates} · {loc}</p>
                   <p className="mt-1 text-[11.5px] leading-relaxed text-muted">{desc}</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1">{skills.map((s) => <Chip key={s}>{s}</Chip>)}</div>
                 </div>
               </div>
             ))}
@@ -1107,16 +1090,24 @@ function ProfileCvScreen() {
 function CreateCvScreen() {
   const go = useNav()
   const [extra, setExtra] = useState<string[]>([])
+  /* Every ＋ Add / ✎ opens the SAME EditSheet the profile uses, keyed by section —
+     one field catalogue (SECTION_EDITORS), so the builder and My Profile can never
+     disagree about what a section contains. */
+  const [editing, setEditing] = useState<string | null>(null)
   const OPTIONAL = OPTIONAL_CV_SECTIONS.map((s) => s.title)
-  const SectionHead = ({ title, essential, actions }: { title: string; essential?: boolean; actions?: string[] }) => (
+  const SectionHead = ({ title, essential, actions, editKey }: { title: string; essential?: boolean; actions?: string[]; editKey?: string }) => (
     <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink/80 pb-2">
       <p className="text-[14px] font-bold text-ink">{title}</p>
       {essential && <span className="text-[10.5px] font-semibold text-rose-500">essential</span>}
-      <span className="ml-auto flex gap-3">{actions?.map((a) => <span key={a} className="cursor-pointer text-[11px] font-medium text-brand">＋ {a}</span>)}</span>
+      <span className="ml-auto flex gap-3">
+        {actions?.map((a) => (
+          <span key={a} onClick={() => setEditing(editKey ?? title)} className="cursor-pointer text-[11px] font-medium text-brand">＋ {a}</span>
+        ))}
+      </span>
     </div>
   )
   return (
-    <div>
+    <div className="relative">
       <JsHeader active="CV & Profile" />
       <div className="mx-auto grid max-w-[1020px] grid-cols-1 gap-4 p-5 md:grid-cols-[minmax(0,1fr)_280px]">
         {/* ── main column ── */}
@@ -1138,18 +1129,18 @@ function CreateCvScreen() {
             <SectionHead title="About" actions={[]} />
             <div className="mt-3 flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
               <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink/80">Product designer with 4+ years across web and mobile products at agency and in-house teams. I turn user research into clean, usable interfaces and maintain scalable design systems.</p>
-              <span className="cursor-pointer text-[12px] text-muted">✎</span>
+              <span onClick={() => setEditing('About')} className="cursor-pointer text-[12px] text-muted">✎</span>
             </div>
           </div>
 
           {/* Work experience — PRE-FILLED with the CV content from My Profile */}
           <div>
-            <SectionHead title="Work experience" actions={['Add']} />
+            <SectionHead title="Work experience" actions={['Add']} editKey="Experience" />
             <div className="mt-3 space-y-2">
               {([
-                ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.', ['User Research', 'Design Systems', 'Figma']],
-                ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Designed the payments experience across mobile and web, from research through to handoff.', ['Product Design', 'Prototyping']],
-              ] as [string, string, string, string, string[]][]).map(([role, org, dates, desc, skills]) => (
+                ['Senior Product Designer', 'Lantern Digital · Full-time', '2022 – Present · 2 yrs', 'Lead designer on the core web product — run research, ship the design system, and mentor two junior designers.'],
+                ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Designed the payments experience across mobile and web, from research through to handoff.'],
+              ] as [string, string, string, string][]).map(([role, org, dates, desc]) => (
                 <div key={role} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</span>
                   <div className="min-w-0 flex-1">
@@ -1157,9 +1148,8 @@ function CreateCvScreen() {
                     <p className="text-[11.5px] text-ink/80">{org}</p>
                     <p className="text-[11px] text-faint">{dates}</p>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-muted">{desc}</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1">{skills.map((s) => <Chip key={s}>{s}</Chip>)}</div>
                   </div>
-                  <span className="cursor-pointer text-[12px] text-muted">✎</span>
+                  <span onClick={() => setEditing('Experience')} className="cursor-pointer text-[12px] text-muted">✎</span>
                 </div>
               ))}
             </div>
@@ -1181,7 +1171,7 @@ function CreateCvScreen() {
                     <p className="text-[11.5px] text-ink/80">{deg}</p>
                     <p className="text-[11px] text-faint">{dates}</p>
                   </div>
-                  <span className="cursor-pointer text-[12px] text-muted">✎</span>
+                  <span onClick={() => setEditing('Education')} className="cursor-pointer text-[12px] text-muted">✎</span>
                 </div>
               ))}
             </div>
@@ -1292,6 +1282,9 @@ function CreateCvScreen() {
         <Btn>CV Preview</Btn>
         <Btn primary onClick={() => go('js-my-cvs')}>Completed</Btn>
       </div>
+
+      {/* every ＋ Add / ✎ in this builder opens the shared section editor */}
+      {editing && <EditSheet title={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
@@ -1572,11 +1565,41 @@ function CrmCompanyPageScreen() {
    · "which skills to show" is no longer the candidate's job to curate — a search
      result shows the ones that overlap the job being matched, which is more
      useful than a static top-5 and needs no UI at all. */
+/* Skill catalogue the picker searches — stands in for the canonical Skill
+   taxonomy. Each row is (canonical name + the group it sits in), mirroring
+   /docs/skill-taxonomy-seed.csv. */
+const SKILL_CATALOGUE: { name: string; group: string }[] = [
+  { name: 'Figma', group: 'Design' },
+  { name: 'Wireframing', group: 'Design' },
+  { name: 'Prototyping', group: 'Design' },
+  { name: 'Adobe Photoshop', group: 'Design' },
+  { name: 'Adobe Illustrator', group: 'Design' },
+  { name: 'Thiết kế đồ hoạ', group: 'Design' },
+  { name: 'Design System', group: 'Design' },
+  { name: 'Nghiên cứu người dùng', group: 'Design' },
+  { name: 'HTML/CSS', group: 'IT — Software' },
+  { name: 'Content Marketing', group: 'Marketing' },
+  { name: 'Microsoft Excel', group: 'Office & General' },
+  { name: 'Làm việc nhóm', group: 'Office & General' },
+]
+
+/* Suggestions come from the skill↔role association: "of everyone with role
+   Product Designer, which skills do they most often list?" — so the row names
+   the role it is reasoning from. Phase-1 that table is hand-seeded; once there
+   are real CVs it is recomputed from co-occurrence and needs no curation. */
+const ROLE_SUGGESTIONS = { role: 'Product Designer', skills: ['Figma', 'Wireframing', 'Prototyping'] }
+
 function CvSkillsField() {
   const [skills, setSkills] = useState<string[]>([
     'User Experience (UX)', 'Interaction Design', 'Design Systems', 'Product Design', 'User Research',
   ])
-  const SUGGESTED = ['Figma', 'Wireframing', 'Prototyping']
+  const [picking, setPicking] = useState(false)
+  const [q, setQ] = useState('')
+
+  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  const matches = SKILL_CATALOGUE.filter((c) => !skills.includes(c.name) && (!q.trim() || norm(c.name).includes(norm(q))))
+  const add = (n: string) => { setSkills((a) => [...a, n]); setQ(''); setPicking(false) }
+  const suggested = ROLE_SUGGESTIONS.skills.filter((s) => !skills.includes(s))
 
   return (
     <div className="mt-3 rounded-xl border border-line bg-surface p-3.5">
@@ -1587,19 +1610,48 @@ function CvSkillsField() {
             <span onClick={() => setSkills((a) => a.filter((x) => x !== s))} className="cursor-pointer text-[10px] text-faint hover:text-ink">×</span>
           </span>
         ))}
-        <button className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-medium text-brand hover:border-brand">＋ Add skill</button>
+        <button onClick={() => setPicking((o) => !o)} className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-medium text-brand hover:border-brand">＋ Add skill</button>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-brand-soft/50 px-2.5 py-2">
-        <span className="text-[11px] font-medium text-brand">✨ people in your role often list:</span>
-        {SUGGESTED.filter((s) => !skills.includes(s)).map((s) => (
-          <span key={s} onClick={() => setSkills((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand">＋ {s}</span>
-        ))}
-        {SUGGESTED.every((s) => skills.includes(s)) && <span className="text-[10.5px] text-muted">All added 🎉</span>}
-        <span className="cursor-pointer text-[10.5px] font-medium text-brand">more →</span>
-      </div>
+      {/* the picker — search the taxonomy, never free text */}
+      {picking && (
+        <div className="mt-2 overflow-hidden rounded-lg border border-line">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+            placeholder="Search skills — e.g. figma, thiet ke, excel…"
+            className="w-full border-b border-line-soft bg-surface px-3 py-2 text-[12px] outline-none"
+          />
+          <div className="max-h-[168px] overflow-y-auto">
+            {matches.map((c) => (
+              <button key={c.name} onClick={() => add(c.name)} className="flex w-full items-center justify-between gap-2 border-b border-line-soft px-3 py-1.5 text-left text-[11.5px] text-ink/80 last:border-b-0 hover:bg-canvas/60">
+                {c.name}
+                <span className="shrink-0 text-[10px] text-faint">{c.group}</span>
+              </button>
+            ))}
+            {matches.length === 0 && (
+              <p className="px-3 py-3 text-[11px] text-faint">
+                No match for “{q}”. Skills come from a fixed list — <span className="font-medium text-brand">ask us to add it</span> rather than typing your own.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
-      <p className="mt-2 text-[10.5px] text-faint">Skills autocomplete against the canonical Skill taxonomy — the same list employers pick from, which is what lets a job match your CV.</p>
+      {/* role-based suggestions — the payoff of the skill↔role table */}
+      {suggested.length > 0 && (
+        <div className="mt-2.5 rounded-lg bg-brand-soft/50 px-2.5 py-2">
+          <p className="mb-1.5 text-[10.5px] text-brand">
+            ✨ Common for <b className="font-semibold">{ROLE_SUGGESTIONS.role}</b> — your desired role
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {suggested.map((s) => (
+              <span key={s} onClick={() => setSkills((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand hover:bg-brand-soft">＋ {s}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1787,42 +1839,25 @@ function AddCvScreen() {
           </>
         )}
 
-        {/* Uploaded — the file is in. Two ways forward, weighted equally in the
-            layout: keep it as it is, or convert it into a Saramin CV. */}
+        {/* Uploaded — the FILE leads, the decision follows. Two buttons, nothing
+            else: keep it as-is, or convert it to the Saramin template. */}
         {step === 'saved' && (
-          <>
-            <div className="mx-auto max-w-[560px] text-center">
+          <div className="mx-auto max-w-[520px]">
+            <div className="text-center">
               <p className="text-[22px]">✅</p>
               <p className="mt-1 text-[18px] font-bold text-ink">CV_TranMinhAnh.pdf uploaded</p>
-              <p className="mt-1 text-[12px] text-muted">It’s in My CVs and ready to apply with. What would you like to do with it?</p>
             </div>
 
-            <div className="mx-auto mt-5 grid max-w-[720px] gap-4 sm:grid-cols-2">
-              {/* option A — keep the file as-is */}
-              <div className="flex flex-col rounded-xl border border-line p-4">
-                <div className="mb-2.5 grid h-10 w-10 place-items-center rounded-lg bg-canvas text-[18px]">📄</div>
-                <p className="text-[13.5px] font-bold text-ink">Keep it as my CV</p>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">Saved exactly as uploaded — recruiters download this file as-is, unchanged. You can apply with it right now.</p>
-                <div className="mt-3 flex-1" />
-                <Btn onClick={() => go('js-my-cvs')}>Done — go to My CVs</Btn>
-              </div>
-              {/* option B — convert */}
-              <div className="flex flex-col rounded-xl border-2 border-brand/40 bg-brand-soft/30 p-4">
-                <div className="mb-2.5 grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-[18px]">✨</div>
-                <p className="flex items-center gap-1.5 text-[13.5px] font-bold text-ink">Convert to a Saramin CV <span className="rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-semibold text-white">Recommended</span></p>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">AI reads your PDF and builds a structured version beside it — this is what recruiter search reads. Your PDF is never changed.</p>
-                <div className="mt-3 flex-1" />
-                <Btn primary onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert with AI</Btn>
-              </div>
-            </div>
-
-            {/* the file itself, below the decision — proof of what was saved */}
-            <div className="mx-auto mt-5 max-w-[520px]">
-              <p className="mb-1.5 text-center text-[10.5px] font-semibold uppercase tracking-wide text-faint">What you uploaded</p>
+            <div className="mt-4">
               <UploadedCvDoc />
-              <p className="mt-2 text-center text-[10.5px] text-faint">Not converting now? You can do it any time from My CVs.</p>
             </div>
-          </>
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Btn onClick={() => go('js-my-cvs')}>Keep as-is</Btn>
+              <Btn primary onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert to Saramin template</Btn>
+            </div>
+            <p className="mt-2 text-center text-[10.5px] text-faint">Not converting now? You can do it any time from My CVs.</p>
+          </div>
         )}
 
         {step === 'reading' && (
@@ -1949,7 +1984,6 @@ function CvCompareScreen() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-5 py-3">
         <div>
           <p className="text-[14px] font-bold text-ink">✨ We read your CV — here it is, two ways</p>
-          <p className="text-[11px] text-muted">From <b>CV_TranMinhAnh.pdf</b> · check the Saramin version, fill the flagged gaps, then choose what to save.</p>
         </div>
         <div className="flex items-center gap-2">
           <Btn onClick={() => go('js-my-cvs')}>Cancel</Btn>
@@ -2031,7 +2065,7 @@ function CvCompareScreen() {
             <div className="rounded-xl border border-dashed border-line bg-canvas/30 p-3.5">
               <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-faint">Add more — boosts your visibility</p>
               <div className="flex flex-wrap gap-1.5">
-                {(['🌐 Foreign Language', '📁 Highlight Project', '📜 Certificates', '🏆 Awards', '🎯 Activities', '📰 Publications', '👥 References'] as string[]).map((s) => (
+                {(['🌐 Foreign Language', '📁 Highlight projects', '📜 Certificates', '🏆 Awards', '🎯 Activities', '👥 References'] as string[]).map((s) => (
                   <span key={s} className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] text-ink/70 hover:border-brand/40">＋ {s}</span>
                 ))}
               </div>

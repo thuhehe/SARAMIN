@@ -6,6 +6,24 @@ export const resumeManagement: BuildModule = {
   owner: 'Luong',
   requirements: [
     {
+      label: 'CLIENT CONFIRMATION — 8 open decisions (C1–C8), sent 09/08/2026',
+      text: 'These are the points the client must answer before development starts. They are consolidated here because they were previously scattered across three modules as separate open questions, which meant nobody could see the decision list as a whole. A client-facing version of this table was sent for sign-off — reply is by ID ("C1 agreed, C4 change to 5"). ANYTHING UNANSWERED WILL BE BUILT TO THE RECOMMENDATION SHOWN.',
+      table: {
+        cols: ['ID', 'Decision needed', 'Our recommendation', 'Owner / status'],
+        rows: [
+          ['C1 ⛔', 'Who owns and maintains the Skill master list?', 'Name ONE person at the client. Once parsing is live new skills and spellings arrive weekly — unowned, the list rots and matching quietly degrades. BB supplies the ~500-row starter list.', 'Client — BLOCKER'],
+          ['C2 ⛔', 'Is AI CV parsing in Phase 1 or Phase 2?', 'Confirm Phase 1. Every “the form is long but PRE-FILLED” argument in this module collapses without it — the same forms arrive empty at the moment a candidate is trying to apply. If it slips, agree a reduced field set instead.', 'Client — BLOCKER'],
+          ['C3', 'Do we collect nationality, gender, marital status?', 'Drop marital status (no consumer, discrimination risk); keep the rest optional. None is read by search or matching.', 'Client + legal'],
+          ['C4', 'Are the limits right — 3 CVs · 10 job skills · 20 CV skills?', 'Proposals, not researched. Sanity-check against real VN postings during the parser spike.', 'Client, re-check after spike'],
+          ['C5', 'Verify phone by SMS code?', 'Collect without OTP in Phase 1. Recruiters in VN call first, so a wrong number loses the candidate — but blocking sign-up on an SMS that never arrives loses them too, and each attempt costs.', 'Client'],
+          ['C6', 'Is a new candidate discoverable by default?', 'Ask explicitly at sign-up so it is a deliberate choice, not a default in either direction.', 'Client'],
+          ['C7', 'Screening is dropped — so when would we build it if spam appears?', 'Agree the TRIGGER now, not the feature: first abuse case, or the first promotion campaign. The client says this platform has no spam; their own AMS document lists spam cases, so worth confirming those were on TopDev and not here (see Application management §3, §5).', 'Client'],
+          ['C8', 'Confirm these stay in Phase 2', 'Must-have/nice-to-have on jobs · years per skill · per-role skill attachment (recency). All valuable, all add work now for a benefit we cannot yet measure.', 'Client'],
+        ],
+      },
+      warn: 'C1 and C2 are BLOCKERS, not preferences. C1 leaves the taxonomy unowned — the join everything depends on. C2 decides whether the ~24-field apply form is a confirmation or a wall of typing. Neither can be defaulted.',
+    },
+    {
       label: 'What gets built',
       table: {
         cols: ['Surface', 'What it is', 'Gate'],
@@ -87,10 +105,9 @@ export const resumeManagement: BuildModule = {
           ['Education', '15%', 'A standard employer filter (highest education level), but secondary once a candidate has real experience.'],
           ['About / summary', '10%', 'Not a filter, but the first thing a recruiter reads after unlocking. Cheap to write, high effect on response.'],
           ['— core subtotal —', '75%', 'A candidate who fills only the essentials already sees a healthy number, so the meter encourages rather than shames.'],
-          ['Foreign Language', '6%', 'A real employer filter in VN (English level), so it leads the optional set.'],
-          ['Highlight Project · Certificates', '5% · 4%', 'Evidence of skill — read at shortlist time, not filtered on.'],
+          ['Foreign Language', '7%', 'A real employer filter in VN (English level), so it leads the optional set.'],
+          ['Projects & portfolio · Certificates', '6% · 4%', 'Evidence of skill — read at shortlist time, not filtered on. Projects & portfolio also absorbs published papers and articles.'],
           ['Awards · Activities', '3% each', 'Differentiators, rarely filtered.'],
-          ['Publications', '2%', 'Niche outside academia / research roles.'],
           ['References · Recommendations', '1% each', 'Trust signals, checked late in the process.'],
           ['— optional subtotal —', '25%', '75 + 25 = 100%.'],
         ],
@@ -150,7 +167,7 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Table', 'Shape', 'Notes'],
         rows: [
-          ['Skill (taxonomy)', 'id · nameVi · nameEn · aliases[] · isActive', 'THE canonical list. ~500–1,500 rows for the VN market — smaller than instinct says, because aliases absorb the variants (React / ReactJS / React.js are ONE row).'],
+          ['Skill (taxonomy)', 'id · group · nameVi · nameEn · aliases[] · isActive', 'THE canonical list. ~500–1,500 rows for the VN market — smaller than instinct says, because aliases absorb the variants (React / ReactJS / React.js are ONE row). Starter seed: /docs/skill-taxonomy-seed.csv — 47 rows across 7 groups, showing the alias conventions.'],
           ['JobSkill', 'jobId · skillId', 'ONE flat list, cap 10. Skills RANK candidates — they never exclude. A flat list where every entry filtered would narrow the pool to nothing after four or five picks.'],
           ['CvSkill', 'cvId · skillId', 'A pure link row — no years, no featured flag. One flat list per CV, cap 20, enforced on save.'],
         ],
@@ -160,6 +177,9 @@ export const resumeManagement: BuildModule = {
         'WHICH skills to show is contextual, not curated: a search result or locked preview shows the skills that OVERLAP the job being matched, most relevant first. That is more useful than a candidate-picked top-5 and needs no extra UI or data.',
         'Skills may be evidenced by work experience, projects, education or certificates — but a CERTIFICATE IS NOT A SKILL. Certificates stay their own section and may attest a skill; they never become taxonomy rows themselves.',
         'A candidate never types a raw skill: input is autocomplete against the taxonomy, and extraction proposes skills as confirm/reject chips. A free-typed entry resolves to the closest canonical row or is not saved.',
+        'ALIAS RULES — an alias is a way people WRITE a skill, never a different thing. Include: diacritic-free VN spellings ("ke toan" → Kế toán, because people type fast without accents), the EN/VN pair, common misspellings, and vendor prefixes (MS Excel → Microsoft Excel). EXCLUDE: job titles (Project Manager is not an alias of Project Management) and ambiguous abbreviations that belong to something else — "JS" is JavaScript only and must never sit under Java; "AI" is never an alias of Adobe Illustrator; "PM" is never an alias of Project Management.',
+        'Every alias must be UNIQUE across the whole taxonomy — two rows sharing a lookup key makes resolution non-deterministic. Validate this in CI, not by review; the seed file ships with 190 lookup keys and zero collisions.',
+        'Adding an alias is cheap and reversible — "people write it this way too". Adding a canonical ROW is a decision: it becomes a facet employers filter on forever. Retire rows with isActive = FALSE rather than deleting them, so historic CVs and jobs still resolve (see the Adobe Flash row in the seed).',
         'The job form shows a live pool line ("≈ 224 candidates have all of these") so an employer can see how rare their combination is before publishing. Informational, not a gate.',
       ],
       warn: 'PHASE-2, explicitly out of scope now — each adds UI weight for a ranking gain we cannot measure yet: (1) must-have / nice-to-have on the job, letting some skills FILTER rather than only rank; (2) per-skill YEARS on the CV; (3) per-role skill attachment (LinkedIn-style), which would derive years and lastUsedAt automatically and unlock recency decay. Phase-1 ranks on skill OVERLAP COUNT plus the profile fields (total years, level, location) — deliberately blunt, and honest about it.',
@@ -224,7 +244,7 @@ export const resumeManagement: BuildModule = {
               { name: 'education', type: 'repeatable', notes: 'school, degree/major, from–to' },
               { name: 'skills', type: 'CvSkill[] → Skill taxonomy', required: true, notes: 'skillId only — a pure tag. Autocomplete against the taxonomy, never free strings; see the module SKILLS block' },
               { name: 'languages / certificates', type: 'repeatable', notes: 'optional' },
-              { name: 'optional sections', type: 'repeatable ×8', notes: 'Foreign Language · Highlight Project · Certificates · Awards · Activities · Publications · References · Recommendations — the SAME full section set as My Profile, added from the completeness rail. Each renders its real field form (one shared field catalogue with the profile edit sheets), so a CV built here can carry everything the profile can' },
+              { name: 'optional sections', type: 'repeatable ×7', notes: 'Foreign Language · Projects & portfolio · Certificates · Awards · Activities · References · Recommendations — the SAME full section set as My Profile, added from the completeness rail. Each renders its real field form (one shared field catalogue with the profile edit sheets), so a CV built here can carry everything the profile can. NO Publications section: not a search facet, near-zero fill rate on a general VN job board (Saramin KR and VietnamWorks have none) — papers and articles go under Projects & portfolio' },
               { name: 'template', type: 'enum', notes: 'a small set of layouts for the generated PDF' },
             ],
           },
@@ -355,7 +375,7 @@ export const resumeManagement: BuildModule = {
           'A newly uploaded CV is not discoverable in employer search until visibility consent is given.',
         ],
         openQuestions: [
-          'The 3-CV cap is decided — is 3 the right number, and what happens when a candidate wants a 4th (replace-oldest vs. hard stop)?',
+          '[C4] The 3-CV cap is decided — is 3 the right number, and what happens when a candidate wants a 4th (replace-oldest vs. hard stop)?',
           'Which builder templates does the client want, and who designs them?',
           'Do we localise the builder output (a VI CV and an EN CV from the same data)?',
           'For Phase-1 without AI, how many fields is it acceptable to ask for after an upload?',
@@ -475,7 +495,7 @@ export const resumeManagement: BuildModule = {
           'No HQ or system action can change a candidate’s visibility setting.',
         ],
         openQuestions: [
-          'Is visibility opt-in or opt-out by default at account creation? (Also open at module level.)',
+          '[C6] Is visibility opt-in or opt-out by default at account creation? (Also open at module level.)',
           'Do candidates get the "hide from specific companies" control in Phase-1?',
           'Should a candidate be notified when a company unlocks their CV?',
           'Can a candidate ask for a CV already delivered to an employer to be deleted, and is that a manual HQ process?',
@@ -1100,8 +1120,8 @@ export const resumeManagement: BuildModule = {
           ],
         },
         openQuestions: [
-          'Build vs. buy the CV parser — LLM prompt vs. a dedicated resume-parsing vendor? How good is Vietnamese-language extraction?',
-          'Where does the canonical Skill/Title/Industry taxonomy come from — adopt an existing one, or curate our own?',
+          '[C2] Build vs. buy the CV parser — LLM prompt vs. a dedicated resume-parsing vendor? How good is Vietnamese-language extraction?',
+          '[C1] Where does the canonical Skill/Title/Industry taxonomy come from — adopt an existing one, or curate our own? Who owns it after launch?',
           'Matching: field-weighted score vs. embeddings — and is a match % shown to candidates, employers, or both?',
           'Salary data: ask candidates (optional) or leave blank — and do we ever show it in search?',
           'Does the match score run at apply time only, or continuously for recommendations?',
