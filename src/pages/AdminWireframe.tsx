@@ -395,7 +395,11 @@ export function AdminWireframe() {
                 gives up width rather than the breadcrumb or the actions.
               A bare `1fr` would be minmax(auto,1fr): the wider right column would
               then outgrow its share and shove the search off-centre. */}
-          <div className="grid min-w-0 flex-1 grid-cols-[minmax(210px,1fr)_minmax(0,420px)_minmax(210px,1fr)] items-center">
+          {/* Three tracks so the search sits optically centred rather than wherever the
+              breadcrumb happens to end. The right track is `auto`: its contents are
+              fixed-width chrome that cannot shrink, and a 1fr track narrower than
+              them made the block overflow leftwards under the search box. */}
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(160px,1fr)_minmax(0,420px)_auto] items-center">
             <div className="flex min-w-0 items-center gap-2.5 px-3">
               {/* Breadcrumb. On a detail view the page segment becomes the way BACK,
                   and the record itself is the last crumb — so no page needs its own

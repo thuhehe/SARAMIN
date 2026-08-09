@@ -492,15 +492,15 @@ function Bars({ data, unit }: { data: { label: string; value: number }[]; unit?:
 }
 
 /* ── Recruitment ──────────────────────────────────────────────────────────── */
-type JobRow = { title: string; category: string; company: string; source: 'Company' | 'Admin'; status: StatusTone; statusLabel: string; exposure: 'On' | 'Off'; posted: string; deadline: string; views: number; saves: number; applicants: number }
+type JobRow = { id: string; title: string; category: string; company: string; source: 'Company' | 'Admin'; product: string; status: StatusTone; statusLabel: string; exposure: 'On' | 'Off'; posted: string; deadline: string; views: number; saves: number; applicants: number }
 const JOB_ROWS: JobRow[] = [
-  { title: 'Senior Frontend Engineer (ReactJS)', category: 'CNTT - Phần mềm', company: 'FPT Software', source: 'Company', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '31/08/2026', views: 0, saves: 0, applicants: 0 },
-  { title: 'Kế toán tổng hợp', category: 'Kế toán - Kiểm toán', company: 'VNG Corporation', source: 'Company', status: 'schedule', statusLabel: 'Schedule', exposure: 'Off', posted: '01/09/2026', deadline: '20/09/2026', views: 0, saves: 0, applicants: 0 },
-  { title: 'Digital Marketing Lead', category: 'Marketing - Truyền thông', company: 'Tiki', source: 'Admin', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '15/07/2026', deadline: '15/09/2026', views: 1240, saves: 86, applicants: 42 },
-  { title: 'Product Manager', category: 'Sản phẩm - Dự án', company: 'MoMo', source: 'Company', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '05/07/2026', deadline: '05/09/2026', views: 890, saves: 54, applicants: 18 },
-  { title: 'Nhân viên kinh doanh', category: 'Kinh doanh - Bán hàng', company: 'Thế Giới Di Động', source: 'Company', status: 'open', statusLabel: 'Open', exposure: 'Off', posted: '20/07/2026', deadline: '28/08/2026', views: 320, saves: 12, applicants: 7 },
-  { title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', status: 'closed', statusLabel: 'Closed', exposure: 'Off', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
-  { title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
+  { id: 'JOB-2116', title: 'Senior Frontend Engineer (ReactJS)', category: 'CNTT - Phần mềm', company: 'FPT Software', source: 'Company', product: 'Basic', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '31/08/2026', views: 0, saves: 0, applicants: 0 },
+  { id: 'JOB-2117', title: 'Kế toán tổng hợp', category: 'Kế toán - Kiểm toán', company: 'VNG Corporation', source: 'Company', product: 'Free', status: 'schedule', statusLabel: 'Schedule', exposure: 'Off', posted: '01/09/2026', deadline: '20/09/2026', views: 0, saves: 0, applicants: 0 },
+  { id: 'JOB-2109', title: 'Digital Marketing Lead', category: 'Marketing - Truyền thông', company: 'Tiki', source: 'Admin', product: 'Distinction', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '15/07/2026', deadline: '15/09/2026', views: 1240, saves: 86, applicants: 42 },
+  { id: 'JOB-2101', title: 'Product Manager', category: 'Sản phẩm - Dự án', company: 'MoMo', source: 'Company', product: 'Basic plus', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '05/07/2026', deadline: '05/09/2026', views: 890, saves: 54, applicants: 18 },
+  { id: 'JOB-2098', title: 'Nhân viên kinh doanh', category: 'Kinh doanh - Bán hàng', company: 'Thế Giới Di Động', source: 'Company', product: 'Free', status: 'open', statusLabel: 'Open', exposure: 'Off', posted: '20/07/2026', deadline: '28/08/2026', views: 320, saves: 12, applicants: 7 },
+  { id: 'JOB-2040', title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', product: 'Top Job', status: 'closed', statusLabel: 'Closed', exposure: 'Off', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
+  { id: 'JOB-2001', title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', product: 'Free', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
 ]
 /* The create form as a screen in its own right, so the "Create job (Admin)" spec
    page can show the form instead of the list it is reached from. Back returns to
@@ -520,12 +520,14 @@ function AdminJobList() {
     <div>
     <ListPage
       action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New job</button>}
-      minW={1200}
+      minW={1400}
       tabs={[{ label: 'All', count: 1248 }, { label: 'Draft', count: 8 }, { label: 'Schedule', count: 5, active: true }, { label: 'Open', count: 1180 }, { label: 'Closed', count: 58 }]}
       cols={[
         { label: 'Job title', w: '1.7fr' },
+        { label: 'Job ID', w: '0.8fr' },
         { label: 'Category', w: '1fr' },
         { label: 'Company', w: '1.1fr' },
+        { label: 'Product', w: '0.9fr' },
         { label: 'Created by', w: '0.8fr' },
         { label: 'Status', w: '0.9fr' },
         { label: 'Exposure', w: '0.7fr' },
@@ -537,8 +539,10 @@ function AdminJobList() {
       ]}
       rows={JOB_ROWS.map((r) => [
         <button onClick={() => setDetail(r)} className="min-w-0 text-left"><p className="truncate font-medium text-brand hover:underline">{r.title}</p></button>,
+        <span className="font-mono text-[11px] text-muted">{r.id}</span>,
         <span className="truncate text-muted">{r.category}</span>,
         <span className="truncate">{r.company}</span>,
+        <span className="rounded border border-line px-1.5 py-0.5 text-[10.5px] text-ink/70">{r.product}</span>,
         <Pill tone={r.source === 'Admin' ? 'neutral' : 'draft'}>{r.source}</Pill>,
         <Pill tone={r.status}>{r.statusLabel}</Pill>,
         r.status === 'open'
@@ -2961,16 +2965,55 @@ function CompanyPagePreview({ c }: { c: Company }) {
   )
 }
 
+/** One row per PURCHASE ORDER — what was bought, for how much, and when the VAT
+    invoice went out. A PO with no invoice date is money not yet collected. */
+function poHistory(c: Company): { po: string; products: string; amount: string; invoiced: string | null }[] {
+  if (!isCustomer(c) && c.account !== 'Churn') return []
+  const k = coKey(c)
+  const rows: { po: string; products: string; amount: string; invoiced: string | null }[] = []
+  if (c.jobPosting && c.resumeSearch) {
+    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Job Posting — Pro · Resume Search — 6 tháng', amount: '37,800,000 ₫', invoiced: c.since })
+  } else if (c.jobPosting) {
+    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Job Posting — Pro (10 slots)', amount: '15,000,000 ₫', invoiced: c.since })
+  } else if (c.resumeSearch) {
+    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Resume Search — 6 tháng (100 CV)', amount: '20,000,000 ₫', invoiced: c.since })
+  }
+  // The PO a rep is chasing: sent, agreed, not yet invoiced — so no date.
+  if (c.status === 'PO') {
+    rows.unshift({ po: `PO-${String(5900 + (k % 90)).padStart(6, '0')}-08-2026`, products: 'Job Posting — Pro (gia hạn)', amount: '15,000,000 ₫', invoiced: null })
+  }
+  if (c.account === 'Churn') {
+    rows.push({ po: `PO-${String(5100 + (k % 300)).padStart(6, '0')}-12-2024`, products: 'Job Posting — Pro · Resume Search', amount: '35,000,000 ₫', invoiced: '20/12/2024' })
+  }
+  return rows
+}
+
+/** Purchases that have run out or lapsed. Kept on the record for renewal calls —
+    "what did they buy last year, and for how much" is the first thing asked. */
+function pastPurchases(c: Company): { name: string; detail: string; amount: string; date: string }[] {
+  if (c.account === 'Churn') return [
+    { name: 'Job Posting — Pro', detail: '10 slots · hết hạn 31/12/2025', amount: '15,000,000 ₫', date: '12/2024' },
+    { name: 'Resume Search — 6 tháng', detail: '100 CV unlocks · đã dùng hết', amount: '20,000,000 ₫', date: '06/2024' },
+  ]
+  if (isCustomer(c)) return [
+    { name: 'Job Posting — Basic', detail: '5 slots · hết hạn ' + (c.since || '—'), amount: '6,100,000 ₫', date: 'kỳ trước' },
+  ]
+  return []
+}
+
+/* No status pill. Everything on this list was PAID — an unpaid product never
+   provisions, so "Paid" was true of every row and told the reader nothing. Whether
+   it has ENDED is said by which list it is in (Đang dùng / Đã kết thúc) and by the
+   row being muted, not by a badge repeating it. */
 function PurchaseRow({ name, detail, amount, date, expired }: { name: string; detail: string; amount: string; date: string; expired?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
+    <div className={cn('flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5', expired ? 'border-line-soft bg-canvas/40' : 'border-line')}>
       <div className="min-w-0">
-        <p className="truncate text-[11.5px] font-medium text-ink">{name}</p>
+        <p className={cn('truncate text-[11.5px] font-medium', expired ? 'text-muted' : 'text-ink')}>{name}</p>
         <p className="text-[10.5px] text-faint">{detail} · {date}</p>
       </div>
       <div className="shrink-0 text-right">
-        <p className="text-[11.5px] font-medium tabular-nums">{amount}</p>
-        <Pill tone={expired ? 'expired' : 'active'}>{expired ? 'Expired' : 'Paid'}</Pill>
+        <p className={cn('text-[11.5px] font-medium tabular-nums', expired && 'text-muted')}>{amount}</p>
       </div>
     </div>
   )
@@ -3641,7 +3684,7 @@ function companyActivity(c: Company): CoEvent[] {
   add(last + 6, 'sales', '🤝', MEET, 'Meeting · at their office', `Package options walked through with ${contact} and the finance lead. 60 phút · 14:00 20/07/2026.`, cover,
     [{ kind: 'email', label: 'RE- Báo giá tháng 7.eml' }, { kind: 'image', label: 'bien-ban-hop.jpg' }])
   if (c.status === 'PO' || c.status === 'Invoice') {
-    add(last + 9, 'sales', '📄', DOC, 'Purchase order sent', `${contact} confirmed the accepted option; PO issued by ${rep}.`)
+    add(last + 9, 'sales', '📄', DOC, 'Purchase order issued', `${contact} confirmed the accepted option; PO issued by ${rep} — active until the end of the month.`)
   }
   if (c.status !== 'Qualified') {
     add(last + 21, 'sales', '📄', DOC, 'Quotation sent', `${rep} sent the priced options to ${contact}.`)
@@ -3982,18 +4025,36 @@ function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: strin
 /* Products & quota block — shared by the Overview snapshot and the billing tab */
 function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
   const noProducts = !c.jobPosting && !c.resumeSearch
+  /* A company's history matters as much as its current entitlement — "what did they
+     buy last year?" is the first question on a renewal call. Past purchases are a
+     second list behind a toggle rather than a third card: same rows, same shape,
+     just no longer counting toward quota. */
+  const [showPast, setShowPast] = useState(false)
+  const past = pastPurchases(c)
   return (
     <>
       {!compact && (
         <>
-          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Purchased</p>
-          {noProducts && c.account !== 'Churn' ? (
-            <p className="text-[12px] text-muted">No purchases on record yet.</p>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">{showPast ? 'Đã kết thúc' : 'Đang dùng'}</p>
+            <span className="inline-flex overflow-hidden rounded-md border border-line text-[10px] font-medium">
+              <button onClick={() => setShowPast(false)} className={cn('px-1.5 py-0.5', !showPast ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}>Đang dùng</button>
+              <button onClick={() => setShowPast(true)} className={cn('border-l border-line px-1.5 py-0.5', showPast ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}>Đã kết thúc {past.length > 0 && `(${past.length})`}</button>
+            </span>
+          </div>
+          {/* These lines land here the moment Kế toán issues the VAT invoice on the
+              PO — immediately, with no further step. Until then the company has no
+              quota and cannot post a job or open a CV. */}
+          {showPast ? (
+            past.length === 0
+              ? <p className="text-[12px] text-muted">Chưa có sản phẩm nào kết thúc.</p>
+              : <div className="space-y-1.5">{past.map((x, i) => <PurchaseRow key={i} {...x} expired />)}</div>
+          ) : noProducts ? (
+            <p className="text-[12px] text-muted">No purchases on record yet — products appear here as soon as a VAT invoice is issued on a PO.</p>
           ) : (
             <div className="space-y-1.5">
               {c.jobPosting && <PurchaseRow name="Job Posting — Pro" detail="10 slots · 3 months" amount="15,000,000 ₫" date={c.since} />}
               {c.resumeSearch && <PurchaseRow name="Resume Search — 6 months" detail="100 CV unlocks" amount="20,000,000 ₫" date={c.since} />}
-              {noProducts && c.account === 'Churn' && <PurchaseRow name="Job Posting — Pro" detail="lapsed 31/12/2025" amount="15,000,000 ₫" date="12/2024" expired />}
             </div>
           )}
         </>
@@ -4390,7 +4451,7 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
                   title={`Gỡ khỏi ${coLabel(chain[chain.length - 1])}`}
                   className="rounded border border-line px-1.5 py-0.5 text-[10.5px] font-medium text-muted hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
                 >
-                  ⛓️‍💥 Gỡ khỏi mẹ
+                  Gỡ
                 </button>
               )}
             </span>
@@ -4618,6 +4679,102 @@ function CompanyDocs({ c }: { c: Company }) {
   )
 }
 
+/**
+ * Pipeline stage, as a control rather than a read-out.
+ *
+ * WHO may set WHAT is the whole point of this component:
+ *  · SALES moves the deal between the three talking stages — Proposal, Qualified,
+ *    Negotiation — in any direction. A deal genuinely goes backwards (the champion
+ *    leaves, it returns to Proposal), so this is not a one-way ladder.
+ *  · SALES may close to LOST from ANY stage, with a reason. That is the one exit a
+ *    person is allowed to take at will.
+ *  · PO and INVOICE are SYSTEM-only and are NOT in the menu at all. They are
+ *    consequences of issuing the sales order and of Accounting issuing the VAT
+ *    invoice; listing them greyed only invited the question "why can't I pick
+ *    this?" on a menu whose job is to offer the choices that exist.
+ *  · INVOICE is terminal: the deal is closed-won and there is nothing left to move.
+ */
+const SALES_STAGES: CoStatus[] = ['Proposal', 'Qualified', 'Negotiation']
+
+function PipelineStatusPicker({ c }: { c: Company }) {
+  const ro = useReadOnly()
+  const [stage, setStage] = useState<CoStatus>(c.status)
+  const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [reason, setReason] = useState('')
+  const terminal = stage === 'Invoice'
+
+  const pick = (next: CoStatus) => {
+    if (next === 'Lost') { setClosing(true); setOpen(false); return }
+    setStage(next); setOpen(false)
+  }
+
+  return (
+    <span className="relative inline-flex">
+      {/* The chevron sits INSIDE the chip. A wrapper border plus a hover label was
+          three signals doing one signal's job — the chevron alone already says
+          "this opens", and keeping it inside means the control still reads as one
+          badge among the others rather than as a box around one. */}
+      <button
+        onClick={() => { if (!ro && !terminal) setOpen((o) => !o) }}
+        disabled={ro || terminal}
+        title={ro ? RO_HINT : terminal ? 'Deal đã đóng thắng — không còn giai đoạn nào để chuyển.' : 'Đổi giai đoạn pipeline'}
+        className={cn('inline-flex rounded-full', ro || terminal ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80')}
+      >
+        <Pill tone={CO_STATUS[stage].tone}>
+          {CO_STATUS[stage].label}
+          {!ro && !terminal && <span className={cn('text-[8px] leading-none transition-transform', open && 'rotate-180')}>▼</span>}
+        </Pill>
+      </button>
+
+      {open && (
+        <>
+          <span className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <span className="absolute left-0 top-full z-20 mt-1 block w-[290px] overflow-hidden rounded-lg border border-line bg-surface text-left shadow-lg">
+            {SALES_STAGES.map((st) => (
+              <button key={st} onClick={() => pick(st)} className={cn('flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-canvas', st === stage && 'bg-brand-soft/50')}>
+                <Pill tone={CO_STATUS[st].tone}>{CO_STATUS[st].label}</Pill>
+                {st === stage && <span className="ml-auto text-[10px] font-medium text-brand">hiện tại</span>}
+              </button>
+            ))}
+            <button onClick={() => pick('Lost')} className="flex w-full items-center gap-2 border-t border-line-soft px-2.5 py-1.5 text-left hover:bg-canvas">
+              <Pill tone={CO_STATUS.Lost.tone}>{CO_STATUS.Lost.label}</Pill>
+              <span className="text-[10.5px] text-muted">— đóng deal, cần lý do</span>
+            </button>
+          </span>
+        </>
+      )}
+
+      {/* Lost is the only exit a human takes on purpose, so it is the only one that
+          asks why — the reason is what makes the loss report worth reading. */}
+      {closing && (
+        <span className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6" onClick={() => setClosing(false)}>
+          <span className="my-4 block w-full max-w-[420px] rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-ink">Đóng deal — Lost</p>
+            <p className="mt-0.5 text-[11.5px] text-muted">Công ty vẫn giữ nguyên customer status và ở lại danh sách nurture. Một báo giá mới sẽ mở lại deal.</p>
+            <p className="mb-1 mt-3 block text-[11.5px] font-medium text-ink/80">Lý do <span className="text-rose-500">*</span></p>
+            <span className="flex flex-wrap gap-1.5">
+              {['Giá cao', 'Chọn đối thủ', 'Cắt ngân sách', 'Không còn nhu cầu', 'Mất liên lạc'].map((r) => (
+                <button key={r} onClick={() => setReason(r)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', reason === r ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}>{r}</button>
+              ))}
+            </span>
+            <span className="mt-3 flex justify-end gap-2">
+              <button onClick={() => setClosing(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Huỷ</button>
+              <button
+                disabled={!reason}
+                onClick={() => { setStage('Lost'); setClosing(false) }}
+                className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', reason ? 'bg-rose-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
+              >
+                Đóng deal
+              </button>
+            </span>
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
 function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
@@ -4682,7 +4839,11 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               {/* Both axes, always: customer status (has it ever bought) and, only
                   while a deal is live, the pipeline stage. */}
               <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
-              {inPipeline(c) && <Pill tone={CO_STATUS[c.status].tone}>{CO_STATUS[c.status].label}</Pill>}
+              {/* Shown while a deal is live, and also once it is LOST — a lost deal
+                  can be re-opened to an earlier stage, so hiding the control there
+                  would remove the only way back. Closed-won (Invoice) stays hidden:
+                  there is nothing left to move. */}
+              {(inPipeline(c) || c.status === 'Lost') && <PipelineStatusPicker c={c} />}
               {/* third axis — only rendered once a tier is actually earned, so the
                   header never carries a "chưa có hạng" non-fact. */}
               {tierOf(c) && <TierPill tier={tierOf(c)} en />}
@@ -4918,23 +5079,38 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       {/* ── Products & billing ───────────────────────────────────────────── */}
       {tab === 'Products & billing' && (
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <DetailCard title="Products & quota" action={<span className="text-[11px] text-brand">Manage in Account mgmt →</span>}>
+          <DetailCard title="Products & quota">
             <ProductsQuota c={c} />
           </DetailCard>
-          <DetailCard title="Billing history" action={<span className="text-[11px] text-faint">from CRM · Orders</span>}>
-            {noProducts && c.account === 'Churn' ? (
-              <p className="text-[12px] text-muted">Last order lapsed 31/12/2025. No active billing.</p>
+          {/* PO history, not "billing history": the PO is the document a rep and a
+              customer both refer to, and one row per PO is one row per thing that
+              was actually bought. Order / Invoice / Payment as three separate rows
+              was one purchase told three times.
+              No STATUS column — a PO only reaches this list once it is invoiced, so
+              every row had the same value. The invoice DATE is the useful fact, and
+              it doubles as "has it been invoiced yet". */}
+          <DetailCard title="PO history">
+            {poHistory(c).length === 0 ? (
+              <p className="text-[12px] text-muted">Chưa có PO nào. PO xuất hiện ở đây ngay khi Sales phát hành đơn hàng từ báo giá khách đã chốt.</p>
             ) : (
               <Table
-                cols={[{ label: 'Doc', w: '1.1fr' }, { label: 'Type', w: '1fr' }, { label: 'Amount', w: '1fr', align: 'r' }, { label: 'Status', w: '1fr', align: 'r' }]}
-                rows={[
-                  ['ORD-5521', 'Order', '37,800,000 ₫', <Pill tone="active">Fulfilled</Pill>],
-                  ['INV-003390-07-2026', 'Invoice', '37,800,000 ₫', <Pill tone="active">Paid</Pill>],
-                  ['PAY-1042', 'Payment', '37,800,000 ₫', <Pill tone="neutral">Bank transfer</Pill>],
+                cols={[
+                  { label: 'PO', w: '1.2fr' },
+                  { label: 'Sản phẩm trong PO', w: '1.8fr' },
+                  { label: 'Giá trị', w: '1fr', align: 'r' },
+                  { label: 'Ngày xuất hoá đơn', w: '1.1fr', align: 'r' },
                 ]}
+                rows={poHistory(c).map((o) => [
+                  <span className="truncate font-mono text-[11.5px] text-brand">{o.po}</span>,
+                  <span className="truncate text-muted" title={o.products}>{o.products}</span>,
+                  <span className="tabular-nums">{o.amount}</span>,
+                  o.invoiced
+                    ? <span className="tabular-nums text-muted">{o.invoiced}</span>
+                    : <span className="text-[10.5px] text-amber-600">chưa xuất</span>,
+                ])}
               />
             )}
-            <p className="mt-2 text-[11px] text-faint">Every entitlement traces back to a paid order — provisioned automatically, never picked by hand.</p>
+            <p className="mt-2 text-[11px] text-faint">Every entitlement traces back to a paid PO — provisioned automatically when the VAT invoice is issued, never picked by hand.</p>
           </DetailCard>
         </div>
       )}
@@ -7155,15 +7331,19 @@ function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void }) {
             <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(total)}.</p>
           </div>
 
+          {/* Two consequences, both immediate on issue, and neither of them is
+              provisioning — that is the invoice's job. Stated here because this is
+              the last screen before the PO exists. */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
-            <b>Confirming this order is the “won” moment</b> — the deal moves to the PO stage. It does <b>not</b> provision anything: no account, no quota, no company page. That waits for the Accounting-confirmed payment and the issued VAT e-invoice (T&C clause 3). Customer status stays <b>{c.account ? AC_STATUS[c.account].label : 'Prospect'}</b> until the invoice.
+            <b>Issuing this PO is the “won” moment</b> — the deal moves to the PO stage, and the PO is <b>Active</b> until <b>{endOfMonth('01/07/2026')}</b> (end of the month, same rule as the quotation). It provisions <b>nothing</b>: no account, no quota, no company page. That happens the moment <b>Kế toán</b> issues the VAT e-invoice on it. Customer status stays <b>{c.account ? AC_STATUS[c.account].label : 'Prospect'}</b> until then.
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">
           <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-ink/40">Save draft</button>
-          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Send order for confirmation →</button>
+          {/* No "Save draft": a PO has no draft state — it is Active from the moment
+              it is issued, so the only outcomes here are issue it or don't. */}
+          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Issue PO →</button>
         </div>
       </div>
     </div>
@@ -8672,50 +8852,56 @@ function AdminInvoices() {
    than a row of independent toggles, so a PO cannot be marked invoiced before the
    money is confirmed (T&C clause 3). Exactly one primary action is offered at a
    time, and the two money steps are Accounting-only. */
-/* FOUR states. Two were removed for the same reason — they changed nothing about
-   what was allowed or who acted:
-     · "Invoice requested" — a task assignment, not a document state. A confirmed
-       payment now puts the PO into Accounting's To-invoice queue on its own.
-     · "Confirmed" — bank details go out WITH the PO at Sent, so the normal path is
-       send → customer transfers. Paying IS the confirmation; most POs skipped it.
-   Where a customer's procurement does issue a formal PO, that is captured as
-   evidence (customerPoNumber / confirmedAt), not as a status.
-   SENDING the PO is the "won" moment — the deal moves to the PO stage there. */
-type PoStep = 'draft' | 'sent' | 'paid' | 'invoiced' | 'cancelled'
-const PO_FLOW: { key: PoStep; vi: string; en: string; by: string }[] = [
-  { key: 'draft', vi: 'Nháp', en: 'Draft', by: 'Sales' },
-  { key: 'sent', vi: 'Đã gửi khách', en: 'Sent', by: 'Sales' },
-  { key: 'paid', vi: 'Đã thanh toán', en: 'Paid', by: 'Kế toán' },
-  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Invoiced', by: 'Kế toán' },
+/* FOUR statuses, and only ONE of them is a step: a PO is Active from the moment
+   it is issued off an accepted quotation option, and the single action on it is
+   Kế toán issuing the VAT invoice. Everything else is an exit.
+
+   Draft / Sent / Paid were all removed, each for the same reason — they permitted
+   the same actions and carried the same obligations as Active:
+     · "Draft" and "Sent" — a PO is created BY being issued to the customer; there
+       is no state in which one exists but has not gone out.
+     · "Paid" — payment is a FACT recorded against the PO, not a stage of it. The
+       invoice can legitimately be issued before the money lands (customers
+       routinely need the invoice to release payment internally), which is exactly
+       why Cancelled exists.
+   Two exits: Expired (nobody acts — the PO lapses at the end of its month, the
+   same rule as the quotation it came from) and Cancelled (only from Issued
+   invoice, for the invoice-before-payment case that never got paid). */
+type PoStep = 'active' | 'invoiced' | 'expired' | 'cancelled'
+type PoStage = { key: PoStep; vi: string; en: string; by: string }
+const PO_FLOW: PoStage[] = [
+  { key: 'active', vi: 'Đang hiệu lực', en: 'Active', by: 'Sales' },
+  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Issued invoice', by: 'Kế toán' },
 ]
-/* Cancelled is an EXIT, not a step: it can be reached from Draft or Sent, never
-   after a payment is confirmed, so it is deliberately not part of the ordered
-   PO_FLOW above. */
-const PO_CANCELLED = { key: 'cancelled' as PoStep, vi: 'Đã hủy', en: 'Cancelled', by: 'Sales' }
-const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_CANCELLED
-/** The single next action, and who may click it. null once fully invoiced. */
-function poNext(step: PoStep) {
-  if (step === 'cancelled') return null
-  const i = PO_FLOW.findIndex((s) => s.key === step)
-  const n = PO_FLOW[i + 1]
-  if (!n) return null
-  const label: Record<string, string> = {
-    sent: 'Mark as sent', paid: 'Xác nhận đã thanh toán',
-    invoiced: 'Xuất hóa đơn',
-  }
-  return { label: label[n.key], by: n.by, accounting: n.by === 'Kế toán' }
+/* Exits, not steps — neither is reached by anyone clicking the flow forward. */
+const PO_EXITS: Record<string, PoStage> = {
+  expired: { key: 'expired', vi: 'Hết hạn', en: 'Expired', by: 'System' },
+  cancelled: { key: 'cancelled', vi: 'Đã hủy', en: 'Cancelled', by: 'Kế toán' },
 }
-type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; due: string; seller: string; product: number; qty: number }
+const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_EXITS[k]
+/** The single next action, and who may click it. Only Active has one. */
+function poNext(step: PoStep) {
+  if (step !== 'active') return null
+  return { label: 'Xuất hóa đơn', by: 'Kế toán', accounting: true }
+}
+type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; seller: string; product: number; qty: number }
+/* A PO lapses at the end of the month it was issued in — the same end-of-month
+   rule as the quotation it came from, so the two documents can never disagree
+   about how long the commercial terms stand. Dates on the document are dotted. */
+const poExpiry = (p: Po) => endOfMonth(p.issued.replace(/\./g, '/'))
 const POS: Po[] = [
-  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', due: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
-  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'paid', issued: '22.07.2026', due: '29.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
-  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'paid', issued: '20.07.2026', due: '27.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
-  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'sent', issued: '18.07.2026', due: '25.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
-  { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'sent', issued: '16.07.2026', due: '23.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  { code: 'PO-005859-07-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft', issued: '—', due: '—', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
-  { code: 'PO-005858-07-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', due: '19.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
+  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'invoiced', issued: '22.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
+  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'active', issued: '20.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
+  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'active', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  // issued in June and never invoiced — lapsed on 30/06, not on a rolling 30 days
+  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'expired', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
+  // the invoice-before-payment case: invoice issued to unblock the customer's
+  // internal approval, the money never came, so both documents were cancelled
+  { code: 'PO-005858-07-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
-const PO_TONE: Record<PoStep, StatusTone> = { draft: 'draft', sent: 'schedule', paid: 'pending', invoiced: 'active', cancelled: 'rejected' }
+const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', invoiced: 'active', expired: 'expired', cancelled: 'rejected' }
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
@@ -8728,18 +8914,27 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   return (
     <div>
 
-      {/* One status, one action. The full six-state model — what each status means,
-          what moves it on and who may act — is documented in the requirement, not
-          restated on screen every time a rep opens a PO. */}
+      {/* One status, one action. The four-status model — what each means, who acts
+          and what it triggers — is documented in the requirement, not restated on
+          screen every time a rep opens a PO. */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
-        <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
+        <span className="flex flex-wrap items-center gap-2">
+          <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
+          {/* An Active PO is running out of month, and that is the only thing on
+              this bar the rep can still change the outcome of. */}
+          {po.step === 'active' && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
+        </span>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Cancel stays available only while NO payment is confirmed. Once money
-              has landed the correction is a credit note by Kế toán, never a
-              cancellation — so the button disappears rather than erroring. */}
-          {(po.step === 'draft' || po.step === 'sent') && (
-            <button className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400">
-              Hủy PO
+          {/* Cancel exists for exactly one case: the invoice went out before the
+              money did and the money never came. So it appears ONLY on an invoiced
+              PO — cancelling an Active one is just letting it expire, and there is
+              nothing to undo. It withdraws the invoice and the quota with it. */}
+          {po.step === 'invoiced' && (
+            <button
+              title="Hủy hóa đơn đã xuất + thu hồi quota đã cấp. Chỉ dùng khi hóa đơn xuất trước thanh toán và khách không trả tiền."
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400"
+            >
+              Hủy PO · Kế toán
             </button>
           )}
           {next
@@ -8749,10 +8944,21 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
               </button>
             )
             : po.step === 'cancelled'
-              ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — không còn hành động nào</span>
-              : <span className="text-[11.5px] font-medium text-emerald-700">✓ Hoàn tất — dịch vụ đã kích hoạt</span>}
+              ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — hóa đơn đã hủy, quota đã thu hồi</span>
+              : po.step === 'expired'
+                ? <span className="text-[11.5px] font-medium text-muted">Hết hạn {poExpiry(po)} — tạo PO mới từ báo giá</span>
+                : <span className="text-[11.5px] font-medium text-emerald-700">✓ Sản phẩm đã vào tài khoản khách hàng</span>}
         </div>
       </div>
+
+      {/* The consequence of the invoice, stated where it happens. Provisioning is
+          immediate — not a queue, not a manual hand-off — so this is the line that
+          tells a rep the customer can already work. */}
+      {po.step === 'invoiced' && (
+        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-emerald-900">
+          <b>Đã xuất hóa đơn → sản phẩm chạy về tài khoản khách hàng ngay.</b> {pack.vi} × {po.qty} {pack.unitVi} hiển thị trong trang chi tiết công ty, và khách có thể đăng tin / xem CV ngay từ lúc này — không chờ thao tác nào khác.
+        </div>
+      )}
 
       {/* document */}
       <div className="mt-4 rounded-xl border border-line bg-surface p-4">
@@ -8769,8 +8975,8 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
             <p className="font-bold text-brand">{po.customer}</p>
             <p className="mt-1 text-ink/80">Mã số thuế: <span className="tabular-nums">{COMPANIES.find((c) => c.name === po.co)?.tax ?? '0318705749'}</span></p>
             {po.poNo && <p className="text-ink/80">Số PO của khách: <span className="font-mono">{po.poNo}</span></p>}
-            <p className="mt-1 text-ink/80">Ngày xuất hóa đơn: <b>{po.issued}</b></p>
-            <p className="text-ink/80">Hạn trả: <b>{po.due}</b></p>
+            <p className="mt-1 text-ink/80">Ngày phát hành: <b>{po.issued}</b></p>
+            <p className="text-ink/80">Hết hạn: <b>{poExpiry(po)}</b> <span className="text-faint">(cuối tháng)</span></p>
             <p className="text-ink/80">Người bán: <b>{po.seller}</b></p>
           </div>
         </div>
@@ -8817,10 +9023,10 @@ function AdminPOs() {
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
   return (
     <ListPage
-      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Sent' }, { label: 'Confirmed' }, { label: 'Awaiting payment', count: 9 }, { label: 'Invoiced' }]}
+      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Issued invoice' }, { label: 'Expired' }, { label: 'Cancelled' }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
-        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.3fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Payment due', w: '0.9fr' },
+        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.4fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
       ]}
       rows={POS.map((p) => [
         <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
@@ -8829,7 +9035,7 @@ function AdminPOs() {
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[p.step]}>{poStage(p.step).en}</Pill>,
         <span className="tabular-nums text-muted">{p.issued}</span>,
-        <span className="tabular-nums text-muted">{p.due}</span>,
+        <span className={cn('tabular-nums', p.step === 'active' ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
       ])}
       minW={1080}
     />
@@ -10090,9 +10296,17 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{job.title} <Pill tone={job.status}>{job.statusLabel}</Pill></h2>
-          <p className="text-[11.5px] text-muted">{job.category} · {job.company} · Created by {job.source}</p>
+          <p className="text-[11.5px] text-muted"><span className="font-mono">{job.id}</span> · {job.category} · {job.company} · Created by {job.source}</p>
+          <a className="mt-1 inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand hover:underline">
+            {job.status === 'draft' || job.status === 'schedule'
+              ? '👁 Preview draft ↗'
+              : job.status === 'open'
+                ? '🔗 View live job post ↗'
+                : '🔗 View job post (closed) ↗'}
+          </a>
         </div>
         <div className="flex gap-2">
+          <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Duplicate</button>
           <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Edit</button>
           {job.status === 'open' && <button className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Close</button>}
         </div>
@@ -10113,7 +10327,8 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
         <DetailCard title="Posting setup">
           <div className="grid gap-x-6 sm:grid-cols-2">
             <KV label="Company" value={`${job.company} · CO-1042`} link />
-            <KV label="Package" value="Free · expires in 14 days" />
+            <KV label="Purchase order (PO)" value={job.product === 'Free' ? '— none (Free job)' : 'PO-2026-0042 · active'} link={job.product !== 'Free'} />
+            <KV label="Products" value={`Job Posting — ${job.product}`} />
             <KV label="Exposure" value={job.status === 'open' ? 'On — visible on the jobseeker site' : '— (only meaningful while Open)'} />
             <KV label="Created by" value={job.source === 'Admin' ? 'Admin — HQ on the company’s behalf' : 'Company HR'} />
           </div>
@@ -10133,7 +10348,9 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
             <KV label="Address" value="Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2" />
             <KVShow label="Salary" value="500 – 1,500 USD / month" shown />
             <KVShow label="Number of headcount" value="1" shown={false} />
-            <KV label="Application deadline" value={job.deadline} />
+            <KV label="Contact person" value="Ms. Vũ Thanh Linh · HR Manager" />
+            <KV label="Application recipient email(s)" value="hr@nec.vn · ta.lead@nec.vn" />
+            <KV label="Expires" value={`${job.deadline} — from product duration`} />
           </div>
         </DetailCard>
 
@@ -10149,7 +10366,7 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
 
         <DetailCard title="Candidate expectation">
           <div className="grid gap-x-6 sm:grid-cols-2">
-            <KV label="Minimum years of experience" value="—" />
+            <KV label="Years of experience (min – max)" value="3 – 7 years" />
             <KV label="Minimum education level" value="Bachelor" />
             <KVShow label="Nationality" value="Any" shown={false} />
             <KVShow label="Gender" value="Any" shown={false} />
@@ -10365,14 +10582,12 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
         <JobGroup title="Posting setup">
           <SelectField label="Company" req value="NEC Vietnam · CO-1042" createLabel="Create company" options={['NEC Vietnam · CO-1042', 'FPT Software · CO-1007', 'VNG Corporation · CO-2231', 'Tiki · CO-1890', 'MoMo · CO-3120']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— searchable by name or ID</span>} />
           <CompanyInfoCard />
+          {/* PO → Products sit side by side: the PO scopes which products can be picked */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <LabelRow label="Package" />
-              <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-2">
-                <span className="text-[12.5px] text-ink/80">Free <span className="text-[11px] text-muted">· expires in 14 days</span></span>
-                <span className="text-faint">▾</span>
-              </div>
-            </div>
+            <SelectField label="Purchase order (PO)" value="— none (Free job) —" options={['— none (Free job) —', 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only</span>} />
+            <SelectField label="Products" req value="Job Posting — Free · 14 days" options={['Job Posting — Free · 14 days', 'Job Posting — Basic · 30 days', 'Job Posting — Basic plus · 30 days', 'Job Posting — Distinction · 30 days']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— from the selected PO</span>} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <LabelRow label="Exposure" />
               <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
@@ -10383,6 +10598,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
               </div>
             </div>
           </div>
+          <p className="text-[10.5px] leading-relaxed text-faint">🆓 The <b>Free</b> package needs no PO — Admin can post a Free job at any time, with no preconditions. <b>Paid products</b> (Basic · Basic plus · Distinction · Top Job) must draw from an active PO: pick the PO first (a customer can have more than one active PO), then the product inside it. The posting’s expiry is set by the product’s duration (e.g. Free = 14 days).</p>
         </JobGroup>
 
         {/* ═══ JOB INFORMATION (client field list) ══════════════════════════ */}
@@ -10446,7 +10662,8 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
             <LabelRow label="Number of headcount" right={<ShowToggle on={false} />} />
             <Stepper value="1" />
           </div>
-          <FField label="Application deadline" req value="dd/mm/yyyy" select />
+          <SelectField label="Contact person" req value="Ms. Vũ Thanh Linh · HR Manager" createLabel="Create contact person" options={['Ms. Vũ Thanh Linh · HR Manager', 'Mr. Ngô Minh Tú · HR Specialist', 'Ms. Đỗ Thị Mai · HR Specialist']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— the recipient name candidates see</span>} />
+          <ChipField label="Application recipient email(s)" req chips={['hr@nec.vn', 'ta.lead@nec.vn']} placeholder="Add email…" hint="Applications are emailed to these addresses (multiple allowed); the name shown to candidates is the contact person above." />
         </JobGroup>
 
         {/* ═══ JOB CONTENT (bilingual rich text) ════════════════════════════ */}
@@ -10469,8 +10686,10 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           </div>
           <div className={G2}>
             <div>
-              <LabelRow label="Minimum years of experience" />
-              <Stepper value="Minimum" />
+              <LabelRow label="Years of experience (min – max)" />
+              <div className="flex items-center gap-2 text-[12.5px] text-faint">
+                <span className="rounded-md border border-line bg-surface px-3 py-1.5">Min</span>—<span className="rounded-md border border-line bg-surface px-3 py-1.5">Max</span>
+              </div>
             </div>
             <SelectField label="Minimum education level" value="Bachelor" createLabel="Create education level" options={['High school', "Associate's degree", 'College', 'Bachelor', 'Master', 'Doctorate', 'Others']} />
           </div>

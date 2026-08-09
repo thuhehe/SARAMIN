@@ -662,6 +662,32 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [step, visible, activeId, setResolved])
 
+  /*
+   * Clicking away closes the open card. Escape already did this from the
+   * keyboard; a click had no equivalent, so the card stayed open while the
+   * reader had plainly moved on — and its border kept claiming a selection
+   * that no longer matched where they were looking.
+   *
+   * The rail is not "outside" — inside it, the card's own toggle and its
+   * reply box already own the click.
+   *
+   * Page highlights need no exception even though clicking one OPENS its
+   * thread: they are hit-tested on the content div's `click`, and this runs
+   * on `pointerdown`. So a click on a highlight clears the selection and
+   * then immediately sets it again — including when it is the same thread,
+   * which stays open rather than flickering shut.
+   */
+  useEffect(() => {
+    if (!activeId) return
+    const onDown = (e: PointerEvent) => {
+      const t = e.target
+      if (t instanceof Element && railRef.current?.contains(t)) return
+      setActiveId(null)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [activeId, setActiveId])
+
   return (
     <aside
       ref={railRef}
