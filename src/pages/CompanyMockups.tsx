@@ -12,15 +12,24 @@
  */
 import { createContext, useContext, useState } from 'react'
 import {
-  LayoutDashboard,
-  Briefcase,
   Search,
-  Settings,
-  CreditCard,
   Bell,
   ChevronDown,
+  ChevronUp,
   Crown,
   Shield,
+  List,
+  Columns3,
+  SlidersHorizontal,
+  Filter,
+  Pencil,
+  MoreHorizontal,
+  MoreVertical,
+  Building2,
+  CheckCheck,
+  Plus,
+  Inbox,
+  Users,
 } from 'lucide-react'
 import { Btn, Chip } from '@/components/wire'
 import { cn } from '@/lib/utils'
@@ -429,64 +438,305 @@ type CoCandidate = {
   applied: string
   salary: string
   cv: string
+  /** days since the last stage move — the "who is waiting on me" pressure signal */
+  waiting: string
 }
+
+/** Toolbar button in the Saramin KR shape: white, hairline border, icon + label. */
+function BarBtn({ icon, children, active, onClick }: { icon?: React.ReactNode; children: React.ReactNode; active?: boolean; onClick?: () => void }) {
+  return (
+    <span
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium',
+        active ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-ink/70',
+        onClick && 'cursor-pointer select-none',
+      )}
+    >
+      {icon}
+      {children}
+    </span>
+  )
+}
+
+/** Rounded status pill under the page title — Saramin KR's chip row. */
+function Pill({ icon, children, tone = 'muted' }: { icon?: React.ReactNode; children: React.ReactNode; tone?: 'muted' | 'violet' | 'green' }) {
+  const tones = {
+    muted: 'bg-canvas text-muted',
+    violet: 'bg-violet-50 text-violet-700',
+    green: 'bg-emerald-50 text-emerald-700',
+  }
+  return <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-medium', tones[tone])}>{icon}{children}</span>
+}
+
+type CoStageCol = { stage: keyof typeof STAGE_TONE; people: CoCandidate[] }
+
+/** One stage header. `terminal` is the fixed final stage (Saramin KR's 최종 합격):
+    it sits AFTER the "+", so the header row itself says which stages a company may
+    rename or remove and which one it may not. */
+function StageHead({ col, active, terminal, onClick }: { col: CoStageCol; active?: boolean; terminal?: boolean; onClick?: () => void }) {
+  return (
+    <span
+      onClick={onClick}
+      className={cn(
+        'flex min-w-[128px] shrink-0 items-center gap-2 rounded-lg border px-2.5 py-2',
+        onClick && 'cursor-pointer',
+        active
+          ? 'border-brand bg-brand-soft/50'
+          : terminal
+            ? 'border-emerald-200 bg-emerald-50/60 hover:border-emerald-300'
+            : 'border-line bg-surface hover:border-brand/40',
+      )}
+    >
+      <span className={cn('text-[12.5px] font-semibold', terminal ? 'text-emerald-800' : 'text-ink')}>{col.stage}</span>
+      <span className={cn('text-[13px] font-bold tabular-nums', terminal ? 'text-emerald-600' : 'text-brand')}>{col.people.length}</span>
+      {terminal ? <Crown className="ml-auto h-3.5 w-3.5 text-emerald-500" /> : <MoreVertical className="ml-auto h-3.5 w-3.5 text-faint" />}
+    </span>
+  )
+}
+
+/** A board column: the same stage header, with its cards underneath. */
+function StageColumn({ col, terminal, onPick }: { col: CoStageCol; terminal?: boolean; onPick: (n: string) => void }) {
+  return (
+    <div className={cn('w-[208px] shrink-0 rounded-lg border', terminal ? 'border-emerald-200 bg-emerald-50/40' : 'border-line bg-canvas/40')}>
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <span className={cn('text-[12.5px] font-semibold', terminal ? 'text-emerald-800' : 'text-ink')}>{col.stage}</span>
+        <span className={cn('text-[13px] font-bold tabular-nums', terminal ? 'text-emerald-600' : 'text-brand')}>{col.people.length}</span>
+        {terminal ? <Crown className="ml-auto h-3.5 w-3.5 text-emerald-500" /> : <MoreVertical className="ml-auto h-3.5 w-3.5 text-faint" />}
+      </div>
+      <div className="min-h-[220px] space-y-1.5 px-2 pb-2">
+        {col.people.map((p) => (
+          <div key={p.n} onClick={() => onPick(p.n)} className="cursor-pointer rounded-lg border border-line bg-surface p-2 hover:border-brand/40">
+            {/* photo + who they are — enough to judge the card without opening it */}
+            <div className="flex items-start gap-2">
+              <Avatar name={p.n} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11.5px] font-semibold text-ink">{p.n}</p>
+                <p className="truncate text-[10.5px] text-muted">{p.role}</p>
+              </div>
+            </div>
+            <div className="mt-1.5 space-y-0.5 text-[10px] text-muted">
+              <p className="truncate">🕑 {p.exp} · 📍 {p.loc}</p>
+              <p className="truncate">💰 Mong muốn {p.salary}</p>
+              <p className="truncate">📄 {p.cv}</p>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-1">
+              <Match score={p.match} />
+              <span className="shrink-0 text-[10px] text-faint">{p.waiting}</span>
+            </div>
+          </div>
+        ))}
+        {col.people.length === 0 && (
+          <div className="py-10 text-center">
+            <Inbox className="mx-auto h-5 w-5 text-faint" />
+            <p className="mt-1.5 text-[11.5px] text-muted">No candidates</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** The postings in the left rail — the same jobs as My jobs, seen from the pipeline side. */
+const PIPELINE_JOBS: [string, string][] = [
+  ['Điều dưỡng viên (Khoa Nội)', '6 candidates · posted 02/07/2026'],
+  ['Bác sĩ Đa khoa', '3 candidates · posted 28/06/2026'],
+  ['Kế toán viện phí', 'No candidates · scheduled 01/09/2026'],
+  ['Lễ tân bệnh viện', '31 candidates · closed 30/06/2026'],
+]
 
 function ApplicantsScreen() {
   const [sel, setSel] = useState<string | null>(null)
-  const cols: { stage: keyof typeof STAGE_TONE; people: CoCandidate[] }[] = [
+  const [view, setView] = useState<'list' | 'board'>('list')
+  /** null = every stage. Clicking a stage header filters the list to it. */
+  const [stage, setStage] = useState<string | null>(null)
+  const [multi, setMulti] = useState(false)
+  const [picks, setPicks] = useState<string[]>([])
+  const cols: CoStageCol[] = [
     {
       stage: 'New',
       people: [
-        { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV' },
-        { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên' },
+        { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV', waiting: '2 days' },
+        { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên', waiting: '3 days' },
       ],
     },
-    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV' }] },
-    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV' }] },
-    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV' }] },
-    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên' }] },
+    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
+    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV', waiting: '6 days' }] },
+    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV', waiting: '1 day' }] },
+    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên', waiting: '9 days' }] },
   ]
-  // one flat lookup so the detail can render the candidate who was actually clicked
-  const picked = cols.flatMap((c) => c.people.map((p) => ({ ...p, stage: c.stage }))).find((p) => p.n === sel)
+  /* The terminal stage, pinned past the "+": every company has it and no company
+     can rename or remove it, so it is not part of `cols`. */
+  const hired: CoStageCol = { stage: 'Hired', people: [] }
+  // one flat list, so the table and the detail both read from the same rows
+  const flat = [...cols, hired].flatMap((c) => c.people.map((p) => ({ ...p, stage: c.stage })))
+  const rows = stage ? flat.filter((p) => p.stage === stage) : flat
+  const picked = flat.find((p) => p.n === sel)
+  const toggle = (n: string) => setPicks((ps) => (ps.includes(n) ? ps.filter((x) => x !== n) : [...ps, n]))
+
   return (
-    <div className="relative">
-      <PageBar
-        title="Applicants"
-        sub="Applications forwarded by Saramin after screening. Move candidates through your hiring stages."
-        action={<span className="rounded-md border border-line px-3 py-1.5 text-[12px] text-muted">Job: Điều dưỡng viên (Khoa Nội) ▾</span>}
-      />
-      <div className="grid grid-cols-5 gap-2 overflow-x-auto" style={{ minWidth: 980 }}>
-        {cols.map((c) => (
-          <div key={c.stage} className="min-w-[186px] rounded-lg border border-line bg-canvas/40 p-2">
-            <div className="mb-2 flex items-center justify-between">
-              <Chip tone={STAGE_TONE[c.stage]}>{c.stage}</Chip>
-              <span className="text-[11px] font-bold text-faint">{c.people.length}</span>
-            </div>
-            {c.people.map((p) => (
-              <div key={p.n} onClick={() => setSel(p.n)} className="mb-1.5 cursor-pointer rounded-md border border-line bg-surface p-2 hover:border-brand/40">
-                {/* photo + who they are — enough to judge the card without opening it */}
-                <div className="flex items-start gap-2">
-                  <Avatar name={p.n} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11.5px] font-semibold text-ink">{p.n}</p>
-                    <p className="truncate text-[10.5px] text-muted">{p.role} · {p.exp}</p>
-                  </div>
-                </div>
-                <div className="mt-1.5 space-y-0.5 text-[10px] text-muted">
-                  <p className="truncate">📍 {p.loc}</p>
-                  <p className="truncate">💰 Mong muốn {p.salary}</p>
-                  <p className="truncate">📄 {p.cv}</p>
-                </div>
-                <div className="mt-1.5 flex items-center justify-between gap-1">
-                  <Match score={p.match} />
-                  <span className="shrink-0 text-[10px] text-faint">{p.applied}</span>
-                </div>
+    <div className="relative grid grid-cols-1 md:grid-cols-[236px_minmax(0,1fr)]">
+      {/* ── left rail: which posting am I working? ─────────────────────────── */}
+      <aside className="border-b border-line bg-surface p-3 md:border-b-0 md:border-r">
+        <div className="flex rounded-lg bg-canvas p-0.5 text-[12px] font-medium">
+          <span className="flex-1 rounded-md bg-surface py-1 text-center text-ink shadow-sm">Jobs</span>
+          <span className="flex-1 py-1 text-center text-muted">Talent pool</span>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[11.5px] text-faint">
+          <Search className="h-3.5 w-3.5" />
+          Search job, candidate
+        </div>
+        <div className="mt-2 flex items-center gap-1 px-1 text-[11.5px] font-medium text-ink/70">
+          All <ChevronDown className="h-3 w-3 text-faint" />
+        </div>
+        <ul className="mt-1.5 space-y-0.5">
+          {PIPELINE_JOBS.map(([title, sub], i) => (
+            <li key={title}>
+              <div className={cn('cursor-pointer rounded-md border-l-2 px-2 py-1.5', i === 0 ? 'border-brand bg-brand-soft/50' : 'border-transparent hover:bg-canvas/70')}>
+                <p className={cn('truncate text-[12px]', i === 0 ? 'font-semibold text-brand' : 'text-ink/80')}>{title}</p>
+                <p className="truncate text-[10.5px] text-faint">{sub}</p>
               </div>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-center text-[11px] text-faint">1 / 1</p>
+      </aside>
+
+      {/* ── main: the pipeline for the selected posting ────────────────────── */}
+      <div className="min-w-0 p-5">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="text-[21px] font-bold tracking-tight">Điều dưỡng viên (Khoa Nội)</h3>
+          <span className="inline-flex cursor-pointer items-center gap-1 text-[12px] text-muted">All openings <ChevronDown className="h-3 w-3" /></span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Pill tone="violet" icon={<Users className="h-3.5 w-3.5" />}>{flat.length} candidates</Pill>
+          <Pill tone="green" icon={<CheckCheck className="h-3.5 w-3.5" />}>Screened by Saramin</Pill>
+          <Pill>Điều dưỡng · Hồ Chí Minh</Pill>
+        </div>
+
+        {/* toolbar */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-line">
+            {([['list', List], ['board', Columns3]] as const).map(([v, Icon]) => (
+              <span
+                key={v}
+                onClick={() => setView(v)}
+                className={cn('grid h-[30px] w-9 cursor-pointer place-items-center', view === v ? 'bg-brand-soft text-brand' : 'text-faint')}
+              >
+                <Icon className="h-4 w-4" />
+              </span>
             ))}
           </div>
-        ))}
+          <div className="flex w-[190px] items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[11.5px] text-faint">
+            <Search className="h-3.5 w-3.5" />
+            Search candidate
+          </div>
+          <BarBtn icon={<SlidersHorizontal className="h-3.5 w-3.5" />}>Detail</BarBtn>
+          <BarBtn icon={<Filter className="h-3.5 w-3.5" />}>Filter</BarBtn>
+          <div className="ml-auto flex items-center gap-2">
+            <BarBtn
+              icon={<CheckCheck className="h-3.5 w-3.5" />}
+              active={multi}
+              onClick={() => {
+                setMulti((m) => !m)
+                setPicks([])
+              }}
+            >
+              Select multiple
+            </BarBtn>
+            <span className="grid h-[30px] w-8 place-items-center rounded-lg border border-line text-faint"><ChevronUp className="h-4 w-4" /></span>
+          </div>
+        </div>
+
+        {/* stage rail — the counters ARE the navigation; a company can rename, add or remove these */}
+        {view === 'list' && (
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 scroll-thin">
+            {cols.map((c) => (
+              <StageHead key={c.stage} col={c} active={stage === c.stage} onClick={() => setStage((s) => (s === c.stage ? null : c.stage))} />
+            ))}
+            <span className="grid h-[38px] w-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-dashed border-line text-faint"><Plus className="h-4 w-4" /></span>
+            <StageHead col={hired} terminal active={stage === hired.stage} onClick={() => setStage((s) => (s === hired.stage ? null : hired.stage))} />
+          </div>
+        )}
+
+        {/* bulk bar — the common case is a bulk Rejected after a screening pass */}
+        {multi && picks.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[12px] text-brand">
+            <b className="tabular-nums">{picks.length} selected</b>
+            <span className="cursor-pointer rounded-md border border-brand/30 bg-surface px-2 py-1 font-medium">Move to stage ▾</span>
+            <span className="cursor-pointer rounded-md border border-brand/30 bg-surface px-2 py-1 font-medium">Reject</span>
+            <span onClick={() => setPicks([])} className="ml-auto cursor-pointer text-[11.5px] underline">Clear</span>
+          </div>
+        )}
+
+        {view === 'list' ? (
+          /* ── list view — the table Saramin KR opens on ── */
+          <div className="mt-3 overflow-x-auto">
+            <div className="min-w-[820px] overflow-hidden rounded-lg border border-line">
+              <div className={cn('grid bg-canvas/60 px-4 py-2 text-[11px] font-semibold text-muted', multi ? 'grid-cols-[24px_2fr_1fr_1fr_0.9fr_1fr_0.9fr]' : 'grid-cols-[2fr_1fr_1fr_0.9fr_1fr_0.9fr]')}>
+                {multi && <span />}
+                <span>Candidate</span>
+                <span>Experience</span>
+                <span>Desired salary</span>
+                <span>Match</span>
+                <span>Stage</span>
+                <span className="text-right">Waiting</span>
+              </div>
+              {rows.map((p) => (
+                <div
+                  key={p.n}
+                  className={cn(
+                    'grid items-center border-t border-line-soft px-4 py-2.5 text-[12.5px] hover:bg-canvas/40',
+                    multi ? 'grid-cols-[24px_2fr_1fr_1fr_0.9fr_1fr_0.9fr]' : 'grid-cols-[2fr_1fr_1fr_0.9fr_1fr_0.9fr]',
+                  )}
+                >
+                  {multi && (
+                    <span
+                      onClick={() => toggle(p.n)}
+                      className={cn('h-3.5 w-3.5 cursor-pointer rounded-[3px] border', picks.includes(p.n) ? 'border-brand bg-brand' : 'border-line')}
+                    />
+                  )}
+                  <div onClick={() => setSel(p.n)} className="flex min-w-0 cursor-pointer items-center gap-2">
+                    <Avatar name={p.n} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{p.n}</p>
+                      <p className="truncate text-[10.5px] text-faint">{p.role} · {p.loc} · {p.cv}</p>
+                    </div>
+                  </div>
+                  <span className="text-muted">{p.exp}</span>
+                  <span className="text-muted">{p.salary}</span>
+                  <span><Match score={p.match} /></span>
+                  <span><Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip></span>
+                  <span className="text-right tabular-nums text-muted">{p.waiting}</span>
+                </div>
+              ))}
+              {rows.length === 0 && (
+                <div className="border-t border-line-soft py-14 text-center">
+                  <Inbox className="mx-auto h-6 w-6 text-faint" />
+                  <p className="mt-2 text-[13px] font-medium text-ink">No candidates in this stage</p>
+                  <p className="mt-0.5 text-[11.5px] text-muted">Move someone here, or clear the stage filter.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ── board view — the same stages as columns ── */
+          <div className="mt-3 overflow-x-auto">
+            <div className="flex gap-2" style={{ minWidth: 1320 }}>
+              {cols.map((c) => (
+                <StageColumn key={c.stage} col={c} onPick={setSel} />
+              ))}
+              <span className="grid h-9 w-8 shrink-0 place-items-center rounded-lg border border-dashed border-line text-faint"><Plus className="h-4 w-4" /></span>
+              <StageColumn col={hired} terminal onPick={setSel} />
+            </div>
+          </div>
+        )}
+
+        <p className="mt-3 text-[11px] text-faint">
+          Every application is screened by Saramin before it reaches you. Change a stage from the row, drag a card between
+          columns in board view, or select rows for a bulk move.
+        </p>
       </div>
-      <p className="mt-3 text-[11px] text-faint">Every application is screened by Saramin before it reaches you. Drag a candidate to change stage.</p>
 
       {/* ── candidate detail — the application record: CV + profile info + stage actions ── */}
       {picked && (
@@ -1132,62 +1382,66 @@ interface NavItem {
   id: string
   label: string
   Comp: () => JSX.Element
+  /** screen brings its own padding (it owns the full width, rail included) */
+  flush?: boolean
 }
 interface NavGroup {
   label: string
-  icon: React.ReactNode
   items: NavItem[]
+  /** parked behind the "⋯" overflow button, as Saramin KR does with the tail of its nav */
+  overflow?: boolean
 }
 
-const DASHBOARD: NavItem = { id: 'co-dashboard', label: 'Dashboard', Comp: DashboardScreen }
-/** Post-a-job isn't in the sidebar — it opens from the "+ Post a job" button inside My jobs. */
+const DASHBOARD: NavItem = { id: 'co-dashboard', label: 'Home', Comp: DashboardScreen }
 const POST_JOB: NavItem = { id: 'co-post-job', label: 'Post a job', Comp: PostJobScreen }
+/* Top-level nav, in Saramin KR's employer order: Home · Jobs · Talent pool ·
+   Candidates · Hiring products · ⋯, with the blue "Post a job" CTA on the end.
+   Each entry opens a small dropdown of its screens. */
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Recruiting',
-    icon: <Briefcase className="h-4 w-4" />,
+    label: 'Jobs',
     items: [
       { id: 'co-jobs', label: 'My jobs', Comp: MyJobsScreen },
-      { id: 'co-applicants', label: 'Applicants', Comp: ApplicantsScreen },
+      POST_JOB,
     ],
   },
   {
-    label: 'Talent',
-    icon: <Search className="h-4 w-4" />,
+    label: 'Talent pool',
     items: [{ id: 'co-resume-search', label: 'Resume search', Comp: ResumeSearchScreen }],
   },
   {
+    label: 'Candidates',
+    items: [{ id: 'co-applicants', label: 'Applicants', Comp: ApplicantsScreen, flush: true }],
+  },
+  {
+    // What the company bought is its own concern, separate from who can log in.
+    label: 'Hiring products',
+    items: [
+      { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
+      { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
+    ],
+  },
+  {
     label: 'Account',
-    icon: <Settings className="h-4 w-4" />,
+    overflow: true,
     items: [
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
       { id: 'co-team', label: 'Team', Comp: TeamScreen },
       { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
     ],
   },
-  {
-    // Split out of "Team & billing": what the company bought is its own concern,
-    // separate from managing who can log in.
-    label: 'Products & billing',
-    icon: <CreditCard className="h-4 w-4" />,
-    items: [
-      { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
-      { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
-    ],
-  },
 ]
 
 /** flat registry of company screens, for embedding in feature detail pages */
-export const CO_SCREENS: NavItem[] = [DASHBOARD, POST_JOB, ...NAV_GROUPS.flatMap((g) => g.items)]
+export const CO_SCREENS: NavItem[] = [DASHBOARD, ...NAV_GROUPS.flatMap((g) => g.items)]
 
 export function CompanyMockups() {
-  const [active, setActive] = useState<{ group: string; item: NavItem }>({ group: 'Home', item: DASHBOARD })
+  const [active, setActive] = useState<CoActive>({ group: 'Home', item: DASHBOARD })
   const Body = active.item.Comp
 
   /** jump to a screen by id (used by in-screen buttons like "+ Post a job") */
   const go = (id: string) => {
     if (id === DASHBOARD.id) return setActive({ group: 'Home', item: DASHBOARD })
-    if (id === POST_JOB.id) return setActive({ group: 'Recruiting', item: POST_JOB })
     for (const g of NAV_GROUPS) {
       const item = g.items.find((i) => i.id === id)
       if (item) return setActive({ group: g.label, item })
@@ -1198,67 +1452,28 @@ export function CompanyMockups() {
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
-        <h1 className="mt-1 text-[26px] font-bold tracking-tight">Company portal — navigation & shell</h1>
+        <h1 className="mt-1 text-[26px] font-bold tracking-tight">Company mockups</h1>
       </div>
 
-      {/* console shell */}
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-        {/* top bar */}
-        <div className="flex items-center gap-3 border-b border-line bg-canvas/50 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-            <span className="text-[13px] font-semibold">Saramin · Employer</span>
-          </div>
-          <span className="ml-2 hidden items-center gap-1.5 rounded-full border border-line py-0.5 pl-0.5 pr-2.5 md:flex">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] font-bold text-white">VP</span>
-            <span className="text-[11px] text-ink/70">Vạn Phát Healthcare</span>
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-md border border-line px-2 py-1 text-[10.5px] text-muted sm:inline">📢 7/10 slots · 🔍 62 CVs</span>
-            <div className="flex overflow-hidden rounded-md border border-line text-[11px] font-medium">
-              <span className="bg-brand px-2 py-1 text-white">VI</span>
-              <span className="px-2 py-1 text-muted">EN</span>
-              <span className="px-2 py-1 text-muted">KO</span>
-            </div>
-            <span className="relative grid h-7 w-7 place-items-center rounded-md border border-line text-muted">
-              <Bell className="h-3.5 w-3.5" />
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500" />
-            </span>
-            <span className="h-7 w-7 rounded-full bg-gradient-to-br from-brand to-violet-500" />
-          </div>
+      {/* console shell — the chrome follows Saramin KR's employer site (hiring.saramin.co.kr):
+          a thin utility strip, then one horizontal nav with dropdowns and a blue CTA. */}
+      <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+        {/* utility strip */}
+        <div className="flex items-center gap-4 border-b border-line-soft px-5 py-1.5 text-[11px] text-muted">
+          {UTILITY_LINKS.map((l, i) => (
+            <span key={l} className={cn('cursor-default', i === 0 && 'font-semibold text-ink/80')}>{l}</span>
+          ))}
+          <span className="ml-auto hidden sm:inline">📢 7/10 slots · 🔍 62 CVs</span>
         </div>
 
-        {/* body: sidebar + content */}
-        <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
-          <nav className="max-h-[640px] overflow-y-auto border-r border-line bg-canvas/30 py-2 scroll-thin">
-            <SidebarItem
-              icon={<LayoutDashboard className="h-4 w-4" />}
-              label="Dashboard"
-              active={active.item.id === DASHBOARD.id}
-              onClick={() => setActive({ group: 'Home', item: DASHBOARD })}
-            />
-            {NAV_GROUPS.map((g) => (
-              <SidebarGroup
-                key={g.label}
-                group={g}
-                activeItem={active.group === g.label ? active.item.id : null}
-                onSelect={(item) => setActive({ group: g.label, item })}
-              />
-            ))}
-          </nav>
+        {/* main header */}
+        <CoHeader active={active} onSelect={setActive} />
 
-          <div className="min-w-0 bg-surface">
-            <div className="flex items-center gap-2 border-b border-line-soft px-5 py-3 text-[11.5px] text-muted">
-              <span>{active.group === 'Home' ? 'Employer' : active.group}</span>
-              <span className="text-faint">/</span>
-              <span className="font-medium text-ink">{active.item.label}</span>
-            </div>
-            <div className="p-5">
-              <CoNav.Provider value={go}>
-                <Body />
-              </CoNav.Provider>
-            </div>
-          </div>
+        {/* content */}
+        <div className={cn('min-w-0 bg-surface', !active.item.flush && 'p-5')}>
+          <CoNav.Provider value={go}>
+            <Body />
+          </CoNav.Provider>
         </div>
       </div>
 
@@ -1270,51 +1485,129 @@ export function CompanyMockups() {
   )
 }
 
-function SidebarItem({ icon, label, active, onClick }: { icon?: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+/** The grey strip above the header on Saramin KR — sibling properties, not app nav. */
+const UTILITY_LINKS = ['Business home', 'Career site', 'Hiring tools', 'Consulting', 'Sales', 'Ads']
+
+type CoActive = { group: string; item: NavItem }
+
+function CoHeader({ active, onSelect }: { active: CoActive; onSelect: (a: CoActive) => void }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const pick = (group: string, item: NavItem) => {
+    onSelect({ group, item })
+    setOpen(null)
+  }
+  return (
+    <div className="relative flex items-center gap-1 border-b border-line px-5 py-2.5">
+      <span className="mr-4 text-[19px] font-bold lowercase tracking-tight text-brand">saramin</span>
+
+      <NavTop label="Home" active={active.item.id === DASHBOARD.id} onClick={() => pick('Home', DASHBOARD)} />
+      {NAV_GROUPS.filter((g) => !g.overflow).map((g) => (
+        <NavMenu
+          key={g.label}
+          group={g}
+          activeId={active.item.id}
+          open={open === g.label}
+          onToggle={() => setOpen((o) => (o === g.label ? null : g.label))}
+          onPick={(item) => pick(g.label, item)}
+        />
+      ))}
+      {NAV_GROUPS.filter((g) => g.overflow).map((g) => (
+        <NavMenu
+          key={g.label}
+          group={g}
+          activeId={active.item.id}
+          open={open === g.label}
+          onToggle={() => setOpen((o) => (o === g.label ? null : g.label))}
+          onPick={(item) => pick(g.label, item)}
+          icon={<MoreHorizontal className="h-4 w-4" />}
+        />
+      ))}
+
+      <span
+        onClick={() => pick('Jobs', POST_JOB)}
+        className="ml-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+        Post a job
+      </span>
+
+      <div className="ml-auto flex items-center gap-3">
+        <span className="relative text-muted">
+          <Bell className="h-4 w-4" />
+          <span className="absolute -right-1.5 -top-1.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-rose-500 text-[8px] font-bold text-white">1</span>
+        </span>
+        <span className="hidden items-center gap-1.5 text-[12px] md:flex">
+          <Building2 className="h-4 w-4 text-faint" />
+          <span className="text-ink/80">Vạn Phát Healthcare</span>
+          <span className="text-line">|</span>
+          <span className="font-medium text-ink">Trần Thị Mai</span>
+          <ChevronDown className="h-3 w-3 text-faint" />
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** A nav entry with no dropdown (Home). */
+function NavTop({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] font-medium transition-colors',
-        active ? 'bg-brand-soft text-brand' : 'text-ink/80 hover:bg-canvas/70',
-      )}
+      className={cn('rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold', active ? 'text-brand' : 'text-ink/80 hover:text-brand')}
     >
-      {icon && <span className={cn(active ? 'text-brand' : 'text-faint')}>{icon}</span>}
-      <span className="truncate">{label}</span>
+      {label}
     </button>
   )
 }
 
-function SidebarGroup({ group, activeItem, onSelect }: { group: NavGroup; activeItem: string | null; onSelect: (item: NavItem) => void }) {
-  const [open, setOpen] = useState(true)
+/** A nav entry that drops its screens down, the way the KR header's ▾ items do. */
+function NavMenu({
+  group,
+  activeId,
+  open,
+  onToggle,
+  onPick,
+  icon,
+}: {
+  group: NavGroup
+  activeId: string
+  open: boolean
+  onToggle: () => void
+  onPick: (item: NavItem) => void
+  icon?: React.ReactNode
+}) {
+  const owns = group.items.some((i) => i.id === activeId)
   return (
-    <div className="mt-1">
+    <div className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] font-medium text-ink/80 hover:bg-canvas/70"
+        onClick={onToggle}
+        className={cn(
+          'flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold',
+          owns ? 'text-brand' : 'text-ink/80 hover:text-brand',
+        )}
       >
-        <span className="text-faint">{group.icon}</span>
-        <span className="truncate">{group.label}</span>
-        <ChevronDown className={cn('ml-auto h-3.5 w-3.5 text-faint transition-transform', !open && '-rotate-90')} />
+        {icon ?? (
+          <>
+            {group.label}
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} />
+          </>
+        )}
       </button>
       {open && (
-        <ul>
-          {group.items.map((it) => {
-            const isActive = activeItem === it.id
-            return (
-              <li key={it.id}>
-                <button
-                  onClick={() => onSelect(it)}
-                  className={cn(
-                    'flex w-full items-center gap-2 py-1.5 pl-9 pr-3 text-left text-[12px] transition-colors',
-                    isActive ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas/70',
-                  )}
-                >
-                  <span className="truncate">{it.label}</span>
-                </button>
-              </li>
-            )
-          })}
+        <ul className="absolute left-0 top-full z-20 mt-1 min-w-[176px] overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lg">
+          {group.items.map((it) => (
+            <li key={it.id}>
+              <button
+                onClick={() => onPick(it)}
+                className={cn(
+                  'flex w-full items-center px-3 py-1.5 text-left text-[12.5px]',
+                  it.id === activeId ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80 hover:bg-canvas/70',
+                )}
+              >
+                {it.label}
+              </button>
+            </li>
+          ))}
         </ul>
       )}
     </div>

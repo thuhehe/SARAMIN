@@ -32,9 +32,8 @@ function MyPageRail({ active }: { active: string }) {
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-line p-4 text-center">
-        <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+        <div className="mb-2 flex justify-center"><ProfilePhoto photo size="md" /></div>
         <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
-        <p className="text-[11px] text-muted">Product Designer</p>
       </div>
       <div className="rounded-xl border border-line p-2">
         {MY_PAGE_MENU.map(({ label, screen }) => {
@@ -266,77 +265,10 @@ function ApplyGroup({ n, title, action, children }: { n: number; title: string; 
   )
 }
 
-/** One read-only line in the apply summary. Same row rhythm as the Job
-    preferences card on My CVs — label left, value right, hairline between — so
-    the two places a candidate reads their own data back look like one product.
-    `missing` flags a required value they still have to supply. */
-function SumRow({ label, value, missing }: { label: string; value: React.ReactNode; missing?: boolean }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
-      <span className="shrink-0 text-[11px] text-muted">{label}</span>
-      <span className={cn('text-right text-[11.5px] font-medium', missing ? 'text-rose-500' : 'text-ink')}>{value}</span>
-    </div>
-  )
-}
-
-/** The small caps heading that separates groups inside a summary card. */
-function SumHead({ children }: { children: React.ReactNode }) {
-  return <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">{children}</p>
-}
-
-/** Two-column field grid inside a group. */
-function ApplyFields({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 rounded-md border border-line p-2.5">{children}</div>
-}
-
-type AFieldKind = 'text' | 'select' | 'seg' | 'phone' | 'money'
-function AField({ label, req, value, kind = 'text', options, full, lock, unit }: {
-  label: string
-  req?: boolean
-  value?: string
-  kind?: AFieldKind
-  /** segmented control options (kind="seg") */
-  options?: [string, string]
-  /** span both columns */
-  full?: boolean
-  /** provider-locked, e.g. an email that came from social sign-up */
-  lock?: string
-  /** trailing unit, e.g. USD/month */
-  unit?: string
-}) {
-  const filled = !!value
-  return (
-    <div className={full ? 'col-span-2' : ''}>
-      <label className="mb-1 block text-[10.5px] font-medium text-ink/70">
-        {label}{req && <span className="text-rose-500"> *</span>}
-      </label>
-      {kind === 'seg' && options ? (
-        <div className="flex gap-1.5">
-          {options.map((o) => (
-            <span key={o} className={cn('flex-1 rounded-md border px-2 py-1.5 text-center text-[11px]', o === value ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted')}>{o}</span>
-          ))}
-        </div>
-      ) : kind === 'phone' ? (
-        <div className="flex items-center gap-1.5">
-          <span className="flex shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 py-1.5 text-[11.5px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span>
-          <div className={cn('min-w-0 flex-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11.5px]', filled ? 'border-line text-ink/80' : 'border-brand/50 text-faint')}>{value || 'Enter your phone number'}</div>
-        </div>
-      ) : (
-        <div className={cn('flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11.5px]', lock ? 'border-line bg-canvas/60 text-muted' : filled ? 'border-line bg-surface text-ink/80' : 'border-line bg-surface text-faint')}>
-          <span className="min-w-0 flex-1 truncate">{value || (kind === 'select' ? 'Please select…' : 'Enter…')}</span>
-          {lock && <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[9px] font-medium text-faint">🔒 {lock}</span>}
-          {unit && <span className="shrink-0 border-l border-line pl-1.5 text-[10px] text-faint">{unit}</span>}
-          {kind === 'select' && !lock && <span className="shrink-0 text-faint">▾</span>}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ApplyScreen() {
   const go = useNav()
   const [cv, setCv] = useState<'saramin' | 'portfolio' | 'meet' | 'new'>('saramin')
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState<null | 'basic' | 'prefs'>(null)
   return (
     <div className="relative">
       <div className="pointer-events-none opacity-40"><JobDetailScreen /></div>
@@ -356,72 +288,48 @@ function ApplyScreen() {
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
             {/* Your CV — choose which CV to send (Saramin CV or an uploaded CV) */}
             <ApplyGroup n={1} title="Your CV">
+              {/* SAME row shape as the My CVs list — a candidate should recognise
+                  their own shelf here, not learn a second layout for the same thing. */}
               <div className="space-y-1.5">
                 {([
-                  ['saramin', 'Saramin CV', 'Structured profile · 70% complete'],
-                  ['portfolio', '📄 Portfolio.pdf', 'Uploaded 26/07/2026 · 1.2 MB'],
-                  ['meet', '📄 CV_TranMinhAnh.pdf', 'Uploaded 12/01/2024'],
-                ] as const).map(([id, label, sub]) => (
+                  ['portfolio', '📄', 'productdesign.pdf', 'Uploaded', 'Uploaded 26/07/2026'],
+                  ['saramin', '📃', 'Business Developer CV', 'Saramin', 'Generated 26/07/2026'],
+                ] as const).map(([id, icon, name, kind, meta]) => (
                   <label
                     key={id}
                     onClick={() => setCv(id)}
-                    className={cn('flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2', cv === id ? 'border-brand bg-brand-soft' : 'border-line')}
+                    className={cn('flex cursor-pointer items-center gap-2.5 rounded-xl border p-2.5', cv === id ? 'border-brand/50 bg-brand-soft/40' : 'border-line bg-surface')}
                   >
-                    <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', cv === id ? 'border-brand' : 'border-line')}>{cv === id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-medium text-ink">{label}</span>
-                      <span className="block truncate text-[11px] text-faint">{sub}</span>
+                    <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', cv === id ? 'border-brand' : 'border-line')}>
+                      {cv === id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
                     </span>
-                    {id === 'saramin' && <Chip tone="green">Saramin</Chip>}
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">{icon}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-[12.5px] font-semibold text-ink">{name}</span>
+                        <Chip tone={kind === 'Saramin' ? 'blue' : 'muted'}>{kind}</Chip>
+                      </span>
+                      <span className="block truncate text-[11px] text-faint">{meta}</span>
+                    </span>
                   </label>
                 ))}
-                {/* create a new CV — opens the SAME Add-new-CV screen as My CVs */}
                 <button
                   onClick={() => go('js-add-cv')}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border border-dashed border-line px-3 py-2 text-left hover:border-brand/50"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-dashed border-line px-3 py-2.5 text-left hover:border-brand/50"
                 >
                   <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2 border-line text-[10px] font-bold text-brand">＋</span>
-                  <span className="flex-1 text-[12px] text-muted">Add a new CV <span className="text-faint">— upload or build (same as My CVs)</span></span>
+                  <span className="flex-1 text-[12px] text-muted">Add a new CV <span className="text-faint">— upload or build</span></span>
                   <span className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand">Open</span>
                 </button>
               </div>
-              <p className="mt-1.5 text-[11px] text-faint">.doc, .docx, .pdf · max 5 MB · no password protection.</p>
             </ApplyGroup>
 
-            {/* Your information — READ-ONLY here. Everything is already on the
-                profile, so applying should be a confirmation, not a form: the
-                candidate reads it back and only opens the popup if something is
-                wrong or missing. Keeps the apply modal short enough to submit
-                without scrolling past ~24 inputs. */}
-            <ApplyGroup
-              n={2}
-              title="Your information"
-              action={
-                <span onClick={() => setEditing(true)} className="cursor-pointer text-[11px] font-medium text-brand">Edit</span>
-              }
-            >
-              <div className="rounded-xl border border-line bg-surface p-3">
-                <SumHead>Basic information</SumHead>
-                <div className="divide-y divide-line-soft">
-                  <SumRow label="Full name" value="Trần Minh Anh" />
-                  <SumRow label="Email" value="minhanh@gmail.com" />
-                  <SumRow label="Phone" value="+ Add your phone number" missing />
-                  <SumRow label="Province / City" value="Hồ Chí Minh" />
-                  <SumRow label="Years of experience" value="4 years" />
-                  <SumRow label="Highest degree" value="Bachelor" />
-                </div>
-                <div className="my-2.5 border-t border-line" />
-                <SumHead>Work preference</SumHead>
-                <div className="divide-y divide-line-soft">
-                  <SumRow label="Desired work location" value={<span className="flex flex-wrap justify-end gap-1"><Chip>Hồ Chí Minh</Chip></span>} />
-                  <SumRow label="Desired level" value="Trưởng nhóm" />
-                  <SumRow label="Desired industry" value={<span className="flex flex-wrap justify-end gap-1"><Chip tone="blue">IT / Software</Chip></span>} />
-                  <SumRow label="Desired field" value={<span className="font-normal text-faint">Not set</span>} />
-                  <SumRow label="Desired salary" value={<span className="font-normal text-faint">Not set</span>} />
-                  <SumRow label="Availability" value="🟢 1 month" />
-                </div>
-              </div>
-              <p className="mt-1.5 text-[10.5px] text-faint">From your profile. Your title, level and industry are read from your CV automatically.</p>
+            {/* Your profile — the SAME card as My CVs, so the candidate reads back
+                exactly what they saw there. Read-only with a per-group Edit; applying
+                is a confirmation, not a form. */}
+            <ApplyGroup n={2} title="Your profile">
+              <ProfileSummaryCard onEdit={(sec) => setEditing(sec)} />
+              <p className="mt-1.5 text-[10.5px] text-faint">From your profile — an edit here is saved to it, so you never re-type this on the next application.</p>
             </ApplyGroup>
 
             <ApplyGroup n={3} title="Cover letter">
@@ -440,42 +348,7 @@ function ApplyScreen() {
       {/* Edit popup — the ONLY place the apply flow shows inputs. Saving writes
           back to the profile, so a correction made once while applying is not
           re-typed on the next application. */}
-      {editing && (
-        <div className="absolute inset-0 z-10 flex items-start justify-center bg-black/35 px-4 pt-10">
-          <div className="flex max-h-[480px] w-full max-w-[430px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <p className="text-[13px] font-bold text-ink">Edit your information</p>
-              <span className="cursor-pointer text-faint" onClick={() => setEditing(false)}>✕</span>
-            </div>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
-              <ApplyGroup n={1} title="Basic information">
-                <ApplyFields>
-                  <AField label="Full name" req value="Trần Minh Anh" full />
-                  <AField label="Email" req value="minhanh@gmail.com" lock="Google" />
-                  <AField label="Phone" req kind="phone" />
-                  <AField label="Province / City" req kind="select" value="Hồ Chí Minh" />
-                  <AField label="Years of experience" req value="4" unit="years" />
-                  <AField label="Highest degree" req kind="select" value="Bachelor" />
-                </ApplyFields>
-              </ApplyGroup>
-              <ApplyGroup n={2} title="Work preference">
-                <ApplyFields>
-                  <AField label="Desired work location" req kind="select" value="Hồ Chí Minh" />
-                  <AField label="Desired level" req kind="select" value="Trưởng nhóm" />
-                  <AField label="Desired industry" req kind="select" value="IT / Software" />
-                  <AField label="Desired field" req kind="select" />
-                  <AField label="Desired salary" unit="tr/month" />
-                  <AField label="Availability" kind="select" value="1 month" />
-                </ApplyFields>
-              </ApplyGroup>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-              <Btn onClick={() => setEditing(false)}>Cancel</Btn>
-              <Btn primary onClick={() => setEditing(false)}>Save</Btn>
-            </div>
-          </div>
-        </div>
-      )}
+      {editing && <ProfileEditPopup section={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
@@ -549,10 +422,9 @@ export const OPTIONAL_CV_SECTIONS: { title: string; pct: string; desc: string; i
   { title: 'Foreign Language', pct: '7%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
   { title: 'Highlight projects', pct: '6%', desc: 'Showcase your work — projects, case studies, published pieces', icon: '📁' },
   { title: 'Certificates', pct: '4%', desc: 'Provide evidence of your specific expertise and skills', icon: '📜' },
-  { title: 'Awards', pct: '3%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
+  { title: 'Awards', pct: '4%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
   { title: 'Activities', pct: '3%', desc: 'Volunteering, clubs & communities you take part in', icon: '🎯' },
   { title: 'References', pct: '1%', desc: 'People who can vouch for your work', icon: '👥' },
-  { title: 'Recommendations', pct: '1%', desc: 'Ask colleagues to recommend you', icon: '⭐' },
 ] // = 25%  →  75 + 25 = 100%
 // NOTE: no "Publications" section — it is not a search facet and near-nobody fills
 // it on a general VN job board (Saramin KR and VietnamWorks have none either).
@@ -618,8 +490,6 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
     fields: [
       { label: 'Company', req: true, value: 'Lantern Digital' },
       { label: 'Job title', req: true, value: 'Senior Product Designer', hint: 'Resolves to the canonical Title taxonomy so employer filters can match it.' },
-      { label: 'Location', value: 'Hồ Chí Minh', half: true },
-      { label: 'Employment type', kind: 'select', value: 'Full-time', options: ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'], half: true },
       { label: 'From', kind: 'month', req: true, value: '2022-03', half: true },
       { label: 'To', kind: 'month', value: '', hint: 'Leave empty if this is your current role.', half: true },
       { label: 'I currently work here', kind: 'toggle', value: 'on' },
@@ -680,8 +550,6 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
     repeatable: true,
     fields: [
       { label: 'Project name', req: true, value: '' },
-      { label: 'Your role', value: '', half: true },
-      { label: 'Team size', value: '', half: true },
       { label: 'From', kind: 'month', value: '', half: true },
       { label: 'To', kind: 'month', value: '', half: true },
       { label: 'What you did and what changed', kind: 'area', value: '', hint: 'An outcome beats a description.' },
@@ -694,7 +562,6 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Certificate name', req: true, value: '' },
       { label: 'Issuing organisation', value: '', half: true },
       { label: 'Issue date', kind: 'month', value: '', half: true },
-      { label: 'Expiry date', kind: 'month', value: '', half: true, hint: 'Leave empty if it does not expire.' },
       { label: 'Credential ID or URL', value: '', half: true },
     ],
   },
@@ -721,24 +588,12 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
   },
   References: {
     repeatable: true,
-    note: 'This is someone else’s personal data. Ask them first — we show a referee’s contact details only to employers who have unlocked your CV.',
     fields: [
       { label: 'Full name', req: true, value: '' },
       { label: 'Job title', req: true, value: '', half: true },
       { label: 'Company', req: true, value: '', half: true },
-      { label: 'Relationship', kind: 'select', value: 'Direct manager', options: ['Direct manager', 'Colleague', 'Client', 'Lecturer', 'Other'], half: true },
       { label: 'Phone', value: '', half: true },
       { label: 'Email', value: '', half: true },
-      { label: 'They agreed to be contacted', kind: 'toggle', value: '', hint: 'Required before we will show these details to anyone.' },
-    ],
-  },
-  Recommendations: {
-    intro: 'Ask a colleague to write a short recommendation. They get a link — you never write it yourself.',
-    fields: [
-      { label: 'Their email', req: true, value: '' },
-      { label: 'Their name', value: '', half: true },
-      { label: 'How you worked together', kind: 'select', value: 'Colleague', options: ['Direct manager', 'Colleague', 'Client', 'Report'], half: true },
-      { label: 'Message', kind: 'area', value: 'Hi — would you mind writing a short recommendation about our work together? It takes about 2 minutes.' },
     ],
   },
 }
@@ -925,7 +780,7 @@ function ProfileCvScreen() {
           {/* ── Identity header — on top, clean ── */}
           <div className="rounded-xl border border-line bg-surface p-5">
             <div className="flex items-start gap-4">
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[28px]">🙂</div>
+              <ProfilePhoto photo size="lg" />
               <div className="min-w-0 flex-1">
                 <p className="text-[19px] font-bold leading-tight text-ink">Trần Minh Anh</p>
                 <p className="mt-0.5 text-[13px] text-ink/80">Product Designer · 4 yrs experience</p>
@@ -1060,13 +915,13 @@ function ProfileCvScreen() {
             ))}
           </CvSection>
 
-          {/* ── Skills (with years) ── */}
-          <CvSection title="Skills" action={ro ? '' : 'Edit'} badge={ro ? undefined : '6%'} onAction={() => setEditing('Skills')}>
-            {!ro && <div className="mb-2 rounded-md bg-brand-soft/60 px-3 py-2 text-[11.5px] text-brand">✎ Quick update — years of experience for skills</div>}
-            <p className="mb-1.5 text-[11px] font-semibold text-ink">Core skills</p>
+          {/* ── Skills — flat tags, NO years. CvSkill is a pure link row in
+                 Phase-1 (see Resume management → SKILLS); per-skill years is
+                 explicitly Phase-2. ── */}
+          <CvSection title="Skills" action={ro ? '' : 'Edit'} badge={ro ? undefined : '20%'} onAction={() => setEditing('Skills')}>
             <div className="flex flex-wrap gap-1.5">
-              {([['User Experience (UX)', '4 yrs'], ['Interaction Design', '4 yrs'], ['Design Systems', '3 yrs'], ['Product Design', '3 yrs'], ['User Research', '2 yrs']] as [string, string][]).map(([s, y]) => (
-                <span key={s} className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80"><b className="font-semibold text-ink">{s}</b> ({y})</span>
+              {['User Experience (UX)', 'Interaction Design', 'Design Systems', 'Product Design', 'User Research'].map((s) => (
+                <span key={s} className="rounded-full bg-brand-soft px-2.5 py-1 text-[11.5px] font-medium text-brand">{s}</span>
               ))}
             </div>
           </CvSection>
@@ -1122,7 +977,7 @@ function CreateCvScreen() {
           {/* Profile summary — the SAME component as My CVs. Read-only here:
               this is Profile data, not CV content, so the builder shows it rather
               than asking for it again. */}
-          <ProfileSummaryCard />
+          <ProfileSummaryCard onEdit={(sec) => setEditing(sec === 'basic' ? 'Profile header' : 'Job preferences')} />
 
           {/* About — FIRST: the CV opens with who this person is, then the history */}
           <div>
@@ -1593,63 +1448,88 @@ function CvSkillsField() {
   const [skills, setSkills] = useState<string[]>([
     'User Experience (UX)', 'Interaction Design', 'Design Systems', 'Product Design', 'User Research',
   ])
-  const [picking, setPicking] = useState(false)
   const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const [hi, setHi] = useState(0)
 
   const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
   const matches = SKILL_CATALOGUE.filter((c) => !skills.includes(c.name) && (!q.trim() || norm(c.name).includes(norm(q))))
-  const add = (n: string) => { setSkills((a) => [...a, n]); setQ(''); setPicking(false) }
+  const add = (n: string) => { setSkills((a) => [...a, n]); setQ(''); setHi(0) }
   const suggested = ROLE_SUGGESTIONS.skills.filter((s) => !skills.includes(s))
 
-  return (
-    <div className="mt-3 rounded-xl border border-line bg-surface p-3.5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {skills.map((s) => (
-          <span key={s} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11.5px] text-ink/80">
-            <b className="font-semibold text-ink">{s}</b>
-            <span onClick={() => setSkills((a) => a.filter((x) => x !== s))} className="cursor-pointer text-[10px] text-faint hover:text-ink">×</span>
-          </span>
-        ))}
-        <button onClick={() => setPicking((o) => !o)} className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-medium text-brand hover:border-brand">＋ Add skill</button>
-      </div>
+  function onKey(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((i) => Math.min(i + 1, matches.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((i) => Math.max(i - 1, 0)) }
+    else if (e.key === 'Enter' && open && matches[hi]) { e.preventDefault(); add(matches[hi].name) }
+    else if (e.key === 'Backspace' && !q && skills.length) setSkills((a) => a.slice(0, -1))
+    else if (e.key === 'Escape') setOpen(false)
+  }
 
-      {/* the picker — search the taxonomy, never free text */}
-      {picking && (
-        <div className="mt-2 overflow-hidden rounded-lg border border-line">
+  return (
+    <div className="mt-3">
+      {/* ONE combobox: the chips and the input live in the same box, so adding a
+          skill is typing — no button, no mode switch. Backspace on an empty input
+          removes the last chip, the way every tag field people already use works. */}
+      <div className="relative">
+        <div
+          onClick={() => setOpen(true)}
+          className={cn(
+            'flex min-h-[42px] cursor-text flex-wrap items-center gap-1.5 rounded-lg border bg-surface px-2 py-1.5 transition-colors',
+            open ? 'border-brand' : 'border-line',
+          )}
+        >
+          {skills.map((s) => (
+            <span key={s} className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-[11.5px] font-medium text-brand">
+              {s}
+              <span onClick={(e) => { e.stopPropagation(); setSkills((a) => a.filter((x) => x !== s)) }} className="cursor-pointer opacity-60 hover:opacity-100">×</span>
+            </span>
+          ))}
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
-            autoFocus
-            placeholder="Search skills — e.g. figma, thiet ke, excel…"
-            className="w-full border-b border-line-soft bg-surface px-3 py-2 text-[12px] outline-none"
+            onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0) }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKey}
+            placeholder={skills.length ? 'Add another…' : 'Type a skill — e.g. figma, thiet ke, excel'}
+            className="min-w-[150px] flex-1 bg-transparent px-1 py-0.5 text-[12px] outline-none"
           />
-          <div className="max-h-[168px] overflow-y-auto">
-            {matches.map((c) => (
-              <button key={c.name} onClick={() => add(c.name)} className="flex w-full items-center justify-between gap-2 border-b border-line-soft px-3 py-1.5 text-left text-[11.5px] text-ink/80 last:border-b-0 hover:bg-canvas/60">
-                {c.name}
-                <span className="shrink-0 text-[10px] text-faint">{c.group}</span>
-              </button>
-            ))}
-            {matches.length === 0 && (
-              <p className="px-3 py-3 text-[11px] text-faint">
-                No match for “{q}”. Skills come from a fixed list — <span className="font-medium text-brand">ask us to add it</span> rather than typing your own.
-              </p>
-            )}
-          </div>
         </div>
-      )}
 
-      {/* role-based suggestions — the payoff of the skill↔role table */}
-      {suggested.length > 0 && (
-        <div className="mt-2.5 rounded-lg bg-brand-soft/50 px-2.5 py-2">
-          <p className="mb-1.5 text-[10.5px] text-brand">
-            ✨ Common for <b className="font-semibold">{ROLE_SUGGESTIONS.role}</b> — your desired role
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {suggested.map((s) => (
-              <span key={s} onClick={() => setSkills((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand hover:bg-brand-soft">＋ {s}</span>
-            ))}
+        {open && (
+          <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+            <div className="max-h-[184px] overflow-y-auto">
+              {matches.map((c, i) => (
+                <button
+                  key={c.name}
+                  onMouseEnter={() => setHi(i)}
+                  onClick={() => add(c.name)}
+                  className={cn('flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12px]', i === hi ? 'bg-brand-soft text-brand' : 'text-ink/80')}
+                >
+                  <span>{c.name}</span>
+                  <span className="shrink-0 text-[10px] text-faint">{c.group}</span>
+                </button>
+              ))}
+              {matches.length === 0 && (
+                <p className="px-3 py-3 text-[11.5px] text-faint">
+                  Nothing matches “{q}”. Skills come from a fixed list —
+                  <span className="ml-1 cursor-pointer font-medium text-brand">request “{q}”</span>
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-line-soft bg-canvas/60 px-3 py-1.5 text-[10px] text-faint">
+              <span>↑↓ to move · ↵ to add · ⌫ to remove</span>
+              <span onClick={() => setOpen(false)} className="cursor-pointer font-medium text-brand">Done</span>
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* role-based suggestions — one tap each, from the skill↔role association */}
+      {suggested.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10.5px] text-faint">Common for {ROLE_SUGGESTIONS.role}:</span>
+          {suggested.map((s) => (
+            <span key={s} onClick={() => add(s)} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand hover:bg-brand-soft">＋ {s}</span>
+          ))}
         </div>
       )}
     </div>
@@ -1665,13 +1545,14 @@ function CvSkillsField() {
    five recruiter-facing facts, as tiles. Both are PROFILE data (1 per jobseeker),
    never CV content — which is why the builder shows them read-only above the CV
    sections rather than asking for them again. */
+/* The SLIM set. Demographics — date of birth, nationality, gender, marital
+   status — were cut platform-wide (Application management, 2026-08-05): nothing
+   in search or matching reads them, and marital status carries a discrimination
+   risk. Do not reinstate them here without changing that decision first. */
 const PROFILE_BASIC: [string, string][] = [
   ['Email', 'minhanh@email.com'],
   ['Điện thoại', '0901 234 567'],
-  ['Ngày sinh', '12/04/1996'],
-  ['Quốc tịch', 'Việt Nam'],
-  ['Giới tính', 'Nữ'],
-  ['Tình trạng hôn nhân', 'Độc thân'],
+  ['Tỉnh / Thành phố', 'Hồ Chí Minh'],
   ['Học vấn cao nhất', 'Cử nhân'],
   ['Số năm kinh nghiệm', '4 năm'],
 ]
@@ -1683,35 +1564,134 @@ const PROFILE_PREFS: [string, string, string][] = [
   ['💰', 'Lương mong muốn', '20 – 30 triệu'],
 ]
 
-function ProfileSummaryCard({ onEdit }: { onEdit?: () => void }) {
+/** The profile photo — the uploaded image, or initials on a tinted circle when
+    there is none. Same fallback the employer's applicant card uses, so a
+    candidate who never uploads one still reads as a person in a board column.
+    Optional by design, and never a screening criterion. */
+function ProfilePhoto({ photo, size = 'sm' }: { photo?: boolean; size?: 'sm' | 'md' | 'lg' }) {
+  const z = {
+    sm: { box: 'h-10 w-10 text-[12.5px]', img: 'text-[22px]' },
+    md: { box: 'h-14 w-14 text-[17px]', img: 'text-[30px]' },
+    lg: { box: 'h-20 w-20 text-[24px]', img: 'text-[42px]' },
+  }[size]
+  return (
+    <span className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-brand-soft font-bold text-brand', z.box)}>
+      {photo ? <span className={z.img}>👩‍💼</span> : 'TA'}
+    </span>
+  )
+}
+
+function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') => void }) {
+  /* Each group carries its OWN edit button: Basic information and Work preference
+     are written by different forms, so one shared pencil at the top would open the
+     wrong one half the time. */
+  const EditBtn = ({ section }: { section: 'basic' | 'prefs' }) =>
+    onEdit ? (
+      <span
+        onClick={() => onEdit(section)}
+        className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40 hover:text-brand"
+      >
+        ✎ Edit
+      </span>
+    ) : null
+
   return (
     <div className="rounded-xl border border-line bg-surface">
-      {/* — BASIC INFORMATION — all 9 fields, exactly the set the edit popup writes — */}
+      {/* — BASIC INFORMATION — */}
       <div className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <ProfilePhoto photo />
           <p className="text-[15px] font-bold text-ink">Trần Minh Anh</p>
-          {onEdit && (
-            <span onClick={onEdit} className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit</span>
-          )}
         </div>
-        <p className="mt-2 mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Basic information</p>
-        <div className="grid gap-x-6 gap-y-1 text-[11.5px] text-ink/80 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-2 mb-1.5 flex items-center justify-between gap-2">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Basic information</p>
+          <EditBtn section="basic" />
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[11.5px] text-ink/80">
           {PROFILE_BASIC.map(([k, v]) => (
             <p key={k}><span className="text-faint">{k}</span> <b className="font-medium text-ink">{v}</b></p>
           ))}
         </div>
       </div>
 
-      {/* — WORK PREFERENCE — the five recruiter-facing facts, as tiles — */}
+      {/* — WORK PREFERENCE — */}
       <div className="border-t border-line-soft px-4 pb-4 pt-3">
-        <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
+          <EditBtn section="prefs" />
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {PROFILE_PREFS.map(([icon, label, value]) => (
             <div key={label} className="rounded-lg border border-line p-2.5">
               <p className="flex items-center gap-1 text-[10.5px] text-faint">{icon} {label}</p>
               <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{value}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Profile quick-edit ──────────────────────────────────────────────────────
+   ONE popup, opened from the ProfileSummaryCard's per-group Edit on BOTH My CVs
+   and the apply modal. Its field list is derived from the same PROFILE_BASIC /
+   PROFILE_PREFS the card renders, so what is shown and what is edited can never
+   drift apart. */
+function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; onClose: () => void }) {
+  /* Whether a photo is set. Starts set, matching the rest of the profile; Remove
+     flips it so the initials fallback is reachable rather than only described. */
+  const [photo, setPhoto] = useState(true)
+  const fields: [string, string][] =
+    section === 'basic'
+      ? [['Full name', 'Trần Minh Anh'], ...PROFILE_BASIC]
+      : PROFILE_PREFS.map(([, label, value]) => [label, value] as [string, string])
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
+      <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <p className="text-[14px] font-bold text-ink">{section === 'basic' ? 'Edit basic information' : 'Edit work preference'}</p>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
+          {/* Photo first — it is the one field here that is OPTIONAL, so it carries no
+              asterisk and says what it is for. Employers see it on the applicant card. */}
+          {section === 'basic' && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-line bg-canvas/40 p-3">
+              <ProfilePhoto photo={photo} size="md" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-ink/80">Profile photo <span className="text-faint">· optional</span></p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <span
+                    onClick={() => setPhoto(true)}
+                    className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40 hover:text-brand"
+                  >
+                    ⬆ {photo ? 'Change photo' : 'Upload photo'}
+                  </span>
+                  {photo && (
+                    <span onClick={() => setPhoto(false)} className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:text-rose-600">
+                      Remove
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+                  JPG / PNG · max 2MB · cropped square here before upload. Recruiters see it on your application card; without one they see your initials.
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2.5">
+            {fields.map(([label, value], i) => (
+              <div key={label} className={cn(i === 0 && 'col-span-2')}>
+                <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<span className="text-rose-500"> *</span></p>
+                <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{value}<span className="text-faint">▾</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+          <Btn onClick={onClose}>Cancel</Btn>
+          <Btn primary onClick={onClose}>Save</Btn>
         </div>
       </div>
     </div>
@@ -1841,22 +1821,38 @@ function AddCvScreen() {
 
         {/* Uploaded — the FILE leads, the decision follows. Two buttons, nothing
             else: keep it as-is, or convert it to the Saramin template. */}
+        {/* Uploaded — the candidate came here to put their PDF on the platform, so
+            SAVE is the primary action and the only one on the main line. Converting
+            is a genuine offer, not a competing choice: it sits BELOW the save, in a
+            quieter card, worded as "there is also this" rather than "pick one". */}
         {step === 'saved' && (
           <div className="mx-auto max-w-[520px]">
             <div className="text-center">
               <p className="text-[22px]">✅</p>
-              <p className="mt-1 text-[18px] font-bold text-ink">CV_TranMinhAnh.pdf uploaded</p>
+              <p className="mt-1 text-[18px] font-bold text-ink">productdesign.pdf uploaded</p>
+              <p className="mt-1 text-[12px] text-muted">Saved exactly as you uploaded it. Recruiters download this file, unchanged.</p>
             </div>
 
             <div className="mt-4">
               <UploadedCvDoc />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <Btn onClick={() => go('js-my-cvs')}>Keep as-is</Btn>
-              <Btn primary onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert to Saramin template</Btn>
+            <div className="mt-4 flex justify-center">
+              <Btn primary onClick={() => go('js-my-cvs')}>Save</Btn>
             </div>
-            <p className="mt-2 text-center text-[10.5px] text-faint">Not converting now? You can do it any time from My CVs.</p>
+
+            {/* the other option — offered, not competing */}
+            <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
+              <p className="text-[12.5px] font-semibold text-ink">✨ One more thing you can do</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                Recruiters search a structured version of your CV, not the file itself. We can read your PDF and build
+                one — it sits beside your file, and your PDF is never changed.
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <Btn onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert to Saramin template</Btn>
+                <span className="text-[10.5px] text-faint">Takes about a minute · you can also do this later from My CVs</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1876,10 +1872,13 @@ function AddCvScreen() {
 function MyCvsScreen() {
   const go = useNav()
   const [searchable, setSearchable] = useState(0)
-  const [editing, setEditing] = useState<null | 'basic'>(null)
+  const [editing, setEditing] = useState<null | 'basic' | 'prefs'>(null)
+  /* Uploaded CVs keep their FILE NAME — that is what the candidate recognises and
+     what they will see again when they pick a CV to apply with. Generated ones get
+     a readable title instead, since there is no file the user named. */
   const cvs = [
-    { name: 'Product Designer CV', kind: 'Uploaded', meta: '26/07/2026 · 1.2 MB', icon: '📄' },
-    { name: 'Business Developer CV', kind: 'Saramin template', meta: 'Generated 26/07/2026', icon: '📃' },
+    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄' },
+    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '📃' },
   ]
 
   return (
@@ -1891,7 +1890,7 @@ function MyCvsScreen() {
         {/* main */}
         <div className="space-y-4">
           {/* Profile summary — SHARED with the Create-CV builder (ProfileSummaryCard) */}
-          <ProfileSummaryCard onEdit={() => setEditing('basic')} />
+          <ProfileSummaryCard onEdit={(sec) => setEditing(sec)} />
 
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -1930,40 +1929,7 @@ function MyCvsScreen() {
       </div>
 
       {/* ── Edit Basic information — the 9 fields, and only those ── */}
-      {editing === 'basic' && (
-        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
-          <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <p className="text-[14px] font-bold text-ink">Edit basic information</p>
-              <span className="cursor-pointer text-faint" onClick={() => setEditing(null)}>✕</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
-              <div className="grid grid-cols-2 gap-2.5">
-                {([
-                  ['Full name', 'Trần Minh Anh'],
-                  ['Email', 'minhanh@email.com'],
-                  ['Phone', '0901 234 567'],
-                  ['Nationality', 'Việt Nam'],
-                  ['Gender', 'Nữ'],
-                  ['Marital status', 'Độc thân'],
-                  ['Date of birth', '12/04/1996'],
-                  ['Highest education', 'Cử nhân'],
-                  ['Years of work experience', '4 năm'],
-                ] as [string, string][]).map(([label, value], i) => (
-                  <div key={label} className={cn(i === 0 && 'col-span-2')}>
-                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<span className="text-rose-500"> *</span></p>
-                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{value}<span className="text-faint">▾</span></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-              <Btn onClick={() => setEditing(null)}>Cancel</Btn>
-              <Btn primary onClick={() => setEditing(null)}>Save</Btn>
-            </div>
-          </div>
-        </div>
-      )}
+      {editing && <ProfileEditPopup section={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
@@ -2011,7 +1977,7 @@ function CvCompareScreen() {
             {/* header — from Profile (onboarding) */}
             <div className="rounded-xl border border-line bg-surface p-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[15px]">🙂</div>
+                <ProfilePhoto photo />
                 <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
                 <span className="ml-auto rounded bg-canvas px-1.5 py-0.5 text-[9.5px] text-faint">from Profile</span>
               </div>

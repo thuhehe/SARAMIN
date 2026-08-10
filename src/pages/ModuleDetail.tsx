@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
@@ -51,38 +52,101 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
   )
 }
 
+/* Sub-points.
+
+   These are dense: two to four sentences each, a dozen of them. Run together
+   under identical dots they read as one grey mass, which is the actual "too
+   long" problem — not the word count. So each point is set as a small
+   HEADING + BODY pair:
+
+     3   ALIAS RULES
+         an alias is a way people WRITE a skill, never a different thing…
+
+   The heading is the short phrase authors already write before a "—" or ":",
+   lifted onto its own line. That makes the list skimmable on headings alone,
+   and gives the body a clean left edge to read down. A hairline separates the
+   rows, the number gives position, and long lists keep the tail one click
+   away. Points with no such lead-in simply render as one line of text. */
+const LEAD_IN = /^([^—:]{2,44}?)(\s*—\s+|:\s+)([\s\S]+)$/
+
+function ReqBullet({ t, n, dense }: { t: string; n: number; dense?: boolean }) {
+  const m = t.includes('**') ? null : t.match(LEAD_IN)
+  const body = cn('leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[12.5px] text-ink/70')
+  return (
+    <li className={cn('grid grid-cols-[20px_minmax(0,1fr)] gap-x-1', dense ? 'py-1.5' : 'py-2')}>
+      <span className={cn('mt-[3px] tabular-nums font-medium text-faint', dense ? 'text-[10px]' : 'text-[10.5px]')}>{n}</span>
+      <div className="min-w-0">
+        {m ? (
+          <>
+            <p className={cn('font-semibold leading-snug text-ink', dense ? 'text-[11.5px]' : 'text-[12px]')}>{m[1]}</p>
+            <p className={cn('mt-0.5', body)}><Rich t={m[3]} /></p>
+          </>
+        ) : (
+          <p className={body}><Rich t={t} /></p>
+        )}
+      </div>
+    </li>
+  )
+}
+
+function ReqBullets({ items, dense }: { items: string[]; dense?: boolean }) {
+  const CUT = 4
+  const [open, setOpen] = useState(items.length <= CUT + 1)
+  const shown = open ? items : items.slice(0, CUT)
+  return (
+    <div className="mt-2.5 max-w-[80ch]">
+      <ul className="divide-y divide-line-soft border-t border-line-soft">
+        {shown.map((it, j) => <ReqBullet key={j} t={it} n={j + 1} dense={dense} />)}
+      </ul>
+      {items.length > CUT + 1 && (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="mt-1.5 text-[11px] font-medium text-brand hover:underline"
+        >
+          {open ? '− Show less' : `+ ${items.length - CUT} more points`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* One requirement card. Label · lead sentence · table · sub-points · warning —
+   all visible; only a long sub-point list truncates (see ReqBullets). Prose is
+   capped at a readable measure instead of running the full window width. */
+function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolean }) {
+  const measure = 'max-w-[80ch]'
+  return (
+    <div className={cn('rounded-xl border border-line bg-surface', dense ? 'px-3 py-2.5' : 'px-4 py-3.5')}>
+      <p className={cn('font-semibold leading-snug text-ink', dense ? 'text-[12px]' : 'text-[13.5px]')}>
+        <Rich t={r.label} />
+      </p>
+      {r.text && (
+        <p className={cn('mt-1.5 leading-relaxed', measure, dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}>
+          <Rich t={r.text} />
+        </p>
+      )}
+      {r.table && <ReqTableView t={r.table} dense={dense} />}
+      {r.items && <ReqBullets items={r.items} dense={dense} />}
+      {r.warn && (
+        <p className={cn('mt-2.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 leading-relaxed text-amber-800', measure, dense ? 'text-[11.5px]' : 'text-[12px]')}>
+          ⚠️ <Rich t={r.warn} />
+        </p>
+      )}
+    </div>
+  )
+}
+
 function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean }) {
   return (
     <div className={dense ? 'space-y-2' : 'space-y-2.5'}>
       {items.map((r, i) =>
         typeof r === 'string' ? (
-          <div key={i} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12.5px] text-muted' : 'text-[13.5px] text-ink/80')}>
+          <div key={i} className={cn('flex gap-2 leading-relaxed max-w-[78ch]', dense ? 'text-[12.5px] text-muted' : 'text-[13.5px] text-ink/80')}>
             <span className={cn('mt-2 h-1 w-1 shrink-0 rounded-full', dense ? 'bg-faint' : 'bg-brand')} />
             <Rich t={r} />
           </div>
         ) : (
-          <div key={i} className={cn('rounded-xl border border-line bg-surface', dense ? 'px-3 py-2.5' : 'px-4 py-3')}>
-            <p className={cn('font-semibold text-ink', dense ? 'text-[12px]' : 'text-[13px]')}><Rich t={r.label} /></p>
-            {r.text && (
-              <p className={cn('mt-1 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}><Rich t={r.text} /></p>
-            )}
-            {r.table && <ReqTableView t={r.table} dense={dense} />}
-            {r.items && (
-              <ul className="mt-2 space-y-1">
-                {r.items.map((it, j) => (
-                  <li key={j} className={cn('flex gap-2 leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[12.5px] text-ink/75')}>
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-faint" />
-                    <Rich t={it} />
-                  </li>
-                ))}
-              </ul>
-            )}
-            {r.warn && (
-              <p className={cn('mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 leading-relaxed text-amber-800', dense ? 'text-[11.5px]' : 'text-[12px]')}>
-                ⚠️ <Rich t={r.warn} />
-              </p>
-            )}
-          </div>
+          <ReqCard key={i} r={r} dense={dense} />
         ),
       )}
     </div>
