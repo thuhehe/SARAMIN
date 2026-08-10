@@ -2062,6 +2062,8 @@ function MyCvsScreen() {
 function CvCompareScreen() {
   const go = useNav()
   const [added, setAdded] = useState<string[]>([])
+  /* An extracted word that resolved to no taxonomy row — the miss path. */
+  const [resolved, setResolved] = useState<'picked' | 'requested' | null>(null)
   const SUGGESTED = ['Design Systems', 'Prototyping', 'User Research', 'Wireframing']
   return (
     <div>
@@ -2131,15 +2133,37 @@ function CvCompareScreen() {
               <p className="text-[12px] font-semibold text-ink">University of Economics HCMC</p>
               <p className="text-[10.5px] text-faint">Bachelor · Business Information Systems · 2016 – 2020</p>
             </div>
-            {/* skills — extracted + AI-SUGGESTED one-tap chips */}
+            {/* skills — the resolution pipeline made visible: words the parser
+                pulled off the PDF either MATCHED a taxonomy row (chip) or did
+                not (the amber row below). Nothing is saved until confirmed. */}
             <div className="rounded-xl border border-line bg-surface p-3.5">
               <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-brand">Skills</p>
               <div className="flex flex-wrap gap-1.5">
                 <Chip tone="blue">Figma</Chip><Chip tone="blue">UI Design</Chip>
                 {added.map((s) => <Chip key={s} tone="blue">{s}</Chip>)}
               </div>
+              {/* the MISS path — an extracted word that matched no taxonomy row
+                  and no alias. It is never guessed into a neighbour and never
+                  saved silently: the candidate picks a real row or asks for it. */}
+              {!resolved && (
+                <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
+                  <p className="text-[10.5px] font-semibold text-amber-800">1 word from your PDF isn’t in our skill list</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="rounded border border-dashed border-amber-400 bg-surface px-2 py-1 text-[11px] text-ink/70">“Design Thinking”</span>
+                    <span onClick={() => setResolved('picked')} className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/80 hover:border-brand/50">Pick from the list</span>
+                    <span onClick={() => setResolved('requested')} className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/80 hover:border-brand/50">Request it</span>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-amber-800/80">We never guess a close match — it would put a skill on your CV that you didn’t choose.</p>
+                </div>
+              )}
+              {resolved === 'picked' && (
+                <p className="mt-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[10.5px] text-muted">Skipped “Design Thinking” — nothing was added to your CV.</p>
+              )}
+              {resolved === 'requested' && (
+                <p className="mt-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[10.5px] text-muted">Sent “Design Thinking” to the team for review. It isn’t on your CV yet.</p>
+              )}
               <div className="mt-2.5 rounded-lg bg-brand-soft/50 p-2.5">
-                <p className="mb-1.5 text-[10.5px] font-semibold text-brand">AI suggests — people with your experience also list:</p>
+                <p className="mb-1.5 text-[10.5px] font-semibold text-brand">Common for Product Designer — your desired role:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTED.filter((s) => !added.includes(s)).map((s) => (
                     <span key={s} onClick={() => setAdded((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft">＋ {s}</span>

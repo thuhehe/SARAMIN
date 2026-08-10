@@ -1,45 +1,45 @@
 id,group,name_vi,name_en,aliases,roles,is_active
-1001,IT — Software,React,React,ReactJS|React.js|react js|Reactjs,Frontend Engineer|Fullstack Engineer,TRUE
-1002,IT — Software,JavaScript,JavaScript,JS|Javascript|ECMAScript|java script,Frontend Engineer|Fullstack Engineer,TRUE
-1003,IT — Software,Java,Java,Java SE|Core Java|Java Core,Backend Engineer|Fullstack Engineer,TRUE
-1004,IT — Software,TypeScript,TypeScript,TS|Typescript|type script,Frontend Engineer|Fullstack Engineer,TRUE
-1005,IT — Software,Node.js,Node.js,NodeJS|Node|node js|Nodejs,Backend Engineer|Fullstack Engineer,TRUE
-1006,IT — Software,Python,Python,Python3|Python 3,Backend Engineer|Data Analyst,TRUE
-1007,IT — Software,SQL,SQL,Structured Query Language|T-SQL|PL/SQL,Backend Engineer|Data Analyst|Business Analyst,TRUE
-1008,IT — Software,.NET,.NET,dotnet|dot net|.Net,Backend Engineer,TRUE
-1009,IT — Software,ASP.NET Core,ASP.NET Core,ASP.NET|ASPNET Core|asp net core,Backend Engineer,TRUE
-1010,IT — Software,Docker,Docker,,DevOps Engineer|Backend Engineer,TRUE
-1011,IT — Software,Kubernetes,Kubernetes,K8s|k8s,DevOps Engineer,TRUE
-1012,IT — Software,AWS,AWS,Amazon Web Services|Amazon AWS,DevOps Engineer|Backend Engineer,TRUE
-1013,IT — Software,Kiểm thử phần mềm,Software Testing,kiem thu phan mem|QA Testing|Manual Testing|Testing,QA Engineer,TRUE
-1014,IT — Software,Phân tích nghiệp vụ,Business Analysis,phan tich nghiep vu|BA|Business Analyst Skills,Business Analyst,TRUE
-2001,Design,Figma,Figma,,Product Designer|Graphic Designer,TRUE
-2002,Design,Thiết kế đồ hoạ,Graphic Design,thiet ke do hoa|Graphics Design|Đồ hoạ|do hoa,Graphic Designer,TRUE
-2003,Design,Thiết kế UI/UX,UI/UX Design,UIUX|UX/UI|UI UX|thiet ke ui ux|Thiết kế giao diện,Product Designer,TRUE
-2004,Design,Adobe Photoshop,Adobe Photoshop,Photoshop|PTS|Ps,Graphic Designer,TRUE
-2005,Design,Adobe Illustrator,Adobe Illustrator,Illustrator|Adobe Ai,Graphic Designer,TRUE
-2006,Design,Nghiên cứu người dùng,User Research,nghien cuu nguoi dung|UX Research,Product Designer|UX Researcher,TRUE
-2007,Design,Design System,Design System,Design Systems|Hệ thống thiết kế,Product Designer,TRUE
-3001,Marketing,Digital Marketing,Digital Marketing,Marketing số|marketing so|Tiếp thị số|Online Marketing,Digital Marketing,TRUE
-3002,Marketing,SEO,SEO,Search Engine Optimization|Tối ưu công cụ tìm kiếm|toi uu cong cu tim kiem,SEO Specialist|Digital Marketing,TRUE
-3003,Marketing,Facebook Ads,Facebook Ads,FB Ads|Meta Ads|Quảng cáo Facebook|quang cao facebook,Digital Marketing,TRUE
-3004,Marketing,Google Ads,Google Ads,Google Adwords|Adwords|Quảng cáo Google|quang cao google,Digital Marketing|SEO Specialist,TRUE
-3005,Marketing,Sáng tạo nội dung,Content Marketing,sang tao noi dung|Content|Content Writing|Viết nội dung,Content Marketing,TRUE
-3006,Marketing,Nghiên cứu thị trường,Market Research,nghien cuu thi truong,Digital Marketing|Business Development,TRUE
-4001,Sales,Bán hàng B2B,B2B Sales,ban hang b2b|Kinh doanh B2B|B2B,Sales Executive|Business Development,TRUE
-4002,Sales,Chăm sóc khách hàng,Customer Service,cham soc khach hang|CSKH|Customer Support|Dịch vụ khách hàng,Customer Service,TRUE
-4003,Sales,Đàm phán,Negotiation,dam phan|Thương lượng,Sales Executive|Business Development,TRUE
-4004,Sales,Phát triển kinh doanh,Business Development,phat trien kinh doanh|BD,Business Development,TRUE
-5001,Accounting & Finance,Kế toán tổng hợp,General Accounting,ke toan tong hop,General Accountant,TRUE
-5002,Accounting & Finance,Kế toán thuế,Tax Accounting,ke toan thue|Thuế|Kế toán thuế GTGT,Tax Accountant|General Accountant,TRUE
+1001,IT — Software,React,React,ReactJS|React.js|react js|Reactjs,Frontend Engineer:E|Fullstack Engineer:O,TRUE
+1002,IT — Software,JavaScript,JavaScript,JS|Javascript|ECMAScript|java script,Frontend Engineer:E|Fullstack Engineer:E,TRUE
+1003,IT — Software,Java,Java,Java SE|Core Java|Java Core,Backend Engineer:E|Fullstack Engineer:O,TRUE
+1004,IT — Software,TypeScript,TypeScript,TS|Typescript|type script,Frontend Engineer:O|Fullstack Engineer:O,TRUE
+1005,IT — Software,Node.js,Node.js,NodeJS|Node|node js|Nodejs,Backend Engineer:E|Fullstack Engineer:E,TRUE
+1006,IT — Software,Python,Python,Python3|Python 3,Backend Engineer:O|Data Analyst:E,TRUE
+1007,IT — Software,SQL,SQL,Structured Query Language|T-SQL|PL/SQL,Backend Engineer:E|Data Analyst:E|Business Analyst:E,TRUE
+1008,IT — Software,.NET,.NET,dotnet|dot net|.Net,Backend Engineer:O,TRUE
+1009,IT — Software,ASP.NET Core,ASP.NET Core,ASP.NET|ASPNET Core|asp net core,Backend Engineer:O,TRUE
+1010,IT — Software,Docker,Docker,,DevOps Engineer:E|Backend Engineer:O,TRUE
+1011,IT — Software,Kubernetes,Kubernetes,K8s|k8s,DevOps Engineer:E,TRUE
+1012,IT — Software,AWS,AWS,Amazon Web Services|Amazon AWS,DevOps Engineer:E|Backend Engineer:O,TRUE
+1013,IT — Software,Kiểm thử phần mềm,Software Testing,kiem thu phan mem|QA Testing|Manual Testing|Testing,QA Engineer:E,TRUE
+1014,IT — Software,Phân tích nghiệp vụ,Business Analysis,phan tich nghiep vu|BA|Business Analyst Skills,Business Analyst:E,TRUE
+2001,Design,Figma,Figma,,Product Designer:E|Graphic Designer:O,TRUE
+2002,Design,Thiết kế đồ hoạ,Graphic Design,thiet ke do hoa|Graphics Design|Đồ hoạ|do hoa,Graphic Designer:E,TRUE
+2003,Design,Thiết kế UI/UX,UI/UX Design,UIUX|UX/UI|UI UX|thiet ke ui ux|Thiết kế giao diện,Product Designer:E,TRUE
+2004,Design,Adobe Photoshop,Adobe Photoshop,Photoshop|PTS|Ps,Graphic Designer:E,TRUE
+2005,Design,Adobe Illustrator,Adobe Illustrator,Illustrator|Adobe Ai,Graphic Designer:E,TRUE
+2006,Design,Nghiên cứu người dùng,User Research,nghien cuu nguoi dung|UX Research,Product Designer:O|UX Researcher:E,TRUE
+2007,Design,Design System,Design System,Design Systems|Hệ thống thiết kế,Product Designer:O,TRUE
+3001,Marketing,Digital Marketing,Digital Marketing,Marketing số|marketing so|Tiếp thị số|Online Marketing,Digital Marketing:E,TRUE
+3002,Marketing,SEO,SEO,Search Engine Optimization|Tối ưu công cụ tìm kiếm|toi uu cong cu tim kiem,SEO Specialist:E|Digital Marketing:O,TRUE
+3003,Marketing,Facebook Ads,Facebook Ads,FB Ads|Meta Ads|Quảng cáo Facebook|quang cao facebook,Digital Marketing:E,TRUE
+3004,Marketing,Google Ads,Google Ads,Google Adwords|Adwords|Quảng cáo Google|quang cao google,Digital Marketing:E|SEO Specialist:O,TRUE
+3005,Marketing,Sáng tạo nội dung,Content Marketing,sang tao noi dung|Content|Content Writing|Viết nội dung,Content Marketing:E,TRUE
+3006,Marketing,Nghiên cứu thị trường,Market Research,nghien cuu thi truong,Digital Marketing:O|Business Development:O,TRUE
+4001,Sales,Bán hàng B2B,B2B Sales,ban hang b2b|Kinh doanh B2B|B2B,Sales Executive:E|Business Development:E,TRUE
+4002,Sales,Chăm sóc khách hàng,Customer Service,cham soc khach hang|CSKH|Customer Support|Dịch vụ khách hàng,Customer Service:E,TRUE
+4003,Sales,Đàm phán,Negotiation,dam phan|Thương lượng,Sales Executive:E|Business Development:E,TRUE
+4004,Sales,Phát triển kinh doanh,Business Development,phat trien kinh doanh|BD,Business Development:E,TRUE
+5001,Accounting & Finance,Kế toán tổng hợp,General Accounting,ke toan tong hop,General Accountant:E,TRUE
+5002,Accounting & Finance,Kế toán thuế,Tax Accounting,ke toan thue|Thuế|Kế toán thuế GTGT,Tax Accountant:E|General Accountant:O,TRUE
 5003,Accounting & Finance,Microsoft Excel,Microsoft Excel,Excel|MS Excel|Excel nâng cao|excel nang cao,*,TRUE
-5004,Accounting & Finance,MISA,MISA,Phần mềm MISA|phan mem misa|MISA SME,General Accountant|Tax Accountant,TRUE
-5005,Accounting & Finance,SAP,SAP,SAP ERP|SAP FICO,General Accountant|Financial Analyst,TRUE
-5006,Accounting & Finance,Báo cáo tài chính,Financial Reporting,bao cao tai chinh|BCTC,Financial Analyst|General Accountant,TRUE
-6001,HR,Tuyển dụng,Recruitment,tuyen dung|Recruiting|Talent Acquisition,Recruiter|HR Generalist,TRUE
-6002,HR,Tính lương,Payroll,tinh luong|Bảng lương,C&B Specialist|HR Generalist,TRUE
-6003,HR,Lương thưởng & phúc lợi,Compensation & Benefits,luong thuong va phuc loi|C&B|CandB,C&B Specialist,TRUE
-6004,HR,Quan hệ lao động,Employee Relations,quan he lao dong|Luật lao động,HR Generalist,TRUE
+5004,Accounting & Finance,MISA,MISA,Phần mềm MISA|phan mem misa|MISA SME,General Accountant:O|Tax Accountant:O,TRUE
+5005,Accounting & Finance,SAP,SAP,SAP ERP|SAP FICO,General Accountant:O|Financial Analyst:O,TRUE
+5006,Accounting & Finance,Báo cáo tài chính,Financial Reporting,bao cao tai chinh|BCTC,Financial Analyst:E|General Accountant:O,TRUE
+6001,HR,Tuyển dụng,Recruitment,tuyen dung|Recruiting|Talent Acquisition,Recruiter:E|HR Generalist:E,TRUE
+6002,HR,Tính lương,Payroll,tinh luong|Bảng lương,C&B Specialist:E|HR Generalist:O,TRUE
+6003,HR,Lương thưởng & phúc lợi,Compensation & Benefits,luong thuong va phuc loi|C&B|CandB,C&B Specialist:E,TRUE
+6004,HR,Quan hệ lao động,Employee Relations,quan he lao dong|Luật lao động,HR Generalist:E,TRUE
 7001,Office & General,Microsoft Word,Microsoft Word,Word|MS Word,*,TRUE
 7002,Office & General,Microsoft PowerPoint,Microsoft PowerPoint,PowerPoint|PPT|MS PowerPoint,*,TRUE
 7003,Office & General,Quản lý dự án,Project Management,quan ly du an|Project Mgmt,*,TRUE
