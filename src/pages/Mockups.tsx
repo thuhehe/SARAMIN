@@ -1545,23 +1545,28 @@ function CvSkillsField() {
    five recruiter-facing facts, as tiles. Both are PROFILE data (1 per jobseeker),
    never CV content — which is why the builder shows them read-only above the CV
    sections rather than asking for them again. */
-/* The SLIM set. Demographics — date of birth, nationality, gender, marital
-   status — were cut platform-wide (Application management, 2026-08-05): nothing
-   in search or matching reads them, and marital status carries a discrimination
-   risk. Do not reinstate them here without changing that decision first. */
+/* Basic information — the profile's identity block. The demographic four (date of
+   birth, nationality, gender, marital status) are REINSTATED per client direction
+   (2026-08-09), reversing the 2026-08-05 cut. Note none of them is read by search
+   or matching, and marital status still carries a discrimination risk — see the
+   open question on Application management. CURRENT location is not held here:
+   what matters for matching is DESIRED location, which lives in Work preference. */
 const PROFILE_BASIC: [string, string][] = [
   ['Email', 'minhanh@email.com'],
   ['Điện thoại', '0901 234 567'],
-  ['Tỉnh / Thành phố', 'Hồ Chí Minh'],
+  ['Ngày sinh', '12/04/1996'],
+  ['Quốc tịch', 'Việt Nam'],
+  ['Giới tính', 'Nữ'],
+  ['Tình trạng hôn nhân', 'Độc thân'],
   ['Học vấn cao nhất', 'Cử nhân'],
   ['Số năm kinh nghiệm', '4 năm'],
 ]
 const PROFILE_PREFS: [string, string, string][] = [
-  ['🔧', 'Vị trí mong muốn', 'Senior Product Designer'],
-  ['🗂', 'Ngành nghề', 'Design'],
-  ['🏭', 'Lĩnh vực', 'IT / Software · FMCG'],
-  ['📍', 'Nơi làm việc', 'Hồ Chí Minh · Hà Nội'],
-  ['💰', 'Lương mong muốn', '20 – 30 triệu'],
+  ['🔧', 'Desired job title', 'Senior Product Designer'],
+  ['🗂', 'Desired job category', 'Design'],
+  ['🏭', 'Desired industry', 'IT / Software · FMCG'],
+  ['📍', 'Desired location', 'Hồ Chí Minh · Hà Nội'],
+  ['💰', 'Desired salary', '20 – 30 triệu'],
 ]
 
 /** The profile photo — the uploaded image, or initials on a tinted circle when
@@ -2443,7 +2448,7 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
                 All four are OPTIONAL: they are never employer search facets, so
                 they must never block someone from finishing sign-up. */}
             <div className="mt-4">
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details <span className="font-normal normal-case tracking-normal">· optional</span></p>
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
               <div className="grid grid-cols-2 gap-2">
                 {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
                   <div key={label}>
@@ -2512,7 +2517,7 @@ function SignUpScreen() {
 
             {/* the rest of Basic information — optional, never search facets */}
             <div>
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details <span className="font-normal normal-case tracking-normal">· optional</span></p>
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
               <div className="grid grid-cols-2 gap-2">
                 {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
                   <div key={label}>
@@ -2529,7 +2534,6 @@ function SignUpScreen() {
           <button onClick={() => go('js-onboarding')} className="mt-4 w-full rounded-lg bg-brand py-2.5 text-[13px] font-semibold text-white">Create account</button>
           <p className="mt-3 text-center text-[11.5px] text-muted">Already have an account? <span className="cursor-pointer font-medium text-brand">Sign in</span></p>
         </div>
-        <p className="mt-3 text-[11px] text-faint">Next: we’ll help you build your profile — upload a CV or answer a few questions.</p>
       </div>
     </div>
   )

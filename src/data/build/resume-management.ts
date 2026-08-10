@@ -40,7 +40,7 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Group', 'Stored in', 'Cardinality', 'Holds', 'Collected'],
         rows: [
-          ['1 · Basic information', 'Profile', '1 per jobseeker', 'Full name · email · phone · province/city · highest education · years of work experience. NO demographics — date of birth, nationality, gender and marital status were cut platform-wide (2026-08-05): nothing in search or matching reads them, and marital status carries a discrimination risk.', 'Sign up (name, email) · social completion step (phone) · Onboarding (location, education, years)'],
+          ['1 · Basic information', 'Profile', '1 per jobseeker', 'Full name · email · phone · date of birth · nationality · gender · marital status · highest education · years of work experience. The demographic four were reinstated 2026-08-09 (reversing the 05-08 cut) — none is read by search or matching; see the open question on Application management. CURRENT location is NOT held: matching reads DESIRED location, which sits in Work preference.', 'Sign up (name, email) · social completion step (phone) · Onboarding (education, years, demographics)'],
           ['2 · Work preference', 'Profile', '1 per jobseeker', 'Desired job category · desired job role · desired industry (≤3) · desired work location (≤3) · expected salary', 'Onboarding wizard (4 steps)'],
           ['3 · CV content', 'CV', 'up to 3 per jobseeker', 'About · work experience[] · education[] · skills[] · certificates[] · languages[] · projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
         ],
@@ -56,6 +56,27 @@ export const resumeManagement: BuildModule = {
         'If Profile and a CV disagree, employer search reads Profile + the searchable CV — mismatches on the searchable CV are surfaced to the user, never silent.',
       ],
       warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table (group 3), never on the Profile. Search = Profile (Basic information + Work preference) JOIN the searchable CV (CV content).',
+    },
+    {
+      label: 'HOW THIS DIFFERS FROM VIETNAMWORKS — “Saramin CV” is a FORMAT, not a second kind of thing',
+      text: 'Worth stating explicitly, because the two models look similar on screen and are not the same underneath. VietnamWorks holds ONE structured profile plus any number of uploaded PDFs — two different KINDS of object, presented as peers only at the moment of applying. We hold up to 3 CVs of ONE kind; “Saramin template” and “PDF” are just the FORMAT a CV happens to be in.',
+      table: {
+        cols: ['', 'VietnamWorks', 'Saramin VN (ours)'],
+        rows: [
+          ['Structured record', 'Exactly ONE profile per person. Cannot be tailored — there is only one.', 'Up to 3 CVs, each carrying its OWN structured content.'],
+          ['Uploaded files', 'N PDFs, held as opaque attachments beside the profile.', 'A PDF IS a CV. Same object, same list, same level.'],
+          ['What “format” means', 'Profile vs PDF are different KINDS of thing that happen to sit next to each other.', 'Saramin-template vs PDF is only how one CV is rendered.'],
+          ['Tailoring for a role', 'Upload a different PDF — but that version is invisible to search, because a PDF has no structured layer.', 'Create a second CV — it stays structured, so a tailored version is still a first-class CV.'],
+          ['What recruiters search', 'The single profile, always.', 'The ONE CV the candidate marks searchable, plus the Profile.'],
+          ['Applying', 'Pick the profile OR one of the PDFs.', 'Pick any one of your CVs.'],
+        ],
+      },
+      items: [
+        'The practical gain: on VietnamWorks a tailored CV costs you searchability, because tailoring means uploading a PDF and PDFs are not searched. Here tailoring and being findable are not a trade-off — every CV is structured, whichever format it is in.',
+        'The practical cost, and it is real: only ONE of the 3 CVs feeds search at a time. A candidate with a Developer CV and a Sales CV is discoverable as one of them, never both. VietnamWorks has no such ambiguity because it only ever has one profile.',
+        'Naming follows the model: a CV is labelled by its FORMAT (“Uploaded” / “Saramin”), never by a class of object. Wording that implies “your profile vs your files” recreates the VietnamWorks split we deliberately avoided.',
+      ],
+      warn: 'Because 2 of 3 CVs are invisible to search at any moment, the control that picks the searchable one is load-bearing UI, not a nicety. Its current label “Cho phép tìm kiếm” reads as a visibility switch (“allow searching”) when it actually means “THIS is the CV employers see” — the most likely source of a “my skills are on my CV but nobody finds me” support ticket.',
     },
     {
       label: 'Add a new CV — ONE entry, two routes, shared everywhere',
