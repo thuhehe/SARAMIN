@@ -1805,8 +1805,15 @@ function UploadedCvDoc({ highlightDates, compact }: { highlightDates?: boolean; 
 function AddCvScreen() {
   const go = useNav()
   const [step, setStep] = useState<'choose' | 'upload' | 'saved' | 'reading'>('choose')
+  /* Save is the LAST moment we can make the offer — after this the candidate is
+     gone to My CVs and the upload sits there unsearchable. The card below the
+     file makes the offer calmly to anyone who reads it; this catches everyone who
+     scrolled past it and went straight for the button. It is a genuine offer, not
+     a trap: "just save" is a real, equal-weight way out. */
+  const [ask, setAsk] = useState(false)
+  const convert = () => { setAsk(false); setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }
   return (
-    <div>
+    <div className="relative">
       <JsHeader active="CV & Profile" />
       <div className={cn('mx-auto px-5 py-8', step === 'upload' || step === 'saved' ? 'max-w-[860px]' : 'max-w-[620px]')}>
         <button onClick={() => go('js-my-cvs')} className="mb-5 text-[11.5px] font-medium text-muted hover:text-brand">← Back to My CVs</button>
@@ -1870,7 +1877,7 @@ function AddCvScreen() {
             </div>
 
             <div className="mt-4 flex justify-center">
-              <Btn primary onClick={() => go('js-my-cvs')}>Save</Btn>
+              <Btn primary onClick={() => setAsk(true)}>Save</Btn>
             </div>
 
             {/* the other option — offered, not competing */}
@@ -1881,10 +1888,11 @@ function AddCvScreen() {
                 one — it sits beside your file, and your PDF is never changed.
               </p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                <Btn onClick={() => { setStep('reading'); setTimeout(() => go('js-cv-compare'), 1500) }}>Convert to Saramin template</Btn>
+                <Btn onClick={convert}>Convert to Saramin template</Btn>
                 <span className="text-[10.5px] text-faint">Takes about a minute · you can also do this later from My CVs</span>
               </div>
             </div>
+
           </div>
         )}
 
@@ -1897,6 +1905,48 @@ function AddCvScreen() {
           </div>
         )}
       </div>
+            {/* Last-chance offer on Save. The reasons are the REAL mechanics of the
+          product, not flattery: an uploaded PDF cannot be searched, so a
+          candidate who only ever uploads is invisible to the recruiters
+          already looking for them. Everything here is reversible and the PDF
+          is untouched — which is why the ask is fair to make at all. */}
+      {ask && (
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-10">
+          <div className="w-full max-w-[430px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="px-5 pt-5">
+              <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-[20px]">✨</div>
+              <p className="text-[16px] font-bold leading-snug text-ink">
+                Make this CV searchable by recruiters?
+              </p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
+                Your PDF is saved. But recruiters search the <b className="text-ink/80">structured</b> Saramin CV — not the file.
+                Convert it and you show up in their searches too.
+              </p>
+
+              <div className="mt-3.5 space-y-2">
+                {[
+                  ['🔍', <>Appear in recruiter search — an uploaded PDF can be <b className="text-ink/80">downloaded, not found</b>.</>],
+                  ['⚡', <>AI fills it in from the PDF you just uploaded — about a minute, and you review before it saves.</>],
+                  ['📄', <>Your original PDF stays <b className="text-ink/80">exactly as-is</b>. The Saramin CV sits beside it; you pick which one to apply with.</>],
+                ].map(([icon, text], i) => (
+                  <div key={i} className="flex gap-2.5">
+                    <span className="mt-px shrink-0 text-[13px]">{icon}</span>
+                    <p className="text-[11.5px] leading-relaxed text-ink/75">{text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 border-t border-line-soft bg-canvas/40 px-5 py-3.5">
+              <Btn primary onClick={convert}>Convert to Saramin CV</Btn>
+              {/* Equal-weight exit: the candidate came to upload a file, and
+                  they must be able to finish doing exactly that. */}
+              <Btn onClick={() => go('js-my-cvs')}>No thanks, just save my PDF</Btn>
+              <p className="text-center text-[10.5px] text-faint">You can convert any time from My CVs.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1904,6 +1954,7 @@ function AddCvScreen() {
 function MyCvsScreen() {
   const go = useNav()
   const [searchable, setSearchable] = useState(0)
+  const [menu, setMenu] = useState<number | null>(null)
   const [editing, setEditing] = useState<null | 'basic' | 'prefs'>(null)
   /* Uploaded CVs keep their FILE NAME — that is what the candidate recognises and
      what they will see again when they pick a CV to apply with. Generated ones get
@@ -1931,28 +1982,66 @@ function MyCvsScreen() {
             <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>
           </div>
 
-          {/* CV list — named CVs, kind as a tag, per-CV searchable toggle (exactly one on) */}
+          {/* CV list — ONE named action per row (View as employer, the only thing a
+              candidate does often) and everything else behind ⋯. Four peer links put
+              Delete one stray click from View; a menu costs one click and removes that.
+              The searchable switch lives in the menu too, where there is finally room
+              for the sentence that makes it truthful. */}
           <div className="space-y-2.5">
             {cvs.map((c, i) => (
-              <div key={c.name} className={cn('flex items-center gap-3 rounded-xl border bg-surface p-4', searchable === i ? 'border-brand/40' : 'border-line')}>
+              <div key={c.name} className={cn('relative flex items-start gap-3 rounded-xl border bg-surface p-4', searchable === i ? 'border-brand/40 bg-brand-soft/25' : 'border-line')}>
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-rose-50 text-[16px]">{c.icon}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink">{c.name} <Chip tone={c.kind === 'Saramin template' ? 'blue' : 'muted'}>{c.kind}</Chip></p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink">
+                    {c.name}
+                    <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
+                    {searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
+                  </p>
                   <p className="text-[11px] text-faint">{c.meta}</p>
+                  {/* The one named action, stacked under the meta line — left column,
+                      same place as the reference. The ⋯ button holds the rest. */}
+                  <span className="mt-1 inline-block cursor-pointer text-[11.5px] font-medium text-brand">View as employer</span>
                 </div>
-                {/* Cho phép tìm kiếm — switching one ON switches the other OFF (1 searchable CV) */}
-                <label onClick={() => setSearchable(i)} className="flex shrink-0 cursor-pointer items-center gap-1.5">
-                  <span className="text-[11px] text-muted">Cho phép tìm kiếm</span>
-                  <span className={cn('relative h-4 w-7 rounded-full transition-colors', searchable === i ? 'bg-emerald-500' : 'bg-line')}>
-                    <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
-                  </span>
-                </label>
-                <div className="hidden shrink-0 items-center gap-3 text-[11px] font-medium text-brand sm:flex">
-                  <span className="cursor-pointer">View</span>
-                  <span className="cursor-pointer">Đổi tên</span>
-                  <span className="cursor-pointer">Tải xuống</span>
-                  <span className="cursor-pointer text-muted">Delete</span>
-                </div>
+
+                <button
+                  onClick={() => setMenu(menu === i ? null : i)}
+                  className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border text-[15px] leading-none text-muted', menu === i ? 'border-line bg-canvas' : 'border-transparent hover:border-line hover:bg-canvas')}
+                >⋯</button>
+
+                {menu === i && (
+                  <>
+                    {/* click-away */}
+                    <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
+                    <div className="absolute right-3 top-12 z-30 w-[248px] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">
+                      {[
+                        { icon: '⤓', label: 'Tải xuống' },
+                        { icon: '✎', label: 'Đổi tên' },
+                        { icon: '🗑', label: 'Xoá', danger: true },
+                      ].map((a) => (
+                        <button
+                          key={a.label}
+                          onClick={() => setMenu(null)}
+                          className={cn('flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] hover:bg-canvas', a.danger ? 'text-rose-600' : 'text-ink')}
+                        >
+                          <span className="w-3.5 text-center text-faint">{a.icon}</span>{a.label}
+                        </button>
+                      ))}
+
+                      {/* The switch that decides which CV recruiters can find. Its old
+                          label “Cho phép tìm kiếm” read as a privacy switch; it actually
+                          means “THIS is the one employers see”, so it says that now. */}
+                      <div className="mt-1 border-t border-line-soft px-3 py-2.5">
+                        <label onClick={() => { setSearchable(i); setMenu(null) }} className="flex cursor-pointer items-center justify-between gap-2">
+                          <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy</span>
+                          <span className={cn('relative h-4 w-7 shrink-0 rounded-full transition-colors', searchable === i ? 'bg-emerald-500' : 'bg-line')}>
+                            <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
+                          </span>
+                        </label>
+                        <p className="mt-1 text-[10.5px] leading-snug text-faint">Chỉ 1 CV được tìm thấy. Các CV khác vẫn ứng tuyển được.</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
