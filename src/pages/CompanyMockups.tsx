@@ -119,7 +119,7 @@ function DashboardScreen() {
           <p className="text-[15px] font-bold">Vạn Phát Healthcare</p>
           <p className="text-[11px] text-muted">Healthcare · HCMC · 200–500 staff</p>
         </div>
-        <div className="ml-auto flex gap-1.5"><Chip tone="blue">📢 Job Posting</Chip><Chip tone="blue">🔍 Resume Search</Chip></div>
+        <div className="ml-auto flex gap-1.5"><Chip tone="blue">Job Posting</Chip><Chip tone="blue">Resume Search</Chip></div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -135,7 +135,7 @@ function DashboardScreen() {
           <div className="space-y-1.5">
             {recent.map(([name, job, stage, t]) => (
               <div key={name} className="flex items-center gap-2 rounded-md border border-line px-3 py-2">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-canvas text-[11px]">👤</span>
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-canvas text-[11px]"></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
                   <p className="truncate text-[11px] text-muted">{job}</p>
@@ -151,11 +151,11 @@ function DashboardScreen() {
           <div className="rounded-xl border border-line p-4">
             <p className="mb-2 text-[12.5px] font-bold">Your quota</p>
             <div className="mb-3">
-              <div className="flex justify-between text-[11.5px]"><span>📢 Job posting slots</span><b className="tabular-nums">7/10</b></div>
+              <div className="flex justify-between text-[11.5px]"><span>Job posting slots</span><b className="tabular-nums">7/10</b></div>
               <Bar pct={70} />
             </div>
             <div>
-              <div className="flex justify-between text-[11.5px]"><span>🔍 Resume CV unlocks</span><b className="tabular-nums">62/100</b></div>
+              <div className="flex justify-between text-[11.5px]"><span>Resume CV unlocks</span><b className="tabular-nums">62/100</b></div>
               <Bar pct={62} />
             </div>
             <p className="mt-2 text-[10.5px] text-faint">Shared across your team · valid until 31/12/2026.</p>
@@ -164,7 +164,7 @@ function DashboardScreen() {
             <p className="mb-2 text-[12.5px] font-bold">Quick actions</p>
             <div className="flex flex-col gap-2">
               <Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>
-              <Btn onClick={() => go('co-resume-search')}>🔍 Search resumes</Btn>
+              <Btn onClick={() => go('co-resume-search')}>Search resumes</Btn>
               <Btn onClick={() => go('co-company-page')}>✎ Edit company page</Btn>
             </div>
           </div>
@@ -233,11 +233,11 @@ function PostJobScreen() {
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company <span className="text-rose-500">*</span></p>
               <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[12px] text-ink/70">
-                🔒 Vạn Phát Healthcare
+                Vạn Phát Healthcare
                 <span className="ml-auto text-[10.5px] text-violet-600">from Company API · ID VP-1042</span>
               </div>
             </div>
-            <Field label={`Job title · ${lang.toUpperCase()} 🌐`} req value={t.title} />
+            <Field label={`Job title · ${lang.toUpperCase()}`} req value={t.title} />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Category / industry" req value="Healthcare ▾" />
               <Field label="Position level" value="Junior ▾" />
@@ -309,7 +309,7 @@ function PostJobScreen() {
 
           {/* Content (bilingual) */}
           <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Content · {lang.toUpperCase()} 🌐</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Content · {lang.toUpperCase()}</p>
             <Field label="Your role & responsibility" req area value={t.role} />
             <Field label="Your skills & qualifications" req area value={t.quals} />
             <Field label="Benefits" area value={t.benefits} />
@@ -344,17 +344,17 @@ function PostJobScreen() {
               </div>
             </div>
             {exposure === 'Unexposed' && (
-              <p className="mt-1.5 rounded-md border border-line bg-canvas/50 px-3 py-1.5 text-[11px] text-muted">🚫 Unexposed — hidden from the jobseeker site until you set it to Exposed.</p>
+              <p className="mt-1.5 rounded-md border border-line bg-canvas/50 px-3 py-1.5 text-[11px] text-muted">Unexposed — hidden from the jobseeker site until you set it to Exposed.</p>
             )}
           </div>
           <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
-            📦 Package: <b>{pkg}</b>{pkg === 'Free' ? ' — standard listing.' : ' — higher visibility & ranking.'}
+            Package: <b>{pkg}</b>{pkg === 'Free' ? ' — standard listing.' : ' — higher visibility & ranking.'}
           </div>
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11.5px] text-emerald-800">
-            ✅ Goes live immediately — no approval wait. Visible to jobseekers while the job is <b>Open</b> and <b>Exposure is On</b>.
+            Goes live immediately — no approval wait. Visible to jobseekers while the job is <b>Open</b> and <b>Exposure is On</b>.
           </div>
           <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
-            📢 Publishing consumes <b>1 posting slot</b>. You have <b>3 slots</b> left after this one.
+            Publishing consumes <b>1 posting slot</b>. You have <b>3 slots</b> left after this one.
           </div>
         </div>
       </div>
@@ -471,6 +471,10 @@ function Pill({ icon, children, tone = 'muted' }: { icon?: React.ReactNode; chil
 
 type CoStageCol = { stage: keyof typeof STAGE_TONE; people: CoCandidate[] }
 
+/** Every stage a candidate can be moved to — the five customisable ones plus the
+    terminal Hired. The detail panel's stage dropdown offers exactly these. */
+const ALL_STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Rejected', 'Hired'] as const
+
 /** One stage header. `terminal` is the fixed final stage (Saramin KR's 최종 합격):
     it sits AFTER the "+", so the header row itself says which stages a company may
     rename or remove and which one it may not. */
@@ -516,9 +520,9 @@ function StageColumn({ col, terminal, onPick }: { col: CoStageCol; terminal?: bo
               </div>
             </div>
             <div className="mt-1.5 space-y-0.5 text-[10px] text-muted">
-              <p className="truncate">🕑 {p.exp} · 📍 {p.loc}</p>
-              <p className="truncate">💰 Mong muốn {p.salary}</p>
-              <p className="truncate">📄 {p.cv}</p>
+              <p className="truncate">{p.exp} · {p.loc}</p>
+              <p className="truncate">Mong muốn {p.salary}</p>
+              <p className="truncate">{p.cv}</p>
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-1">
               <Match score={p.match} />
@@ -547,6 +551,9 @@ const PIPELINE_JOBS: [string, string][] = [
 
 function ApplicantsScreen() {
   const [sel, setSel] = useState<string | null>(null)
+  /** the stage picked in the detail panel's dropdown — null = whatever the candidate is in */
+  const [stageSel, setStageSel] = useState<string | null>(null)
+  const [stageOpen, setStageOpen] = useState(false)
   const [view, setView] = useState<'list' | 'board'>('list')
   /** null = every stage. Clicking a stage header filters the list to it. */
   const [stage, setStage] = useState<string | null>(null)
@@ -573,6 +580,12 @@ function ApplicantsScreen() {
   const rows = stage ? flat.filter((p) => p.stage === stage) : flat
   const picked = flat.find((p) => p.n === sel)
   const toggle = (n: string) => setPicks((ps) => (ps.includes(n) ? ps.filter((x) => x !== n) : [...ps, n]))
+  /** open a candidate — the stage dropdown resets to whatever THAT candidate is in */
+  const open = (n: string | null) => {
+    setSel(n)
+    setStageSel(null)
+    setStageOpen(false)
+  }
 
   return (
     <div className="relative grid grid-cols-1 md:grid-cols-[236px_minmax(0,1fr)]">
@@ -610,7 +623,7 @@ function ApplicantsScreen() {
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Pill tone="violet" icon={<Users className="h-3.5 w-3.5" />}>{flat.length} candidates</Pill>
-          <Pill tone="green" icon={<CheckCheck className="h-3.5 w-3.5" />}>Screened by Saramin</Pill>
+          <Pill tone="green" icon={<Users className="h-3.5 w-3.5" />}>2 new this week</Pill>
           <Pill>Điều dưỡng · Hồ Chí Minh</Pill>
         </div>
 
@@ -696,7 +709,7 @@ function ApplicantsScreen() {
                       className={cn('h-3.5 w-3.5 cursor-pointer rounded-[3px] border', picks.includes(p.n) ? 'border-brand bg-brand' : 'border-line')}
                     />
                   )}
-                  <div onClick={() => setSel(p.n)} className="flex min-w-0 cursor-pointer items-center gap-2">
+                  <div onClick={() => open(p.n)} className="flex min-w-0 cursor-pointer items-center gap-2">
                     <Avatar name={p.n} />
                     <div className="min-w-0">
                       <p className="truncate font-medium text-ink">{p.n}</p>
@@ -724,17 +737,17 @@ function ApplicantsScreen() {
           <div className="mt-3 overflow-x-auto">
             <div className="flex gap-2" style={{ minWidth: 1320 }}>
               {cols.map((c) => (
-                <StageColumn key={c.stage} col={c} onPick={setSel} />
+                <StageColumn key={c.stage} col={c} onPick={open} />
               ))}
               <span className="grid h-9 w-8 shrink-0 place-items-center rounded-lg border border-dashed border-line text-faint"><Plus className="h-4 w-4" /></span>
-              <StageColumn col={hired} terminal onPick={setSel} />
+              <StageColumn col={hired} terminal onPick={open} />
             </div>
           </div>
         )}
 
         <p className="mt-3 text-[11px] text-faint">
-          Every application is screened by Saramin before it reaches you. Change a stage from the row, drag a card between
-          columns in board view, or select rows for a bulk move.
+          Change a stage from the row, drag a card between columns in board view, or select rows for a bulk move.
+          Every stage change is logged with who moved it and when.
         </p>
       </div>
 
@@ -747,26 +760,28 @@ function ApplicantsScreen() {
                 <Avatar name={picked.n} big />
                 <div>
                   <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{picked.n} <Match score={picked.match} /></p>
-                  <p className="text-[11px] text-muted">Điều dưỡng viên (Khoa Nội) · applied {picked.applied} · <span className="text-emerald-600">✓ Screened by Saramin</span></p>
+                  {/* No job title here — the panel opens from inside that job's pipeline,
+                      which already names it above. */}
+                  <p className="text-[11px] text-muted">Applied {picked.applied} · in {picked.stage} for {picked.waiting}</p>
                 </div>
               </div>
-              <span className="cursor-pointer text-faint" onClick={() => setSel(null)}>✕</span>
+              <span className="cursor-pointer text-faint" onClick={() => open(null)}>✕</span>
             </div>
-            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_210px]">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_244px]">
               {/* left: the FULL CV, rendered in place — no extra click, no separate
                   viewer. A recruiter decides from the document, so the document is
                   what the panel opens on. */}
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">CV — {picked.cv} (full document)</p>
-                  <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">⬇ Download PDF</span>
+                  <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">Download CV</span>
                 </div>
                 <div className="space-y-3 rounded-lg border border-line bg-canvas/30 p-4">
                   {/* CV header */}
                   <div className="border-b border-line-soft pb-2">
                     <p className="text-[14px] font-bold text-ink">{picked.n}</p>
                     <p className="text-[11.5px] text-muted">{picked.role} · {picked.loc} · {picked.exp}</p>
-                    <p className="mt-0.5 text-[10.5px] text-faint">✉ hoa.nguyen@email.com · 📞 0901 xxx xxx · 🎂 1998</p>
+                    <p className="mt-0.5 text-[10.5px] text-faint">hoa.nguyen@email.com · 0901 xxx xxx · 1998</p>
                   </div>
                   {/* objective */}
                   <div>
@@ -825,25 +840,68 @@ function ApplicantsScreen() {
                   </div>
                 </div>
               </div>
-              {/* right: application info + actions */}
+              {/* right: the candidate's PROFILE, in the same two groups the jobseeker
+                  filled in — Basic information · Work preference — then the one status
+                  this screen owns. Same grouping as My CVs, so employer and candidate
+                  are looking at the same record described the same way. */}
               <div className="space-y-3">
                 <div>
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Contact</p>
-                  <p className="text-[11.5px] text-ink">✉ hoa.nguyen@email.com</p>
-                  <p className="text-[11.5px] text-ink">📞 0901 xxx xxx</p>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Basic information</p>
+                  {([
+                    ['Email', 'hoa.nguyen@email.com'],
+                    ['Phone', '0901 xxx xxx'],
+                    ['Province / city', picked.loc],
+                    ['Highest education', 'Cử nhân'],
+                    ['Years of experience', picked.exp],
+                  ] as [string, string][]).map(([k, v]) => (
+                    <p key={k} className="text-[11.5px] text-muted">{k}: <b className="font-medium text-ink">{v}</b></p>
+                  ))}
                 </div>
                 <div>
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Candidate info</p>
-                  <p className="text-[11.5px] text-muted">Expected salary: <b className="text-ink">{picked.salary}</b></p>
-                  <p className="text-[11.5px] text-muted">Availability: <b className="text-ink">1 month</b></p>
-                  <p className="text-[11.5px] text-muted">Location: <b className="text-ink">{picked.loc}</b></p>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
+                  {([
+                    ['Desired position', picked.role],
+                    ['Job category', 'Y tế / Chăm sóc sức khỏe'],
+                    ['Industry', 'Bệnh viện · Phòng khám'],
+                    ['Work location', picked.loc],
+                    ['Expected salary', picked.salary],
+                    ['Availability', '1 month'],
+                  ] as [string, string][]).map(([k, v]) => (
+                    <p key={k} className="text-[11.5px] text-muted">{k}: <b className="font-medium text-ink">{v}</b></p>
+                  ))}
                 </div>
                 <div>
                   <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Stage</p>
-                  <div className="space-y-1">
-                    {(['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected'] as const).map((s) => (
-                      <label key={s} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]', s === picked.stage ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted')}>{s}</label>
-                    ))}
+                  {/* ONE field, not six rows: the stage is a single value, and the list of
+                      six read like six separate toggles. Also the only editable status here. */}
+                  <div className="relative">
+                    <span
+                      onClick={() => setStageOpen((o) => !o)}
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px] font-medium text-ink"
+                    >
+                      {stageSel ?? picked.stage}
+                      <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-faint transition-transform', stageOpen && 'rotate-180')} />
+                    </span>
+                    {stageOpen && (
+                      <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-md border border-line bg-surface py-1 shadow-lg">
+                        {ALL_STAGES.map((s) => (
+                          <li key={s}>
+                            <span
+                              onClick={() => {
+                                setStageSel(s)
+                                setStageOpen(false)
+                              }}
+                              className={cn(
+                                'block cursor-pointer px-2.5 py-1 text-[11.5px]',
+                                s === (stageSel ?? picked.stage) ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80 hover:bg-canvas/70',
+                              )}
+                            >
+                              {s}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -853,8 +911,8 @@ function ApplicantsScreen() {
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-              <Btn onClick={() => setSel(null)}>Close</Btn>
-              <Btn primary onClick={() => setSel(null)}>Save</Btn>
+              <Btn onClick={() => open(null)}>Close</Btn>
+              <Btn primary onClick={() => open(null)}>Save</Btn>
             </div>
           </div>
         </div>
@@ -876,8 +934,8 @@ function ResumeSearchScreen() {
     <div className="relative">
       <PageBar title="Resume search" sub="Find and unlock candidate CVs from Saramin's talent pool." action={<Chip tone="blue">62 / 100 unlocks left</Chip>} />
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">🔍 "điều dưỡng", skills, title…</div>
-        <div className="w-36 rounded-md border border-line px-3 py-2 text-[12px] text-faint">📍 HCMC</div>
+        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">"điều dưỡng", skills, title…</div>
+        <div className="w-36 rounded-md border border-line px-3 py-2 text-[12px] text-faint">HCMC</div>
         <Btn primary>Search</Btn>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
@@ -914,28 +972,28 @@ function ResumeSearchScreen() {
             {cvs.map((cv, i) => (
               <div key={i} className="rounded-lg border border-line p-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '👩‍⚕️' : '🔒'}</span>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '‍' : ''}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12.5px] font-semibold text-ink">{cv.unlocked ? cv.name : '••••••• (unlock to see name & contact)'}</p>
                     <p className="truncate text-[11.5px] text-muted">{cv.title}</p>
                   </div>
                   {cv.unlocked
                     ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
-                    : <Btn primary onClick={() => setConfirming(true)}>🔓 Unlock · 1 credit</Btn>}
+                    : <Btn primary onClick={() => setConfirming(true)}>Unlock · 1 credit</Btn>}
                 </div>
                 {/* locked PREVIEW — enough to judge fit, no PII */}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-[52px]">
                   {cv.skills.map((s) => <Chip key={s}>{s}</Chip>)}
                   <Chip tone="blue">{cv.loc}</Chip>
-                  <Chip tone="amber">💰 {cv.salary}</Chip>
-                  <Chip tone="green">🟢 {cv.avail}</Chip>
+                  <Chip tone="amber">{cv.salary}</Chip>
+                  <Chip tone="green">{cv.avail}</Chip>
                   <span className="text-[10.5px] text-faint">Updated {cv.updated}</span>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-            🔒 The preview shows fit (title, skills, salary, availability) but never PII. Unlocking reveals name + contact + the full CV, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
+            The preview shows fit (title, skills, salary, availability) but never PII. Unlocking reveals name + contact + the full CV, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
           </div>
         </div>
       </div>
@@ -945,7 +1003,7 @@ function ResumeSearchScreen() {
         <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-16">
           <div className="w-full max-w-[400px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
             <div className="p-5 text-center">
-              <p className="text-[24px]">🔓</p>
+              <p className="text-[24px]"></p>
               <p className="mt-1 text-[15px] font-bold text-ink">Unlock this CV?</p>
               <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Điều dưỡng trưởng · 7 năm KN · HCMC. You’ll see the candidate’s name, contact details and full CV.</p>
               <div className="mx-auto mt-3 flex max-w-[240px] items-center justify-between rounded-lg border border-line px-3 py-2 text-[12px]">
@@ -970,10 +1028,10 @@ function ResumeSearchScreen() {
           <div className="flex max-h-[560px] w-full max-w-[620px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-canvas text-[15px]">👩‍⚕️</span>
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-canvas text-[15px]">‍</span>
                 <div>
                   <p className="flex items-center gap-1.5 text-[14px] font-bold text-ink">Nguyễn Thị Hoa <Chip tone="green">Unlocked</Chip></p>
-                  <p className="text-[11px] text-muted">✉ hoa.nguyen@email.com · 📞 0901 234 567 · Hồ Chí Minh</p>
+                  <p className="text-[11px] text-muted">hoa.nguyen@email.com · 0901 234 567 · Hồ Chí Minh</p>
                 </div>
               </div>
               <span className="cursor-pointer text-faint" onClick={() => setViewing(false)}>✕</span>
@@ -998,8 +1056,8 @@ function ResumeSearchScreen() {
                   <p className="text-[11.5px] text-muted">Locations: <b className="text-ink">HCMC</b></p>
                 </div>
                 <div className="space-y-1.5">
-                  <Btn primary className="w-full">⬇ Download CV</Btn>
-                  <Btn className="w-full">✉ Contact candidate</Btn>
+                  <Btn primary className="w-full">Download CV</Btn>
+                  <Btn className="w-full">Contact candidate</Btn>
                   <Btn className="w-full">＋ Add to a job pipeline</Btn>
                 </div>
                 <p className="text-[10px] text-faint">Unlocked by Linh Trần · 05/08/2026 · from the team pool. Contacting the candidate happens outside Saramin in Phase 1.</p>
@@ -1095,7 +1153,7 @@ function CompanyPageScreen() {
           </div>
         </div>
       </div>
-      <div className="mt-4 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">🔗 Same company record as CRM & Admin — one source of truth. Resume-Search-only customers don't get this page.</div>
+      <div className="mt-4 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">Same company record as CRM & Admin — one source of truth. Resume-Search-only customers don't get this page.</div>
     </div>
   )
 }
@@ -1177,7 +1235,7 @@ function RolesScreen() {
             {roles.map((r, i) => (
               <button key={r.name} onClick={() => setSel(i)} className={cn('flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-left', i === sel ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
                 <span className="text-[12px] font-medium text-ink">{r.name}</span>
-                {r.admin && <Chip tone="blue">🔒 Super admin</Chip>}
+                {r.admin && <Chip tone="blue">Super admin</Chip>}
               </button>
             ))}
           </div>
@@ -1186,7 +1244,7 @@ function RolesScreen() {
         <div className="rounded-xl border border-line p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <input value={role.name} readOnly={!editable} onChange={(e) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, name: e.target.value } : r)))} className={cn('min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-[13px] font-semibold text-ink', editable ? 'border-line' : 'border-transparent bg-transparent')} />
-            {role.admin && <span className="shrink-0 text-[11px] text-faint">🔒 Super admin · full access, can’t be edited</span>}
+            {role.admin && <span className="shrink-0 text-[11px] text-faint">Super admin · full access, can’t be edited</span>}
           </div>
           {PERM_GROUPS.map((g) => (
             <div key={g.module} className="mb-2.5 border-t border-line-soft pt-2.5 first:border-0 first:pt-0">
@@ -1291,7 +1349,7 @@ function ProductsQuotaScreen() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line p-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12.5px] font-bold">📢 Job Posting — Pro</p>
+            <p className="text-[12.5px] font-bold">Job Posting — Pro</p>
             <Chip tone="green">Active</Chip>
           </div>
           <div className="flex justify-between text-[11.5px]"><span className="text-muted">Posting slots left</span><b className="tabular-nums">7 / 10</b></div>
@@ -1301,7 +1359,7 @@ function ProductsQuotaScreen() {
         </div>
         <div className="rounded-xl border border-line p-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12.5px] font-bold">🔍 Resume Search — 6 months</p>
+            <p className="text-[12.5px] font-bold">Resume Search — 6 months</p>
             <Chip tone="green">Active</Chip>
           </div>
           <div className="flex justify-between text-[11.5px]"><span className="text-muted">CV unlocks left</span><b className="tabular-nums">62 / 100</b></div>
@@ -1326,10 +1384,10 @@ function ProductsQuotaScreen() {
         </div>
         <div className="divide-y divide-line-soft">
           {([
-            ['🔓', 'CV unlock — Nguyễn Thị Hoa (Điều dưỡng viên)', 'Linh Trần', '05/08/2026', '−1 unlock · 62 left'],
-            ['📢', 'Job opened — Điều dưỡng viên (Khoa Nội)', 'Minh Phạm', '01/08/2026', '−1 slot · 7 left'],
-            ['🔓', 'CV unlock — Trần Văn B. (Kỹ thuật viên XN)', 'Linh Trần', '29/07/2026', '−1 unlock · 63 left'],
-            ['📢', 'Job opened — Bác sĩ Đa khoa', 'Minh Phạm', '25/07/2026', '−1 slot · 8 left'],
+            ['', 'CV unlock — Nguyễn Thị Hoa (Điều dưỡng viên)', 'Linh Trần', '05/08/2026', '−1 unlock · 62 left'],
+            ['', 'Job opened — Điều dưỡng viên (Khoa Nội)', 'Minh Phạm', '01/08/2026', '−1 slot · 7 left'],
+            ['', 'CV unlock — Trần Văn B. (Kỹ thuật viên XN)', 'Linh Trần', '29/07/2026', '−1 unlock · 63 left'],
+            ['', 'Job opened — Bác sĩ Đa khoa', 'Minh Phạm', '25/07/2026', '−1 slot · 8 left'],
             ['↩', 'Slot returned — job "Kế toán viện phí" closed early (policy)', 'System', '20/07/2026', '+1 slot · 9 left'],
           ] as [string, string, string, string, string][]).map(([ic, what, who, when, delta]) => (
             <div key={what} className="flex items-center gap-3 py-2 text-[11.5px]">
@@ -1463,7 +1521,7 @@ export function CompanyMockups() {
           {UTILITY_LINKS.map((l, i) => (
             <span key={l} className={cn('cursor-default', i === 0 && 'font-semibold text-ink/80')}>{l}</span>
           ))}
-          <span className="ml-auto hidden sm:inline">📢 7/10 slots · 🔍 62 CVs</span>
+          <span className="ml-auto hidden sm:inline">7/10 slots · 62 CVs</span>
         </div>
 
         {/* main header */}

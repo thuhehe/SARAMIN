@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
@@ -69,50 +68,52 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
    away. Points with no such lead-in simply render as one line of text. */
 const LEAD_IN = /^([^—:]{2,44}?)(\s*—\s+|:\s+)([\s\S]+)$/
 
-function ReqBullet({ t, n, dense }: { t: string; n: number; dense?: boolean }) {
-  const m = t.includes('**') ? null : t.match(LEAD_IN)
-  const body = cn('leading-relaxed', dense ? 'text-[12px] text-muted' : 'text-[12.5px] text-ink/70')
-  return (
-    <li className={cn('grid grid-cols-[20px_minmax(0,1fr)] gap-x-1', dense ? 'py-1.5' : 'py-2')}>
-      <span className={cn('mt-[3px] tabular-nums font-medium text-faint', dense ? 'text-[10px]' : 'text-[10.5px]')}>{n}</span>
-      <div className="min-w-0">
-        {m ? (
-          <>
-            <p className={cn('font-semibold leading-snug text-ink', dense ? 'text-[11.5px]' : 'text-[12px]')}>{m[1]}</p>
-            <p className={cn('mt-0.5', body)}><Rich t={m[3]} /></p>
-          </>
-        ) : (
-          <p className={body}><Rich t={t} /></p>
-        )}
-      </div>
-    </li>
-  )
-}
-
+/* Sub-points render as a TABLE, same shell as ReqTableView so a requirement
+   reads as one document rather than a table plus a loose list. The lead-in
+   becomes the left column — that column is the index you skim; the right column
+   is the detail you read only when the left one is relevant. Points with no
+   lead-in span the full width. Everything is shown: no truncation. */
 function ReqBullets({ items, dense }: { items: string[]; dense?: boolean }) {
-  const CUT = 4
-  const [open, setOpen] = useState(items.length <= CUT + 1)
-  const shown = open ? items : items.slice(0, CUT)
+  const tmpl = 'minmax(150px, 0.85fr) 1fr'
   return (
-    <div className="mt-2.5 max-w-[80ch]">
-      <ul className="divide-y divide-line-soft border-t border-line-soft">
-        {shown.map((it, j) => <ReqBullet key={j} t={it} n={j + 1} dense={dense} />)}
-      </ul>
-      {items.length > CUT + 1 && (
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="mt-1.5 text-[11px] font-medium text-brand hover:underline"
-        >
-          {open ? '− Show less' : `+ ${items.length - CUT} more points`}
-        </button>
-      )}
+    <div className="mt-2.5 overflow-hidden rounded-lg border border-line">
+      <div
+        style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+        className={cn('grid gap-x-4 bg-canvas/60 px-3 py-1.5 font-semibold uppercase tracking-wide text-muted', dense ? 'text-[10px]' : 'text-[10.5px]')}
+      >
+        <span>Rule</span>
+        <span>What it means</span>
+      </div>
+      {items.map((t, j) => {
+        const m = t.includes('**') ? null : t.match(LEAD_IN)
+        return (
+          <div
+            key={j}
+            style={m ? { gridTemplateColumns: tmpl, minWidth: 480 } : undefined}
+            className={cn(
+              'gap-x-4 border-t border-line-soft px-3 py-2 leading-relaxed',
+              m ? 'grid' : 'block',
+              dense ? 'text-[11.5px]' : 'text-[12.5px]',
+            )}
+          >
+            {m ? (
+              <>
+                <span className="font-medium text-ink">{m[1]}</span>
+                <span className="min-w-0 text-ink/75"><Rich t={m[3]} /></span>
+              </>
+            ) : (
+              <span className="text-ink/75"><Rich t={t} /></span>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 /* One requirement card. Label · lead sentence · table · sub-points · warning —
-   all visible; only a long sub-point list truncates (see ReqBullets). Prose is
-   capped at a readable measure instead of running the full window width. */
+   all of it visible, nothing truncated. Prose is capped at a readable measure
+   instead of running the full window width. */
 function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolean }) {
   const measure = 'max-w-[80ch]'
   return (

@@ -58,28 +58,46 @@ export const resumeManagement: BuildModule = {
       warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table (group 3), never on the Profile. Search = Profile (Basic information + Work preference) JOIN the searchable CV (CV content).',
     },
     {
-      label: 'PROFILE FIELDS — the decided list, and WHERE each is collected',
-      text: 'From the client’s field sheet. Two groups, 14 fields, and the collection point matters as much as the field: what is asked at SIGN-UP is a barrier to registering, what is asked at onboarding is not.',
+      label: 'CANDIDATE DATA · TABLE 1 of 3 — BASIC INFORMATION, and WHERE each field is collected',
+      text: 'From the client’s field sheet. 9 fields, and the collection point matters as much as the field: what is asked at SIGN-UP is a barrier to registering, what is asked at onboarding is not.',
       table: {
-        cols: ['Basic information', 'Collected when', 'Desired work condition', 'Collected when'],
+        cols: ['Basic information', 'Collected when'],
         rows: [
-          ['Full name', 'Sign up', 'Desired job role', 'Onboarding / Add later'],
-          ['Email', 'Sign up', 'Desired job category', 'Onboarding / Add later'],
-          ['Phone', 'Sign up', 'Desired industry', 'Onboarding / Add later'],
-          ['Nationality', 'Sign up', 'Desired work location', 'Onboarding / Add later'],
-          ['Gender', 'Sign up', 'Expected salary', 'Onboarding / Add later'],
-          ['Marital status', 'Sign up', '—', '—'],
-          ['Date of birth', 'Sign up', '—', '—'],
-          ['Highest education', 'Onboarding / Add later', '—', '—'],
-          ['Years of work experience', 'Onboarding / Add later', '—', '—'],
+          ['Full name', 'Sign up'],
+          ['Email', 'Sign up'],
+          ['Phone', 'Sign up'],
+          ['Nationality', 'Sign up'],
+          ['Gender', 'Sign up'],
+          ['Marital status', 'Sign up'],
+          ['Date of birth', 'Sign up'],
+          ['Highest education', 'Onboarding / Add later'],
+          ['Years of work experience', 'Onboarding / Add later'],
         ],
       },
       items: [
-        'Nothing in Desired work condition blocks sign-up — all five are onboarding or later, so a candidate can register and browse before deciding what they want.',
-        'CURRENT location is not a field. Matching reads DESIRED work location; where someone lives today is not a search facet.',
         'Each field renders its own control in the editor — a date box, a phone box with country code, a select, a number with a unit. A screen where every field looks like a dropdown tells the candidate nothing about what it wants.',
+        'Profile photo sits above these nine and is OPTIONAL — recruiters see it on the application card, and initials where there is none.',
       ],
       warn: 'SEVEN fields at SIGN-UP is a lot for a registration form, and four of them (nationality, gender, marital status, date of birth) are read by nothing — not search, not matching. Every one is a chance to abandon the sign-up. Recommend they are optional at minimum, or moved to “Onboarding / Add later” with the other two.',
+    },
+    {
+      label: 'CANDIDATE DATA · TABLE 2 of 3 — DESIRED WORK CONDITION, and WHERE each field is collected',
+      text: 'The other five of the 14. This is the group matching actually reads, and not one of them is asked before the candidate is registered.',
+      table: {
+        cols: ['Desired work condition', 'Collected when'],
+        rows: [
+          ['Desired job role', 'Onboarding / Add later'],
+          ['Desired job category', 'Onboarding / Add later'],
+          ['Desired industry', 'Onboarding / Add later'],
+          ['Desired work location', 'Onboarding / Add later'],
+          ['Expected salary', 'Onboarding / Add later'],
+        ],
+      },
+      items: [
+        'Nothing here blocks sign-up — all five are onboarding or later, so a candidate can register and browse before deciding what they want.',
+        'CURRENT location is not a field. Matching reads DESIRED work location; where someone lives today is not a search facet.',
+        'Expected salary is the one an employer filters on most and the one no CV ever states — which is why onboarding gives it a step of its own rather than burying it in a list.',
+      ],
     },
     {
       label: 'HOW THIS DIFFERS FROM VIETNAMWORKS — “Saramin CV” is a FORMAT, not a second kind of thing',
@@ -190,7 +208,7 @@ export const resumeManagement: BuildModule = {
     },
     {
       label: 'SKILLS on the CV — the complete logic',
-      text: 'Skills are the highest-value facet in CV search and the only field both sides of a match write, so this is the single definition of how the Skills section behaves — how a skill is added, matched, suggested, extracted, stored and shown. Phase-1 is deliberately small: one canonical list, two join tables, and no scoring cleverness anywhere.',
+      text: 'ONE MASTER LIST, TWO LINKS TO IT — **Skill (master)** is the only place a skill is defined; **CvSkill** = a skill on a CV (cvId + skillId, cap 20 per CV); **JobSkill** = a skill on a job (jobId + skillId, cap 10 per job). Both store nothing but a pointer, so “React on this CV” and “React on that job” are literally the SAME master row seen from two sides — and that identity is the entire reason matching works. Everything below is how a skill gets into those lists and what happens to it there.',
       table: {
         cols: ['Stage', 'What the candidate sees', 'The rule'],
         rows: [
@@ -204,8 +222,10 @@ export const resumeManagement: BuildModule = {
         ],
       },
       items: [
-        'DATA MODEL — three tables. Skill (taxonomy): id · group · nameVi · nameEn · aliases[] · roles[] · isActive — the canonical list, ~500–1,500 rows for the VN market, because aliases absorb the variants (React / ReactJS / React.js are ONE row); starter seed /docs/skill-taxonomy-seed.csv, 47 rows across 7 groups. JobSkill: jobId · skillId, cap 10. CvSkill: cvId · skillId, cap 20.',
-        'BOTH sides reference skillId — free-text skills on either side are the bug this block exists to prevent. A `text[]` cannot join to a taxonomy reference, and the failure is SILENT: matching just returns nothing and looks like a ranking problem.',
+        '1 · ONE master list, TWO users of it — the Skill master (taxonomy) is the only place a skill is defined. CV SKILLS (CvSkill: cvId · skillId, cap 20 per CV) and JOB SKILLS (JobSkill: jobId · skillId, cap 10 per job) are both just links to a master row. Same row, two sides of the match.',
+        '2 · Master data only, never free text — a candidate and an employer both SELECT from the master list; neither can type a new skill. This is the whole point: a `text[]` cannot join to a taxonomy reference, and the failure is SILENT — matching returns nothing and looks like a ranking bug.',
+        '3 · Suggestions come from the DESIRED ROLE — the editor shows "Common for {desired role}: ＋Figma ＋Wireframing …", one tap each, read from the master list’s own `roles` column. See stage 4 in the table above for the full ordering rule.',
+        'The Skill master row — id · group · nameVi · nameEn · aliases[] · roles[] · isActive. ~500–1,500 rows for the VN market, kept small because aliases absorb the variants (React / ReactJS / React.js are ONE row). Starter seed: /docs/skill-taxonomy-seed.csv, 47 rows across 7 groups.',
         'Skills RANK candidates, they never exclude them — a flat list where every entry filtered would narrow the pool to nothing after four or five picks. Phase-1 ranks on skill OVERLAP COUNT plus the profile fields (total years, level, location).',
         'A CERTIFICATE IS NOT A SKILL — skills may be evidenced by work experience, projects, education or certificates, but certificates stay their own section and may attest a skill; they never become taxonomy rows themselves.',
         'The `roles` column holds pipe-separated role names, or `*` for cross-role skills (Excel, Word, Teamwork, Project Management) which are suggested to everyone but ranked last. A row with no roles is never suggested — only found by search.',

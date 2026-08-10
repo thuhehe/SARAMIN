@@ -92,7 +92,7 @@ export function JsHeader({ minimal }: { active?: string; minimal?: boolean } = {
             onClick={() => go('js-mypage')}
             className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-medium text-ink/80 hover:border-brand/50"
           >
-            <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] text-white">🙂</span>
+            <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] text-white"></span>
             My account <span className="text-faint">▾</span>
           </span>
           <Btn>Sign in</Btn>

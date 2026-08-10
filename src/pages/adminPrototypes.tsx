@@ -90,7 +90,7 @@ function TableSearch({ q, onChange, placeholder, dropdown }: { q: string; onChan
   dropdown?: React.ReactNode }) {
   return (
     <div className="relative shrink-0">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint"></span>
       <input
         value={q}
         onChange={(e) => onChange(e.target.value)}
@@ -574,7 +574,7 @@ function ExtLink({ children }: { children: React.ReactNode }) {
 function CvCell({ label, kind }: { label: string; kind: 'saramin' | 'upload' }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <span className="min-w-0 truncate text-ink/80">{kind === 'saramin' ? '📃' : '📄'} {label}</span>
+      <span className="min-w-0 truncate text-ink/80">{kind === 'saramin' ? '' : ''} {label}</span>
       {kind === 'saramin'
         ? <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Saramin CV</span>
         : <span className="shrink-0 rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-muted">Uploaded</span>}
@@ -681,7 +681,7 @@ function ApplicantDetail({ name, status, onClose }: { name: string; status: Deli
                     <label key={r} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]', i === 0 ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-line text-muted')}>{r}</label>
                   ))}
                 </div>
-                <p className="mt-1.5 text-[10.5px] font-medium text-rose-600">⚠️ Whole user: blocks future applies and recalls all 7 sent applications across every job.</p>
+                <p className="mt-1.5 text-[10.5px] font-medium text-rose-600">Whole user: blocks future applies and recalls all 7 sent applications across every job.</p>
               </div>
             )}
           </div>
@@ -856,7 +856,7 @@ function ResumeCandidateDetail({ name, onClose }: { name: string; onClose: () =>
             <div className="space-y-2">
               {cvs.map((cv) => (
                 <div key={cv.label} className={cn('flex items-center gap-3 rounded-lg border p-3', cv.searchable ? 'border-brand/40 bg-brand-soft/30' : 'border-line')}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]"></span>
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-ink">{cv.label} {cv.searchable && <Pill tone="active">Searchable</Pill>}</p>
                     <p className="text-[10.5px] text-faint">{cv.kind} · {cv.complete} complete · updated {cv.updated}</p>
@@ -907,7 +907,7 @@ function AdminResumes() {
   ])
   return (
     <div>
-      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">🔒 ONE row per candidate — the row shows their SEARCHABLE CV (what employer CV search reads). Open a candidate to see all their CVs (max 3). Resumes contain PII — every open is audited.</div>
+      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">ONE row per candidate — the row shows their SEARCHABLE CV (what employer CV search reads). Open a candidate to see all their CVs (max 3). Resumes contain PII — every open is audited.</div>
       <ListPage
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
         tabs={[{ label: 'All candidates', count: 8420, active: true }, { label: 'Discoverable', count: 6100 }, { label: 'Hidden', count: 2320 }, { label: 'Flagged', count: 14 }, { label: 'Removed from pool', count: 9 }]}
@@ -1139,7 +1139,7 @@ function StdSection({ title, count, repeatable, children }: { title: string; cou
 function StdItem({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative rounded-lg border border-line-soft bg-canvas/30 p-3">
-      <button className="absolute right-2 top-2 text-[10.5px] text-faint hover:text-rose-500">🗑 Remove</button>
+      <button className="absolute right-2 top-2 text-[10.5px] text-faint hover:text-rose-500">Remove</button>
       {children}
     </div>
   )
@@ -1207,7 +1207,7 @@ function AdminResumeNew({ onBack }: { onBack: () => void }) {
           ] as const).map(([badge, title, desc, target]) => (
             <div key={target} className="flex flex-col rounded-xl border border-line bg-surface p-4 transition-colors hover:border-brand">
               <div className="flex items-start justify-between gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-[15px]">{target === 'upload' ? '📤' : '📝'}</span>
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-[15px]">{target === 'upload' ? '' : ''}</span>
                 <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">{badge}</span>
               </div>
               <p className="mt-3 text-[13.5px] font-semibold text-ink">{title}</p>
@@ -1273,7 +1273,7 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
           <p className="mt-0.5 text-[11px] text-faint">PDF · DOC · DOCX — max ~5 MB. Type and size are validated before upload.</p>
           {file ? (
             <div className="mt-3 flex items-center gap-2.5 rounded-md border border-line bg-canvas/40 p-2.5">
-              <span className="text-[15px]">📄</span>
+              <span className="text-[15px]"></span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[11.5px] font-medium text-ink">{file.name}</p>
                 <p className="text-[10.5px] text-faint tabular-nums">{file.kb} KB</p>
@@ -1283,12 +1283,12 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
                 disabled={phase === 'running'}
                 title={phase === 'running' ? 'Cannot change the file while the pipeline is running' : 'Remove'}
                 className="rounded-md border border-line px-1.5 py-1 text-[10.5px] text-muted disabled:opacity-40"
-              >🗑</button>
+              ></button>
             </div>
           ) : (
             <>
               <button onClick={() => fileRef.current?.click()} className="mt-3 flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-line bg-canvas/30 px-4 py-7 text-[11.5px] text-muted transition-colors hover:border-brand hover:text-ink">
-                <span className="text-[18px]">⬆️</span>
+                <span className="text-[18px]"></span>
                 Choose file
               </button>
               {/* Prototype affordance only — the real console has just the file input.
@@ -1321,7 +1321,7 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
 
         {phase === 'idle' && (
           <button onClick={start} disabled={!file} className="w-full rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
-            ✨ Start analysis
+            Start analysis
           </button>
         )}
         {phase === 'running' && (
@@ -1342,7 +1342,7 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
       {phase === 'idle' ? (
         <section className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-line p-8 text-center">
           <div>
-            <p className="text-[24px]">✨</p>
+            <p className="text-[24px]"></p>
             <h3 className="mt-1 text-[14px] font-semibold">Normalise this CV into the Saramin standard model</h3>
             <p className="mx-auto mt-1 max-w-[420px] text-[11.5px] leading-relaxed text-muted">
               The pipeline parses the original PDF, extracts structured fields and searchable tags, and generates a new resume in the
@@ -1355,7 +1355,7 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
         <section className="space-y-3">
           {shown(0) && (
             <ResultCard title="PDF parsing result" active={step === 0 && phase === 'running'} done={phase === 'done' || step > 0}>
-              <pre className="overflow-x-auto rounded-md bg-canvas/60 p-3 font-mono text-[10.5px] leading-relaxed text-muted">{`📄 original-cv.pdf · 1 page · 312 tokens
+              <pre className="overflow-x-auto rounded-md bg-canvas/60 p-3 font-mono text-[10.5px] leading-relaxed text-muted">{`original-cv.pdf · 1 page · 312 tokens
   ├─ Frontend Engineer · Tiki  (2023.03 – present)
   ├─ Junior Web Developer · Sendo  (2022.01 – 2023.02)
   ├─ HUST · B.S. Computer Science (2018 – 2022)
@@ -1387,7 +1387,7 @@ function UploadRoute({ onContinue }: { onContinue: () => void }) {
           {shown(3) && (
             <ResultCard title="Saramin-standard resume" active={step === 3 && phase === 'running'} done={phase === 'done'}>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-[16px]">🪄</span>
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-[16px]"></span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[11.5px] font-medium text-ink">saramin-cv.pdf · 1 page · ready for review</p>
                   <p className="text-[10.5px] text-faint">Open the “Saramin standard” tab on the review screen to preview it.</p>
@@ -1510,7 +1510,7 @@ function BuilderRoute({ onContinue }: { onContinue: (f: BuilderForm) => void }) 
                   <p className="text-[11px] text-muted">The same suggestion set the Upload pipeline produces — both routes converge on identical tags.</p>
                 </div>
                 {tagPhase === 'idle' && (
-                  <button onClick={runTags} disabled={f.body.trim() === ''} className="rounded-md bg-brand px-2.5 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40">✨ Run AI suggestion</button>
+                  <button onClick={runTags} disabled={f.body.trim() === ''} className="rounded-md bg-brand px-2.5 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40">Run AI suggestion</button>
                 )}
                 {tagPhase === 'running' && <button disabled className="rounded-md bg-brand/60 px-2.5 py-1.5 text-[11.5px] font-semibold text-white">◍ Analysing…</button>}
                 {tagPhase === 'done' && <button onClick={runTags} className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">↻ Re-run</button>}
@@ -1683,7 +1683,7 @@ function ResumeReview({ std, setStd, source, onBack, onRegistered }: {
             <div className="p-3.5">
               <div className="grid min-h-[380px] place-items-center rounded-lg border border-dashed border-line bg-canvas/30 text-center">
                 <div className="px-6">
-                  <p className="text-[22px]">📄</p>
+                  <p className="text-[22px]"></p>
                   <p className="mt-1 text-[12px] font-medium text-ink">
                     {tab === 'original' ? 'original-cv.pdf' : 'saramin-cv.pdf'}
                   </p>
@@ -1846,7 +1846,7 @@ function ResumeReview({ std, setStd, source, onBack, onRegistered }: {
 
           <StdSection title="References" count={std.references.length} repeatable>
             <p className="-mt-1 mb-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] text-amber-800">
-              🔒 VN CVs routinely list a referee with a phone number. This section is PII about a THIRD party — masked in the list, and revealing it is audited.
+              VN CVs routinely list a referee with a phone number. This section is PII about a THIRD party — masked in the list, and revealing it is audited.
             </p>
             {std.references.length === 0 && <EmptySec what="None." />}
             {std.references.map((r, i) => (
@@ -2508,7 +2508,7 @@ function CompaniesBoard({ onOpen, showOwner, rows = COMPANIES }: { onOpen: (c: C
                   <p className="min-w-0 truncate text-[11.5px] font-semibold text-ink tabular-nums">{vnd(coValue(c))}</p>
                   <span className="shrink-0 text-[10.5px]"><Idle days={c.idle} kind={cadenceOf(c)} compact /></span>
                 </div>
-                {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">👤 {c.owner}</p>}
+                {showOwner && <p className="mt-0.5 truncate text-[10px] text-faint">{c.owner}</p>}
               </button>
             ))}
           </div>
@@ -2604,7 +2604,7 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
   return (
     <div ref={box} className="relative min-w-0 flex-1">
       <div className={cn('flex items-center gap-2 rounded-lg border bg-canvas px-2.5 py-1.5 transition-colors', open ? 'border-brand/50 bg-surface' : 'border-line hover:border-ink/25')}>
-        <span className="shrink-0 text-[12px] text-faint">🔍</span>
+        <span className="shrink-0 text-[12px] text-faint"></span>
         <input
           ref={input}
           value={q}
@@ -2646,7 +2646,7 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
                     onClick={() => go(c)}
                     className={cn('flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left', i === cursor ? 'bg-canvas' : 'hover:bg-canvas')}
                   >
-                    <span className="mt-px text-[12px]">🏢</span>
+                    <span className="mt-px text-[12px]"></span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
                         <span className="min-w-0 truncate text-[12.5px] font-medium text-ink">{coLabel(c)}</span>
@@ -2660,7 +2660,7 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
                         <span>·</span>
                         <span>MST {c.tax}</span>
                         <span>·</span>
-                        <span>👤 {c.owner}{c.owner === ME && <span className="text-brand"> (you)</span>}</span>
+                        <span>{c.owner}{c.owner === ME && <span className="text-brand"> (you)</span>}</span>
                       </span>
                     </span>
                   </button>
@@ -2742,7 +2742,7 @@ function AdminCompanyList() {
           so the default list stays exactly as it was. */}
       {group && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[12px] text-brand">
-          <span className="font-semibold">🏢 Tập đoàn {coLabel(group)}</span>
+          <span className="font-semibold">Tập đoàn {coLabel(group)}</span>
           <span className="text-brand/70">— {rows.length} công ty, mọi cấp, không phân biệt sales phụ trách. Mỗi công ty vẫn có MST, hợp đồng và quota riêng.</span>
           <button onClick={() => setGroup(null)} className="ml-auto rounded-md border border-brand/40 px-2 py-0.5 text-[11px] font-medium hover:bg-surface">Bỏ lọc ✕</button>
         </div>
@@ -2819,7 +2819,7 @@ function AdminCompanyList() {
                       onClick={() => setOpen(c)}
                       className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-canvas"
                     >
-                      <span className="mt-px text-[12px]">🏢</span>
+                      <span className="mt-px text-[12px]"></span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
                           <span className="min-w-0 truncate text-[12px] font-medium text-ink">{coLabel(c)}</span>
@@ -2830,7 +2830,7 @@ function AdminCompanyList() {
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-faint">
                           <span className="font-mono">{companyId(coKey(c))}</span>
                           <span>· MST {c.tax}</span>
-                          <span>· 👤 {c.owner}</span>
+                          <span>· {c.owner}</span>
                         </span>
                       </span>
                       <span className="mt-0.5 shrink-0 text-[10.5px] font-medium text-brand">Xem hồ sơ →</span>
@@ -2895,7 +2895,7 @@ function AdminCompanyList() {
                 onClick={() => setGroup(groupRootOf(c))}
                 className="mt-0.5 block max-w-full truncate text-left text-[10px] text-faint hover:text-brand hover:underline"
               >
-                🏢 {coLabel(groupRootOf(c))} · {coRoles(c).join(' · ')}
+                {coLabel(groupRootOf(c))} · {coRoles(c).join(' · ')}
               </button>
             )}
           </div>,
@@ -3354,7 +3354,7 @@ function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: (
                   </div>
                   <p className="mt-1 text-[10.5px] text-faint">Only one contact per company can be Primary or Billing — setting it here moves it off whoever held it.</p>
                 </div>
-                <KV label="Login user" value={draft.linkedUser ? `🔗 ${draft.linkedUser}` : 'No login — contact only'} />
+                <KV label="Login user" value={draft.linkedUser ? `${draft.linkedUser}` : 'No login — contact only'} />
                 <KV label="Last contacted" value={draft.lastContact} />
               </>
             ) : (
@@ -3366,7 +3366,7 @@ function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: (
                 <KV label="Decision maker" value={draft.decisionMaker ? 'Yes — signs off on the purchase' : 'No'} />
                 <KV label="Receives quotations" value={draft.primary ? 'Yes — PRIMARY contact' : 'No'} />
                 <KV label="Receives invoices" value={draft.billing ? 'Yes — BILLING contact' : 'No'} />
-                <KV label="Login user" value={draft.linkedUser ? `🔗 ${draft.linkedUser}` : 'No login — contact only'} />
+                <KV label="Login user" value={draft.linkedUser ? `${draft.linkedUser}` : 'No login — contact only'} />
                 <KV label="Last contacted" value={draft.lastContact} />
               </>
             )}
@@ -3559,7 +3559,7 @@ function CoRoleBuilder() {
           {roles.map((r, i) => (
             <button key={r.name} onClick={() => setSel(i)} className={cn('flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1.5 text-left', i === sel ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-brand/40')}>
               <span className="truncate text-[11.5px] font-medium text-ink">{r.name}</span>
-              {r.admin && <Pill tone="neutral">🔒 Super admin</Pill>}
+              {r.admin && <Pill tone="neutral">Super admin</Pill>}
             </button>
           ))}
         </div>
@@ -3567,7 +3567,7 @@ function CoRoleBuilder() {
       <div className="min-w-0">
         <div className="mb-2 flex items-center justify-between gap-2">
           <input value={role.name} readOnly={!editable} onChange={(e) => setRoles((rs) => rs.map((r, i) => (i === sel ? { ...r, name: e.target.value } : r)))} className={cn('min-w-0 flex-1 rounded-md px-2 py-1.5 text-[12.5px] font-semibold text-ink', editable ? 'border border-line' : 'border border-transparent bg-transparent')} />
-          {role.admin && <span className="shrink-0 text-[10.5px] text-faint">🔒 Super admin · full access, can’t be edited</span>}
+          {role.admin && <span className="shrink-0 text-[10.5px] text-faint">Super admin · full access, can’t be edited</span>}
         </div>
         {CO_PERM_GROUPS.map((g) => (
           <div key={g.module} className="mb-2 border-t border-line/60 pt-2 first:border-0 first:pt-0">
@@ -3608,12 +3608,12 @@ function CoRolePermsView({ role }: { role: string }) {
               <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{g.module}</p>
               {g.perms.map((p) => (
                 <p key={p.key} className={cn('text-[11.5px]', def.perms.includes(p.key) ? 'text-ink' : 'text-faint line-through')}>
-                  {def.perms.includes(p.key) ? '✅' : '—'} {p.label}
+                  {def.perms.includes(p.key) ? '' : '—'} {p.label}
                 </p>
               ))}
             </div>
           ))}
-          {def.admin && <p className="text-[11.5px] text-ink">✅ Manage users &amp; roles</p>}
+          {def.admin && <p className="text-[11.5px] text-ink">Manage users &amp; roles</p>}
         </div>
       )}
     </div>
@@ -3669,55 +3669,55 @@ function companyActivity(c: Company): CoEvent[] {
     ev.push({ days, kind, icon, tone, title, sub, by: by ?? (kind === 'sales' ? rep : kind === 'client' ? contact : 'System'), time: `${fmtIdle(days)} ago`, atts })
 
   if (c.account === 'Churn') {
-    add(last, 'sales', '📞', CALL, 'Call · win-back', `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.`, cover)
-    add(last + 20, 'system', '⚠️', SYS, 'Subscription expired', 'All quota lapsed — the account is read-only until it is renewed.')
-    add(last + 34, 'sales', '💬', CHAT, 'Chat · Email', `${rep} sent a renewal reminder to ${contact} — no reply.`)
-    add(last + 61, 'sales', '📄', DOC, 'Renewal quotation sent', `Sent to ${contact}; the quotation lapsed unanswered.`)
-    add(last + 92, 'client', '🔍', CLIENT, 'Last CV unlocked', `${contact} opened a candidate — the final use before they went quiet.`)
-    add(last + 150, 'system', '💳', SYS, 'Payment confirmed', 'Accounting matched the bank transfer for the previous term.')
+    add(last, 'sales', '', CALL, 'Call · win-back', `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.`, cover)
+    add(last + 20, 'system', '', SYS, 'Subscription expired', 'All quota lapsed — the account is read-only until it is renewed.')
+    add(last + 34, 'sales', '', CHAT, 'Chat · Email', `${rep} sent a renewal reminder to ${contact} — no reply.`)
+    add(last + 61, 'sales', '', DOC, 'Renewal quotation sent', `Sent to ${contact}; the quotation lapsed unanswered.`)
+    add(last + 92, 'client', '', CLIENT, 'Last CV unlocked', `${contact} opened a candidate — the final use before they went quiet.`)
+    add(last + 150, 'system', '', SYS, 'Payment confirmed', 'Accounting matched the bank transfer for the previous term.')
     return ev.sort((x, y) => x.days - y.days)
   }
 
   // ── sales side: chats, calls and the documents we sent ────────────────────
-  add(last, 'sales', '💬', CHAT, 'Chat · Zalo', `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.`, undefined,
+  add(last, 'sales', '', CHAT, 'Chat · Zalo', `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.`, undefined,
     [{ kind: 'image', label: 'zalo-01.png' }, { kind: 'image', label: 'zalo-02.png' }, { kind: 'image', label: 'bao-gia.jpg' }])
-  add(last + 6, 'sales', '🤝', MEET, 'Meeting · at their office', `Package options walked through with ${contact} and the finance lead. 60 phút · 14:00 20/07/2026.`, cover,
+  add(last + 6, 'sales', '', MEET, 'Meeting · at their office', `Package options walked through with ${contact} and the finance lead. 60 phút · 14:00 20/07/2026.`, cover,
     [{ kind: 'email', label: 'RE- Báo giá tháng 7.eml' }, { kind: 'image', label: 'bien-ban-hop.jpg' }])
   if (c.status === 'PO' || c.status === 'Invoice') {
-    add(last + 9, 'sales', '📄', DOC, 'Purchase order issued', `${contact} confirmed the accepted option; PO issued by ${rep} — active until the end of the month.`)
+    add(last + 9, 'sales', '', DOC, 'Purchase order issued', `${contact} confirmed the accepted option; PO issued by ${rep} — active until the end of the month.`)
   }
   if (c.status !== 'Qualified') {
-    add(last + 21, 'sales', '📄', DOC, 'Quotation sent', `${rep} sent the priced options to ${contact}.`)
+    add(last + 21, 'sales', '', DOC, 'Quotation sent', `${rep} sent the priced options to ${contact}.`)
   }
-  add(last + 38, 'sales', '📞', CALL, 'Call · discovery', `${rep} called ${contact} — logged via Calio, need and budget qualified.`)
-  add(last + 52, 'sales', '💬', CHAT, 'Chat · Email', `First outreach to ${contact}.`)
+  add(last + 38, 'sales', '', CALL, 'Call · discovery', `${rep} called ${contact} — logged via Calio, need and budget qualified.`)
+  add(last + 52, 'sales', '', CHAT, 'Chat · Email', `First outreach to ${contact}.`)
 
   // ── the money + provisioning chain, once they are a customer ──────────────
   if (isCustomer(c)) {
-    add(last + 4, 'client', '💳', CLIENT, 'Payment made', `${contact} transferred ${vnd(coValue(c))} for the order.`)
-    add(last + 3, 'system', '💳', SYS, 'Payment confirmed', 'Accounting matched the transfer against the bank — invoicing unlocked.')
-    add(last + 2, 'system', '🧾', SYS, 'VAT e-invoice issued', 'Provider stamped the invoice; the 12-month activation window started.')
-    add(last + 2, 'system', '📦', SYS, 'Products provisioned',
+    add(last + 4, 'client', '', CLIENT, 'Payment made', `${contact} transferred ${vnd(coValue(c))} for the order.`)
+    add(last + 3, 'system', '', SYS, 'Payment confirmed', 'Accounting matched the transfer against the bank — invoicing unlocked.')
+    add(last + 2, 'system', '', SYS, 'VAT e-invoice issued', 'Provider stamped the invoice; the 12-month activation window started.')
+    add(last + 2, 'system', '', SYS, 'Products provisioned',
       [c.jobPosting && 'Job Posting', c.resumeSearch && 'Resume Search'].filter(Boolean).join(' + ') + ' — released from the paid invoice.')
-    add(last + 1, 'system', '🏢', SYS, 'Account activated', `Login created for ${contact} (Admin) · owner ${c.owner}.`)
+    add(last + 1, 'system', '', SYS, 'Account activated', `Login created for ${contact} (Admin) · owner ${c.owner}.`)
   }
 
   // ── what the client themselves did on their site ──────────────────────────
   if (c.jobPosting) {
-    add(Math.max(0, last - 2), 'client', '📢', CLIENT, 'Job published', `${contact} posted a role — ${c.jobTotal - c.jobLeft}/${c.jobTotal} posting slots used.`)
-    add(Math.max(0, last - 1), 'client', '📥', CLIENT, 'Applications received', 'Candidates applied to the open roles — visible on the Applications tab.')
-    if (c.hasPage) add(last + 30, 'system', '🌐', SYS, 'Company page published', 'The public profile went live on the jobseeker site.')
+    add(Math.max(0, last - 2), 'client', '', CLIENT, 'Job published', `${contact} posted a role — ${c.jobTotal - c.jobLeft}/${c.jobTotal} posting slots used.`)
+    add(Math.max(0, last - 1), 'client', '', CLIENT, 'Applications received', 'Candidates applied to the open roles — visible on the Applications tab.')
+    if (c.hasPage) add(last + 30, 'system', '', SYS, 'Company page published', 'The public profile went live on the jobseeker site.')
     if (c.jobTotal && c.jobLeft / c.jobTotal < 0.3) {
-      add(Math.max(0, last - 3), 'system', '⚠️', SYS, 'Posting quota low', `${c.jobLeft} of ${c.jobTotal} slots left — offer a top-up.`)
+      add(Math.max(0, last - 3), 'system', '', SYS, 'Posting quota low', `${c.jobLeft} of ${c.jobTotal} slots left — offer a top-up.`)
     }
   }
   if (c.resumeSearch) {
-    add(Math.max(0, last - 1), 'client', '🔍', CLIENT, 'CV unlocked (PII)', `${contact} opened a candidate — ${c.cvTotal - c.cvLeft}/${c.cvTotal} unlocks used · audited.`)
-    add(Math.max(0, last - 4), 'client', '🔎', CLIENT, 'Resume search run', 'Searched the CV pool — no unlock spent on a search itself.')
+    add(Math.max(0, last - 1), 'client', '', CLIENT, 'CV unlocked (PII)', `${contact} opened a candidate — ${c.cvTotal - c.cvLeft}/${c.cvTotal} unlocks used · audited.`)
+    add(Math.max(0, last - 4), 'client', '', CLIENT, 'Resume search run', 'Searched the CV pool — no unlock spent on a search itself.')
   }
   if (isCustomer(c)) {
-    add(Math.max(0, last - 5), 'client', '👤', CLIENT, 'User invited', `${contact} invited a user (Recruiter) to the account.`)
-    add(Math.max(0, last - 6), 'client', '🔑', CLIENT, 'Signed in', `${contact} signed in to the company site.`)
+    add(Math.max(0, last - 5), 'client', '', CLIENT, 'User invited', `${contact} invited a user (Recruiter) to the account.`)
+    add(Math.max(0, last - 6), 'client', '', CLIENT, 'Signed in', `${contact} signed in to the company site.`)
   }
 
   return ev.sort((x, y) => x.days - y.days)
@@ -3738,7 +3738,7 @@ function AttachRow({ atts, onAdd, onDrop, allow = ['image', 'email'] }: { atts: 
       <div className="flex flex-wrap items-center gap-1.5">
         {atts.map((a, i) => (
           <span key={i} className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]', a.kind === 'email' ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-line bg-canvas text-muted')}>
-            <span>{a.kind === 'email' ? '✉️' : '🖼'}</span>
+            <span>{a.kind === 'email' ? '' : ''}</span>
             <span className="max-w-[150px] truncate">{a.label}</span>
             <button onClick={() => onDrop(i)} className="ml-0.5 text-faint hover:text-ink">✕</button>
           </span>
@@ -3775,10 +3775,10 @@ function CompanyActivities({ c }: { c: Company }) {
     const base = { time: 'just now', kind: 'sales' as CoKind, days: 0, by: ME, atts: atts.length ? atts : undefined }
     const entry: CoEvent =
       kind === 'chat'
-        ? { ...base, icon: '💬', tone: CHAT, title: `Chat · ${channel}`, sub: note.trim() || 'No note added.' }
+        ? { ...base, icon: '', tone: CHAT, title: `Chat · ${channel}`, sub: note.trim() || 'No note added.' }
         : kind === 'meeting'
-          ? { ...base, icon: '🤝', tone: MEET, title: `Meeting · ${place.toLowerCase()}`, sub: `${note.trim() || 'No note added.'} ${mins} phút · ${time} ${when}.` }
-          : { ...base, icon: '📞', tone: CALL, title: 'Call · logged via Calio', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.' }
+          ? { ...base, icon: '', tone: MEET, title: `Meeting · ${place.toLowerCase()}`, sub: `${note.trim() || 'No note added.'} ${mins} phút · ${time} ${when}.` }
+          : { ...base, icon: '', tone: CALL, title: 'Call · logged via Calio', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.' }
     setLogged((p) => [entry, ...p])
     setKind(null); setNote(''); setChannel('Zalo'); setAtts([])
   }
@@ -3795,7 +3795,7 @@ function CompanyActivities({ c }: { c: Company }) {
           stays fully readable. */}
       {ro ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 px-3.5 py-2.5">
-          <span className="text-[13px]">🔒</span>
+          <span className="text-[13px]"></span>
           <span className="text-[11.5px] leading-relaxed text-muted">
             Không ghi nhận hoạt động trên công ty của sales khác — việc này sẽ reset <b className="text-ink/70">Idle</b> của họ và ghi tên bạn vào sổ của họ.
           </span>
@@ -3807,9 +3807,9 @@ function CompanyActivities({ c }: { c: Company }) {
         </div>
         <div className="p-3.5">
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setKind('chat')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'chat' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>💬 Chat</button>
-            <button onClick={() => setKind('call')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'call' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>📞 Call</button>
-            <button onClick={() => setKind('meeting')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'meeting' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>🤝 Meeting</button>
+            <button onClick={() => setKind('chat')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'chat' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Chat</button>
+            <button onClick={() => setKind('call')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'call' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Call</button>
+            <button onClick={() => setKind('meeting')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'meeting' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Meeting</button>
             {/* Stamped with the signed-in account, not the company's sales owner —
                 whoever actually does the work is who gets the KPI for it. */}
             {kind && <span className="ml-auto text-[11px] text-faint">Ghi nhận cho <b className="font-medium text-ink/70">{ME}</b></span>}
@@ -3971,7 +3971,7 @@ function CompanyActivities({ c }: { c: Company }) {
                   <span className="flex flex-wrap items-center gap-1">
                     {e.atts.map((a, i) => (
                       <span key={i} className={cn('inline-flex max-w-[160px] items-center gap-1 rounded border px-1.5 py-0.5 text-[10px]', a.kind === 'email' ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-line bg-canvas text-muted')}>
-                        <span>{a.kind === 'email' ? '✉️' : '🖼'}</span>
+                        <span>{a.kind === 'email' ? '' : ''}</span>
                         <span className="truncate">{a.label}</span>
                       </span>
                     ))}
@@ -4065,13 +4065,13 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
           <div className="space-y-3">
             {c.jobPosting && (
               <div>
-                <div className="flex items-baseline justify-between text-[12px]"><b>📢 Job posting</b><span className="tabular-nums font-semibold">{c.jobLeft}<span className="font-normal text-faint">/{c.jobTotal} slots</span></span></div>
+                <div className="flex items-baseline justify-between text-[12px]"><b>Job posting</b><span className="tabular-nums font-semibold">{c.jobLeft}<span className="font-normal text-faint">/{c.jobTotal} slots</span></span></div>
                 <QuotaBar left={c.jobLeft} total={c.jobTotal} />
               </div>
             )}
             {c.resumeSearch && (
               <div>
-                <div className="flex items-baseline justify-between text-[12px]"><b>🔍 Resume search</b><span className="tabular-nums font-semibold">{c.cvLeft}<span className="font-normal text-faint">/{c.cvTotal} unlocks</span></span></div>
+                <div className="flex items-baseline justify-between text-[12px]"><b>Resume search</b><span className="tabular-nums font-semibold">{c.cvLeft}<span className="font-normal text-faint">/{c.cvTotal} unlocks</span></span></div>
                 <QuotaBar left={c.cvLeft} total={c.cvTotal} />
               </div>
             )}
@@ -4090,7 +4090,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
   if (!c.jobPosting) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-6 text-center">
-        <div className="text-[22px]">🔍</div>
+        <div className="text-[22px]"></div>
         <p className="mt-1 text-[12.5px] font-medium">No public page needed</p>
         <p className="mx-auto mt-1 max-w-[42ch] text-[11.5px] text-muted">Resume-Search-only customer — invisible to jobseekers and not listed in the public Companies directory. Add Job Posting to enable a page.</p>
       </div>
@@ -4114,7 +4114,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {ro ? (
-          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">🔒 Chỉ đọc — không sửa trang của công ty do sales khác phụ trách.</span>
+          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">Chỉ đọc — không sửa trang của công ty do sales khác phụ trách.</span>
         ) : c.hasPage ? (
           <>
             <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Save changes</button>
@@ -4124,7 +4124,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
           <button className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Publish page</button>
         )}
       </div>
-      {!c.hasPage && <p className="text-[11px] text-amber-700">⚠️ Draft — not public yet. The company can’t publish jobs until this page is published.</p>}
+      {!c.hasPage && <p className="text-[11px] text-amber-700">Draft — not public yet. The company can’t publish jobs until this page is published.</p>}
     </div>
   )
 }
@@ -4292,7 +4292,7 @@ function LinkAffiliateModal({ c, onClose }: { c: Company; onClose: () => void })
                       <span className="min-w-0 truncate text-[12px] font-medium text-ink">{coLabel(x)}</span>
                       {sameRoot && <span className="shrink-0 rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9.5px] font-medium text-amber-700">cùng gốc MST</span>}
                     </span>
-                    <span className="block truncate text-[10.5px] text-faint">MST {x.tax} · {companyId(coKey(x))} · 👤 {x.owner}</span>
+                    <span className="block truncate text-[10.5px] text-faint">MST {x.tax} · {companyId(coKey(x))} · {x.owner}</span>
                   </span>
                 </button>
                 )
@@ -4313,7 +4313,7 @@ function LinkAffiliateModal({ c, onClose }: { c: Company; onClose: () => void })
               </div>
               {moving && (
                 <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
-                  ⚠️ {coLabel(child)} đang trực thuộc <b>{coLabel(moving)}</b>. Lưu thay đổi này sẽ <b>chuyển</b> công ty sang tập đoàn mới — ghi vào audit log.
+                 {coLabel(child)} đang trực thuộc <b>{coLabel(moving)}</b>. Lưu thay đổi này sẽ <b>chuyển</b> công ty sang tập đoàn mới — ghi vào audit log.
                 </p>
               )}
             </div>
@@ -4437,7 +4437,7 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
           <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[11.5px]">
             {chain.map((a, i) => (
               <span key={a.name} className="flex items-center gap-1">
-                {i === 0 && <span className="text-[11px]">🏢</span>}
+                {i === 0 && <span className="text-[11px]"></span>}
                 <button onClick={() => go(a)} className="font-medium text-brand hover:underline">{coLabel(a)}</button>
                 <span className="text-faint">›</span>
               </span>
@@ -4465,7 +4465,7 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
             <div key={k.name} className="flex w-full items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5 hover:border-brand/40">
               <button onClick={() => go(k)} className="min-w-0 flex-1 text-left">
                 <p className="truncate text-[12px] font-medium text-ink hover:text-brand hover:underline">{coLabel(k)}</p>
-                <p className="truncate text-[10.5px] text-faint">MST {k.tax} · 👤 {k.owner}</p>
+                <p className="truncate text-[10.5px] text-faint">MST {k.tax} · {k.owner}</p>
               </button>
               {/* One label. A "chi nhánh" vs "công ty con" split was derived from the
                   tax code and shown here, but it changed nothing a rep can act on —
@@ -4498,7 +4498,7 @@ function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Company) 
           company — a second create path here would be a second way to make a
           duplicate, and the group link is not a reason to bypass the MST check. */}
       <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-2.5">
-        {!ro && <button onClick={() => setLinking(true)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">🔗 Gán quan hệ mẹ / con</button>}
+        {!ro && <button onClick={() => setLinking(true)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">Gán quan hệ mẹ / con</button>}
         {inGroup(c) && <button onClick={() => setChart(true)} className="ml-auto text-[11px] font-medium text-brand hover:underline">Xem sơ đồ tập đoàn ↗</button>}
       </div>
 
@@ -4613,7 +4613,7 @@ function OwnerHistory({ c }: { c: Company }) {
             </div>
             <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
               {i === 0 && <span className="tabular-nums text-muted">{t.from} – now · </span>}
-              {t.created ? '🌱 Created the lead' : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
+              {t.created ? 'Created the lead' : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
               {' · '}{t.reason}
             </p>
           </li>
@@ -4662,7 +4662,7 @@ function CompanyDocs({ c }: { c: Company }) {
         <div className="mt-2 space-y-1.5">
           {docs.map((d, i) => (
             <div key={i} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5">
-              <span className="text-[13px]">📄</span>
+              <span className="text-[13px]"></span>
               <div className="min-w-0 flex-1">
                 <a href="#" onClick={(e) => e.preventDefault()} className="block truncate text-[11.5px] font-medium text-brand hover:underline">{d.name}</a>
                 {d.note && <p className="truncate text-[10px] text-faint">{d.note}</p>}
@@ -4673,7 +4673,7 @@ function CompanyDocs({ c }: { c: Company }) {
         </div>
       )}
       {docs.length === 0
-        ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Chưa có tài liệu xác minh — vẫn bán được, nhưng sẽ bị chặn ở bước <b>xuất hoá đơn VAT</b>.</p>
+        ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">Chưa có tài liệu xác minh — vẫn bán được, nhưng sẽ bị chặn ở bước <b>xuất hoá đơn VAT</b>.</p>
         : <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>}
     </DetailCard>
   )
@@ -4822,7 +4822,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           instead of a mystery when a button does nothing. */}
       {c.owner !== ME && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
-          <span className="text-[13px]">👁</span>
+          <span className="text-[13px]"></span>
           <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn đang xem ở chế độ <b className="font-medium text-ink">chỉ đọc</b>.</span>
           <button className="ml-auto shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">Yêu cầu chuyển giao</button>
         </div>
@@ -4967,8 +4967,8 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <p className="text-[10.5px] uppercase tracking-wide text-faint">Products interested</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {!c.jobPosting && !c.resumeSearch && <span className="text-[12px] text-faint">— not recorded</span>}
-                  {c.jobPosting && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">📢 Job Posting</span>}
-                  {c.resumeSearch && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">🔍 Resume Search</span>}
+                  {c.jobPosting && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">Job Posting</span>}
+                  {c.resumeSearch && <span className="rounded border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[11px] text-brand">Resume Search</span>}
                 </div>
               </div>
               {editInfo
@@ -5018,7 +5018,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <span className="truncate text-[11.5px] text-muted">{p.title}</span>,
                 <span title={CONTACT_STATUS[p.status].hint}><Pill tone={CONTACT_STATUS[p.status].tone}>{p.status}</Pill></span>,
                 p.linkedUser
-                  ? <span className="text-[11px] text-emerald-700">🔗 linked</span>
+                  ? <span className="text-[11px] text-emerald-700">linked</span>
                   : <span className="text-[11px] text-faint">no login</span>,
                 <span className="truncate text-[11.5px] text-muted" title={p.note}>{p.note}</span>,
               ])}
@@ -5029,7 +5029,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           </div>
 
           <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-            Contacts and <b>Users</b> are <b>independent lists</b>. A contact can exist with no login (the accountant who only receives invoices); a user can exist with no contact record (an HR Specialist the customer invited themselves). Where they are the same human the rows are <b>linked</b> 🔗 — but neither list is generated from the other, and deleting one never touches the other.
+            Contacts and <b>Users</b> are <b>independent lists</b>. A contact can exist with no login (the accountant who only receives invoices); a user can exist with no contact record (an HR Specialist the customer invited themselves). Where they are the same human the rows are <b>linked</b> — but neither list is generated from the other, and deleting one never touches the other.
           </p>
         </div>
       )}
@@ -5071,7 +5071,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           <CoRoleBuilder />
           </div>
           <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-            A seat is a <b>login</b>, not a relationship. Someone here may never appear under <b>Contacts</b> (the customer invited them without telling us), and a contact may never need a seat. Rows for the same human are <b>linked</b> 🔗 in both directions.
+            A seat is a <b>login</b>, not a relationship. Someone here may never appear under <b>Contacts</b> (the customer invited them without telling us), and a contact may never need a seat. Rows for the same human are <b>linked</b> in both directions.
           </p>
         </div>
       )}
@@ -5238,7 +5238,7 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
             <p className="mt-1.5 text-[11px] leading-relaxed text-faint">Pick one of the account’s roles. Roles are built on the <b className="text-ink/70">Roles</b> screen; “Admin” grants account administration and every account keeps at least one.</p>
             <CoRolePermsView role={role} />
           </div>
-          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>🔑</span><span>We email an invite link. The person <b>sets their own password</b> — no one types it for them.</span></p>
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span></span><span>We email an invite link. The person <b>sets their own password</b> — no one types it for them.</span></p>
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
@@ -5271,7 +5271,7 @@ function ChangeRoleModal({ user, users, onConfirm, onClose }: { user: CUser; use
               </button>
             ))}
           </div>
-          {blocked && <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>This is the account’s <b>last Admin</b>. Assign Admin to another user before downgrading this one.</span></p>}
+          {blocked && <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span></span><span>This is the account’s <b>last Admin</b>. Assign Admin to another user before downgrading this one.</span></p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
@@ -5294,7 +5294,7 @@ function AdminCompanyUsers() {
   return (
     <div>
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">🔒 Super admin</Pill><p className="mt-1.5 text-[11px] text-muted">Fixed highest role — everything, plus manage users &amp; roles. At least 1 per account; can’t be edited.</p></div>
+        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">Super admin</Pill><p className="mt-1.5 text-[11px] text-muted">Fixed highest role — everything, plus manage users &amp; roles. At least 1 per account; can’t be edited.</p></div>
         <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Recruiter</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — all 7 module permissions, no user admin.</p></div>
         <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Viewer</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — view jobs &amp; applications only.</p></div>
       </div>
@@ -5412,7 +5412,7 @@ function AdminJobseekers() {
     <div>
       {toast && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
-          <span>✅ {toast}</span>
+          <span>{toast}</span>
           <button onClick={() => setToast(null)} className="text-emerald-700 hover:underline">Dismiss</button>
         </div>
       )}
@@ -5503,7 +5503,7 @@ function NewJobseekerModal({ onCreate, onClose }: { onCreate: (name: string, ema
         </div>
         <div className="space-y-3.5 p-5">
           <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-            <span>⚠️</span><span>The normal path is self sign-up on the Store site. Use this only for support cases (e.g. a seeker who can't complete sign-up) — it does not replace registration.</span>
+            <span></span><span>The normal path is self sign-up on the Store site. Use this only for support cases (e.g. a seeker who can't complete sign-up) — it does not replace registration.</span>
           </p>
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Full name <span className="text-rose-500">*</span></label>
@@ -5516,12 +5516,12 @@ function NewJobseekerModal({ onCreate, onClose }: { onCreate: (name: string, ema
           <LField label="Phone" value="optional — seeker completes it on My page" />
           <LField label="Location" value="Hồ Chí Minh" select hint="From Master data → Locations. Everything else (headline, CV, job preferences) is filled in by the seeker." />
           <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
-            <span>🔑</span><span>We email a set-password link. The seeker <b>sets their own password</b> — no one types it for them. The account stays <b>Unverified</b> until they open the link, then flips to <b>Active</b>.</span>
+            <span></span><span>We email a set-password link. The seeker <b>sets their own password</b> — no one types it for them. The account stays <b>Unverified</b> until they open the link, then flips to <b>Active</b>.</span>
           </p>
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => valid && onCreate(name.trim(), email.trim())} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send link</button>
+          <button onClick={() => valid && onCreate(name.trim(), email.trim())} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create &amp; send link</button>
         </div>
       </div>
     </div>
@@ -5605,7 +5605,7 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
             <RowAction>Open CV</RowAction>,
           ])}
         />
-        <p className="mt-2 text-[11px] text-faint">🔒 Opening a CV is a PII view — logged with the operator, the record and the timestamp. Private CVs never appear in Resume Search.</p>
+        <p className="mt-2 text-[11px] text-faint">Opening a CV is a PII view — logged with the operator, the record and the timestamp. Private CVs never appear in Resume Search.</p>
       </div>
 
       <div className="mt-4">
@@ -5784,7 +5784,7 @@ function AdminPlacements() {
       </div>
 
       <p className="mt-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-        <span>⚠️</span>
+        <span></span>
         <span>
           <b>Three placements have two supply routes.</b> “Công việc Hot hôm nay” shows 4 jobs but is both a Top Job
           perk (first 10 days) and a standalone purchase; Popular Jobs and Highlight Companies each have a fixed
@@ -5954,7 +5954,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
 
       {unpriced && (
         <p className="mb-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-          <span>⚠️</span><span><b>Cannot be set Active — no price.</b> The client deck does not price this item. Saving it as Active is blocked until a price is set.</span>
+          <span></span><span><b>Cannot be set Active — no price.</b> The client deck does not price this item. Saving it as Active is blocked until a price is set.</span>
         </p>
       )}
 
@@ -6126,7 +6126,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
             </div>
             {placement.route === 'both' && (
               <p className="mt-2 flex gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-[10.5px] leading-relaxed text-amber-800">
-                <span>⚠️</span><span>This area is also filled by a posting tier, so tier-included jobs and purchased positions compete for the same finite slots. Needs a priority rule.</span>
+                <span></span><span>This area is also filled by a posting tier, so tier-included jobs and purchased positions compete for the same finite slots. Needs a priority rule.</span>
               </p>
             )}
             <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Selling this needs an availability check — the slot cannot exceed {placement.cap}.</p>
@@ -6233,7 +6233,7 @@ function AdminCatalog() {
         screens read and decrement
       </p>
       <p className="mt-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-        <span>⚠️</span>
+        <span></span>
         <span>
           <b>Open with the client:</b> the deck gives no price for the banner / adsense / popup placements or the two
           premium-position add-ons. Email reach is stated three different ways — 7.500 (Basic Plus), 9.500 (Ultimate),
@@ -6393,7 +6393,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
             {status === 'Active' && !priceNum && (
-              <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700">⚠️ An Active product needs a price — Save is blocked until one is set.</p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700">An Active product needs a price — Save is blocked until one is set.</p>
             )}
           </div>
 
@@ -6550,7 +6550,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 <LField label="Đơn vị" req value="bài đăng" select hint="bài đăng · email · lượt gửi · banner" />
               </div>
               <p className="rounded-md bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
-                🛠 Paying this does <b>not</b> auto-provision quota. It opens a fulfilment task (Requested → Scheduled → Delivered) and needs proof-of-delivery before the line counts as fulfilled.
+                Paying this does <b>not</b> auto-provision quota. It opens a fulfilment task (Requested → Scheduled → Delivered) and needs proof-of-delivery before the line counts as fulfilled.
               </p>
             </>
           )}
@@ -6702,7 +6702,7 @@ export function NewPackageModal({ onClose }: { onClose: () => void }) {
           </div>
           {picked.length < 2 && (
             <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-              <span>⚠️</span><span>A package needs at least <b>2 components</b> — one component is just a product at a price.</span>
+              <span></span><span>A package needs at least <b>2 components</b> — one component is just a product at a price.</span>
             </p>
           )}
 
@@ -6737,7 +6737,7 @@ export function NewPackageModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
           {status === 'Active' && (
-            <p className="text-[10.5px] leading-relaxed text-amber-700">⚠️ A package can only be Active while every component is Active.</p>
+            <p className="text-[10.5px] leading-relaxed text-amber-700">A package can only be Active while every component is Active.</p>
           )}
         </div>
 
@@ -6914,7 +6914,7 @@ function PipelineTable({ onConvert, onOpen }: { onConvert: (d: Deal) => void; on
           <div className="min-w-0">
             <button onClick={() => onOpen(d)} className="block max-w-full truncate text-left font-medium text-brand hover:underline">{d.company}</button>
             {d.stage === 'Won' && (
-              <button onClick={() => onConvert(d)} className="mt-1 inline-flex rounded-md bg-emerald-600 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:opacity-90">⚡ Convert →</button>
+              <button onClick={() => onConvert(d)} className="mt-1 inline-flex rounded-md bg-emerald-600 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:opacity-90">Convert →</button>
             )}
           </div>,
           <Pill tone={d.tone}>{d.stage}</Pill>,
@@ -6944,7 +6944,7 @@ function PipelineBoard({ onConvert, onOpen }: { onConvert: (d: Deal) => void; on
                 <p className="truncate text-[11.5px] font-semibold text-ink">{d.company}</p>
                 <p className="text-[10.5px] text-muted tabular-nums">{money(d.value)}</p>
                 {st.key === 'Won' && (
-                  <button onClick={(e) => { e.stopPropagation(); onConvert(d) }} className="mt-1.5 w-full rounded-md bg-emerald-600 px-2 py-1 text-[10.5px] font-semibold text-white hover:opacity-90">⚡ Convert →</button>
+                  <button onClick={(e) => { e.stopPropagation(); onConvert(d) }} className="mt-1.5 w-full rounded-md bg-emerald-600 px-2 py-1 text-[10.5px] font-semibold text-white hover:opacity-90">Convert →</button>
                 )}
               </div>
             ))}
@@ -7005,7 +7005,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
       {/* header */}
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-soft text-[16px]">🏢</span>
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-soft text-[16px]"></span>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Lead · Company</p>
             <h3 className="text-[19px] font-bold tracking-tight">{deal.company}</h3>
@@ -7030,7 +7030,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         {deal.stage === 'Lost'
           ? <Pill tone="rejected">Lost</Pill>
           : deal.stage === 'Won'
-            ? <button onClick={() => setConverting(true)} className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-[12px] font-semibold text-white hover:opacity-90">⚡ Convert →</button>
+            ? <button onClick={() => setConverting(true)} className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-[12px] font-semibold text-white hover:opacity-90">Convert →</button>
             : <button className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-semibold text-white hover:opacity-90">✓ Mark stage complete</button>}
       </div>
 
@@ -7056,16 +7056,16 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         {/* col 2 — activity */}
         <DetailCard
           title="Activity"
-          action={<span className="flex gap-1">{['✉', '📞', '✅', '📅'].map((i) => <span key={i} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[11px] text-muted">{i}</span>)}</span>}
+          action={<span className="flex gap-1">{['', '', '', ''].map((i) => <span key={i} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[11px] text-muted">{i}</span>)}</span>}
         >
           <p className="mb-3 text-[11px] text-faint">Filters: Within 2 months · All activities · All types</p>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Upcoming &amp; overdue</p>
           <div className="space-y-3">
-            <TL icon="📅" title="Introductory call" time="Feb 16" sub="Upcoming event · 1:30 PM" tone="bg-violet-100 text-violet-700" />
+            <TL icon="" title="Introductory call" time="Feb 16" sub="Upcoming event · 1:30 PM" tone="bg-violet-100 text-violet-700" />
             <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">February 2026</p>
-            <TL icon="📞" title="Discovery call" time="Today" sub="You logged a call — 18 min" tone="bg-sky-100 text-sky-700" />
-            <TL icon="✅" title="Send pricing options" time="Today" sub="Task completed" tone="bg-emerald-100 text-emerald-700" />
-            <TL icon="✉" title="Intro & product overview" time="Today" sub="Email sent to Ms. Linh · Opened" tone="bg-amber-100 text-amber-700" />
+            <TL icon="" title="Discovery call" time="Today" sub="You logged a call — 18 min" tone="bg-sky-100 text-sky-700" />
+            <TL icon="" title="Send pricing options" time="Today" sub="Task completed" tone="bg-emerald-100 text-emerald-700" />
+            <TL icon="" title="Intro & product overview" time="Today" sub="Email sent to Ms. Linh · Opened" tone="bg-amber-100 text-amber-700" />
           </div>
         </DetailCard>
 
@@ -7078,11 +7078,11 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
           <DetailCard title="Contacts" action={<span className="text-[11px] text-brand">+ Add</span>}>
             <div className="space-y-2.5">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-canvas text-[12px]">👩</span>
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-canvas text-[12px]"></span>
                 <div className="min-w-0"><p className="truncate text-[12.5px] font-semibold">Ms. Vũ Thanh Linh</p><p className="text-[11px] text-muted">HR Manager · decision-maker</p></div>
               </div>
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-canvas text-[12px]">🧑</span>
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-canvas text-[12px]"></span>
                 <div className="min-w-0"><p className="truncate text-[12.5px] font-semibold">Mr. Lê Quốc Bảo</p><p className="text-[11px] text-muted">Finance · handles PO / invoice</p></div>
               </div>
             </div>
@@ -7091,7 +7091,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
             <KV label="Estimated value" value={money(deal.value)} />
             <div className="border-b border-line-soft py-2">
               <p className="text-[10.5px] uppercase tracking-wide text-faint">Products interested</p>
-              <div className="mt-1 flex flex-wrap gap-1.5"><Pill tone="neutral">📢 Job Posting</Pill><Pill tone="neutral">🔍 Resume Search</Pill></div>
+              <div className="mt-1 flex flex-wrap gap-1.5"><Pill tone="neutral">Job Posting</Pill><Pill tone="neutral">Resume Search</Pill></div>
             </div>
             <KV label="Latest quote" value="Q-2042 · Sent · 28.5M ₫" link />
           </DetailCard>
@@ -7567,7 +7567,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
         <div className="space-y-2 border-t border-line px-5 py-3">
           {needsApproval && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">
-              ⚠ A {maxDisc}% discount exceeds the {DISCOUNT_APPROVAL}% threshold — Send is blocked until a sales lead approves. Save as draft and request approval.
+              A {maxDisc}% discount exceeds the {DISCOUNT_APPROVAL}% threshold — Send is blocked until a sales lead approves. Save as draft and request approval.
             </div>
           )}
           {!everyOptionPaid && <p className="text-[11.5px] text-rose-600">Every option needs at least one paid line — an option cannot be gifts only.</p>}
@@ -7606,7 +7606,7 @@ function MstMatchRow({ m, rel, onSet }: {
     <div className={cn('flex flex-wrap items-center gap-2 rounded-lg border px-2.5 py-2', rel === 'none' ? 'border-line bg-surface' : 'border-brand/40 bg-brand-soft/50')}>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12px] font-medium text-ink">{m.name}</p>
-        <p className="truncate text-[10.5px] text-faint">MST {m.tax} · {m.where} · 👤 {m.owner}</p>
+        <p className="truncate text-[10.5px] text-faint">MST {m.tax} · {m.where} · {m.owner}</p>
       </div>
       {/* Two directions, and they have different cardinality on purpose: the new
           company has at most ONE parent, but can be the parent of MANY of these. */}
@@ -7712,7 +7712,7 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
                   {/* Both directions at once is legal (a middle layer of a group) but
                       it is also the only way to describe a loop, so say when it is checked. */}
                   {parentPick && childPicks.length > 0 && (
-                    <span className="mt-1 block rounded bg-amber-100 px-1.5 py-1 text-amber-900">⚠ Công ty này sẽ nằm giữa hai tầng. Hệ thống kiểm tra liên kết vòng khi lưu — nếu công ty mẹ đã nằm dưới một trong các công ty con, liên kết sẽ bị từ chối.</span>
+                    <span className="mt-1 block rounded bg-amber-100 px-1.5 py-1 text-amber-900">Công ty này sẽ nằm giữa hai tầng. Hệ thống kiểm tra liên kết vòng khi lưu — nếu công ty mẹ đã nằm dưới một trong các công ty con, liên kết sẽ bị từ chối.</span>
                   )}
                 </div>
               )}
@@ -7723,7 +7723,7 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
             <div>
               <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Công ty mẹ</label>
               <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand-soft px-3 py-2 text-[12.5px] text-brand">
-                <span className="min-w-0 truncate font-medium">🏢 {coLabel(lockedParent)}</span>
+                <span className="min-w-0 truncate font-medium">{coLabel(lockedParent)}</span>
                 <span className="shrink-0 text-[10.5px] text-brand/70">MST {lockedParent.tax}</span>
                 <span className="ml-auto shrink-0 rounded border border-brand/30 px-1.5 py-0.5 text-[10px] font-medium">Đã cố định</span>
               </div>
@@ -7761,7 +7761,7 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               {/* Optional: pick the address on a map so the pin is stored alongside
                   the text. Sales use it to find the office; the printed documents
                   still use the typed address. */}
-              <button className="shrink-0 rounded-md border border-line px-2.5 py-2 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">📍 Chọn trên bản đồ</button>
+              <button className="shrink-0 rounded-md border border-line px-2.5 py-2 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">Chọn trên bản đồ</button>
             </div>
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Địa chỉ trụ sở — in trên báo giá, đơn hàng và hoá đơn. Bắt buộc với mọi quốc gia. Chọn trên bản đồ để lưu kèm toạ độ (tuỳ chọn).</p>
           </div>
@@ -7780,7 +7780,7 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               <div className="mt-2 space-y-1.5">
                 {docs.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5">
-                    <span className="text-[13px]">📄</span>
+                    <span className="text-[13px]"></span>
                     <span className="min-w-0 flex-1 truncate text-[11.5px] text-ink/80">{d}</span>
                     <button onClick={() => setDocs((p) => p.filter((_, j) => j !== i))} className="text-[11px] text-faint hover:text-ink">✕</button>
                   </div>
@@ -7811,8 +7811,8 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Products interested</label>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> 📢 Job Posting</span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> 🔍 Resume Search</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> Job Posting</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Resume Search</span>
             </div>
           </div>
           <LField label="Estimated deal value (₫)" value="0" />
@@ -7845,13 +7845,13 @@ function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName:
         </div>
         <div className="max-h-[72vh] space-y-3 overflow-y-auto p-5">
           <div className="flex gap-2.5 rounded-lg bg-brand-soft px-3.5 py-3 text-[12px] leading-relaxed text-brand">
-            <span>🔗</span>
+            <span></span>
             <div>Converting creates the <b>company account</b> + its <b>first user login</b>, and provisions the <b>products</b> they bought. If the company already exists (e.g. it self-signed up), link it instead to avoid a duplicate.</div>
           </div>
 
           {/* Account */}
           <div className="rounded-xl border border-line p-4">
-            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">🏢 Account <span className="font-normal text-faint">(the company)</span></p>
+            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">Account <span className="font-normal text-faint">(the company)</span></p>
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
               <div className="rounded-lg border border-brand bg-brand-soft/40 p-3">
                 <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-brand"><Radio on /> Create new account</div>
@@ -7860,7 +7860,7 @@ function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName:
               <div className="flex items-center justify-center text-[11px] font-semibold text-faint">— OR —</div>
               <div className="rounded-lg border border-line p-3">
                 <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-muted"><Radio /> Choose existing account</div>
-                <div className="flex items-center rounded-md border border-line px-3 py-2 text-[12px] text-faint">Search by name / tax code <span className="ml-auto">🔍</span></div>
+                <div className="flex items-center rounded-md border border-line px-3 py-2 text-[12px] text-faint">Search by name / tax code <span className="ml-auto"></span></div>
                 <p className="mt-2 rounded-md bg-canvas/60 px-2 py-2.5 text-center text-[11px] text-faint">0 matches — checked by tax code (dedup)</p>
               </div>
             </div>
@@ -7868,7 +7868,7 @@ function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName:
 
           {/* Contact */}
           <div className="rounded-xl border border-line p-4">
-            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">👤 Contact <span className="font-normal text-faint">(→ first user login)</span></p>
+            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">Contact <span className="font-normal text-faint">(→ first user login)</span></p>
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
               <div className="rounded-lg border border-brand bg-brand-soft/40 p-3">
                 <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-brand"><Radio on /> Create new contact</div>
@@ -7885,13 +7885,13 @@ function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName:
 
           {/* Products (our version of "Opportunity") */}
           <div className="rounded-xl border border-line p-4">
-            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">📦 Products <span className="font-normal text-faint">(provisioned as quota on convert)</span></p>
+            <p className="mb-2.5 flex items-center gap-2 text-[13px] font-bold">Products <span className="font-normal text-faint">(provisioned as quota on convert)</span></p>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> 📢 Job Posting — 10 slots</span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> 🔍 Resume Search — 100 unlocks</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> Job Posting — 10 slots</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-1.5 text-[12px] text-brand"><span className="grid h-3.5 w-3.5 place-items-center rounded bg-brand text-[9px] text-white">✓</span> Resume Search — 100 unlocks</span>
             </div>
             <label className="mt-2.5 flex items-center gap-2 text-[12px] text-muted"><span className="h-3.5 w-3.5 rounded border border-line" /> Don’t provision yet (activate later)</label>
-            <p className="mt-2 text-[11px] text-amber-700">⚠️ Job Posting is selected → a public company page will be required after convert.</p>
+            <p className="mt-2 text-[11px] text-amber-700">Job Posting is selected → a public company page will be required after convert.</p>
             <p className="mt-1 text-[11px] text-faint">From <b className="text-ink/70">{companyName}</b> · {money(value)} · Quote Q-2042</p>
           </div>
 
@@ -7938,11 +7938,11 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
           plus a hard-coded storyboard line about one specific company. */}
       {onActivate && (
         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <span className="text-[16px]">🎉</span>
+          <span className="text-[16px]"></span>
           <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-emerald-800">
             <b>“Cty Trường Sơn” is Won.</b> The pipeline ends here. Next you <b>activate the customer</b> — create the account, choose products, and (for Job Posting) build the company page. This hands the customer off to <b>Account management</b>.
           </p>
-          <button onClick={onActivate} className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">⚡ Activate customer →</button>
+          <button onClick={onActivate} className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Activate customer →</button>
         </div>
       )}
 
@@ -8379,10 +8379,10 @@ function QuotationPdfModal({ q, co, onClose }: { q: Quote; co?: Company; onClose
             <span className="min-w-[46px] px-1 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
             <button onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">+</button>
           </div>
-          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">🖨 In / Print</button>
+          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">In / Print</button>
           {/* Download is the primary action now: the rep sends the file themselves,
               through their own mailbox or Zalo, and records that with "Mark as sent". */}
-          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">⬇ Tải PDF</button>
+          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">Tải PDF</button>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-slate-300 hover:bg-white/10">✕</button>
         </div>
       </div>
@@ -8463,7 +8463,7 @@ function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onB
           {/* One action, not two: "preview" and "export" render the SAME document —
               the viewer is where the file is downloaded from, so a rep can never
               send a PDF they have not looked at. */}
-          <button onClick={() => setPdf(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">📄 Xuất PDF / Export</button>
+          <button onClick={() => setPdf(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Xuất PDF / Export</button>
           {/* Available in EVERY status — the commonest use is re-quoting an expired
               or lost offer, so restricting it to live quotations would remove it
               exactly when it is most wanted. */}
@@ -8488,7 +8488,7 @@ function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onB
 
       {q.lapsed && (
         <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11.5px] text-rose-900">
-          ⚠ Offer lapsed — validity ended {q.expires}. Extend validity or re-issue as v2 before an order can be raised.
+          Offer lapsed — validity ended {q.expires}. Extend validity or re-issue as v2 before an order can be raised.
         </div>
       )}
 
@@ -9428,7 +9428,7 @@ function AddStaffModal({ onAdd, onClose }: { onAdd: (s: Omit<Staff, 'id'>) => vo
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Account executive" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand" />
             </div>
           </div>
-          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>ℹ️</span><span>This only adds the person to the directory. It does <b>not</b> grant console access — do that in <b>Users</b> (pick this staff member, assign a role, send the invite).</span></p>
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>ℹ</span><span>This only adds the person to the directory. It does <b>not</b> grant console access — do that in <b>Users</b> (pick this staff member, assign a role, send the invite).</span></p>
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
@@ -9580,11 +9580,11 @@ function CreateOperatorModal({ onCreate, onClose }: { onCreate: (name: string, e
             </div>
             <p className="mt-1.5 text-[11px] text-faint">No role fits? Define one first in <b className="text-ink/70">System → Roles &amp; permissions</b>.</p>
           </div>
-          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>🔑</span><span>Sending the invite emails a one-time activation link. The operator <b>sets their own password</b> — no one types it for them. Their status stays <b>Pending</b> until they activate it, then flips to <b>Active</b>.</span></p>
+          <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span></span><span>Sending the invite emails a one-time activation link. The operator <b>sets their own password</b> — no one types it for them. Their status stays <b>Pending</b> until they activate it, then flips to <b>Active</b>.</span></p>
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => picked && role && onCreate(picked.name, picked.email, picked.dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">✉ Create &amp; send invite</button>
+          <button onClick={() => picked && role && onCreate(picked.name, picked.email, picked.dept, role)} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create &amp; send invite</button>
         </div>
       </div>
     </div>
@@ -9607,7 +9607,7 @@ function AdminUsers() {
     <div>
       {toast && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
-          <span>✅ {toast}</span>
+          <span>{toast}</span>
           <button onClick={() => setToast(null)} className="text-emerald-700 hover:underline">Dismiss</button>
         </div>
       )}
@@ -9995,7 +9995,7 @@ function AdminMembership() {
                 </div>
                 {/* Rich-text placeholder: the real screen gets bold / list / link. */}
                 <div className="flex items-center gap-1 border-b border-line-soft px-2 py-1 text-[11px] text-faint">
-                  {['B', 'I', 'U', '•', '1.', '🔗'].map((b) => (
+                  {['B', 'I', 'U', '•', '1.', ''].map((b) => (
                     <span key={b} className={cn('grid h-5 min-w-5 place-items-center rounded px-1 hover:bg-canvas', b === 'B' && 'font-bold', b === 'I' && 'italic', b === 'U' && 'underline')}>{b}</span>
                   ))}
                 </div>
@@ -10400,7 +10400,7 @@ function SavedByCard({ job }: { job: JobRow }) {
         </button>
       )}
       <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
-        🔒 Tên ứng viên là PII — mở hồ sơ từ đây được ghi vào audit log, và chỉ hiện với người có quyền xem ứng viên.
+        Tên ứng viên là PII — mở hồ sơ từ đây được ghi vào audit log, và chỉ hiện với người có quyền xem ứng viên.
       </p>
     </DetailCard>
   )
@@ -10417,10 +10417,10 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
           <p className="text-[11.5px] text-muted"><span className="font-mono">{job.id}</span> · {job.category} · {job.company} · Created by {job.source}</p>
           <a className="mt-1 inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand hover:underline">
             {job.status === 'draft' || job.status === 'schedule'
-              ? '👁 Preview draft ↗'
+              ? 'Preview draft ↗'
               : job.status === 'open'
-                ? '🔗 View live job post ↗'
-                : '🔗 View job post (closed) ↗'}
+                ? 'View live job post ↗'
+                : 'View job post (closed) ↗'}
           </a>
         </div>
         <div className="flex gap-2">
@@ -10492,7 +10492,7 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
             <KVShow label="Age preference" value="18 – 60" shown={false} />
             <KV label="Cover letter" value="Never required" />
           </div>
-          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">⚠️ Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — pending client confirmation.</p>
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — pending client confirmation.</p>
         </DetailCard>
 
         <SavedByCard job={job} />
@@ -10693,7 +10693,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
         </div>
         <div className="flex items-center gap-2">
           <Pill tone="draft">Draft</Pill>
-          <a className="inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand">👁 Preview draft ↗</a>
+          <a className="inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand">Preview draft ↗</a>
         </div>
       </div>
 
@@ -10718,7 +10718,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
               </div>
             </div>
           </div>
-          <p className="text-[10.5px] leading-relaxed text-faint">🆓 The <b>Free</b> package needs no PO — Admin can post a Free job at any time, with no preconditions. <b>Paid products</b> (Basic · Basic plus · Distinction · Top Job) must draw from an active PO: pick the PO first (a customer can have more than one active PO), then the product inside it. The posting’s expiry is set by the product’s duration (e.g. Free = 14 days).</p>
+          <p className="text-[10.5px] leading-relaxed text-faint">The <b>Free</b> package needs no PO — Admin can post a Free job at any time, with no preconditions. <b>Paid products</b> (Basic · Basic plus · Distinction · Top Job) must draw from an active PO: pick the PO first (a customer can have more than one active PO), then the product inside it. The posting’s expiry is set by the product’s duration (e.g. Free = 14 days).</p>
         </JobGroup>
 
         {/* ═══ JOB INFORMATION (client field list) ══════════════════════════ */}
@@ -10760,7 +10760,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
                   <div className="flex w-44 shrink-0 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.city}<span className="ml-auto">▾</span></div>
                   <div className="flex flex-1 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.address}</div>
                   {locations.length > 1 && (
-                    <button onClick={() => setLocations((ls) => ls.filter((_, j) => j !== i))} className="rounded-md border border-line px-2 py-2 text-[12px] text-muted">🗑</button>
+                    <button onClick={() => setLocations((ls) => ls.filter((_, j) => j !== i))} className="rounded-md border border-line px-2 py-2 text-[12px] text-muted"></button>
                   )}
                 </div>
               ))}
@@ -10802,7 +10802,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
         {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}
         <JobGroup title="Candidate expectation">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-            ⚠️ Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — confirm with the client whether to collect / display them.
+           Demographic fields (nationality / gender / marital status / age) are legally sensitive for VN job ads — confirm with the client whether to collect / display them.
           </div>
           <div className={G2}>
             <div>
@@ -10841,8 +10841,8 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <div className="mb-3 rounded-lg border border-line bg-canvas/40 p-3">
             <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Schedule publish time</p>
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-faint">
-              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">📅 dd/mm/yyyy</span>
-              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">🕐 hh:mm</span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">dd/mm/yyyy</span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-3 py-1.5">hh:mm</span>
               <span className="text-[11px] text-muted">GMT+7</span>
               <button onClick={() => setScheduling(false)} className="ml-1 text-[11px] font-medium text-muted underline">Cancel</button>
             </div>
@@ -10858,7 +10858,7 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
             {postMenu && (
               <div className="absolute right-0 z-10 mt-1 w-60 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
                 <button onClick={() => { setScheduling(false); setPostMenu(false) }} className="block w-full px-3 py-2 text-left text-[12.5px] text-ink/80 hover:bg-canvas">Post now — publish immediately</button>
-                <button onClick={() => { setScheduling(true); setPostMenu(false) }} className="block w-full border-t border-line-soft px-3 py-2 text-left text-[12.5px] text-ink/80 hover:bg-canvas">📅 Schedule for later…</button>
+                <button onClick={() => { setScheduling(true); setPostMenu(false) }} className="block w-full border-t border-line-soft px-3 py-2 text-left text-[12.5px] text-ink/80 hover:bg-canvas">Schedule for later…</button>
               </div>
             )}
           </div>

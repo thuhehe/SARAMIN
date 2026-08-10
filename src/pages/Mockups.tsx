@@ -67,8 +67,8 @@ function HomeScreen() {
         <p className="text-[18px] font-bold text-ink">Find your next job</p>
         <p className="text-[12.5px] text-muted mb-3">Thousands of jobs from top companies in Vietnam</p>
         <div className="flex flex-col sm:flex-row gap-2 max-w-[720px]">
-          <div className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">🔍 Job title, skill, company…</div>
-          <div className="w-full sm:w-44 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">📍 All locations</div>
+          <div className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">Job title, skill, company…</div>
+          <div className="w-full sm:w-44 rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-faint">All locations</div>
           <Btn primary className="px-5" onClick={() => go('js-search')}>Search</Btn>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -118,8 +118,8 @@ function SearchScreen() {
     <div>
       <JsHeader active="Jobs" />
       <div className="flex items-center gap-2 border-b border-line px-5 py-3">
-        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">🔍 "frontend"</div>
-        <div className="w-40 rounded-md border border-line px-3 py-2 text-[12px] text-faint">📍 Hồ Chí Minh</div>
+        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">"frontend"</div>
+        <div className="w-40 rounded-md border border-line px-3 py-2 text-[12px] text-faint">Hồ Chí Minh</div>
         <Btn primary>Search</Btn>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -292,8 +292,8 @@ function ApplyScreen() {
                   their own shelf here, not learn a second layout for the same thing. */}
               <div className="space-y-1.5">
                 {([
-                  ['portfolio', '📄', 'productdesign.pdf', 'Uploaded', 'Uploaded 26/07/2026'],
-                  ['saramin', '📃', 'Business Developer CV', 'Saramin', 'Generated 26/07/2026'],
+                  ['portfolio', '', 'productdesign.pdf', 'Uploaded', 'Uploaded 26/07/2026'],
+                  ['saramin', '', 'Business Developer CV', 'Saramin', 'Generated 26/07/2026'],
                 ] as const).map(([id, icon, name, kind, meta]) => (
                   <label
                     key={id}
@@ -422,12 +422,12 @@ export const CORE_CV_SECTIONS: { title: string; pct: string }[] = [
 ] // = 75%
 
 export const OPTIONAL_CV_SECTIONS: { title: string; pct: string; desc: string; icon: string }[] = [
-  { title: 'Foreign Language', pct: '7%', desc: 'Provide your language skills and proficiencies', icon: '🌐' },
-  { title: 'Highlight projects', pct: '6%', desc: 'Showcase your work — projects, case studies, published pieces', icon: '📁' },
-  { title: 'Certificates', pct: '4%', desc: 'Provide evidence of your specific expertise and skills', icon: '📜' },
-  { title: 'Awards', pct: '4%', desc: 'Highlight your awards or recognitions', icon: '🏆' },
-  { title: 'Activities', pct: '3%', desc: 'Volunteering, clubs & communities you take part in', icon: '🎯' },
-  { title: 'References', pct: '1%', desc: 'People who can vouch for your work', icon: '👥' },
+  { title: 'Foreign Language', pct: '7%', desc: 'Provide your language skills and proficiencies', icon: '' },
+  { title: 'Highlight projects', pct: '6%', desc: 'Showcase your work — projects, case studies, published pieces', icon: '' },
+  { title: 'Certificates', pct: '4%', desc: 'Provide evidence of your specific expertise and skills', icon: '' },
+  { title: 'Awards', pct: '4%', desc: 'Highlight your awards or recognitions', icon: '' },
+  { title: 'Activities', pct: '3%', desc: 'Volunteering, clubs & communities you take part in', icon: '' },
+  { title: 'References', pct: '1%', desc: 'People who can vouch for your work', icon: '' },
 ] // = 25%  →  75 + 25 = 100%
 // NOTE: no "Publications" section — it is not a search facet and near-nobody fills
 // it on a general VN job board (Saramin KR and VietnamWorks have none either).
@@ -629,7 +629,7 @@ function EditRow({ f }: { f: EditField }) {
         </div>
       ) : f.kind === 'file' ? (
         <div className="flex items-center gap-2">
-          <span className="rounded-md border border-brand/50 px-2.5 py-1 text-[11px] font-medium text-brand">⬆ Choose file</span>
+          <span className="rounded-md border border-brand/50 px-2.5 py-1 text-[11px] font-medium text-brand">Choose file</span>
           <span className="text-[11px] text-faint">No file chosen</span>
         </div>
       ) : (
@@ -693,7 +693,7 @@ function FillFromCvModal({ step, setStep, onClose }: { step: 'select' | 'working
             </div>
             <div className="space-y-3 p-4">
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
-                <span>⭐</span>
+                <span></span>
                 <p><b>Note:</b> We read your file and pre-fill your profile — you just review &amp; confirm. Nothing is published until you save.</p>
               </div>
               {/* option 1 — current CV */}
@@ -711,7 +711,7 @@ function FillFromCvModal({ step, setStep, onClose }: { step: 'select' | 'working
                 <div className="min-w-0 flex-1">
                   <p className="text-[12.5px] font-semibold text-ink">Upload a new CV</p>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className="rounded-md border border-brand/50 px-2.5 py-1 text-[11.5px] font-medium text-brand">⬆ Choose file</span>
+                    <span className="rounded-md border border-brand/50 px-2.5 py-1 text-[11.5px] font-medium text-brand">Choose file</span>
                     <span className="text-[11.5px] text-faint">No file chosen</span>
                   </div>
                   <p className="mt-1 text-[10.5px] text-faint">.doc, .docx or .pdf · max 3MB · no password protection</p>
@@ -724,13 +724,13 @@ function FillFromCvModal({ step, setStep, onClose }: { step: 'select' | 'working
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
               <Btn onClick={onClose}>Cancel</Btn>
-              <Btn primary onClick={() => { setStep('working'); setTimeout(() => setStep('done'), 1600) }}>✨ Fill profile</Btn>
+              <Btn primary onClick={() => { setStep('working'); setTimeout(() => setStep('done'), 1600) }}>Fill profile</Btn>
             </div>
           </>
         )}
         {step === 'working' && (
           <div className="px-6 py-10 text-center">
-            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-xl bg-brand-soft text-[26px]">📄</div>
+            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-xl bg-brand-soft text-[26px]"></div>
             <div className="mx-auto mb-4 h-1.5 w-44 overflow-hidden rounded-full bg-line">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-brand" />
             </div>
@@ -740,12 +740,12 @@ function FillFromCvModal({ step, setStep, onClose }: { step: 'select' | 'working
         )}
         {step === 'done' && (
           <div className="px-5 py-6 text-center">
-            <div className="mb-1 text-[30px]">🎉</div>
+            <div className="mb-1 text-[30px]"></div>
             <p className="text-[15px] font-bold text-ink">Profile filled from your CV!</p>
             <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Please review the imported info and edit anything that needs a touch-up.</p>
             <p className="mt-4 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Updated sections</p>
             <div className="mt-2 space-y-1.5 text-left">
-              {([['👤', 'Personal information'], ['💼', 'Work experience'], ['🎓', 'Education'], ['🛠', 'Skills']] as [string, string][]).map(([ic, label]) => (
+              {([['', 'Personal information'], ['', 'Work experience'], ['', 'Education'], ['', 'Skills']] as [string, string][]).map(([ic, label]) => (
                 <div key={label} className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] font-medium text-emerald-800"><span>{ic}</span>{label}</div>
               ))}
             </div>
@@ -787,7 +787,7 @@ function ProfileCvScreen() {
               <div className="min-w-0 flex-1">
                 <p className="text-[19px] font-bold leading-tight text-ink">Trần Minh Anh</p>
                 <p className="mt-0.5 text-[13px] text-ink/80">Product Designer · 4 yrs experience</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">📍 Hồ Chí Minh, Vietnam</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Hồ Chí Minh, Vietnam</p>
               </div>
               {!ro && (
                 <button onClick={() => setEditing('Profile header')} className="shrink-0 rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40">✎ Edit</button>
@@ -795,8 +795,8 @@ function ProfileCvScreen() {
             </div>
             {!ro && (
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-line-soft pt-3 text-[12px] text-ink/80">
-                <span className="inline-flex items-center gap-1.5"><span className="text-muted">✉</span> minhanh@email.com</span>
-                <span className="inline-flex items-center gap-1.5"><span className="text-muted">📞</span> 0901 234 567</span>
+                <span className="inline-flex items-center gap-1.5"><span className="text-muted"></span> minhanh@email.com</span>
+                <span className="inline-flex items-center gap-1.5"><span className="text-muted"></span> 0901 234 567</span>
               </div>
             )}
           </div>
@@ -837,8 +837,8 @@ function ProfileCvScreen() {
                     ['Category · Level', <>Design · Experienced (non-manager)</>],
                     ['Industry (≤3)', <span className="flex flex-wrap justify-end gap-1"><Chip tone="blue">IT / Software</Chip><Chip tone="blue">FMCG</Chip><Chip tone="blue">Banking</Chip></span>],
                     ['Location (≤3)', <span className="flex flex-wrap justify-end gap-1"><Chip>Hồ Chí Minh</Chip><Chip>Hà Nội</Chip></span>],
-                    ['Expected salary', <span className="flex flex-wrap items-center justify-end gap-2">20 – 30 tr <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] font-normal text-muted">👁 Shown</span></span>],
-                    ['Availability', <>🟢 Open now</>],
+                    ['Expected salary', <span className="flex flex-wrap items-center justify-end gap-2">20 – 30 tr <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] font-normal text-muted">Shown</span></span>],
+                    ['Availability', <>Open now</>],
                   ] as [string, React.ReactNode][]).map(([k, v]) => (
                     <div key={k} className="flex items-start justify-between gap-4 py-2 first:pt-0 last:pb-0">
                       <span className="shrink-0 text-[11.5px] text-muted">{k}</span>
@@ -852,7 +852,7 @@ function ProfileCvScreen() {
               <div className="rounded-xl border border-line bg-surface p-4">
                 <h4 className="mb-2 text-[14px] font-bold text-ink">Your CV file <span className="text-[11px] font-normal text-muted">· the document recruiters download</span></h4>
                 <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]">📄</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px]"></span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-semibold text-ink">CV_TranMinhAnh.pdf</p>
                     <p className="text-[11px] text-faint">Uploaded 26/07/2026 · 1.2 MB</p>
@@ -862,7 +862,7 @@ function ProfileCvScreen() {
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-dashed border-brand/50 bg-brand-soft/60 px-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-[11.5px] font-semibold text-brand">✨ Turn this file into my Saramin CV</p>
+                    <p className="text-[11.5px] font-semibold text-brand">Turn this file into my Saramin CV</p>
                     <p className="text-[11px] text-muted">We read the file and pre-fill the sections below — you just review &amp; confirm. <span className="text-faint">(Phase 2)</span></p>
                   </div>
                   <Btn primary onClick={() => setFillStep('select')}>Fill profile from CV</Btn>
@@ -878,7 +878,7 @@ function ProfileCvScreen() {
           <CvSection title="About" action={ro ? '' : 'Edit'} onAction={() => setEditing('About')}>
             <p className="text-[12.5px] leading-relaxed text-ink/80">Product designer with 4+ years across web and mobile products at agency and in-house teams. I turn user research into clean, usable interfaces and maintain scalable design systems.</p>
             <div className="mt-3 rounded-lg border border-line px-3 py-2">
-              <p className="text-[11px] font-semibold text-ink">💎 Top skills</p>
+              <p className="text-[11px] font-semibold text-ink">Top skills</p>
               <p className="mt-0.5 text-[11.5px] text-muted">User Experience (UX) · Interaction Design · Design Systems · Product Design</p>
             </div>
           </CvSection>
@@ -890,7 +890,7 @@ function ProfileCvScreen() {
               ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Hồ Chí Minh City, Vietnam', 'Designed the payments experience across mobile and web, from research through to handoff.'],
             ] as [string, string, string, string, string][]).map(([role, org, dates, loc, desc]) => (
               <div key={role} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</div>
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]"></div>
                 <div className="min-w-0">
                   <p className="text-[12.5px] font-semibold text-ink">{role}</p>
                   <p className="text-[11.5px] text-ink/80">{org}</p>
@@ -908,7 +908,7 @@ function ProfileCvScreen() {
               ['FPT Arena Multimedia', 'Diploma · Graphic & Digital Design', '2015 – 2016'],
             ] as [string, string, string][]).map(([school, deg, dates]) => (
               <div key={school} className="flex gap-3 border-t border-line-soft py-3 first:border-t-0 first:pt-0">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</div>
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]"></div>
                 <div className="min-w-0">
                   <p className="text-[12.5px] font-semibold text-ink">{school}</p>
                   <p className="text-[11.5px] text-ink/80">{deg}</p>
@@ -973,8 +973,8 @@ function CreateCvScreen() {
           {/* pre-fill from PDF — the second entrance to this SAME form. Typing and
               fetching land in identical fields; the PDF is only a faster pen. */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand-soft/40 px-4 py-3">
-            <p className="text-[12px] text-ink/80">⚡ <b className="font-semibold">Have a PDF?</b> Upload it and we pre-fill this form — you just review.</p>
-            <Btn onClick={() => go('js-cv-compare')}>⬆ Upload &amp; pre-fill</Btn>
+            <p className="text-[12px] text-ink/80"><b className="font-semibold">Have a PDF?</b> Upload it and we pre-fill this form — you just review.</p>
+            <Btn onClick={() => go('js-cv-compare')}>Upload &amp; pre-fill</Btn>
           </div>
 
           {/* Profile summary — the SAME component as My CVs. Read-only here:
@@ -1000,7 +1000,7 @@ function CreateCvScreen() {
                 ['Product Designer', 'Zenpay · Full-time', '2020 – 2022 · 2 yrs', 'Designed the payments experience across mobile and web, from research through to handoff.'],
               ] as [string, string, string, string][]).map(([role, org, dates, desc]) => (
                 <div key={role} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🏢</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]"></span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12.5px] font-semibold text-ink">{role}</p>
                     <p className="text-[11.5px] text-ink/80">{org}</p>
@@ -1023,7 +1023,7 @@ function CreateCvScreen() {
                 ['FPT Arena Multimedia', 'Diploma · Graphic & Digital Design', '2015 – 2016'],
               ] as [string, string, string][]).map(([school, deg, dates]) => (
                 <div key={school} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]">🎓</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[13px]"></span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12.5px] font-semibold text-ink">{school}</p>
                     <p className="text-[11.5px] text-ink/80">{deg}</p>
@@ -1262,7 +1262,7 @@ function CrmCustomerScreen() {
             </div>
             <p className="text-[11.5px] text-muted">Healthcare · HCMC · Owner: Nguyễn Thị Lan</p>
           </div>
-          <Btn primary>⚡ Activate customer</Btn>
+          <Btn primary>Activate customer</Btn>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-line p-4">
@@ -1311,7 +1311,7 @@ function CrmActivateScreen() {
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company</p>
               <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[12px]">
-                Công ty TNHH Vạn Phát <span className="ml-auto text-[10.5px] text-violet-600">🔗 from CRM #VP-1042</span>
+                Công ty TNHH Vạn Phát <span className="ml-auto text-[10.5px] text-violet-600">from CRM #VP-1042</span>
               </div>
             </div>
             <div>
@@ -1325,7 +1325,7 @@ function CrmActivateScreen() {
             <Btn primary className="w-full">Create account →</Btn>
           </div>
           <div className="space-y-3">
-            <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">🔗 The account links back to the CRM customer, so sales history and account stay in sync — one source of truth.</div>
+            <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">The account links back to the CRM customer, so sales history and account stay in sync — one source of truth.</div>
             <div className="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-[11.5px] text-emerald-800">✓ The company now gets a login. Next: choose what they bought.</div>
           </div>
         </div>
@@ -1345,7 +1345,7 @@ function CrmProductsScreen() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[20px]">📢</span>
+              <span className="text-[20px]"></span>
               <span className="grid h-5 w-5 place-items-center rounded-md bg-brand text-[11px] text-white">✓</span>
             </div>
             <p className="mt-2 text-[14px] font-bold">Job Posting</p>
@@ -1354,7 +1354,7 @@ function CrmProductsScreen() {
           </div>
           <div className="rounded-xl border-2 border-line p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[20px]">🔍</span>
+              <span className="text-[20px]"></span>
               <span className="grid h-5 w-5 place-items-center rounded-md border border-line text-[11px] text-transparent">✓</span>
             </div>
             <p className="mt-2 text-[14px] font-bold">Resume Search</p>
@@ -1363,7 +1363,7 @@ function CrmProductsScreen() {
           </div>
         </div>
         <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11.5px] text-amber-800">
-          ⚠️ Job Posting is selected → the next step is <b>required</b>: create the public Company Detail Page. (Resume Search only → activation is done, no page.)
+         Job Posting is selected → the next step is <b>required</b>: create the public Company Detail Page. (Resume Search only → activation is done, no page.)
         </div>
       </div>
     </div>
@@ -1407,7 +1407,7 @@ function CrmCompanyPageScreen() {
             </div>
           </div>
         </div>
-        <div className="mt-3 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">🔗 Same record throughout: CRM #VP-1042 → account → public page. One source of truth.</div>
+        <div className="mt-3 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] text-brand">Same record throughout: CRM #VP-1042 → account → public page. One source of truth.</div>
       </div>
     </div>
   )
@@ -1565,7 +1565,7 @@ function ProfilePhoto({ photo, size = 'sm' }: { photo?: boolean; size?: 'sm' | '
   }[size]
   return (
     <span className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-brand-soft font-bold text-brand', z.box)}>
-      {photo ? <span className={z.img}>👩‍💼</span> : 'TA'}
+      {photo ? <span className={z.img}>‍</span> : 'TA'}
     </span>
   )
 }
@@ -1591,11 +1591,11 @@ const PROFILE_BASIC: PField[] = [
 
 /* Desired work condition — all five collected at onboarding or added later. */
 const PROFILE_PREFS: { icon: string; label: string; value: string }[] = [
-  { icon: '🔧', label: 'Desired job role', value: 'Senior Product Designer' },
-  { icon: '🗂', label: 'Desired job category', value: 'Design' },
-  { icon: '🏭', label: 'Desired industry', value: 'IT / Software · FMCG' },
-  { icon: '📍', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội' },
-  { icon: '💰', label: 'Expected salary', value: '20 – 30 triệu' },
+  { icon: '', label: 'Desired job role', value: 'Senior Product Designer' },
+  { icon: '', label: 'Desired job category', value: 'Design' },
+  { icon: '', label: 'Desired industry', value: 'IT / Software · FMCG' },
+  { icon: '', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội' },
+  { icon: '', label: 'Expected salary', value: '20 – 30 triệu' },
 ]
 
 function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') => void }) {
@@ -1683,7 +1683,7 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
                     onClick={() => setPhoto(true)}
                     className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:border-brand/40 hover:text-brand"
                   >
-                    ⬆ {photo ? 'Change photo' : 'Upload photo'}
+                    {photo ? 'Change photo' : 'Upload photo'}
                   </span>
                   {photo && (
                     <span onClick={() => setPhoto(false)} className="cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:text-rose-600">
@@ -1706,14 +1706,14 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
                 <p className="mb-1 text-[11px] font-medium text-ink/80">{f.label}<span className="text-rose-500"> *</span></p>
                 {f.kind === 'phone' ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span>
+                    <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">+84 <span className="text-faint">▾</span></span>
                     <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{f.value}</div>
                   </div>
                 ) : (
                   <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">
                     <span className="min-w-0 truncate">{f.value}</span>
                     {f.kind === 'select' && <span className="shrink-0 text-faint">▾</span>}
-                    {f.kind === 'date' && <span className="shrink-0 text-[11px] text-faint">📅</span>}
+                    {f.kind === 'date' && <span className="shrink-0 text-[11px] text-faint"></span>}
                     {f.kind === 'number' && <span className="shrink-0 border-l border-line pl-2 text-[10px] text-faint">years</span>}
                   </div>
                 )}
@@ -1824,7 +1824,7 @@ function AddCvScreen() {
             <p className="mt-1 text-[12px] text-muted">Two different intents, two paths — upload the file you have, or create a Saramin CV.</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <button onClick={() => setStep('upload')} className="rounded-xl border border-line p-5 text-left hover:border-brand/50">
-                <div className="mb-3 grid h-11 w-11 place-items-center rounded-lg bg-brand-soft text-[19px]">⬆</div>
+                <div className="mb-3 grid h-11 w-11 place-items-center rounded-lg bg-brand-soft text-[19px]"></div>
                 <p className="text-[14px] font-bold text-ink">Upload a CV</p>
                 <p className="mt-1 text-[12px] leading-relaxed text-muted">Your PDF, saved as-is — that’s it. Recruiters download exactly the file you upload.</p>
               </button>
@@ -1846,7 +1846,7 @@ function AddCvScreen() {
             <div className="mx-auto mt-4 max-w-[520px]">
               <div onClick={() => setStep('saved')} className="grid min-h-[300px] cursor-pointer place-items-center rounded-xl border-2 border-dashed border-line py-14 text-center hover:border-brand/50">
                 <div>
-                  <p className="text-[26px]">📄</p>
+                  <p className="text-[26px]"></p>
                   <p className="mt-1.5 text-[13px] font-medium text-brand">Choose a file or drop it here</p>
                   <p className="mt-0.5 text-[11.5px] text-faint">.pdf, .doc, .docx · max 3MB · no password</p>
                 </div>
@@ -1867,7 +1867,7 @@ function AddCvScreen() {
         {step === 'saved' && (
           <div className="mx-auto max-w-[520px]">
             <div className="text-center">
-              <p className="text-[22px]">✅</p>
+              <p className="text-[22px]"></p>
               <p className="mt-1 text-[18px] font-bold text-ink">productdesign.pdf uploaded</p>
               <p className="mt-1 text-[12px] text-muted">Saved exactly as you uploaded it. Recruiters download this file, unchanged.</p>
             </div>
@@ -1882,7 +1882,7 @@ function AddCvScreen() {
 
             {/* the other option — offered, not competing */}
             <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
-              <p className="text-[12.5px] font-semibold text-ink">✨ One more thing you can do</p>
+              <p className="text-[12.5px] font-semibold text-ink">One more thing you can do</p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
                 Recruiters search a structured version of your CV, not the file itself. We can read your PDF and build
                 one — it sits beside your file, and your PDF is never changed.
@@ -1898,7 +1898,7 @@ function AddCvScreen() {
 
         {step === 'reading' && (
           <div className="px-6 py-16 text-center">
-            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-xl bg-brand-soft text-[26px]">📄</div>
+            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-xl bg-brand-soft text-[26px]"></div>
             <div className="mx-auto mb-4 h-1.5 w-44 overflow-hidden rounded-full bg-line"><div className="h-full w-1/2 animate-pulse rounded-full bg-brand" /></div>
             <p className="text-[15px] font-bold text-ink">Reading your CV with AI…</p>
             <p className="mt-1 text-[12px] text-muted">Extracting title, experience, skills and education.</p>
@@ -1914,7 +1914,7 @@ function AddCvScreen() {
         <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-10">
           <div className="w-full max-w-[430px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
             <div className="px-5 pt-5">
-              <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-[20px]">✨</div>
+              <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-[20px]"></div>
               <p className="text-[16px] font-bold leading-snug text-ink">
                 Make this CV searchable by recruiters?
               </p>
@@ -1925,9 +1925,9 @@ function AddCvScreen() {
 
               <div className="mt-3.5 space-y-2">
                 {[
-                  ['🔍', <>Appear in recruiter search — an uploaded PDF can be <b className="text-ink/80">downloaded, not found</b>.</>],
-                  ['⚡', <>AI fills it in from the PDF you just uploaded — about a minute, and you review before it saves.</>],
-                  ['📄', <>Your original PDF stays <b className="text-ink/80">exactly as-is</b>. The Saramin CV sits beside it; you pick which one to apply with.</>],
+                  ['', <>Appear in recruiter search — an uploaded PDF can be <b className="text-ink/80">downloaded, not found</b>.</>],
+                  ['', <>AI fills it in from the PDF you just uploaded — about a minute, and you review before it saves.</>],
+                  ['', <>Your original PDF stays <b className="text-ink/80">exactly as-is</b>. The Saramin CV sits beside it; you pick which one to apply with.</>],
                 ].map(([icon, text], i) => (
                   <div key={i} className="flex gap-2.5">
                     <span className="mt-px shrink-0 text-[13px]">{icon}</span>
@@ -1960,8 +1960,8 @@ function MyCvsScreen() {
      what they will see again when they pick a CV to apply with. Generated ones get
      a readable title instead, since there is no file the user named. */
   const cvs = [
-    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄' },
-    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '📃' },
+    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '' },
+    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '' },
   ]
 
   return (
@@ -2016,7 +2016,7 @@ function MyCvsScreen() {
                       {[
                         { icon: '⤓', label: 'Tải xuống' },
                         { icon: '✎', label: 'Đổi tên' },
-                        { icon: '🗑', label: 'Xoá', danger: true },
+                        { icon: '', label: 'Xoá', danger: true },
                       ].map((a) => (
                         <button
                           key={a.label}
@@ -2070,7 +2070,7 @@ function CvCompareScreen() {
       {/* top bar — what happened + the exit */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-5 py-3">
         <div>
-          <p className="text-[14px] font-bold text-ink">✨ We read your CV — here it is, two ways</p>
+          <p className="text-[14px] font-bold text-ink">We read your CV — here it is, two ways</p>
         </div>
         <div className="flex items-center gap-2">
           <Btn onClick={() => go('js-my-cvs')}>Cancel</Btn>
@@ -2084,7 +2084,7 @@ function CvCompareScreen() {
       <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
         {/* ── left: their PDF — reference, not the main event ── */}
         <div className="md:sticky md:top-4 md:self-start">
-          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">📄 Your PDF — reference</p>
+          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Your PDF — reference</p>
           <UploadedCvDoc highlightDates compact />
         </div>
 
@@ -2116,7 +2116,7 @@ function CvCompareScreen() {
               <p className="mt-0.5 text-[11px] text-muted">Lead designer on the core web product — research, design system, mentoring.</p>
               <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50/50 p-2.5">
                 <p className="text-[12px] font-semibold text-ink">Product Designer · Zenpay</p>
-                <p className="mt-0.5 text-[10.5px] font-medium text-rose-600">⚠ We couldn’t read the dates — type them here (they’re on your PDF, left)</p>
+                <p className="mt-0.5 text-[10.5px] font-medium text-rose-600">We couldn’t read the dates — type them here (they’re on your PDF, left)</p>
                 {/* the answer to "how do they fill it in": inline fields, right in the structure */}
                 <div className="mt-1.5 grid grid-cols-2 gap-2">
                   <div className="flex h-8 items-center rounded-md border border-rose-300 bg-surface px-2.5 text-[11px] text-faint">Start · MM/YYYY</div>
@@ -2139,12 +2139,12 @@ function CvCompareScreen() {
                 {added.map((s) => <Chip key={s} tone="blue">{s}</Chip>)}
               </div>
               <div className="mt-2.5 rounded-lg bg-brand-soft/50 p-2.5">
-                <p className="mb-1.5 text-[10.5px] font-semibold text-brand">✨ AI suggests — people with your experience also list:</p>
+                <p className="mb-1.5 text-[10.5px] font-semibold text-brand">AI suggests — people with your experience also list:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTED.filter((s) => !added.includes(s)).map((s) => (
                     <span key={s} onClick={() => setAdded((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft">＋ {s}</span>
                   ))}
-                  {SUGGESTED.every((s) => added.includes(s)) && <span className="text-[10.5px] text-muted">All added 🎉</span>}
+                  {SUGGESTED.every((s) => added.includes(s)) && <span className="text-[10.5px] text-muted">All added</span>}
                 </div>
               </div>
             </div>
@@ -2152,7 +2152,7 @@ function CvCompareScreen() {
             <div className="rounded-xl border border-dashed border-line bg-canvas/30 p-3.5">
               <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-faint">Add more — boosts your visibility</p>
               <div className="flex flex-wrap gap-1.5">
-                {(['🌐 Foreign Language', '📁 Highlight projects', '📜 Certificates', '🏆 Awards', '🎯 Activities', '👥 References'] as string[]).map((s) => (
+                {(['Foreign Language', 'Highlight projects', 'Certificates', 'Awards', 'Activities', 'References'] as string[]).map((s) => (
                   <span key={s} className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] text-ink/70 hover:border-brand/40">＋ {s}</span>
                 ))}
               </div>
@@ -2198,7 +2198,7 @@ function OnboardingScreen() {
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between text-[11px] text-muted">
         <span>Step {n} of 4</span>
-        {counts[n] && <span className="font-medium text-brand">✨ {counts[n]} jobs match so far</span>}
+        {counts[n] && <span className="font-medium text-brand">{counts[n]} jobs match so far</span>}
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${n * 25}%` }} /></div>
     </div>
@@ -2237,7 +2237,7 @@ function OnboardingScreen() {
                   </div>
                   <div>
                     <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job role</p>
-                    <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">🔍 e.g. Senior Product Designer</div>
+                    <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">e.g. Senior Product Designer</div>
                     <p className="mt-1 text-[10px] text-faint">Suggestions come from the category you picked above.</p>
                   </div>
                   <div>
@@ -2264,7 +2264,7 @@ function OnboardingScreen() {
                     onClick={() => setLocOpen((o) => !o)}
                     className={cn('flex h-10 w-full items-center gap-2 rounded-lg border bg-surface px-3 text-[12px]', locOpen ? 'border-brand' : 'border-line')}
                   >
-                    <span className="text-faint">🔍</span>
+                    <span className="text-faint"></span>
                     <span className={cn('flex-1 text-left', locs.length ? 'text-ink/80' : 'text-faint')}>
                       {locs.length ? `${locs.length} selected` : 'Search a province or city…'}
                     </span>
@@ -2357,12 +2357,12 @@ function OnboardingScreen() {
                   ['UX Researcher', 'One Mount', 'Hà Nội', '75% match'],
                 ] as [string, string, string, string][]).map(([title, co, loc, match]) => (
                   <div key={title} className="rounded-xl border border-line p-3 hover:border-brand/40">
-                    <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]">🏢</div>
+                    <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]"></div>
                     <p className="text-[12px] font-semibold leading-snug text-ink">{title}</p>
                     <p className="text-[11px] text-ink/70">{co}</p>
-                    <p className="mt-0.5 text-[10.5px] text-faint">📍 {loc}</p>
+                    <p className="mt-0.5 text-[10.5px] text-faint">{loc}</p>
                     <div className="mt-1.5 flex items-center justify-between">
-                      <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9.5px] font-semibold text-brand">🔥 {match}</span>
+                      <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9.5px] font-semibold text-brand">{match}</span>
                       <span className="cursor-pointer text-[12px] text-faint">☆</span>
                     </div>
                   </div>
@@ -2379,10 +2379,10 @@ function OnboardingScreen() {
                   ['Business Analyst', 'Techcombank', 'Hà Nội'],
                 ] as [string, string, string][]).map(([title, co, loc]) => (
                   <div key={title} className="rounded-xl border border-line p-3 hover:border-brand/40">
-                    <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]">🏢</div>
+                    <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]"></div>
                     <p className="text-[12px] font-semibold leading-snug text-ink">{title}</p>
                     <p className="text-[11px] text-ink/70">{co}</p>
-                    <p className="mt-0.5 text-[10.5px] text-faint">📍 {loc}</p>
+                    <p className="mt-0.5 text-[10.5px] text-faint">{loc}</p>
                   </div>
                 ))}
               </div>
@@ -2409,7 +2409,7 @@ function MyApplicationsScreen() {
     { job: 'Senior Frontend Engineer', co: 'FPT Software', applied: '02/08/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Interview', tone: 'amber' as const, note: 'Interview scheduled — 08/08, 10:00' },
     { job: 'Product Designer', co: 'Lantern Digital', applied: '30/07/2026', cv: 'My Saramin CV', status: 'Forwarded', tone: 'blue' as const, note: 'Passed Saramin screening · sent to employer' },
     { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'My Saramin CV', status: 'Screening', tone: 'blue' as const, note: 'Being screened by Saramin' },
-    { job: 'UX Researcher', co: 'Tiki', applied: '20/07/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Offer', tone: 'green' as const, note: 'Offer received 🎉' },
+    { job: 'UX Researcher', co: 'Tiki', applied: '20/07/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Offer', tone: 'green' as const, note: 'Offer received' },
     { job: 'Design Lead', co: 'MWG', applied: '12/07/2026', cv: 'My Saramin CV', status: 'Not selected', tone: 'muted' as const, note: 'Closed by employer' },
   ]
   const TIMELINE: [string, string, boolean][] = [
@@ -2441,7 +2441,7 @@ function MyApplicationsScreen() {
           {APPS.map((app, i) => (
             <div key={app.job} onClick={() => setSel(i)} className="cursor-pointer rounded-xl border border-line bg-surface p-4 hover:border-brand/40">
               <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-canvas text-[14px]">🏢</span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-canvas text-[14px]"></span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold text-ink">{app.job}</p>
                   <p className="text-[11.5px] text-ink/70">{app.co}</p>
@@ -2468,7 +2468,7 @@ function MyApplicationsScreen() {
             </div>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto scroll-thin p-4">
               <div className="flex items-center justify-between rounded-lg border border-line px-3 py-2.5">
-                <div className="flex items-center gap-2.5"><span className="grid h-8 w-8 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span><div><p className="text-[12px] font-semibold text-ink">{a.cv}</p><p className="text-[10.5px] text-faint">The exact snapshot sent — later edits don’t change it</p></div></div>
+                <div className="flex items-center gap-2.5"><span className="grid h-8 w-8 place-items-center rounded-md bg-rose-50 text-[13px]"></span><div><p className="text-[12px] font-semibold text-ink">{a.cv}</p><p className="text-[10.5px] text-faint">The exact snapshot sent — later edits don’t change it</p></div></div>
                 <span className="cursor-pointer text-[11px] font-medium text-brand">View</span>
               </div>
               <div>
@@ -2536,7 +2536,7 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
               <p className="mb-1 text-[11.5px] font-medium text-ink">Email</p>
               <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-canvas/60 px-3 text-[12px] text-muted">
                 <span className="truncate">minhanh@gmail.com</span>
-                <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[9px] font-medium text-faint">🔒 {provider}</span>
+                <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[9px] font-medium text-faint">{provider}</span>
               </div>
             </div>
 
@@ -2554,7 +2554,7 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
             <div className="mt-3">
               <p className="mb-1 text-[11.5px] font-medium text-ink">Mobile phone <span className="text-rose-500">*</span></p>
               <div className="flex items-center gap-1.5">
-                <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span>
+                <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">+84 <span className="text-faint">▾</span></span>
                 <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-brand/50 bg-surface px-3 text-[12px] text-faint">Enter your phone number</div>
               </div>
               <label className="mt-1.5 flex items-center gap-2 text-[10.5px] text-muted"><span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I live abroad — I don’t have a Vietnamese number</label>
@@ -2612,7 +2612,7 @@ function SignUpScreen() {
 
           {/* social — verified email, but still needs the completion step */}
           <div className="mt-4 space-y-2">
-            {([['🟢', 'Google'], ['🔵', 'Facebook']] as ['🟢' | '🔵', 'Google' | 'Facebook'][]).map(([ic, name]) => (
+            {([['', 'Google'], ['', 'Facebook']] as ['' | '', 'Google' | 'Facebook'][]).map(([ic, name]) => (
               <button key={name} onClick={() => setSocial(name)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-line py-2.5 text-[12.5px] font-medium text-ink hover:border-brand/50"><span>{ic}</span>Continue with {name}</button>
             ))}
           </div>
@@ -2629,7 +2629,7 @@ function SignUpScreen() {
                 {['12+ chars', '1 number', '1 symbol', '1 uppercase'].map((r) => <span key={r} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] text-muted"><span className="text-emerald-500">✓</span>{r}</span>)}
               </div>
             </div>
-            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone</p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
+            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone</p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">+84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
 
             {/* the rest of Basic information — optional, never search facets */}
             <div>
