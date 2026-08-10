@@ -68,25 +68,38 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
 
 /** Jobseeker site top nav. The section nav (Jobs / Companies / …) is parked for
     now — the logo goes home, and "My account" opens the signed-in area (My page,
-    My CVs, My applications…). `active` is accepted so callers stay unchanged. */
-export function JsHeader(_props: { active?: string } = {}) {
+    My CVs, My applications…). `active` is accepted so callers stay unchanged.
+ *
+ *  ONE header for every jobseeker screen, including sign-up and onboarding. Those
+ *  used to hand-roll their own logo bar, which looked identical but was dead — so
+ *  the brand mark went home on some pages and nowhere on others. `minimal` keeps
+ *  the same bar and the same clickable mark, and drops only the right-hand
+ *  actions: offering "Sign up" on the sign-up page, or "My account" to someone who
+ *  is still creating one, is noise. */
+export function JsHeader({ minimal }: { active?: string; minimal?: boolean } = {}) {
   const go = useNav()
   return (
-    <div className="flex items-center gap-4 border-b border-line px-5 py-3 bg-surface">
+    /* Sticky to the Browser frame's scroll container, so the brand mark — the way
+       home — stays reachable however far down a long screen (Create CV, My
+       Profile, Onboarding) the reader has scrolled. Opaque background and a z-index
+       above the page content, or rows would show through as they pass under it. */
+    <div className="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-surface px-5 py-3">
       <span onClick={() => go('js-home')} className="grid h-6 w-6 cursor-pointer place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
       <span onClick={() => go('js-home')} className="cursor-pointer text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
-      <div className="ml-auto flex items-center gap-2">
-        <span
-          onClick={() => go('js-mypage')}
-          className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-medium text-ink/80 hover:border-brand/50"
-        >
-          <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] text-white">🙂</span>
-          My account <span className="text-faint">▾</span>
-        </span>
-        <Btn>Sign in</Btn>
-        <Btn primary onClick={() => go('js-signup')}>Sign up</Btn>
-        <span className="ml-1 hidden sm:inline text-[11px] text-faint">| For employers</span>
-      </div>
+      {!minimal && (
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            onClick={() => go('js-mypage')}
+            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-medium text-ink/80 hover:border-brand/50"
+          >
+            <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-brand to-violet-500 text-[9px] text-white">🙂</span>
+            My account <span className="text-faint">▾</span>
+          </span>
+          <Btn>Sign in</Btn>
+          <Btn primary onClick={() => go('js-signup')}>Sign up</Btn>
+          <span className="ml-1 hidden sm:inline text-[11px] text-faint">| For employers</span>
+        </div>
+      )}
     </div>
   )
 }

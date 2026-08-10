@@ -574,7 +574,7 @@ export const jobseekerUser: BuildModule = {
               { name: 'fullName', type: 'string', required: true },
               { name: 'headline / current role', type: 'string', notes: 'pre-filled from the CV extraction where available' },
               { name: 'location', type: 'enum (province/city)', notes: 'from the shared location master data' },
-              // DOB / gender / nationality / marital status: NOT collected — cut platform-wide (slim-profile decision, see Resume management → field tiers)
+              { name: 'date of birth / nationality / gender / marital status', type: 'date / enum / enum / enum', notes: 'REINSTATED 2026-08-09 on client direction, reversing the 2026-08-05 cut. Keep all four OPTIONAL — none is read by search or matching, and marital status needs legal review before launch (see Application management → open questions)' },
             ],
           },
           {
@@ -658,7 +658,7 @@ export const jobseekerUser: BuildModule = {
         backend: {
           dataModel: [
             { name: 'jobseekerId', type: 'uuid', required: true },
-            { name: 'fullName / headline / location', type: 'string / string? / enum', notes: 'NO dateOfBirth, gender, nationality or maritalStatus columns — cut platform-wide (slim-profile decision)' },
+            { name: 'fullName / headline / location', type: 'string / string? / enum', notes: 'plus dateOfBirth · nationality · gender · maritalStatus — all four NULLABLE, reinstated 2026-08-09 on client direction (reversing the 2026-08-05 cut). Nullable is the point: none is required to apply, and nothing in search or matching reads them' },
             { name: 'avatarUrl', type: 'string?' },
             { name: 'phone / phoneVerifiedAt', type: 'string? / timestamp?', notes: 'no social provider supplies a phone — captured at first apply' },
             { name: 'loginEmail', type: 'string', required: true, notes: 'the IDENTITY KEY. Immutable when it came from a social provider' },

@@ -327,13 +327,16 @@ function ApplyScreen() {
             {/* Your profile — the SAME card as My CVs, so the candidate reads back
                 exactly what they saw there. Read-only with a per-group Edit; applying
                 is a confirmation, not a form. */}
-            <ApplyGroup n={2} title="Your profile">
-              <ProfileSummaryCard onEdit={(sec) => setEditing(sec)} />
-              <p className="mt-1.5 text-[10.5px] text-faint">From your profile — an edit here is saved to it, so you never re-type this on the next application.</p>
+            {/* Cover letter sits SECOND: it is the only thing on this screen the
+                candidate actually writes for THIS job. The profile below is a
+                read-back, so it belongs after the work, not before it. */}
+            <ApplyGroup n={2} title="Cover letter">
+              <div className="h-14 rounded-md border border-line bg-canvas/40" />
             </ApplyGroup>
 
-            <ApplyGroup n={3} title="Cover letter">
-              <div className="h-14 rounded-md border border-line bg-canvas/40" />
+            <ApplyGroup n={3} title="Your profile">
+              <ProfileSummaryCard onEdit={(sec) => setEditing(sec)} />
+              <p className="mt-1.5 text-[10.5px] text-faint">From your profile — an edit here is saved to it, so you never re-type this on the next application.</p>
             </ApplyGroup>
           </div>
 
@@ -1536,12 +1539,12 @@ function CvSkillsField() {
   )
 }
 
-/* ── Profile summary — Basic information + Work preference ───────────────────
+/* ── Profile summary — Basic information + Desired work condition ───────────────────
    ONE component, rendered on BOTH My CVs and the Create-CV builder. The two
    screens must never disagree about what the profile holds, so the field lists
    live here and nowhere else — edit this and both surfaces change.
 
-   Basic information = the 9 fields the edit popup writes. Work preference = the
+   Basic information = the 9 fields the edit popup writes. Desired work condition = the
    five recruiter-facing facts, as tiles. Both are PROFILE data (1 per jobseeker),
    never CV content — which is why the builder shows them read-only above the CV
    sections rather than asking for them again. */
@@ -1550,29 +1553,10 @@ function CvSkillsField() {
    (2026-08-09), reversing the 2026-08-05 cut. Note none of them is read by search
    or matching, and marital status still carries a discrimination risk — see the
    open question on Application management. CURRENT location is not held here:
-   what matters for matching is DESIRED location, which lives in Work preference. */
-const PROFILE_BASIC: [string, string][] = [
-  ['Email', 'minhanh@email.com'],
-  ['Điện thoại', '0901 234 567'],
-  ['Ngày sinh', '12/04/1996'],
-  ['Quốc tịch', 'Việt Nam'],
-  ['Giới tính', 'Nữ'],
-  ['Tình trạng hôn nhân', 'Độc thân'],
-  ['Học vấn cao nhất', 'Cử nhân'],
-  ['Số năm kinh nghiệm', '4 năm'],
-]
-const PROFILE_PREFS: [string, string, string][] = [
-  ['🔧', 'Desired job title', 'Senior Product Designer'],
-  ['🗂', 'Desired job category', 'Design'],
-  ['🏭', 'Desired industry', 'IT / Software · FMCG'],
-  ['📍', 'Desired location', 'Hồ Chí Minh · Hà Nội'],
-  ['💰', 'Desired salary', '20 – 30 triệu'],
-]
-
-/** The profile photo — the uploaded image, or initials on a tinted circle when
-    there is none. Same fallback the employer's applicant card uses, so a
-    candidate who never uploads one still reads as a person in a board column.
-    Optional by design, and never a screening criterion. */
+   what matters for matching is DESIRED location, which lives in Desired work condition. */
+/* Profile photo — optional everywhere, shown as initials when absent so a
+   candidate who never uploads one still reads as a person in a board column.
+   Optional by design, and never a screening criterion. */
 function ProfilePhoto({ photo, size = 'sm' }: { photo?: boolean; size?: 'sm' | 'md' | 'lg' }) {
   const z = {
     sm: { box: 'h-10 w-10 text-[12.5px]', img: 'text-[22px]' },
@@ -1586,8 +1570,36 @@ function ProfilePhoto({ photo, size = 'sm' }: { photo?: boolean; size?: 'sm' | '
   )
 }
 
+type PField = { label: string; value: string; kind: 'text' | 'email' | 'phone' | 'date' | 'select' | 'number' }
+
+/* Basic information — the 9 fields, in the order the client's field sheet lists
+   them, with WHERE each is collected. The demographic four are reinstated per
+   client direction (2026-08-09); none is read by search or matching. CURRENT
+   location is not held here — matching reads DESIRED location, in Desired work
+   condition. */
+const PROFILE_BASIC: PField[] = [
+  { label: 'Full name', value: 'Trần Minh Anh', kind: 'text' },
+  { label: 'Email', value: 'minhanh@email.com', kind: 'email' },
+  { label: 'Phone', value: '0901 234 567', kind: 'phone' },
+  { label: 'Nationality', value: 'Việt Nam', kind: 'select' },
+  { label: 'Gender', value: 'Nữ', kind: 'select' },
+  { label: 'Marital status', value: 'Độc thân', kind: 'select' },
+  { label: 'Date of birth', value: '12/04/1996', kind: 'date' },
+  { label: 'Highest education', value: 'Cử nhân', kind: 'select' },
+  { label: 'Years of work experience', value: '4', kind: 'number' },
+]
+
+/* Desired work condition — all five collected at onboarding or added later. */
+const PROFILE_PREFS: { icon: string; label: string; value: string }[] = [
+  { icon: '🔧', label: 'Desired job role', value: 'Senior Product Designer' },
+  { icon: '🗂', label: 'Desired job category', value: 'Design' },
+  { icon: '🏭', label: 'Desired industry', value: 'IT / Software · FMCG' },
+  { icon: '📍', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội' },
+  { icon: '💰', label: 'Expected salary', value: '20 – 30 triệu' },
+]
+
 function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') => void }) {
-  /* Each group carries its OWN edit button: Basic information and Work preference
+  /* Each group carries its OWN edit button: Basic information and Desired work condition
      are written by different forms, so one shared pencil at the top would open the
      wrong one half the time. */
   const EditBtn = ({ section }: { section: 'basic' | 'prefs' }) =>
@@ -1613,8 +1625,8 @@ function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') 
           <EditBtn section="basic" />
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[11.5px] text-ink/80">
-          {PROFILE_BASIC.map(([k, v]) => (
-            <p key={k}><span className="text-faint">{k}</span> <b className="font-medium text-ink">{v}</b></p>
+          {PROFILE_BASIC.filter((f) => f.label !== 'Full name').map((f) => (
+            <p key={f.label}><span className="text-faint">{f.label}</span> <b className="font-medium text-ink">{f.value}</b></p>
           ))}
         </div>
       </div>
@@ -1622,14 +1634,14 @@ function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') 
       {/* — WORK PREFERENCE — */}
       <div className="border-t border-line-soft px-4 pb-4 pt-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Work preference</p>
+          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Desired work condition</p>
           <EditBtn section="prefs" />
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {PROFILE_PREFS.map(([icon, label, value]) => (
-            <div key={label} className="rounded-lg border border-line p-2.5">
-              <p className="flex items-center gap-1 text-[10.5px] text-faint">{icon} {label}</p>
-              <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{value}</p>
+          {PROFILE_PREFS.map((f) => (
+            <div key={f.label} className="rounded-lg border border-line p-2.5">
+              <p className="flex items-center gap-1 text-[10.5px] text-faint">{f.icon} {f.label}</p>
+              <p className="mt-1 text-[11.5px] font-semibold leading-snug text-ink">{f.value}</p>
             </div>
           ))}
         </div>
@@ -1647,15 +1659,15 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
   /* Whether a photo is set. Starts set, matching the rest of the profile; Remove
      flips it so the initials fallback is reachable rather than only described. */
   const [photo, setPhoto] = useState(true)
-  const fields: [string, string][] =
+  const fields: PField[] =
     section === 'basic'
-      ? [['Full name', 'Trần Minh Anh'], ...PROFILE_BASIC]
-      : PROFILE_PREFS.map(([, label, value]) => [label, value] as [string, string])
+      ? PROFILE_BASIC
+      : PROFILE_PREFS.map((f) => ({ label: f.label, value: f.value, kind: 'select' as const }))
   return (
     <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
       <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <p className="text-[14px] font-bold text-ink">{section === 'basic' ? 'Edit basic information' : 'Edit work preference'}</p>
+          <p className="text-[14px] font-bold text-ink">{section === 'basic' ? 'Edit basic information' : 'Edit desired work condition'}</p>
           <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
@@ -1685,11 +1697,26 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
               </div>
             </div>
           )}
+          {/* Real controls per field — a text box, a date box and a select do not
+              look alike, and a candidate should be able to tell what a field wants
+              before clicking it. Everything here rendered as a dropdown before. */}
           <div className="grid grid-cols-2 gap-2.5">
-            {fields.map(([label, value], i) => (
-              <div key={label} className={cn(i === 0 && 'col-span-2')}>
-                <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<span className="text-rose-500"> *</span></p>
-                <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{value}<span className="text-faint">▾</span></div>
+            {fields.map((f, i) => (
+              <div key={f.label} className={cn(i === 0 && 'col-span-2')}>
+                <p className="mb-1 text-[11px] font-medium text-ink/80">{f.label}<span className="text-rose-500"> *</span></p>
+                {f.kind === 'phone' ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">🇻🇳 +84 <span className="text-faint">▾</span></span>
+                    <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{f.value}</div>
+                  </div>
+                ) : (
+                  <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">
+                    <span className="min-w-0 truncate">{f.value}</span>
+                    {f.kind === 'select' && <span className="shrink-0 text-faint">▾</span>}
+                    {f.kind === 'date' && <span className="shrink-0 text-[11px] text-faint">📅</span>}
+                    {f.kind === 'number' && <span className="shrink-0 border-l border-line pl-2 text-[10px] text-faint">years</span>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2095,10 +2122,10 @@ function OnboardingScreen() {
   )
   return (
     <div className="min-h-[560px] bg-canvas/40">
-      <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-3">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-        <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
-      </div>
+      {/* The real header, not a look-alike: same bar on every jobseeker screen and
+          the brand mark always goes home. `minimal` drops the account / auth
+          actions, which make no sense while someone is signing up. */}
+      <JsHeader minimal />
       <div className="grid place-items-center px-4 py-8">
         {step !== 'results' ? (
           <div className="w-full max-w-[440px] rounded-2xl border border-line bg-surface p-5 shadow-sm">
@@ -2403,10 +2430,10 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
 
   return (
     <div className="min-h-[560px] bg-canvas/40">
-      <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-3">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-        <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
-      </div>
+      {/* The real header, not a look-alike: same bar on every jobseeker screen and
+          the brand mark always goes home. `minimal` drops the account / auth
+          actions, which make no sense while someone is signing up. */}
+      <JsHeader minimal />
       <div className="grid place-items-center px-4 py-8">
         <div className="w-full max-w-[440px]">
           <p className="text-center text-[17px] font-bold text-ink">Almost there — confirm your details</p>
@@ -2485,10 +2512,10 @@ function SignUpScreen() {
   if (social) return <SocialCompleteScreen provider={social} onBack={() => setSocial(null)} />
   return (
     <div className="min-h-[560px] bg-canvas/40">
-      <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-3">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
-        <span className="text-[13px] font-bold text-brand">Saramin<span className="text-ink">VN</span></span>
-      </div>
+      {/* The real header, not a look-alike: same bar on every jobseeker screen and
+          the brand mark always goes home. `minimal` drops the account / auth
+          actions, which make no sense while someone is signing up. */}
+      <JsHeader minimal />
       <div className="grid place-items-center px-4 py-8">
         <div className="w-full max-w-[380px] rounded-2xl border border-line bg-surface p-5 shadow-sm">
           <p className="text-center text-[16px] font-bold text-ink">Create your account</p>

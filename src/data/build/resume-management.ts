@@ -41,7 +41,7 @@ export const resumeManagement: BuildModule = {
         cols: ['Group', 'Stored in', 'Cardinality', 'Holds', 'Collected'],
         rows: [
           ['1 · Basic information', 'Profile', '1 per jobseeker', 'Full name · email · phone · date of birth · nationality · gender · marital status · highest education · years of work experience. The demographic four were reinstated 2026-08-09 (reversing the 05-08 cut) — none is read by search or matching; see the open question on Application management. CURRENT location is NOT held: matching reads DESIRED location, which sits in Work preference.', 'Sign up (name, email) · social completion step (phone) · Onboarding (education, years, demographics)'],
-          ['2 · Work preference', 'Profile', '1 per jobseeker', 'Desired job category · desired job role · desired industry (≤3) · desired work location (≤3) · expected salary', 'Onboarding wizard (4 steps)'],
+          ['2 · Desired work condition', 'Profile', '1 per jobseeker', 'Desired job role · desired job category · desired industry · desired work location · expected salary — all five, per the client field sheet', 'Onboarding / Add later (none blocks sign-up)'],
           ['3 · CV content', 'CV', 'up to 3 per jobseeker', 'About · work experience[] · education[] · skills[] · certificates[] · languages[] · projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
         ],
       },
@@ -58,6 +58,30 @@ export const resumeManagement: BuildModule = {
       warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table (group 3), never on the Profile. Search = Profile (Basic information + Work preference) JOIN the searchable CV (CV content).',
     },
     {
+      label: 'PROFILE FIELDS — the decided list, and WHERE each is collected',
+      text: 'From the client’s field sheet. Two groups, 14 fields, and the collection point matters as much as the field: what is asked at SIGN-UP is a barrier to registering, what is asked at onboarding is not.',
+      table: {
+        cols: ['Basic information', 'Collected when', 'Desired work condition', 'Collected when'],
+        rows: [
+          ['Full name', 'Sign up', 'Desired job role', 'Onboarding / Add later'],
+          ['Email', 'Sign up', 'Desired job category', 'Onboarding / Add later'],
+          ['Phone', 'Sign up', 'Desired industry', 'Onboarding / Add later'],
+          ['Nationality', 'Sign up', 'Desired work location', 'Onboarding / Add later'],
+          ['Gender', 'Sign up', 'Expected salary', 'Onboarding / Add later'],
+          ['Marital status', 'Sign up', '—', '—'],
+          ['Date of birth', 'Sign up', '—', '—'],
+          ['Highest education', 'Onboarding / Add later', '—', '—'],
+          ['Years of work experience', 'Onboarding / Add later', '—', '—'],
+        ],
+      },
+      items: [
+        'Nothing in Desired work condition blocks sign-up — all five are onboarding or later, so a candidate can register and browse before deciding what they want.',
+        'CURRENT location is not a field. Matching reads DESIRED work location; where someone lives today is not a search facet.',
+        'Each field renders its own control in the editor — a date box, a phone box with country code, a select, a number with a unit. A screen where every field looks like a dropdown tells the candidate nothing about what it wants.',
+      ],
+      warn: 'SEVEN fields at SIGN-UP is a lot for a registration form, and four of them (nationality, gender, marital status, date of birth) are read by nothing — not search, not matching. Every one is a chance to abandon the sign-up. Recommend they are optional at minimum, or moved to “Onboarding / Add later” with the other two.',
+    },
+    {
       label: 'HOW THIS DIFFERS FROM VIETNAMWORKS — “Saramin CV” is a FORMAT, not a second kind of thing',
       text: 'Worth stating explicitly, because the two models look similar on screen and are not the same underneath. VietnamWorks holds ONE structured profile plus any number of uploaded PDFs — two different KINDS of object, presented as peers only at the moment of applying. We hold up to 3 CVs of ONE kind; “Saramin template” and “PDF” are just the FORMAT a CV happens to be in.',
       table: {
@@ -66,17 +90,17 @@ export const resumeManagement: BuildModule = {
           ['Structured record', 'Exactly ONE profile per person. Cannot be tailored — there is only one.', 'Up to 3 CVs, each carrying its OWN structured content.'],
           ['Uploaded files', 'N PDFs, held as opaque attachments beside the profile.', 'A PDF IS a CV. Same object, same list, same level.'],
           ['What “format” means', 'Profile vs PDF are different KINDS of thing that happen to sit next to each other.', 'Saramin-template vs PDF is only how one CV is rendered.'],
-          ['Tailoring for a role', 'Upload a different PDF — but that version is invisible to search, because a PDF has no structured layer.', 'Create a second CV — it stays structured, so a tailored version is still a first-class CV.'],
+          ['Tailoring for a role', 'Upload a different PDF — it can NEVER be searched: the profile is the only structured record and there is exactly one of it.', 'Create a second CV and CONVERT it — a tailored version CAN be structured, which is what VietnamWorks cannot do. An unconverted PDF is unstructured here too; the difference is that converting is available.'],
           ['What recruiters search', 'The single profile, always.', 'The ONE CV the candidate marks searchable, plus the Profile.'],
           ['Applying', 'Pick the profile OR one of the PDFs.', 'Pick any one of your CVs.'],
         ],
       },
       items: [
-        'The practical gain: on VietnamWorks a tailored CV costs you searchability, because tailoring means uploading a PDF and PDFs are not searched. Here tailoring and being findable are not a trade-off — every CV is structured, whichever format it is in.',
+        'The practical gain: on VietnamWorks a tailored CV ALWAYS costs searchability — there is one profile, it cannot be tailored, so any tailored version is a PDF and PDFs are not searched. Here that trade-off is OPTIONAL: convert the tailored CV and it is searchable too.',
         'The practical cost, and it is real: only ONE of the 3 CVs feeds search at a time. A candidate with a Developer CV and a Sales CV is discoverable as one of them, never both. VietnamWorks has no such ambiguity because it only ever has one profile.',
         'Naming follows the model: a CV is labelled by its FORMAT (“Uploaded” / “Saramin”), never by a class of object. Wording that implies “your profile vs your files” recreates the VietnamWorks split we deliberately avoided.',
       ],
-      warn: 'Because 2 of 3 CVs are invisible to search at any moment, the control that picks the searchable one is load-bearing UI, not a nicety. Its current label “Cho phép tìm kiếm” reads as a visibility switch (“allow searching”) when it actually means “THIS is the CV employers see” — the most likely source of a “my skills are on my CV but nobody finds me” support ticket.',
+      warn: 'A raw uploaded PDF has NO structured layer — we never parse a file the candidate did not ask us to convert. A candidate whose searchable CV is an unconverted PDF is therefore findable on Profile facets only (desired title, location, salary, years, education) and INVISIBLE to skill search, the most-used facet of all. OPEN: may an unconverted PDF be marked searchable at all, or does choosing it trigger the conversion offer?\n\nBecause 2 of 3 CVs are invisible to search at any moment, the control that picks the searchable one is load-bearing UI, not a nicety. Its current label “Cho phép tìm kiếm” reads as a visibility switch (“allow searching”) when it actually means “THIS is the CV employers see” — the most likely source of a “my skills are on my CV but nobody finds me” support ticket.',
     },
     {
       label: 'Add a new CV — ONE entry, two routes, shared everywhere',
@@ -140,7 +164,7 @@ export const resumeManagement: BuildModule = {
         'Progressive & skippable: collect the minimum to start, let the candidate browse/apply immediately, then raise completeness over time. Nothing in onboarding blocks applying.',
         'Motivate with carrots, not required-asterisks: show the payoff at each step (“12,400 jobs match your info so far”, “+40% recruiter views”) — the Saramin-KR pattern. This is also why a partly-filled profile reads as a guided to-do list, not a broken page.',
       ],
-      warn: 'Do NOT rebuild VietnamWorks’ long basic-info form at SIGN-UP. Rich data comes from AI extraction + progressive nudges, never a wall of required fields at registration.\n\n✅ RESOLVED (was a conflict with Application management → Apply flow). Apply is no longer a FORM: it renders the same ProfileSummaryCard as My CVs — Basic information + Work preference, read-only, with a per-group Edit that opens the shared quick-edit popup. So the demographic fields are CONFIRMED, never typed, and an edit made while applying writes back to the profile rather than to that one application. Separately DECIDED (2026-08-05): the demographic set is cut platform-wide, so it is neither asked nor displayed anywhere — the drop-list above and the apply screen now agree.',
+      warn: 'Do NOT rebuild VietnamWorks’ long basic-info form at SIGN-UP. Rich data comes from AI extraction + progressive nudges, never a wall of required fields at registration.\n\n✅ RESOLVED (was a conflict with Application management → Apply flow). Apply is no longer a FORM: it renders the same ProfileSummaryCard as My CVs — Basic information + Work preference, read-only, with a per-group Edit that opens the shared quick-edit popup. So the demographic fields are CONFIRMED, never typed, and an edit made while applying writes back to the profile rather than to that one application. Separately REVERSED (2026-08-09): the 2026-08-05 cut no longer holds — the demographic four are collected again on client direction, so they DO appear in Basic information here and on the apply read-back. See the open question on Application management for the trade-off and the legal review recommended for marital status.',
     },
     {
       label: 'THE PRINCIPLE: extract, don’t ask — and why a PDF alone is worthless',
