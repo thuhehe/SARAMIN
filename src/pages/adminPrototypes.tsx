@@ -5918,8 +5918,14 @@ type ProductTypeId = (typeof PRODUCT_TYPES)[number]['id']
      Add-on — reaches a customer only via another product's `includes`
      Both   — quotable AND includable                                            */
 type ProductRole = 'Main' | 'Add-on'
-const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[] }[] = [
+/* `entitlement` says HOW a product reaches a job, and it is deliberately NOT
+   derived from price: a promo line can cost 0 ₫ and still be consumed from a PO.
+   'free' = HQ may post it at any time with no PO and no limit; it is Admin-only,
+   never offered on the Company site, and never upgradeable to a paid tier. */
+type Entitlement = 'purchase' | 'free'
+const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement }[] = [
   // ── Job posting ───────────────────────────────────────────────────────────
+  { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
   { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
   { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['PLC-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
   { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS'] },
@@ -5988,6 +5994,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
   const isPlacement = p.type === 'Placement booking'
   const isAddon = p.role === 'Add-on'
   const isService = p.type === 'Manual service'
+  const isFreeTier = p.entitlement === 'free'
   const unpriced = p.price.startsWith('—')
 
 
@@ -6026,6 +6033,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
             {p.name} <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>
+            {isFreeTier && <Pill tone="neutral">🆓 Free — Admin only</Pill>}
           </h2>
           <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted">
             <span className="font-mono">{p.sku}</span> · {p.type} ·
@@ -6040,15 +6048,21 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
         </div>
       </div>
 
-      {unpriced && (
+      {unpriced && !isFreeTier && (
         <p className="mb-3 flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
           <span></span><span><b>Cannot be set Active — no price.</b> The client deck does not price this item. Saving it as Active is blocked until a price is set.</span>
         </p>
       )}
 
+      {isFreeTier && (
+        <p className="mb-3 flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
+          <span>🆓</span><span><b>Always available — no PO, no limit.</b> HQ can post this tier for any company at any time. It is <b>never offered on the Company site</b> (employers post only from what they bought), it is not upgradeable to a paid tier, and it gets no premium placement slots.</span>
+        </p>
+      )}
+
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <MiniStat label="List price" value={unpriced ? '—' : p.price.replace(' ⓒ', '')} sub={unpriced ? 'not set' : 'current version'} tone={unpriced ? 'warn' : undefined} />
-        <MiniStat label="Sold" value={p.status === 'Active' ? '128' : '0'} sub="paid order lines" />
+        <MiniStat label="List price" value={isFreeTier ? '0 ₫' : unpriced ? '—' : p.price.replace(' ⓒ', '')} sub={isFreeTier ? 'never sold' : unpriced ? 'not set' : 'current version'} tone={!isFreeTier && unpriced ? 'warn' : undefined} />
+        <MiniStat label="Sold" value={isFreeTier ? '—' : p.status === 'Active' ? '128' : '0'} sub={isFreeTier ? 'not sold' : 'paid order lines'} />
         <MiniStat label="Active entitlements" value={p.status === 'Active' ? '41' : '0'} sub="across companies" />
         <MiniStat label="Included in" value={CATALOG.filter((c) => c.includes?.includes(p.sku)).length || '—'} sub={CATALOG.filter((c) => c.includes?.includes(p.sku)).length ? 'products' : 'not included anywhere'} />
       </div>
@@ -6089,6 +6103,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
             form and the record never disagree about what defines a product. */}
         <DetailCard title={`Fulfilment — ${p.type}`} action={<span className="text-[11px] text-faint">same fields as create</span>}>
           {isTier && (<>
+            <KV label="Entitlement source" value={isFreeTier ? 'Always available — Admin only, no PO, no limit' : 'Requires purchase — drawn from an active PO line'} />
             <KV label="Thời gian hiển thị" value={`${p.fulfilment.match(/^(\d+) ngày/)?.[1] ?? '30'} ngày`} />
             <KV label="Auto-refresh" value={p.fulfilment.split('· ')[1] ?? '—'} />
             {/* Each slot carries its own duration in the create form, so the record
@@ -6346,6 +6361,9 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [skuManual, setSkuManual] = useState('')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
+  const [entitlement, setEntitlement] = useState<Entitlement>('purchase')
+  // Only job-posting products can be the always-available (Admin-only) free tier.
+  const isFree = type === 'job' && entitlement === 'free'
 
   const autoSku = nameVi.trim()
     ? `${type.toUpperCase()}-${nameVi.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12)}`
@@ -6360,7 +6378,9 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
 
   // A name is all an Inactive product needs. Setting it Active also requires a
   // price — the one rule the spec keeps, checked on Save rather than by a button.
-  const valid = nameVi.trim().length > 0 && (status === 'Inactive' || priceNum > 0)
+  // The free tier is the deliberate exception: it is never sold, so it has no price
+  // to require, and demanding one would make it impossible to activate at all.
+  const valid = nameVi.trim().length > 0 && (status === 'Inactive' || isFree || priceNum > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -6480,7 +6500,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
-            {status === 'Active' && !priceNum && (
+            {status === 'Active' && !priceNum && !isFree && (
               <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700">An Active product needs a price — Save is blocked until one is set.</p>
             )}
           </div>
@@ -6644,6 +6664,40 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           )}
 
           <Section title="4 · Pricing" />
+          {/* HOW the product reaches a job, stored rather than inferred from price:
+              a promo line can be 0 ₫ and still be consumed from a PO, so deriving
+              "postable anytime" from price == 0 would turn every freebie into an
+              unlimited loophole. Job-posting products only. */}
+          {type === 'job' && (
+            <div>
+              <FLabel req>Entitlement source</FLabel>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {([
+                  ['purchase', 'Requires purchase', 'Must draw from an active PO line — the normal paid path'],
+                  ['free', 'Always available — Admin only', 'No PO, no limit. HQ posts it any time; never offered on the Company site'],
+                ] as const).map(([id, label, hint]) => (
+                  <button
+                    key={id}
+                    onClick={() => setEntitlement(id)}
+                    className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', entitlement === id ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                  >
+                    <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', entitlement === id ? 'border-brand' : 'border-line')}>
+                      {entitlement === id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn('block text-[12px] font-semibold', entitlement === id ? 'text-brand' : 'text-ink')}>{label}</span>
+                      <span className="block text-[10px] leading-relaxed text-faint">{hint}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {isFree && (
+                <p className="mt-1 rounded-md bg-brand-soft px-2.5 py-1.5 text-[10.5px] leading-relaxed text-brand">
+                  🆓 No price required — this tier is never sold. Employers can’t choose it; it can’t be upgraded to a paid tier, and it gets no premium placement slots.
+                </p>
+              )}
+            </div>
+          )}
           {/* One product, a price PER SEGMENT — this is what replaces the CRM's
               separate "… SMEs / … Enterprise / … New 2024" records, so what a
               product grants is defined once. The record shows the same three rows. */}
@@ -6651,7 +6705,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               here but is out of scope for now — see the note in the record. An Add-on
               is never quoted, so its figure is labelled internal rather than list. */}
           <div>
-            <FLabel req={role !== 'addon'}>
+            <FLabel req={role !== 'addon' && !isFree}>
               {role === 'addon' ? 'Giá trị nội bộ (₫)' : 'Price (₫)'}
               {role === 'addon' && <span className="ml-1 font-normal text-faint">internal value — not quotable</span>}
             </FLabel>
@@ -10198,78 +10252,182 @@ function AdminDepartments() {
 
 /* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
 type SignupStatus = 'New' | 'Resolved' | 'Archived'
-type SignupMatch = 'new' | 'verify' | 'lead' | 'customer' | 'spam'
 type Signup = {
-  person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; via: string; when: string
-  match: SignupMatch; matchName?: string
+  person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; when: string
+  /** MATCH is binary and informational: did the tax code match a company we already have? */
+  matched: boolean; matchName?: string
   status: SignupStatus
-  /** what the row became once resolved — the link back the spec requires */
-  became?: string
+  /** what happened once resolved */
+  outcome?: string
 }
-/* Each sign-up ALREADY created a login + an Unverified company shell. MATCH is what the
-   system found (new / needs-verify / lead / customer / spam). STATUS is whether a human
-   reconciled it — New until an outcome is recorded, then Resolved or Archived. */
+/* MATCH is just information — the tax code either hits an existing company or it doesn't.
+   The ACTION is the SAME 3 choices for every sign-up regardless of match:
+   move the user to an existing company · create a new company + move the user into it ·
+   archive the sign-up. Move / Create both email the user to set their password & activate. */
 const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Archived: 'expired' }
 const SIGNUPS: Signup[] = [
-  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, via: 'no match on tax code / domain', when: '15m ago', match: 'new', status: 'New' },
-  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, via: 'tax code 0314xxxxxx', when: '1h ago', match: 'lead', matchName: 'Cty TNHH Việt Tiến', status: 'New' },
-  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, via: 'email domain @fpt.com.vn', when: '3h ago', match: 'customer', matchName: 'FPT Software', status: 'Resolved', became: 'Moved to FPT Software · shell archived · sales notified' },
-  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, via: 'public email domain — verify manually', when: '5h ago', match: 'verify', status: 'New' },
-  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, via: 'flagged by spam filter', when: '6h ago', match: 'spam', status: 'Archived', became: 'Shell archived' },
+  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, when: '15m ago', matched: false, status: 'New' },
+  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, when: '1h ago', matched: true, matchName: 'Cty TNHH Việt Tiến', status: 'New' },
+  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, when: '3h ago', matched: true, matchName: 'FPT Software', status: 'Resolved', outcome: 'Moved to FPT Software · activation email sent' },
+  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, when: '5h ago', matched: false, status: 'New' },
+  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', matched: false, status: 'Archived', outcome: 'Archived' },
 ]
-const MATCH_META: Record<SignupMatch, { tone: StatusTone; label: string; action: string }> = {
-  new: { tone: 'neutral', label: 'New company', action: 'Create on CRM' },
-  verify: { tone: 'draft', label: 'Needs verification', action: 'Verify' },
-  lead: { tone: 'pending', label: 'Matches a lead', action: 'Assign + notify owner' },
-  customer: { tone: 'active', label: 'Existing customer', action: 'Assign + notify sales' },
-  spam: { tone: 'rejected', label: 'Junk / not real', action: 'Archive' },
+/* The three sign-up actions, each with its own confirm flow. Move / Create both end by
+   emailing the user a set-password / activation link; Archive discards the request. */
+function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'create' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void }) {
+  const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name))))
+  const [company, setCompany] = useState(s.matchName ?? targets[0] ?? '')
+  const [role, setRole] = useState<CoUserRole>('Recruiter')
+  const [newName, setNewName] = useState(s.company)
+  const [newTax, setNewTax] = useState(s.tax === '—' ? '' : s.tax)
+  const [reason, setReason] = useState('')
+  const title = mode === 'move' ? `Move ${s.person} to an existing company` : mode === 'create' ? `Create a new company & move ${s.person} in` : 'Archive this sign-up?'
+  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>The user gets an <b>activation email</b> to set their password &amp; sign in — they’re not active until they complete it.</span></p>
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">{title}</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3 p-5">
+          <div className="rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px] text-muted">
+            Signed up as <b className="text-ink/80">{s.person}</b> · <span className="font-mono">{s.email}</span> · typed company “<b className="text-ink/80">{s.company}</b>”{s.tax !== '—' ? ` · MST ${s.tax}` : ''}
+          </div>
+
+          {mode === 'move' && (
+            <>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Move into company <span className="text-rose-500">*</span></p>
+                <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  {s.matchName && !targets.includes(s.matchName) && <option value={s.matchName}>{s.matchName} (tax match)</option>}
+                  {targets.map((n) => <option key={n} value={n}>{n}{n === s.matchName ? ' (tax match)' : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Role in that company <span className="text-rose-500">*</span></p>
+                <select value={role} onChange={(e) => setRole(e.target.value as CoUserRole)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
+                </select>
+              </div>
+              {activation}
+            </>
+          )}
+
+          {mode === 'create' && (
+            <>
+              <p className="text-[12px] text-muted">Create a fresh company from this sign-up and make this person its <b className="text-ink/80">Admin</b>.</p>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company name <span className="text-rose-500">*</span></p>
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink" />
+              </div>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Tax number</p>
+                <input value={newTax} onChange={(e) => setNewTax(e.target.value)} placeholder="Business registration no." className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink placeholder:text-faint" />
+              </div>
+              <p className="text-[11px] text-faint">Role: <b className="text-ink/70">Admin</b> — the first user of a new company is always its Admin.</p>
+              {activation}
+            </>
+          )}
+
+          {mode === 'archive' && (
+            <>
+              <p className="text-[12px] text-muted">Discard this sign-up — <b className="text-ink/80">no account is created</b> and no email is sent. Reversible and written to the audit log.</p>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Reason <span className="text-rose-500">*</span></p>
+                <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. spam / test / not a real company" className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink placeholder:text-faint" />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          {mode === 'move' && <button onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · activation email sent`)} className="rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Move + send activation</button>}
+          {mode === 'create' && <button onClick={() => onConfirm('Resolved', `New company “${newName}” created · user is Admin · activation email sent`)} disabled={!newName.trim()} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create + move</button>}
+          {mode === 'archive' && <button onClick={() => onConfirm('Archived', `Archived${reason.trim() ? ` · ${reason.trim()}` : ''}`)} disabled={!reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Archive sign-up</button>}
+        </div>
+      </div>
+    </div>
+  )
 }
+
+/* Row actions live behind a ⋯ menu. Fixed-positioned from the button rect so it
+   never gets clipped by the table's horizontal-scroll container. */
+function SignupRowMenu({ onMove, onCreate, onArchive }: { onMove: () => void; onCreate: () => void; onArchive: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const toggle = () => {
+    const el = ref.current
+    if (!open && el) { const r = el.getBoundingClientRect(); setPos({ top: r.bottom + 4, left: r.right - 200 }) }
+    setOpen((o) => !o)
+  }
+  const item = 'block w-full px-3 py-2 text-left text-[12px] hover:bg-canvas/70'
+  return (
+    <>
+      <button ref={ref} onClick={toggle} aria-label="Actions" className="grid h-7 w-7 place-items-center rounded-md border border-line text-[15px] leading-none text-muted hover:bg-canvas/70">⋯</button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div style={{ position: 'fixed', top: pos.top, left: pos.left }} className="z-50 w-[200px] overflow-hidden rounded-lg border border-line bg-surface shadow-xl">
+            <button onClick={() => { setOpen(false); onMove() }} className={cn(item, 'text-ink')}>Move to existing company</button>
+            <button onClick={() => { setOpen(false); onCreate() }} className={cn(item, 'text-ink')}>Create new company + move</button>
+            <button onClick={() => { setOpen(false); onArchive() }} className={cn(item, 'border-t border-line text-rose-600')}>Archive sign-up</button>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 function AdminSignups() {
-  const actionTone = (m: SignupMatch) =>
-    m === 'new' ? 'bg-brand hover:opacity-90'
-    : m === 'verify' ? 'bg-amber-600 hover:opacity-90'
-    : 'bg-emerald-600 hover:opacity-90'
+  const [rows, setRows] = useState<Signup[]>(SIGNUPS)
+  const [modal, setModal] = useState<{ mode: 'move' | 'create' | 'archive'; s: Signup } | null>(null)
+  const resolve = (status: SignupStatus, outcome: string) => {
+    if (!modal) return
+    setRows((rs) => rs.map((r) => (r.email === modal.s.email ? { ...r, status, outcome } : r)))
+    setModal(null)
+  }
   return (
     <div>
       <ListPage
         tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Archived', count: 3 }]}
         cols={[
-          { label: 'Full name', w: '1.1fr' }, { label: 'Email', w: '1.3fr' }, { label: 'Phone', w: '0.9fr' },
-          { label: 'Tax number', w: '0.9fr' }, { label: 'Company name', w: '1.2fr' }, { label: 'Hiring', w: '0.5fr' },
-          { label: 'Match', w: '1.5fr' }, { label: 'Status', w: '1.3fr' }, { label: 'When', w: '0.6fr' },
-          { label: 'Action', w: '1.6fr', align: 'r' },
+          { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.2fr' }, { label: 'Phone', w: '0.9fr' },
+          { label: 'Tax number', w: '0.9fr' }, { label: 'Company name', w: '1.1fr' }, { label: 'Hiring', w: '0.5fr' },
+          { label: 'Match', w: '1fr' }, { label: 'Status', w: '1.2fr' }, { label: 'When', w: '0.6fr' },
+          { label: 'Action', w: '0.6fr', align: 'r' },
         ]}
-        rows={SIGNUPS.map((s) => {
-          const m = MATCH_META[s.match]
-          return [
-            <span className="truncate text-[12.5px] font-medium text-ink">{s.person}</span>,
-            <span className="truncate font-mono text-[11px] text-muted">{s.email}</span>,
-            <span className="truncate text-[11.5px] text-muted">{s.phone}</span>,
-            <span className="truncate font-mono text-[11px] text-muted">{s.tax}</span>,
-            <span className="truncate text-[12px] text-ink/80">{s.company}</span>,
-            <Pill tone={s.hiring ? 'active' : 'neutral'}>{s.hiring ? 'Yes' : 'No'}</Pill>,
-            <div className="min-w-0">
-              <Pill tone={m.tone}>{m.label}{s.matchName ? `: ${s.matchName}` : ''}</Pill>
-              <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.via}</p>
-            </div>,
-            <div className="min-w-0">
-              <Pill tone={SIGNUP_STATUS[s.status]}>{s.status}</Pill>
-              {s.became && <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.became}</p>}
-            </div>,
-            <span className="text-[11.5px] text-muted">{s.when}</span>,
-            <div className="flex items-center justify-end gap-1.5">
-              {s.status !== 'New'
-                ? <span className="text-[11px] text-faint">—</span>
-                : s.match === 'spam'
-                  ? <RowAction tone="rose">Archive</RowAction>
-                  : <>
-                      <button className={cn('rounded-md px-2.5 py-1 text-[11px] font-semibold text-white', actionTone(s.match))}>{m.action}</button>
-                      <RowAction tone="rose">Archive</RowAction>
-                    </>}
-            </div>,
-          ]
-        })}
+        rows={rows.map((s) => [
+          <span className="truncate text-[12.5px] font-medium text-ink">{s.person}</span>,
+          <span className="truncate font-mono text-[11px] text-muted">{s.email}</span>,
+          <span className="truncate text-[11.5px] text-muted">{s.phone}</span>,
+          <span className="truncate font-mono text-[11px] text-muted">{s.tax}</span>,
+          <span className="truncate text-[12px] text-ink/80">{s.company}</span>,
+          <Pill tone={s.hiring ? 'active' : 'neutral'}>{s.hiring ? 'Yes' : 'No'}</Pill>,
+          s.matched
+            ? <Pill tone="active">Match{s.matchName ? `: ${s.matchName}` : ''}</Pill>
+            : <Pill tone="neutral">Not match</Pill>,
+          <div className="min-w-0">
+            <Pill tone={SIGNUP_STATUS[s.status]}>{s.status}</Pill>
+            {s.outcome && <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.outcome}</p>}
+          </div>,
+          <span className="text-[11.5px] text-muted">{s.when}</span>,
+          s.status !== 'New'
+            ? <span className="text-[11px] text-faint">—</span>
+            : <div className="flex justify-end">
+                <SignupRowMenu
+                  onMove={() => setModal({ mode: 'move', s })}
+                  onCreate={() => setModal({ mode: 'create', s })}
+                  onArchive={() => setModal({ mode: 'archive', s })}
+                />
+              </div>,
+        ])}
       />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Every sign-up gets the <b>same three choices</b> — <b>Move to existing</b> (assign the user to a company we already have), <b>Create + move</b> (make a new company, then move the user into it), or <b>Archive</b>. <b>Move</b> and <b>Create + move</b> email the user a link to set their password &amp; activate; <b>Archive</b> discards the sign-up. <b>Match</b> is just a hint (did the tax code hit an existing company?).
+      </p>
+      {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} />}
     </div>
   )
 }
@@ -10725,15 +10883,16 @@ function DemoRow({ label, options }: { label: string; options: string[] }) {
  * fields (category, level, industry, currency…) let an operator add a new option
  * without leaving the form — the new value is added to Master data and selected.
  */
-function SelectField({ label, req, value, options, extra, createLabel }: { label: string; req?: boolean; value: string; options: string[]; extra?: React.ReactNode; createLabel?: string }) {
+function SelectField({ label, req, value, options, extra, createLabel, onChange }: { label: string; req?: boolean; value: string; options: string[]; extra?: React.ReactNode; createLabel?: string; onChange?: (v: string) => void }) {
   const [open, setOpen] = useState(false)
   const [sel, setSel] = useState(value)
   const [opts, setOpts] = useState(options)
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState('')
+  const pick = (v: string) => { setSel(v); onChange?.(v) }
   const commit = () => {
     const v = draft.trim()
-    if (v) { setOpts((o) => (o.includes(v) ? o : [...o, v])); setSel(v) }
+    if (v) { setOpts((o) => (o.includes(v) ? o : [...o, v])); pick(v) }
     setDraft(''); setCreating(false); setOpen(false)
   }
   return (
@@ -10747,7 +10906,7 @@ function SelectField({ label, req, value, options, extra, createLabel }: { label
           <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-line bg-surface shadow-lg">
             <div className="max-h-52 overflow-auto py-1">
               {opts.map((o) => (
-                <button key={o} onClick={() => { setSel(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === sel ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80')}>{o}</button>
+                <button key={o} onClick={() => { pick(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === sel ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80')}>{o}</button>
               ))}
             </div>
             {createLabel && (
@@ -10839,6 +10998,17 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
   const G2 = 'grid grid-cols-2 gap-3'
   const G3 = 'grid grid-cols-3 gap-3'
 
+  /* Products offered depend on the PO, straight from the product's `entitlement`:
+     with no PO only the always-available (free) tiers can be picked; choosing a PO adds
+     that PO's paid lines. Nothing here matches on the product NAME. */
+  const NO_PO = '— none (Free job) —'
+  const [po, setPo] = useState(NO_PO)
+  const hasPo = po !== NO_PO
+  const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement === 'free' && c.status === 'Active')
+  const paidProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement !== 'free' && c.status === 'Active')
+  const label = (c: (typeof CATALOG)[number]) => `${c.name} · ${c.fulfilment.split(' · ')[0]}`
+  const productOptions = (hasPo ? paidProducts : freeProducts).map(label)
+
   return (
     <div className="max-w-[860px]">
 
@@ -10859,8 +11029,23 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <CompanyInfoCard />
           {/* PO → Products sit side by side: the PO scopes which products can be picked */}
           <div className="grid grid-cols-2 gap-3">
-            <SelectField label="Purchase order (PO)" value="— none (Free job) —" options={['— none (Free job) —', 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only</span>} />
-            <SelectField label="Products" req value="Job Posting — Free · 14 days" options={['Job Posting — Free · 14 days', 'Job Posting — Basic · 30 days', 'Job Posting — Basic plus · 30 days', 'Job Posting — Distinction · 30 days']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— from the selected PO</span>} />
+            <SelectField
+              label="Purchase order (PO)"
+              value={NO_PO}
+              onChange={setPo}
+              options={[NO_PO, 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026']}
+              extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only</span>}
+            />
+            {/* keyed on the PO so the product resets rather than keeping a stale
+                paid tier after the operator drops back to "no PO" */}
+            <SelectField
+              key={po}
+              label="Products"
+              req
+              value={productOptions[0] ?? '— no product available —'}
+              options={productOptions}
+              extra={<span className="ml-2 text-[10.5px] font-normal text-faint">{hasPo ? '— lines on the selected PO' : '— free tier (no PO)'}</span>}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -10873,7 +11058,9 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
               </div>
             </div>
           </div>
-          <p className="text-[10.5px] leading-relaxed text-faint">The <b>Free</b> package needs no PO — Admin can post a Free job at any time, with no preconditions. <b>Paid products</b> (Basic · Basic plus · Distinction · Top Job) must draw from an active PO: pick the PO first (a customer can have more than one active PO), then the product inside it. The posting’s expiry is set by the product’s duration (e.g. Free = 14 days).</p>
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            The product list follows the PO. With <b>no PO</b> only products flagged <b>Always available</b> on the product record are offered — HQ can post those for any company at any time, unlimited. Pick a PO (a customer can have more than one active) and the list becomes that PO’s paid lines. Expiry comes from the product’s duration. <b>Employers never see the free tier</b> — on the Company site they can only post from what they bought.
+          </p>
         </JobGroup>
 
         {/* ═══ JOB INFORMATION (client field list) ══════════════════════════ */}

@@ -26,6 +26,18 @@ export const jobManagement: BuildModule = {
       warn: 'No HQ approval gate — company posts go live directly, exactly like Admin posts.',
     },
     {
+      label: 'What each surface may post FROM',
+      text: 'Posting rights differ even though the Job entity is shared. Which products a surface may draw on comes from the product’s entitlementSource flag (Products & Packages) — never from the product name.',
+      table: {
+        cols: ['Surface', 'May post from', 'Rule'],
+        rows: [
+          ['Admin (HQ)', 'Any product — the Admin-only free tier, or any line on the company’s active POs', 'The free tier needs no PO and has NO limit: HQ can post it for any company at any time, with no preconditions.'],
+          ['Company site', 'Only the products the company bought (active PO lines)', 'An employer can NEVER post a free job — the free tier is not offered on the Company site at all.'],
+        ],
+      },
+      warn: 'A free job links to no PO, consumes no quota, is excluded from revenue reporting, cannot be upgraded to a paid tier later, and gets no premium placement slots (default listing only).',
+    },
+    {
       label: 'Job status lifecycle',
       table: {
         cols: ['Status', 'Means', 'Moves on when'],
@@ -130,8 +142,8 @@ export const jobManagement: BuildModule = {
               { name: 'company', type: 'ref → Company', required: true, notes: 'searchable picker resolved via the Company API (company ID); drives branding on the JS side. Fixed to the user’s own company on the Company site.' },
               { name: 'title (vi / en)', type: 'i18n string', required: true, notes: 'bilingual — Vietnamese + English; max 120 chars each' },
               { name: 'exposure', type: 'toggle (On / Off)', required: true, notes: 'separate switch (not a status) — whether an Open job shows on the jobseeker site (hiển thị trên trang jobseeker hay không)' },
-              { name: 'purchaseOrder', type: 'ref → PO', notes: 'required ONLY for paid products — pick the PO FIRST (a customer can have more than one active PO), then the product list is scoped to that PO’s lines. The Free package needs no PO.' },
-              { name: 'packageType (product)', type: 'enum', required: true, notes: 'Free · Basic · Basic Plus · Distinction · Top Job — the posting tier that drives visibility / ranking. FREE can be chosen by Admin at any time with no PO and no preconditions; paid products are chosen from the selected PO.' },
+              { name: 'purchaseOrder', type: 'ref → PO', notes: 'required ONLY for products whose entitlementSource = Requires purchase. Pick the PO FIRST (a customer can have more than one active PO) and the product list becomes that PO’s lines. A product flagged Always available needs no PO.' },
+              { name: 'packageType (product)', type: 'ref → Product', required: true, notes: 'the posting tier that drives visibility / ranking. The options offered are filtered by the product’s entitlementSource (Products & Packages), NOT by matching the product name: with no PO only Always-available tiers appear; with a PO, that PO’s paid lines appear.' },
               { name: 'jobCategory / industry', type: 'enum', required: true, notes: 'category = the role area · industry = the company sector (two different axes)' },
               { name: 'jobLevel', type: 'enum', notes: 'Intern/Student · Fresher/Entry level · Experienced (non-manager) · Manager · Director and above' },
               { name: 'jobType', type: 'enum', required: true, notes: 'Full-time · Part-time · Internship · Online Jobs · Freelancer · Seasonal · Other' },

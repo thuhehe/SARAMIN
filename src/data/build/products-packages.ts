@@ -172,6 +172,18 @@ export const productsPackages: BuildModule = {
       },
     },
     {
+      label: 'Entitlement source — how a product reaches a job',
+      text: 'A second axis on job-posting products, independent of status and of price. It is a STORED flag on the product, never inferred from price: a promo line can be 0 ₫ and still have to be consumed from a PO, so deriving “postable any time” from price = 0 would turn every giveaway into an unlimited loophole.',
+      table: {
+        cols: ['Source', 'Means', 'Rule'],
+        rows: [
+          ['Requires purchase', 'The default. The job must draw the product from an active PO line.', 'Admin picks the PO first (a customer can have more than one active PO), then a product inside it. Consumes that PO line.'],
+          ['Always available', 'The Admin-only free tier — no PO, no limit.', 'HQ may post it for any company at any time with no preconditions. Needs no price (exempt from the “Active needs a price” rule), links to no PO, consumes no quota, and is excluded from revenue reporting.'],
+        ],
+      },
+      warn: 'Employers can NEVER post a free job. The Always-available tier is Admin-only and is not offered on the Company site — a company posts only from the products it bought. A free job also cannot be upgraded to a paid tier later, and it gets no premium placement slots (default listing only).',
+    },
+    {
       label: 'Order lifecycle',
       text: 'The order/payment object is owned by CRM → Purchase order; this module only references it.',
       table: {
@@ -227,12 +239,13 @@ export const productsPackages: BuildModule = {
               { name: 'type', type: 'enum', required: true, notes: 'posting_tier | placement | credit_pack | addon | manual_service — drives which fulfilment fields apply' },
               { name: 'description (vi / en)', type: 'i18n rich text', notes: 'the benefit list printed on quotations' },
               { name: 'status', type: 'enum', required: true, notes: 'Active · Inactive — only Active can be quoted or sold' },
+              { name: 'entitlementSource', type: 'enum', required: true, notes: 'Requires purchase (default — must be drawn from an active PO line) · Always available (Admin-only free tier: no PO, no limit). Job-posting products only. STORED, never inferred from price: a promo line can be 0 ₫ and still be consumed from a PO' },
             ],
           },
           {
             group: 'Price',
             items: [
-              { name: 'listPrice', type: 'money (₫)', required: true, notes: 'the catalogue price; a quotation may discount from it but the list price is the anchor' },
+              { name: 'listPrice', type: 'money (₫)', notes: 'the catalogue price; a quotation may discount from it but the list price is the anchor. Required EXCEPT when entitlementSource = Always available — that tier is never sold, so requiring a price would make it impossible to activate' },
               { name: 'unit', type: 'enum', required: true, notes: 'per pack · per job · per week · per month — what the price is "per"' },
               { name: 'vatRate', type: 'percent', required: true, notes: 'so quotation totals and the VAT e-invoice agree (see CRM → Quotations)' },
               { name: 'version / effectiveFrom', type: 'int / date', notes: 'a price change on a sold product creates a new version rather than editing history' },
