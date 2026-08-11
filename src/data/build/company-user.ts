@@ -74,6 +74,14 @@ export const companyUser: BuildModule = {
       warn: 'Keep the permission list to these 7 (3 modules only). Do NOT reintroduce a per-page capability tree (~30 checkboxes, VietnamWorks-style) — the short list + auto-prerequisites is exactly what keeps roles simple and always valid.',
     },
     {
+      label: 'Self-serve signup — see CRM → Sign-ups',
+      text: 'Company-user sign-up is specified on the CRM → Sign-ups page. In short: a self-serve sign-up (email + company name) creates a LOGIN + a new Unverified company with that person as Admin; they can browse the whole site but every data page is empty until the company buys and is verified. One email = one employer login = at most one company at a time, separate from the jobseeker site.',
+      items: [
+        'Signup with an already-registered employer email is blocked ("sign in instead") — never a duplicate login.',
+        'Duplicate / junk companies are cleaned up by HQ on the Sign-ups page: move the user into the real company and archive the empty shell (see CRM → Sign-ups and the Move-user behavior below).',
+      ],
+    },
+    {
       label: 'HQ sees what the employer sees',
       text: 'On the company record HQ can review the account’s activity exactly as the employer sees it on the Company site.',
       table: {
@@ -352,20 +360,41 @@ export const companyUser: BuildModule = {
       name: 'Company users & roles (on Admin)',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. The global list is oversight/search.',
+      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. Adds the cross-company power: move a user between companies.',
       detail: {
         description:
-          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
+          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. Because HQ is the only actor with a cross-company view, it also owns the one action a company can never do itself: MOVE a user from one company to another. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
         behaviors: [
           'Same build-role / invite / assign-role / disable actions as the CO side, but performed by HQ.',
+          'Move user between companies: HQ picks a user, a target company, and the role they will have there (Admin or any lower role). The login and password never change — only which company the user is in, and their role there. This is how a curious self-signup, or a person invited to the wrong place, is put where they belong.',
           'Break-glass: HQ can reassign Admin for a company when the sole Admin is unavailable (left / lost access) — the one recovery path the single-Admin floor needs.',
         ],
         rules: [
-          'HQ role/user edits should be permission-gated (specific HQ roles) and written to the audit log.',
+          'A move cannot strand a company: if the user is the SOLE Admin of their current company, the move is blocked until another Admin is assigned there first (the ≥1-Admin floor).',
+          'The destination role is chosen at move time; moving in as Admin is allowed (adds/replaces an Admin), subject to the destination’s seat cap.',
+          'Only HQ can move users across companies — a company Admin can only invite within its own account, never pull a user from another company.',
+          'HQ role/user edits, and every move, are permission-gated (specific HQ roles) and written to the audit log (who moved whom, from → to, role, when).',
           'Prefer the company-scoped Users / Roles sections for edits; keep the global list read-oriented (find a user, see which company).',
         ],
-        acceptance: ['HQ can resolve support cases (build a role, invite, assign role, disable) with every action audited.', 'HQ can reassign a stranded company’s Admin.'],
-        openQuestions: ['Which HQ roles may edit company users / roles and use break-glass, and should the global list be read-only?'],
+        states: ['User with no company (self-signup)', 'Move blocked (sole Admin of source)', 'Moved (source membership ended, target membership created)', 'Move to Admin', 'Destination seat cap reached'],
+        backend: {
+          endpoints: [
+            'POST /admin/company-users/:userId/move { toCompanyId, role } — ends the source membership, creates the target membership; blocked if it would leave the source with zero Admins or exceed the target’s seat cap',
+          ],
+          integrations: ['Audit log (move recorded)', 'Notifications (optional: tell the user they were moved)'],
+          notes: 'One email = one employer login = one company at a time, so a move is detach-then-attach — not a second membership. Enforce the sole-Admin and seat-cap checks server-side.',
+        },
+        acceptance: [
+          'HQ can resolve support cases (build a role, invite, assign role, disable) with every action audited.',
+          'HQ can move a user into another company as Admin or a lower role; the login/password is unchanged.',
+          'Moving the sole Admin out of a company is blocked with a clear reason.',
+          'A move that would exceed the destination seat cap is blocked.',
+          'HQ can reassign a stranded company’s Admin.',
+        ],
+        openQuestions: [
+          'Which HQ roles may edit company users / roles, move users, and use break-glass, and should the global list be read-only?',
+          'When a user is moved, is the user notified, and what happens to any work (jobs/notes) they created in the source company?',
+        ],
       },
     },
     {

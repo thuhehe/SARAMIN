@@ -1445,7 +1445,18 @@ const SKILL_CATALOGUE: { name: string; group: string }[] = [
    Product Designer, which skills do they most often list?" — so the row names
    the role it is reasoning from. Phase-1 that table is hand-seeded; once there
    are real CVs it is recomputed from co-occurrence and needs no curation. */
-const ROLE_SUGGESTIONS = { role: 'Product Designer', skills: ['Figma', 'Wireframing', 'Prototyping'] }
+/* TWO SOURCES, IN ORDER. What someone HAS DONE is stronger evidence than what
+   they WANT to do next, so the CV's own work experience is read first: each job
+   title resolves to an occupation, most recent role first, and its occupation_skill
+   rows come back ESSENTIAL before OPTIONAL. The desired job role fills whatever is
+   left of the cap — it is the only source a fresher has, and the only source an
+   unconverted PDF has, since it holds no structured experience rows at all.
+   Each chip carries WHERE it came from: "you were a Product Designer" is a far
+   better reason to tap than "people like you list this". */
+const SKILL_SUGGESTIONS: { from: string; source: 'experience' | 'desired'; skills: string[] }[] = [
+  { from: 'Product Designer · Lantern Digital', source: 'experience', skills: ['Figma', 'Wireframing'] },
+  { from: 'Senior Product Designer', source: 'desired', skills: ['Prototyping'] },
+]
 
 function CvSkillsField() {
   const [skills, setSkills] = useState<string[]>([
@@ -1455,10 +1466,20 @@ function CvSkillsField() {
   const [open, setOpen] = useState(false)
   const [hi, setHi] = useState(0)
 
-  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  /* The tier-1 analyser, and nothing more: lower-case, ASCII-fold, strip
+     punctuation and spaces. This is what makes "thiet ke" find Thiết kế and
+     "htmlcss" find HTML/CSS with NO curated alias behind it — the whole reason
+     Phase-1 can ship with an empty skill_alias table. */
+  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '')
   const matches = SKILL_CATALOGUE.filter((c) => !skills.includes(c.name) && (!q.trim() || norm(c.name).includes(norm(q))))
   const add = (n: string) => { setSkills((a) => [...a, n]); setQ(''); setHi(0) }
-  const suggested = ROLE_SUGGESTIONS.skills.filter((s) => !skills.includes(s))
+  /* Merged in source order, deduped, already-added removed, capped at 6 — so a
+     candidate with a long history never sees a wall of chips. */
+  const suggested = SKILL_SUGGESTIONS
+    .flatMap((g) => g.skills.map((s) => ({ skill: s, from: g.from, source: g.source })))
+    .filter((s, i, a) => a.findIndex((x) => x.skill === s.skill) === i)
+    .filter((s) => !skills.includes(s.skill))
+    .slice(0, 6)
 
   function onKey(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((i) => Math.min(i + 1, matches.length - 1)) }
@@ -1526,13 +1547,24 @@ function CvSkillsField() {
         )}
       </div>
 
-      {/* role-based suggestions — one tap each, from the skill↔role association */}
+      {/* Suggestions, grouped by where they came from — experience before desired
+          role. The group label is the reason to tap, so it names the actual job the
+          skills were inferred from rather than saying "common for people like you". */}
       {suggested.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10.5px] text-faint">Common for {ROLE_SUGGESTIONS.role}:</span>
-          {suggested.map((s) => (
-            <span key={s} onClick={() => add(s)} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand hover:bg-brand-soft">＋ {s}</span>
-          ))}
+        <div className="mt-2 space-y-1.5">
+          {[...new Set(suggested.map((s) => s.from))].map((from) => {
+            const group = suggested.filter((s) => s.from === from)
+            return (
+              <div key={from} className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10.5px] text-faint">
+                  {group[0].source === 'experience' ? 'From your time as' : 'For your desired role'} <b className="font-medium text-ink/70">{from}</b>:
+                </span>
+                {group.map((s) => (
+                  <span key={s.skill} onClick={() => add(s.skill)} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2 py-0.5 text-[10.5px] text-brand hover:bg-brand-soft">＋ {s.skill}</span>
+                ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1884,8 +1916,8 @@ function AddCvScreen() {
             <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
               <p className="text-[12.5px] font-semibold text-ink">One more thing you can do</p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-                Recruiters search a structured version of your CV, not the file itself. We can read your PDF and build
-                one — it sits beside your file, and your PDF is never changed.
+                We read your PDF for skills, so employers can already find you. A structured version goes further —
+                recruiters can read it, and your experience and education become searchable too. Your PDF is never changed.
               </p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 <Btn onClick={convert}>Convert to Saramin template</Btn>
@@ -1919,13 +1951,13 @@ function AddCvScreen() {
                 Make this CV searchable by recruiters?
               </p>
               <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-                Your PDF is saved. But recruiters search the <b className="text-ink/80">structured</b> Saramin CV — not the file.
-                Convert it and you show up in their searches too.
+                Your PDF is saved, and we’ve read the skills off it so employers can find you.
+                A Saramin CV goes further — recruiters can <b className="text-ink/80">read</b> it, not just download it.
               </p>
 
               <div className="mt-3.5 space-y-2">
                 {[
-                  ['', <>Appear in recruiter search — an uploaded PDF can be <b className="text-ink/80">downloaded, not found</b>.</>],
+                  ['', <>Be found on more than skills — <b className="text-ink/80">experience, level and education</b> only become searchable once they’re structured.</>],
                   ['', <>AI fills it in from the PDF you just uploaded — about a minute, and you review before it saves.</>],
                   ['', <>Your original PDF stays <b className="text-ink/80">exactly as-is</b>. The Saramin CV sits beside it; you pick which one to apply with.</>],
                 ].map(([icon, text], i) => (
@@ -1956,12 +1988,25 @@ function MyCvsScreen() {
   const [searchable, setSearchable] = useState(0)
   const [menu, setMenu] = useState<number | null>(null)
   const [editing, setEditing] = useState<null | 'basic' | 'prefs'>(null)
+  /* An uploaded PDF is parsed in the background — the file is never converted, but
+     the SKILLS it yields are what let employers find the candidate at all. So the
+     extracted list is shown here to be corrected, not hidden in the database.
+     Skills ONLY: a strip that asked about years, title and education too would be
+     the compare screen again, which is the thing this route exists to avoid. */
+  const [cvSkills] = useState(['Figma', 'UI Design', 'Sketch', 'Adobe CC'])
+  /* Which CV's skills are open for editing. An uploaded PDF has no skills section
+     of its own to send the candidate to, so it edits here in a popup — the same
+     shape as every other Edit on this page. */
+  const [editSkills, setEditSkills] = useState<number | null>(null)
   /* Uploaded CVs keep their FILE NAME — that is what the candidate recognises and
      what they will see again when they pick a CV to apply with. Generated ones get
      a readable title instead, since there is no file the user named. */
+  /* Skills are per-CV (CvSkill: cvId · skillId), so two CVs genuinely differ here —
+     which is the reason the row shows them at all: it is how a candidate compares
+     their CVs and decides which one employers should find. */
   const cvs = [
     { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '' },
-    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '' },
+    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '', skills: ['Business Development', 'B2B Sales', 'Account Management', 'Excel'] },
   ]
 
   return (
@@ -1998,9 +2043,30 @@ function MyCvsScreen() {
                     {searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
                   </p>
                   <p className="text-[11px] text-faint">{c.meta}</p>
-                  {/* The one named action, stacked under the meta line — left column,
-                      same place as the reference. The ⋯ button holds the rest. */}
-                  <span className="mt-1 inline-block cursor-pointer text-[11.5px] font-medium text-brand">View as employer</span>
+
+                  {/* The skills line — on EVERY CV from the first render, in ONE state.
+                      There is no confirm / "not now" ceremony: extracted skills are
+                      simply the CV's skills, shown as such, and Edit edits them. A
+                      confirmation step would have asked the candidate to approve
+                      something we had already saved — a decision with no alternative
+                      is not a decision, it is a dialog. Same display either way;
+                      only the edit destination differs, because a Saramin CV owns a
+                      real skills section and an uploaded PDF does not.
+                      Labelled just "Skills" — "employers find you by" read as if
+                      skills were the ONLY searchable facet, which they are not. */}
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="text-[10.5px] font-medium uppercase tracking-wide text-faint">Skills</span>
+                    <span className="text-[11.5px] text-ink/75">{(c.skills ?? cvSkills).join(' · ')}</span>
+                    <span
+                      onClick={() => (c.kind === 'Saramin' ? go('js-create-cv') : setEditSkills(i))}
+                      className="cursor-pointer text-[11px] font-medium text-brand"
+                    >✎ Edit</span>
+                  </div>
+
+                  {/* The one named action, LAST — it sends the candidate away from
+                      this list, so it sits under what describes the CV rather than
+                      above it. The ⋯ button holds the rest. */}
+                  <span className="mt-2 inline-block cursor-pointer text-[11.5px] font-medium text-brand">View as employer</span>
                 </div>
 
                 <button
@@ -2051,6 +2117,34 @@ function MyCvsScreen() {
 
       {/* ── Edit Basic information — the 9 fields, and only those ── */}
       {editing && <ProfileEditPopup section={editing} onClose={() => setEditing(null)} />}
+
+      {/* ── Edit skills — the same combobox the Saramin CV editor uses, so there is
+             one skills control in the product and not two. ── */}
+      {editSkills !== null && <CvSkillsPopup cvName={cvs[editSkills].name} onClose={() => setEditSkills(null)} />}
+    </div>
+  )
+}
+
+/* Skills editor for an UPLOADED CV. It edits the CV's skill list, never the PDF —
+   the file stays exactly as uploaded, and the line under the field says so, because
+   "editing my CV" reasonably sounds like we are rewriting their document. */
+function CvSkillsPopup({ cvName, onClose }: { cvName: string; onClose: () => void }) {
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
+      <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <p className="text-[14px] font-bold text-ink">Edit skills <span className="font-normal text-faint">· {cvName}</span></p>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
+          <CvSkillsField />
+          <p className="mt-2 text-[10.5px] leading-snug text-faint">Your PDF isn’t changed — these skills are what employers search on. Up to 20 per CV.</p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+          <Btn onClick={onClose}>Cancel</Btn>
+          <Btn primary onClick={onClose}>Save</Btn>
+        </div>
+      </div>
     </div>
   )
 }
@@ -2064,7 +2158,14 @@ function CvCompareScreen() {
   const [added, setAdded] = useState<string[]>([])
   /* An extracted word that resolved to no taxonomy row — the miss path. */
   const [resolved, setResolved] = useState<'picked' | 'requested' | null>(null)
-  const SUGGESTED = ['Design Systems', 'Prototyping', 'User Research', 'Wireframing']
+  /* Experience first, desired role second — the same order the skills field uses.
+     Here the reason is visible on the very same screen: the roles being read from
+     sit two cards above, in the PDF the candidate just uploaded. */
+  const SUGGESTED_GROUPS: { from: string; source: 'experience' | 'desired'; skills: string[] }[] = [
+    { from: 'Senior Product Designer · Lantern Digital', source: 'experience', skills: ['Design Systems', 'User Research'] },
+    { from: 'Senior Product Designer', source: 'desired', skills: ['Prototyping', 'Wireframing'] },
+  ]
+  const SUGGESTED = SUGGESTED_GROUPS.flatMap((g) => g.skills)
   return (
     <div>
       <JsHeader active="CV & Profile" />
@@ -2162,14 +2263,24 @@ function CvCompareScreen() {
               {resolved === 'requested' && (
                 <p className="mt-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[10.5px] text-muted">Sent “Design Thinking” to the team for review. It isn’t on your CV yet.</p>
               )}
-              <div className="mt-2.5 rounded-lg bg-brand-soft/50 p-2.5">
-                <p className="mb-1.5 text-[10.5px] font-semibold text-brand">Common for Product Designer — your desired role:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUGGESTED.filter((s) => !added.includes(s)).map((s) => (
-                    <span key={s} onClick={() => setAdded((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft">＋ {s}</span>
-                  ))}
-                  {SUGGESTED.every((s) => added.includes(s)) && <span className="text-[10.5px] text-muted">All added</span>}
-                </div>
+              <div className="mt-2.5 space-y-2 rounded-lg bg-brand-soft/50 p-2.5">
+                {SUGGESTED_GROUPS.map((g) => {
+                  const left = g.skills.filter((s) => !added.includes(s))
+                  if (!left.length) return null
+                  return (
+                    <div key={g.from}>
+                      <p className="mb-1.5 text-[10.5px] font-semibold text-brand">
+                        {g.source === 'experience' ? 'From your time as' : 'For your'} {g.from}:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {left.map((s) => (
+                          <span key={s} onClick={() => setAdded((a) => [...a, s])} className="cursor-pointer rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft">＋ {s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                {SUGGESTED.every((s) => added.includes(s)) && <span className="text-[10.5px] text-muted">All added</span>}
               </div>
             </div>
             {/* optional sections — same list as My Profile, compact add prompts */}
@@ -2210,13 +2321,83 @@ const VN_PROVINCES = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dươ
 function OnboardingScreen() {
   const go = useNav()
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 'results'>(1)
-  /* Locations are a SEARCHABLE DROPDOWN, not chips: Vietnam has 63 provinces, so
-     a chip grid either lies about the choice or scrolls forever. Short curated
-     lists (category, industry) stay as chips — the whole set is visible there. */
+  /* Every taxonomy field is a DROPDOWN, not a chip grid. The real master data is
+     far longer than any mockup list — 63 provinces, ~30 industries, hundreds of
+     roles — so a chip grid would either lie about the choice or scroll forever.
+     Selections stay visible as removable chips UNDER the field, which keeps the
+     "what did I pick" answer without pretending the whole set fits on screen. */
   const [locOpen, setLocOpen] = useState(false)
   const [locs, setLocs] = useState<string[]>(['Hồ Chí Minh', 'Hà Nội'])
   const toggleLoc = (c: string) =>
     setLocs((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
+  const [catOpen, setCatOpen] = useState(false)
+  const [cat, setCat] = useState('Design')
+  const [indOpen, setIndOpen] = useState(false)
+  const [inds, setInds] = useState<string[]>(['IT / Software', 'FMCG'])
+  const toggleInd = (c: string) =>
+    setInds((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
+
+  /* One picker for every taxonomy field. `max` set → multi-select with a cap and
+     removable chips; unset → single-select that closes on pick. Open state is
+     held by the parent so this staying inline doesn't reset it on re-render. */
+  const Picker = ({ label, hint, options, open, setOpen, value, onPick, max }: {
+    label: string; hint?: string; options: string[]; open: boolean
+    setOpen: (v: boolean) => void; value: string | string[]
+    onPick: (v: string) => void; max?: number
+  }) => {
+    const multi = Array.isArray(value)
+    const chosen = multi ? (value as string[]) : []
+    const full = (n: string) => multi && !chosen.includes(n) && chosen.length >= (max ?? 99)
+    return (
+      <div>
+        <p className="mb-1 text-[11.5px] font-medium text-ink">
+          {label}{max && <span className="font-normal text-faint"> (up to {max})</span>}
+        </p>
+        <button
+          onClick={() => setOpen(!open)}
+          className={cn('flex h-10 w-full items-center gap-2 rounded-lg border bg-surface px-3 text-[12px]', open ? 'border-brand' : 'border-line')}
+        >
+          <span className={cn('flex-1 text-left', (multi ? chosen.length : value) ? 'text-ink/80' : 'text-faint')}>
+            {multi ? (chosen.length ? `${chosen.length} selected` : 'Select…') : (value as string) || 'Select…'}
+          </span>
+          <span className="text-faint">{open ? '▴' : '▾'}</span>
+        </button>
+        {open && (
+          <div className="mt-1 max-h-[168px] overflow-y-auto rounded-lg border border-line bg-surface shadow-sm">
+            {options.map((c) => {
+              const on = multi ? chosen.includes(c) : value === c
+              const off = full(c)
+              return (
+                <button
+                  key={c}
+                  disabled={off}
+                  onClick={() => { onPick(c); if (!multi) setOpen(false) }}
+                  className={cn(
+                    'flex w-full items-center gap-2 border-b border-line-soft px-3 py-2 text-left text-[12px] last:border-b-0',
+                    on ? 'bg-brand-soft/50 font-medium text-brand' : off ? 'text-faint' : 'text-ink/80 hover:bg-canvas/60',
+                  )}
+                >
+                  <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+                  {c}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {multi && chosen.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {chosen.map((c) => (
+              <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-2.5 py-1 text-[11.5px] text-brand">
+                {c}
+                <span onClick={() => onPick(c)} className="cursor-pointer text-[10px] text-brand/70 hover:text-brand">✕</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {hint && <p className="mt-1 text-[10px] text-faint">{hint}</p>}
+      </div>
+    )
+  }
   const counts: Record<number, string> = { 1: '', 2: '61,341', 3: '12,231', 4: '8,400' }
   const Bar = ({ n }: { n: number }) => (
     <div className="mb-4">
@@ -2251,28 +2432,25 @@ function OnboardingScreen() {
                 <p className="text-[15px] font-bold text-ink">What kind of work are you looking for?</p>
                 <p className="mt-0.5 text-[11.5px] text-muted">Personalized job matches begin from here.</p>
                 <div className="mt-3 space-y-3">
-                  <div>
-                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job category</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['Design', 'IT — Software', 'Marketing', 'Sales', 'Accounting', 'HR'].map((c, i) => (
-                        <span key={c} className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}>{c}</span>
-                      ))}
-                    </div>
-                  </div>
+                  <Picker
+                    label="Desired job category"
+                    options={['Design', 'IT — Software', 'Marketing', 'Sales', 'Accounting', 'HR', 'Logistics', 'Manufacturing']}
+                    open={catOpen} setOpen={setCatOpen}
+                    value={cat} onPick={setCat}
+                    hint="One category — it drives the role suggestions below."
+                  />
                   <div>
                     <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job role</p>
                     <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">e.g. Senior Product Designer</div>
                     <p className="mt-1 text-[10px] text-faint">Suggestions come from the category you picked above.</p>
                   </div>
-                  <div>
-                    <p className="mb-1 text-[11.5px] font-medium text-ink">Desired industry <span className="font-normal text-faint">(up to 3)</span></p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['IT / Software', 'FMCG', 'Banking', 'Healthcare', 'Education', 'Logistics'].map((c, i) => (
-                        <span key={c} className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', i < 2 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}>{c}</span>
-                      ))}
-                    </div>
-                    <p className="mt-1 text-[10px] text-faint">The company’s sector — a designer can work in Banking or FMCG.</p>
-                  </div>
+                  <Picker
+                    label="Desired industry"
+                    options={['IT / Software', 'FMCG', 'Banking', 'Healthcare', 'Education', 'Logistics', 'Real estate', 'Retail']}
+                    open={indOpen} setOpen={setIndOpen}
+                    value={inds} onPick={toggleInd} max={3}
+                    hint="The company’s sector — a designer can work in Banking or FMCG."
+                  />
                 </div>
                 <Nav next={() => setStep(2)} />
               </>
@@ -2370,16 +2548,20 @@ function OnboardingScreen() {
               <p className="text-[19px] font-bold leading-snug text-ink">We found<br /><span className="text-brand">the best job postings</span> based on the information you entered!</p>
               <p className="mt-1.5 text-[12px] text-muted">Save the ones you like — you can apply immediately after completing your CV. Saved jobs live in <b>My page › Saved jobs</b>.</p>
 
-              {/* matched grid — 2 rows of 3 */}
+              {/* matched grid — 2 rows of 3. The score NEVER appears alone: each card
+                  carries the two highest-CONTRIBUTING signals (weight × credit earned),
+                  because a bare percentage invites the one question it cannot answer.
+                  Below the 60 floor a card shows no number at all — see the match-score
+                  requirement in Resume management. */}
               <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
                 {([
-                  ['Product Designer', 'Lantern Digital', 'Hồ Chí Minh', '92% match'],
-                  ['Senior UX Designer', 'Zenpay', 'Hồ Chí Minh', '88% match'],
-                  ['UI Designer', 'FPT Software', 'Hà Nội', '84% match'],
-                  ['Design Lead', 'Tiki', 'Hồ Chí Minh', '80% match'],
-                  ['Product Designer (Fintech)', 'MoMo', 'Hồ Chí Minh', '78% match'],
-                  ['UX Researcher', 'One Mount', 'Hà Nội', '75% match'],
-                ] as [string, string, string, string][]).map(([title, co, loc, match]) => (
+                  ['Product Designer', 'Lantern Digital', 'Hồ Chí Minh', '92% match', '8/10 skills · 4 yrs fits 3–5'],
+                  ['Senior UX Designer', 'Zenpay', 'Hồ Chí Minh', '88% match', '7/10 skills · salary fits'],
+                  ['UI Designer', 'FPT Software', 'Hà Nội', '84% match', '7/10 skills · Design category'],
+                  ['Design Lead', 'Tiki', 'Hồ Chí Minh', '80% match', '6/10 skills · 4 yrs fits 3–6'],
+                  ['Product Designer (Fintech)', 'MoMo', 'Hồ Chí Minh', '78% match', '6/10 skills · IT / Software'],
+                  ['UX Researcher', 'One Mount', 'Hà Nội', '75% match', '5/10 skills · Design category'],
+                ] as [string, string, string, string, string][]).map(([title, co, loc, match, why]) => (
                   <div key={title} className="rounded-xl border border-line p-3 hover:border-brand/40">
                     <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]"></div>
                     <p className="text-[12px] font-semibold leading-snug text-ink">{title}</p>
@@ -2389,6 +2571,7 @@ function OnboardingScreen() {
                       <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9.5px] font-semibold text-brand">{match}</span>
                       <span className="cursor-pointer text-[12px] text-faint">☆</span>
                     </div>
+                    <p className="mt-1 text-[9.5px] leading-snug text-faint">{why}</p>
                   </div>
                 ))}
               </div>

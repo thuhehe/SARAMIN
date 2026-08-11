@@ -4787,6 +4787,9 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   useDetailCrumb(coLabel(c), onBack)
   const [addingContact, setAddingContact] = useState(false)
   const [quoting, setQuoting] = useState(false)
+  /* HQ cleanup for duplicate / junk companies — soft + reversible, never a delete. */
+  const [archived, setArchived] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   /* Reached from search rather than owned. Read everything, write nothing — see
      ReadOnlyCtx. Editing state is force-closed so a rep cannot leave the card in
      edit mode and come back to it on someone else's record. */
@@ -4839,6 +4842,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               {/* Both axes, always: customer status (has it ever bought) and, only
                   while a deal is live, the pipeline stage. */}
               <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
+              {archived && <Pill tone="expired">Archived</Pill>}
               {/* Shown while a deal is live, and also once it is LOST — a lost deal
                   can be re-opened to an earlier stage, so hiding the control there
                   would remove the only way back. Closed-won (Invoice) stays hidden:
@@ -4868,8 +4872,40 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               Tạo báo giá / Create quotation
             </button>
           )}
+          {/* HQ cleanup for duplicate / junk companies — soft & reversible. */}
+          {archived
+            ? <button onClick={() => setArchived(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Unarchive</button>
+            : <button onClick={() => setArchiveOpen(true)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-[12px] font-medium text-rose-600 hover:bg-rose-50">Archive company</button>}
         </div>
       </div>
+
+      {archiveOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+          <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <p className="text-[15px] font-bold">Archive {coLabel(c)}?</p>
+              <button onClick={() => setArchiveOpen(false)} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+            </div>
+            <div className="space-y-3 p-5">
+              <p className="text-[12px] text-muted">Archiving <b className="text-ink/80">hides the company from active lists, blocks its logins and hides its jobs</b>. It’s reversible (Unarchive) and never deletes the record or its audit trail.</p>
+              {(noProducts && team.length <= 1) ? (
+                <p className="flex gap-2 rounded-md bg-canvas px-3 py-2.5 text-[11.5px] leading-relaxed text-muted"><span>🧹</span><span>This looks like an empty shell (no products, {team.length} user) — safe to archive.</span></p>
+              ) : (
+                <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>This company has {noProducts ? '' : 'active products and '}{team.length} users. <b>Move its users into the surviving company first</b> — don’t strand a real account.</span></p>
+              )}
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Reason <span className="text-rose-500">*</span></p>
+                <textarea rows={2} placeholder="e.g. duplicate of Công ty TNHH Vạn Phát — users moved" className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink" />
+                <p className="mt-1 text-[10.5px] text-faint">Written to the audit log with your name and the time.</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+              <button onClick={() => setArchiveOpen(false)} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+              <button onClick={() => { setArchived(true); setArchiveOpen(false) }} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Archive company</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* at-a-glance stats */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
@@ -5002,9 +5038,21 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
             </div>
             {/* No Actions column: the name is the link and every action lives in the
                 contact panel, so the row stays scannable and the note gets the width. */}
+            {/* Every field the Add-contact form captures has a column here: name,
+                role flags, title, email, PHONE, status and note. A field worth
+                asking for is a field worth showing — otherwise the rep types a
+                phone number and then has to open the record to read it back. */}
             <Table
-              minW={980}
-              cols={[{ label: 'Contact', w: '1.5fr' }, { label: 'Title', w: '1.2fr' }, { label: 'Status', w: '1fr' }, { label: 'Has login?', w: '0.8fr' }, { label: 'Note', w: '2fr' }]}
+              minW={1320}
+              cols={[
+                { label: 'Contact', w: '1.4fr' },
+                { label: 'Title', w: '1.1fr' },
+                { label: 'Email', w: '1.4fr' },
+                { label: 'Phone', w: '0.9fr' },
+                { label: 'Status', w: '1fr' },
+                { label: 'Has login?', w: '0.7fr' },
+                { label: 'Note', w: '1.8fr' },
+              ]}
               rows={companyContacts(c).map((p) => [
                 <button onClick={() => setContactOpen(p)} className="block min-w-0 max-w-full text-left">
                   <span className="flex min-w-0 items-center gap-1.5">
@@ -5013,9 +5061,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                     {p.billing && <span className="shrink-0 rounded border border-line bg-canvas px-1 py-0.5 text-[9.5px] font-semibold text-muted" title="Receives quotations & invoices">BILLING</span>}
                     {p.decisionMaker && <span className="shrink-0 text-[10px] text-faint" title="Decision maker">◆</span>}
                   </span>
-                  <span className="block truncate font-mono text-[10.5px] text-faint">{p.email}</span>
                 </button>,
                 <span className="truncate text-[11.5px] text-muted">{p.title}</span>,
+                <span className="truncate font-mono text-[11px] text-muted" title={p.email}>{p.email}</span>,
+                <span className="truncate font-mono text-[11px] text-muted">{p.phone}</span>,
                 <span title={CONTACT_STATUS[p.status].hint}><Pill tone={CONTACT_STATUS[p.status].tone}>{p.status}</Pill></span>,
                 p.linkedUser
                   ? <span className="text-[11px] text-emerald-700">linked</span>
@@ -5282,23 +5331,74 @@ function ChangeRoleModal({ user, users, onConfirm, onClose }: { user: CUser; use
   )
 }
 
+/* HQ-only: move a user from one company to another. One email = one employer login
+   = one company at a time, so a move is detach-then-attach (login never changes).
+   Blocked if the user is the sole Admin of their current company. */
+function MoveUserModal({ user, users, onConfirm, onClose }: { user: CUser; users: CUser[]; onConfirm: (toCompany: string, role: CoUserRole) => void; onClose: () => void }) {
+  const admins = users.filter((u) => u.company === user.company && u.role === 'Admin' && u.status !== 'Disabled')
+  const soleAdmin = user.role === 'Admin' && admins.length <= 1
+  const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name)))).filter((n) => n !== user.company)
+  const [toCompany, setToCompany] = useState(targets[0] ?? '')
+  const [role, setRole] = useState<CoUserRole>('Recruiter')
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Move user — {user.name}</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3 p-5">
+          {soleAdmin ? (
+            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>{user.name} is the <b>sole Admin</b> of {user.company}. Assign another Admin there first — a company can’t be left without one.</span></p>
+          ) : (
+            <>
+              <p className="text-[12px] text-muted">Move this login into another company. <b className="text-ink/80">The email &amp; password never change</b> — only which company they’re in and their role there.</p>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">From</p>
+                <div className="rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[12.5px] text-ink">{user.company}</div>
+              </div>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">To company <span className="text-rose-500">*</span></p>
+                <select value={toCompany} onChange={(e) => setToCompany(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  {targets.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Role in that company <span className="text-rose-500">*</span></p>
+                <select value={role} onChange={(e) => setRole(e.target.value as CoUserRole)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
+                </select>
+              </div>
+              <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>📝</span><span>This is an HQ action and is written to the audit log (who moved whom, from → to, role).</span></p>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => !soleAdmin && toCompany && onConfirm(toCompany, role)} disabled={soleAdmin || !toCompany} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Move user</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminCompanyUsers() {
   const [inviting, setInviting] = useState(false)
   const [users, setUsers] = useState<CUser[]>(CUSERS)
   const [changing, setChanging] = useState<CUser | null>(null)
+  const [moving, setMoving] = useState<CUser | null>(null)
   const applyRole = (role: CoUserRole) => {
     if (!changing) return
     setUsers((prev) => prev.map((u) => (u.email === changing.email ? { ...u, role } : u)))
     setChanging(null)
   }
+  const applyMove = (toCompany: string, role: CoUserRole) => {
+    if (!moving) return
+    setUsers((prev) => prev.map((u) => (u.email === moving.email ? { ...u, company: toCompany, role } : u)))
+    setMoving(null)
+  }
   return (
     <div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">Super admin</Pill><p className="mt-1.5 text-[11px] text-muted">Fixed highest role — everything, plus manage users &amp; roles. At least 1 per account; can’t be edited.</p></div>
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Recruiter</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — all 7 module permissions, no user admin.</p></div>
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="draft">Viewer</Pill><p className="mt-1.5 text-[11px] text-muted">Custom role — view jobs &amp; applications only.</p></div>
-      </div>
-
       <ListPage
         action={<button onClick={() => setInviting(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ Invite user</button>}
         tabs={[{ label: 'All users', count: 1140, active: true }, { label: 'Active', count: 1020 }, { label: 'Invited', count: 96 }, { label: 'Disabled', count: 24 }]}
@@ -5317,13 +5417,14 @@ function AdminCompanyUsers() {
               ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
               : u.status === 'Disabled'
                 ? <RowAction tone="brand">Re-enable</RowAction>
-                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button>{u.role !== 'Admin' && <RowAction tone="rose">Disable</RowAction>}</>}
+                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button><button onClick={() => setMoving(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Move</button>{u.role !== 'Admin' && <RowAction tone="rose">Disable</RowAction>}</>}
           </div>,
         ])}
       />
-      <p className="mt-2 text-[11px] leading-relaxed text-faint">Each user is assigned a role built on the Roles screen. Every account keeps at least one <b>Admin</b> — the last Admin can’t be downgraded or disabled. If the sole Admin is ever gone, HQ can reassign it.</p>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">Each user is assigned a role built on the Roles screen. Every account keeps at least one <b>Admin</b> — the last Admin can’t be downgraded or disabled. <b>Move</b> (HQ only) sends a login to another company with a chosen role; the sole Admin of a company can’t be moved out until another Admin is assigned.</p>
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
       {changing && <ChangeRoleModal user={changing} users={users} onConfirm={applyRole} onClose={() => setChanging(null)} />}
+      {moving && <MoveUserModal user={moving} users={users} onConfirm={applyMove} onClose={() => setMoving(null)} />}
     </div>
   )
 }
@@ -5678,19 +5779,6 @@ function AdminBoards() {
   return (
     <ListPage
       cols={[{ label: 'Board', w: '1.8fr' }, { label: 'Type', w: '1fr' }, { label: 'Posts', w: '0.7fr', align: 'r' }, { label: 'Updated', w: '1fr', align: 'r' }]}
-      rows={rows}
-    />
-  )
-}
-function AdminBlog() {
-  const rows = [
-    ['10 kỹ năng phỏng vấn cần biết', 'Ban biên tập', 'Cẩm nang', <Pill tone="active">Published</Pill>, '12/07/2026'],
-    ['Xu hướng tuyển dụng IT 2026', 'Ban biên tập', 'Thị trường', <Pill tone="active">Published</Pill>, '01/07/2026'],
-    ['Cách viết CV chuẩn ATS', 'Ban biên tập', 'Cẩm nang', <Pill tone="draft">Draft</Pill>, '—'],
-  ]
-  return (
-    <ListPage
-      cols={[{ label: 'Article', w: '2fr' }, { label: 'Author', w: '1fr' }, { label: 'Category', w: '1fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Published', w: '1fr', align: 'r' }]}
       rows={rows}
     />
   )
@@ -9162,7 +9250,7 @@ type PermLevel = 'none' | 'read' | 'write'
 const PERM_GROUPS: { key: string; label: string; resources: string[] }[] = [
   { key: 'recruitment', label: 'Recruitment', resources: ['Jobs', 'Job approval', 'Applicants', 'Resumes / candidates (PII)'] },
   { key: 'companies', label: 'Companies', resources: ['Company accounts', 'Company users', 'Company page review'] },
-  { key: 'content', label: 'Content', resources: ['Banners', 'Popups', 'Pages', 'Boards', 'Blog / articles'] },
+  { key: 'content', label: 'Content', resources: ['Banners', 'Popups', 'Pages', 'Boards'] },
   { key: 'billing', label: 'Billing & products', resources: ['Catalog', 'Bundles', 'Credits', 'Orders', 'Promotions'] },
   { key: 'crm', label: 'CRM', resources: ['Sign-ups', 'Pipeline / leads', 'Quotes', 'Invoices', 'Purchase orders', 'Payments', 'Contracts'] },
   { key: 'analytics', label: 'Analytics', resources: ['Dashboard', 'Sales report', 'Recruit report', 'Revenue report', 'User behavior'] },
@@ -10109,60 +10197,57 @@ function AdminDepartments() {
 }
 
 /* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
-type SignupStatus = 'New' | 'Resolved' | 'Dismissed'
+type SignupStatus = 'New' | 'Resolved' | 'Archived'
+type SignupMatch = 'new' | 'verify' | 'lead' | 'customer' | 'spam'
 type Signup = {
-  person: string; email: string; company: string; via: string; when: string
-  match: 'new' | 'lead' | 'customer' | 'spam'; matchName?: string
+  person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; via: string; when: string
+  match: SignupMatch; matchName?: string
   status: SignupStatus
   /** what the row became once resolved — the link back the spec requires */
   became?: string
 }
-/* MATCH is what the system found (new company / lead / customer / spam).
-   STATUS is whether a human has dispositioned the row yet — New until Sales
-   records an outcome, then Resolved with a link to whatever it became, or
-   Dismissed as spam. The two are independent: a matched row is still New. */
-const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Dismissed: 'expired' }
+/* Each sign-up ALREADY created a login + an Unverified company shell. MATCH is what the
+   system found (new / needs-verify / lead / customer / spam). STATUS is whether a human
+   reconciled it — New until an outcome is recorded, then Resolved or Archived. */
+const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Archived: 'expired' }
 const SIGNUPS: Signup[] = [
-  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', company: 'Công ty TNHH Đại Dương', via: 'no match on tax code / domain', when: '15m ago', match: 'new', status: 'New' },
-  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', company: 'Việt Tiến Logistics', via: 'tax code 0314xxxxxx', when: '1h ago', match: 'lead', matchName: 'Cty TNHH Việt Tiến', status: 'New' },
-  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', company: 'FPT Software', via: 'email domain @fpt.com.vn', when: '3h ago', match: 'customer', matchName: 'FPT Software', status: 'Resolved', became: 'Join request → FPT Software' },
-  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', company: 'Startup ABC', via: 'public email domain — verify manually', when: '5h ago', match: 'new', status: 'New' },
-  { person: 'asdf qwer', email: 'x@spam.io', company: 'zzz', via: 'flagged by spam filter', when: '6h ago', match: 'spam', status: 'Dismissed' },
+  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, via: 'no match on tax code / domain', when: '15m ago', match: 'new', status: 'New' },
+  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, via: 'tax code 0314xxxxxx', when: '1h ago', match: 'lead', matchName: 'Cty TNHH Việt Tiến', status: 'New' },
+  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, via: 'email domain @fpt.com.vn', when: '3h ago', match: 'customer', matchName: 'FPT Software', status: 'Resolved', became: 'Moved to FPT Software · shell archived · sales notified' },
+  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, via: 'public email domain — verify manually', when: '5h ago', match: 'verify', status: 'New' },
+  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, via: 'flagged by spam filter', when: '6h ago', match: 'spam', status: 'Archived', became: 'Shell archived' },
 ]
-const MATCH_META: Record<Signup['match'], { tone: StatusTone; label: string; action: string }> = {
-  new: { tone: 'neutral', label: 'New company', action: 'Create lead →' },
-  lead: { tone: 'pending', label: 'Matches a lead', action: 'Merge into lead' },
-  customer: { tone: 'active', label: 'Existing customer', action: 'Send join request' },
-  spam: { tone: 'rejected', label: 'Spam', action: 'Dismiss' },
+const MATCH_META: Record<SignupMatch, { tone: StatusTone; label: string; action: string }> = {
+  new: { tone: 'neutral', label: 'New company', action: 'Create on CRM' },
+  verify: { tone: 'draft', label: 'Needs verification', action: 'Verify' },
+  lead: { tone: 'pending', label: 'Matches a lead', action: 'Assign + notify owner' },
+  customer: { tone: 'active', label: 'Existing customer', action: 'Assign + notify sales' },
+  spam: { tone: 'rejected', label: 'Junk / not real', action: 'Archive' },
 }
 function AdminSignups() {
+  const actionTone = (m: SignupMatch) =>
+    m === 'new' ? 'bg-brand hover:opacity-90'
+    : m === 'verify' ? 'bg-amber-600 hover:opacity-90'
+    : 'bg-emerald-600 hover:opacity-90'
   return (
     <div>
-      <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[11.5px] leading-relaxed text-brand">
-        Inbound self-registrations from the company site — this is lead capture. Nothing is provisioned here.
-        <b> Match</b> is what the system found; <b>Status</b> is whether a human has dispositioned the row — <b>New</b> until Sales
-        records an outcome, then <b>Resolved</b> (with a link to what it became) or <b>Dismissed</b> as spam. A row can never be
-        left half-resolved.
-      </div>
-
-      {/* the 3 cases + their action */}
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="neutral">New company</Pill><p className="mt-1.5 text-[11px] text-muted">No match → <b className="text-ink">Create lead</b> (enters the pipeline).</p></div>
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="pending">Matches a lead</Pill><p className="mt-1.5 text-[11px] text-muted">Already in CRM → <b className="text-ink">Merge into lead</b> + notify owner.</p></div>
-        <div className="rounded-lg border border-line p-2.5"><Pill tone="active">Existing customer</Pill><p className="mt-1.5 text-[11px] text-muted">Already a customer → <b className="text-ink">Send join request</b> to their admin.</p></div>
-      </div>
-
       <ListPage
-        tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Dismissed', count: 3 }]}
+        tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Archived', count: 3 }]}
         cols={[
-          { label: 'Person', w: '1.4fr' }, { label: 'Company entered', w: '1.2fr' }, { label: 'Match', w: '1.6fr' },
-          { label: 'Status', w: '1.3fr' }, { label: 'When', w: '0.6fr' }, { label: 'Action', w: '1.4fr', align: 'r' },
+          { label: 'Full name', w: '1.1fr' }, { label: 'Email', w: '1.3fr' }, { label: 'Phone', w: '0.9fr' },
+          { label: 'Tax number', w: '0.9fr' }, { label: 'Company name', w: '1.2fr' }, { label: 'Hiring', w: '0.5fr' },
+          { label: 'Match', w: '1.5fr' }, { label: 'Status', w: '1.3fr' }, { label: 'When', w: '0.6fr' },
+          { label: 'Action', w: '1.6fr', align: 'r' },
         ]}
         rows={SIGNUPS.map((s) => {
           const m = MATCH_META[s.match]
           return [
-            <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{s.person}</p><p className="truncate font-mono text-[10.5px] text-faint">{s.email}</p></div>,
-            <span className="truncate">{s.company}</span>,
+            <span className="truncate text-[12.5px] font-medium text-ink">{s.person}</span>,
+            <span className="truncate font-mono text-[11px] text-muted">{s.email}</span>,
+            <span className="truncate text-[11.5px] text-muted">{s.phone}</span>,
+            <span className="truncate font-mono text-[11px] text-muted">{s.tax}</span>,
+            <span className="truncate text-[12px] text-ink/80">{s.company}</span>,
+            <Pill tone={s.hiring ? 'active' : 'neutral'}>{s.hiring ? 'Yes' : 'No'}</Pill>,
             <div className="min-w-0">
               <Pill tone={m.tone}>{m.label}{s.matchName ? `: ${s.matchName}` : ''}</Pill>
               <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.via}</p>
@@ -10176,10 +10261,10 @@ function AdminSignups() {
               {s.status !== 'New'
                 ? <span className="text-[11px] text-faint">—</span>
                 : s.match === 'spam'
-                  ? <RowAction tone="rose">Dismiss</RowAction>
+                  ? <RowAction tone="rose">Archive</RowAction>
                   : <>
-                      <button className={cn('rounded-md px-2.5 py-1 text-[11px] font-semibold text-white', s.match === 'new' ? 'bg-brand hover:opacity-90' : s.match === 'customer' ? 'bg-emerald-600 hover:opacity-90' : 'bg-amber-600 hover:opacity-90')}>{m.action}</button>
-                      <RowAction tone="rose">Spam</RowAction>
+                      <button className={cn('rounded-md px-2.5 py-1 text-[11px] font-semibold text-white', actionTone(s.match))}>{m.action}</button>
+                      <RowAction tone="rose">Archive</RowAction>
                     </>}
             </div>,
           ]
@@ -10270,6 +10355,7 @@ const SKILL_POOL: { name: string; sel: number }[] = [
   { name: 'React', sel: 0.20 },
   { name: 'TypeScript', sel: 0.35 },
   { name: 'Node.js', sel: 0.30 },
+  { name: 'Git', sel: 0.55 },
   { name: 'ASP.NET Core', sel: 0.10 },
   { name: '.NET', sel: 0.14 },
   { name: 'GraphQL', sel: 0.12 },
@@ -10281,7 +10367,33 @@ const SKILL_POOL: { name: string; sel: number }[] = [
 const BASE_POOL = 3200
 const SKILL_CAP = 10
 
-function JobSkillsField() {
+/* Suggestions for the EMPLOYER, keyed on the job's own Job role — the same
+   occupation↔skill map the candidate side reads, just entered from the job end
+   instead of the desired-role end. ESSENTIAL rows first, then OPTIONAL; that
+   flag is already on the client's occupation_skill table, so the ordering costs
+   no demand data and no new backend. */
+const ROLE_SKILL_MAP: Record<string, { name: string; essential: boolean }[]> = {
+  'Software Developer': [
+    { name: 'Git', essential: true },
+    { name: 'TypeScript', essential: true },
+    { name: 'React', essential: true },
+    { name: 'Node.js', essential: true },
+    { name: 'Docker', essential: false },
+    { name: 'AWS', essential: false },
+    { name: 'GraphQL', essential: false },
+    { name: 'Kubernetes', essential: false },
+  ],
+  'DevOps Engineer': [
+    { name: 'Docker', essential: true },
+    { name: 'Kubernetes', essential: true },
+    { name: 'AWS', essential: true },
+    { name: 'Git', essential: true },
+    { name: 'Node.js', essential: false },
+  ],
+}
+const SUGGEST_CAP = 6
+
+function JobSkillsField({ roles = ['Software Developer'] }: { roles?: string[] } = {}) {
   const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'GraphQL'])
   const [adding, setAdding] = useState(false)
 
@@ -10289,6 +10401,22 @@ function JobSkillsField() {
   const count = Math.max(1, Math.round(skills.reduce((acc, n) => acc * sel(n), BASE_POOL)))
   const available = SKILL_POOL.filter((s) => !skills.includes(s.name))
   const full = skills.length >= SKILL_CAP
+  /* UNION across every role on the job, not just the first — a job tagged
+     "Software Developer + DevOps Engineer" wants both lists. A skill that is
+     ESSENTIAL for ANY of the roles counts as essential; essentials first, then
+     optionals, minus what is already on the job, capped at 6. Same rule as the
+     candidate side with several desired roles — only the key differs. */
+  const merged = new Map<string, boolean>()
+  for (const r of roles) {
+    for (const s of ROLE_SKILL_MAP[r] ?? []) {
+      merged.set(s.name, (merged.get(s.name) ?? false) || s.essential)
+    }
+  }
+  const suggestions = [...merged]
+    .map(([name, essential]) => ({ name, essential }))
+    .filter((s) => !skills.includes(s.name))
+    .sort((a, b) => Number(b.essential) - Number(a.essential))
+    .slice(0, SUGGEST_CAP)
 
   return (
     <div>
@@ -10315,6 +10443,33 @@ function JobSkillsField() {
               {s.name}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Suggestions — read from occupation_skill, keyed on the job's own Job
+          role. One tap each; essentials first so the ordering itself tells the
+          employer what matters. Never auto-added: a suggestion the employer did
+          not choose would silently change who the job ranks. */}
+      {!full && suggestions.length > 0 && (
+        <div className="mt-1.5 rounded-md border border-line bg-canvas/40 px-2.5 py-2">
+          <p className="text-[10.5px] text-muted">
+            Common for <b className="font-medium text-ink/80">{roles.join(' + ')}</b> <span className="text-faint">· essential first</span>
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {suggestions.map((s) => (
+              <span
+                key={s.name}
+                onClick={() => setSkills((a) => [...a, s.name])}
+                title={s.essential ? 'Essential for this role' : 'Optional for this role'}
+                className={cn(
+                  'cursor-pointer rounded-full border px-2 py-0.5 text-[11px]',
+                  s.essential
+                    ? 'border-brand/40 bg-surface font-medium text-brand'
+                    : 'border-dashed border-line bg-surface text-muted',
+                )}
+              >＋ {s.name}</span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -10890,7 +11045,6 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-popups': AdminPopups,
   'admin-pages': AdminPages,
   'admin-boards': AdminBoards,
-  'admin-blog': AdminBlog,
   // Billing & products
   'admin-catalog': AdminCatalog,
   'admin-placements': AdminPlacements,

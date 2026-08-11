@@ -189,7 +189,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Popups', specId: 'admin-popups' },
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Boards', specId: 'admin-boards' },
-      { label: 'Blog / articles', specId: 'admin-blog' },
     ],
   },
   {

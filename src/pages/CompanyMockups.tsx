@@ -422,10 +422,18 @@ function Avatar({ name, big }: { name: string; big?: boolean }) {
 }
 
 /** Match score against THIS job — the signal that tells a recruiter which card
-    to open first, so the column order stops being just "who applied last". */
-function Match({ score }: { score: number }) {
+    to open first, so the column order stops being just "who applied last".
+    NEVER a bare percentage: the chip always carries the two highest-CONTRIBUTING
+    signals beside it. A recruiter deciding who to call needs to know what the
+    number is made of, and a score with no reasons claims an authority the model
+    does not have. Same rule as the jobseeker side — see Resume management →
+    "MATCH SCORE — what each side actually sees". */
+function Match({ score, why }: { score: number; why: string }) {
   return (
-    <Chip tone={score >= 80 ? 'green' : score >= 60 ? 'amber' : 'muted'}>{score}% match</Chip>
+    <span className="flex min-w-0 items-center gap-1.5">
+      <Chip tone={score >= 80 ? 'green' : score >= 60 ? 'amber' : 'muted'}>{score}% match</Chip>
+      <span className="truncate text-[10px] text-faint">{why}</span>
+    </span>
   )
 }
 
@@ -435,6 +443,8 @@ type CoCandidate = {
   exp: string
   loc: string
   match: number
+  /** the two highest-CONTRIBUTING signals behind `match` — the chip never shows alone */
+  why: string
   applied: string
   salary: string
   cv: string
@@ -525,7 +535,7 @@ function StageColumn({ col, terminal, onPick }: { col: CoStageCol; terminal?: bo
               <p className="truncate">{p.cv}</p>
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-1">
-              <Match score={p.match} />
+              <Match score={p.match} why={p.why} />
               <span className="shrink-0 text-[10px] text-faint">{p.waiting}</span>
             </div>
           </div>
@@ -563,14 +573,14 @@ function ApplicantsScreen() {
     {
       stage: 'New',
       people: [
-        { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV', waiting: '2 days' },
-        { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên', waiting: '3 days' },
+        { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, why: '9/10 kỹ năng · 3 năm hợp 2–5', applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV', waiting: '2 days' },
+        { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, why: '5/10 kỹ năng · lương hợp', applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên', waiting: '3 days' },
       ],
     },
-    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
-    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV', waiting: '6 days' }] },
-    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV', waiting: '1 day' }] },
-    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên', waiting: '9 days' }] },
+    { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, why: '8/10 kỹ năng · Hồ Chí Minh', applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
+    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, why: '7/10 kỹ năng · Hồ Chí Minh', applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV', waiting: '6 days' }] },
+    { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, why: '10/10 kỹ năng · 6 năm hợp 2–5', applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV', waiting: '1 day' }] },
+    { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, why: '3/10 kỹ năng · Đồng Nai', applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên', waiting: '9 days' }] },
   ]
   /* The terminal stage, pinned past the "+": every company has it and no company
      can rename or remove it, so it is not part of `cols`. */
@@ -718,7 +728,7 @@ function ApplicantsScreen() {
                   </div>
                   <span className="text-muted">{p.exp}</span>
                   <span className="text-muted">{p.salary}</span>
-                  <span><Match score={p.match} /></span>
+                  <span><Match score={p.match} why={p.why} /></span>
                   <span><Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip></span>
                   <span className="text-right tabular-nums text-muted">{p.waiting}</span>
                 </div>
@@ -759,7 +769,7 @@ function ApplicantsScreen() {
               <div className="flex items-center gap-3">
                 <Avatar name={picked.n} big />
                 <div>
-                  <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{picked.n} <Match score={picked.match} /></p>
+                  <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{picked.n} <Match score={picked.match} why={picked.why} /></p>
                   {/* No job title here — the panel opens from inside that job's pipeline,
                       which already names it above. */}
                   <p className="text-[11px] text-muted">Applied {picked.applied} · in {picked.stage} for {picked.waiting}</p>
@@ -921,14 +931,67 @@ function ApplicantsScreen() {
   )
 }
 
+/* One labelled block inside a resume-search row ("Latest company", "Latest
+   education"). The label sits above the value so a row reads as a small record a
+   recruiter can scan down, not as a run-on sentence. */
+function CvBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[9.5px] font-semibold uppercase tracking-wide text-faint">{label}</p>
+      <div className="mt-0.5 text-[11.5px] leading-[1.45] text-ink">{children}</div>
+    </div>
+  )
+}
+
 function ResumeSearchScreen() {
   const [confirming, setConfirming] = useState(false)
   const [viewing, setViewing] = useState(false)
+  /* Each row carries the full locked-preview field set: demographic line
+     (gender · age), years of experience, the LATEST company (name, role, period,
+     one-line description), the LATEST education (school, degree, graduated or
+     expected), and skills. Identity (full name, contact, CV file) stays hidden
+     until unlock. */
   const cvs = [
-    { title: 'Điều dưỡng viên · 4 năm KN', loc: 'Hồ Chí Minh', updated: '2 days ago', unlocked: true, name: 'Nguyễn Thị H.', skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], salary: '12–15 tr', avail: 'Open now' },
-    { title: 'Điều dưỡng trưởng · 7 năm KN', loc: 'Hồ Chí Minh', updated: '1 week ago', unlocked: false, skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], salary: '20–25 tr', avail: '1 month' },
-    { title: 'Kỹ thuật viên xét nghiệm · 3 năm', loc: 'Bình Dương', updated: '3 weeks ago', unlocked: false, skills: ['Xét nghiệm huyết học', 'Sinh hóa'], salary: '10–13 tr', avail: 'Open now' },
-    { title: 'Bác sĩ đa khoa · 6 năm KN', loc: 'Hồ Chí Minh', updated: '1 month ago', unlocked: false, skills: ['Khám nội tổng quát', 'Cấp cứu'], salary: 'Thỏa thuận', avail: '2 months' },
+    {
+      unlocked: true,
+      name: 'Nguyễn Thị Hoa',
+      headline: 'Điều dưỡng viên',
+      gender: 'Nữ', age: 28, years: '4 yrs experience',
+      company: { name: 'BV Nhân dân Gia Định', title: 'Điều dưỡng viên', period: '03/2023 – now · 2 yrs 5 mos', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca.' },
+      education: { school: 'ĐH Y Dược TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
+      skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], more: 2,
+      loc: 'Hồ Chí Minh', salary: '12–15 tr', avail: 'Open now', updated: '2 days ago',
+    },
+    {
+      unlocked: false,
+      name: 'Trần ○○',
+      headline: 'Điều dưỡng trưởng',
+      gender: 'Nữ', age: 34, years: '7 yrs experience',
+      company: { name: 'BV Quốc tế Mỹ (AIH)', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – now · 4 yrs 7 mos', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ.' },
+      education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
+      skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], more: 3,
+      loc: 'Hồ Chí Minh', salary: '20–25 tr', avail: '1 month', updated: '1 week ago',
+    },
+    {
+      unlocked: false,
+      name: 'Lê ○○',
+      headline: 'Kỹ thuật viên xét nghiệm',
+      gender: 'Nam', age: 26, years: '3 yrs experience',
+      company: { name: 'PK Đa khoa Medic Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – now · 3 yrs', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
+      education: { school: 'CĐ Y tế Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
+      skills: ['Xét nghiệm huyết học', 'Sinh hóa', 'ISO 15189'],
+      loc: 'Bình Dương', salary: '10–13 tr', avail: 'Open now', updated: '3 weeks ago',
+    },
+    {
+      unlocked: false,
+      name: 'Phạm ○○',
+      headline: 'Điều dưỡng viên (mới tốt nghiệp)',
+      gender: 'Nam', age: 23, years: 'Fresher · under 1 yr',
+      company: { name: 'BV Đại học Y Dược TP.HCM', title: 'Điều dưỡng thực tập', period: '06/2025 – 12/2025 · 7 mos', desc: 'Thực tập lâm sàng khoa Nội tổng hợp; hỗ trợ chăm sóc cơ bản và ghi chép hồ sơ.' },
+      education: { school: 'ĐH Nguyễn Tất Thành', degree: 'Cử nhân Điều dưỡng', status: 'Expected 06/2026', expected: true },
+      skills: ['Chăm sóc cơ bản', 'Tiếng Anh giao tiếp'],
+      loc: 'Hồ Chí Minh', salary: 'Thỏa thuận', avail: 'Open now', updated: '4 days ago',
+    },
   ]
   return (
     <div className="relative">
@@ -942,10 +1005,14 @@ function ResumeSearchScreen() {
         <div className="space-y-3">
           <div className="flex items-center justify-between"><p className="text-[12px] font-bold">Filters</p><span className="cursor-pointer text-[10.5px] text-brand">Clear all</span></div>
           {([
-            ['Experience', ['1 – 3 years', '3 – 5 years', '5+ years']],
+            ['Gender', ['Any', 'Nam (male)', 'Nữ (female)']],
+            ['Age', ['Under 25', '25 – 34', '35 – 44', '45+']],
+            ['Experience', ['No experience / fresher', '1 – 3 years', '3 – 5 years', '5+ years']],
             ['Location', ['Hồ Chí Minh', 'Hà Nội', 'Bình Dương']],
             ['Industry', ['Healthcare', 'IT – Software', 'Finance']],
-            ['Education', ['College', 'Bachelor', 'Master']],
+            ['Education level', ['College', 'Bachelor', 'Master']],
+            ['Graduation', ['Graduated', 'Expected graduate']],
+            ['Skills', ['Chăm sóc nội khoa', 'Tiêm truyền', 'JCI']],
             ['Salary expectation', ['Under 15 tr', '15 – 30 tr', 'Over 30 tr']],
             ['Availability', ['Open now', 'Within 1 month', '2+ months']],
             ['Last updated', ['This week', 'This month', 'Any time']],
@@ -971,29 +1038,63 @@ function ResumeSearchScreen() {
           <div className="space-y-2.5">
             {cvs.map((cv, i) => (
               <div key={i} className="rounded-lg border border-line p-3">
-                <div className="flex items-center gap-3">
+                {/* identity line — masked until unlocked, but the demographic +
+                    seniority summary a recruiter screens on is always readable */}
+                <div className="flex items-start gap-3">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '‍' : ''}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-semibold text-ink">{cv.unlocked ? cv.name : '••••••• (unlock to see name & contact)'}</p>
-                    <p className="truncate text-[11.5px] text-muted">{cv.title}</p>
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <p className="truncate text-[12.5px] font-semibold text-ink">{cv.name}</p>
+                      <span className="text-[11px] text-muted">{cv.gender} · {cv.age} tuổi</span>
+                      <span className="text-faint">·</span>
+                      <span className="text-[11px] font-medium text-ink/80">{cv.years}</span>
+                      {!cv.unlocked && <Chip>Name & contact locked</Chip>}
+                      {cv.unlocked && <Chip tone="green">Unlocked</Chip>}
+                    </div>
+                    <p className="truncate text-[11.5px] text-muted">{cv.headline}</p>
                   </div>
-                  {cv.unlocked
-                    ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
-                    : <Btn primary onClick={() => setConfirming(true)}>Unlock · 1 credit</Btn>}
+                  <div className="shrink-0">
+                    {cv.unlocked
+                      ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
+                      : <Btn primary onClick={() => setConfirming(true)}>Unlock · 1 credit</Btn>}
+                  </div>
                 </div>
-                {/* locked PREVIEW — enough to judge fit, no PII */}
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-[52px]">
-                  {cv.skills.map((s) => <Chip key={s}>{s}</Chip>)}
+
+                {/* the career record — latest company & latest education, the two
+                    blocks a recruiter reads before deciding to spend a credit */}
+                <div className="mt-2.5 space-y-2 pl-[52px]">
+                  <CvBlock label="Latest company">
+                    <p className="truncate"><b className="font-semibold">{cv.company.name}</b> · {cv.company.title}</p>
+                    <p className="text-[10.5px] text-muted">{cv.company.period}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted">{cv.company.desc}</p>
+                  </CvBlock>
+                  <CvBlock label="Latest education">
+                    <p className="truncate">
+                      <b className="font-semibold">{cv.education.school}</b> · {cv.education.degree}{' '}
+                      <span className={cn('ml-0.5 rounded border px-1 py-px text-[9.5px] font-medium', cv.education.expected ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-line bg-canvas text-muted')}>
+                        {cv.education.status}
+                      </span>
+                    </p>
+                  </CvBlock>
+                  <CvBlock label="Skills">
+                    <div className="flex flex-wrap items-center gap-1">
+                      {cv.skills.map((s) => <Chip key={s}>{s}</Chip>)}
+                      {cv.more && <span className="text-[10.5px] text-brand">+{cv.more} more</span>}
+                    </div>
+                  </CvBlock>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2 pl-[52px]">
                   <Chip tone="blue">{cv.loc}</Chip>
                   <Chip tone="amber">{cv.salary}</Chip>
                   <Chip tone="green">{cv.avail}</Chip>
-                  <span className="text-[10.5px] text-faint">Updated {cv.updated}</span>
+                  <span className="ml-auto text-[10.5px] text-faint">Updated {cv.updated}</span>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-            The preview shows fit (title, skills, salary, availability) but never PII. Unlocking reveals name + contact + the full CV, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
+            The locked row shows everything needed to judge fit — gender · age, years of experience, latest company & role, latest school, skills, salary and availability — but never the name, contact details or the CV file. Unlocking reveals those, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
           </div>
         </div>
       </div>
@@ -1005,7 +1106,7 @@ function ResumeSearchScreen() {
             <div className="p-5 text-center">
               <p className="text-[24px]"></p>
               <p className="mt-1 text-[15px] font-bold text-ink">Unlock this CV?</p>
-              <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Điều dưỡng trưởng · 7 năm KN · HCMC. You’ll see the candidate’s name, contact details and full CV.</p>
+              <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted">Điều dưỡng trưởng · Nữ · 34 tuổi · 7 yrs · HCMC. You’ll see the candidate’s name, contact details and full CV.</p>
               <div className="mx-auto mt-3 flex max-w-[240px] items-center justify-between rounded-lg border border-line px-3 py-2 text-[12px]">
                 <span className="text-muted">Cost</span><b className="text-ink">1 credit</b>
               </div>
@@ -1039,14 +1140,16 @@ function ResumeSearchScreen() {
             <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_190px]">
               <div className="rounded-lg border border-line bg-canvas/30 p-4">
                 <p className="text-[13px] font-bold text-ink">Nguyễn Thị Hoa</p>
-                <p className="mb-2 text-[11px] text-muted">Điều dưỡng viên · 4 yrs · Hồ Chí Minh</p>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
-                <p className="text-[11px] text-ink">Điều dưỡng viên · BV Nhân dân Gia Định · 2023–nay</p>
-                <p className="mb-2 text-[11px] text-muted">Điều dưỡng viên · PK Đa khoa Vạn Hạnh · 2021–2023</p>
+                <p className="mb-2 text-[11px] text-muted">Điều dưỡng viên · Nữ · 28 tuổi · 4 yrs experience · Hồ Chí Minh</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience · full history</p>
+                <p className="text-[11px] text-ink"><b>BV Nhân dân Gia Định</b> · Điều dưỡng viên · 03/2023 – now (2 yrs 5 mos)</p>
+                <p className="mb-1.5 text-[10.5px] text-muted">Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca.</p>
+                <p className="text-[11px] text-ink"><b>PK Đa khoa Vạn Hạnh</b> · Điều dưỡng viên · 07/2021 – 02/2023 (1 yr 8 mos)</p>
+                <p className="mb-2 text-[10.5px] text-muted">Tiếp nhận bệnh nhân ngoại trú, lấy mẫu và hướng dẫn sau khám.</p>
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Education</p>
-                <p className="mb-2 text-[11px] text-ink">Cử nhân Điều dưỡng · ĐH Y Dược TP.HCM</p>
+                <p className="mb-2 text-[11px] text-ink"><b>ĐH Y Dược TP.HCM</b> · Cử nhân Điều dưỡng · Graduated 06/2021</p>
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Skills</p>
-                <p className="text-[11px] text-ink">Chăm sóc nội khoa · Tiêm truyền · Hồ sơ bệnh án · Giao tiếp bệnh nhân</p>
+                <p className="text-[11px] text-ink">Chăm sóc nội khoa · Tiêm truyền · Hồ sơ bệnh án · Giao tiếp bệnh nhân · Sơ cấp cứu</p>
               </div>
               <div className="space-y-3">
                 <div>
@@ -1436,6 +1539,53 @@ function OrdersInvoicesScreen() {
 }
 
 /* ── navigation model ────────────────────────────────────────────────────── */
+/* Pre-login: create a new employer account. On submit this creates a LOGIN + a new
+   Unverified company (the signer-up becomes its Admin) — see CRM → Sign-ups. */
+function SignupScreen() {
+  const inp = 'w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-[12.5px] text-ink placeholder:text-faint'
+  const lbl = 'mb-1 block text-[11.5px] font-semibold text-ink/80'
+  return (
+    <div className="flex justify-center py-6">
+      <div className="w-full max-w-[560px] rounded-2xl border border-line bg-surface p-7">
+        <h1 className="text-center text-[22px] font-bold text-brand">Create your employer account</h1>
+        <p className="mx-auto mt-1 max-w-[420px] text-center text-[12.5px] text-muted">It only takes a minute to sign up — but it could change your team forever.</p>
+
+        <p className="mt-6 text-[12px] font-bold text-brand">Login information</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div><label className={lbl}>Full name *</label><input className={inp} placeholder="Full name" /></div>
+          <div><label className={lbl}>Email *</label><input className={inp} placeholder="you@company.com" /></div>
+          <div><label className={lbl}>Phone number *</label><input className={inp} placeholder="09xx xxx xxx" /></div>
+          <div><label className={lbl}>Password *</label><input type="password" className={inp} placeholder="Password" /></div>
+          <div><label className={lbl}>Confirm password *</label><input type="password" className={inp} placeholder="Confirm password" /></div>
+        </div>
+
+        <p className="mt-5 text-[12px] font-bold text-brand">Company information</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div><label className={lbl}>Tax number *</label><input className={inp} placeholder="Business registration no." /></div>
+          <div><label className={lbl}>Company name *</label><input className={inp} placeholder="Company name" /></div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-[12.5px]">
+          <span className="font-semibold text-ink/80">Is your company currently hiring?</span>
+          <label className="flex items-center gap-1.5"><span className="grid h-4 w-4 place-items-center rounded-full border-2 border-brand"><span className="h-2 w-2 rounded-full bg-brand" /></span> Yes</label>
+          <label className="flex items-center gap-1.5"><span className="h-4 w-4 rounded-full border-2 border-line" /> No</label>
+        </div>
+
+        <label className="mt-4 flex items-start gap-2 text-[11.5px] text-muted">
+          <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-line" />
+          <span>I have read and agree to the <span className="font-medium text-brand">Terms of service</span> and <span className="font-medium text-brand">Privacy Policy</span> of Saramin.</span>
+        </label>
+
+        <button className="mt-5 w-full rounded-xl bg-brand py-3 text-[13px] font-semibold text-white hover:opacity-90">Register</button>
+        <p className="mt-3 text-center text-[12px] text-muted">Already have an account? <span className="font-semibold text-brand">Log in</span></p>
+
+        <div className="mt-5 rounded-lg bg-brand-soft px-3 py-2.5 text-[11px] leading-relaxed text-brand">
+          🔑 On submit this creates your <b>login</b> and a new <b>Unverified company</b> — you become its Admin. You can explore straight away, but Candidates, Resume search and Reports stay empty until you buy a product. The tax number is required to verify the company before posting a job or buying.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface NavItem {
   id: string
   label: string
@@ -1486,6 +1636,14 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
       { id: 'co-team', label: 'Team', Comp: TeamScreen },
       { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
+    ],
+  },
+  {
+    // Pre-login entry point — creating a new employer account (login + Unverified company).
+    label: 'Sign up',
+    overflow: true,
+    items: [
+      { id: 'co-signup', label: 'Create account', Comp: SignupScreen, flush: true },
     ],
   },
 ]
