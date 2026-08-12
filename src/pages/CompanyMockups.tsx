@@ -1594,26 +1594,54 @@ function SignupScreen() {
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   if (step === 2) {
+    const track = [
+      { label: 'Signed up', sub: 'Account request received', state: 'done' as const },
+      { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'}`, state: 'now' as const },
+      { label: 'Company review', sub: 'Our team sets up your company — usually within 1 business day', state: 'wait' as const },
+      { label: 'Ready to sign in', sub: 'We email you — then log in with the password you just set', state: 'wait' as const },
+    ]
     return (
       <div className="flex justify-center py-6">
         <div className="w-full max-w-[560px]">
           <StepDots step={2} />
-          <div className="rounded-2xl border border-line bg-surface p-7 text-center">
-            <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[22px] text-emerald-700">✓</span>
-            <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! Your request is in.</p>
-            <p className="mx-auto mt-2 max-w-[420px] text-[12.5px] leading-relaxed text-muted">
-              We’ve received your sign-up for <b className="text-ink/80">“{f.company || 'your company'}”</b>. A Saramin team member will set up your company and email
-              <b className="text-ink/80"> {f.email || 'your email'}</b> an <b className="text-ink/80">activation link</b>. Click it to set your password and sign in — you’re not active until then.
-            </p>
-            <div className="mx-auto mt-5 max-w-[420px] rounded-lg bg-brand-soft px-4 py-3 text-left text-[11.5px] leading-relaxed text-brand">
-              <b>What happens next</b>
-              <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-brand/90">
-                <li>HQ places you — either into your existing company, or a new one they create for you.</li>
-                <li>You get the activation email → set password → sign in.</li>
-                <li>Your pages stay empty until you buy a product and your company is verified.</li>
-              </ol>
+          <div className="rounded-2xl border border-line bg-surface p-7">
+            <div className="text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[22px] text-emerald-700">✓</span>
+              <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! Your request is in.</p>
+              <p className="mx-auto mt-1.5 max-w-[420px] text-[12.5px] leading-relaxed text-muted">
+                First, <b className="text-ink/80">verify your email</b> (we just sent a link). Then our team sets up your company and emails you when you can sign in — here’s where you are:
+              </p>
             </div>
-            <button onClick={() => { setStep(1); setAgree(false) }} className="mt-5 text-[12px] font-medium text-brand hover:underline">← Back to the form</button>
+
+            {/* status tracker */}
+            <div className="mx-auto mt-5 max-w-[440px] space-y-0">
+              {track.map((t, i) => (
+                <div key={t.label} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold',
+                      t.state === 'done' ? 'bg-emerald-500 text-white' : t.state === 'now' ? 'bg-brand text-white' : 'border border-line text-faint')}>
+                      {t.state === 'done' ? '✓' : i + 1}
+                    </span>
+                    {i < track.length - 1 && <span className="my-0.5 h-6 w-px bg-line" />}
+                  </div>
+                  <div className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-[12.5px] font-semibold', t.state === 'wait' ? 'text-faint' : 'text-ink')}>{t.label}</span>
+                      {t.state === 'now' && <Chip tone="blue">Do this now</Chip>}
+                      {t.state === 'wait' && i === 2 && <Chip tone="amber">In review</Chip>}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted">{t.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mx-auto mt-1 max-w-[440px] rounded-lg bg-brand-soft px-4 py-2.5 text-[11px] leading-relaxed text-brand">
+              You won’t be able to log in until both your email is verified <b>and</b> our team has set up your company. We’ll email you at each step — no need to check back.
+            </div>
+            <div className="mt-5 flex justify-center">
+              <button onClick={() => { setStep(1); setAgree(false) }} className="text-[12px] font-medium text-brand hover:underline">← Back to the form</button>
+            </div>
           </div>
         </div>
       </div>

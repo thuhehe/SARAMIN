@@ -6357,7 +6357,7 @@ type PoPlacementLine = { sku: string; qty: number; used: number }
 type PlacementPo = { po: string; invoiced: string | null; lines: PoPlacementLine[] }
 const PLACEMENT_POS: Record<string, PlacementPo[]> = {
   'Công ty TNHH Vạn Phát': [
-    { po: 'PO-005812-07-2026', invoiced: '26/05/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }] },
+    { po: 'PO-005812-07-2026', invoiced: '26/05/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }, { sku: 'PLC-POPUP', qty: 2, used: 1 }] },
     { po: 'PO-005940-08-2026', invoiced: null, lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
   ],
   'FPT Software': [
@@ -6391,7 +6391,6 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
   const [houseEnd, setHouseEnd] = useState(banner?.source === 'House' ? banner.end : '')
   const [purpose, setPurpose] = useState('')
   const [exposure, setExposure] = useState<'On' | 'Off'>(banner?.exposure ?? 'On')
-  const [target, setTarget] = useState<'job' | 'company' | 'jobs'>('company')
   const [company, setCompany] = useState(banner?.company ?? '')
   const [po, setPo] = useState('')
   const [sku, setSku] = useState(banner?.sku ?? '')
@@ -6692,50 +6691,7 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
               Đúng kích thước <b className="text-ink/70">{slot?.size ?? '— chọn sản phẩm trước'}</b>. Ảnh sai tỉ lệ bị chặn khi lưu, không tự crop.
             </p>
           </div>
-          {/* Banners point INSIDE the site, not at an arbitrary URL: the three things
-              a placement can usefully send a jobseeker to are a job, a company page,
-              or that company's job list. Picking from those keeps the link alive when
-              slugs change and stops a paid slot pointing off-platform. */}
-          <div>
-            <FLabel req>Link đích<span className="ml-1 font-normal text-faint">nội bộ</span></FLabel>
-            <div className="grid gap-1.5 sm:grid-cols-3">
-              {([
-                ['job', 'Một job', 'Job detail'],
-                ['company', 'Trang công ty', 'Company page'],
-                ['jobs', 'Job list của công ty', 'Company job list'],
-              ] as const).map(([v, label, sub]) => (
-                <button
-                  key={v}
-                  onClick={() => setTarget(v)}
-                  className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', target === v ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
-                >
-                  <span className={cn('block text-[11.5px] font-medium', target === v ? 'text-brand' : 'text-ink')}>{label}</span>
-                  <span className="block text-[10px] text-faint">{sub}</span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-1.5">
-              <select className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                {target === 'job' && <>
-                  <option>— Chọn job —</option>
-                  <option>JOB-2109 · Digital Marketing Lead</option>
-                  <option>JOB-2101 · Product Manager</option>
-                </>}
-                {target === 'company' && <>
-                  <option>— Chọn công ty —</option>
-                  {Object.keys(PLACEMENT_POS).map((x) => <option key={x}>{x}</option>)}
-                </>}
-                {target === 'jobs' && <>
-                  <option>— Chọn công ty —</option>
-                  {Object.keys(PLACEMENT_POS).map((x) => <option key={x}>{x} · tất cả job đang mở</option>)}
-                </>}
-              </select>
-              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-                Lưu <b className="text-ink/70">ID</b>, không lưu URL — job đổi slug hay công ty đổi tên thì link vẫn đúng.
-                {target === 'job' && ' Job đóng thì banner tự trỏ về job list của công ty đó thay vì báo 404.'}
-              </p>
-            </div>
-          </div>
+          <DestinationPicker />
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
@@ -6747,6 +6703,51 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
             {status === 'Draft' ? 'Publish' : 'Lưu'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* Where a placement sends the jobseeker. Shared by banners and popups because the
+   answer is the same for both: inside the site, to one of three things. Stores the
+   ID rather than a URL, so a slug change never breaks a paid placement. */
+function DestinationPicker() {
+  const [target, setTarget] = useState<'job' | 'company' | 'jobs'>('company')
+  return (
+    <div>
+      <FLabel req>Link đích<span className="ml-1 font-normal text-faint">nội bộ</span></FLabel>
+      <div className="grid gap-1.5 sm:grid-cols-3">
+        {([
+          ['job', 'Một job', 'Job detail'],
+          ['company', 'Trang công ty', 'Company page'],
+          ['jobs', 'Job list của công ty', 'Company job list'],
+        ] as const).map(([v, label, sub]) => (
+          <button
+            key={v}
+            onClick={() => setTarget(v)}
+            className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', target === v ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+          >
+            <span className={cn('block text-[11.5px] font-medium', target === v ? 'text-brand' : 'text-ink')}>{label}</span>
+            <span className="block text-[10px] text-faint">{sub}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-1.5">
+        <select className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+          {target === 'job' && <>
+            <option>— Chọn job —</option>
+            <option>JOB-2109 · Digital Marketing Lead</option>
+            <option>JOB-2101 · Product Manager</option>
+          </>}
+          {target !== 'job' && <>
+            <option>— Chọn công ty —</option>
+            {Object.keys(PLACEMENT_POS).map((x) => <option key={x}>{x}{target === 'jobs' ? ' · tất cả job đang mở' : ''}</option>)}
+          </>}
+        </select>
+        <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+          Lưu <b className="text-ink/70">ID</b>, không lưu URL — job đổi slug hay công ty đổi tên thì link vẫn đúng.
+          {target === 'job' && ' Job đóng thì tự trỏ về job list của công ty đó thay vì báo 404.'}
+        </p>
       </div>
     </div>
   )
@@ -6852,21 +6853,35 @@ function AdminPopups() {
 
 function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: () => void }) {
   const editing = Boolean(popup)
+  /* Identical chain to a banner: COMPANY → PO → PRODUCT. A popup slot is a placement
+     product too (Homepage pop-up), so there is no reason for a second way in. */
   const [source, setSource] = useState<'Sold' | 'House'>(popup?.source ?? 'House')
   const house = source === 'House'
   const [company, setCompany] = useState(popup?.company ?? '')
-  const [audience, setAudience] = useState<PopupAudience>(popup?.audience ?? 'Guests')
+  const [po, setPo] = useState('')
+  const [sku, setSku] = useState('')
   const [start, setStart] = useState(popup?.start === '—' ? '' : popup?.start ?? '')
-  const [alwaysOn, setAlwaysOn] = useState(popup?.end === 'Always on')
-  const [end, setEnd] = useState(popup && popup.end !== 'Always on' && popup.end !== '—' ? popup.end : '')
+  const [houseEnd, setHouseEnd] = useState(popup && popup.end !== 'Always on' && popup.end !== '—' ? popup.end : '')
+  const [purpose, setPurpose] = useState('')
   const [exposure, setExposure] = useState<'On' | 'Off'>(popup?.exposure ?? 'On')
-  const [freq, setFreq] = useState(popup?.freq ?? '1 / phiên')
-  const [priority, setPriority] = useState(String(popup?.priority ?? 3))
   const [file, setFile] = useState<string | null>(popup?.creative ?? null)
+
+  const companies = Object.keys(PLACEMENT_POS)
+  const pos = PLACEMENT_POS[company] ?? []
+  const chosenPo = pos.find((x) => x.po === po)
+  const lines = chosenPo?.lines ?? []
+  const product = CATALOG.find((c) => c.sku === sku)
+  const days = Number(product?.fulfilment.match(/(\d+) ngày/)?.[1] ?? 7)
 
   const status = popup?.status ?? 'Draft'
   const creativeLocked = status === 'Open'
-  const valid = Boolean(file) && (alwaysOn || Boolean(end)) && (house || Boolean(company))
+  const valid = editing
+    ? Boolean(file)
+    : house
+      ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && Boolean(file)
+      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced)
+
+  const pick = (v: string) => { setCompany(v); setPo(''); setSku('') }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -6875,7 +6890,7 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
           <div>
             <p className="text-[15px] font-bold">{popup ? popup.name : 'Publish popup'}</p>
             <p className="flex items-center gap-1.5 text-[11px] text-muted">
-              {popup ? <>{popup.id} · {popup.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Popup ngắt trải nghiệm — nên có đối tượng, tần suất và thứ tự ưu tiên.'}
+              {popup ? <>{popup.id} · {popup.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Chọn khách hàng → PO → sản phẩm, rồi đặt ngày và tải ảnh.'}
             </p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
@@ -6894,7 +6909,7 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
               <Section title="1 · Nguồn" className="mt-0" />
               <div className="grid gap-1.5 sm:grid-cols-2">
                 {([
-                  ['Sold', 'Khách hàng', 'Đã mua — gắn với một công ty'],
+                  ['Sold', 'Khách hàng', 'Đã mua — gắn với dòng trong PO đã xuất hoá đơn'],
                   ['House', 'Nội bộ — Saramin VN', 'Thông báo, khảo sát, chiến dịch riêng'],
                 ] as const).map(([v, label, hint]) => (
                   <button
@@ -6912,36 +6927,103 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
                   </button>
                 ))}
               </div>
-              {!house && (
-                <div>
-                  <FLabel req>Khách hàng</FLabel>
-                  <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                    <option value="">— Chọn khách hàng —</option>
-                    {Object.keys(PLACEMENT_POS).map((x) => <option key={x} value={x}>{x}</option>)}
-                  </select>
-                </div>
+              {house && (
+                <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                  <span>ℹ️</span>
+                  <span>Popup nội bộ vẫn <b className="text-ink/70">tranh chỗ</b> với popup đã bán — chỉ một popup hiện tại một thời điểm — nhưng <b className="text-ink/70">không vào doanh thu</b>.</span>
+                </p>
               )}
             </>
           )}
 
-          <Section title={editing ? '1 · Đối tượng' : '2 · Đối tượng'} />
-          <div>
-            <FLabel req>Hiển thị cho</FLabel>
-            <div className="grid gap-1.5 sm:grid-cols-3">
-              {(Object.keys(PU_AUDIENCE) as PopupAudience[]).map((a) => (
-                <button
-                  key={a}
-                  onClick={() => setAudience(a)}
-                  className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', audience === a ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
-                >
-                  <span className={cn('block text-[11.5px] font-medium', audience === a ? 'text-brand' : 'text-ink')}>{a}</span>
-                  <span className="block text-[10px] leading-tight text-faint">{PU_AUDIENCE[a]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          {house && !editing && (
+            <>
+              <Section title="2 · Vị trí" />
+              <div>
+                <FLabel req>Placement</FLabel>
+                <select value={sku} onChange={(e) => setSku(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  <option value="">— Chọn vị trí —</option>
+                  {CATALOG.filter((c) => c.type === 'Placement booking' && c.role !== 'Add-on').map((c) => <option key={c.sku} value={c.sku}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <FLabel req>Mục đích</FLabel>
+                <input
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="VD: khảo sát NPS · thông báo bảo trì · chào mừng người dùng mới"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Bắt buộc — không có PO nào giải thích vì sao popup này chạy.</p>
+              </div>
+            </>
+          )}
 
-          <Section title={editing ? '2 · Thời gian' : '3 · Thời gian'} />
+          {!house && !editing && (
+            <>
+              <Section title="2 · Khách hàng & đơn hàng" />
+              <div>
+                <FLabel req>Khách hàng</FLabel>
+                <select value={company} onChange={(e) => pick(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                  <option value="">— Chọn khách hàng —</option>
+                  {companies.map((x) => <option key={x} value={x}>{x}</option>)}
+                </select>
+              </div>
+              <div>
+                <FLabel req>Đơn hàng / PO</FLabel>
+                <select
+                  value={po}
+                  onChange={(e) => { setPo(e.target.value); setSku('') }}
+                  disabled={!company}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink disabled:bg-canvas/60 disabled:text-muted"
+                >
+                  <option value="">{company ? '— Chọn PO —' : '— Chọn khách hàng trước —'}</option>
+                  {pos.map((x) => <option key={x.po} value={x.po}>{x.po}{x.invoiced ? ` · đã xuất HĐ ${x.invoiced}` : ' · chưa xuất hoá đơn'}</option>)}
+                </select>
+                {chosenPo && !chosenPo.invoiced && (
+                  <p className="mt-1 flex gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+                    <span>⚠️</span><span>PO này <b>chưa xuất hoá đơn</b> — chưa có quota, chưa thể publish.</span>
+                  </p>
+                )}
+              </div>
+              <div>
+                <FLabel req>Sản phẩm trong PO</FLabel>
+                {!chosenPo ? (
+                  <p className="rounded-md border border-line bg-canvas/50 px-3 py-2 text-[11.5px] text-faint">Chọn PO để xem các dòng placement.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {lines.map((ln) => {
+                      const pr = CATALOG.find((c) => c.sku === ln.sku)
+                      const left = ln.qty - ln.used
+                      const spent = left <= 0
+                      const on = sku === ln.sku
+                      return (
+                        <button
+                          key={ln.sku}
+                          onClick={() => !spent && setSku(ln.sku)}
+                          disabled={spent}
+                          className={cn('flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left', on ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30', spent && 'cursor-not-allowed opacity-50 hover:border-line')}
+                        >
+                          <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                            {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/80')}>{pr?.name ?? ln.sku}</span>
+                            <span className="block text-[10px] text-faint">{ln.used}/{ln.qty} đã dùng</span>
+                          </span>
+                          <span className={cn('shrink-0 text-[11px] font-semibold tabular-nums', spent ? 'text-rose-600' : 'text-ink')}>{spent ? 'hết lượt' : `${left} còn lại`}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {editing && <LField label="Sản phẩm" value={product?.name ?? 'Homepage pop-up'} hint={popup?.source === 'House' ? 'Popup nội bộ — không gắn PO nào.' : 'Đã chốt khi bán.'} />}
+
+          <Section title={editing ? '1 · Thời gian hiển thị' : '3 · Thời gian hiển thị'} />
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>
               <FLabel>Ngày bắt đầu<span className="ml-1 font-normal text-faint">để trống = đăng ngay</span></FLabel>
@@ -6958,20 +7040,20 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
                   : <>Để trống = đăng ngay → <b className="text-ink/70">Open</b> khi lưu.</>}
               </p>
             </div>
-            <div>
-              <FLabel req={!alwaysOn}>Ngày kết thúc</FLabel>
-              <input
-                type="date"
-                value={end ? end.split('/').reverse().join('-') : ''}
-                onChange={(e) => setEnd(e.target.value.split('-').reverse().join('/'))}
-                disabled={alwaysOn || status === 'Open' || status === 'Expired'}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
-              />
-              <label className="mt-1 flex items-center gap-1.5 text-[10.5px] text-muted">
-                <input type="checkbox" checked={alwaysOn} onChange={(e) => setAlwaysOn(e.target.checked)} className="h-3 w-3" />
-                Luôn bật — không có ngày kết thúc
-              </label>
-            </div>
+            {house && !editing ? (
+              <div>
+                <FLabel req>Ngày kết thúc</FLabel>
+                <input
+                  type="date"
+                  value={houseEnd ? houseEnd.split('/').reverse().join('-') : ''}
+                  onChange={(e) => setHouseEnd(e.target.value.split('-').reverse().join('/'))}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Nhập tay — popup nội bộ không có sản phẩm quy định thời lượng.</p>
+              </div>
+            ) : (
+              <LField label="Ngày kết thúc" value={start ? `+${days} ngày từ ngày bắt đầu` : `— ${days} ngày sau ngày bắt đầu`} hint="Tính từ thời gian hiển thị của sản phẩm, không nhập tay." />
+            )}
           </div>
 
           <div>
@@ -6991,30 +7073,6 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
             </div>
           </div>
 
-          <Section title={editing ? '3 · Hiển thị' : '4 · Hiển thị'} />
-          {/* The two fields a banner does not need. Both exist because a popup
-              interrupts: the cap stops one person seeing it twice, the priority
-              decides who wins when several are eligible at once. */}
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <div>
-              <FLabel req>Tần suất</FLabel>
-              <select value={freq} onChange={(e) => setFreq(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                {['1 / phiên', '1 / ngày', '1 / tuần', '1 / người (chỉ một lần)'].map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Đã tắt thì nhớ theo người/thiết bị — không hỏi lại.</p>
-            </div>
-            <div>
-              <FLabel req>Ưu tiên</FLabel>
-              <input
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                inputMode="numeric"
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none focus:border-brand"
-              />
-              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Số nhỏ hơn thắng. Chỉ MỘT popup hiện tại một thời điểm.</p>
-            </div>
-          </div>
-
           <div>
             <FLabel req>Ảnh popup</FLabel>
             <div className={cn('rounded-lg border border-dashed px-3 py-4 text-center', creativeLocked ? 'border-line bg-canvas/50' : 'border-line hover:border-brand/50')}>
@@ -7030,7 +7088,7 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
               )}
             </div>
           </div>
-          <LField label="CTA" value="Ứng tuyển ngay · Tìm hiểu thêm · Xem việc khác" select hint="Nút trên popup. Link đích chọn như banner — job, trang công ty, hoặc job list." />
+          <DestinationPicker />
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
@@ -7047,62 +7105,192 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
   )
 }
 
-/* Manual services, across every customer. The per-company card answers "what has
-   THIS customer used?"; ops needs the other question — "what does anyone still owe
-   delivery on?" — and that one cannot be answered by opening 30 company records.
+/* ── Account usage, across every customer ─────────────────────────────────────
+   The queues answer "what still needs doing?". This answers the other question —
+   "what has this customer consumed?" — for every customer at once, which today can
+   only be reconstructed by opening thirty company records one at a time.
 
-   Sorted by remaining, descending: the rows at the top are the unfulfilled promises,
-   which is the only reason to open this screen. */
-function AdminManualServices() {
-  const [logging, setLogging] = useState<{ e: ServiceEntitlement; company: string } | null>(null)
+   Every column is the same shape because every product is: bought N, used M. Job
+   slots, CV unlocks, placement bookings and service deliveries differ only in WHO
+   records the use — the platform observes the first three, a person asserts the
+   fourth — not in what the number means. */
+type UsagePair = { used: number; total: number }
+function usageOf(c: Company) {
+  const placements = (PLACEMENT_POS[c.name] ?? []).flatMap((p) => p.lines)
+  const services = SERVICE_USAGE[c.name] ?? []
+  return {
+    job: { used: c.jobTotal - c.jobLeft, total: c.jobTotal } as UsagePair,
+    cv: { used: c.cvTotal - c.cvLeft, total: c.cvTotal } as UsagePair,
+    plc: { used: placements.reduce((t, l) => t + l.used, 0), total: placements.reduce((t, l) => t + l.qty, 0) } as UsagePair,
+    svc: { used: services.reduce((t, e) => t + e.entries.length, 0), total: services.reduce((t, e) => t + e.total, 0) } as UsagePair,
+  }
+}
+
+/** A used/total cell. Empty means "did not buy this", which is not the same as
+    "bought and used none" — so it renders as — rather than 0/0 with a full bar. */
+function UsageCell({ p }: { p: UsagePair }) {
+  if (p.total === 0) return <span className="text-faint">—</span>
+  const pct = (p.used / p.total) * 100
+  const low = p.total - p.used === 0
+  return (
+    <span className="flex items-center gap-2">
+      <span className={cn('shrink-0 tabular-nums', low ? 'font-semibold text-rose-600' : 'text-ink')}>{p.used}/{p.total}</span>
+      <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-line">
+        <span className={cn('block h-full rounded-full', low ? 'bg-rose-500' : 'bg-brand')} style={{ width: `${pct}%` }} />
+      </span>
+    </span>
+  )
+}
+
+function AdminAccountUsage() {
   const [fState, setFState] = useState('')
+  const [sort, setSort] = useState('')
 
-  const rows = Object.entries(SERVICE_USAGE)
-    .flatMap(([company, list]) => list.map((e) => ({ company, e })))
-    .map((r) => ({ ...r, left: r.e.total - r.e.entries.length }))
-    .filter((r) => !fState || (fState === 'Còn lượt' ? r.left > 0 : r.left === 0))
-    .sort((a, b) => b.left - a.left)
+  const base = COMPANIES.filter((c) => isCustomer(c) || c.account === 'Churn')
+    .map((c) => ({ c, u: usageOf(c) }))
+    .filter((r) => r.u.job.total + r.u.cv.total + r.u.plc.total + r.u.svc.total > 0)
 
-  const lastOf = (e: ServiceEntitlement) => e.entries.length ? e.entries[e.entries.length - 1].date : '—'
+  const owed = (u: ReturnType<typeof usageOf>) =>
+    (u.job.total - u.job.used) + (u.cv.total - u.cv.used) + (u.plc.total - u.plc.used) + (u.svc.total - u.svc.used)
+  const spentPct = (u: ReturnType<typeof usageOf>) => {
+    const t = u.job.total + u.cv.total + u.plc.total + u.svc.total
+    const d = u.job.used + u.cv.used + u.plc.used + u.svc.used
+    return t === 0 ? 0 : (d / t) * 100
+  }
+
+  const rows = base
+    .filter((r) => !fState || (fState === 'Còn nhiều chưa dùng' ? spentPct(r.u) < 50 : spentPct(r.u) >= 90))
+    .slice()
+    .sort((a, b) => {
+      if (sort === 'unused') return owed(b.u) - owed(a.u)
+      if (sort === 'spent') return spentPct(b.u) - spentPct(a.u)
+      return coLabel(a.c).localeCompare(coLabel(b.c), 'vi')
+    })
 
   return (
     <div>
       <ListPage
         cols={[
-          { label: 'Khách hàng', w: '1.5fr' },
-          { label: 'Dịch vụ', w: '1.9fr' },
-          { label: 'Đã dùng', w: '1fr' },
-          { label: 'Còn lại', w: '0.9fr', align: 'r' },
-          { label: 'Lần gần nhất', w: '1fr' },
-          { label: '', w: '0.9fr', align: 'r' },
+          { label: 'Khách hàng', w: '1.6fr' },
+          { label: 'Job slots', w: '1.1fr' },
+          { label: 'CV unlocks', w: '1.1fr' },
+          { label: 'Placements', w: '1.1fr' },
+          { label: 'Manual services', w: '1.1fr' },
+          { label: 'Chưa dùng', w: '0.8fr', align: 'r' },
+          { label: 'Hạn dùng', w: '1fr', align: 'r' },
         ]}
-        rows={rows.map(({ company, e, left }) => [
-          <span className="truncate font-medium text-ink">{company}</span>,
-          <span className="truncate">{e.name}</span>,
-          <span className="flex items-center gap-2">
-            <span className="tabular-nums">{e.entries.length}/{e.total}</span>
-            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-line">
-              <span className="block h-full rounded-full bg-brand" style={{ width: `${(e.entries.length / e.total) * 100}%` }} />
-            </span>
+        rows={rows.map(({ c, u }) => [
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-ink">{coLabel(c)}</span>
+            <span className="block text-[10.5px] text-faint">👤 {c.owner}</span>
           </span>,
-          <span className={cn('font-semibold tabular-nums', left === 0 ? 'text-faint' : 'text-ink')}>{left}</span>,
-          <span className="tabular-nums">{lastOf(e)}</span>,
-          left > 0
-            ? <button onClick={() => setLogging({ e, company })} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Ghi nhận</button>
-            : <span className="text-[11px] text-faint">đã dùng hết</span>,
+          <UsageCell p={u.job} />,
+          <UsageCell p={u.cv} />,
+          <UsageCell p={u.plc} />,
+          <UsageCell p={u.svc} />,
+          <span className={cn('font-semibold tabular-nums', owed(u) === 0 ? 'text-faint' : 'text-ink')}>{owed(u)}</span>,
+          <span className={cn('tabular-nums', c.renewal === 'Lapsed' ? 'text-rose-600' : 'text-muted')}>{c.renewal}</span>,
         ])}
-        filters={<FilterSelect label="Trạng thái" value={fState} onChange={setFState} options={['Còn lượt', 'Đã dùng hết']} />}
-        total={Object.values(SERVICE_USAGE).flat().length}
-        searchHint="Search khách hàng, dịch vụ…"
-        minW={1020}
+        filters={
+          <>
+            <FilterSelect label="Mức dùng" value={fState} onChange={setFState} options={['Còn nhiều chưa dùng', 'Sắp hết']} />
+            <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', sort ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+              <span className={sort ? 'text-brand/70' : 'text-faint'}>Sort</span>
+              <select value={sort} onChange={(e) => setSort(e.target.value)} className={cn('cursor-pointer bg-transparent text-[11.5px] outline-none', sort ? 'font-medium text-brand' : 'text-ink')}>
+                <option value="">Tên A → Z</option>
+                <option value="unused">Chưa dùng nhiều nhất</option>
+                <option value="spent">Đã dùng nhiều nhất</option>
+              </select>
+            </label>
+          </>
+        }
+        total={base.length}
+        searchHint="Search khách hàng, sales owner…"
+        minW={1240}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Sắp xếp theo <b className="text-ink/70">còn lại</b> giảm dần — trên cùng là những gì khách đã trả tiền mà chưa
-        được giao · hệ thống không tự đếm được dịch vụ thủ công, mỗi ghi nhận là <b className="text-ink/70">1 lượt</b>
+        Màn hình sales mở trước khi gọi gia hạn. <b className="text-ink/70">Chưa dùng nhiều</b> = khách chưa nhận đủ
+        giá trị đã trả → rủi ro không tái ký; <b className="text-ink/70">sắp hết</b> = cơ hội bán thêm ·
+        ô <b className="text-ink/70">—</b> nghĩa là chưa mua loại đó, khác với mua rồi chưa dùng
+      </p>
+    </div>
+  )
+}
+
+/* ── Service delivery queues ──────────────────────────────────────────────────
+   One row per UNIT, not per entitlement — the same shape as Banners and Popups,
+   where a row is one thing that runs. A customer who bought 4 posts has 4 rows:
+   the delivered ones carry their proof, the rest sit as "Chưa giao".
+
+   That is what makes this a QUEUE rather than a report: the unfulfilled rows are
+   visible individually and each one is a job someone still has to do. Rolling them
+   into "2/4 used" hides three of the four things you can act on. */
+type ServiceUnit = { company: string; e: ServiceEntitlement; n: number; delivered: ServiceDelivery | null }
+function serviceUnits(sku: string): ServiceUnit[] {
+  const out: ServiceUnit[] = []
+  Object.entries(SERVICE_USAGE).forEach(([company, list]) => {
+    list.filter((e) => e.sku === sku).forEach((e) => {
+      for (let n = 0; n < e.total; n++) out.push({ company, e, n, delivered: e.entries[n] ?? null })
+    })
+  })
+  // Undelivered first: they are the reason to open the screen.
+  return out.sort((a, b) => Number(Boolean(a.delivered)) - Number(Boolean(b.delivered)))
+}
+
+function ServiceQueue({ sku, unitLabel, linkLabel }: { sku: string; unitLabel: string; linkLabel: string }) {
+  const [fState, setFState] = useState('')
+  const [logging, setLogging] = useState<{ e: ServiceEntitlement; company: string } | null>(null)
+  const all = serviceUnits(sku)
+  const rows = all.filter((u) => !fState || (fState === 'Chưa giao' ? !u.delivered : Boolean(u.delivered)))
+  const owed = all.filter((u) => !u.delivered).length
+
+  return (
+    <div>
+      <ListPage
+        cols={[
+          { label: 'Khách hàng', w: '1.4fr' },
+          { label: unitLabel, w: '0.7fr' },
+          { label: 'Trạng thái', w: '0.9fr' },
+          { label: 'Ngày', w: '0.9fr' },
+          { label: linkLabel, w: '1.8fr' },
+          { label: 'Người thực hiện', w: '1.1fr' },
+          { label: '', w: '0.8fr', align: 'r' },
+        ]}
+        rows={rows.map((u) => [
+          <span className="truncate font-medium text-ink">{u.company}</span>,
+          <span className="tabular-nums text-muted">#{u.n + 1}/{u.e.total}</span>,
+          u.delivered ? <Pill tone="active">Đã giao</Pill> : <Pill tone="pending">Chưa giao</Pill>,
+          <span className="tabular-nums">{u.delivered?.date ?? <span className="text-faint">—</span>}</span>,
+          u.delivered
+            ? <span className="min-w-0">
+                <a href={u.delivered.link} onClick={(e) => e.preventDefault()} className="block truncate text-brand hover:underline">{u.delivered.link}</a>
+                <span className="block truncate text-[10.5px] text-faint">{u.delivered.content}</span>
+              </span>
+            : <span className="text-faint">chưa có</span>,
+          <span className="truncate">{u.delivered?.by ?? <span className="text-faint">—</span>}</span>,
+          u.delivered
+            ? <span className="text-[11px] text-faint">{u.delivered.image ? '🖼 có ảnh' : 'chưa có ảnh'}</span>
+            : <button onClick={() => setLogging({ e: u.e, company: u.company })} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Ghi nhận</button>,
+        ])}
+        filters={<FilterSelect label="Trạng thái" value={fState} onChange={setFState} options={['Chưa giao', 'Đã giao']} />}
+        total={all.length}
+        searchHint="Search khách hàng, nội dung…"
+        minW={1200}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        <b className="text-ink/70">{owed}</b> lượt khách đã trả tiền nhưng chưa được giao — xếp lên đầu · mỗi dòng là
+        MỘT lượt, giống một banner là một booking · ghi nhận xong thì dòng đó chuyển sang <b className="text-ink/70">Đã giao</b>
       </p>
       {logging && <LogServiceDeliveryModal e={logging.e} company={logging.company} onClose={() => setLogging(null)} />}
     </div>
   )
+}
+
+function AdminEmailMarketing() {
+  return <ServiceQueue sku="SVC-EMAIL-DEV" unitLabel="Lượt gửi" linkLabel="Chiến dịch đã gửi" />
+}
+function AdminFacebookPosts() {
+  return <ServiceQueue sku="SVC-FB-TOPDEV" unitLabel="Bài" linkLabel="Bài đã đăng" />
 }
 
 function AdminPages() {
@@ -8407,9 +8595,15 @@ function AdminOrders() {
    Two programmes, two SHAPES, and the shapes are genuinely different — which is
    why this is not one table with an audience column:
 
-     per-line volume  (Existing)  — each line earns its own % from its OWN quantity
-     flat on the order (New/Churn) — one % on everything, but only while EVERY
-                                     line stays at or under a quantity cap
+     volume per PRODUCT (Existing)  — quantities of the SAME product are summed
+                                      across the option, and the tier that total
+                                      reaches sets the % on every line of it
+     flat on the order  (New/Churn) — one % on everything, but only while EVERY
+                                      line stays at or under a quantity cap
+
+   “Cùng loại” is the load-bearing phrase in the first one: 3 + 4 Basic Plus on two
+   lines is 7 Basic Plus, so both lines earn the 5-tier at 30% — not 25% each for
+   being under 5 separately. Splitting a line must never change the price.
 
    The second is all-or-nothing on purpose: one line over the cap and the whole
    50% is lost, not just that line's share. That cliff is the client's rule, and
@@ -8421,13 +8615,18 @@ type Programme = {
   name: string
   vi: string
   audience: PromoAudience[]
-  /** per-line: % comes from that line's quantity · flat: one % on the whole option */
-  kind: 'volume-per-line' | 'flat-order'
+  /** per-product: quantities of the same product are summed, then tiered ·
+      flat: one % on the whole option */
+  kind: 'volume-per-product' | 'flat-order'
   tiers?: VolumeTier[]
   pct?: number
   /** flat only — every non-gift line must be at or under this, or nothing applies */
   maxQtyPerLine?: number
-  firstPoOnly?: boolean
+  /** flat only — first PO of the CURRENT status spell, not first in history: for a
+      Churn customer that is the first PO since they came back. Self-enforcing,
+      because the first invoice flips them to Existing and the programme stops
+      matching on its own. */
+  firstPoOfCurrentSpell?: boolean
   /** whether it may run alongside another programme on the same quotation */
   stackable: boolean
   /** gift lines inherit the paid line's activation window rather than their own */
@@ -8444,7 +8643,7 @@ const PROGRAMMES: Programme[] = [
     name: 'Volume discount — existing customers',
     vi: 'Chiết khấu theo số lượng (cùng loại)',
     audience: ['Existing'],
-    kind: 'volume-per-line',
+    kind: 'volume-per-product',
     // Thresholds, not exact matches: 7 tin earns the 5-tier, not nothing.
     tiers: [
       { minQty: 2, pct: 25 }, { minQty: 5, pct: 30 }, { minQty: 10, pct: 35 },
@@ -8465,7 +8664,7 @@ const PROGRAMMES: Programme[] = [
     kind: 'flat-order',
     pct: 50,
     maxQtyPerLine: 5,
-    firstPoOnly: true,
+    firstPoOfCurrentSpell: true,
     stackable: false,
     giftActivationFollowsPaid: true,
     status: 'Active',
@@ -8480,6 +8679,13 @@ const programmeFor = (a?: Account) => PROGRAMMES.find((x) => x.status === 'Activ
 /** Highest tier whose threshold the quantity reaches. 1 earns nothing. */
 const tierPct = (p: Programme, qty: number) =>
   (p.tiers ?? []).reduce((best, t) => (qty >= t.minQty ? t.pct : best), 0)
+/** Quantity of each product across an option's PAID lines — the number the tier
+    is looked up on. Gifts are 0 ₫ and were not bought, so they never count. */
+const qtyByProduct = (lines: { cat: number; qty: number; gift: boolean }[]) => {
+  const m = new Map<number, number>()
+  lines.forEach((l) => { if (!l.gift) m.set(l.cat, (m.get(l.cat) ?? 0) + l.qty) })
+  return m
+}
 
 /* The settings screen. Not a list of coupon CODES — nobody types a code here.
    A programme is chosen BY the customer's status, so the record reads as a rule
@@ -8497,8 +8703,8 @@ function AdminPromotions() {
         rows={PROGRAMMES.map((p) => [
           <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-medium text-brand hover:underline">{p.vi}</button>,
           <span className="flex flex-wrap gap-1">{p.audience.map((a) => <Pill key={a} tone={AC_STATUS[a].tone}>{a}</Pill>)}</span>,
-          <span className="text-muted">{p.kind === 'volume-per-line' ? `${p.tiers![0].pct}–${p.tiers![p.tiers!.length - 1].pct}% theo số lượng, từng dòng` : `${p.pct}% trên tổng đơn`}</span>,
-          <span className="text-muted">{p.kind === 'volume-per-line' ? `từ ${p.tiers![0].minQty} sản phẩm cùng loại` : `mọi dòng ≤ ${p.maxQtyPerLine} · chỉ PO đầu tiên`}</span>,
+          <span className="text-muted">{p.kind === 'volume-per-product' ? `${p.tiers![0].pct}–${p.tiers![p.tiers!.length - 1].pct}% theo tổng số lượng cùng loại` : `${p.pct}% trên tổng đơn`}</span>,
+          <span className="text-muted">{p.kind === 'volume-per-product' ? `từ ${p.tiers![0].minQty} sản phẩm cùng loại` : `mọi dòng ≤ ${p.maxQtyPerLine} · PO đầu tiên của trạng thái hiện tại`}</span>,
           p.stackable ? <span className="text-muted">Có</span> : <Pill tone="rejected">Không</Pill>,
           <span className="tabular-nums text-muted">{p.from} – {p.to}</span>,
           <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>,
@@ -8537,19 +8743,28 @@ function ProgrammeDetail({ p, onBack }: { p: Programme; onBack: () => void }) {
       <div className="grid gap-3 lg:grid-cols-2">
         <DetailCard title="Điều kiện áp dụng — conditions">
           <KV label="Khách hàng / Customer status" value={p.audience.join(' · ')} />
-          <KV label="Cách tính" value={p.kind === 'volume-per-line' ? 'Theo từng dòng — số lượng của dòng nào quyết định % của dòng đó' : `${p.pct}% trên tổng đơn (trước VAT)`} />
+          <KV label="Cách tính" value={p.kind === 'volume-per-product' ? 'Cộng dồn theo loại sản phẩm (“cùng loại”) — tổng số lượng của một sản phẩm trong option quyết định % cho mọi dòng của sản phẩm đó' : `${p.pct}% trên tổng đơn (trước VAT)`} />
           {p.maxQtyPerLine != null && (
             <KV label="Giới hạn số lượng" value={`Mọi dòng phải ≤ ${p.maxQtyPerLine}. Chỉ cần 1 dòng vượt là mất toàn bộ ${p.pct}% — không phải chỉ dòng đó.`} />
           )}
-          <KV label="Phạm vi" value={p.firstPoOnly ? 'Chỉ PO đầu tiên của khách hàng' : 'Mọi đơn trong thời gian hiệu lực'} />
+          <KV
+            label="Phạm vi"
+            value={p.firstPoOfCurrentSpell
+              ? 'PO đầu tiên kể từ khi khách ở trạng thái hiện tại — với khách Churn là PO đầu tiên sau khi quay lại, không phải PO đầu tiên trong lịch sử. Tự động hết hiệu lực: hóa đơn đầu tiên đổi khách sang Existing nên chương trình không còn khớp.'
+              : 'Mọi đơn trong thời gian hiệu lực'}
+          />
           <KV label="Chạy cùng chương trình khác" value={p.stackable ? 'Có' : 'Không — loại trừ mọi chương trình khác'} />
+          <KV
+            label="Duyệt chiết khấu"
+            value={`Mức do chương trình cấp không cần duyệt dù vượt ${DISCOUNT_APPROVAL}%. Chỉ khi sales tắt áp dụng tự động và tự nhập thì mới trình duyệt.`}
+          />
           {p.giftActivationFollowsPaid && (
             <KV label="Hạn kích hoạt tin tặng" value="Giống tin mua — dùng đúng activation window của sản phẩm đã mua (xem Products management)" />
           )}
         </DetailCard>
 
         <DetailCard
-          title={p.kind === 'volume-per-line' ? 'Bậc chiết khấu — theo số lượng cùng loại' : 'Mức chiết khấu'}
+          title={p.kind === 'volume-per-product' ? 'Bậc chiết khấu — theo tổng số lượng cùng loại' : 'Mức chiết khấu'}
           action={<span className="text-[11px] text-faint">áp dụng tự động khi tạo báo giá</span>}
         >
           {tiers.length > 0 ? (
@@ -8573,6 +8788,7 @@ function ProgrammeDetail({ p, onBack }: { p: Programme; onBack: () => void }) {
                   otherwise assume is 25%. */}
               <p className="mt-2 text-[11px] leading-relaxed text-muted">
                 Số lượng <b className="text-ink/75">1</b> không có chiết khấu. Các mốc là <b className="text-ink/75">ngưỡng</b>, không phải con số chính xác — mua 7 tin hưởng bậc 5 (30%), không phải mất chiết khấu.
+                <br />Số lượng được <b className="text-ink/75">cộng dồn theo loại sản phẩm</b>: 3 tin Basic Plus ở một dòng và 4 tin Basic Plus ở dòng khác là 7 tin, cả hai dòng cùng hưởng 30%. Tách dòng không làm thay đổi giá.
               </p>
             </>
           ) : (
@@ -9151,8 +9367,12 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
         // count against the quantity cap either, or a "+ Gift" would silently
         // destroy the 50%.
         const withinCap = o.lines.every((l) => l.gift || l.qty <= (promo.maxQtyPerLine ?? Infinity))
+        // "Cùng loại": the tier is looked up on the TOTAL of that product across the
+        // option, so two lines of the same product earn one shared rate. Splitting
+        // 7 into 3 + 4 must not turn 30% into 25%.
+        const totals = qtyByProduct(o.lines)
         const lines = o.lines.map((l) => {
-          const d = l.gift || promo.kind !== 'volume-per-line' ? 0 : tierPct(promo, l.qty)
+          const d = l.gift || promo.kind !== 'volume-per-product' ? 0 : tierPct(promo, totals.get(l.cat) ?? 0)
           if (d !== l.disc) changed = true
           return d === l.disc ? l : { ...l, disc: d }
         })
@@ -9174,7 +9394,14 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   // Approval looks at BOTH discount levels — a 30% option-level cut is no less
   // of a concession than a 30% line-level one.
   const maxDisc = Math.max(0, ...options.flatMap((o) => [o.optDisc, ...o.lines.map((l) => l.disc)]))
-  const needsApproval = maxDisc > DISCOUNT_APPROVAL
+  /* A rate the PROGRAMME granted is not a concession — management already approved
+     it when they set the programme up, and every tier from 25% upward is above the
+     threshold. Routing all of them would fill the approval queue with quotations
+     nobody would ever reject, and an approval step that is never refused stops
+     being read. So the gate fires on what a HUMAN chose: the moment auto-apply is
+     switched off, the numbers become the rep's and the normal rule returns. */
+  const programmeDriven = autoPromo && !!promo
+  const needsApproval = maxDisc > DISCOUNT_APPROVAL && !programmeDriven
   const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
   const valid = !!co && everyOptionPaid
 
@@ -9246,15 +9473,22 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <p className={cn('mt-0.5 text-[11px] leading-relaxed', autoPromo ? 'text-emerald-800' : 'text-amber-800')}>
                       {!autoPromo
                         ? 'Đang nhập chiết khấu thủ công — chương trình không còn được áp dụng tự động.'
-                        : promo.kind === 'volume-per-line'
-                          ? `Chiết khấu tính riêng cho từng dòng theo số lượng của dòng đó: ${promo.tiers!.map((t) => `${t.minQty}+ → ${t.pct}%`).join(' · ')}. Số lượng 1 không có chiết khấu.`
-                          : `${promo.pct}% trên tổng đơn, với điều kiện mọi dòng ≤ ${promo.maxQtyPerLine} số lượng. Chỉ áp dụng cho PO đầu tiên và không chạy cùng chương trình khác.`}
+                        : promo.kind === 'volume-per-product'
+                          ? `Cộng dồn số lượng theo từng loại sản phẩm trong option, rồi lấy bậc tương ứng: ${promo.tiers!.map((t) => `${t.minQty}+ → ${t.pct}%`).join(' · ')}. Số lượng 1 không có chiết khấu.`
+                          : `${promo.pct}% trên tổng đơn, với điều kiện mọi dòng ≤ ${promo.maxQtyPerLine} số lượng. Chỉ áp dụng cho PO đầu tiên kể từ khi khách ở trạng thái ${co.account} và không chạy cùng chương trình khác.`}
                     </p>
                   </div>
                   <label className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-ink/70">
                     <input type="checkbox" checked={autoPromo} onChange={(e) => setAutoPromo(e.target.checked)} className="h-3.5 w-3.5" />
                     Áp dụng tự động
                   </label>
+                </div>
+                {/* Why a 50% went through without an approval step — otherwise the
+                    rep assumes the control is broken. */}
+                <div className="mt-1.5 text-[10.5px] leading-relaxed">
+                  {autoPromo
+                    ? <span className="text-emerald-800">Mức này do chương trình cấp nên <b>không cần duyệt</b>, dù vượt {DISCOUNT_APPROVAL}%. Tắt “Áp dụng tự động” là chiết khấu thành do sales tự quyết và phải trình duyệt.</span>
+                    : <span className="text-amber-800">Chiết khấu thủ công — vượt {DISCOUNT_APPROVAL}% sẽ phải trình sales lead duyệt trước khi gửi.</span>}
                 </div>
 
                 {/* The cliff, named. "One line over and the whole 50% is gone" is
@@ -11953,23 +12187,26 @@ function AdminDepartments() {
 type SignupStatus = 'New' | 'Resolved' | 'Archived'
 type Signup = {
   person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; when: string
+  /** gate 1 — email verified? HQ can only act on verified rows. */
+  verified: boolean
   /** MATCH is binary and informational: did the tax code match a company we already have? */
   matched: boolean; matchName?: string
   status: SignupStatus
   /** what happened once resolved */
   outcome?: string
 }
-/* MATCH is just information — the tax code either hits an existing company or it doesn't.
-   The ACTION is the SAME 3 choices for every sign-up regardless of match:
-   move the user to an existing company · create a new company + move the user into it ·
-   archive the sign-up. Move / Create both email the user to set their password & activate. */
+/* Two gates: (1) EMAIL VERIFIED — automatic, gates whether HQ can act; (2) HQ placement.
+   MATCH is just information. The ACTION is the SAME 3 choices for every verified sign-up:
+   move to an existing company · create a new company + move · archive.
+   Move / Create unlock login + send a "you’re in" email (password already set at sign-up). */
 const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Archived: 'expired' }
 const SIGNUPS: Signup[] = [
-  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, when: '15m ago', matched: false, status: 'New' },
-  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, when: '1h ago', matched: true, matchName: 'Cty TNHH Việt Tiến', status: 'New' },
-  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, when: '3h ago', matched: true, matchName: 'FPT Software', status: 'Resolved', outcome: 'Moved to FPT Software · activation email sent' },
-  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, when: '5h ago', matched: false, status: 'New' },
-  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', matched: false, status: 'Archived', outcome: 'Archived' },
+  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, when: '15m ago', verified: true, matched: false, status: 'New' },
+  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, when: '1h ago', verified: true, matched: true, matchName: 'Cty TNHH Việt Tiến', status: 'New' },
+  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, when: '3h ago', verified: true, matched: true, matchName: 'FPT Software', status: 'Resolved', outcome: 'Moved to FPT Software · sign-in email sent' },
+  { person: 'Phạm Thu Trang', email: 'trang@newco.vn', phone: '0905 771 220', tax: '0399xxxxxx', company: 'Công ty CP NewCo', hiring: true, when: '20m ago', verified: false, matched: false, status: 'New' },
+  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, when: '5h ago', verified: true, matched: false, status: 'New' },
+  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', verified: false, matched: false, status: 'Archived', outcome: 'Archived' },
 ]
 /* The three sign-up actions, each with its own confirm flow. Move / Create both end by
    emailing the user a set-password / activation link; Archive discards the request. */
@@ -11981,7 +12218,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
   const [newTax, setNewTax] = useState(s.tax === '—' ? '' : s.tax)
   const [reason, setReason] = useState('')
   const title = mode === 'move' ? `Move ${s.person} to an existing company` : mode === 'create' ? `Create a new company & move ${s.person} in` : 'Archive this sign-up?'
-  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>The user gets an <b>activation email</b> to set their password &amp; sign in — they’re not active until they complete it.</span></p>
+  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -12092,10 +12329,10 @@ function AdminSignups() {
       <ListPage
         tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Archived', count: 3 }]}
         cols={[
-          { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.2fr' }, { label: 'Phone', w: '0.9fr' },
-          { label: 'Tax number', w: '0.9fr' }, { label: 'Company name', w: '1.1fr' }, { label: 'Hiring', w: '0.5fr' },
-          { label: 'Match', w: '1fr' }, { label: 'Status', w: '1.2fr' }, { label: 'When', w: '0.6fr' },
-          { label: 'Action', w: '0.6fr', align: 'r' },
+          { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.2fr' }, { label: 'Phone', w: '0.8fr' },
+          { label: 'Tax number', w: '0.8fr' }, { label: 'Company name', w: '1fr' }, { label: 'Hiring', w: '0.5fr' },
+          { label: 'Email verified', w: '1fr' }, { label: 'Match', w: '0.9fr' }, { label: 'Status', w: '1.1fr' }, { label: 'When', w: '0.6fr' },
+          { label: 'Action', w: '1.3fr', align: 'r' },
         ]}
         rows={rows.map((s) => [
           <span className="truncate text-[12.5px] font-medium text-ink">{s.person}</span>,
@@ -12104,6 +12341,9 @@ function AdminSignups() {
           <span className="truncate font-mono text-[11px] text-muted">{s.tax}</span>,
           <span className="truncate text-[12px] text-ink/80">{s.company}</span>,
           <Pill tone={s.hiring ? 'active' : 'neutral'}>{s.hiring ? 'Yes' : 'No'}</Pill>,
+          s.verified
+            ? <Pill tone="active">✓ Verified</Pill>
+            : <Pill tone="pending">Awaiting</Pill>,
           s.matched
             ? <Pill tone="active">Match{s.matchName ? `: ${s.matchName}` : ''}</Pill>
             : <Pill tone="neutral">Not match</Pill>,
@@ -12114,17 +12354,19 @@ function AdminSignups() {
           <span className="text-[11.5px] text-muted">{s.when}</span>,
           s.status !== 'New'
             ? <span className="text-[11px] text-faint">—</span>
-            : <div className="flex justify-end">
-                <SignupRowMenu
-                  onMove={() => setModal({ mode: 'move', s })}
-                  onCreate={() => setModal({ mode: 'create', s })}
-                  onArchive={() => setModal({ mode: 'archive', s })}
-                />
-              </div>,
+            : !s.verified
+              ? <span className="whitespace-nowrap text-[10.5px] text-amber-700">Awaiting email verification</span>
+              : <div className="flex justify-end">
+                  <SignupRowMenu
+                    onMove={() => setModal({ mode: 'move', s })}
+                    onCreate={() => setModal({ mode: 'create', s })}
+                    onArchive={() => setModal({ mode: 'archive', s })}
+                  />
+                </div>,
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Every sign-up gets the <b>same three choices</b> — <b>Move to existing</b> (assign the user to a company we already have), <b>Create + move</b> (make a new company, then move the user into it), or <b>Archive</b>. <b>Move</b> and <b>Create + move</b> email the user a link to set their password &amp; activate; <b>Archive</b> discards the sign-up. <b>Match</b> is just a hint (did the tax code hit an existing company?).
+        <b>Two gates:</b> a row is actionable only once <b>Email verified</b> (gate 1, automatic) — until then it shows “awaiting email verification.” Then HQ (gate 2) picks the <b>same three choices</b> for any verified row — <b>Move to existing</b>, <b>Create + move</b>, or <b>Archive</b>. Move / Create unlock login and email the user “you’re in — sign in” (password already set). <b>Match</b> is just a hint (did the tax code hit an existing company?).
       </p>
       {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} />}
     </div>
@@ -12959,7 +13201,9 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // Content
   'admin-banners': AdminBanners,
   'admin-popups': AdminPopups,
-  'admin-manual-services': AdminManualServices,
+  'admin-account-usage': AdminAccountUsage,
+  'admin-email-marketing': AdminEmailMarketing,
+  'admin-facebook-posts': AdminFacebookPosts,
   'admin-pages': AdminPages,
   // Billing & products
   'admin-catalog': AdminCatalog,

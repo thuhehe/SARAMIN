@@ -189,6 +189,9 @@ const NAV_GROUPS: NavGroup[] = [
       // Last in the group: inbound self-registrations are a triage inbox that
       // feeds the pipeline, not a step in the document flow above it.
       { label: 'Sign-ups', specId: 'admin-signups' },
+      // What every customer has actually consumed, across all four product types —
+      // the screen sales opens before a renewal call.
+      { label: 'Account usage', specId: 'admin-account-usage' },
     ],
   },
   {
@@ -197,9 +200,10 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Banners', specId: 'admin-banners' },
       { label: 'Popups', specId: 'admin-popups' },
-      // Where Manual-service products are actually delivered. Banners and popups are
-      // the delivery surface for Placement products; this is theirs.
-      { label: 'Manual services', specId: 'admin-manual-services' },
+      // One queue per service, one row per unit — the same shape as Banners and
+      // Popups, because they are the same job: something that has to go out.
+      { label: 'Email marketing', specId: 'admin-email-marketing' },
+      { label: 'Facebook posts', specId: 'admin-facebook-posts' },
       { label: 'Pages', specId: 'admin-pages' },
     ],
   },

@@ -40,9 +40,14 @@ const ADMIN_NAV_PAGES = new Set([
   'admin-job-list', 'admin-job-applicants', 'admin-resumes',
   'admin-company-list', 'admin-company-pipeline', 'admin-quotes', 'admin-purchase-orders', 'admin-signups',
   'admin-jobseekers', 'admin-company-users',
-  // Products only: Packages and Promotions were removed from the console nav, so a
-  // spec page showing those screens gets a preview but no link to a page that exists.
-  'admin-catalog',
+  // The whole Products group is back in the console nav — Packages, Placements and
+  // Discount programmes alongside Products — so all four get a link again. Omitting
+  // them suppressed the link for pages that DO exist, which is the opposite of what
+  // this set is for.
+  'admin-catalog', 'admin-bundles', 'admin-placements', 'admin-promotions',
+  // Manual services split into the two things ops actually delivers, plus the
+  // per-account usage view.
+  'admin-email-marketing', 'admin-facebook-posts', 'admin-account-usage',
   'admin-banners', 'admin-popups', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
