@@ -1743,18 +1743,15 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
     ],
   },
-  {
-    // Pre-login entry point — creating a new employer account (login + Unverified company).
-    label: 'Sign up',
-    overflow: true,
-    items: [
-      { id: 'co-signup', label: 'Create account', Comp: SignupScreen, flush: true },
-    ],
-  },
 ]
 
+/* Pre-login entry point — creating a new employer account (login + Unverified company).
+   It is NOT part of the logged-in console nav; it is surfaced by its own banner above
+   the shell so reviewers can find the sign-up flow. */
+const SIGNUP: NavItem = { id: 'co-signup', label: 'Create account', Comp: SignupScreen, flush: true }
+
 /** flat registry of company screens, for embedding in feature detail pages */
-export const CO_SCREENS: NavItem[] = [DASHBOARD, ...NAV_GROUPS.flatMap((g) => g.items)]
+export const CO_SCREENS: NavItem[] = [DASHBOARD, SIGNUP, ...NAV_GROUPS.flatMap((g) => g.items)]
 
 export function CompanyMockups() {
   const [active, setActive] = useState<CoActive>({ group: 'Home', item: DASHBOARD })
@@ -1763,11 +1760,14 @@ export function CompanyMockups() {
   /** jump to a screen by id (used by in-screen buttons like "+ Post a job") */
   const go = (id: string) => {
     if (id === DASHBOARD.id) return setActive({ group: 'Home', item: DASHBOARD })
+    if (id === SIGNUP.id) return setActive({ group: 'Sign up', item: SIGNUP })
     for (const g of NAV_GROUPS) {
       const item = g.items.find((i) => i.id === id)
       if (item) return setActive({ group: g.label, item })
     }
   }
+
+  const isSignup = active.item.id === SIGNUP.id
 
   return (
     <div className="max-w-[1180px] pb-16">
@@ -1776,12 +1776,29 @@ export function CompanyMockups() {
         <h1 className="mt-1 text-[26px] font-bold tracking-tight">Company mockups</h1>
       </div>
 
+      {/* Pre-login entry — the sign-up page lives OUTSIDE the logged-in console, so it
+          gets its own obvious banner here instead of hiding in the nav. */}
+      {!isSignup && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-brand/30 bg-brand-soft/40 px-4 py-2.5 text-[12.5px]">
+          <span className="font-semibold text-brand">New employer? (pre-login)</span>
+          <span className="text-muted">The page where a company signs itself up — creates a login + an Unverified company.</span>
+          <button onClick={() => setActive({ group: 'Sign up', item: SIGNUP })} className="ml-auto shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Create your employer account →</button>
+        </div>
+      )}
+
       {/* console shell — one horizontal nav with dropdowns and a blue CTA. The grey
           utility strip above it (Business home · Career site · Hiring tools · …) was
           Saramin KR's sibling PROPERTIES, not this product's navigation. */}
       <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
-        {/* main header */}
-        <CoHeader active={active} onSelect={setActive} />
+        {isSignup ? (
+          /* pre-login frame — no logged-in header, just the brand + a way back */
+          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+            <span className="text-[19px] font-bold lowercase tracking-tight text-brand">saramin</span>
+            <button onClick={() => setActive({ group: 'Home', item: DASHBOARD })} className="text-[12px] font-medium text-muted hover:text-brand">← Back to the logged-in console</button>
+          </div>
+        ) : (
+          <CoHeader active={active} onSelect={setActive} />
+        )}
 
         {/* content */}
         <div className={cn('min-w-0 bg-surface', !active.item.flush && 'p-5')}>
@@ -1792,8 +1809,8 @@ export function CompanyMockups() {
       </div>
 
       <p className="mt-4 max-w-[72ch] text-[12px] leading-relaxed text-faint">
-        This is the company's own console — created by Sales in the CRM, then activated. Everything here draws on
-        the same company record and pooled quota shown in the Admin &amp; CRM mockups.
+        This is the company's own console. It can be created two ways: <b>self-serve</b> via the pre-login sign-up above,
+        or by Sales in the CRM. Everything here draws on the same company record and pooled quota shown in the Admin &amp; CRM mockups.
       </p>
     </div>
   )

@@ -108,8 +108,17 @@ function useWideViewport() {
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)')
     const onChange = () => setWide(mq.matches)
+    /* Re-read on mount as well: a page first laid out at zero width (an embedded
+       frame, a hidden pane, a restored background tab) mounts as "narrow", and the
+       media query then never fires a change event — the sidebar would stay stuck as
+       a rail on a full-width screen. */
+    onChange()
     mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
+    window.addEventListener('resize', onChange)
+    return () => {
+      mq.removeEventListener('change', onChange)
+      window.removeEventListener('resize', onChange)
+    }
   }, [])
   return wide
 }
