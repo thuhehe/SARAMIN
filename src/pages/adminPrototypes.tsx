@@ -4107,30 +4107,56 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
    query the invoice ("show me the post"), and without it the entry is one person's
    word that a unit was spent. */
 type ServiceDelivery = { id: string; date: string; link: string; image: string | null; content: string; by: string }
-type ServiceEntitlement = { sku: string; name: string; unit: string; total: number; entries: ServiceDelivery[] }
+type ServiceEntitlement = { sku: string; name: string; unit: string; total: number; validUntil: string; entries: ServiceDelivery[] }
 
 const SERVICE_USAGE: Record<string, ServiceEntitlement[]> = {
   'Công ty TNHH Vạn Phát': [
-    {
-      sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 4,
-      entries: [
-        { id: 'SD-001', date: '02/08/2026', link: 'https://facebook.com/topdev.vn/posts/1029384', image: 'vanphat-fb-01.jpg', content: 'Tuyển 5 Backend Engineer — Vạn Phát. Đăng kèm ảnh văn phòng, CTA về trang công ty.', by: 'Nguyễn Thị Lan' },
-        { id: 'SD-002', date: '09/08/2026', link: 'https://facebook.com/topdev.vn/posts/1031002', image: 'vanphat-fb-02.jpg', content: 'Nhắc lại tin tuyển dụng, nhấn phúc lợi 13th-month salary.', by: 'Phạm Quang Huy' },
-      ],
-    },
-    {
-      sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1,
-      entries: [],
-    },
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 4, validUntil: '30/11/2026', entries: [
+      { id: 'SD-001', date: '02/08/2026', link: 'https://facebook.com/topdev.vn/posts/1029384', image: 'vanphat-fb-01.jpg', content: 'Tuyển 5 Backend Engineer — Vạn Phát. Đăng kèm ảnh văn phòng, CTA về trang công ty.', by: 'Nguyễn Thị Lan' },
+      { id: 'SD-002', date: '09/08/2026', link: 'https://facebook.com/topdev.vn/posts/1031002', image: 'vanphat-fb-02.jpg', content: 'Nhắc lại tin tuyển dụng, nhấn phúc lợi 13th-month salary.', by: 'Phạm Quang Huy' },
+    ] },
+    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1, validUntil: '30/11/2026', entries: [] },
+    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 2, validUntil: '30/11/2026', entries: [
+      { id: 'SD-003', date: '05/08/2026', link: 'https://mail.topdev.vn/campaign/9921', image: null, content: 'Big Banner trong Job Alert tuần 32 — 650k ứng viên.', by: 'Nguyễn Thị Lan' },
+    ] },
   ],
   'FPT Software': [
-    {
-      sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2,
-      entries: [
-        { id: 'SD-010', date: '20/06/2026', link: 'https://facebook.com/topdev.vn/posts/998211', image: null, content: 'Employer branding — FPT Software culture post.', by: 'Phạm Quang Huy' },
-        { id: 'SD-011', date: '05/07/2026', link: 'https://facebook.com/topdev.vn/posts/1004556', image: 'fpt-fb-02.jpg', content: 'Tuyển Java/Go, kèm banner sự kiện tech talk.', by: 'Phạm Quang Huy' },
-      ],
-    },
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '15/09/2026', entries: [
+      { id: 'SD-010', date: '20/06/2026', link: 'https://facebook.com/topdev.vn/posts/998211', image: null, content: 'Employer branding — FPT Software culture post.', by: 'Phạm Quang Huy' },
+      { id: 'SD-011', date: '05/07/2026', link: 'https://facebook.com/topdev.vn/posts/1004556', image: 'fpt-fb-02.jpg', content: 'Tuyển Java/Go, kèm banner sự kiện tech talk.', by: 'Phạm Quang Huy' },
+    ] },
+    { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', unit: 'bài test', total: 5, validUntil: '15/09/2026', entries: [
+      { id: 'SD-012', date: '01/07/2026', link: 'https://hackerrank.com/x/tests/44120', image: null, content: 'Bộ test Java backend, 5 ứng viên vòng 2.', by: 'Trần Quốc Trung' },
+    ] },
+  ],
+  // The case that matters: paid, partly used, then the validity ran out. Two sends
+  // were never delivered and can no longer be — that has to be visible, not silent.
+  'Tiki': [
+    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 3, validUntil: '30/06/2026', entries: [
+      { id: 'SD-020', date: '10/05/2026', link: 'https://mail.topdev.vn/campaign/8812', image: null, content: 'Chiến dịch tuyển Data Engineer.', by: 'Phạm Quang Huy' },
+    ] },
+  ],
+  'VNG Corporation': [
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 3, validUntil: '20/12/2026', entries: [] },
+    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'mốc', total: 2, validUntil: '20/12/2026', entries: [
+      { id: 'SD-030', date: '01/07/2026', link: 'https://crm.saramin.vn/notes/5521', image: null, content: 'Mốc ngày 11 — review chất lượng CV, khách hài lòng.', by: 'Nguyễn Thị Lan' },
+      { id: 'SD-031', date: '21/07/2026', link: 'https://crm.saramin.vn/notes/5588', image: null, content: 'Mốc ngày 31 — đề xuất nâng lên Top Job.', by: 'Nguyễn Thị Lan' },
+    ] },
+  ],
+  'MoMo': [
+    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 1, validUntil: '18/10/2026', entries: [] },
+  ],
+  'Thế Giới Di Động': [
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 6, validUntil: '10/11/2026', entries: [
+      { id: 'SD-040', date: '15/06/2026', link: 'https://facebook.com/topdev.vn/posts/995001', image: 'tgdd-fb-01.jpg', content: 'Tuyển hàng loạt nhân viên cửa hàng mới.', by: 'Trần Quốc Trung' },
+      { id: 'SD-041', date: '01/07/2026', link: 'https://facebook.com/topdev.vn/posts/1002110', image: 'tgdd-fb-02.jpg', content: 'Đợt 2 — mở rộng khu vực miền Trung.', by: 'Trần Quốc Trung' },
+      { id: 'SD-042', date: '20/07/2026', link: 'https://facebook.com/topdev.vn/posts/1010455', image: null, content: 'Đợt 3 — nhấn lộ trình thăng tiến.', by: 'Trần Quốc Trung' },
+    ] },
+  ],
+  // Churned: validity lapsed with everything unused. The clearest "we owe nothing
+  // any more, but the customer got nothing either" row.
+  'Công ty TNHH Việt Tiến': [
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '10/01/2026', entries: [] },
   ],
 }
 
@@ -7217,80 +7243,177 @@ function AdminAccountUsage() {
   )
 }
 
-/* ── Service delivery queues ──────────────────────────────────────────────────
-   One row per UNIT, not per entitlement — the same shape as Banners and Popups,
-   where a row is one thing that runs. A customer who bought 4 posts has 4 rows:
-   the delivered ones carry their proof, the rest sit as "Chưa giao".
+/* ── Manual services, one page for all of them ────────────────────────────────
+   Five products across a hundred companies is not five queues — it is one list at
+   the grain of (company × service), which is where the quota lives. A per-product
+   page fragments the one question ops actually asks: who is owed something?
 
-   That is what makes this a QUEUE rather than a report: the unfulfilled rows are
-   visible individually and each one is a job someone still has to do. Rolling them
-   into "2/4 used" hides three of the four things you can act on. */
-type ServiceUnit = { company: string; e: ServiceEntitlement; n: number; delivered: ServiceDelivery | null }
-function serviceUnits(sku: string): ServiceUnit[] {
-  const out: ServiceUnit[] = []
-  Object.entries(SERVICE_USAGE).forEach(([company, list]) => {
-    list.filter((e) => e.sku === sku).forEach((e) => {
-      for (let n = 0; n < e.total; n++) out.push({ company, e, n, delivered: e.entries[n] ?? null })
-    })
-  })
-  // Undelivered first: they are the reason to open the screen.
-  return out.sort((a, b) => Number(Boolean(a.delivered)) - Number(Boolean(b.delivered)))
+   STATUS IS DERIVED from two facts, remaining and validity, and both matter:
+
+     Còn lượt    — remaining > 0, still valid. Actionable.
+     Đã dùng hết — delivered everything. Nothing owed, nothing lost.
+     Hết hạn     — validity passed with units UNUSED. The customer paid for
+                   something they never received, and it can no longer be given.
+                   This is the row that must never be silent.
+     Đã kết thúc — validity passed with everything delivered. Clean close.
+
+   Only "Còn lượt" can be logged against. Delivering after expiry would mean giving
+   away a unit the customer's own terms had already forfeited. */
+type SvcState = 'Còn lượt' | 'Đã dùng hết' | 'Hết hạn' | 'Đã kết thúc'
+const SVC_TONE: Record<SvcState, StatusTone> = {
+  'Còn lượt': 'open',
+  'Đã dùng hết': 'expired',
+  'Hết hạn': 'rejected',
+  'Đã kết thúc': 'closed',
+}
+/** Demo "today". A real build compares against the server clock. */
+const SVC_TODAY = new Date(2026, 7, 16)
+const asDate = (d: string) => {
+  const [dd, mm, yy] = d.split('/').map(Number)
+  return new Date(yy, mm - 1, dd)
+}
+function svcState(e: ServiceEntitlement): SvcState {
+  const left = e.total - e.entries.length
+  const expired = asDate(e.validUntil) < SVC_TODAY
+  if (expired) return left > 0 ? 'Hết hạn' : 'Đã kết thúc'
+  return left > 0 ? 'Còn lượt' : 'Đã dùng hết'
 }
 
-function ServiceQueue({ sku, unitLabel, linkLabel }: { sku: string; unitLabel: string; linkLabel: string }) {
+function AdminManualServices() {
   const [fState, setFState] = useState('')
+  const [fSku, setFSku] = useState('')
+  const [open, setOpen] = useState<string | null>(null)
   const [logging, setLogging] = useState<{ e: ServiceEntitlement; company: string } | null>(null)
-  const all = serviceUnits(sku)
-  const rows = all.filter((u) => !fState || (fState === 'Chưa giao' ? !u.delivered : Boolean(u.delivered)))
-  const owed = all.filter((u) => !u.delivered).length
+
+  const all = Object.entries(SERVICE_USAGE)
+    .flatMap(([company, list]) => list.map((e) => ({ company, e, state: svcState(e), left: e.total - e.entries.length })))
+  const rows = all
+    .filter((r) => (!fState || r.state === fState) && (!fSku || r.e.sku === fSku))
+    // Rows that need action first, then rows that lost value, then the settled ones.
+    .sort((a, b) => {
+      const rank = (x: SvcState) => (x === 'Còn lượt' ? 0 : x === 'Hết hạn' ? 1 : x === 'Đã dùng hết' ? 2 : 3)
+      return rank(a.state) - rank(b.state) || b.left - a.left
+    })
+
+  const owed = all.filter((r) => r.state === 'Còn lượt').reduce((t, r) => t + r.left, 0)
+  const lost = all.filter((r) => r.state === 'Hết hạn').reduce((t, r) => t + r.left, 0)
+  const services = [...new Set(all.map((r) => r.e.sku))]
 
   return (
     <div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <MiniStat label="Chưa giao" value={owed} sub="lượt còn hạn — cần làm" />
+        <MiniStat label="Mất do hết hạn" value={lost} sub="khách trả tiền nhưng không nhận được" tone={lost > 0 ? 'warn' : undefined} />
+        <MiniStat label="Entitlement" value={all.length} sub={`${Object.keys(SERVICE_USAGE).length} công ty · ${services.length} dịch vụ`} />
+      </div>
+
       <ListPage
         cols={[
           { label: 'Khách hàng', w: '1.4fr' },
-          { label: unitLabel, w: '0.7fr' },
-          { label: 'Trạng thái', w: '0.9fr' },
-          { label: 'Ngày', w: '0.9fr' },
-          { label: linkLabel, w: '1.8fr' },
-          { label: 'Người thực hiện', w: '1.1fr' },
-          { label: '', w: '0.8fr', align: 'r' },
+          { label: 'Dịch vụ', w: '1.8fr' },
+          { label: 'Quota', w: '1.2fr' },
+          { label: 'Còn lại', w: '0.7fr', align: 'r' },
+          { label: 'Hạn dùng', w: '0.9fr' },
+          { label: 'Trạng thái', w: '1fr' },
+          { label: '', w: '1.1fr', align: 'r' },
         ]}
-        rows={rows.map((u) => [
-          <span className="truncate font-medium text-ink">{u.company}</span>,
-          <span className="tabular-nums text-muted">#{u.n + 1}/{u.e.total}</span>,
-          u.delivered ? <Pill tone="active">Đã giao</Pill> : <Pill tone="pending">Chưa giao</Pill>,
-          <span className="tabular-nums">{u.delivered?.date ?? <span className="text-faint">—</span>}</span>,
-          u.delivered
-            ? <span className="min-w-0">
-                <a href={u.delivered.link} onClick={(e) => e.preventDefault()} className="block truncate text-brand hover:underline">{u.delivered.link}</a>
-                <span className="block truncate text-[10.5px] text-faint">{u.delivered.content}</span>
+        rows={rows.map(({ company, e, state, left }) => {
+          const key = `${company}|${e.sku}`
+          return [
+            <span className="truncate font-medium text-ink">{company}</span>,
+            <button onClick={() => setOpen(open === key ? null : key)} className="min-w-0 max-w-full truncate text-left text-brand hover:underline">
+              {e.name}
+            </button>,
+            <span className="flex items-center gap-2">
+              <span className="shrink-0 tabular-nums">{e.entries.length}/{e.total}</span>
+              <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-line">
+                <span className={cn('block h-full rounded-full', state === 'Hết hạn' ? 'bg-rose-500' : 'bg-brand')} style={{ width: `${(e.entries.length / e.total) * 100}%` }} />
               </span>
-            : <span className="text-faint">chưa có</span>,
-          <span className="truncate">{u.delivered?.by ?? <span className="text-faint">—</span>}</span>,
-          u.delivered
-            ? <span className="text-[11px] text-faint">{u.delivered.image ? '🖼 có ảnh' : 'chưa có ảnh'}</span>
-            : <button onClick={() => setLogging({ e: u.e, company: u.company })} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Ghi nhận</button>,
-        ])}
-        filters={<FilterSelect label="Trạng thái" value={fState} onChange={setFState} options={['Chưa giao', 'Đã giao']} />}
+            </span>,
+            <span className={cn('font-semibold tabular-nums', state === 'Hết hạn' ? 'text-rose-600' : left === 0 ? 'text-faint' : 'text-ink')}>{left}</span>,
+            <span className={cn('tabular-nums', state === 'Hết hạn' || state === 'Đã kết thúc' ? 'text-faint' : 'text-muted')}>{e.validUntil}</span>,
+            <Pill tone={SVC_TONE[state]}>{state}</Pill>,
+            <span className="flex items-center justify-end gap-1.5">
+              <button onClick={() => setOpen(open === key ? null : key)} className="rounded-md border border-line px-2 py-1 text-[11px] text-muted hover:border-ink/40">
+                Lịch sử {e.entries.length > 0 && `(${e.entries.length})`}
+              </button>
+              {state === 'Còn lượt'
+                ? <button onClick={() => setLogging({ e, company })} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Ghi nhận</button>
+                : <span className="w-[64px] text-center text-[11px] text-faint">—</span>}
+            </span>,
+          ]
+        })}
+        filters={
+          <>
+            <FilterSelect label="Trạng thái" value={fState} onChange={setFState} options={['Còn lượt', 'Đã dùng hết', 'Hết hạn', 'Đã kết thúc']} />
+            <FilterSelect label="Dịch vụ" value={fSku} onChange={setFSku} options={services} />
+          </>
+        }
         total={all.length}
-        searchHint="Search khách hàng, nội dung…"
-        minW={1200}
+        searchHint="Search khách hàng, dịch vụ…"
+        minW={1280}
       />
+
+      {/* History opens BELOW the table rather than in a modal: comparing "what did we
+          post for them" against the quota above it is the whole point, and a modal
+          would cover the row it belongs to. */}
+      {open && (() => {
+        const r = all.find((x) => `${x.company}|${x.e.sku}` === open)
+        if (!r) return null
+        return (
+          <div className="mt-3 rounded-xl border border-line">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/50 px-3.5 py-2.5">
+              <p className="text-[12.5px] font-semibold">
+                Lịch sử — {r.company} · <span className="font-normal text-muted">{r.e.name}</span>
+              </p>
+              <span className="flex items-center gap-2">
+                <Pill tone={SVC_TONE[r.state]}>{r.state}</Pill>
+                <button onClick={() => setOpen(null)} className="text-[11px] text-muted hover:text-ink">Đóng</button>
+              </span>
+            </div>
+            <div className="p-3.5">
+              {r.e.entries.length === 0 ? (
+                <p className="text-[11.5px] text-muted">Chưa ghi nhận lượt nào.</p>
+              ) : (
+                <ol className="space-y-2.5">
+                  {r.e.entries.map((d, n) => (
+                    <li key={d.id} className="flex gap-2.5">
+                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-canvas text-[10px] font-semibold text-muted">{n + 1}</span>
+                      {/* Image kept as its own block: the proof a customer asks to see
+                          is the screenshot, so it should not be a footnote. */}
+                      <span className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-canvas text-[9px] text-faint">
+                        {d.image ? '🖼' : 'chưa có ảnh'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="text-[11.5px] font-medium tabular-nums text-ink">{d.date}</span>
+                          <a href={d.link} onClick={(ev) => ev.preventDefault()} className="min-w-0 truncate text-[11px] text-brand hover:underline">{d.link}</a>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-muted">{d.content}</p>
+                        <p className="mt-0.5 text-[10px] text-faint">{d.image ? <span className="font-mono">{d.image}</span> : <span className="text-amber-700">⚠️ chưa đính ảnh</span>} · {d.by}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {r.state === 'Hết hạn' && (
+                <p className="mt-2.5 flex gap-2 rounded-md bg-rose-50 px-3 py-2 text-[11.5px] leading-relaxed text-rose-700">
+                  <span>⚠️</span>
+                  <span>Hết hạn <b>{r.e.validUntil}</b> khi còn <b>{r.left} {r.e.unit}</b> chưa giao. Không thể ghi nhận thêm — muốn bù cho khách thì bán/tặng một entitlement mới, đừng sửa hạn của cái cũ.</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        <b className="text-ink/70">{owed}</b> lượt khách đã trả tiền nhưng chưa được giao — xếp lên đầu · mỗi dòng là
-        MỘT lượt, giống một banner là một booking · ghi nhận xong thì dòng đó chuyển sang <b className="text-ink/70">Đã giao</b>
+        Một dòng = một <b className="text-ink/70">entitlement</b> (công ty × dịch vụ). Trạng thái suy ra từ số còn lại
+        và hạn dùng, không nhập tay · chỉ <b className="text-ink/70">Còn lượt</b> mới ghi nhận được
       </p>
       {logging && <LogServiceDeliveryModal e={logging.e} company={logging.company} onClose={() => setLogging(null)} />}
     </div>
   )
-}
-
-function AdminEmailMarketing() {
-  return <ServiceQueue sku="SVC-EMAIL-DEV" unitLabel="Lượt gửi" linkLabel="Chiến dịch đã gửi" />
-}
-function AdminFacebookPosts() {
-  return <ServiceQueue sku="SVC-FB-TOPDEV" unitLabel="Bài" linkLabel="Bài đã đăng" />
 }
 
 function AdminPages() {
@@ -7506,6 +7629,7 @@ const CATALOG: { sku: string; name: string; type: string; role: ProductRole; pri
   { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', type: 'Manual service', role: 'Main', price: '20,000,000 ₫ ⓒ', fulfilment: '1 lượt gửi · reach theo gói cha', status: 'Active' },
   { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '1 bài test · chỉ trong Gói Ultimate', status: 'Active' },
   { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '2 mốc · ngày 11 và ngày 31', status: 'Active' },
+  { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', type: 'Manual service', role: 'Main', price: '8,000,000 ₫', fulfilment: '1 lượt gửi · 650k ứng viên', status: 'Active' },
 ]
 
 /* Price segments and product descriptions are shared by the create form and the
@@ -13202,8 +13326,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-banners': AdminBanners,
   'admin-popups': AdminPopups,
   'admin-account-usage': AdminAccountUsage,
-  'admin-email-marketing': AdminEmailMarketing,
-  'admin-facebook-posts': AdminFacebookPosts,
+  'admin-manual-services': AdminManualServices,
   'admin-pages': AdminPages,
   // Billing & products
   'admin-catalog': AdminCatalog,

@@ -200,10 +200,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Banners', specId: 'admin-banners' },
       { label: 'Popups', specId: 'admin-popups' },
-      // One queue per service, one row per unit — the same shape as Banners and
-      // Popups, because they are the same job: something that has to go out.
-      { label: 'Email marketing', specId: 'admin-email-marketing' },
-      { label: 'Facebook posts', specId: 'admin-facebook-posts' },
+      // ONE page for all manual services: five products across a hundred companies
+      // is one list at the grain of (company × service), not five queues.
+      { label: 'Manual services', specId: 'admin-manual-services' },
       { label: 'Pages', specId: 'admin-pages' },
     ],
   },

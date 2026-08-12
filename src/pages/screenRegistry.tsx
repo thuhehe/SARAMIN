@@ -45,9 +45,10 @@ const ADMIN_NAV_PAGES = new Set([
   // them suppressed the link for pages that DO exist, which is the opposite of what
   // this set is for.
   'admin-catalog', 'admin-bundles', 'admin-placements', 'admin-promotions',
-  // Manual services split into the two things ops actually delivers, plus the
-  // per-account usage view.
-  'admin-email-marketing', 'admin-facebook-posts', 'admin-account-usage',
+  // ONE page for all manual services (the per-service split was reverted — five
+  // products across a hundred companies is one list at the grain of company ×
+  // service), plus the per-account usage view.
+  'admin-manual-services', 'admin-account-usage',
   'admin-banners', 'admin-popups', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
