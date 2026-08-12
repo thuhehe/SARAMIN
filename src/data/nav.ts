@@ -128,14 +128,13 @@ export const NAV: NavModule[] = [
   },
   {
     code: 'B5',
-    label: 'Content',
+    label: 'Service',
     app: 'HQ Admin',
+    // Only what customers bought. Site copy (Pages, Blog) moved to System settings.
     children: [
       { id: 'admin-banners', label: 'Banners' },
       { id: 'admin-popups', label: 'Popups' },
       { id: 'admin-manual-services', label: 'Manual services' },
-      { id: 'admin-pages', label: 'Pages' },
-      { id: 'admin-blog', label: 'Blog / articles' },
     ],
   },
   {
@@ -187,6 +186,8 @@ export const NAV: NavModule[] = [
       { id: 'admin-staff', label: 'Staff directory' },
       { id: 'admin-roles', label: 'Roles & permissions' },
       { id: 'admin-users', label: 'Users' },
+      { id: 'admin-pages', label: 'Pages' },
+      { id: 'admin-blog', label: 'Blog / articles' },
       { id: 'admin-master-data', label: 'Master data' },
       { id: 'admin-audit-log', label: 'Audit log' },
       { id: 'admin-environment', label: 'Environment' },

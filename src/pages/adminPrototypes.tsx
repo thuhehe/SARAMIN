@@ -4158,6 +4158,50 @@ const SERVICE_USAGE: Record<string, ServiceEntitlement[]> = {
   'Công ty TNHH Việt Tiến': [
     { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '10/01/2026', entries: [] },
   ],
+
+  /* More companies, deliberately spread across all four derived states and all five
+     SKUs — the page is read by scanning for what is owed, so the demo has to show a
+     fresh row, a used-up row, an EXPIRED-with-units-left row (the one that must never
+     be quiet) and a cleanly closed row side by side. */
+  'Công ty CP Hoàng Gia': [
+    // Nothing delivered and validity already gone: the customer paid for two posts
+    // and received none. The loudest row on the page.
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '30/06/2026', entries: [] },
+    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'lượt', total: 3, validUntil: '20/12/2026', entries: [
+      { id: 'SD-030', date: '12/08/2026', link: '', image: null, content: 'Gọi review 2 tuần đầu — CV chưa đạt kỳ vọng, đề xuất đổi tiêu đề tin.', by: 'Trần Quốc Trung' },
+    ] },
+  ],
+  'Shopee Việt Nam': [
+    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 3, validUntil: '31/10/2026', entries: [
+      { id: 'SD-031', date: '28/07/2026', link: 'https://mail.topdev.vn/campaign/10032', image: 'shopee-email-01.jpg', content: 'Blast 120k dev — tuyển Backend & Data. Open rate 24%.', by: 'Phạm Quang Huy' },
+    ] },
+    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 2, validUntil: '31/10/2026', entries: [] },
+  ],
+  'Công ty TNHH Minh Long': [
+    // Everything delivered, validity passed — a clean close, nothing owed.
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 1, validUntil: '10/01/2026', entries: [
+      { id: 'SD-032', date: '05/01/2026', link: 'https://facebook.com/topdev.vn/posts/981004', image: 'minhlong-fb.jpg', content: 'Tuyển thợ gốm & QC — đăng kèm ảnh xưởng.', by: 'Nguyễn Thị Lan' },
+    ] },
+  ],
+  'Công ty CP Trường Sơn': [
+    { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', unit: 'bài test', total: 10, validUntil: '30/11/2026', entries: [
+      { id: 'SD-033', date: '01/08/2026', link: 'https://hackerrank.com/x/tests/88120', image: null, content: 'Bộ test Java cho 4 ứng viên vòng 1.', by: 'Nguyễn Thị Lan' },
+      { id: 'SD-034', date: '08/08/2026', link: 'https://hackerrank.com/x/tests/88455', image: null, content: 'Bộ test SQL cho 3 ứng viên Data.', by: 'Nguyễn Thị Lan' },
+    ] },
+    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'lượt', total: 2, validUntil: '30/11/2026', entries: [] },
+  ],
+  'Base.vn': [
+    // Small customer, one service, fully used inside validity.
+    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1, validUntil: '30/11/2026', entries: [
+      { id: 'SD-035', date: '11/08/2026', link: 'https://mail.topdev.vn/campaign/10101', image: null, content: 'Blast 40k dev SaaS — tuyển Product Engineer.', by: 'Trần Quốc Trung' },
+    ] },
+  ],
+  'Công ty CP An Khang': [
+    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 4, validUntil: '18/10/2026', entries: [
+      { id: 'SD-036', date: '04/08/2026', link: 'https://mail.topdev.vn/campaign/10044', image: 'ankhang-banner.jpg', content: 'Job Alert tuần 32 — ngành Y tế / Dược.', by: 'Nguyễn Thị Lan' },
+    ] },
+    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 3, validUntil: '18/10/2026', entries: [] },
+  ],
 }
 
 function ServiceUsageCard({ c }: { c: Company }) {
@@ -4250,7 +4294,6 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
   const [link, setLink] = useState('')
   const [content, setContent] = useState('')
   const [image, setImage] = useState<string | null>(null)
-  const left = e.total - e.entries.length
   /* Link + content are required, image is not: an email blast has no screenshot
      worth keeping, but every delivery has somewhere it landed and something it
      said. Without those two the entry cannot answer "show me what we posted". */
@@ -4268,9 +4311,6 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
         </div>
 
         <div className="space-y-3.5 p-5">
-          <p className="rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
-            Lưu ghi nhận này sẽ trừ <b>1 {e.unit}</b> — còn <b>{left}</b> trước khi lưu, <b>{left - 1}</b> sau khi lưu.
-          </p>
 
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>
@@ -6416,6 +6456,7 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
   const house = source === 'House'
   const [houseEnd, setHouseEnd] = useState(banner?.source === 'House' ? banner.end : '')
   const [purpose, setPurpose] = useState('')
+  const [name, setName] = useState(banner?.name ?? '')
   const [exposure, setExposure] = useState<'On' | 'Off'>(banner?.exposure ?? 'On')
   const [company, setCompany] = useState(banner?.company ?? '')
   const [po, setPo] = useState('')
@@ -6447,11 +6488,13 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
   const creativeLocked = status === 'Open'
   /* An empty start date is not a missing field — it MEANS publish now. So it is
      never part of `valid`; only the things that genuinely cannot be inferred are. */
-  const valid = editing
+  /* The name is required on both paths — a booking nobody can name is one nobody
+     can find again in the list. */
+  const valid = Boolean(name.trim()) && (editing
     ? Boolean(file)
     : house
       ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && Boolean(file)
-      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced)
+      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced))
 
   const pick = (v: string) => { setCompany(v); setPo(''); setSku('') }
 
@@ -6479,6 +6522,20 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
               </span>
             </p>
           )}
+
+          {/* The NAME is what every list, report and conversation refers to — without
+              it a booking is only "the FPT one, the July slot". Asked first, before
+              any of the plumbing. */}
+          <div>
+            <FLabel req>Tên banner</FLabel>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="VD: Tết 2026 — FPT Software · Home hero"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand"
+            />
+            <p className="mt-1 text-[10.5px] text-faint">Tên nội bộ để nhận ra booking này trong danh sách — không hiển thị cho người dùng.</p>
+          </div>
 
           {!editing && (
             <>
@@ -6797,6 +6854,12 @@ type Popup = {
   source: 'Sold' | 'House'
   audience: PopupAudience
   company: string
+  /** the PO line this popup was sold on — empty for a House popup */
+  po?: string
+  /** the placement product bought (Homepage pop-up …) */
+  product: string
+  /** why it is running, in the booker's own words — asked on the form as Mục đích */
+  purpose: string
   start: string
   end: string
   status: BannerStatus
@@ -6806,11 +6869,11 @@ type Popup = {
   creative: string | null
 }
 const POPUPS: Popup[] = [
-  { id: 'PU-2010', name: 'Chào mừng người dùng mới', source: 'House', audience: 'Guests', company: 'Saramin VN', start: '01/06/2026', end: 'Always on', status: 'Open', exposure: 'On', freq: '1 / phiên', priority: 1, creative: 'welcome-popup.jpg' },
-  { id: 'PU-2011', name: 'Khảo sát NPS', source: 'House', audience: 'Jobseekers', company: 'Saramin VN', start: '01/08/2026', end: '14/08/2026', status: 'Open', exposure: 'On', freq: '1 / tuần', priority: 3, creative: 'nps-survey.jpg' },
-  { id: 'PU-2012', name: 'Tuyển dụng Q3 — Vạn Phát', source: 'Sold', audience: 'Jobseekers', company: 'Công ty TNHH Vạn Phát', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', freq: '1 / phiên', priority: 2, creative: 'vanphat-popup.jpg' },
-  { id: 'PU-2013', name: 'Employer trial', source: 'House', audience: 'Employers', company: 'Saramin VN', start: '—', end: '—', status: 'Draft', exposure: 'Off', freq: '1 / tuần', priority: 5, creative: null },
-  { id: 'PU-2009', name: 'Tết 2026 — FPT Software', source: 'Sold', audience: 'Jobseekers', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', freq: '1 / phiên', priority: 4, creative: 'fpt-tet.jpg' },
+  { id: 'PU-2010', name: 'Chào mừng người dùng mới', source: 'House', audience: 'Guests', product: 'Homepage pop-up', purpose: 'Giới thiệu tính năng cho khách mới', company: 'Saramin VN', start: '01/06/2026', end: 'Always on', status: 'Open', exposure: 'On', freq: '1 / phiên', priority: 1, creative: 'welcome-popup.jpg' },
+  { id: 'PU-2011', name: 'Khảo sát NPS', source: 'House', audience: 'Jobseekers', product: 'Homepage pop-up', purpose: 'Thu thập NPS quý 3', company: 'Saramin VN', start: '01/08/2026', end: '14/08/2026', status: 'Open', exposure: 'On', freq: '1 / tuần', priority: 3, creative: 'nps-survey.jpg' },
+  { id: 'PU-2012', name: 'Tuyển dụng Q3 — Vạn Phát', source: 'Sold', audience: 'Jobseekers', po: 'PO-003862-07-2026', product: 'Homepage pop-up', purpose: 'Đẩy tin tuyển dụng Q3', company: 'Công ty TNHH Vạn Phát', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', freq: '1 / phiên', priority: 2, creative: 'vanphat-popup.jpg' },
+  { id: 'PU-2013', name: 'Employer trial', source: 'House', audience: 'Employers', product: 'Homepage pop-up', purpose: 'Mời NTD dùng thử', company: 'Saramin VN', start: '—', end: '—', status: 'Draft', exposure: 'Off', freq: '1 / tuần', priority: 5, creative: null },
+  { id: 'PU-2009', name: 'Tết 2026 — FPT Software', source: 'Sold', audience: 'Jobseekers', po: 'PO-003790-12-2025', product: 'Homepage pop-up', purpose: 'Chiến dịch Tết 2026', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', freq: '1 / phiên', priority: 4, creative: 'fpt-tet.jpg' },
 ]
 const PU_AUDIENCE: Record<PopupAudience, string> = {
   Guests: 'Khách chưa đăng nhập',
@@ -6832,30 +6895,41 @@ function AdminPopups() {
   return (
     <div>
       <ListPage
+        /* One column per field the create form asks for, in the same order: name,
+           purpose, customer, PO, product, schedule, creative, exposure, status.
+           Audience / frequency / priority were columns the form never captured —
+           either the form should ask for them or the table should not claim them. */
+        minW={1560}
         cols={[
-          { label: 'Popup', w: '1.7fr' },
-          { label: 'Đối tượng', w: '1.2fr' },
-          { label: 'Company', w: '1.2fr' },
-          { label: 'Schedule', w: '1.3fr' },
+          { label: 'Popup', w: '1.5fr' },
+          { label: 'Mục đích', w: '1.4fr' },
+          { label: 'Khách hàng', w: '1.2fr' },
+          { label: 'Đơn hàng / PO', w: '1.2fr' },
+          { label: 'Sản phẩm', w: '1fr' },
+          { label: 'Lịch chạy', w: '1.3fr' },
+          { label: 'Ảnh popup', w: '1.1fr' },
+          { label: 'Exposure', w: '0.7fr' },
           { label: 'Status', w: '0.8fr' },
-          { label: 'Exposure', w: '0.8fr' },
-          { label: 'Tần suất', w: '0.8fr' },
-          { label: 'Ưu tiên', w: '0.6fr', align: 'r' },
         ]}
         rows={rows.map((b) => [
           <span className="flex min-w-0 items-center gap-1.5">
             <button onClick={() => setEdit(b)} className="min-w-0 truncate text-left font-medium text-brand hover:underline">{b.name}</button>
             {b.source === 'House' && <span className="shrink-0"><Pill tone="neutral">Nội bộ</Pill></span>}
           </span>,
-          <span className="truncate">{PU_AUDIENCE[b.audience]}</span>,
+          <span className="truncate text-muted" title={b.purpose}>{b.purpose}</span>,
           <span className={cn('truncate', b.source === 'House' && 'text-faint')}>{b.company}</span>,
+          b.po
+            ? <span className="truncate font-mono text-[11px] text-muted">{b.po}</span>
+            : <span className="text-[10.5px] text-faint">— nội bộ</span>,
+          <span className="truncate text-muted">{b.product}</span>,
           <span className="tabular-nums">{b.start === '—' ? <span className="text-faint">chưa đặt</span> : b.end === 'Always on' ? `${b.start} – luôn bật` : `${b.start} – ${b.end}`}</span>,
-          <Pill tone={BANNER_TONE[b.status]}>{b.status}</Pill>,
+          b.creative
+            ? <span className="truncate font-mono text-[10.5px] text-muted">🖼 {b.creative}</span>
+            : <span className="text-[10.5px] text-amber-600">chưa có ảnh</span>,
           b.exposure === 'On'
             ? <span className="flex items-center gap-1 text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />On</span>
             : <span className="flex items-center gap-1 text-faint"><span className="h-1.5 w-1.5 rounded-full bg-line" />Off</span>,
-          <span>{b.freq}</span>,
-          <span className="tabular-nums font-medium">{b.priority}</span>,
+          <Pill tone={BANNER_TONE[b.status]}>{b.status}</Pill>,
         ])}
         filters={
           <>
@@ -6864,9 +6938,9 @@ function AdminPopups() {
           </>
         }
         total={POPUPS.length}
-        searchHint="Search popup, đối tượng, company…"
+        searchHint="Search popup, mục đích, khách hàng, PO…"
+        searchExtra={rows.map((b) => [b.purpose, b.company, b.po ?? '', b.product, PU_AUDIENCE[b.audience]].join(' '))}
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Publish popup</button>}
-        minW={1280}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
         Sorted by <b className="text-ink/70">ưu tiên</b> because only ONE popup shows at a time — this list is the order
@@ -6889,6 +6963,7 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
   const [start, setStart] = useState(popup?.start === '—' ? '' : popup?.start ?? '')
   const [houseEnd, setHouseEnd] = useState(popup && popup.end !== 'Always on' && popup.end !== '—' ? popup.end : '')
   const [purpose, setPurpose] = useState('')
+  const [name, setName] = useState(popup?.name ?? '')
   const [exposure, setExposure] = useState<'On' | 'Off'>(popup?.exposure ?? 'On')
   const [file, setFile] = useState<string | null>(popup?.creative ?? null)
 
@@ -6901,11 +6976,13 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
 
   const status = popup?.status ?? 'Draft'
   const creativeLocked = status === 'Open'
-  const valid = editing
+  /* The name is required on both paths — a booking nobody can name is one nobody
+     can find again in the list. */
+  const valid = Boolean(name.trim()) && (editing
     ? Boolean(file)
     : house
       ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && Boolean(file)
-      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced)
+      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced))
 
   const pick = (v: string) => { setCompany(v); setPo(''); setSku('') }
 
@@ -6930,6 +7007,20 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
             </p>
           )}
 
+          {/* The NAME is what every list, report and conversation refers to — without
+              it a booking is only "the FPT one, the July slot". Asked first, before
+              any of the plumbing. */}
+          <div>
+            <FLabel req>Tên popup</FLabel>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="VD: Khảo sát NPS tháng 8 · Ứng viên"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand"
+            />
+            <p className="mt-1 text-[10.5px] text-faint">Tên nội bộ để nhận ra popup này trong danh sách — không hiển thị cho người dùng.</p>
+          </div>
+
           {!editing && (
             <>
               <Section title="1 · Nguồn" className="mt-0" />
@@ -6953,12 +7044,6 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
                   </button>
                 ))}
               </div>
-              {house && (
-                <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
-                  <span>ℹ️</span>
-                  <span>Popup nội bộ vẫn <b className="text-ink/70">tranh chỗ</b> với popup đã bán — chỉ một popup hiện tại một thời điểm — nhưng <b className="text-ink/70">không vào doanh thu</b>.</span>
-                </p>
-              )}
             </>
           )}
 
@@ -7295,22 +7380,14 @@ function AdminManualServices() {
       return rank(a.state) - rank(b.state) || b.left - a.left
     })
 
-  const owed = all.filter((r) => r.state === 'Còn lượt').reduce((t, r) => t + r.left, 0)
-  const lost = all.filter((r) => r.state === 'Hết hạn').reduce((t, r) => t + r.left, 0)
   const services = [...new Set(all.map((r) => r.e.sku))]
 
   return (
     <div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <MiniStat label="Chưa giao" value={owed} sub="lượt còn hạn — cần làm" />
-        <MiniStat label="Mất do hết hạn" value={lost} sub="khách trả tiền nhưng không nhận được" tone={lost > 0 ? 'warn' : undefined} />
-        <MiniStat label="Entitlement" value={all.length} sub={`${Object.keys(SERVICE_USAGE).length} công ty · ${services.length} dịch vụ`} />
-      </div>
-
       <ListPage
         cols={[
+          { label: 'Dịch vụ', w: '1.9fr' },
           { label: 'Khách hàng', w: '1.4fr' },
-          { label: 'Dịch vụ', w: '1.8fr' },
           { label: 'Quota', w: '1.2fr' },
           { label: 'Còn lại', w: '0.7fr', align: 'r' },
           { label: 'Hạn dùng', w: '0.9fr' },
@@ -7320,10 +7397,10 @@ function AdminManualServices() {
         rows={rows.map(({ company, e, state, left }) => {
           const key = `${company}|${e.sku}`
           return [
-            <span className="truncate font-medium text-ink">{company}</span>,
-            <button onClick={() => setOpen(open === key ? null : key)} className="min-w-0 max-w-full truncate text-left text-brand hover:underline">
+            <button onClick={() => setOpen(open === key ? null : key)} className="min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">
               {e.name}
             </button>,
+            <span className="truncate text-ink/85">{company}</span>,
             <span className="flex items-center gap-2">
               <span className="shrink-0 tabular-nums">{e.entries.length}/{e.total}</span>
               <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-line">
@@ -7350,7 +7427,7 @@ function AdminManualServices() {
           </>
         }
         total={all.length}
-        searchHint="Search khách hàng, dịch vụ…"
+        searchHint="Search dịch vụ, khách hàng…"
         minW={1280}
       />
 
@@ -10914,6 +10991,17 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
         <div className="flex flex-wrap gap-2">
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Tải PDF</button>
           <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">Xem PO nguồn</button>
+          {/* The ONLY place a sale is undone. The PO has no Cancelled status, so
+              this button carries both cases: a wrong invoice being replaced, and
+              an invoice issued ahead of a payment that never arrived. */}
+          {!inv.cancelled && (
+            <button
+              title="Hủy hóa đơn + biên bản, và thu hồi quota đã cấp. Dùng cho hóa đơn sai, hoặc hóa đơn xuất trước thanh toán mà khách không trả tiền."
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400"
+            >
+              Hủy hóa đơn · Kế toán
+            </button>
+          )}
           {inv.cancelled && (
             <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xem hóa đơn thay thế →</button>
           )}
@@ -10932,7 +11020,7 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
         <span className="text-[11.5px] font-medium text-emerald-700">
           {inv.cancelled
             ? '✓ Đã xử lý xong — không còn hành động nào trên hóa đơn này'
-            : '✓ Terminal — hóa đơn hợp lệ, không sửa và không có bước tiếp theo'}
+            : '✓ Hóa đơn hợp lệ — không sửa được. Hành động duy nhất còn lại là hủy + xuất thay thế.'}
         </span>
       </div>
 
@@ -11014,6 +11102,229 @@ function AdminInvoices() {
     />
   )
 }
+/* ── PO as PDF ─────────────────────────────────────────────────────────────────
+   Field-for-field the client's live document (PO-003971-08-2026): letterhead,
+   "XÁC NHẬN ĐƠN HÀNG / PURCHASE ORDER", the two header cells Ngày đặt hàng and
+   Số đơn hàng, client + VAT-billing blocks, ONE line table (a PO carries the one
+   option the customer accepted — never a choice), totals, amount in words, the
+   package benefits, the service terms, and a TWO-column signature page.
+
+   It shares the quotation's letterhead, table shell and terms on purpose: the
+   customer receives both documents in the same week, and a different-looking PO
+   reads as coming from a different company. */
+function PoPdfDoc({ po, co }: { po: Po; co?: Company }) {
+  const pack = QUOTE_CATALOG[po.product]
+  const sub = Math.round(po.total / (1 + VAT_RATE / 100))
+  const vat = po.total - sub
+  const unit = Math.round(sub / po.qty)
+  const issued = po.issued.replace(/\./g, '/')
+  const sd = signDate(issued)
+  const contact = co?.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0] ?? po.customer
+  const COLS = '28px minmax(0,2.6fr) 58px 46px 84px 58px 92px'
+
+  return (
+    <div className="mx-auto bg-white text-slate-800 shadow-xl" style={{ width: 794 }}>
+      <div className="px-[52px] py-[44px]">
+        {/* letterhead — identical to the quotation's */}
+        <div className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-3">
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-bold leading-snug text-slate-900">{ISSUER.nameVi}</p>
+            <p className="text-[11px] font-medium italic leading-snug text-slate-500">{ISSUER.nameEn}</p>
+            <p className="mt-1.5 text-[9.5px] leading-relaxed text-slate-600">{ISSUER.addrVi}</p>
+            <p className="text-[9.5px] italic leading-relaxed text-slate-400">{ISSUER.addrEn}</p>
+            <p className="mt-1 text-[9.5px] font-medium text-sky-700">{ISSUER.web}</p>
+          </div>
+          <div className="shrink-0 pt-0.5 text-right">
+            <SaraminMark width={104} />
+            <p className="mt-1.5 border-t border-slate-200 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {ISSUER.brand} Vietnam
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-2 text-[9.5px] text-slate-600">
+          <span className="text-slate-400">Phụ trách / Account:</span> <b className="text-slate-800">{po.seller}</b> | {po.seller.split(' ').pop()?.toLowerCase()}@topdev.vn
+        </p>
+
+        {/* title band — the PO's own two header cells */}
+        <div className="mt-5 flex items-stretch justify-between gap-6 border-y border-slate-200 py-3.5">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span className="h-full w-[3px] shrink-0 rounded-full" style={{ backgroundColor: SARAMIN_BLUE }} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2.5">
+                <p className="text-[22px] font-black leading-none tracking-tight text-slate-900">XÁC NHẬN ĐƠN HÀNG</p>
+                <p className="text-[10.5px] font-semibold tracking-[0.28em] text-slate-400">PURCHASE ORDER</p>
+              </div>
+              <p className="mt-2 inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11.5px] font-bold tracking-tight" style={{ color: SARAMIN_BLUE }}>
+                {po.code}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            {([
+              { vi: 'Ngày đặt hàng', en: 'Date of purchase', v: issued },
+              { vi: 'Số đơn hàng', en: 'No. purchase order', v: po.poNo ?? po.code },
+            ]).map((d) => (
+              <div key={d.vi} className="min-w-[112px] rounded border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-center">
+                <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">{d.vi}</p>
+                <p className="text-[8px] italic text-slate-400">{d.en}</p>
+                <p className="mt-1 font-mono text-[11px] font-bold tabular-nums text-slate-900">{d.v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* client + VAT billing */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-slate-200 p-3">
+            <Bi vi="Thông tin khách hàng" en="Client information" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
+            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
+              <div><dt className="text-slate-400">Tên khách hàng / Client name</dt><dd className="font-medium text-slate-800">{contact}</dd></div>
+              <div><dt className="text-slate-400">Email</dt><dd className="font-medium text-slate-700">{co ? `contact@${co.domain}` : '—'}</dd></div>
+              <div><dt className="text-slate-400">Số điện thoại / Phone number</dt><dd className="font-medium tabular-nums text-slate-700">0978 490 363</dd></div>
+            </dl>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <Bi vi="Thông tin xuất hóa đơn VAT" en="Billing information for VAT-invoice" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
+            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
+              <div><dt className="text-slate-400">Tên công ty / Company name</dt><dd className="font-semibold uppercase text-slate-800">{co?.legalName ?? po.customer}</dd></div>
+              <div><dt className="text-slate-400">Địa chỉ ĐKKD / Billing Address</dt><dd className="font-medium text-slate-700">{co?.address ?? '—'}</dd></div>
+              <div><dt className="text-slate-400">Mã số thuế / Tax code</dt><dd className="font-medium tabular-nums text-slate-700">{co?.tax ?? '—'}</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        {/* ONE line block — no options, because the customer already chose */}
+        <section className="mt-5">
+          <div className="rounded-lg border border-slate-200">
+            <div className="grid items-end gap-x-2 border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-[8.5px] font-bold uppercase leading-tight text-slate-600" style={{ gridTemplateColumns: COLS }}>
+              <Bi vi="STT" en="No." />
+              <Bi vi="Dịch vụ" en="Type of service" />
+              <Bi vi="Đơn vị tính" en="Unit" />
+              <Bi vi="Số lượng" en="Quantity" />
+              <Bi vi="Đơn giá" en="Unit price" className="text-right" />
+              <Bi vi="Giảm giá" en="Discount" className="text-right" />
+              <Bi vi="Tổng giá" en="Total price" className="text-right" />
+            </div>
+            <div className="grid items-center gap-x-2 border-b border-slate-100 px-3 py-2 text-[10px]" style={{ gridTemplateColumns: COLS }}>
+              <span className="tabular-nums text-slate-400">1</span>
+              <span className="block min-w-0 leading-snug text-slate-800">{pack.vi}</span>
+              <span className="leading-tight text-slate-500">{pack.unitVi}<span className="block text-[8.5px] italic text-slate-400">{pack.unitEn}</span></span>
+              <span className="tabular-nums text-slate-700">{po.qty}</span>
+              <span className="text-right tabular-nums text-slate-700">{pdfNum(unit)}</span>
+              <span className="text-right tabular-nums text-slate-500">0%</span>
+              <span className="text-right font-semibold tabular-nums text-slate-900">{pdfNum(sub)}</span>
+            </div>
+            <div className="flex justify-end px-3 py-2.5">
+              <div className="w-[300px] text-[10px]">
+                <div className="flex items-center justify-between py-1">
+                  <Bi vi="Tạm tính" en="Subtotal" className="text-slate-500" />
+                  <span className="tabular-nums text-slate-700">{pdfNum(sub)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-200 py-1">
+                  <span className="text-slate-500">Thuế GTGT ({VAT_RATE}%)</span>
+                  <span className="tabular-nums text-slate-700">{pdfNum(vat)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t-2 border-slate-800 pt-1.5">
+                  <Bi vi={`Tổng đơn hàng sau thuế VAT ${VAT_RATE}%`} en={`Total price after VAT ${VAT_RATE}%`} className="text-[9.5px] font-bold text-slate-800" />
+                  <span className="shrink-0 pl-2 text-[13px] font-black tabular-nums text-slate-900">{pdfNum(po.total)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-[9.5px] leading-relaxed">
+              <p className="text-slate-700"><span className="font-semibold">Bằng chữ:</span> {vnWords(po.total)}.</p>
+              <p className="italic text-slate-400"><span className="font-semibold not-italic">In words:</span> {enWords(po.total)}.</p>
+            </div>
+          </div>
+
+          <div className="mt-2 rounded-lg border border-slate-200 px-3 py-2">
+            <p className="text-[9.5px] font-bold text-slate-700">
+              Quyền lợi gói {pack.short} trên TopDev.vn
+              <span className="block font-medium italic text-slate-400">Features of {pack.short} Package on TopDev.vn</span>
+            </p>
+            <ol className="mt-1.5 space-y-0.5">
+              {pack.feats.map((it, j) => (
+                <li key={j} className="flex gap-1.5 text-[9.5px] leading-relaxed text-slate-600">
+                  <span className="shrink-0 tabular-nums text-slate-400">{j + 1}.</span>{it}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* service terms — same clauses the quotation carries */}
+        <section className="mt-6 break-before-page">
+          <Bi vi="Điều kiện sử dụng dịch vụ" en="Terms of Service" className="border-b-2 border-slate-800 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-900" />
+          <ol className="mt-2.5 space-y-2.5">
+            {QUOTE_TERMS.map((t, i) => (
+              <li key={i} className="flex gap-2 text-[9.5px] leading-relaxed">
+                <span className="shrink-0 font-bold tabular-nums text-slate-400">{i + 1}.</span>
+                <span className="min-w-0">
+                  {t.vi.map((x, j) => <span key={j} className={cn('block text-slate-700', j > 0 && 'pl-2')}>{x}</span>)}
+                  {t.en.map((x, j) => <span key={j} className={cn('block italic text-slate-400', j > 0 && 'pl-2')}>{x}</span>)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* TRANG KÝ — a PO is signed by BOTH sides, unlike a quotation */}
+        <section className="mt-7 break-before-page">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-900">Trang ký</p>
+          <p className="mt-0.5 text-[9.5px] leading-relaxed text-slate-500">
+            Dành cho đại diện của khách hàng và {ISSUER.brand} để xác nhận sử dụng dịch vụ và chấp thuận các điều kiện &amp; điều khoản dịch vụ đã nêu.
+          </p>
+          <div className="mt-5 grid grid-cols-2 gap-6">
+            <div className="text-center">
+              <Bi vi={`Đại diện ${ISSUER.brand}`} en={ISSUER.brand} className="text-[10px] font-bold text-slate-800" />
+              <p className="mt-0.5 text-[9.5px] text-slate-600">{sd.vi}</p>
+              <p className="text-[9.5px] italic text-slate-400">{sd.en}</p>
+              <div className="mt-14 border-t border-slate-400 pt-1 text-[9px] text-slate-500">Authorized Signature</div>
+            </div>
+            <div className="text-center">
+              <Bi vi="Đại diện Khách hàng" en="Customer" className="text-[10px] font-bold text-slate-800" />
+              {/* Left blank on purpose: the customer dates it when they sign. */}
+              <p className="mt-0.5 text-[9.5px] text-slate-600">Ngày ____ tháng ____ năm ______</p>
+              <p className="text-[9.5px] italic text-slate-400">Date: ____________________</p>
+              <div className="mt-14 border-t border-slate-400 pt-1 text-[9px] text-slate-500">Authorized Signature</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
+function PoPdfModal({ po, co, onClose }: { po: Po; co?: Company; onClose: () => void }) {
+  const [zoom, setZoom] = useState(0.85)
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-2.5 text-white">
+        <span className="text-[13px] font-semibold">Xuất PDF / Export purchase order</span>
+        <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px]">{po.code}.pdf</span>
+        <span className="hidden text-[11px] text-slate-400 sm:inline">A4 · dọc / portrait</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center overflow-hidden rounded-md border border-slate-600">
+            <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">−</button>
+            <span className="min-w-[46px] px-1 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">+</button>
+          </div>
+          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">🖨 In / Print</button>
+          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">⬇ Tải PDF</button>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-slate-300 hover:bg-white/10">✕</button>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div style={{ width: 794 * zoom, margin: '0 auto' }}>
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: 794 }}>
+            <PoPdfDoc po={po} co={co} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Purchase order ───────────────────────────────────────────────────────────
    Page layout follows the client's live system. Numbering is PO-{seq6}-{MM}-
    {YYYY}, issuer block on the left, recipient + dates on the right, line items
@@ -11034,21 +11345,26 @@ function AdminInvoices() {
        is no state in which one exists but has not gone out.
      · "Paid" — payment is a FACT recorded against the PO, not a stage of it. The
        invoice can legitimately be issued before the money lands (customers
-       routinely need the invoice to release payment internally), which is exactly
-       why Cancelled exists.
-   Two exits: Expired (nobody acts — the PO lapses at the end of its month, the
-   same rule as the quotation it came from) and Cancelled (only from Issued
-   invoice, for the invoice-before-payment case that never got paid). */
-type PoStep = 'active' | 'invoiced' | 'expired' | 'cancelled'
+       routinely need the invoice to release payment internally), so a PO that
+       reads "Paid" would say nothing the payment record does not.
+   One exit: Expired — nobody acts, the PO lapses at the end of its month, the
+   same rule as the quotation it came from.
+
+   There is deliberately NO Cancelled here. Withdrawing a sale means withdrawing
+   the INVOICE, which is the fiscal document and the thing that granted the quota;
+   the PO is only the commercial record behind it. Putting a second cancel on the
+   PO would give two places to undo one event and two records that can disagree
+   about whether the sale happened. The invoice-before-payment case is handled
+   where it belongs: Invoice → Hủy hóa đơn (Kế toán). */
+type PoStep = 'active' | 'invoiced' | 'expired'
 type PoStage = { key: PoStep; vi: string; en: string; by: string }
 const PO_FLOW: PoStage[] = [
   { key: 'active', vi: 'Đang hiệu lực', en: 'Active', by: 'Sales' },
   { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Issued invoice', by: 'Kế toán' },
 ]
-/* Exits, not steps — neither is reached by anyone clicking the flow forward. */
+/* An exit, not a step — nobody reaches it by clicking the flow forward. */
 const PO_EXITS: Record<string, PoStage> = {
   expired: { key: 'expired', vi: 'Hết hạn', en: 'Expired', by: 'System' },
-  cancelled: { key: 'cancelled', vi: 'Đã hủy', en: 'Cancelled', by: 'Kế toán' },
 }
 const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_EXITS[k]
 /** The single next action, and who may click it. Only Active has one. */
@@ -11069,14 +11385,14 @@ const POS: Po[] = [
   { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
   // issued in June and never invoiced — lapsed on 30/06, not on a rolling 30 days
   { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'expired', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
-  // the invoice-before-payment case: invoice issued to unblock the customer's
-  // internal approval, the money never came, so both documents were cancelled
-  { code: 'PO-005858-07-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'cancelled', issued: '12.07.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'expired', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
-const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', invoiced: 'active', expired: 'expired', cancelled: 'rejected' }
+const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', invoiced: 'active', expired: 'expired' }
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
+  const [pdf, setPdf] = useState(false)
+  const poCo = COMPANIES.find((x) => x.name === po.co || x.legalName === po.customer || coLabel(x) === po.customer)
   const cur = poStage(po.step)
   const next = poNext(po.step)
   const pack = QUOTE_CATALOG[po.product]
@@ -11097,16 +11413,21 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           {po.step === 'active' && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
         </span>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Cancel exists for exactly one case: the invoice went out before the
-              money did and the money never came. So it appears ONLY on an invoiced
-              PO — cancelling an Active one is just letting it expire, and there is
-              nothing to undo. It withdraws the invoice and the quota with it. */}
+          {/* Export is available in EVERY state, expired included: a copy of the
+              document is what gets asked for long after the deal is over, and
+              refusing it then would be the one time it mattered. */}
+          <button onClick={() => setPdf(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
+            ⬇ Xuất PO (PDF)
+          </button>
+          {/* No cancel on a PO. Undoing a sale is a fiscal act — it happens on the
+              invoice, which is also what granted the quota. This link is the way
+              there rather than a second button that does the same thing badly. */}
           {po.step === 'invoiced' && (
             <button
-              title="Hủy hóa đơn đã xuất + thu hồi quota đã cấp. Chỉ dùng khi hóa đơn xuất trước thanh toán và khách không trả tiền."
-              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400"
+              title="Hủy sale = hủy hóa đơn (kèm biên bản, xuất hóa đơn thay thế nếu cần). PO không có trạng thái Đã hủy."
+              className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40"
             >
-              Hủy PO · Kế toán
+              Xem hóa đơn →
             </button>
           )}
           {next
@@ -11115,11 +11436,9 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
                 {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
               </button>
             )
-            : po.step === 'cancelled'
-              ? <span className="text-[11.5px] font-medium text-rose-600">Đã hủy — hóa đơn đã hủy, quota đã thu hồi</span>
-              : po.step === 'expired'
-                ? <span className="text-[11.5px] font-medium text-muted">Hết hạn {poExpiry(po)} — tạo PO mới từ báo giá</span>
-                : <span className="text-[11.5px] font-medium text-emerald-700">✓ Sản phẩm đã vào tài khoản khách hàng</span>}
+            : po.step === 'expired'
+              ? <span className="text-[11.5px] font-medium text-muted">Hết hạn {poExpiry(po)} — tạo PO mới từ báo giá</span>
+              : <span className="text-[11.5px] font-medium text-emerald-700">✓ Sản phẩm đã vào tài khoản khách hàng</span>}
         </div>
       </div>
 
@@ -11140,7 +11459,6 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
             <p className="font-bold text-ink">DAOUKIWOOM INNOVATION COMPANY LIMITED</p>
             <p className="text-ink/80">Level 12, 13 &amp; 14, AP Tower, 518B Dien Bien Phu,<br />Thanh My Tay Ward, HCMC<br />Ho Chi Minh City<br />Vietnam 700000</p>
             <p className="mt-0.5 text-ink/80">Mã số thuế: <span className="tabular-nums">0315421202</span></p>
-            <p className="mt-1 text-[10.5px] text-faint">Từ System → Company information</p>
           </div>
           <div className="text-right text-[11.5px] leading-relaxed">
             <p className="text-muted">Người nhận:</p>
@@ -11148,7 +11466,7 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
             <p className="mt-1 text-ink/80">Mã số thuế: <span className="tabular-nums">{COMPANIES.find((c) => c.name === po.co)?.tax ?? '0318705749'}</span></p>
             {po.poNo && <p className="text-ink/80">Số PO của khách: <span className="font-mono">{po.poNo}</span></p>}
             <p className="mt-1 text-ink/80">Ngày phát hành: <b>{po.issued}</b></p>
-            <p className="text-ink/80">Hết hạn: <b>{poExpiry(po)}</b> <span className="text-faint">(cuối tháng)</span></p>
+            <p className="text-ink/80">Hết hạn: <b>{poExpiry(po)}</b></p>
             <p className="text-ink/80">Người bán: <b>{po.seller}</b></p>
           </div>
         </div>
@@ -11182,6 +11500,8 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(po.total)}.</p>
         </div>
       </div>
+
+      {pdf && <PoPdfModal po={po} co={poCo} onClose={() => setPdf(false)} />}
     </div>
   )
 }
@@ -11195,7 +11515,7 @@ function AdminPOs() {
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
   return (
     <ListPage
-      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Issued invoice' }, { label: 'Expired' }, { label: 'Cancelled' }]}
+      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Issued invoice' }, { label: 'Expired' }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
         { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.4fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },

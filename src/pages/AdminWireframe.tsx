@@ -195,7 +195,10 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Content',
+    // "Content" covered two unrelated jobs: delivering what customers BOUGHT, and
+    // editing the site's own copy. This group is now only the first — every item is
+    // a service someone paid for. Pages moved to System, where site config lives.
+    label: 'Service',
     icon: <FileImage className="h-4 w-4" />,
     items: [
       { label: 'Banners', specId: 'admin-banners' },
@@ -203,7 +206,6 @@ const NAV_GROUPS: NavGroup[] = [
       // ONE page for all manual services: five products across a hundred companies
       // is one list at the grain of (company × service), not five queues.
       { label: 'Manual services', specId: 'admin-manual-services' },
-      { label: 'Pages', specId: 'admin-pages' },
     ],
   },
   {
@@ -242,6 +244,8 @@ const NAV_GROUPS: NavGroup[] = [
       // Here rather than under CRM for the same reason as Products — it is HQ-only
       // configuration that changes how another module behaves.
       { label: 'Membership tiers', specId: 'admin-membership' },
+      // Static site copy — configuration, not a sold service.
+      { label: 'Pages', specId: 'admin-pages' },
       { label: 'Master data', specId: 'admin-master-data' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },
