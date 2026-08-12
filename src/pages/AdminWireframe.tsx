@@ -44,7 +44,6 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
   // Content
   'admin-banners': { module: 'banners-popups', feature: 'Create banner + Banner list' },
-  'admin-popups': { module: 'banners-popups', feature: 'Create popup + Popup list' },
   // Billing & products
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
   'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
@@ -168,8 +167,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Service',
     icon: <FileImage className="h-4 w-4" />,
     items: [
-      { label: 'Banners', specId: 'admin-banners' },
-      { label: 'Popups', specId: 'admin-popups' },
+      // One page with a Banners / Popups switcher — both are Display placement
+      // products on the same lifecycle, so they are not two console pages.
+      { label: 'Displays', specId: 'admin-banners' },
       // ONE page for all manual services: five products across a hundred companies
       // is one list at the grain of (company × service), not five queues.
       { label: 'Manual services', specId: 'admin-manual-services' },

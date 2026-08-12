@@ -3,6 +3,10 @@ import type { BuildModule } from './types'
 /*
  * Banners & Popups — HQ-managed promotional surfaces on the jobseeker site.
  *
+ * Two objects, ONE console page (a Banners / Popups switcher): both are Display
+ * placement products sold on the same COMPANY → PO → PRODUCT chain, so an
+ * operator should not have to learn the same screen twice.
+ *
  * Two objects, one lifecycle. Status is DERIVED from the schedule, never typed
  * by hand — an operator only sets the date range and whether it is published:
  *
@@ -366,7 +370,9 @@ export const bannersPopups: BuildModule = {
       name: 'Create popup + Popup list',
       site: 'Admin',
       scope: ['BE', 'FE', 'UI'],
-      mockup: 'admin-popups',
+      // Same console page as the banner list — the two share one screen with a
+      // Banners / Popups switcher, because both are Display placement products.
+      mockup: 'admin-banners',
       detail: {
         description:
           'The HQ screen for popups. A popup shares the banner lifecycle but differs in the two things that make it intrusive: it targets an AUDIENCE rather than a page slot, and it must be frequency-capped so the same person is not interrupted repeatedly. Because only one popup ever shows, priority is a real field here rather than a nicety.',

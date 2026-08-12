@@ -132,8 +132,7 @@ export const NAV: NavModule[] = [
     app: 'HQ Admin',
     // Only what customers bought. Site copy (Pages, Blog) moved to System settings.
     children: [
-      { id: 'admin-banners', label: 'Banners' },
-      { id: 'admin-popups', label: 'Popups' },
+      { id: 'admin-banners', label: 'Displays' },
       { id: 'admin-manual-services', label: 'Manual services' },
     ],
   },

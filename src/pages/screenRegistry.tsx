@@ -49,7 +49,7 @@ const ADMIN_NAV_PAGES = new Set([
   // products across a hundred companies is one list at the grain of company ×
   // service), plus the per-account usage view.
   'admin-manual-services', 'admin-account-usage',
-  'admin-banners', 'admin-popups', 'admin-pages',
+  'admin-banners', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
   'admin-master-data', 'admin-audit-log', 'admin-environment', 'admin-departments',

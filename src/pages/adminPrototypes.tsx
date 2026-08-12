@@ -6353,7 +6353,41 @@ const BANNERS: Banner[] = [
   { id: 'BN-1061', name: 'Thông báo bảo trì hệ thống', source: 'House', sku: 'PLC-ADS-HOME', company: 'Saramin VN', start: '20/08/2026', end: '22/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'maintenance-1260x120.jpg' },
 ]
 
-function AdminBanners() {
+/* ── Display: banners + popups ────────────────────────────────────────────────
+   ONE page, not two. A banner and a popup are the same commercial object — a
+   Display placement product, sold on the same COMPANY → PO → PRODUCT chain, with
+   the same Draft → Schedule → Open → Expired lifecycle and the same separate
+   Exposure switch. Splitting them into two console pages made an operator learn
+   the same screen twice.
+
+   They keep their own tables because the two genuinely differ in what an
+   operator must see: a banner is placed in a SLOT (so: placement, clicks), while
+   a popup interrupts (so: purpose, audience, and a priority order — only ONE
+   popup ever shows). The switcher decides which list; everything around it is
+   shared. */
+function AdminDisplay() {
+  const [kind, setKind] = useState<'Banners' | 'Popups'>('Banners')
+
+  /* Reads first, before the controls that narrow the list — it decides WHICH
+     list this is. Same switcher markup as the Companies view switcher. */
+  const switcher = (
+    <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+      {(['Banners', 'Popups'] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => setKind(k)}
+          className={cn('rounded-md px-3 py-1 transition-colors', kind === k ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
+        >
+          {k}
+        </button>
+      ))}
+    </span>
+  )
+
+  return kind === 'Banners' ? <AdminBanners leading={switcher} /> : <AdminPopups leading={switcher} />
+}
+
+function AdminBanners({ leading }: { leading?: React.ReactNode }) {
   const [fStatus, setFStatus] = useState('')
   const [fSource, setFSource] = useState('')
   const [edit, setEdit] = useState<Banner | null>(null)
@@ -6365,6 +6399,7 @@ function AdminBanners() {
   return (
     <div>
       <ListPage
+        leading={leading}
         cols={[
           { label: 'Banner', w: '1.7fr' },
           { label: 'Placement', w: '1.3fr' },
@@ -6881,7 +6916,7 @@ const PU_AUDIENCE: Record<PopupAudience, string> = {
   Employers: 'Nhà tuyển dụng',
 }
 
-function AdminPopups() {
+function AdminPopups({ leading }: { leading?: React.ReactNode }) {
   const [fStatus, setFStatus] = useState('')
   const [fSource, setFSource] = useState('')
   const [edit, setEdit] = useState<Popup | null>(null)
@@ -6900,6 +6935,7 @@ function AdminPopups() {
            Audience / frequency / priority were columns the form never captured —
            either the form should ask for them or the table should not claim them. */
         minW={1560}
+        leading={leading}
         cols={[
           { label: 'Popup', w: '1.5fr' },
           { label: 'Mục đích', w: '1.4fr' },
@@ -11697,7 +11733,8 @@ type PermLevel = 'none' | 'read' | 'write'
 const PERM_GROUPS: { key: string; label: string; resources: string[] }[] = [
   { key: 'recruitment', label: 'Recruitment', resources: ['Jobs', 'Job approval', 'Applicants', 'Resumes / candidates (PII)'] },
   { key: 'companies', label: 'Companies', resources: ['Company accounts', 'Company users', 'Company page review'] },
-  { key: 'content', label: 'Content', resources: ['Banners', 'Popups', 'Pages'] },
+  // One resource, because Displays is one page (banners + popups behind a switcher).
+  { key: 'content', label: 'Service', resources: ['Displays (banners + popups)', 'Manual services'] },
   { key: 'billing', label: 'Billing & products', resources: ['Catalog', 'Bundles', 'Credits', 'Orders', 'Promotions'] },
   { key: 'crm', label: 'CRM', resources: ['Sign-ups', 'Pipeline / leads', 'Quotes', 'Invoices', 'Purchase orders', 'Payments', 'Contracts'] },
   { key: 'analytics', label: 'Analytics', resources: ['Dashboard', 'Sales report', 'Recruit report', 'Revenue report', 'User behavior'] },
@@ -13686,8 +13723,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-jobseekers': AdminJobseekers,
   'admin-company-users': AdminCompanyUsers,
   // Content
-  'admin-banners': AdminBanners,
-  'admin-popups': AdminPopups,
+  'admin-banners': AdminDisplay,
   'admin-account-usage': AdminAccountUsage,
   'admin-manual-services': AdminManualServices,
   'admin-pages': AdminPages,

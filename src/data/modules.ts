@@ -150,7 +150,7 @@ export const MODULES: BigModule[] = [
     goal: 'HQ configures homepage sections, banners and CMS content; the store renders them in the admin-defined order.',
     flow: 'Admin section-builder / banners / CMS → JS home, curation & content pages render',
     steps: [
-      { surface: 'Admin', label: 'Banners & popups', featureIds: ['admin-banners', 'admin-popups'] },
+      { surface: 'Admin', label: 'Banners & popups', featureIds: ['admin-banners'] },
       { surface: 'Admin', label: 'CMS: pages, blog/articles', featureIds: ['admin-pages', 'admin-blog'] },
       { surface: 'JS', label: 'Homepage sections, curation, career-info render the managed content', featureIds: ['js-home', 'js-curation', 'js-career-info'] },
     ],
