@@ -9,6 +9,12 @@
  *  · Picking a type opens a description box PREFILLED with a suggestion. A blank box
  *    gets skipped or filled with one dead word; a sentence to edit gets edited.
  *
+ * The COMPANY SET is the starting point, not a lock: a new job opens prefilled with
+ * the company-page benefits (a copy) and the editor curates freely per job. The two
+ * safety valves are "↺ Về mặc định công ty" (replace with the company set) and a
+ * read-only preview of the full set — so the default is always one click away, but a
+ * company-page edit never silently rewrites a posting someone curated on purpose.
+ *
  * Selection order is display order on the jobseeker page, so the reorder arrows are
  * the employer's only way to lead with their strongest benefit.
  */
@@ -19,16 +25,19 @@ import { cn } from '@/lib/utils'
 export interface PickedBenefit { key: string; text: string; title?: string }
 
 export function BenefitsField({
-  initial = ['pay', 'health', 'leave'],
+  initial,
   companyBenefits = [],
   companyName = 'công ty',
   max = BENEFIT_MAX,
-  label = 'Phúc lợi riêng của vị trí này',
+  label = 'Phúc lợi của tin này',
 }: {
+  /** Per-job benefit keys. Omit on a NEW job — the field then prefills from
+      `companyBenefits` (copy-on-create, capped at `max`). */
   initial?: string[]
-  /** Benefit type keys declared on the COMPANY page — inherited by every job of
-      that company, shown here read-only so the employer can see what they do NOT
-      need to retype. The company page is the source of truth for these. */
+  /** Benefit type keys declared on the COMPANY page — the DEFAULT SET a job starts
+      from. Powers the prefill, the "↺ Về mặc định công ty" reset and the read-only
+      preview. A copy, never a live link: editing the company page must not silently
+      rewrite a posting someone curated on purpose. */
   companyBenefits?: string[]
   companyName?: string
   /** The JOB cap is 6 — twenty benefits on one ad reads as noise and nothing
@@ -37,11 +46,23 @@ export function BenefitsField({
   max?: number
   label?: string
 }) {
-  const [picked, setPicked] = useState<PickedBenefit[]>(() =>
-    initial.map((k) => ({ key: k, text: benefitByKey(k)?.hint ?? '' })),
-  )
+  const fromKeys = (keys: string[]) =>
+    keys.slice(0, max).map((k) => ({ key: k, text: benefitByKey(k)?.hint ?? '' }))
+  const companyDefault = () => fromKeys(companyBenefits)
+
+  // Copy-on-create: a new job starts as the company set; `initial` (an existing
+  // job's own list) wins when provided.
+  const [picked, setPicked] = useState<PickedBenefit[]>(() => fromKeys(initial ?? companyBenefits))
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const full = picked.length >= max
   const has = (k: string) => picked.some((p) => p.key === k)
+  const capped = companyBenefits.length > max
+
+  // Diverged = a reset would change something. Order counts: it is display order.
+  const diverged =
+    picked.length !== Math.min(companyBenefits.length, max) ||
+    picked.some((p, i) => p.key !== companyBenefits[i] || p.text !== (benefitByKey(p.key)?.hint ?? ''))
 
   const toggle = (k: string) => {
     setPicked((prev) => {
@@ -63,10 +84,81 @@ export function BenefitsField({
     <div>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <label className="text-[11.5px] font-medium text-ink/80">{label}</label>
-        <span className={cn('text-[10.5px]', full ? 'font-medium text-amber-700' : 'text-faint')}>
-          {picked.length}/{max} {full ? '— đã đủ' : 'đã chọn'}
+        <span className="flex shrink-0 items-baseline gap-2.5">
+          {companyBenefits.length > 0 && (
+            <>
+              <button
+                onClick={() => setPreviewing((v) => !v)}
+                className="text-[10.5px] font-medium text-brand hover:underline"
+              >
+                {previewing ? 'Ẩn phúc lợi công ty' : 'Xem phúc lợi công ty'}
+              </button>
+              {/* Reset replaces, never merges — hence the confirm step. Disabled
+                  while the list already IS the default, so the button doubles as
+                  a "you have diverged" indicator. */}
+              <button
+                onClick={() => diverged && setConfirmingReset(true)}
+                disabled={!diverged}
+                title={diverged ? 'Thay danh sách hiện tại bằng bộ phúc lợi mặc định của công ty' : 'Đang đúng bộ mặc định của công ty'}
+                className={cn('text-[10.5px] font-medium', diverged ? 'text-brand hover:underline' : 'cursor-default text-faint')}
+              >
+                ↺ Về mặc định công ty
+              </button>
+            </>
+          )}
+          <span className={cn('text-[10.5px]', full ? 'font-medium text-amber-700' : 'text-faint')}>
+            {picked.length}/{max} {full ? '— đã đủ' : 'đã chọn'}
+          </span>
         </span>
       </div>
+
+      {/* Reset confirm — inline, not a modal: the decision is small and local. */}
+      {confirmingReset && (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-[11px] leading-relaxed text-amber-800">
+            Thay toàn bộ danh sách hiện tại bằng bộ mặc định của {companyName}
+            {capped ? ` (lấy ${max} mục đầu — bộ công ty có ${companyBenefits.length})` : ''}? Các chỉnh sửa riêng của tin sẽ mất.
+          </p>
+          <span className="flex shrink-0 gap-1.5">
+            <button onClick={() => setConfirmingReset(false)} className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">Giữ nguyên</button>
+            <button
+              onClick={() => { setPicked(companyDefault()); setConfirmingReset(false) }}
+              className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-semibold text-white hover:opacity-90"
+            >
+              ↺ Về mặc định
+            </button>
+          </span>
+        </div>
+      )}
+
+      {/* Read-only preview of the FULL company set — what a reset would restore,
+          and the reference the editor curates against. */}
+      {previewing && companyBenefits.length > 0 && (
+        <div className="mb-2 rounded-lg border border-line bg-canvas/40 p-3">
+          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[11px] font-medium text-ink/80">
+              Bộ phúc lợi mặc định của {companyName}
+              <span className="ml-1.5 rounded border border-line bg-surface px-1.5 py-px text-[9.5px] font-normal text-muted">chỉ đọc · {companyBenefits.length} mục</span>
+            </p>
+            <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Sửa ở trang công ty ↗</a>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {companyBenefits.map((k) => {
+              const t = benefitByKey(k)
+              if (!t) return null
+              return (
+                <span key={k} className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]', has(k) ? 'border-brand/30 bg-brand-soft text-brand' : 'border-line bg-surface text-ink/70')}>
+                  <t.Icon className={cn('h-3 w-3 shrink-0', has(k) ? 'text-brand' : 'text-muted')} />{t.vi}
+                  {has(k) && <span className="text-[9px]">✓ trong tin</span>}
+                </span>
+              )
+            })}
+          </div>
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+            Tin mới mở form sẽ được điền sẵn bộ này; sửa trang công ty <b className="text-ink/70">không</b> tự đổi các tin đã đăng — dùng “↺ Về mặc định công ty” khi muốn lấy bản mới nhất.
+          </p>
+        </div>
+      )}
 
       {/* the whole taxonomy, one screen */}
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
@@ -134,40 +226,10 @@ export function BenefitsField({
       )}
 
       <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-        Chỉ khai những gì <b className="text-ink/70">khác với mặt bằng chung</b> của công ty (thưởng dự án, phụ cấp ca đêm,
-        laptop cấp riêng…). Loại phúc lợi lấy từ Master data (có icon, dịch sẵn, dùng được cho bộ lọc tìm việc); phần mô tả
-        do công ty tự viết — tiếng Việt bắt buộc. Thứ tự ở đây là thứ tự hiển thị trên trang jobseeker.
+        Tin mới được <b className="text-ink/70">điền sẵn bộ phúc lợi của công ty</b> — thêm, bớt, sửa lời tuỳ ý cho vị trí này
+        (bỏ mục không liên quan, thêm thưởng dự án, phụ cấp ca đêm…). Loại phúc lợi lấy từ Master data (có icon, dịch sẵn,
+        dùng được cho bộ lọc tìm việc); mô tả tiếng Việt bắt buộc. Thứ tự ở đây là thứ tự hiển thị trên trang jobseeker.
       </p>
-
-      {/* What the job INHERITS. Shown read-only at the point of writing, because an
-          employer who cannot see the company benefits retypes them — which is exactly
-          how the two surfaces drift apart. */}
-      {companyBenefits.length > 0 && (
-        <div className="mt-3 rounded-lg border border-line bg-canvas/40 p-3">
-          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-[11.5px] font-medium text-ink/80">
-              Phúc lợi chung của công ty
-              <span className="ml-1.5 rounded border border-line bg-surface px-1.5 py-px text-[9.5px] font-normal text-muted">tự động hiển thị · chỉ đọc</span>
-            </p>
-            <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Sửa ở trang công ty ↗</a>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {companyBenefits.map((k) => {
-              const t = benefitByKey(k)
-              if (!t) return null
-              return (
-                <span key={k} className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[11px] text-ink/70">
-                  <t.Icon className="h-3 w-3 shrink-0 text-muted" />{t.vi}
-                </span>
-              )
-            })}
-          </div>
-          <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-            Những mục này sẽ tự hiển thị bên dưới phần phúc lợi của vị trí trên trang tin — <b className="text-ink/70">không cần gõ lại</b>.
-            Sửa một lần ở trang {companyName}, mọi tin đang mở cập nhật theo.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

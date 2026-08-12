@@ -10,7 +10,7 @@ import { createContext, isValidElement, useContext, useEffect, useRef, useState 
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { BenefitsField, BenefitCards } from '@/components/BenefitsField'
-import { benefitByKey, BENEFIT_TYPES } from '@/data/benefits'
+import { BENEFIT_TYPES } from '@/data/benefits'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { LogoSizer } from '@/components/LogoSizer'
 
@@ -2956,24 +2956,6 @@ function AdminCompanyPipeline() {
   )
 }
 
-function CompanyPagePreview({ c }: { c: Company }) {
-  const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
-  return (
-    <div className="overflow-hidden rounded-xl border border-line">
-      <div className="h-12 bg-gradient-to-r from-brand to-violet-500" />
-      <div className="-mt-5 px-3 pb-3">
-        <div className="grid h-10 w-10 place-items-center rounded-lg border-2 border-surface bg-surface text-[13px] font-bold text-brand shadow">{initials}</div>
-        <p className="mt-1.5 text-[12.5px] font-bold">{c.name}</p>
-        <p className="text-[10.5px] text-faint">{c.industry} · {c.size} staff</p>
-        <div className="mt-2 space-y-1">
-          <div className="flex justify-between rounded-md border border-line px-2 py-1 text-[10.5px]"><span>Open role #1</span><span className="text-faint">HCMC</span></div>
-          <div className="flex justify-between rounded-md border border-line px-2 py-1 text-[10.5px]"><span>Open role #2</span><span className="text-faint">HCMC</span></div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /** One row per PURCHASE ORDER — what was bought, for how much, and when the VAT
     invoice went out. A PO with no invoice date is money not yet collected. */
 function poHistory(c: Company): { po: string; products: string; amount: string; invoiced: string | null }[] {
@@ -4390,6 +4372,78 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
       re-typing them on the page would give one company two tax codes that drift.
       They are shown read-only with a pointer to where they are edited. */
 
+/* ── Fields that WRITE BACK to the company record ─────────────────────────────
+   The facts card on the public page (MST, tên pháp lý, quy mô, ngành, địa chỉ…)
+   shows the very same values the CRM record holds. Two rules follow, and they are
+   not in tension once stated in the right order:
+
+     1. There is ONE stored value per fact. The page never keeps its own copy.
+     2. It can be EDITED from here, and the edit lands on the company record —
+        the operator is on this tab because the page is missing something, and
+        sending them to another tab to fix it is how a page stays half-filled.
+
+   So the row is editable and carries a marker saying where the value actually
+   lives. What is forbidden is a SECOND field, not a second editing surface. */
+const SYNC = '↔ Overview'
+
+function PageField({
+  label, value, req, ro, hint, sync, options, wide,
+}: {
+  label: string; value: string; req?: boolean; ro?: boolean; hint?: string
+  /** the value is stored on the company record — editing here updates it there */
+  sync?: boolean
+  /** present → renders a select instead of a text input */
+  options?: string[]
+  wide?: boolean
+}) {
+  const [v, setV] = useState(value)
+  return (
+    <div className={cn(wide && 'sm:col-span-2')}>
+      <div className="mb-0.5 flex items-baseline gap-1.5">
+        <label className="text-[11px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
+        {sync && <span className="ml-auto shrink-0 rounded border border-line bg-canvas px-1 text-[9px] font-medium text-faint" title="Giá trị nằm ở hồ sơ công ty — sửa ở đây cũng cập nhật tab Overview">{SYNC}</span>}
+      </div>
+      {options ? (
+        <select
+          value={v} disabled={ro} onChange={(e) => setV(e.target.value)}
+          className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
+        >
+          {/* de-duped: the current value is prepended only when the list lacks it,
+              and the list itself may repeat — both would collide as React keys */}
+          {[...new Set([v, ...options])].map((o) => <option key={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input
+          value={v} readOnly={ro} onChange={(e) => setV(e.target.value)}
+          placeholder="—"
+          className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none placeholder:text-faint focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
+        />
+      )}
+      {hint && <p className="mt-0.5 text-[10px] leading-relaxed text-faint">{hint}</p>}
+    </div>
+  )
+}
+
+/** Tình trạng theo mã số thuế. The tax authority publishes EIGHT codes (00–07);
+    these are the five an account manager can act on, with the rest folded in —
+    "đã chuyển cơ quan thuế" is not a state of the business, and 00 vs 04 is an
+    internal registration distinction no salesperson should have to read. */
+const TAX_STATUS = [
+  'Đang hoạt động',
+  'Tạm ngừng kinh doanh có thời hạn',
+  'Không hoạt động tại địa chỉ đã đăng ký',
+  'Đang làm thủ tục giải thể / chờ đóng MST',
+  'Đã chấm dứt hiệu lực MST',
+]
+
+const BIZ_TYPES = [
+  'Công ty TNHH một thành viên', 'Công ty TNHH hai thành viên trở lên',
+  'Công ty cổ phần', 'Doanh nghiệp tư nhân', 'Công ty hợp danh',
+  'Chi nhánh / Văn phòng đại diện', 'Hợp tác xã', 'Khác',
+]
+
+const CO_SIZES = ['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']
+
 /** Chip row under the facts card. A fixed list, because the whole point of the
     chips is that they read the same on every company and can be filtered on. */
 const CP_TRAITS = [
@@ -4423,12 +4477,14 @@ function PageSec({
 }
 
 /** A slot that holds an uploaded asset — photo, video, logo. */
-function AssetSlot({ label, filled, wide }: { label: string; filled?: boolean; wide?: boolean }) {
+function AssetSlot({ label, filled }: { label: string; filled?: boolean }) {
   return (
+    /* h-full matters: the hero slot sits inside a `row-span-2` wrapper, and without
+       it the slot only takes its text height while the wrapper stays tall — the
+       mosaic then reads as one short box beside a full-height column. */
     <div className={cn(
-      'grid place-items-center rounded-md border border-dashed px-2 py-3 text-center',
+      'grid h-full place-items-center rounded-md border border-dashed px-2 py-3 text-center',
       filled ? 'border-brand/40 bg-brand-soft/30' : 'border-line bg-canvas/40',
-      wide && 'row-span-2',
     )}>
       <span className={cn('text-[10.5px] leading-tight', filled ? 'font-medium text-brand' : 'text-faint')}>
         {filled ? label : `+ ${label}`}
@@ -4445,18 +4501,15 @@ function CompanyPageEditor({ c }: { c: Company }) {
   /* Which of the 12 shared types this company has declared. BenefitsField owns the
      editing from here; this is only the seed and the section's status line. */
   const bens = c.hasPage ? ['health', 'pay', 'training', 'leave', 'transport'] : []
-  const [lang, setLang] = useState<'VI' | 'EN' | 'KO'>('VI')
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
   const has = c.hasPage
   const toggle = (n: number) => setOpen((o) => (o === n ? null : n))
 
-  if (!c.jobPosting) {
-    return (
-      <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-6 text-center">
-        <p className="text-[12.5px] font-medium">No public page needed</p>
-        <p className="mx-auto mt-1 max-w-[42ch] text-[11.5px] text-muted">Resume-Search-only customer — invisible to jobseekers and not listed in the public Companies directory. Add Job Posting to enable a page.</p>
-      </div>
-    )
-  }
+  /* The editor is open for EVERY company — no Job Posting product required (BA
+     decision). Products gate what a customer's JOBS can do, not whether HQ may
+     prepare the page: a rep filling the page during the sales conversation is
+     exactly the pitch ("this is how you'll look on Saramin"), and requiring the
+     purchase first makes the page perpetually one step behind the deal. */
 
   /* The five publish blockers, in the order they appear on the page. Everything
      else is optional by design and never appears here. */
@@ -4468,86 +4521,68 @@ function CompanyPageEditor({ c }: { c: Company }) {
     { label: 'Giới thiệu (VI)', ok: has },
   ]
   const missing = gates.filter((g) => !g.ok)
-  /* The optional sections, each counted only if it would actually RENDER on the
-     live page. Story blocks and leaders are empty in every demo record, so a page
-     can never read 100% just for clearing the publish gate — that number is what
-     an account manager quotes to a customer, and it has to be earned. */
-  const optional = [
-    traits.length > 0,        // 3 chips
-    has,                      // 5 video
-    has,                      // 6 photos
-    false,                    // 7 story — no blocks yet
-    bens.length > 0,          // 8 benefits
-    false,                    // 9 leaders — nobody added
-    has,                      // 11 meta
+  /* Every section, with whether it would actually RENDER on the live page. ONE list
+     drives the rail, the per-section pills and the percentage — when these were
+     three separate arrays the meter drifted out of step with the sections it was
+     supposed to be counting. `auto` is section 2, which nobody fills by hand and
+     which therefore must not inflate the score. */
+  const secs = [
+    { n: 1, title: 'Nhận diện', ok: has, req: true },
+    { n: 2, title: 'Thông tin doanh nghiệp', ok: true, auto: true },
+    { n: 3, title: 'Đặc điểm nổi bật', ok: traits.length > 0 },
+    { n: 4, title: 'Về công ty', ok: has, req: true },
+    { n: 5, title: 'Video giới thiệu', ok: has },
+    { n: 6, title: 'Hình ảnh công ty', ok: has },
+    { n: 7, title: 'Phúc lợi & Chế độ', ok: bens.length > 0 },
+    { n: 8, title: 'Văn phòng', ok: true, req: true },
   ]
-  const done = gates.length - missing.length + optional.filter(Boolean).length
+  const optional = secs.filter((s) => !s.req && !s.auto)
+  const done = gates.length - missing.length + optional.filter((s) => s.ok).length
   const pct = Math.round((done / (gates.length + optional.length)) * 100)
 
   return (
-    <div className="space-y-3">
-      {/* publish gate + completeness, before any field */}
-      <div className="rounded-lg border border-line bg-canvas/40 p-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-[12px] font-semibold text-ink">
-            {missing.length === 0 ? 'Đủ điều kiện đăng' : `Còn thiếu ${missing.length} mục bắt buộc`}
-            <span className="ml-1.5 font-normal text-faint">· trang hoàn thiện {pct}%</span>
-          </p>
-          <a href="#" onClick={(e) => e.preventDefault()} className="text-[11.5px] font-medium text-brand hover:underline">↗ Xem thử bản nháp</a>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {gates.map((g) => (
-            <span key={g.label} className={cn('rounded-md border px-2 py-0.5 text-[10.5px]', g.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 font-medium text-amber-800')}>
-              {g.ok ? '✓' : '!'} {g.label}
-            </span>
-          ))}
-        </div>
-        <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-          Chỉ 5 mục trên chặn việc đăng trang. <b className="text-ink/70">Mọi mục còn lại là tuỳ chọn</b> — để trống thì thẻ đó không hiển thị trên trang, chứ không hiện ô rỗng.
-        </p>
-      </div>
+    /* Container query, not a viewport breakpoint: this card sits inside a column
+       whose width has nothing to do with the window's. Keyed on `lg:` the rail
+       split fired on a wide monitor while the editor column was still 370px, which
+       is narrower than the logo previews inside it.
+       The @container marker has to sit on a WRAPPER — an element cannot answer a
+       container query against itself, only its descendants can. */
+    <div className="@container">
+    <div className="grid gap-3 @[820px]:grid-cols-[minmax(0,1fr)_260px] @[820px]:items-start">
+      {/* ═══ LEFT — the sections, in live-page order ═══════════════════════ */}
+      <div className="min-w-0 space-y-2">
 
       {/* ── 1. Identity — the sticky sidebar on the live page ───────────────── */}
       <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, tên, ngành, nút theo dõi" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
-        <div className="space-y-2.5">
-          <LField label="Tên hiển thị" req value={c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '')} hint="Tên thương hiệu ứng viên biết — thường KHÁC tên pháp lý trên hoá đơn." />
-          <LField label="Dòng mô tả ngắn" value={`${c.industry} · Dịch vụ tài chính`} hint="Hiện ngay dưới tên, tối đa 1 dòng." />
+        {/* Tên hiển thị is NOT a page field — it is the company's own display name,
+            edited on Overview. The page reads it, so there is nothing to type here. */}
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <PageField label="Dòng mô tả ngắn" sync ro={ro} value={`${c.industry} · Dịch vụ tài chính`} hint="Ngành + lĩnh vực kinh doanh, lấy từ Overview. Hiện ngay dưới tên, tối đa 1 dòng." />
         </div>
         {/* One asset, two frames, plus the peer row that settles the size — see LogoSizer. */}
         <div>
           <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Logo <span className="text-rose-500">*</span></p>
-          <LogoSizer company={c.name} initialZoom={has ? 100 : 100} />
-        </div>
-        <LField label="Ảnh bìa (cover)" value={has ? 'cover.jpg · 1440×148' : 'Chưa tải lên'} hint="Tuỳ chọn — không có thì trang dùng dải màu mặc định." />
-        {/* the four fields above are exactly what the sidebar renders, so show it */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_200px] sm:items-start">
-          <p className="text-[10.5px] leading-relaxed text-faint">
-            Bốn trường trên dựng nên cột trái cố định của trang — ứng viên nhìn thấy nó ở mọi lần cuộn, nên đây là phần đáng sửa kỹ nhất.
-          </p>
-          <CompanyPagePreview c={c} />
+          <LogoSizer company={c.name} />
         </div>
       </PageSec>
 
-      {/* ── 2. Registry facts — read-only on purpose ────────────────────────── */}
-      <PageSec n={2} title="Thông tin doanh nghiệp" sub="Thẻ facts · lấy từ hồ sơ công ty, không nhập lại" state="Tự động" tone="neutral" open={open === 2} onToggle={() => toggle(2)}>
-        <div className="grid gap-x-4 gap-y-1.5 text-[11.5px] sm:grid-cols-2">
-          {[
-            ['Năm thành lập', '1993'], ['Quy mô', `${c.size} nhân viên`],
-            ['Ngành', c.industry], ['Quốc gia', c.country],
-            ['Mã số thuế', c.tax], ['Tên pháp lý', c.legalName],
-            ['Loại hình', /CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH'],
-            ['Tình trạng', 'Đang hoạt động'],
-            ['Người đại diện', c.contact.replace(/ · .*/, '')], ['Địa chỉ đăng ký', c.address],
-          ].map(([k, v]) => (
-            <div key={k} className="flex gap-2 border-b border-line-soft py-1">
-              <span className="w-32 shrink-0 text-faint">{k}</span>
-              <span className="min-w-0 flex-1 truncate font-medium text-ink/80">{v}</span>
-            </div>
-          ))}
+      {/* ── 2. Registry facts — ONE stored value, editable from either tab ──── */}
+      <PageSec n={2} title="Thông tin doanh nghiệp" sub="Thẻ facts · cùng dữ liệu với hồ sơ công ty" state="Dùng chung" tone="neutral" open={open === 2} onToggle={() => toggle(2)}>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <PageField label="Năm thành lập" sync ro={ro} value="1993" />
+          <PageField label="Quy mô" sync ro={ro} value={c.size} options={CO_SIZES} />
+          <PageField label="Ngành" sync ro={ro} value={c.industry} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
+          <PageField label="Quốc gia" sync ro={ro} value={c.country} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
+          <PageField label="Mã số thuế" sync ro={ro} value={c.tax} />
+          <PageField label="Tên pháp lý" sync ro={ro} value={c.legalName} />
+          <PageField label="Loại hình" sync ro={ro} value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} options={BIZ_TYPES} />
+          <PageField label="Tình trạng (theo MST)" sync ro={ro} value="Đang hoạt động" options={TAX_STATUS} />
+          <PageField label="Người đại diện" sync ro={ro} value={c.contact.replace(/ · .*/, '')} />
+          <PageField label="Địa chỉ đăng ký" sync ro={ro} value={c.address} />
         </div>
-        <p className="text-[10.5px] leading-relaxed text-amber-700">
-          Không sửa được ở đây — <b>sửa ở tab Overview</b> của công ty. Nhập lại trên trang công khai sẽ tạo ra hai bản mã số thuế / tên pháp lý và chúng sẽ lệch nhau.
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Các trường <b className="text-ink/70">{SYNC}</b> nằm ở hồ sơ công ty — <b className="text-ink/70">một giá trị duy nhất</b>, sửa ở đây hay ở tab Overview đều cùng ghi vào đó.
+          Giữ chúng hiện ở đây để thấy ngay thẻ facts còn thiếu gì mà không phải nhảy tab.
         </p>
       </PageSec>
 
@@ -4574,7 +4609,8 @@ function CompanyPageEditor({ c }: { c: Company }) {
       {/* ── 4. About ───────────────────────────────────────────────────────── */}
       <PageSec n={4} title="Về công ty" sub="Đoạn giới thiệu · VI bắt buộc" state={has ? 'Đã có' : 'Bắt buộc — trống'} tone={has ? 'active' : 'pending'} open={open === 4} onToggle={() => toggle(4)}>
         <div className="mb-1 flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-          {(['VI', 'EN', 'KO'] as const).map((l) => (
+          {/* Two languages only — VI required, EN optional. No KO. */}
+          {(['VI', 'EN'] as const).map((l) => (
             <button key={l} onClick={() => setLang(l)} className={cn('px-2.5 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}{l === 'VI' && ' *'}</button>
           ))}
         </div>
@@ -4604,41 +4640,28 @@ function CompanyPageEditor({ c }: { c: Company }) {
 
       {/* ── 6. Photos ──────────────────────────────────────────────────────── */}
       <PageSec n={6} title="Hình ảnh công ty" sub="Bố cục 1 ảnh lớn + 4 ảnh nhỏ · cần ≥3 ảnh" state={has ? '5 ảnh' : 'Trống — ẩn'} tone={has ? 'active' : 'neutral'} open={open === 6} onToggle={() => toggle(6)}>
-        <div className="grid h-40 grid-cols-3 grid-rows-2 gap-1.5">
+        {/* The live mosaic, laid out ready: 1 hero left + 4 tiles right (Figma
+            83:21921). Slots are pre-drawn so the shape is obvious before any photo
+            is uploaded — an empty grid of equal squares does not tell an operator
+            which picture is about to be the big one. */}
+        <div className="grid h-44 grid-cols-4 grid-rows-2 gap-1.5">
           <div className="col-span-2 row-span-2"><AssetSlot label={has ? 'Trụ sở Hà Nội (hero)' : 'Ảnh hero'} filled={has} /></div>
-          <AssetSlot label={has ? 'Không gian làm việc' : 'Ảnh'} filled={has} />
-          <AssetSlot label={has ? 'Sự kiện Gala' : 'Ảnh'} filled={has} />
+          <AssetSlot label={has ? 'Không gian làm việc' : 'Ảnh 2'} filled={has} />
+          <AssetSlot label={has ? 'Sự kiện Gala' : 'Ảnh 3'} filled={has} />
+          <AssetSlot label={has ? 'Team building' : 'Ảnh 4'} filled={has} />
+          <AssetSlot label={has ? 'Hoạt động CSR' : 'Ảnh 5'} filled={has} />
         </div>
         <p className="text-[10.5px] leading-relaxed text-faint">
-          Ảnh đầu tiên là <b className="text-ink/70">hero</b> và chiếm nửa khối — thứ tự ở đây quyết định ảnh nào lên hero. Dưới 3 ảnh thì cả thẻ bị ẩn: một mosaic thủng lỗ trông tệ hơn là không có.
+          Ảnh đầu tiên là <b className="text-ink/70">hero</b> và chiếm nửa khối bên trái — thứ tự ở đây quyết định ảnh nào lên hero. Dưới 3 ảnh thì cả thẻ bị ẩn: một mosaic thủng lỗ trông tệ hơn là không có.
         </p>
       </PageSec>
 
-      {/* ── 7. Story ───────────────────────────────────────────────────────── */}
-      <PageSec n={7} title="Câu chuyện của chúng tôi" sub="Tối đa 4 khối ảnh + chữ, xen kẽ trái/phải" state={has ? '0/4 — ẩn' : 'Trống — ẩn'} tone="neutral" open={open === 7} onToggle={() => toggle(7)}>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-canvas/40 px-3 py-2.5 text-[11.5px] text-faint">
-            <span className="flex-1">Chưa có khối nào — thẻ “Câu chuyện” không hiển thị trên trang.</span>
-            <button disabled={ro} className="shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium text-brand disabled:opacity-40">+ Thêm khối</button>
-          </div>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {['Tầm nhìn & Sứ mệnh', 'Giá trị cốt lõi', 'Chương trình nổi bật'].map((t) => (
-            <div key={t} className="rounded-md border border-line bg-surface p-2">
-              <p className="mb-1 text-[11px] font-semibold text-ink">{t}</p>
-              <textarea readOnly={ro} rows={2} placeholder="Tuỳ chọn…" className="w-full rounded border border-line bg-canvas/30 px-2 py-1 text-[11px] outline-none placeholder:text-faint focus:border-brand" />
-            </div>
-          ))}
-        </div>
-        <p className="text-[10.5px] leading-relaxed text-faint">Ba ô nhỏ này bật/tắt độc lập với các khối ảnh — điền một ô cũng hiển thị được.</p>
-      </PageSec>
-
-      {/* ── 8. Benefits ────────────────────────────────────────────────────── */}
+      {/* ── 7. Benefits ────────────────────────────────────────────────────── */}
       {/* The SAME 12 types the job form uses, not a second 8-group list. The Figma
           draws 8 groups, but the spec already decided one shared taxonomy — that is
           what lets a job's benefits be merged with the company's and de-duplicated.
           Two lists would make "Lương thưởng" and "Lương & thưởng" different rows. */}
-      <PageSec n={8} title="Phúc lợi & Chế độ" sub="Phúc lợi CHUNG của công ty · mọi tin tuyển dụng kế thừa" state={`${bens.length} nhóm`} tone={bens.length ? 'active' : 'neutral'} open={open === 8} onToggle={() => toggle(8)}>
+      <PageSec n={7} title="Phúc lợi & Chế độ" sub="Bộ phúc lợi MẶC ĐỊNH · điền sẵn cho mọi tin tuyển dụng mới" state={`${bens.length} nhóm`} tone={bens.length ? 'active' : 'neutral'} open={open === 7} onToggle={() => toggle(7)}>
         <div className="rounded-md border border-line bg-canvas/30 p-2.5">
           <BenefitsField
             label="Phúc lợi chung của công ty"
@@ -4647,28 +4670,15 @@ function CompanyPageEditor({ c }: { c: Company }) {
           />
         </div>
         <p className="text-[10.5px] leading-relaxed text-faint">
-          Đây là <b className="text-ink/70">nguồn sự thật</b> cho phúc lợi: khai báo một lần ở đây, mọi tin tuyển dụng của công ty tự kế thừa (chỉ đọc), tin chỉ viết thêm phần <i>riêng của vị trí</i>. Sửa ở đây là mọi tin đang chạy cập nhật theo.
+          Đây là <b className="text-ink/70">bộ mặc định</b> cho phúc lợi: tin tuyển dụng mới mở form được <b className="text-ink/70">điền sẵn</b> bộ này (bản sao), rồi người đăng thêm bớt tuỳ ý cho vị trí. Sửa ở đây <b className="text-ink/70">không</b> tự đổi tin đã đăng — tin cũ lấy bản mới bằng nút “↺ Về mặc định công ty” trên form; tin mới luôn lấy bản mới nhất.
         </p>
         <p className="text-[10.5px] leading-relaxed text-faint">
           Không giới hạn 6 như ở tin tuyển dụng — trang công ty được đọc một lần chứ không bị so sánh cạnh các tin khác, nên liệt kê đủ là có lợi.
         </p>
       </PageSec>
 
-      {/* ── 9. Leaders ─────────────────────────────────────────────────────── */}
-      <PageSec n={9} title="Đội ngũ lãnh đạo" sub="Tối đa 6 người · ảnh + tên + chức danh" state={has ? '0/6 — ẩn' : 'Trống — ẩn'} tone="neutral" open={open === 9} onToggle={() => toggle(9)}>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="rounded-md border border-dashed border-line bg-canvas/40 p-2 text-center">
-              <div className="mx-auto h-10 w-10 rounded-full border border-line bg-surface" />
-              <p className="mt-1.5 text-[10.5px] text-faint">+ Thêm người</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-[10.5px] leading-relaxed text-faint">Ảnh chân dung là bắt buộc cho mỗi người — một hàng avatar khuyết trông như trang lỗi.</p>
-      </PageSec>
-
-      {/* ── 10. Offices — the same book the job form picks from ─────────────── */}
-      <PageSec n={10} title="Văn phòng" sub="Danh sách + bản đồ · dùng chung sổ địa điểm với tin tuyển dụng" state="3 địa điểm" tone="active" open={open === 10} onToggle={() => toggle(10)}>
+      {/* ── 8. Offices — the same book the job form picks from ──────────────── */}
+      <PageSec n={8} title="Văn phòng" sub="Danh sách + bản đồ · dùng chung sổ địa điểm với tin tuyển dụng" state="3 địa điểm" tone="active" open={open === 8} onToggle={() => toggle(8)}>
         <div className="rounded-md border border-line bg-canvas/30 p-2.5">
           <WorkingLocationsField max={8} initial={['hq', 'hn', 'bd']} />
         </div>
@@ -4677,35 +4687,89 @@ function CompanyPageEditor({ c }: { c: Company }) {
         </p>
       </PageSec>
 
-      {/* ── 11. Meta ───────────────────────────────────────────────────────── */}
-      <PageSec n={11} title="Thông tin thêm" sub="Lĩnh vực kinh doanh · thương hiệu · website · mạng xã hội" state={has ? 'Đã có' : 'Trống — ẩn'} tone={has ? 'active' : 'neutral'} open={open === 11} onToggle={() => toggle(11)}>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          <LField label="Lĩnh vực kinh doanh" value={has ? `Dịch vụ ${c.industry.toLowerCase()}` : ''} />
-          <LField label="Thương hiệu" value={has ? c.shortName || c.name : ''} hint="Ngăn cách bằng dấu ·" />
-          <LField label="Website" value={c.domain} />
-          <LField label="Mạng xã hội" value={has ? 'Facebook · LinkedIn' : ''} hint="Chỉ nhận link — hiển thị thành icon." />
-        </div>
-        <LField label="Số nhân viên hiển thị / lịch sử nhân sự" value={has ? `${c.size} · 2 năm dữ liệu` : ''} hint="Biểu đồ nhân sự cần tối thiểu 3 năm, dưới mức đó thì ẩn." />
-      </PageSec>
-
-      {/* actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        {ro ? (
-          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">{RO_HINT}</span>
-        ) : has ? (
-          <>
-            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu thay đổi</button>
-            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">↗ Xem trang thật</button>
-            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-rose-300 hover:text-rose-600">Gỡ khỏi công khai</button>
-          </>
-        ) : (
-          <>
-            <button disabled={missing.length > 0} className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', missing.length ? 'cursor-not-allowed bg-brand/40' : 'bg-brand hover:opacity-90')}>Đăng trang</button>
-            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Lưu nháp</button>
-          </>
-        )}
       </div>
-      {!has && <p className="text-[11px] text-amber-700">Nháp — chưa công khai. Công ty <b>không đăng được tin tuyển dụng</b> cho tới khi trang này được đăng.</p>}
+
+      {/* ═══ RIGHT — progress rail ════════════════════════════════════════════
+          Sticky, because the thing it answers ("what is still missing, can I
+          publish yet") is asked while scrolling through eleven sections, not
+          before starting. The publish actions live here too: the gate and the
+          button it gates belong in the same place, or the button is 2000px away
+          from the reason it is disabled. */}
+      <aside className="space-y-2 @[820px]:sticky @[820px]:top-2">
+        <div className="rounded-lg border border-line bg-surface p-3">
+          <p className={cn('text-[12px] font-semibold', missing.length ? 'text-amber-800' : 'text-emerald-700')}>
+            {missing.length === 0 ? 'Đủ điều kiện đăng' : `Còn thiếu ${missing.length} mục bắt buộc`}
+          </p>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-[19px] font-bold tabular-nums leading-none text-ink">{pct}%</span>
+            <span className="text-[10.5px] text-faint">hoàn thiện</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line"><div className={cn('h-full rounded-full', missing.length ? 'bg-amber-500' : 'bg-brand')} style={{ width: `${pct}%` }} /></div>
+
+          <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-faint">Bắt buộc để đăng</p>
+          <div className="space-y-0.5">
+            {gates.map((g) => (
+              <div key={g.label} className={cn('flex items-center gap-1.5 text-[11px]', g.ok ? 'text-muted' : 'font-medium text-amber-800')}>
+                <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full text-[8px] font-bold text-white', g.ok ? 'bg-emerald-500' : 'bg-amber-500')}>{g.ok ? '✓' : '!'}</span>
+                <span className="min-w-0 truncate">{g.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-faint">
+            Các phần của trang <span className="font-normal normal-case tracking-normal">· bấm để mở</span>
+          </p>
+          <div className="space-y-0.5">
+            {secs.map((s) => (
+              <button
+                key={s.n}
+                onClick={() => setOpen(s.n)}
+                className={cn('flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left text-[11px] hover:bg-canvas', open === s.n && 'bg-brand-soft/60')}
+              >
+                <span className={cn(
+                  'grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border text-[8px] font-bold',
+                  s.auto ? 'border-line text-faint' : s.ok ? 'border-transparent bg-emerald-500 text-white' : 'border-dashed border-line text-transparent',
+                )}>{s.auto ? '·' : '✓'}</span>
+                <span className={cn('min-w-0 flex-1 truncate', open === s.n ? 'font-semibold text-brand' : s.ok ? 'text-ink/80' : 'text-faint')}>{s.title}</span>
+                {s.req && <span className="shrink-0 text-[9px] text-rose-500">*</span>}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-faint">
+            Phần chưa điền thì <b className="text-ink/70">không hiện</b> trên trang, chứ không hiện ô rỗng.
+          </p>
+        </div>
+
+        {/* actions, next to the gate that governs them */}
+        <div className="space-y-1.5 rounded-lg border border-line bg-surface p-3">
+          <a href="#" onClick={(e) => e.preventDefault()} className="block text-[11.5px] font-medium text-brand hover:underline">↗ Xem thử bản nháp</a>
+          {ro ? (
+            <p className="rounded-md border border-dashed border-line bg-canvas/50 px-2 py-1.5 text-[10.5px] leading-relaxed text-muted">{RO_HINT}</p>
+          ) : has ? (
+            <>
+              <button className="w-full rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu thay đổi</button>
+              <button className="w-full rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">↗ Xem trang thật</button>
+              <button className="w-full rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-rose-300 hover:text-rose-600">Gỡ khỏi công khai</button>
+            </>
+          ) : (
+            <>
+              <button
+                disabled={missing.length > 0}
+                title={missing.length ? `Còn thiếu: ${missing.map((m) => m.label).join(', ')}` : undefined}
+                className={cn('w-full rounded-lg px-3 py-2 text-[12.5px] font-semibold text-white', missing.length ? 'cursor-not-allowed bg-brand/40' : 'bg-brand hover:opacity-90')}
+              >Đăng trang</button>
+              <button className="w-full rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Lưu nháp</button>
+              <p className="text-[10px] leading-relaxed text-amber-700">
+                Nháp — chưa công khai.
+                {c.jobPosting
+                  ? <> Công ty <b>không đăng được tin tuyển dụng</b> cho tới khi trang này được đăng.</>
+                  : <> Chưa có sản phẩm Job Posting — trang là tuỳ chọn, nhưng chuẩn bị sẵn ở đây thì lúc chốt đơn chỉ việc bấm Đăng.</>}
+              </p>
+            </>
+          )}
+        </div>
+      </aside>
+    </div>
     </div>
   )
 }
@@ -5531,21 +5595,33 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               {editInfo ? (
                 <>
                   <EField label="Legal name" value={c.legalName} onChange={() => {}} />
-                  <EField label="Short name" value={c.shortName} onChange={() => {}} hint="Empty falls back to the legal name." />
+                  <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
                   <EField label="Tax code (MST)" value={c.tax} onChange={() => {}} />
                   <SelectRow label="Công ty mẹ" value={c.parent ?? ''} onChange={() => {}} options={COMPANIES.filter((x) => x.name !== c.name).map((x) => x.name)} placeholder="— không thuộc tập đoàn nào —" hint="Full legal names, because two companies can share a short name. Pick the DIRECT parent. Leave empty for a standalone company or a group root." />
                   <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
-                  <SelectRow label="Company size" value={c.size} onChange={() => {}} options={['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']} />
+                  <SelectRow label="Company size" value={c.size} onChange={() => {}} options={CO_SIZES} />
+                  {/* Added for the public company page's facts card — the page must not
+                      hold its own copy of any of these. Loại hình and Tình trạng are
+                      enums, not free text: both are printed on the public page and both
+                      are things a jobseeker may act on. */}
+                  <SelectRow label="Loại hình doanh nghiệp" value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} onChange={() => {}} options={BIZ_TYPES} />
+                  <SelectRow label="Tình trạng (theo MST)" value="Đang hoạt động" onChange={() => {}} options={TAX_STATUS} hint="Theo đăng ký thuế. Chỉ “Đang hoạt động” mới nên xuất hoá đơn và cho đăng tin — xem spec." />
+                  <EField label="Năm thành lập" value="1993" onChange={() => {}} hint="Một con số, không phải “từ 1993”. Trang công ty tự tính số năm hoạt động." />
+                  <EField label="Người đại diện" value={c.contact.replace(/ · .*/, '')} onChange={() => {}} hint="Người đại diện pháp luật trên ĐKKD — khác người liên hệ ở tab Contacts." />
                 </>
               ) : (
                 <>
                   <KV label="Legal name" value={c.legalName} />
-                  <KV label="Short name" value={c.shortName?.trim() || '— (falls back to the legal name)'} />
+                  <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
                   <KV label="Tax code (MST)" value={c.tax} />
                   <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
                   {/* Split: industry and size are two different facts, filtered separately. */}
                   <KV label="Industry" value={c.industry} />
                   <KV label="Company size" value={`${c.size} staff`} />
+                  <KV label="Loại hình doanh nghiệp" value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} />
+                  <KV label="Tình trạng (theo MST)" value="Đang hoạt động" />
+                  <KV label="Năm thành lập" value="1993" />
+                  <KV label="Người đại diện" value={c.contact.replace(/ · .*/, '')} />
                 </>
               )}
               {/* Editorial labels sit with the other classification fields rather than in
@@ -5753,7 +5829,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
       {tab === 'Company page' && (
         <DetailCard
           title="Company detail page (jobseeker)"
-          action={c.jobPosting ? <Pill tone={c.hasPage ? 'active' : 'pending'}>{c.hasPage ? 'Published' : 'Draft'}</Pill> : undefined}
+          action={<Pill tone={c.hasPage ? 'active' : 'pending'}>{c.hasPage ? 'Published' : 'Draft'}</Pill>}
         >
           <CompanyPageEditor c={c} />
         </DetailCard>
@@ -13273,32 +13349,24 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
           <p className="text-[12px] leading-relaxed text-muted">Lead the development team; backend architecture (70%) + frontend (30%); code review &amp; mentoring…</p>
           <Section title="Requirements" className="mt-2" />
           <p className="text-[12px] leading-relaxed text-muted">7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…</p>
-          {/* Two blocks, one source each: what this POSITION adds, then what it
-              INHERITS from the company page. They never contradict because they no
-              longer describe the same thing. */}
-          <Section title="Phúc lợi riêng của vị trí này" className="mt-2" />
+          {/* ONE list — the job's own. It STARTED as a copy of the company set and
+              was then curated for the position; the company page stays one click
+              away for the full default set. */}
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+            <Section title="Phúc lợi" className="mt-0" />
+            <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Xem full phúc lợi công ty ↗</a>
+          </div>
           <BenefitCards items={[
             { key: 'pay', text: 'Thưởng dự án theo milestone, xét tăng lương 2 lần/năm' },
+            { key: 'health', text: 'BHXH đầy đủ + khám sức khoẻ định kỳ hằng năm' },
             { key: 'flexible', text: 'Hybrid 2 ngày/tuần, giờ vào ca linh hoạt 8–10h' },
+            { key: 'training', text: 'Tài khoản Udemy + ngân sách đào tạo, lộ trình thăng tiến rõ' },
+            { key: 'leave', text: '19+ ngày phép/năm' },
           ]} />
-          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
-            <Section title="Phúc lợi chung của công ty" className="mt-0" />
-            <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Xem trang công ty ↗</a>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {COMPANY_BENEFITS.map((k) => {
-              const t = benefitByKey(k)
-              if (!t) return null
-              return (
-                <span key={k} className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas/50 px-2 py-1 text-[11px] text-ink/70">
-                  <t.Icon className="h-3 w-3 shrink-0 text-muted" />{t.vi}
-                </span>
-              )
-            })}
-          </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-            Kế thừa tự động từ trang công ty (chỉ đọc) — sửa ở đó thì mọi tin đang mở cập nhật theo. Tin tuyển dụng <b className="text-ink/70">không ghi đè</b> phúc lợi công ty.
-            Nhãn loại phúc lợi song ngữ lấy từ Master data; phần mô tả tiếng Việt bắt buộc, EN/KO tuỳ chọn.
+            Danh sách của riêng tin này — được <b className="text-ink/70">điền sẵn từ bộ phúc lợi công ty</b> lúc tạo, rồi chỉnh cho vị trí
+            (Edit có nút “↺ Về mặc định công ty”). Sửa trang công ty không tự đổi tin đã đăng.
+            Nhãn loại phúc lợi song ngữ lấy từ Master data; mô tả tiếng Việt bắt buộc, EN/KO tuỳ chọn.
           </p>
         </DetailCard>
 
@@ -13626,11 +13694,10 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
             en="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" />
           {/* Benefits is NOT free text any more: a typed list is what gives each
               one an icon, a translation, and a search filter. See BenefitsField.
-              The job declares only what is SPECIFIC to the position; the company's
-              general benefits are inherited from the company page, shown here so
-              nobody retypes them. */}
+              No `initial` on a NEW job: the field prefills from the company set
+              (copy-on-create) and the editor curates freely — with "↺ Về mặc định
+              công ty" and the read-only preview as the way back. */}
           <BenefitsField
-            initial={['pay', 'flexible']}
             companyBenefits={COMPANY_BENEFITS}
             companyName="NEC Vietnam"
           />

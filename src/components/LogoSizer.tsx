@@ -102,10 +102,8 @@ function LogoInFrame({
 export function LogoSizer({ company, initialZoom = 100 }: { company: string; initialZoom?: number }) {
   const [zoom, setZoom] = useState(initialZoom)
   const [uploaded, setUploaded] = useState(true)
-  /* Aspect ratio of the uploaded artwork. Real code reads this off the file; here it
-     is a control so the trade-off between a wide wordmark and a square badge is
-     something a reviewer can actually see rather than take on trust. */
-  const [ratio, setRatio] = useState(3.2)
+  /* Aspect ratio of the uploaded artwork — real code reads this off the file. */
+  const ratio = 3.2
   const short = company.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '')
 
   if (!uploaded) {
@@ -133,31 +131,24 @@ export function LogoSizer({ company, initialZoom = 100 }: { company: string; ini
             </p>
           </div>
         ))}
-        <div className="min-w-[180px] flex-1 space-y-2">
-          <div>
-            <div className="flex items-baseline justify-between">
-              <label className="text-[11px] font-medium text-ink/80">Cỡ hiển thị</label>
-              <span className="font-mono text-[11px] tabular-nums text-brand">{zoom}%</span>
-            </div>
-            <input
-              type="range" min={ZOOM_MIN} max={ZOOM_MAX} value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="mt-1 w-full accent-[var(--brand,#2D65F2)]"
-            />
-            <div className="flex justify-between text-[9.5px] text-faint"><span>{ZOOM_MIN}%</span><span>100% = vừa khung</span><span>{ZOOM_MAX}%</span></div>
-            <p className="mt-0.5 text-[9.5px] leading-tight text-faint">Trên 100% là lấn vào phần lề. Logo <b className="text-ink/70">không bao giờ bị cắt</b> — chạm mép khung là dừng.</p>
+        {/* Compact size control — a labelled slider and nothing else. */}
+        <div className="w-[150px] shrink-0">
+          <div className="flex items-baseline justify-between">
+            <label className="text-[10.5px] font-medium text-ink/80">Cỡ hiển thị</label>
+            <span className="font-mono text-[10.5px] tabular-nums text-brand">{zoom}%</span>
           </div>
-          <button onClick={() => setZoom(100)} className="rounded-md border border-line bg-surface px-2 py-1 text-[10.5px] font-medium text-muted hover:border-brand hover:text-brand">Đặt lại 100%</button>
-          <div>
-            <label className="text-[10.5px] text-faint">Thử với logo dạng…</label>
-            <div className="mt-0.5 flex gap-1">
-              {[{ r: 5.4, t: 'Rất ngang' }, { r: 3.2, t: 'Ngang' }, { r: 1.6, t: 'Vuông' }].map((o) => (
-                <button
-                  key={o.t} onClick={() => setRatio(o.r)}
-                  className={cn('rounded border px-1.5 py-0.5 text-[10px]', ratio === o.r ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line text-muted')}
-                >{o.t}</button>
-              ))}
-            </div>
+          <input
+            type="range" min={ZOOM_MIN} max={ZOOM_MAX} value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="mt-0.5 w-full accent-[var(--brand,#2D65F2)]"
+          />
+          <button onClick={() => setZoom(100)} className="text-[10px] text-faint hover:text-brand">Đặt lại 100%</button>
+
+          {/* File actions belong beside the logo they act on, not under the peer row. */}
+          <div className="mt-2 flex flex-col items-start gap-1">
+            <button className="rounded-md border border-line bg-surface px-2 py-1 text-[10.5px] font-medium text-brand hover:border-brand">Thay logo khác</button>
+            <button onClick={() => setUploaded(false)} className="rounded-md border border-line bg-surface px-2 py-1 text-[10.5px] font-medium text-muted hover:border-rose-300 hover:text-rose-600">Gỡ logo</button>
+            <span className="text-[9.5px] leading-tight text-faint">logo.png · 1024×320 · 84KB</span>
           </div>
         </div>
       </div>
@@ -187,21 +178,6 @@ export function LogoSizer({ company, initialZoom = 100 }: { company: string; ini
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button className="rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-brand hover:border-brand">Thay logo khác</button>
-        <button onClick={() => setUploaded(false)} className="rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-rose-300 hover:text-rose-600">Gỡ logo</button>
-        <span className="text-[10.5px] text-faint">logo.png · 1024×320 · 84KB</span>
-      </div>
-
-      <p className="text-[10.5px] leading-relaxed text-faint">
-        Yêu cầu file: {LOGO_UPLOAD.formats} · cạnh dài tối thiểu <b className="text-ink/70">{LOGO_UPLOAD.min}px</b>, nên ≥ {LOGO_UPLOAD.recommended}px · tối đa {LOGO_UPLOAD.maxMB}MB.
-        Khung dài nhất là {LOGO_FRAMES.detail.w - LOGO_FRAMES.detail.pad * 2}px, màn hình 2× cần {(LOGO_FRAMES.detail.w - LOGO_FRAMES.detail.pad * 2) * 2}px — dưới mức đó logo sẽ rỗ.
-      </p>
-
-      <p className="text-[10.5px] leading-relaxed text-faint">
-        Chỉ lưu <b className="text-ink/70">một file gốc</b> — hệ thống tự thu vào từng khung ({LOGO_FRAMES.detail.w}×{LOGO_FRAMES.detail.h} ở trang công ty, {LOGO_FRAMES.card.w}×{LOGO_FRAMES.card.h} ở thẻ việc làm), không cắt và không kéo méo.
-        Thanh <b className="text-ink/70">Cỡ hiển thị</b> chỉ chỉnh mức phóng trong khung, vì logo chữ dài (Samsung) khi vừa khung sẽ trông nhỏ hơn hẳn logo vuông — nhìn một mình không thấy, xếp cạnh nhau mới thấy.
-      </p>
     </div>
   )
 }

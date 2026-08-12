@@ -23,7 +23,7 @@ export const companyUser: BuildModule = {
           ['Account (products + billing)', 'Company record', 'From activation'],
           ['Users & roles', 'Company record', 'From activation (first user created with it)'],
           ['Products / quota', 'Company record', 'Provisioned from the paid order'],
-          ['Public company page', 'Company record → Jobseeker site', 'Only for Job Posting customers'],
+          ['Public company page', 'Company record → Jobseeker site', 'Editable for EVERY company; a Published page is only REQUIRED for Job Posting customers (their jobs link to it)'],
         ],
       },
       warn: 'Companies are NEVER created here. A company is born as a lead in the CRM; activation only adds the account to that existing record.',
@@ -149,23 +149,22 @@ export const companyUser: BuildModule = {
       table: {
         cols: ['#', 'Section (as it appears live)', 'Required?'],
         rows: [
-          ['1', 'Nhận diện — logo, tên hiển thị, dòng mô tả, ảnh bìa (the sticky sidebar)', 'Logo + tên + ngành gate publishing'],
-          ['2', 'Thông tin doanh nghiệp — MST, tên pháp lý, loại hình, người đại diện, địa chỉ ĐK', 'READ-ONLY — comes from the company record'],
+          ['1', 'Nhận diện — logo, tên hiển thị, dòng mô tả (the sticky sidebar)', 'Logo + tên + ngành gate publishing'],
+          ['2', 'Thông tin doanh nghiệp — MST, tên pháp lý, loại hình, tình trạng, người đại diện, địa chỉ ĐK', 'Shared with the company record — editable here, one stored value'],
           ['3', 'Đặc điểm nổi bật — trait chips, max 6, fixed list', 'No — hidden when empty'],
-          ['4', 'Về công ty — introduction, VI / EN / KO tabs', 'VI required'],
+          ['4', 'Về công ty — introduction, VI / EN tabs only', 'VI required'],
           ['5', 'Video giới thiệu — max 3, YouTube / Vimeo links only', 'No'],
-          ['6', 'Hình ảnh công ty — 1 hero + 4 tiles, needs ≥3 photos', 'No'],
-          ['7', 'Câu chuyện — max 4 blocks + Tầm nhìn / Giá trị / Chương trình', 'No'],
-          ['8', 'Phúc lợi & Chế độ — the shared 12 types, general company welfare', 'No'],
-          ['9', 'Đội ngũ lãnh đạo — max 6 people, portrait required per person', 'No'],
-          ['10', 'Văn phòng — office list + map, THE SAME office book the job form picks from', '≥1 office gates publishing'],
-          ['11', 'Thông tin thêm — lĩnh vực, thương hiệu, website, mạng xã hội, lịch sử nhân sự', 'No'],
+          ['6', 'Hình ảnh công ty — 1 hero left + 4 tiles right, needs ≥3 photos', 'No'],
+          ['7', 'Phúc lợi & Chế độ — the shared 12 types, general company welfare', 'No'],
+          ['8', 'Văn phòng — office list + map, THE SAME office book the job form picks from', '≥1 office gates publishing'],
         ],
       },
       items: [
         'FIVE THINGS GATE PUBLISHING and no more: logo, display name, industry, at least one office, and the Vietnamese introduction. They are listed as pass/fail chips above the form, so "why can I not publish" is answered before it is asked. Every other section is optional BY DESIGN.',
         'AN EMPTY OPTIONAL SECTION HIDES ITS CARD on the live page — it never renders as a blank panel. Each section in the editor says so on its own status pill ("Trống — ẩn"), because an operator who does not know this fills sections defensively with filler.',
-        'THE REGISTRY FACTS ARE NOT RE-TYPED HERE. Mã số thuế, tên pháp lý, loại hình, người đại diện and địa chỉ đăng ký are shown read-only with a pointer to the Overview tab. Typing them twice gives one company two tax codes that drift apart, and the public one is the one a candidate would quote back.',
+        'EIGHT SECTIONS, NOT ELEVEN. Câu chuyện, Đội ngũ lãnh đạo and Thông tin thêm are dropped — all three are marked hidden in the Figma, so they are not part of the page being built. Anything they carried that is genuinely needed (website, business lines) lives on the company record already.',
+        'THE REGISTRY FACTS ARE ONE STORED VALUE, EDITED FROM EITHER TAB. Mã số thuế, tên pháp lý, quy mô, ngành, loại hình, tình trạng, người đại diện and địa chỉ đăng ký live on the COMPANY RECORD; the page never keeps a copy. But they stay visible AND editable on this tab, marked “↔ Overview”, and an edit here writes to the company record. What is forbidden is a second FIELD, not a second editing surface — the operator is on this tab precisely because the facts card is missing something, and sending them to another tab to fix it is how a page stays half-filled.',
+        'THE PANEL IS A RIGHT-HAND RAIL, STICKY. It carries the percentage, the five publish gates, a clickable list of all eight sections with filled/empty state, and the publish actions themselves. The actions belong beside the gate that governs them — otherwise the disabled Publish button sits a full page-scroll away from the reason it is disabled.',
         'THE OFFICE LIST IS THE OFFICE BOOK — the same CompanyLocation rows the job form picks from, not a second address list. Editing an address here updates every live job of that company. See Job management → “A working location is a named office”.',
         'COMPLETENESS IS SHOWN AS A PERCENTAGE, and it counts optional sections that would actually RENDER — not just the publish gate. A page that merely clears the gate must not read 100%: that number is what an account manager quotes to a customer.',
         'READ-ONLY ON A COLLEAGUE’S COMPANY withdraws every action on this tab too — no Save, no Publish, no Unpublish, and every picker disabled. Same rule as the rest of the record.',
@@ -174,22 +173,23 @@ export const companyUser: BuildModule = {
       warn: 'Trait chips and benefit types are FIXED LISTS, never free text. The entire value of both is that they read identically across 500 companies and can therefore be filtered and compared; one free-text field destroys that on the first company that uses it.',
     },
     {
-      label: 'BENEFITS — the company page is the source of truth, a job INHERITS',
-      text: 'General welfare is declared ONCE on the company page and inherited read-only by every job of that company. A job writes only what is specific to the position. The two never contradict because they no longer describe the same thing — and one edit on the company page updates every open posting.',
+      label: 'BENEFITS — the company page is the DEFAULT SET a job starts from',
+      text: 'General welfare is declared ONCE on the company page. A new job posting starts PREFILLED with that set (a copy, not a live link), and the editor — HQ or the employer — then edits it freely for that job: add, remove, reword, reorder. Two safety valves keep the company set reachable: a RESET action that returns the job’s benefits to the company default, and a read-only PREVIEW of the full company set next to the picker.',
       table: {
         cols: ['', 'Company page', 'Job posting'],
         rows: [
-          ['Declares', 'The company’s GENERAL welfare — insurance, leave, shuttle bus, canteen, training…', 'Only what is DIFFERENT for this position — project bonus, night-shift allowance, dedicated laptop…'],
-          ['Taxonomy', 'The shared 12 benefit types (Master data → Benefits)', 'The same 12 types — one list, so the two can be merged and de-duplicated'],
-          ['On the job page', 'Rendered as “Phúc lợi chung của công ty”, read-only, with a link to the company page', 'Rendered above it as “Phúc lợi riêng của vị trí này”'],
-          ['Who edits', 'The company page editor (HQ or the employer)', 'The job form'],
+          ['Declares', 'The company’s GENERAL welfare — insurance, leave, shuttle bus, canteen, training… The DEFAULT every job starts from.', 'The benefits shown on THIS posting — starts as a copy of the company set, then edited per job (position extras added, irrelevant entries removed).'],
+          ['Taxonomy', 'The shared 12 benefit types (Master data → Benefits)', 'The same 12 types — one list, one visual language, so a reset is always possible'],
+          ['Editable?', 'By the company page editor (HQ or the employer)', 'Freely, by whoever edits the job — plus “↺ Reset to company default” and “View full company benefits” beside the picker'],
+          ['When the company set changes', 'Edited in one place', 'Does NOT rewrite existing jobs — they keep the copy they were posted with. New jobs prefill from the new set; an old job takes the new set by pressing Reset.'],
         ],
       },
       items: [
-        'The job form SHOWS what it is about to inherit, read-only, next to the picker. An employer who cannot see the company benefits simply retypes them — which is precisely how the two surfaces drift apart.',
+        'COPY, NOT LIVE LINK — deliberately. The job editor may have removed “Đưa đón & chỗ ở” from a remote role on purpose; a company-page edit silently re-adding it would undo per-job curation. The cost is accepted drift between page and posting; the RESET button is the one-click way back.',
+        'The job form shows the full company set read-only (preview) next to the picker, so the editor always sees what the default is before and after diverging from it.',
         'Descriptions are i18n { vi, en } on BOTH surfaces. VI required, EN optional and falling back to VI — otherwise a foreign candidate reads the company page in Vietnamese and the job in English.',
       ],
-      warn: 'A job may NOT override a company benefit. Overriding re-opens exactly the contradiction this closes — “15 ngày phép” on the company page and “12 ngày phép” on the job, with no rule saying which is right. Anything genuinely different for the position is written in the position block, which a reader understands as an addition.',
+      warn: 'Reset REPLACES the job’s current benefit list with the company set — it does not merge. The form confirms before discarding per-job edits. And the job cap (max 6) still applies: if the company set is larger than the cap, Reset takes the first 6 in the company’s display order and says so.',
     },
   ],
   features: [
@@ -476,7 +476,7 @@ export const companyUser: BuildModule = {
       mockup: 'crm-company-page',
       detail: {
         description:
-          'The public company page on the jobseeker site: who the employer is, what it is like to work there, and every job it currently has open. It is the only place in this module where a company becomes visible to the outside world, which makes publishing it a deliberate, gated step rather than a side effect of activation. It is required for Job Posting customers (a job posting links to it) and unnecessary for a customer who only buys Resume Search.',
+          'The public company page on the jobseeker site: who the employer is, what it is like to work there, and every job it currently has open. It is the only place in this module where a company becomes visible to the outside world, which makes publishing it a deliberate, gated step rather than a side effect of activation. The EDITOR is open for every company — no product required: a rep fills the page during the sales conversation (“this is how you’ll look on Saramin”), and gating it on the purchase keeps the page one step behind the deal. What the products decide is only what is REQUIRED: a Job Posting customer must have a Published page before any job goes live; for everyone else the page is optional.',
         userStory:
           'As a jobseeker, I want to see who an employer is and what else they are hiring for, so that I can decide whether to apply.',
         uiFields: [
@@ -560,7 +560,7 @@ export const companyUser: BuildModule = {
               'Published — publicly visible and indexable. Requires logo, display name, industry, at least one location and a VI introduction; publishing is refused while any of those are missing.',
               'Unpublished — deliberately taken down (a customer request, a dispute, or a moderation decision). The URL stops resolving publicly and any linked jobs lose their company page link.',
               'Status is owned jointly: the company can publish and edit its own page, and HQ can unpublish for moderation. HQ unpublishing requires a reason and is audited.',
-              'The page is REQUIRED for a Job Posting customer — a job cannot be published while its company page is not Published, because the job links to it. A Resume-Search-only customer never needs one.',
+              'The page is REQUIRED for a Job Posting customer — a job cannot be published while its company page is not Published, because the job links to it. Any other company (Resume-Search-only, or not yet a customer) MAY have one, and HQ can prepare and even publish it ahead of the sale; nothing else depends on it.',
             ],
           },
           {
@@ -610,7 +610,7 @@ export const companyUser: BuildModule = {
           'Unpublished (by HQ moderation, reason logged)',
           'Editing (unsaved changes)',
           'Image upload error',
-          'Not applicable (Resume-Search-only customer)',
+          'Prepared but unpublished (no Job Posting product — page is optional, editor still open)',
         ],
         backend: {
           dataModel: [

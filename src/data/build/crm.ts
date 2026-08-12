@@ -320,6 +320,28 @@ export const crm: BuildModule = {
           ],
         },
         {
+          label: 'TÌNH TRẠNG THEO MST — five statuses, not the tax authority’s eight',
+          text: 'The company record carries the enterprise’s registration status, because it decides whether we may invoice and whether the public page and jobs stay live. The tax authority publishes EIGHT codes (00–07); we store FIVE. The cut is deliberate: the three dropped codes are either internal registration bookkeeping or duplicates of a state we already have, and every value an operator sees has to be one they can act on.',
+          table: {
+            cols: ['Status we store', 'Tax-authority codes folded in', 'What HQ may do'],
+            rows: [
+              ['Đang hoạt động', '00, 04 — “đang hoạt động” and “đã được cấp GCN ĐKT”', 'Everything: quote, invoice, publish the page, post jobs'],
+              ['Tạm ngừng kinh doanh có thời hạn', '05', 'Keep the page live; do NOT start a new contract until it resumes — the suspension has an end date, so this is a pause, not a loss'],
+              ['Không hoạt động tại địa chỉ đã đăng ký', '06', 'Stop invoicing and flag to the rep. This is the single strongest predictor of a bad debt in the VN market'],
+              ['Đang làm thủ tục giải thể / chờ đóng MST', '03, 07', 'No new PO and no renewal; collect what is outstanding'],
+              ['Đã chấm dứt hiệu lực MST', '01', 'Unpublish the page and close the jobs — the legal entity no longer exists'],
+            ],
+          },
+          items: [
+            'WHY NOT ALL EIGHT — code 02 (“đã chuyển cơ quan thuế quản lý”) is not a state of the business at all, it is which tax office holds the file, and it changes nothing we do. Codes 00 and 04 differ only by which registration certificate was issued; no salesperson should have to know that, and a dropdown that forces the choice will be filled at random.',
+            'MAP, DO NOT DISCARD. If the value is ever imported from a business-information API, store the raw 00–07 code alongside the mapped enum. Re-deriving it later from the label is lossy, and the mapping is our editorial decision, not theirs.',
+            'ONLY “Đang hoạt động” SHOULD BE INVOICEABLE. This is the point of holding the field: an invoice raised against a company whose MST is closed cannot be legally issued, and finding that out at invoicing time is finding out too late.',
+            'IT IS A MANUAL FIELD IN PHASE-1 — a dropdown on the Basic info card, updated by the rep. Automating it against the tax-authority lookup is worth doing later; nothing here depends on the automation existing first.',
+            'IT IS NOT the sales pipeline status and NOT the account status (New / Existing / Churn). Those describe our relationship; this describes the company’s legal existence. A perfectly healthy customer can go “tạm ngừng” for a quarter, and a churned customer is usually still trading.',
+          ],
+          warn: 'Do not derive this from anything. It cannot be inferred from the pipeline, from payment history, or from whether the company still logs in — an entity can be dissolved while its users are still posting jobs, which is exactly the case the field exists to catch.',
+        },
+        {
           label: 'Company detail — Basic info card: what belongs here, and how it is edited',
           text: 'One card holds the company identity. Everything about people lives on the Contacts tab and everything about what they bought lives on Products & billing — so no contact name, email or phone appears on this card. A “primary contact” copy here would be a second place to update and would drift from the Contacts tab within a week.',
           table: {
@@ -327,11 +349,15 @@ export const crm: BuildModule = {
             rows: [
               ['Company ID', 'never', '—', 'System-assigned at creation, permanent.'],
               ['Legal name', 'Yes', 'Text', 'Required. As written on the MST registration.'],
-              ['Short name', 'Yes', 'Text', 'Optional. Empty falls back to the legal name everywhere.'],
+              ['Tên hiển thị', 'Yes', 'Text', 'Optional. The brand name candidates know — shown on the public company page and every job card. Empty falls back to the legal name everywhere. (Renamed from “Short name” — same stored field.)'],
               ['Tax code (MST)', 'Yes', 'Text', 'Duplicate check on save — see the MST edge case.'],
               ['Công ty mẹ', 'Yes', 'Select — company', 'The direct parent only. Empty = standalone or group root.'],
               ['Industry', 'Yes', 'Select — Master data', 'Its own field, not joined to size.'],
               ['Company size', 'Yes', 'Select — band', 'Its own field: the two are filtered separately.'],
+              ['Loại hình doanh nghiệp', 'Yes', 'Select — 8 values', 'TNHH MTV · TNHH 2TV+ · Cổ phần · DNTN · Hợp danh · Chi nhánh/VPĐD · HTX · Khác. An enum, never parsed out of the legal name — printed on the public company page.'],
+              ['Tình trạng (theo MST)', 'Yes', 'Select — 5 values', 'The registration status — see the TÌNH TRẠNG THEO MST requirement. Only “Đang hoạt động” should be invoiced; manual in Phase-1.'],
+              ['Năm thành lập', 'Yes', 'Number (year)', 'A single number, never “từ 1993” — the public page derives the years-in-business figure from it.'],
+              ['Người đại diện', 'Yes', 'Text', 'The legal representative on the ĐKKD, printed on the public page. NOT a Contact — contacts are the people we sell to, on the Contacts tab.'],
               ['Company tags', 'Yes', 'Tag picker', 'Editorial labels, many per company.'],
               ['Quốc tịch / Country', 'Yes', 'Select — Master data', 'Gates the province field below.'],
               ['Tỉnh / Thành phố', 'Yes', 'Select — VN provinces', 'Shown only when country = Việt Nam.'],
@@ -347,7 +373,8 @@ export const crm: BuildModule = {
           items: [
             'one Edit toggle for the whole card, not a pencil per row: Edit turns every editable row into its input, Cancel reverts all of them, Save writes all of them. Fourteen independent inline editors is fourteen chances to leave one half-saved.',
             'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
-            'The card and the New-company form must expose the same field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole.',
+            'The card and the New-company form must expose the same field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole. (Loại hình, tình trạng, năm thành lập and người đại diện were added under this rule: the public company page prints them, and the page holds no copy of any company fact.)',
+            'THE PUBLIC COMPANY PAGE READS THIS CARD. Its “Thông tin doanh nghiệp” section shows these same fields marked “↔ Overview” and editable from there too — one stored value, two editing surfaces. See Account management → “HQ authors the company page”.',
             'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
             'COMPANY TAGS ARE CROSS-CHECKED AGAINST THE OPEN JOBS. A tag that makes a claim a posting can contradict — “Có vị trí làm việc từ xa” being the clear case — shows a non-blocking warning when NO open job of that company has the matching `job_type` (remote). The tag is a company-level editorial label by decision, which is exactly why it can go stale: nothing about closing the last remote job removes it. Warn, never block — the company may be about to post one.',
           ],
@@ -390,7 +417,7 @@ export const crm: BuildModule = {
           table: {
             cols: ['Section', 'Holds', 'Required in it'],
             rows: [
-              ['Company information', 'Legal name, short name, MST (+ lookup + affiliate list), industry, size, tags, country, province, address (+ map picker), website', 'Legal name · Tax code (MST)'],
+              ['Company information', 'Legal name, tên hiển thị, MST (+ lookup + affiliate list), loại hình, tình trạng (theo MST), năm thành lập, người đại diện, industry, size, tags, country, province, address (+ map picker), website', 'Legal name · Tax code (MST)'],
               ['Company verification document', 'Business licence / tax registration / signed contract upload', 'None at creation — see below'],
               ['Primary contact', 'Name, title, phone, email', 'Name · Phone · Email'],
               ['Sales', 'Lead source, sales owner, products interested, estimated value, description', 'None'],
@@ -891,6 +918,10 @@ export const crm: BuildModule = {
               { name: 'location', type: 'enum', notes: 'city / province of the head office, picked from the master-data list — a select, not free text, because it is a list column and a filter' },
               { name: 'address', type: 'string', notes: 'full head-office address (số nhà, đường, phường/xã, quận/huyện). Free text, printed on quotations, invoices and contracts — distinct from location, which is only the province' },
               { name: 'website', type: 'string', notes: 'domain; also the seed for contact-email addresses' },
+              { name: 'businessType (Loại hình)', type: 'enum', notes: 'Công ty TNHH một thành viên · Công ty TNHH hai thành viên trở lên · Công ty cổ phần · Doanh nghiệp tư nhân · Công ty hợp danh · Chi nhánh / VPĐD · Hợp tác xã · Khác. An ENUM, not derived from the legal name — “Công ty TNHH MTV Xây dựng Cổ Phần Hoá” would parse wrong, and it is printed on the public company page.' },
+              { name: 'taxStatus (Tình trạng theo MST)', type: 'enum', notes: 'FIVE values — see the tax-status requirement. Drives whether the company may be invoiced and whether its public page and jobs stay live.' },
+              { name: 'foundedYear', type: 'int', notes: 'a single number, never a free-text “từ 1993”. The public page derives “33 năm” from it, so it has to be arithmetic.' },
+              { name: 'legalRepresentative (Người đại diện)', type: 'string', notes: 'the legal representative on the ĐKKD — printed on the public company page. NOT the same as a Contact: contacts are people we sell to and live on the Contacts tab with their own statuses.' },
             ],
           },
           {

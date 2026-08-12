@@ -149,21 +149,23 @@ export const jobManagement: BuildModule = {
       warn: 'Do not keep the old free-text Benefits field alongside this. Two places to write welfare means every job eventually has two versions that disagree, and the search filter silently reads only one of them.',
     },
     {
-      label: 'A job declares only the benefits SPECIFIC to the position — the rest is INHERITED',
-      text: 'The company page is the source of truth for general welfare (see Account management → company page). A job does not restate it: the job form’s picker is labelled “Phúc lợi riêng của vị trí này”, and the company’s benefits are shown next to it read-only so nobody retypes them.',
+      label: 'A job’s benefits START as a copy of the company set — then edited freely per job',
+      text: 'The company page declares the default welfare set (see Account management → company page). A NEW job form opens with its benefits PREFILLED from that set — a copy, not a live link — and the editor (HQ or the employer) adds, removes, rewords and reorders freely for that posting. Two safety valves sit beside the picker: “↺ Reset to company default” and a read-only “View full company benefits” preview.',
       table: {
-        cols: ['Block on the job page', 'Comes from', 'Editable on the job form?'],
+        cols: ['Moment', 'What happens', 'Rule'],
         rows: [
-          ['Phúc lợi riêng của vị trí này', 'The job — project bonus, night-shift allowance, dedicated laptop…', 'Yes — the 12-type picker, max 6'],
-          ['Phúc lợi chung của công ty', 'Inherited from the company page, live', 'No — read-only, with “Xem trang công ty ↗”'],
+          ['Create job', 'Picker is prefilled with the company set (in the company’s display order)', 'If the company set exceeds the job cap (max 6), the first 6 are taken and the form says so'],
+          ['Editing the job', 'Add / remove / reword / reorder freely — same 12-type picker', 'Per-job curation is the point: a remote role removes “Đưa đón & chỗ ở”, a night-shift role adds its allowance'],
+          ['Reset', 'One click returns the job’s list to the current company default', 'REPLACES, never merges — confirm before discarding per-job edits'],
+          ['Company set changes later', 'Existing jobs are untouched; new jobs prefill from the new set', 'An old job adopts the new set only by pressing Reset — a company-page edit must not silently undo per-job curation'],
         ],
       },
       items: [
-        'Both blocks use the SAME 12 benefit types, so the job page can render them in one visual language and de-duplicate a type declared on both (the position wording wins for display; the company entry is not repeated).',
-        'Editing the company page updates every OPEN job immediately — that is the point of inheriting rather than copying.',
-        'This makes the job form SHORTER, not longer: the employer types the two or three things that actually differ instead of restating welfare the company already published.',
+        'One taxonomy (the shared 12 types) is what makes Reset and the preview possible — the two surfaces stay mutually convertible even when their content diverges.',
+        'The prefill means the form is STILL not retyping: the employer starts from the company set and only touches what differs for the position.',
+        'The jobseeker job page renders ONE benefits list — the job’s own. There is no separate read-only company block on the posting; the company page remains one click away for the full picture.',
       ],
-      warn: 'A job may NOT override an inherited company benefit — see the same rule in Account management. Overriding recreates the “15 ngày phép vs 12 ngày phép” contradiction with no rule to arbitrate it.',
+      warn: 'Accepted trade-off: a job CAN drift from the company page (e.g. “15 ngày phép” vs “12 ngày phép”). That flexibility is deliberate — the Reset button and the preview are the guardrails, not a hard lock.',
     },
     {
       label: 'A WORKING LOCATION is a NAMED office, saved on the company',

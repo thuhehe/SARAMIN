@@ -314,8 +314,14 @@ function PostJobScreen() {
             <Field label="Your role & responsibility" req area value={t.role} />
             <Field label="Your skills & qualifications" req area value={t.quals} />
             {/* Typed benefits, not a paragraph — same picker the HQ Admin job form
-                uses, so both sides produce the same structured data. */}
-            <BenefitsField initial={['pay', 'health', 'canteen', 'transport']} />
+                uses, so both sides produce the same structured data. An EXISTING job
+                passes its own list as `initial`; the company set still powers the
+                "↺ Về mặc định công ty" reset and the read-only preview. */}
+            <BenefitsField
+              initial={['pay', 'health', 'canteen', 'transport']}
+              companyBenefits={['pay', 'health', 'leave', 'canteen', 'transport', 'training']}
+              companyName="Cty Vạn Phát"
+            />
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Skills</p>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -946,9 +952,252 @@ function CvBlock({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
+/*
+ * The resume-search filter panel for the query "điều dưỡng" over 248 results.
+ *
+ * A WIDE PANEL ABOVE THE RESULTS, not a left rail: every field is a dropdown, and
+ * a dropdown in a 200px rail is unreadable. The results list takes the full width
+ * underneath, which the rich rows want anyway.
+ *
+ * GROUPED BY WHERE THE DATA COMES FROM, because that is what tells a recruiter how
+ * much to trust a field, and a developer which fields go thin without the parser:
+ *   1. Work preference — the candidate's own asks. ALL OPTIONAL, so choosing one
+ *      silently drops everyone who left it blank. The group says so, permanently.
+ *   2. Profile — Basic information: who they are.
+ *   3. Work information — extracted from the CV: what they have done.
+ *   4. CV activity — not candidate data at all: freshness, and what this team has
+ *      already paid for.
+ *
+ * Two things are query-driven, and only one changes the shape of the panel:
+ *   · COUNTS — every option carries how many of the current results it would keep.
+ *     With dropdowns these live INSIDE the open option list; open one to see them.
+ *   · OPTION LISTS — the open-ended fields (`derived`) list only values PRESENT in
+ *     the current results, top-N by count. Searching "điều dưỡng" surfaces nursing
+ *     skills; "kế toán" would surface accounting ones. A fixed global list of three
+ *     skills is decoration, not a filter.
+ * The GROUPS, their order, and the fields inside them never change.
+ */
+interface Facet {
+  label: string
+  /** options are drawn from the current result set, not from a fixed list */
+  derived?: boolean
+  /** several values may be chosen at once — rendered with checkboxes */
+  multi?: boolean
+  /** the option list is long enough to need a type-to-filter box inside the panel */
+  searchable?: boolean
+  opts: [string, number][]
+}
+interface FacetGroup {
+  title: string
+  /** renders the "Last resume update" pill row as the group's only control */
+  lastUpdate?: boolean
+  /** renders the two-currency salary range as the group's first control */
+  salary?: boolean
+  /** renders Language + level as ONE paired control at the end of the group */
+  language?: boolean
+  facets: Facet[]
+}
+
+const FILTER_GROUPS: FacetGroup[] = [
+  /* Freshness first: how recently a CV was touched is the cheapest way to avoid
+     spending a credit on someone who has stopped looking, so it is the filter a
+     recruiter sets before any other. */
+  { title: 'CV activity', lastUpdate: true, facets: [] },
+  {
+    title: 'Work preference',
+    salary: true,
+    facets: [
+      /* expectedSalary · desiredJobCategories · targetIndustries · desiredLocations ·
+         desiredEmploymentTypes · availability — the Job-preferences group of the
+         profile, captured at onboarding. A CV records where someone HAS BEEN, never
+         where they want to go, so none of this is extractable. */
+      { label: 'Job category', derived: true, multi: true, searchable: true, opts: [['Điều dưỡng viên', 131], ['Điều dưỡng trưởng', 29], ['KTV xét nghiệm', 24], ['Hộ lý', 17]] },
+      { label: 'Desired industry', derived: true, multi: true, searchable: true, opts: [['Healthcare', 218], ['Pharmaceuticals', 21], ['Education', 6]] },
+      { label: 'Wants to work in', derived: true, multi: true, searchable: true, opts: [['Hồ Chí Minh', 174], ['Bình Dương', 41], ['Đồng Nai', 18], ['Hà Nội', 15]] },
+      { label: 'Employment type', multi: true, opts: [['Full-time', 226], ['Contract', 19], ['Part-time', 17], ['Freelance', 6], ['Intern', 11]] },
+      { label: 'Availability', opts: [['Open now', 117], ['Within 1 month', 88], ['2+ months', 43]] },
+    ],
+  },
+  {
+    title: 'Profile',
+    facets: [
+      /* Basic information + the two summary attributes a recruiter screens on
+         before reading any detail: how far they got, and how long they have been
+         working. The per-entry education and work history stay in Work information. */
+      { label: 'Gender', opts: [['Nam (male)', 96], ['Nữ (female)', 152]] },
+      { label: 'Age', opts: [['Under 25', 41], ['25 – 34', 138], ['35 – 44', 57], ['45+', 12]] },
+      { label: 'Nationality', derived: true, opts: [['Việt Nam', 241], ['Hàn Quốc', 4], ['Philippines', 3]] },
+      { label: 'Marital status', opts: [['Độc thân', 143], ['Đã kết hôn', 96]] },
+      { label: 'Currently living in', derived: true, multi: true, searchable: true, opts: [['Hồ Chí Minh', 181], ['Bình Dương', 34], ['Hà Nội', 21], ['Đồng Nai', 12]] },
+      { label: 'Highest education', opts: [['High school', 9], ['College', 103], ['Bachelor', 138], ['Master', 7], ['Doctor', 0]] },
+      { label: 'Graduation', opts: [['Graduated', 214], ['Expected graduate', 34]] },
+      { label: 'Years of work experience', opts: [['No experience / fresher', 34], ['1 – 3 years', 82], ['3 – 5 years', 76], ['5+ years', 56]] },
+    ],
+  },
+  {
+    title: 'Work information',
+    language: true,
+    facets: [
+      { label: 'Job title', derived: true, multi: true, searchable: true, opts: [['Điều dưỡng viên', 142], ['Điều dưỡng trưởng', 38], ['KTV xét nghiệm', 31], ['Hộ lý', 19]] },
+      { label: 'Industry experience', derived: true, multi: true, searchable: true, opts: [['Healthcare', 232], ['Pharmaceuticals', 14], ['Education', 2]] },
+      { label: 'Skills', derived: true, multi: true, searchable: true, opts: [['Chăm sóc nội khoa', 74], ['Tiêm truyền', 61], ['Hồ sơ bệnh án', 48], ['JCI', 12]] },
+      { label: 'Certification', derived: true, multi: true, searchable: true, opts: [['CC hành nghề điều dưỡng', 187], ['Sơ cấp cứu (BLS)', 44], ['IELTS', 12]] },
+    ],
+  },
+]
+
+/** Language and its level are ONE question ("English, at professional level"), so
+    they render as one block and must be applied against the SAME language entry —
+    never English from one row and Professional from another. */
+const LANGUAGE_FACET: Facet = { label: 'Language', derived: true, searchable: true, opts: [['Tiếng Anh', 96], ['Tiếng Nhật', 11], ['Tiếng Hàn', 4], ['Tiếng Trung', 7]] }
+const LANGUAGE_LEVEL_FACET: Facet = { label: 'Level', opts: [['Native', 8], ['Professional', 41], ['Conversational', 63], ['Basic', 22]] }
+
+/** "Last resume update" — one row of single-select pills, the same control the
+    client's reference uses. Ranges are cumulative ("1 Week" = within the last
+    week), and Any is the default, because a date filter nobody set must never
+    quietly hide CVs. */
+const LAST_UPDATE = ['Any', 'Today', 'Yesterday', '3 days ago', '1 Week', '2 Weeks', '1 Month', '2 Months', '6 Months', '12 Months']
+
+/** One filter field: a dropdown whose open panel carries the per-option counts.
+    A closed select cannot show counts, which is the one thing this layout costs
+    us against a checkbox rail — so the panel says where they went. */
+function FilterSelect({ f }: { f: Facet }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[11.5px] font-medium text-ink/80">{f.label}</p>
+        {f.derived && <span className="text-[9.5px] text-faint">from results</span>}
+      </div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn('flex w-full items-center gap-2 rounded-md border bg-surface px-2.5 py-1.5 text-left', open ? 'border-brand' : 'border-line')}
+      >
+        <span className="min-w-0 flex-1 truncate text-[12px] text-faint">Any</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-md border border-line bg-surface shadow-lg">
+          {/* Type-to-filter, for the fields whose option list is a taxonomy rather
+              than a short enum — a recruiter should never scroll 42 skills to find
+              one. Matches on the canonical name AND its aliases. */}
+          {f.searchable && (
+            <div className="flex items-center gap-1.5 border-b border-line-soft px-2.5 py-1.5">
+              <Search className="h-3 w-3 shrink-0 text-faint" />
+              <span className="text-[11px] text-faint">Type to find a {f.label.toLowerCase()}…</span>
+            </div>
+          )}
+          <div className="max-h-40 overflow-y-auto py-1">
+            <div className="flex items-center gap-2 px-2.5 py-1 text-[11.5px] text-ink">
+              {f.multi && <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />}
+              Any
+            </div>
+            {f.opts.map(([o, n]) => (
+              <div key={o} className={cn('flex items-center gap-2 px-2.5 py-1 text-[11.5px]', n === 0 ? 'text-faint' : 'text-ink/80')}>
+                {f.multi && <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />}
+                <span className="min-w-0 flex-1 truncate">{o}</span>
+                <span className="shrink-0 tabular-nums text-[10px] text-faint">{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Desired salary — reads `expectedSalary { kind, currency, min, max }`, which
+    already carries VND · USD. The switch re-labels the bounds and picks which
+    currency's asks are in scope; it does NOT convert what the candidate wrote. */
+function SalaryRange() {
+  const [cur, setCur] = useState<'VND' | 'USD'>('VND')
+  const unit = cur === 'VND' ? 'triệu/mo' : 'USD/mo'
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[11.5px] font-medium text-ink/80">Desired salary</p>
+        <div className="flex gap-1">
+          {(['VND', 'USD'] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCur(c)}
+              className={cn(
+                'rounded border px-1.5 py-px text-[10px] font-semibold',
+                cur === c ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted',
+              )}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* stacked, not side by side — the rail is too narrow for two bounds on one row */}
+      <div className="space-y-1.5">
+        {['From', 'To'].map((b) => (
+          <div key={b} className="flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5">
+            <span className="min-w-0 flex-1 truncate text-[12px] text-faint">{b} · Any {unit}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Language + level — one question, so one block. The pair must be applied against
+    the SAME language entry; see the requirement. */
+function LanguagePair() {
+  return (
+    <div className="rounded-md border border-line-soft bg-canvas/30 p-2">
+      <div className="space-y-2">
+        <FilterSelect f={LANGUAGE_FACET} />
+        <FilterSelect f={LANGUAGE_LEVEL_FACET} />
+      </div>
+    </div>
+  )
+}
+
+/** One collapsible group in the left filter rail. Grouping by data source is what
+    makes a rail this long navigable; collapsing keeps it shorter than the results. */
+function FilterGroupBlock({ g, children }: { g: FacetGroup; children?: React.ReactNode }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="overflow-hidden rounded-lg border border-line">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-1 bg-canvas/40 px-2.5 py-2 text-left">
+        <span className="flex-1 text-[10.5px] font-bold uppercase tracking-wide text-ink">{g.title}</span>
+        {open ? <ChevronUp className="h-3 w-3 shrink-0 text-faint" /> : <ChevronDown className="h-3 w-3 shrink-0 text-faint" />}
+      </button>
+      {open && (
+        <div className="space-y-3 border-t border-line-soft px-2.5 py-2.5">
+          {g.salary && <SalaryRange />}
+          {g.facets.map((f) => <FilterSelect key={f.label} f={f} />)}
+          {g.language && <LanguagePair />}
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/*
+ * The keyword bar, following Saramin KR's employer search: THREE boxes rather than
+ * one, so a recruiter states the boolean query as three plain lists instead of
+ * learning an operator syntax.
+ *   OR  — any of these words (the main query)
+ *   AND — every one of these must also appear
+ *   NOT — exclude any CV containing these
+ * The three combine as: (a OR b) AND c AND d AND NOT (e OR f).
+ */
+const KEYWORD_BOXES: { op: string; value?: string; hint: string }[] = [
+  { op: 'OR', value: 'điều dưỡng, y tá', hint: 'any of these words' },
+  { op: 'AND', hint: 'must contain every one' },
+  { op: 'NOT', hint: 'exclude these words' },
+]
+
 function ResumeSearchScreen() {
   const [confirming, setConfirming] = useState(false)
   const [viewing, setViewing] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState('Any')
   /* Each row carries the full locked-preview field set: demographic line
      (gender · age), years of experience, the LATEST company (name, role, period,
      one-line description), the LATEST education (school, degree, graduated or
@@ -957,31 +1206,34 @@ function ResumeSearchScreen() {
   const cvs = [
     {
       unlocked: true,
+      id: 'E1D77',
       name: 'Nguyễn Thị Hoa',
       headline: 'Điều dưỡng viên',
       gender: 'Nữ', age: 28, years: '4 yrs experience',
-      company: { name: 'BV Nhân dân Gia Định', title: 'Điều dưỡng viên', period: '03/2023 – now · 2 yrs 5 mos', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca.' },
-      education: { school: 'ĐH Y Dược TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
+      company: { name: 'BV Nhân dân Gia Định', masked: 'Bệnh viện công lập · TP.HCM', title: 'Điều dưỡng viên', period: '03/2023 – now · 2 yrs 5 mos', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca.' },
+      education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
       skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], more: 2,
       loc: 'Hồ Chí Minh', salary: '12–15 tr', avail: 'Open now', updated: '2 days ago',
     },
     {
       unlocked: false,
+      id: 'A2F91',
       name: 'Trần ○○',
       headline: 'Điều dưỡng trưởng',
       gender: 'Nữ', age: 34, years: '7 yrs experience',
-      company: { name: 'BV Quốc tế Mỹ (AIH)', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – now · 4 yrs 7 mos', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ.' },
-      education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
+      company: { name: 'BV Quốc tế Mỹ (AIH)', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – now · 4 yrs 7 mos', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ.' },
+      education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', masked: 'Đại học y khoa · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
       skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], more: 3,
       loc: 'Hồ Chí Minh', salary: '20–25 tr', avail: '1 month', updated: '1 week ago',
     },
     {
       unlocked: false,
+      id: 'C7B04',
       name: 'Lê ○○',
       headline: 'Kỹ thuật viên xét nghiệm',
       gender: 'Nam', age: 26, years: '3 yrs experience',
-      company: { name: 'PK Đa khoa Medic Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – now · 3 yrs', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
-      education: { school: 'CĐ Y tế Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
+      company: { name: 'PK Đa khoa Medic Bình Dương', masked: 'Phòng khám đa khoa · Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – now · 3 yrs', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
+      education: { school: 'CĐ Y tế Bình Dương', masked: 'Cao đẳng y tế · Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
       skills: ['Xét nghiệm huyết học', 'Sinh hóa', 'ISO 15189'],
       loc: 'Bình Dương', salary: '10–13 tr', avail: 'Open now', updated: '3 weeks ago',
     },
@@ -999,44 +1251,55 @@ function ResumeSearchScreen() {
   return (
     <div className="relative">
       <PageBar title="Resume search" sub="Find and unlock candidate CVs from Saramin's talent pool." action={<Chip tone="blue">62 / 100 unlocks left</Chip>} />
-      <div className="mb-3 flex items-center gap-2">
-        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">"điều dưỡng", skills, title…</div>
-        <div className="w-36 rounded-md border border-line px-3 py-2 text-[12px] text-faint">HCMC</div>
-        <Btn primary>Search</Btn>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between"><p className="text-[12px] font-bold">Filters</p><span className="cursor-pointer text-[10.5px] text-brand">Clear all</span></div>
-          {([
-            ['Gender', ['Any', 'Nam (male)', 'Nữ (female)']],
-            ['Age', ['Under 25', '25 – 34', '35 – 44', '45+']],
-            ['Experience', ['No experience / fresher', '1 – 3 years', '3 – 5 years', '5+ years']],
-            ['Location', ['Hồ Chí Minh', 'Hà Nội', 'Bình Dương']],
-            ['Industry', ['Healthcare', 'IT – Software', 'Finance']],
-            ['Education level', ['College', 'Bachelor', 'Master']],
-            ['Graduation', ['Graduated', 'Expected graduate']],
-            ['Skills', ['Chăm sóc nội khoa', 'Tiêm truyền', 'JCI']],
-            ['Salary expectation', ['Under 15 tr', '15 – 30 tr', 'Over 30 tr']],
-            ['Availability', ['Open now', 'Within 1 month', '2+ months']],
-            ['Last updated', ['This week', 'This month', 'Any time']],
-          ] as [string, string[]][]).map(([f, opts]) => (
-            <div key={f}>
-              <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">{f}</p>
-              <div className="space-y-1">
-                {opts.map((o) => (
-                  <label key={o} className="flex items-center gap-1.5 text-[11px] text-muted">
-                    <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />
-                    {o}
-                  </label>
-                ))}
-              </div>
+      {/* ── keyword bar, Saramin-KR model: three boxes, not one ──────────────
+          A recruiter states the boolean query as three plain lists instead of
+          learning an operator syntax. Saved search conditions sit on the same
+          band, because "run last week's search again" is the action that makes a
+          6-month package get used in month 5. */}
+      <div className="mb-3">
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[12.5px] font-semibold text-ink">Find the right people for the role</p>
+          <div className="flex items-center gap-3 text-[10.5px] text-muted">
+            <span className="cursor-pointer">↺ Reset</span>
+          </div>
+        </div>
+        <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
+          {KEYWORD_BOXES.map((b) => (
+            <div key={b.op} className="flex min-w-0 flex-1 items-center gap-2 border-r border-line px-3 py-2">
+              <span className="shrink-0 text-[10px] font-bold tracking-wide text-brand">{b.op}</span>
+              <span className={cn('min-w-0 flex-1 truncate text-[12px]', b.value ? 'text-ink' : 'text-faint')}>{b.value ?? b.hint}</span>
             </div>
           ))}
+          <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Search</span>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+        {/* ── left filter rail ─────────────────────────────────────────────── */}
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-bold">Filters</p>
+              <span className="cursor-pointer text-[10.5px] text-brand">Clear all</span>
+            </div>
+          </div>
+          {/* The groups, their order, and the fields inside them never change with
+              the query. Only the counts and the `derived` option lists do. */}
+          {FILTER_GROUPS.map((g) => (
+            <FilterGroupBlock key={g.title} g={g}>
+              {g.lastUpdate && (
+                <div>
+                  <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Last resume update</p>
+                  <Seg options={LAST_UPDATE} value={lastUpdate} onChange={setLastUpdate} />
+                </div>
+              )}
+            </FilterGroupBlock>
+          ))}
+        </div>
+
         <div>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3">
             <p className="text-[12px] text-muted"><b className="text-ink">248</b> candidates match</p>
-            <span className="text-[11px] text-muted">Sort: Best match ▾</span>
           </div>
           <div className="space-y-2.5">
             {cvs.map((cv, i) => (
@@ -1044,14 +1307,26 @@ function ResumeSearchScreen() {
                 {/* identity line — masked until unlocked, but the demographic +
                     seniority summary a recruiter screens on is always readable */}
                 <div className="flex items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-canvas text-[13px]">{cv.unlocked ? '‍' : ''}</span>
+                  {/* Avatar doubles as the lock indicator: initials when unlocked,
+                      a padlock when locked. No photo either way pre-unlock. */}
+                  <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-full text-[13px]', cv.unlocked ? 'bg-brand-soft font-semibold text-brand' : 'bg-canvas text-faint')}>
+                    {cv.unlocked ? cv.name.split(' ').slice(-1)[0][0] : '🔒'}
+                  </span>
                   <div className="min-w-0 flex-1">
+                    {/* SAME layout locked and unlocked — the name SLOT stays, only
+                        its content changes. Locked shows "Ứng viên #A2F91" in the
+                        name position: scannable as a name, obviously not one, and
+                        it never shows a surname — "Trần ○○" plus a named hospital
+                        and an age is one LinkedIn search from a free unlock. */}
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                      <p className="truncate text-[12.5px] font-semibold text-ink">{cv.name}</p>
+                      {cv.unlocked ? (
+                        <p className="truncate text-[12.5px] font-semibold text-ink">{cv.name}</p>
+                      ) : (
+                        <p className="truncate text-[12.5px] font-semibold tracking-wide text-ink/60">Ứng viên #{cv.id}</p>
+                      )}
                       <span className="text-[11px] text-muted">{cv.gender} · {cv.age} tuổi</span>
                       <span className="text-faint">·</span>
                       <span className="text-[11px] font-medium text-ink/80">{cv.years}</span>
-                      {!cv.unlocked && <Chip>Name & contact locked</Chip>}
                       {cv.unlocked && <Chip tone="green">Unlocked</Chip>}
                     </div>
                     <p className="truncate text-[11.5px] text-muted">{cv.headline}</p>
@@ -1066,14 +1341,21 @@ function ResumeSearchScreen() {
                 {/* the career record — latest company & latest education, the two
                     blocks a recruiter reads before deciding to spend a credit */}
                 <div className="mt-2.5 space-y-2 pl-[52px]">
+                  {/* The EMPLOYER NAME is the strongest identifier on the card —
+                      "Điều dưỡng trưởng khoa Ngoại at BV Quốc tế Mỹ, nữ, 34" is a
+                      unique person. Locked rows get the employer TYPE and city
+                      instead, which is what a recruiter screens on anyway; the
+                      name arrives with the unlock. Same for the school. */}
                   <CvBlock label="Latest company">
-                    <p className="truncate"><b className="font-semibold">{cv.company.name}</b> · {cv.company.title}</p>
+                    <p className="truncate">
+                      <b className="font-semibold">{cv.unlocked ? cv.company.name : cv.company.masked}</b> · {cv.company.title}
+                    </p>
                     <p className="text-[10.5px] text-muted">{cv.company.period}</p>
                     <p className="mt-0.5 line-clamp-2 text-[11px] text-muted">{cv.company.desc}</p>
                   </CvBlock>
                   <CvBlock label="Latest education">
                     <p className="truncate">
-                      <b className="font-semibold">{cv.education.school}</b> · {cv.education.degree}{' '}
+                      <b className="font-semibold">{cv.unlocked ? cv.education.school : cv.education.masked}</b> · {cv.education.degree}{' '}
                       <span className={cn('ml-0.5 rounded border px-1 py-px text-[9.5px] font-medium', cv.education.expected ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-line bg-canvas text-muted')}>
                         {cv.education.status}
                       </span>
@@ -1095,9 +1377,6 @@ function ResumeSearchScreen() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-            The locked row shows everything needed to judge fit — gender · age, years of experience, latest company & role, latest school, skills, salary and availability — but never the name, contact details or the CV file. Unlocking reveals those, spends 1 credit, and is logged. Re-viewing an unlocked CV is free.
           </div>
         </div>
       </div>
