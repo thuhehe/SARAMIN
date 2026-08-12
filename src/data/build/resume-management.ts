@@ -83,7 +83,7 @@ export const resumeManagement: BuildModule = {
     },
     {
       label: 'CANDIDATE DATA · TABLE 2 of 3 — DESIRED WORK CONDITION, and WHERE each field is collected',
-      text: 'The other five of the 14. This is the group matching actually reads, and not one of them is asked before the candidate is registered.',
+      text: 'The other six of the 15. This is the group matching actually reads, and not one of them is asked before the candidate is registered.',
       table: {
         cols: ['Desired work condition', 'Collected when'],
         rows: [
@@ -92,9 +92,11 @@ export const resumeManagement: BuildModule = {
           ['Desired industry', 'Onboarding / Add later'],
           ['Desired work location', 'Onboarding / Add later'],
           ['Expected salary', 'Onboarding / Add later'],
+          ['Desired work type', 'Onboarding / Add later'],
         ],
       },
       items: [
+        'DESIRED WORK TYPE is the sixth field and it is NOT a new question — “Remote” and “Overseas” used to sit inside the province picker, where they could not express “I live in HCMC and want remote” and could not join to the job’s `job_type` at all. Same question, asked on the right axis. Values: in office · remote · hybrid · oversea, matching the job side exactly.',
         'Nothing here blocks sign-up — all five are onboarding or later, so a candidate can register and browse before deciding what they want.',
         'CURRENT location is not a field. Matching reads DESIRED work location; where someone lives today is not a search facet.',
         'Expected salary is the one an employer filters on most and the one no CV ever states — which is why onboarding gives it a step of its own rather than burying it in a list.',
@@ -305,18 +307,22 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Signal', 'Weight', 'Full credit', 'Partial credit', 'Zero'],
         rows: [
-          ['Skills', '35', 'Every skill on the job is on the CV.', 'Weighted overlap ratio: a job skill that is ESSENTIAL for the job’s occupation counts ×2, the rest ×1. 7 of 10 by weight → 0.7 × 35.', 'No overlap at all.'],
-          ['Years of experience + career level', '16', 'Candidate years fall inside the job’s stated range and the level agrees.', 'Under the minimum → 16 × (years ÷ min). Over the maximum → 16 − 1.5 per year over, floor 10; over-qualified is still a real candidate.', 'Zero years against a role with a stated minimum.'],
-          ['Location + mobility', '16', 'A desired work location contains the job’s location — or the job is remote and remoteOk is on.', '12 for an adjacent province in the same region · 10 for relocate or overseas being on.', 'No overlap and no mobility flag.'],
-          ['Desired job category', '9', 'The job’s category is one the candidate asked for.', '4 for a sibling category in the same group.', 'Unrelated category.'],
-          ['Employment type', '8', 'The job’s type is one the candidate asked for.', '4 when the candidate stated no preference — silence is not a mismatch.', 'Explicit mismatch (wants full-time only, job is contract).'],
-          ['Expected salary', '6', 'The ranges overlap — or the candidate’s salary is INTERVIEW / unset.', '3 when the candidate’s minimum is within 20% above the job’s maximum.', 'Candidate’s minimum exceeds the job maximum by more than 20%.'],
+          ['Skills', '38', 'Every skill on the job is on the CV.', 'Weighted overlap ratio: a job skill that is ESSENTIAL for the job’s occupation counts ×2, the rest ×1. 7 of 10 by weight → 0.7 × 38.', 'No overlap at all.'],
+          ['Years of experience + career level', '18', 'Candidate years fall inside the job’s stated range and the level agrees.', 'Under the minimum → 16 × (years ÷ min). Over the maximum → 16 − 1.5 per year over, floor 10; over-qualified is still a real candidate.', 'Zero years against a role with a stated minimum.'],
+          ['Location + work type', '17', 'The job is remote and the candidate accepts remote (city is then irrelevant) — OR a desired location contains the job’s location and the candidate accepts the job’s work type.', '12 for an adjacent province in the same region · 10 for a city miss where the candidate will relocate · 6 for a city hit where the work type is wrong (remote-only candidate, in-office job).', 'No location overlap, no relocation, and no work-type overlap.'],
+          ['Desired job category', '10', 'The job’s category is one the candidate asked for.', '4 for a sibling category in the same group.', 'Unrelated category.'],
+          ['Expected salary', '7', 'The ranges overlap — or the candidate’s salary is INTERVIEW / unset.', '3 when the candidate’s minimum is within 20% above the job’s maximum.', 'Candidate’s minimum exceeds the job maximum by more than 20%.'],
           ['Industry', '5', 'The company’s industry is one the candidate asked for.', '2 for the same industry group.', 'Unrelated industry.'],
           ['Education level', '3', 'At or above the job’s stated minimum.', '1.5 for exactly one level below.', 'More than one level below.'],
           ['Language certification', '2', 'Holds the required certification at or above the stated score.', '1 for holding the language with no certification.', 'Does not hold it.'],
         ],
       },
       items: [
+        'WORK TYPE IS COLLECTED, CONTRACT TYPE IS NOT — deliberately asymmetric. Work type is asked once at onboarding step 2 (“Where and how would you like to work?”) and edited afterwards in My CVs → Desired work condition. Contract type is asked nowhere on the jobseeker side.',
+        'WHY CONTRACT TYPE WAS DROPPED, after being drafted in and taken back out: it is a question every candidate answers so that a minority benefits. Roughly nine in ten candidates and nine in ten postings are fulltime, so the signal returns the same value for almost every pair. Even asked optionally it costs a control, a line of help text and a tile on the profile card — and the onboarding step is the most expensive screen in the product to add anything to.',
+        'WHERE THE INTENT LIVES INSTEAD — a SEARCH FILTER on the job list. Someone hunting an internship filters for it in that session, which is where the intent actually is: situational, not a standing preference. The job side keeps `contract_type` in full, so the filter has real data to work on.',
+        'WORK TYPE STAYED BECAUSE IT COST NOTHING NEW — it was already being collected, mislabelled as a location. “Remote” and “Overseas” sat inside the province picker, where they could not express “I live in HCMC and want remote” and could not join to the job’s `job_type` at all. Splitting them out is the same question asked on the right axis, not an extra question.',
+        'THE RULE THIS ILLUSTRATES, worth applying to any future signal: a scoring signal may only read a field the candidate ACTUALLY FILLS on the self-serve path, and it must score NEUTRAL when they leave it blank. A signal that reads an Admin-only field, or that punishes silence, compresses every score toward the middle and makes the ranking look broken.',
         'THE RENORMALISE RULE, and it is the load-bearing one: any signal the JOB does not specify is DROPPED and its weight redistributed proportionally across the rest, so the total is always exactly 100. A job that states no language requirement does not score language — it does not score it as zero either. Without this, every under-specified job posting quietly compresses its own scores into the 60s and the number stops meaning anything.',
         'MISSING CANDIDATE DATA — and the distinction matters, because getting it wrong turns the score into a measure of form-filling. CONSTRAINT signals (salary, employment type, education, mobility) score NEUTRAL when the candidate is silent: silence means "no constraint", and punishing it would rank the fussy above the flexible. EVIDENCE signals (skills, years) score LOW when absent: silence means "no evidence", and ranking below someone who provided it is correct, not unfair.',
         'A CONSEQUENCE WORTH STATING OUT LOUD: a candidate whose searchable CV is an unconverted PDF has no CvSkill rows, so they forfeit the 35-point skills block and cap out at 65. That is honest — we genuinely do not know their skills — and it is the strongest incentive to convert that we can offer without nagging. Say it plainly in the conversion offer rather than hiding it.',
@@ -961,14 +967,14 @@ export const resumeManagement: BuildModule = {
               cols: ['Key', 'Ready when', 'Preview shows'],
               rows: [
                 ['Job categories', 'desiredJobCategories is non-empty', 'the first 3, · separated'],
-                ['Employment types', 'desiredEmploymentTypes is non-empty', 'all selected values'],
                 ['Career', 'careerLevel ≠ ANY OR yearsOfExp > 0', '“EXPERIENCED · 3y”, else just the level'],
                 ['Education', 'at least one education entry', 'degree · school of the first entry'],
                 ['Industries', 'targetIndustries is non-empty', 'the first 3'],
                 ['Language certs', 'at least one language entry', 'language:cert:score, first 3'],
                 ['Salary', 'an expected salary with a min, OR kind = INTERVIEW', '“min~max CURRENCY”, or INTERVIEW'],
                 ['Locations', 'desiredLocations is non-empty', 'the first 3'],
-                ['Remote / relocate / overseas', 'any of remoteOk · relocate · overseas is on', 'which ones are on'],
+                ['Work types', 'desiredWorkTypes is non-empty', 'the selected values, e.g. “remote · hybrid”'],
+                ['Willing to relocate', 'the flag is on', 'Yes, else blank'],
               ],
             },
             items: [
@@ -1086,7 +1092,8 @@ export const resumeManagement: BuildModule = {
               { name: 'desiredLocations', type: 'string[]', notes: 'comma-entered' },
               { name: 'targetIndustries', type: 'string[]', notes: 'comma-entered' },
               { name: 'expectedSalary', type: '{ kind, currency, min?, max? }', notes: 'kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE; currency: VND · USD' },
-              { name: 'remoteOk / relocate / overseas', type: 'bool', notes: 'the three mobility flags, read as one matching key' },
+              { name: 'desiredWorkTypes', type: 'enum[]', notes: 'multi-select on the SAME `job_type` master list the job uses: in-office · remote · hybrid · oversea. Replaces the old remoteOk and overseas booleans — those were two of these four values wearing a different name.' },
+              { name: 'willingToRelocate', type: 'bool', notes: 'the one mobility flag that is NOT a work type: it is about moving city, not about work arrangement. Read with Locations, not with work type.' },
             ],
           },
           {

@@ -9,6 +9,15 @@
 import { createContext, isValidElement, useContext, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
+import { BenefitsField, BenefitCards } from '@/components/BenefitsField'
+import { benefitByKey, BENEFIT_TYPES } from '@/data/benefits'
+import { WorkingLocationsField } from '@/components/WorkingLocationsField'
+import { LogoSizer } from '@/components/LogoSizer'
+
+/* The benefit types declared on the COMPANY page. Every job of that company
+   inherits them read-only, so a posting only ever writes what is specific to the
+   position — one source of truth, two renderings. */
+const COMPANY_BENEFITS = ['health', 'leave', 'transport', 'canteen', 'training', 'trips']
 
 /* ── Detail breadcrumb ───────────────────────────────────────────────────────
    A detail view publishes its own crumb (and the way back) up to the admin shell,
@@ -1093,17 +1102,17 @@ function matchKeys(s: Std): { label: string; ready: boolean; preview: string }[]
   const p = s.prefs
   const edu = s.educations[0]
   const salReady = p.salKind === 'INTERVIEW' || p.salMin.trim() !== ''
-  const mob = [p.remoteOk && 'remote', p.relocate && 'relocate', p.overseas && 'overseas'].filter(Boolean).join(' · ')
+  const workTypes = [p.remoteOk && 'remote', p.overseas && 'oversea'].filter(Boolean).join(' · ')
   return [
     { label: 'Job categories', ready: list(p.cats).length > 0, preview: first3(p.cats) },
-    { label: 'Employment types', ready: list(p.empTypes).length > 0, preview: list(p.empTypes).join(' · ') || '—' },
     { label: 'Career', ready: p.careerLevel !== 'ANY' || Number(p.yearsOfExp) > 0, preview: p.careerLevel === 'EXPERIENCED' ? `${p.careerLevel} · ${p.yearsOfExp}y` : p.careerLevel },
     { label: 'Education', ready: !!edu, preview: edu ? `${edu.degree} · ${edu.school}` : '—' },
     { label: 'Industries', ready: list(p.inds).length > 0, preview: first3(p.inds) },
     { label: 'Language certs', ready: s.languages.length > 0, preview: s.languages.map((l) => [l.language, l.cert, l.score].filter(Boolean).join(':')).slice(0, 3).join(' · ') || '—' },
     { label: 'Salary', ready: salReady, preview: p.salKind === 'INTERVIEW' ? 'INTERVIEW' : p.salMin ? `${p.salMin}~${p.salMax || '?'} ${p.salCur}` : '—' },
     { label: 'Locations', ready: list(p.locs).length > 0, preview: first3(p.locs) },
-    { label: 'Remote / relocate / overseas', ready: !!mob, preview: mob || '—' },
+    { label: 'Work types', ready: !!workTypes, preview: workTypes || '—' },
+    { label: 'Willing to relocate', ready: p.relocate, preview: p.relocate ? 'Yes' : '—' },
   ]
 }
 
@@ -4084,47 +4093,553 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
   )
 }
 
+/* ── Manual-service usage ─────────────────────────────────────────────────────
+   A Manual service has no automatic meter. Nothing on the platform can observe a
+   fanpage post going up or an email blast going out, so "how many of the 4 posts
+   has this customer used?" is only answerable if the person who did the work says
+   so. This is that record.
+
+   ONE LOG ENTRY = ONE UNIT CONSUMED. Remaining is derived (total − entries), never
+   stored and never edited by hand — a typed remaining count is the thing that goes
+   out of step with what was actually delivered.
+
+   Proof is required, not decorative: the link is what a customer asks for when they
+   query the invoice ("show me the post"), and without it the entry is one person's
+   word that a unit was spent. */
+type ServiceDelivery = { id: string; date: string; link: string; image: string | null; content: string; by: string }
+type ServiceEntitlement = { sku: string; name: string; unit: string; total: number; entries: ServiceDelivery[] }
+
+const SERVICE_USAGE: Record<string, ServiceEntitlement[]> = {
+  'Công ty TNHH Vạn Phát': [
+    {
+      sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 4,
+      entries: [
+        { id: 'SD-001', date: '02/08/2026', link: 'https://facebook.com/topdev.vn/posts/1029384', image: 'vanphat-fb-01.jpg', content: 'Tuyển 5 Backend Engineer — Vạn Phát. Đăng kèm ảnh văn phòng, CTA về trang công ty.', by: 'Nguyễn Thị Lan' },
+        { id: 'SD-002', date: '09/08/2026', link: 'https://facebook.com/topdev.vn/posts/1031002', image: 'vanphat-fb-02.jpg', content: 'Nhắc lại tin tuyển dụng, nhấn phúc lợi 13th-month salary.', by: 'Phạm Quang Huy' },
+      ],
+    },
+    {
+      sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1,
+      entries: [],
+    },
+  ],
+  'FPT Software': [
+    {
+      sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2,
+      entries: [
+        { id: 'SD-010', date: '20/06/2026', link: 'https://facebook.com/topdev.vn/posts/998211', image: null, content: 'Employer branding — FPT Software culture post.', by: 'Phạm Quang Huy' },
+        { id: 'SD-011', date: '05/07/2026', link: 'https://facebook.com/topdev.vn/posts/1004556', image: 'fpt-fb-02.jpg', content: 'Tuyển Java/Go, kèm banner sự kiện tech talk.', by: 'Phạm Quang Huy' },
+      ],
+    },
+  ],
+}
+
+function ServiceUsageCard({ c }: { c: Company }) {
+  const svc = SERVICE_USAGE[c.name] ?? []
+  const [logging, setLogging] = useState<ServiceEntitlement | null>(null)
+  const [open, setOpen] = useState<string | null>(svc[0]?.sku ?? null)
+
+  if (svc.length === 0) {
+    return (
+      <DetailCard title="Manual service — đã sử dụng">
+        <p className="text-[12px] text-muted">Công ty này chưa mua dịch vụ thủ công nào (bài đăng fanpage, email marketing…).</p>
+      </DetailCard>
+    )
+  }
+
+  return (
+    <DetailCard title="Manual service — đã sử dụng" action={<span className="text-[11px] text-faint">1 ghi nhận = 1 lượt</span>}>
+      <div className="space-y-2.5">
+        {svc.map((e) => {
+          const used = e.entries.length
+          const left = e.total - used
+          const exhausted = left <= 0
+          const expanded = open === e.sku
+          return (
+            <div key={e.sku} className="rounded-lg border border-line">
+              <button onClick={() => setOpen(expanded ? null : e.sku)} className="flex w-full items-start justify-between gap-2 px-3 py-2 text-left">
+                <span className="min-w-0">
+                  <span className="block truncate text-[12px] font-medium text-ink">{e.name}</span>
+                  <span className="block text-[10.5px] text-faint">{used} / {e.total} {e.unit} đã dùng</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className={cn('text-[12px] font-semibold tabular-nums', exhausted ? 'text-rose-600' : 'text-ink')}>
+                    {left}<span className="font-normal text-faint"> còn lại</span>
+                  </span>
+                  <span className="text-faint">{expanded ? '▾' : '▸'}</span>
+                </span>
+              </button>
+              <div className="px-3 pb-2"><QuotaBar left={left} total={e.total} /></div>
+
+              {expanded && (
+                <div className="border-t border-line-soft px-3 py-2.5">
+                  {e.entries.length === 0 ? (
+                    <p className="text-[11.5px] text-muted">Chưa ghi nhận lượt nào.</p>
+                  ) : (
+                    <ol className="space-y-2">
+                      {e.entries.map((d, i) => (
+                        <li key={d.id} className="flex gap-2">
+                          <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-canvas text-[9px] font-semibold text-muted">{i + 1}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-baseline gap-x-2">
+                              <span className="text-[11.5px] font-medium tabular-nums text-ink">{d.date}</span>
+                              <a href={d.link} onClick={(ev) => ev.preventDefault()} className="min-w-0 truncate text-[11px] text-brand hover:underline">{d.link}</a>
+                            </div>
+                            <p className="text-[11px] leading-relaxed text-muted">{d.content}</p>
+                            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-faint">
+                              {d.image
+                                ? <span className="rounded border border-line bg-canvas px-1 font-mono">🖼 {d.image}</span>
+                                : <span className="text-amber-700">⚠️ chưa có ảnh</span>}
+                              <span>· {d.by}</span>
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <button
+                    onClick={() => setLogging(e)}
+                    disabled={exhausted}
+                    className="mt-2.5 rounded-md border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11.5px] font-medium text-brand hover:bg-brand hover:text-white disabled:cursor-not-allowed disabled:border-line disabled:bg-canvas disabled:text-faint"
+                  >
+                    {exhausted ? 'Đã dùng hết — không thể ghi nhận thêm' : '+ Ghi nhận đã đăng'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <p className="mt-2.5 text-[10.5px] leading-relaxed text-faint">
+        Hệ thống không tự đếm được dịch vụ thủ công — số còn lại tính từ <b className="text-ink/70">số lượt đã ghi nhận</b>,
+        không nhập tay. Muốn sửa một lượt thì sửa chính ghi nhận đó.
+      </p>
+      {logging && <LogServiceDeliveryModal e={logging} company={coLabel(c)} onClose={() => setLogging(null)} />}
+    </DetailCard>
+  )
+}
+
+function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlement; company: string; onClose: () => void }) {
+  const [date, setDate] = useState('')
+  const [link, setLink] = useState('')
+  const [content, setContent] = useState('')
+  const [image, setImage] = useState<string | null>(null)
+  const left = e.total - e.entries.length
+  /* Link + content are required, image is not: an email blast has no screenshot
+     worth keeping, but every delivery has somewhere it landed and something it
+     said. Without those two the entry cannot answer "show me what we posted". */
+  const valid = Boolean(date) && Boolean(link.trim()) && Boolean(content.trim())
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[520px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Ghi nhận đã đăng</p>
+            <p className="text-[11px] text-muted">{e.name} · {company}</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          <p className="rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
+            Lưu ghi nhận này sẽ trừ <b>1 {e.unit}</b> — còn <b>{left}</b> trước khi lưu, <b>{left - 1}</b> sau khi lưu.
+          </p>
+
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>Ngày đăng</FLabel>
+              <input
+                type="date"
+                value={date}
+                onChange={(ev) => setDate(ev.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand"
+              />
+            </div>
+            <LField label="Người thực hiện" value="Nguyễn Thị Lan" hint="Lấy từ người đang đăng nhập." />
+          </div>
+
+          <div>
+            <FLabel req>Link bài đăng</FLabel>
+            <input
+              value={link}
+              onChange={(ev) => setLink(ev.target.value)}
+              placeholder="https://facebook.com/topdev.vn/posts/…"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+            />
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Bắt buộc — đây là thứ khách hỏi khi đối chiếu hoá đơn: “cho tôi xem bài đã đăng”.</p>
+          </div>
+
+          <div>
+            <FLabel req>Nội dung đã đăng</FLabel>
+            <textarea
+              value={content}
+              onChange={(ev) => setContent(ev.target.value)}
+              rows={3}
+              placeholder="Tóm tắt nội dung, thông điệp chính, CTA…"
+              className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+            />
+          </div>
+
+          <div>
+            <FLabel>Ảnh chụp / ảnh đã dùng<span className="ml-1 font-normal text-faint">không bắt buộc</span></FLabel>
+            <div className="rounded-lg border border-dashed border-line px-3 py-3 text-center">
+              {image ? (
+                <span className="flex items-center justify-center gap-2 text-[12px]">
+                  <span className="truncate font-mono text-ink/80">{image}</span>
+                  <button onClick={() => setImage(null)} className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-muted hover:border-rose-300 hover:text-rose-600">Gỡ</button>
+                </span>
+              ) : (
+                <button onClick={() => setImage('proof-screenshot.jpg')} className="text-[12px] font-medium text-brand hover:underline">⬆ Tải ảnh lên</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Hủy</button>
+          <button onClick={onClose} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+            Lưu — trừ 1 {e.unit}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── The public company page, section by section ──────────────────────────────
+   The editor is laid out as the LIVE PAGE is laid out (Figma "Company detail",
+   node 78:20315) — same sections, same order, same names. HQ fills this in for a
+   customer who will not do it themselves, which is most of them at the start, so
+   the mapping between "what I typed" and "what appears" has to be obvious.
+
+   Two rules run through the whole thing and explain most of the UI:
+
+    · REQUIRED vs OPTIONAL is the spine. Five things gate publishing (logo,
+      display name, industry, ≥1 office, VI introduction). EVERY other section is
+      optional and its card simply does not render on the live page while empty —
+      which is why each one says so rather than sitting there looking broken.
+    · The registry facts are NOT typed here. MST, legal name, company type,
+      representative and registered address already live on the company record;
+      re-typing them on the page would give one company two tax codes that drift.
+      They are shown read-only with a pointer to where they are edited. */
+
+/** Chip row under the facts card. A fixed list, because the whole point of the
+    chips is that they read the same on every company and can be filtered on. */
+const CP_TRAITS = [
+  'Thành viên tập đoàn', 'Gần ga metro', 'Hỗ trợ thai sản', 'Làm việc từ xa',
+  'Trang phục tự do', 'Chế độ nghỉ chăm con', 'Có căn-tin', 'Văn phòng hạng A',
+]
+
+/** One collapsible section = one card on the live page. `state` is what the
+    section contributes to the page, said in the reviewer's language. */
+function PageSec({
+  n, title, sub, state, tone, open, onToggle, children,
+}: {
+  n: number; title: string; sub: string
+  state: string; tone: StatusTone
+  open: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  return (
+    <div className={cn('overflow-hidden rounded-lg border', open ? 'border-brand/50' : 'border-line')}>
+      <button onClick={onToggle} className={cn('flex w-full items-center gap-2.5 px-3 py-2 text-left', open ? 'bg-brand-soft/40' : 'bg-canvas/40 hover:bg-canvas/70')}>
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-line bg-surface text-[10px] font-bold tabular-nums text-muted">{n}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] font-semibold text-ink">{title}</span>
+          <span className="block truncate text-[10.5px] text-faint">{sub}</span>
+        </span>
+        <Pill tone={tone}>{state}</Pill>
+        <span className="shrink-0 text-[11px] text-faint">{open ? '▴' : '▾'}</span>
+      </button>
+      {open && <div className="space-y-2.5 border-t border-line px-3 py-3">{children}</div>}
+    </div>
+  )
+}
+
+/** A slot that holds an uploaded asset — photo, video, logo. */
+function AssetSlot({ label, filled, wide }: { label: string; filled?: boolean; wide?: boolean }) {
+  return (
+    <div className={cn(
+      'grid place-items-center rounded-md border border-dashed px-2 py-3 text-center',
+      filled ? 'border-brand/40 bg-brand-soft/30' : 'border-line bg-canvas/40',
+      wide && 'row-span-2',
+    )}>
+      <span className={cn('text-[10.5px] leading-tight', filled ? 'font-medium text-brand' : 'text-faint')}>
+        {filled ? label : `+ ${label}`}
+      </span>
+    </div>
+  )
+}
+
 /* jobseeker company page — editor + draft preview, shared by Overview + its tab */
 function CompanyPageEditor({ c }: { c: Company }) {
   const ro = useReadOnly()
+  const [open, setOpen] = useState<number | null>(1)
+  const [traits, setTraits] = useState<string[]>(c.hasPage ? ['Thành viên tập đoàn', 'Làm việc từ xa', 'Trang phục tự do'] : [])
+  /* Which of the 12 shared types this company has declared. BenefitsField owns the
+     editing from here; this is only the seed and the section's status line. */
+  const bens = c.hasPage ? ['health', 'pay', 'training', 'leave', 'transport'] : []
+  const [lang, setLang] = useState<'VI' | 'EN' | 'KO'>('VI')
+  const has = c.hasPage
+  const toggle = (n: number) => setOpen((o) => (o === n ? null : n))
+
   if (!c.jobPosting) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-6 text-center">
-        <div className="text-[22px]"></div>
-        <p className="mt-1 text-[12.5px] font-medium">No public page needed</p>
+        <p className="text-[12.5px] font-medium">No public page needed</p>
         <p className="mx-auto mt-1 max-w-[42ch] text-[11.5px] text-muted">Resume-Search-only customer — invisible to jobseekers and not listed in the public Companies directory. Add Job Posting to enable a page.</p>
       </div>
     )
   }
+
+  /* The five publish blockers, in the order they appear on the page. Everything
+     else is optional by design and never appears here. */
+  const gates = [
+    { label: 'Logo', ok: has },
+    { label: 'Tên hiển thị', ok: true },
+    { label: 'Ngành nghề', ok: true },
+    { label: 'Ít nhất 1 văn phòng', ok: true },
+    { label: 'Giới thiệu (VI)', ok: has },
+  ]
+  const missing = gates.filter((g) => !g.ok)
+  /* The optional sections, each counted only if it would actually RENDER on the
+     live page. Story blocks and leaders are empty in every demo record, so a page
+     can never read 100% just for clearing the publish gate — that number is what
+     an account manager quotes to a customer, and it has to be earned. */
+  const optional = [
+    traits.length > 0,        // 3 chips
+    has,                      // 5 video
+    has,                      // 6 photos
+    false,                    // 7 story — no blocks yet
+    bens.length > 0,          // 8 benefits
+    false,                    // 9 leaders — nobody added
+    has,                      // 11 meta
+  ]
+  const done = gates.length - missing.length + optional.filter(Boolean).length
+  const pct = Math.round((done / (gates.length + optional.length)) * 100)
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-canvas/50 px-2.5 py-2">
-        <a href="#" onClick={(e) => e.preventDefault()} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand hover:underline">↗ Preview draft on jobseeker site</a>
-        <span className="font-mono text-[10.5px] text-faint">saramin.vn/company/…?preview=draft</span>
-      </div>
-      <div className="grid gap-3 md:grid-cols-[1.15fr_1fr] md:items-start">
-        <div className="space-y-2.5">
-          <LField label="Display name" value={c.hasPage ? c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '') : ''} />
-          <LField label="Logo · cover image" value={c.hasPage ? 'Uploaded' : 'Upload…'} />
-          <LField label="About (vi required · en/ko optional)" req value={c.hasPage ? `Leading ${c.industry.toLowerCase()} company in Vietnam…` : ''} />
-          <LField label="Benefits / welfare" value={c.hasPage ? 'Insurance · 13th salary · hybrid' : ''} />
-          <LField label="Locations · website" value={c.hasPage ? `${c.address} · ${c.domain}` : ''} />
+      {/* publish gate + completeness, before any field */}
+      <div className="rounded-lg border border-line bg-canvas/40 p-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-[12px] font-semibold text-ink">
+            {missing.length === 0 ? 'Đủ điều kiện đăng' : `Còn thiếu ${missing.length} mục bắt buộc`}
+            <span className="ml-1.5 font-normal text-faint">· trang hoàn thiện {pct}%</span>
+          </p>
+          <a href="#" onClick={(e) => e.preventDefault()} className="text-[11.5px] font-medium text-brand hover:underline">↗ Xem thử bản nháp</a>
         </div>
-        {c.hasPage && <CompanyPagePreview c={c} />}
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {gates.map((g) => (
+            <span key={g.label} className={cn('rounded-md border px-2 py-0.5 text-[10.5px]', g.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 font-medium text-amber-800')}>
+              {g.ok ? '✓' : '!'} {g.label}
+            </span>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+          Chỉ 5 mục trên chặn việc đăng trang. <b className="text-ink/70">Mọi mục còn lại là tuỳ chọn</b> — để trống thì thẻ đó không hiển thị trên trang, chứ không hiện ô rỗng.
+        </p>
       </div>
-      <div className="flex flex-wrap gap-2">
+
+      {/* ── 1. Identity — the sticky sidebar on the live page ───────────────── */}
+      <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, tên, ngành, nút theo dõi" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
+        <div className="space-y-2.5">
+          <LField label="Tên hiển thị" req value={c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '')} hint="Tên thương hiệu ứng viên biết — thường KHÁC tên pháp lý trên hoá đơn." />
+          <LField label="Dòng mô tả ngắn" value={`${c.industry} · Dịch vụ tài chính`} hint="Hiện ngay dưới tên, tối đa 1 dòng." />
+        </div>
+        {/* One asset, two frames, plus the peer row that settles the size — see LogoSizer. */}
+        <div>
+          <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Logo <span className="text-rose-500">*</span></p>
+          <LogoSizer company={c.name} initialZoom={has ? 100 : 100} />
+        </div>
+        <LField label="Ảnh bìa (cover)" value={has ? 'cover.jpg · 1440×148' : 'Chưa tải lên'} hint="Tuỳ chọn — không có thì trang dùng dải màu mặc định." />
+        {/* the four fields above are exactly what the sidebar renders, so show it */}
+        <div className="grid gap-2 sm:grid-cols-[1fr_200px] sm:items-start">
+          <p className="text-[10.5px] leading-relaxed text-faint">
+            Bốn trường trên dựng nên cột trái cố định của trang — ứng viên nhìn thấy nó ở mọi lần cuộn, nên đây là phần đáng sửa kỹ nhất.
+          </p>
+          <CompanyPagePreview c={c} />
+        </div>
+      </PageSec>
+
+      {/* ── 2. Registry facts — read-only on purpose ────────────────────────── */}
+      <PageSec n={2} title="Thông tin doanh nghiệp" sub="Thẻ facts · lấy từ hồ sơ công ty, không nhập lại" state="Tự động" tone="neutral" open={open === 2} onToggle={() => toggle(2)}>
+        <div className="grid gap-x-4 gap-y-1.5 text-[11.5px] sm:grid-cols-2">
+          {[
+            ['Năm thành lập', '1993'], ['Quy mô', `${c.size} nhân viên`],
+            ['Ngành', c.industry], ['Quốc gia', c.country],
+            ['Mã số thuế', c.tax], ['Tên pháp lý', c.legalName],
+            ['Loại hình', /CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH'],
+            ['Tình trạng', 'Đang hoạt động'],
+            ['Người đại diện', c.contact.replace(/ · .*/, '')], ['Địa chỉ đăng ký', c.address],
+          ].map(([k, v]) => (
+            <div key={k} className="flex gap-2 border-b border-line-soft py-1">
+              <span className="w-32 shrink-0 text-faint">{k}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-ink/80">{v}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-amber-700">
+          Không sửa được ở đây — <b>sửa ở tab Overview</b> của công ty. Nhập lại trên trang công khai sẽ tạo ra hai bản mã số thuế / tên pháp lý và chúng sẽ lệch nhau.
+        </p>
+      </PageSec>
+
+      {/* ── 3. Trait chips ─────────────────────────────────────────────────── */}
+      <PageSec n={3} title="Đặc điểm nổi bật" sub="Dải chip dưới thẻ facts · danh sách cố định" state={traits.length ? `${traits.length} chip` : 'Trống — ẩn'} tone={traits.length ? 'active' : 'neutral'} open={open === 3} onToggle={() => toggle(3)}>
+        <div className="flex flex-wrap gap-1.5">
+          {CP_TRAITS.map((t) => {
+            const on = traits.includes(t)
+            return (
+              <button
+                key={t}
+                disabled={ro}
+                onClick={() => setTraits((p) => (p.includes(t) ? p.filter((x) => x !== t) : p.length >= 6 ? p : [...p, t]))}
+                className={cn('rounded-full border px-2.5 py-1 text-[11px]', on ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line bg-surface text-muted hover:border-brand/40', ro && 'cursor-not-allowed opacity-50')}
+              >{t}</button>
+            )
+          })}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Tối đa 6. Danh sách cố định (không tự nhập) — đó chính là lý do chip <b className="text-ink/70">so sánh được giữa các công ty và lọc được</b> ở trang tìm công ty. {traits.length}/6 đã chọn.
+        </p>
+      </PageSec>
+
+      {/* ── 4. About ───────────────────────────────────────────────────────── */}
+      <PageSec n={4} title="Về công ty" sub="Đoạn giới thiệu · VI bắt buộc" state={has ? 'Đã có' : 'Bắt buộc — trống'} tone={has ? 'active' : 'pending'} open={open === 4} onToggle={() => toggle(4)}>
+        <div className="mb-1 flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
+          {(['VI', 'EN', 'KO'] as const).map((l) => (
+            <button key={l} onClick={() => setLang(l)} className={cn('px-2.5 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}{l === 'VI' && ' *'}</button>
+          ))}
+        </div>
+        <textarea
+          readOnly={ro}
+          rows={4}
+          defaultValue={has && lang === 'VI' ? `${c.shortName || c.name} là một trong những doanh nghiệp ${c.industry.toLowerCase()} hàng đầu Việt Nam…` : ''}
+          placeholder={lang === 'VI' ? 'Giới thiệu công ty bằng tiếng Việt…' : `Bản dịch ${lang} — bỏ trống thì trang hiển thị bản tiếng Việt.`}
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12px] leading-relaxed text-ink outline-none placeholder:text-faint focus:border-brand"
+        />
+        <p className="text-[10.5px] text-faint">VI là bản bắt buộc VÀ là bản dự phòng: thiếu EN/KO thì trang tự hiển thị tiếng Việt, không bao giờ để trống.</p>
+      </PageSec>
+
+      {/* ── 5. Video ───────────────────────────────────────────────────────── */}
+      <PageSec n={5} title="Video giới thiệu" sub="Tối đa 3 · chỉ nhúng YouTube hoặc Vimeo" state={has ? '1/3' : 'Trống — ẩn'} tone={has ? 'active' : 'neutral'} open={open === 5} onToggle={() => toggle(5)}>
+        <div className="space-y-1.5">
+          {(has ? ['https://youtube.com/watch?v=…  ·  “Vượt trội mỗi ngày” · 2:14'] : []).map((v) => (
+            <div key={v} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px]">
+              <span className="min-w-0 flex-1 truncate text-ink/80">{v}</span>
+              <button disabled={ro} className="shrink-0 text-[11px] text-faint hover:text-rose-600 disabled:opacity-40">Bỏ</button>
+            </div>
+          ))}
+          <input readOnly={ro} placeholder="Dán link YouTube / Vimeo…" className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none placeholder:text-faint focus:border-brand" />
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">Chỉ nhận link từ danh sách host cho phép — không cho tải file video lên, vì băng thông và kiểm duyệt nội dung không thuộc phạm vi Phase-1.</p>
+      </PageSec>
+
+      {/* ── 6. Photos ──────────────────────────────────────────────────────── */}
+      <PageSec n={6} title="Hình ảnh công ty" sub="Bố cục 1 ảnh lớn + 4 ảnh nhỏ · cần ≥3 ảnh" state={has ? '5 ảnh' : 'Trống — ẩn'} tone={has ? 'active' : 'neutral'} open={open === 6} onToggle={() => toggle(6)}>
+        <div className="grid h-40 grid-cols-3 grid-rows-2 gap-1.5">
+          <div className="col-span-2 row-span-2"><AssetSlot label={has ? 'Trụ sở Hà Nội (hero)' : 'Ảnh hero'} filled={has} /></div>
+          <AssetSlot label={has ? 'Không gian làm việc' : 'Ảnh'} filled={has} />
+          <AssetSlot label={has ? 'Sự kiện Gala' : 'Ảnh'} filled={has} />
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Ảnh đầu tiên là <b className="text-ink/70">hero</b> và chiếm nửa khối — thứ tự ở đây quyết định ảnh nào lên hero. Dưới 3 ảnh thì cả thẻ bị ẩn: một mosaic thủng lỗ trông tệ hơn là không có.
+        </p>
+      </PageSec>
+
+      {/* ── 7. Story ───────────────────────────────────────────────────────── */}
+      <PageSec n={7} title="Câu chuyện của chúng tôi" sub="Tối đa 4 khối ảnh + chữ, xen kẽ trái/phải" state={has ? '0/4 — ẩn' : 'Trống — ẩn'} tone="neutral" open={open === 7} onToggle={() => toggle(7)}>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-canvas/40 px-3 py-2.5 text-[11.5px] text-faint">
+            <span className="flex-1">Chưa có khối nào — thẻ “Câu chuyện” không hiển thị trên trang.</span>
+            <button disabled={ro} className="shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium text-brand disabled:opacity-40">+ Thêm khối</button>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {['Tầm nhìn & Sứ mệnh', 'Giá trị cốt lõi', 'Chương trình nổi bật'].map((t) => (
+            <div key={t} className="rounded-md border border-line bg-surface p-2">
+              <p className="mb-1 text-[11px] font-semibold text-ink">{t}</p>
+              <textarea readOnly={ro} rows={2} placeholder="Tuỳ chọn…" className="w-full rounded border border-line bg-canvas/30 px-2 py-1 text-[11px] outline-none placeholder:text-faint focus:border-brand" />
+            </div>
+          ))}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">Ba ô nhỏ này bật/tắt độc lập với các khối ảnh — điền một ô cũng hiển thị được.</p>
+      </PageSec>
+
+      {/* ── 8. Benefits ────────────────────────────────────────────────────── */}
+      {/* The SAME 12 types the job form uses, not a second 8-group list. The Figma
+          draws 8 groups, but the spec already decided one shared taxonomy — that is
+          what lets a job's benefits be merged with the company's and de-duplicated.
+          Two lists would make "Lương thưởng" and "Lương & thưởng" different rows. */}
+      <PageSec n={8} title="Phúc lợi & Chế độ" sub="Phúc lợi CHUNG của công ty · mọi tin tuyển dụng kế thừa" state={`${bens.length} nhóm`} tone={bens.length ? 'active' : 'neutral'} open={open === 8} onToggle={() => toggle(8)}>
+        <div className="rounded-md border border-line bg-canvas/30 p-2.5">
+          <BenefitsField
+            label="Phúc lợi chung của công ty"
+            max={BENEFIT_TYPES.length}
+            initial={bens}
+          />
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Đây là <b className="text-ink/70">nguồn sự thật</b> cho phúc lợi: khai báo một lần ở đây, mọi tin tuyển dụng của công ty tự kế thừa (chỉ đọc), tin chỉ viết thêm phần <i>riêng của vị trí</i>. Sửa ở đây là mọi tin đang chạy cập nhật theo.
+        </p>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Không giới hạn 6 như ở tin tuyển dụng — trang công ty được đọc một lần chứ không bị so sánh cạnh các tin khác, nên liệt kê đủ là có lợi.
+        </p>
+      </PageSec>
+
+      {/* ── 9. Leaders ─────────────────────────────────────────────────────── */}
+      <PageSec n={9} title="Đội ngũ lãnh đạo" sub="Tối đa 6 người · ảnh + tên + chức danh" state={has ? '0/6 — ẩn' : 'Trống — ẩn'} tone="neutral" open={open === 9} onToggle={() => toggle(9)}>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-md border border-dashed border-line bg-canvas/40 p-2 text-center">
+              <div className="mx-auto h-10 w-10 rounded-full border border-line bg-surface" />
+              <p className="mt-1.5 text-[10.5px] text-faint">+ Thêm người</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">Ảnh chân dung là bắt buộc cho mỗi người — một hàng avatar khuyết trông như trang lỗi.</p>
+      </PageSec>
+
+      {/* ── 10. Offices — the same book the job form picks from ─────────────── */}
+      <PageSec n={10} title="Văn phòng" sub="Danh sách + bản đồ · dùng chung sổ địa điểm với tin tuyển dụng" state="3 địa điểm" tone="active" open={open === 10} onToggle={() => toggle(10)}>
+        <div className="rounded-md border border-line bg-canvas/30 p-2.5">
+          <WorkingLocationsField max={8} initial={['hq', 'hn', 'bd']} />
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          Đây là <b className="text-ink/70">cùng một sổ địa điểm</b> mà form đăng tin chọn ra — sửa địa chỉ ở đây thì mọi tin đang chạy cập nhật theo. Địa điểm đầu tiên là trụ sở chính và là điểm bản đồ mặc định.
+        </p>
+      </PageSec>
+
+      {/* ── 11. Meta ───────────────────────────────────────────────────────── */}
+      <PageSec n={11} title="Thông tin thêm" sub="Lĩnh vực kinh doanh · thương hiệu · website · mạng xã hội" state={has ? 'Đã có' : 'Trống — ẩn'} tone={has ? 'active' : 'neutral'} open={open === 11} onToggle={() => toggle(11)}>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <LField label="Lĩnh vực kinh doanh" value={has ? `Dịch vụ ${c.industry.toLowerCase()}` : ''} />
+          <LField label="Thương hiệu" value={has ? c.shortName || c.name : ''} hint="Ngăn cách bằng dấu ·" />
+          <LField label="Website" value={c.domain} />
+          <LField label="Mạng xã hội" value={has ? 'Facebook · LinkedIn' : ''} hint="Chỉ nhận link — hiển thị thành icon." />
+        </div>
+        <LField label="Số nhân viên hiển thị / lịch sử nhân sự" value={has ? `${c.size} · 2 năm dữ liệu` : ''} hint="Biểu đồ nhân sự cần tối thiểu 3 năm, dưới mức đó thì ẩn." />
+      </PageSec>
+
+      {/* actions */}
+      <div className="flex flex-wrap items-center gap-2">
         {ro ? (
-          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">Chỉ đọc — không sửa trang của công ty do sales khác phụ trách.</span>
-        ) : c.hasPage ? (
+          <span className="rounded-lg border border-dashed border-line bg-canvas/50 px-3 py-1.5 text-[11.5px] text-muted">{RO_HINT}</span>
+        ) : has ? (
           <>
-            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Save changes</button>
-            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">↗ View live</button>
+            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu thay đổi</button>
+            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">↗ Xem trang thật</button>
+            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-rose-300 hover:text-rose-600">Gỡ khỏi công khai</button>
           </>
         ) : (
-          <button className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Publish page</button>
+          <>
+            <button disabled={missing.length > 0} className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', missing.length ? 'cursor-not-allowed bg-brand/40' : 'bg-brand hover:opacity-90')}>Đăng trang</button>
+            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Lưu nháp</button>
+          </>
         )}
       </div>
-      {!c.hasPage && <p className="text-[11px] text-amber-700">Draft — not public yet. The company can’t publish jobs until this page is published.</p>}
+      {!has && <p className="text-[11px] text-amber-700">Nháp — chưa công khai. Công ty <b>không đăng được tin tuyển dụng</b> cho tới khi trang này được đăng.</p>}
     </div>
   )
 }
@@ -5131,6 +5646,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           <DetailCard title="Products & quota">
             <ProductsQuota c={c} />
           </DetailCard>
+          {/* Manual services sit next to the metered quota, not inside it: the
+              numbers look the same to a reader, but one is observed and the other
+              is asserted by a person. */}
+          <ServiceUsageCard c={c} />
           {/* PO history, not "billing history": the PO is the document a rep and a
               customer both refer to, and one row per PO is one row per thing that
               was actually bought. Order / Invoice / Payment as three separate rows
@@ -5683,7 +6202,8 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
           <div className="mb-2"><Meter pct={u.complete} /></div>
           <KV label="Headline" value={u.headline} />
           <KV label="Desired role" value="Software Developer · IT" />
-          <KV label="Job type" value="Full-time" />
+          <KV label="Work type" value="In office" />
+            <KV label="Contract type" value="Fulltime" />
           <KV label="Expected salary" value="35 – 45 tr VND / month" />
           <KV label="Preferred locations" value="Hồ Chí Minh · Remote" />
           <KV label="Open to offers" value="Yes — visible in Resume Search" />
@@ -5728,20 +6248,220 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
 }
 
 /* ── Content ──────────────────────────────────────────────────────────────── */
+/* A BANNER is an instance of a Placement product: one company's creative, running
+   on one slot, for a period. The product says what a hero banner costs and how big
+   it is; this record is the thing that actually goes live.
+
+   Status mirrors Jobs exactly — Draft → Schedule → Open → Expired, driven by the
+   publish action and the dates, never typed. Exposure is SEPARATE, as on a job: an
+   Open banner can be pulled off screen without ending its booking. */
+type BannerStatus = 'Draft' | 'Schedule' | 'Open' | 'Expired'
+const BANNER_TONE: Record<BannerStatus, StatusTone> = {
+  Draft: 'draft',
+  Schedule: 'schedule',
+  Open: 'open',
+  Expired: 'closed',
+}
+type Banner = {
+  id: string
+  name: string
+  sku: string
+  company: string
+  start: string
+  end: string
+  status: BannerStatus
+  exposure: 'On' | 'Off'
+  clicks: string
+  creative: string | null
+}
+const BANNERS: Banner[] = [
+  { id: 'BN-1042', name: 'Hero — Tết 2026 campaign', sku: 'PLC-HOMEHERO', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', clicks: '12,480', creative: 'tet2026-hero-1536x371.jpg' },
+  { id: 'BN-1051', name: 'Hero — Tuyển dụng Q3', sku: 'PLC-HOMEHERO', company: 'Công ty Vạn Phát', start: '01/08/2026', end: '08/08/2026', status: 'Open', exposure: 'On', clicks: '3,190', creative: 'vanphat-hero-1536x371.jpg' },
+  { id: 'BN-1052', name: 'Adsense — IT jobs', sku: 'PLC-ADS-HOME', company: 'Tiki', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'tiki-ads-1260x120.jpg' },
+  { id: 'BN-1053', name: 'Hero — Employer promo', sku: 'PLC-HOMEHERO', company: 'MoMo', start: '—', end: '—', status: 'Draft', exposure: 'Off', clicks: '—', creative: null },
+  { id: 'BN-1054', name: 'Adsense — Search, Shopee', sku: 'PLC-ADS-SEARCH', company: 'Shopee', start: '05/08/2026', end: '12/08/2026', status: 'Open', exposure: 'Off', clicks: '840', creative: 'shopee-search-425x160.jpg' },
+]
+
 function AdminBanners() {
-  const rows = [
-    ['Hero — Tết 2026 campaign', 'Home hero', '01/01 – 15/02', <Pill tone="active">Live</Pill>, '12,480'],
-    ['Long banner — IT jobs', 'Home mid', '10/07 – 10/08', <Pill tone="active">Live</Pill>, '4,220'],
-    ['Square — Resume builder', 'Sidebar', '01/08 – 31/08', <Pill tone="pending">Scheduled</Pill>, '—'],
-    ['Hero — Employer promo', 'Home hero', '20/06 – 30/06', <Pill tone="expired">Ended</Pill>, '9,110'],
-  ]
+  const [fStatus, setFStatus] = useState('')
+  const [edit, setEdit] = useState<Banner | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const rows = BANNERS.filter((b) => !fStatus || b.status === fStatus)
+  const slotOf = (sku: string) => CATALOG.find((c) => c.sku === sku)?.name ?? sku
+
   return (
-    <ListPage
-      cols={[{ label: 'Banner', w: '1.8fr' }, { label: 'Slot', w: '1fr' }, { label: 'Schedule', w: '1.2fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Clicks', w: '0.8fr', align: 'r' }]}
-      rows={rows}
-    />
+    <div>
+      <ListPage
+        cols={[
+          { label: 'Banner', w: '1.7fr' },
+          { label: 'Placement', w: '1.3fr' },
+          { label: 'Company', w: '1.2fr' },
+          { label: 'Schedule', w: '1.3fr' },
+          { label: 'Status', w: '0.8fr' },
+          { label: 'Exposure', w: '0.8fr' },
+          { label: 'Clicks', w: '0.7fr', align: 'r' },
+        ]}
+        rows={rows.map((b) => [
+          <button onClick={() => setEdit(b)} className="min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{b.name}</button>,
+          <span className="truncate">{slotOf(b.sku)}</span>,
+          <span className="truncate">{b.company}</span>,
+          <span className="tabular-nums">{b.start === '—' ? <span className="text-faint">chưa đặt</span> : `${b.start} – ${b.end}`}</span>,
+          <Pill tone={BANNER_TONE[b.status]}>{b.status}</Pill>,
+          b.exposure === 'On'
+            ? <span className="flex items-center gap-1 text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />On</span>
+            : <span className="flex items-center gap-1 text-faint"><span className="h-1.5 w-1.5 rounded-full bg-line" />Off</span>,
+          <span className="tabular-nums">{b.clicks}</span>,
+        ])}
+        filters={<FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Schedule', 'Open', 'Expired']} />}
+        total={BANNERS.length}
+        searchHint="Search banner, placement, company…"
+        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Publish banner</button>}
+        minW={1180}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Status follows the dates, never typed: publishing with a future start gives <b className="text-ink/70">Schedule</b>,
+        the start date makes it <b className="text-ink/70">Open</b>, the end date makes it <b className="text-ink/70">Expired</b> ·
+        Exposure is separate — an Open banner can be switched off without ending the booking
+      </p>
+      {(creating || edit) && <PublishBannerModal banner={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
+    </div>
   )
 }
+
+/* Publish a banner. Two decisions only, as asked: WHEN it starts and WHAT runs.
+   Everything else is read from the placement product — size, duration, the slot's
+   rotation cap — because those were fixed when the product was sold. */
+function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClose: () => void }) {
+  const placements = CATALOG.filter((c) => c.type === 'Placement booking' && c.role !== 'Add-on')
+  const [sku, setSku] = useState(banner?.sku ?? placements[0]?.sku ?? '')
+  const [start, setStart] = useState(banner?.start === '—' ? '' : banner?.start ?? '')
+  const [file, setFile] = useState<string | null>(banner?.creative ?? null)
+
+  const product = CATALOG.find((c) => c.sku === sku)
+  const slot = PLACEMENTS.find((x) =>
+    (sku === 'PLC-HOMEHERO' && x.id === 'home-hero') ||
+    (sku === 'PLC-ADS-HOME' && x.id === 'home-adsense') ||
+    (sku === 'PLC-ADS-SEARCH' && x.id === 'search-adsense') ||
+    (sku === 'PLC-TOPCOMPANY' && x.id === 'home-top-co') ||
+    (sku === 'PLC-FEATURECO' && x.id === 'home-feature-co') ||
+    (sku === 'PLC-SEARCH-HLCO' && x.id === 'search-highlight-co') ||
+    (sku === 'PLC-POPUP' && x.id === 'home-popup'))
+
+  const days = Number(product?.fulfilment.match(/(\d+) ngày/)?.[1] ?? 7)
+  const status = banner?.status ?? 'Draft'
+  /* The one hard rule: a running banner's creative is frozen. The customer paid for
+     what is on screen now, and swapping it mid-flight leaves the impressions already
+     served attributed to an image nobody can retrieve. Switch Exposure off, or wait
+     for Expired, then publish a new booking. */
+  const creativeLocked = status === 'Open'
+  const valid = Boolean(sku) && Boolean(start) && Boolean(file)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">{banner ? banner.name : 'Publish banner'}</p>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted">
+              {banner ? <>{banner.id} · {banner.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Chọn vị trí, ngày bắt đầu và tải banner lên.'}
+            </p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          {creativeLocked && (
+            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+              <span>🔒</span>
+              <span>
+                Banner đang <b>Open</b> — không thể thay ảnh. Khách đã trả tiền cho đúng ảnh đang chạy, đổi giữa kỳ sẽ
+                làm số lượt hiển thị đã ghi nhận không còn khớp với ảnh nào. Hãy tắt <b>Exposure</b>, hoặc đợi hết hạn
+                rồi tạo booking mới.
+              </span>
+            </p>
+          )}
+
+          <Section title="1 · Vị trí" className="mt-0" />
+          <div>
+            <FLabel req>Placement product</FLabel>
+            <select
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              disabled={!!banner}
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink disabled:bg-canvas/60 disabled:text-muted"
+            >
+              {placements.map((c) => <option key={c.sku} value={c.sku}>{c.name}</option>)}
+            </select>
+            {slot && (
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                <span className="font-mono">{slot.size}</span> · {slot.shown} · {slot.cap} — đọc từ Placements, không sửa ở đây.
+              </p>
+            )}
+            {banner && <p className="mt-1 text-[10.5px] text-faint">Vị trí đã chốt khi bán — muốn đổi thì tạo booking mới.</p>}
+          </div>
+
+          <Section title="2 · Thời gian hiển thị" />
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>Ngày bắt đầu</FLabel>
+              <input
+                type="date"
+                value={start ? start.split('/').reverse().join('-') : ''}
+                onChange={(e) => setStart(e.target.value.split('-').reverse().join('/'))}
+                disabled={status === 'Open' || status === 'Expired'}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
+              />
+            </div>
+            <LField label="Ngày kết thúc" value={start ? `+${days} ngày từ ngày bắt đầu` : `— ${days} ngày sau ngày bắt đầu`} hint="Tính từ thời gian hiển thị của sản phẩm, không nhập tay." />
+          </div>
+          <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+            Ngày bắt đầu <b className="text-ink/70">trong tương lai</b> → trạng thái <b className="text-ink/70">Schedule</b>.
+            Ngày bắt đầu <b className="text-ink/70">hôm nay</b> → <b className="text-ink/70">Open</b> ngay khi lưu.
+          </p>
+
+          <Section title="3 · Banner" />
+          <div>
+            <FLabel req>Ảnh banner</FLabel>
+            <div className={cn('rounded-lg border border-dashed px-3 py-4 text-center', creativeLocked ? 'border-line bg-canvas/50' : 'border-line hover:border-brand/50')}>
+              {file ? (
+                <div className="flex items-center justify-center gap-2 text-[12px]">
+                  <span className="truncate font-mono text-ink/80">{file}</span>
+                  {!creativeLocked && (
+                    <button onClick={() => setFile(null)} className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-muted hover:border-rose-300 hover:text-rose-600">Gỡ</button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => setFile(`${sku.toLowerCase()}-${(slot?.size ?? '').replace(/[^0-9x]/g, '')}.jpg`)}
+                  disabled={creativeLocked}
+                  className="text-[12px] font-medium text-brand hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
+                >
+                  ⬆ Tải ảnh lên
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+              Đúng kích thước <b className="text-ink/70">{slot?.size ?? '—'}</b>. Ảnh sai tỉ lệ bị chặn khi lưu, không tự crop.
+            </p>
+          </div>
+          <LField label="Link redirect" value="https://…" hint="Khách cung cấp. Bấm banner mở link này." />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Hủy</button>
+          {status === 'Draft' && (
+            <button onClick={onClose} disabled={!valid} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink/80 hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40">Lưu nháp</button>
+          )}
+          <button onClick={onClose} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+            {status === 'Draft' ? 'Publish' : 'Lưu'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminPopups() {
   const rows = [
     ['Welcome — new visitors', 'Guests', 'Always on', <Pill tone="active">Live</Pill>, '1 / session'],
@@ -5923,14 +6643,39 @@ type ProductRole = 'Main' | 'Add-on'
    'free' = HQ may post it at any time with no PO and no limit; it is Admin-only,
    never offered on the Company site, and never upgradeable to a paid tier. */
 type Entitlement = 'purchase' | 'free'
-const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement }[] = [
+/* ── Activation window ────────────────────────────────────────────────────────
+   How long the customer has to START using what they bought, counted from the
+   INVOICE date — client T&C clause 4. It is the middle of three clocks and the
+   only one that can silently destroy paid-for quota:
+
+     provisioned   the invoice is issued → quota lands on the account (immediate)
+     activate by   invoice date + THIS window → unused quota expires
+     runs for      once a slot is activated, the posting/pack runs its own period
+
+   It sits on the PRODUCT, not on a global setting, because a 12-month bank on a
+   13.800.000 ₫ Top Job slot and a 12-month bank on a free trial tin are not the
+   same promise. Default 12 months, which is what the client T&C states. */
+const ACTIVATE_WITHIN_DEFAULT = 12
+/** Months to activate, or null where the product is never invoiced at all. */
+const activateWithin = (p: { entitlement?: Entitlement; activateWithin?: number }) =>
+  p.entitlement === 'free' ? null : p.activateWithin ?? ACTIVATE_WITHIN_DEFAULT
+/* Always in MONTHS, never "1 năm": the point of the column is to compare 3 against
+   12 at a glance, and the client T&C itself says "trong vòng 12 tháng". */
+const activateWithinLabel = (p: { entitlement?: Entitlement; activateWithin?: number }) => {
+  const m = activateWithin(p)
+  return m === null ? '—' : `${m} tháng`
+}
+
+const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number }[] = [
   // ── Job posting ───────────────────────────────────────────────────────────
   { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
   { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
   { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['PLC-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
   { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS'] },
   { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
-  { sku: 'JOB-TRIAL', name: 'Tin Basic — dùng thử (tặng KH mới)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active' },
+  // Shorter window than the 12-month default on purpose: a giveaway that can be
+  // banked for a year is a liability on the books, not an incentive to start.
+  { sku: 'JOB-TRIAL', name: 'Tin Basic — dùng thử (tặng KH mới)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3 },
 
   // ── CV search ─────────────────────────────────────────────────────────────
   { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', role: 'Main', price: '2,400,000 ₫', fulfilment: '30 lượt · 30 ngày · ~80.000/CV', status: 'Active' },
@@ -6102,6 +6847,15 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
         {/* Field-for-field the same set the create form asks for, per type — so the
             form and the record never disagree about what defines a product. */}
         <DetailCard title={`Fulfilment — ${p.type}`} action={<span className="text-[11px] text-faint">same fields as create</span>}>
+          {/* Applies to every type, so it leads the card rather than sitting inside
+              one branch. It is also the only line here that can cost the customer
+              money they already paid. */}
+          <KV
+            label="Kích hoạt trong — từ ngày xuất hóa đơn"
+            value={activateWithin(p) === null
+              ? '— never invoiced, so no window'
+              : `${activateWithinLabel(p)} kể từ ngày xuất hóa đơn · quota chưa dùng hết hạn sau đó`}
+          />
           {isTier && (<>
             <KV label="Entitlement source" value={isFreeTier ? 'Always available — Admin only, no PO, no limit' : 'Requires purchase — drawn from an active PO line'} />
             <KV label="Thời gian hiển thị" value={`${p.fulfilment.match(/^(\d+) ngày/)?.[1] ?? '30'} ngày`} />
@@ -6288,7 +7042,7 @@ function AdminCatalog() {
         // is the human name (sales says "Tin Top Job", never "JOB-TOPJOB"). Only
         // document lists — quotation, invoice, PO — lead with their number, because
         // for a document the number IS the name.
-        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1.1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Role', w: '0.8fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.6fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
+        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1.1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Role', w: '0.8fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.6fr' }, { label: 'Activate within', w: '1fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
         rows={rows.map((p) => [
           // The name opens the product record — where the price, the entitlement it
           // grants and its change history live.
@@ -6302,6 +7056,12 @@ function AdminCatalog() {
             : <Pill tone={p.role === 'Add-on' ? 'pending' : 'neutral'}>{p.role}</Pill>,
           <span className={cn(p.price.startsWith('—') && 'text-faint')}>{p.price}</span>,
           p.fulfilment,
+          // Next to Fulfilment on purpose: "what you get" and "by when you must
+          // start" are read together, and a non-default window is the thing worth
+          // spotting from the list.
+          <span className={cn('text-[11.5px]', activateWithin(p) === null ? 'text-faint' : activateWithin(p) !== ACTIVATE_WITHIN_DEFAULT ? 'font-medium text-amber-700' : 'text-muted')}>
+            {activateWithinLabel(p)}{activateWithin(p) !== null && <span className="text-faint"> từ hóa đơn</span>}
+          </span>,
           <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>,
         ])}
         filters={
@@ -6329,7 +7089,7 @@ function AdminCatalog() {
         }
         total={CATALOG.length}
         searchHint="Search product, SKU, type…"
-        minW={1240}
+        minW={1400}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
         Every product maps to an entitlement (product + remaining quota + validity) — the record downstream
@@ -6362,6 +7122,8 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
   const [entitlement, setEntitlement] = useState<Entitlement>('purchase')
+  // T&C clause 4 default. Stored per product, not read from a global setting.
+  const [activate, setActivate] = useState(String(ACTIVATE_WITHIN_DEFAULT))
   // Only job-posting products can be the always-available (Admin-only) free tier.
   const isFree = type === 'job' && entitlement === 'free'
 
@@ -6529,6 +7291,36 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <Section title="3 · Fulfilment" />
+          {/* Applies to EVERY type, so it comes before the branches. Three clocks
+              get confused with each other constantly, so the hint below names all
+              three and says which one this field is. */}
+          {!isFree ? (
+            <div>
+              <FLabel req>
+                Thời gian phải kích hoạt — kể từ ngày xuất hóa đơn
+                <span className="ml-1 font-normal text-faint">T&amp;C điều 4</span>
+              </FLabel>
+              <select
+                value={activate}
+                onChange={(e) => setActivate(e.target.value)}
+                className="w-full cursor-pointer rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand"
+              >
+                {[3, 6, 12, 18, 24].map((m) => (
+                  <option key={m} value={m}>{m} tháng{m === ACTIVATE_WITHIN_DEFAULT ? ' — mặc định (T&C điều 4)' : ''}</option>
+                ))}
+              </select>
+              <p className="mt-1 rounded-md bg-canvas/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-muted">
+                Ba mốc thời gian khác nhau — đây là mốc <b className="text-ink/75">thứ hai</b>:
+                <br />① <b className="text-ink/75">Cấp quota</b> — ngay khi xuất hóa đơn.
+                <br />② <b className="text-ink/75">Phải kích hoạt trong {activate} tháng</b> kể từ ngày hóa đơn, nếu không quota chưa dùng sẽ hết hạn.
+                <br />③ <b className="text-ink/75">Sau khi kích hoạt</b>, mỗi slot chạy theo thời gian hiển thị / hiệu lực riêng bên dưới.
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-md bg-brand-soft px-2.5 py-1.5 text-[10.5px] leading-relaxed text-brand">
+              🆓 Không có thời hạn kích hoạt — tier này không bao giờ được bán nên không có hóa đơn để đếm từ đó.
+            </p>
+          )}
           {/* There is no separate "tier config" screen: THIS product IS the tier
               definition. Display duration, refresh cadence and the placements it
               feeds are editable here, and because there is exactly one Top Job
@@ -9839,6 +10631,25 @@ const MD_DOMAINS: MDDomain[] = [
     ],
   },
   {
+    key: 'benefits', label: 'Benefits (phúc lợi)', i18n: 'vi · en · ko', used: 'Job form (Benefits picker) · Job detail · Store filter',
+    note: 'A benefit = a fixed TYPE (icon + label, here) + a DESCRIPTION written per job. Typing them is what gives each benefit an icon, a translation and a SEARCH FILTER — a free-text blob can never answer “show me jobs with a shuttle bus”. Kept deliberately short (12, one 4×3 grid): the description carries the detail, so “Phụ cấp” covers ăn trưa / xăng xe / điện thoại / chuyên cần without four separate types. Max 6 per job.',
+    kind: 'flat',
+    entries: [
+      'Lương & thưởng — Pay & bonus',
+      'Phụ cấp — Allowances',
+      'Bảo hiểm & sức khoẻ — Insurance & health',
+      'Nghỉ phép — Paid leave',
+      'Làm việc linh hoạt — Flexible working',
+      'Đưa đón & chỗ ở — Transport & housing',
+      'Căn-tin — Canteen',
+      'Trang bị làm việc — Equipment & uniform',
+      'Đào tạo & thăng tiến — Training & career',
+      'Du lịch & hoạt động — Trips & activities',
+      'Chăm lo gia đình — Family care',
+      'Khác — Other (tiêu đề tự nhập, luôn xếp cuối)',
+    ],
+  },
+  {
     key: 'job-level', label: 'Job level', i18n: 'vi · en · ko', used: 'Job form · Store filter',
     note: 'Seniority of the posting. Single-level list.', kind: 'flat',
     entries: ['Intern/Student', 'Fresher/Entry level', 'Experienced (non-manager)', 'Manager', 'Director and above'],
@@ -9859,9 +10670,17 @@ const MD_DOMAINS: MDDomain[] = [
     entries: ['English', 'Vietnamese', 'Japanese', 'Chinese', 'Korean', 'French', 'Spanish', 'Italian'],
   },
   {
-    key: 'job-types', label: 'Job types', i18n: 'vi · en · ko', used: 'Job form · Store filter',
-    note: 'Employment type. Single-level list.', kind: 'flat',
-    entries: ['Full-time', 'Part-time', 'Internship', 'Online Jobs', 'Freelancer', 'Seasonal', 'Other'],
+    // TWO axes, two lists — see Job management → "WORK TYPE and CONTRACT TYPE are
+    // TWO fields". They combine freely ("Fulltime + Remote"), so one merged list
+    // would force the employer to pick a side and drop the other half.
+    key: 'work-types', label: 'Work types (job_type)', i18n: 'vi · en · ko', used: 'Job form · Search filter · Matching',
+    note: 'WHERE and HOW the work happens. Single-level list.', kind: 'flat',
+    entries: ['In office', 'Remote', 'Hybrid', 'Oversea'],
+  },
+  {
+    key: 'contract-types', label: 'Contract types (contract_type)', i18n: 'vi · en · ko', used: 'Job form · Search filter',
+    note: 'The EMPLOYMENT RELATIONSHIP. Job side only — the candidate is never asked for one, so this drives the jobseeker\u2019s SEARCH FILTER, not the match score. No "Other": a catch-all here meant the old list was carrying two axes at once.', kind: 'flat',
+    entries: ['Fulltime', 'Part-time', 'Fixed-term contract', 'Internship', 'Probation', 'Freelance', 'Seasonal'],
   },
   {
     // Gates the Locations field: a Vietnamese company picks a province from
@@ -10721,6 +11540,16 @@ function SavedByCard({ job }: { job: JobRow }) {
 
 function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
   useDetailCrumb(job.title, onBack)
+  /* The employer's title-edit window is 72 HOURS from publishedAt — counted in
+     hours, not calendar days. Shown here because HQ needs to know the employer can
+     no longer fix it themselves; Admin itself is NOT restricted on any field. */
+  const hoursLive = (() => {
+    const m = job.posted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (!m || job.status !== 'open') return null
+    const posted = new Date(+m[3], +m[2] - 1, +m[1])
+    return Math.floor((Date.now() - posted.getTime()) / 3_600_000)
+  })()
+  const titleLocked = hoursLive !== null && hoursLive > 72
   return (
     <div className="max-w-[900px]">
 
@@ -10728,6 +11557,13 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
         <div>
           <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{job.title} <Pill tone={job.status}>{job.statusLabel}</Pill></h2>
           <p className="text-[11.5px] text-muted"><span className="font-mono">{job.id}</span> · {job.category} · {job.company} · Created by {job.source}</p>
+          {hoursLive !== null && (
+            <p className={cn('mt-1 text-[10.5px]', titleLocked ? 'text-amber-700' : 'text-muted')}>
+              {titleLocked
+                ? `🔒 Tiêu đề đã khoá với employer — tin đã đăng ${hoursLive} giờ (khoá sau 72 giờ). Admin vẫn sửa được mọi trường.`
+                : `Employer còn ${72 - hoursLive} giờ để sửa tiêu đề (72 giờ kể từ khi đăng). Admin không bị giới hạn.`}
+            </p>
+          )}
           <a className="mt-1 inline-flex cursor-pointer items-center gap-1 text-[11.5px] font-medium text-brand hover:underline">
             {job.status === 'draft' || job.status === 'schedule'
               ? 'Preview draft ↗'
@@ -10772,7 +11608,8 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
             <KV label="Job category" value={job.category} />
             <KV label="Job role" value="Software Developer" />
             <KV label="Job level" value="Experienced (non-manager)" />
-            <KV label="Job type" value="Full-time" />
+            <KV label="Work type" value="In office" />
+            <KV label="Contract type" value="Fulltime" />
             <KV label="Industry" value="FMCG" />
             <KV label="Skills" value="ASP.NET Core · .NET · React" />
             <KV label="Location (province / city)" value="Hồ Chí Minh" />
@@ -10790,9 +11627,33 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
           <p className="text-[12px] leading-relaxed text-muted">Lead the development team; backend architecture (70%) + frontend (30%); code review &amp; mentoring…</p>
           <Section title="Requirements" className="mt-2" />
           <p className="text-[12px] leading-relaxed text-muted">7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…</p>
-          <Section title="Benefits" className="mt-2" />
-          <p className="text-[12px] leading-relaxed text-muted">Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…</p>
-          <p className="mt-2 text-[10.5px] text-faint">Vietnamese is the default, required, and the fallback; English/Korean optional. (Sample shown in English.)</p>
+          {/* Two blocks, one source each: what this POSITION adds, then what it
+              INHERITS from the company page. They never contradict because they no
+              longer describe the same thing. */}
+          <Section title="Phúc lợi riêng của vị trí này" className="mt-2" />
+          <BenefitCards items={[
+            { key: 'pay', text: 'Thưởng dự án theo milestone, xét tăng lương 2 lần/năm' },
+            { key: 'flexible', text: 'Hybrid 2 ngày/tuần, giờ vào ca linh hoạt 8–10h' },
+          ]} />
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+            <Section title="Phúc lợi chung của công ty" className="mt-0" />
+            <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Xem trang công ty ↗</a>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {COMPANY_BENEFITS.map((k) => {
+              const t = benefitByKey(k)
+              if (!t) return null
+              return (
+                <span key={k} className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas/50 px-2 py-1 text-[11px] text-ink/70">
+                  <t.Icon className="h-3 w-3 shrink-0 text-muted" />{t.vi}
+                </span>
+              )
+            })}
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+            Kế thừa tự động từ trang công ty (chỉ đọc) — sửa ở đó thì mọi tin đang mở cập nhật theo. Tin tuyển dụng <b className="text-ink/70">không ghi đè</b> phúc lợi công ty.
+            Nhãn loại phúc lợi song ngữ lấy từ Master data; phần mô tả tiếng Việt bắt buộc, EN/KO tuỳ chọn.
+          </p>
         </DetailCard>
 
         <DetailCard title="Candidate expectation">
@@ -10994,7 +11855,6 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
   const [postMenu, setPostMenu] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('VI')
-  const [locations, setLocations] = useState<{ city: string; address: string }[]>([{ city: 'Hồ Chí Minh', address: 'Burning Bros D2 · 69 Võ Nguyên Giáp, Thảo Điền, Quận 2' }])
   const G2 = 'grid grid-cols-2 gap-3'
   const G3 = 'grid grid-cols-3 gap-3'
 
@@ -11084,33 +11944,15 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           </div>
           <div className={G2}>
             <SelectField label="Job level" req value="Experienced (non-manager)" createLabel="Create job level" options={['Intern/Student', 'Fresher/Entry level', 'Experienced (non-manager)', 'Manager', 'Director and above']} />
-            <SelectField label="Job type" req value="Full-time" createLabel="Create job type" options={['Full-time', 'Part-time', 'Internship', 'Online Jobs', 'Freelancer', 'Seasonal', 'Other']} />
+            <SelectField label="Work type" req value="In office" createLabel="Create work type" options={['In office', 'Remote', 'Hybrid', 'Oversea']} /><SelectField label="Contract type" req value="Fulltime" createLabel="Create contract type" options={['Fulltime', 'Part-time', 'Fixed-term contract', 'Internship', 'Probation', 'Freelance', 'Seasonal']} />
           </div>
           <div className={G2}>
             <SelectField label="Industry" req value="FMCG" createLabel="Create industry" options={['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics']} />
             <JobSkillsField />
           </div>
-          <div>
-            <LabelRow label="Working location (up to 3 locations)" req />
-            <div className="mb-1 flex gap-2 text-[10.5px] text-faint">
-              <span className="w-44 shrink-0">Location (province / city)</span>
-              <span>Address (street · building)</span>
-            </div>
-            <div className="space-y-2">
-              {locations.map((loc, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex w-44 shrink-0 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.city}<span className="ml-auto">▾</span></div>
-                  <div className="flex flex-1 items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{loc.address}</div>
-                  {locations.length > 1 && (
-                    <button onClick={() => setLocations((ls) => ls.filter((_, j) => j !== i))} className="rounded-md border border-line px-2 py-2 text-[12px] text-muted"></button>
-                  )}
-                </div>
-              ))}
-            </div>
-            {locations.length < 3 && (
-              <button onClick={() => setLocations((ls) => [...ls, { city: 'Select city…', address: 'Enter address…' }])} className="mt-1 text-[11px] font-medium text-brand">+ Add a working location</button>
-            )}
-          </div>
+          {/* A working location is a NAMED office saved on the company, not a
+              city+address typed per job — see WorkingLocationsField. */}
+          <WorkingLocationsField />
 
           <div>
             <LabelRow label="Salary range" req right={<ShowToggle />} />
@@ -11136,9 +11978,16 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
           <BiTArea label="Requirements" req rows={4}
             vi="7+ năm phát triển phần mềm; 3+ năm ở vị trí Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; tiếng Nhật N4+…"
             en="7+ years software dev; 3+ years as Technical Leader; ASP.NET Core, SQL Server, React/Vue/Angular; Japanese N4+…" />
-          <BiTArea label="Benefits" rows={3}
-            vi="Bảo hiểm đầy đủ; lương tháng 13; phụ cấp ngoại ngữ tới $500/tháng; 19+ ngày phép; Udemy; hybrid…"
-            en="Full insurance; 13th-month salary; language allowance up to $500/mo; 19+ paid leave; Udemy; hybrid…" />
+          {/* Benefits is NOT free text any more: a typed list is what gives each
+              one an icon, a translation, and a search filter. See BenefitsField.
+              The job declares only what is SPECIFIC to the position; the company's
+              general benefits are inherited from the company page, shown here so
+              nobody retypes them. */}
+          <BenefitsField
+            initial={['pay', 'flexible']}
+            companyBenefits={COMPANY_BENEFITS}
+            companyName="NEC Vietnam"
+          />
         </JobGroup>
 
         {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}

@@ -185,7 +185,7 @@ export const crm: BuildModule = {
       items: [
         'One line: the PO says “you agreed to buy this, please pay”. The invoice says “you paid, and here is the document the tax office recognises”.',
         'The PO carries “Ngày xuất hóa đơn” and “Hạn trả”, so it is really acting as a proforma (payment request) rather than a pure purchase order — a legitimate VN pattern. The prefix now keeps the two apart: the proforma is PO-…, the tax invoice INV-…. The client’s live system numbered the PO INV-…, so existing records need migrating.',
-        'The PO’s “Ngày xuất hóa đơn” is a planned date. The VAT invoice’s issue date is a fact — and it is the one that starts the 12-month activation window (clause 4). Reports must read the invoice date, never the PO’s.',
+        'The PO’s “Ngày xuất hóa đơn” is a planned date. The VAT invoice’s issue date is a fact — and it is the one that starts the activation window (clause 4). Reports must read the invoice date, never the PO’s.',
       ],
     },
     {
@@ -230,8 +230,8 @@ export const crm: BuildModule = {
         ],
       },
       items: [
-        '**Provisioning ≠ activation** — two events, two clocks, and T&C separates them. Provisioning (clause 3): quota lands in the account when the invoice is issued; nothing is running yet. Activation (clause 4): the customer uses a slot, which must happen within 12 months of the invoice date or the unused quota expires. Usage (clause 5): once activated, that posting runs 30 days.',
-        'So a customer can buy 10 slots today, use one next week and one in eight months. Provisioning granted all ten at once; each activates separately and burns its own 30-day window. The Invoice list’s “Activate by” column is exactly invoice date + 12 months.',
+        '**Provisioning ≠ activation** — two events, two clocks, and T&C separates them. Provisioning (clause 3): quota lands in the account when the invoice is issued; nothing is running yet. Activation (clause 4): the customer uses a slot, which must happen within the window declared on that PRODUCT — 12 months by default, 3 on the trial posting — counted from the invoice date, or the unused quota expires. Usage (clause 5): once activated, that posting runs 30 days.',
+        'So a customer can buy 10 slots today, use one next week and one in eight months. Provisioning granted all ten at once; each activates separately and burns its own 30-day window. The Invoice list’s “Activate by” column is invoice date + the product’s own activation window — see Products & Packages → Products management.',
         '**Idempotency** (the most likely production bug in the whole chain): invoice.issued can fire twice — an e-invoice provider timeout followed by a retry is normal. Provisioning must be keyed on the invoice ID, or the customer silently receives double quota.',
         '**Reversal** — now a designed path, not a corner case, and still unanswered: cancelling a PO withdraws an invoice that has already provisioned. What happens to quota partly consumed? Options: claw back the unused portion · leave it and reconcile on the credit note · block cancellation once any quota is consumed. **This blocks build** — the cancel button exists precisely for the invoice-before-payment case, so the claw-back rule will be exercised.',
       ],
@@ -348,6 +348,7 @@ export const crm: BuildModule = {
             'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
             'The card and the New-company form must expose the same field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole.',
             'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
+            'COMPANY TAGS ARE CROSS-CHECKED AGAINST THE OPEN JOBS. A tag that makes a claim a posting can contradict — “Có vị trí làm việc từ xa” being the clear case — shows a non-blocking warning when NO open job of that company has the matching `job_type` (remote). The tag is a company-level editorial label by decision, which is exactly why it can go stale: nothing about closing the last remote job removes it. Warn, never block — the company may be about to post one.',
           ],
         },
         {
@@ -1930,7 +1931,7 @@ export const crm: BuildModule = {
               { name: 'total', type: 'money (₫)', notes: 'subtotal · VAT 8% · total-after-VAT, matching the PO exactly' },
               { name: 'status', type: 'enum', notes: 'To issue · Issued · Cancelled — three statuses. An invoice record does not exist until Kế toán issues it, so there is no Blocked or Draft; Issuing is a spinner, not a status' },
               { name: 'issueDate', type: 'date', required: true, notes: 'a fact, not a plan — starts the 12-month clock' },
-              { name: 'activationDeadline', type: 'derived', notes: 'issueDate + 12 months (clause 4) — the “Activate by” column' },
+              { name: 'activationDeadline', type: 'derived', notes: 'issueDate + the activation window declared on the PRODUCT (activationWindowMonths — 12 by default per clause 4, but 3 on the trial posting). Snapshotted per entitlement at provisioning; a later change to the product must not move a deadline already sold. The “Activate by” column' },
             ],
           },
         ],
@@ -1940,7 +1941,7 @@ export const crm: BuildModule = {
           'Issue → call the licensed provider, which signs the invoice and returns the legal number + PDF/XML; store both and email them to the customer.',
           'Issuing emits invoice.issued — the event Account management listens to in order to provision the purchased **and** gift services.',
           'A wrong invoice is never edited: cancel + credit note + re-issue, per VN regulation.',
-          'The 12-month activation countdown is tracked and surfaced, so paid-for-but-unused quota does not silently expire.',
+          'The activation countdown is tracked and surfaced per line, so paid-for-but-unused quota does not silently expire. The length comes from the product, not from a constant.',
         ],
         rules: [
           'three statuses only — To issue · Issued · Cancelled. There is no Blocked and no Draft: an invoice record is not created until Kế toán issues it, so "cannot issue yet" is a state of the PO, not of an invoice that does not exist. There is no Issuing status either — the provider round-trip takes seconds and belongs in a spinner; if it fails the row stays To issue with the provider message and a Retry.',
@@ -1980,7 +1981,7 @@ export const crm: BuildModule = {
           'Issuing is impossible until a payment is confirmed, and the UI states why.',
           'Only an Accounting-role user can issue; the issuer and timestamp are stored and shown.',
           'invoice.issued closes the deal, updates customer status and provisions both purchased and gift services.',
-          'activationDeadline is issueDate + 12 months and drives an expiry reminder.',
+          'activationDeadline is issueDate + the product’s activationWindowMonths, snapshotted per line at provisioning, and drives an expiry reminder.',
           'A replayed invoice.issued does not grant quota twice.',
           'A corrected invoice is a cancel/replace pair, never an edit.',
         ],

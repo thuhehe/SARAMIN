@@ -63,8 +63,27 @@ export const bannersPopups: BuildModule = {
       text: 'A banner placement can be backed by a purchased ad product (e.g. “Main ad — Home hero”, per week) from Products & Packages. HQ-run house banners need no product.',
     },
     {
+      label: 'Publishing a banner — two decisions, and one thing that locks',
+      text: 'A banner is an INSTANCE of a Placement product: one company’s creative on one slot for a period. The product already fixed the size, the duration and the slot’s rotation cap when it was sold, so publishing asks for only two things — the START DATE and the IMAGE. Everything else is read from the product and is read-only here.',
+      table: {
+        cols: ['Status', 'Start date / image editable?', 'Why'],
+        rows: [
+          ['Draft', 'Both editable', 'Nothing has been promised to anyone yet.'],
+          ['Schedule', 'Both editable', 'Not on screen yet, so nothing has been served.'],
+          ['Open', 'NEITHER — both frozen', 'The customer paid for the image that is running. Swapping it mid-flight leaves the impressions already counted attributed to an image nobody can retrieve.'],
+          ['Expired', 'Neither — read-only', 'A closed booking is a record. Re-book by publishing a new one.'],
+        ],
+      },
+      items: [
+        'To take a running banner off screen, switch EXPOSURE off. That is the mid-flight control — not editing the creative, and not ending the booking early.',
+        'Image dimensions must match the slot exactly; a wrong-ratio upload is rejected on save rather than auto-cropped, because a cropped hero banner is a design nobody approved.',
+        'The end date is DERIVED from the product’s display duration, never typed — an operator cannot quietly extend a booking the customer did not buy.',
+      ],
+      warn: 'Never allow a creative swap on an Open banner, and never model Exposure as a fifth status. Both mistakes make the same number un-auditable: clicks and impressions already served would no longer trace to the image that served them.',
+    },
+    {
       label: 'Popups target an AUDIENCE',
-      text: 'Same Draft / Scheduled / Live / Ended lifecycle as banners, plus “Always on” (no end date).',
+      text: 'Same Draft / Schedule / Open / Expired lifecycle as banners, plus “Always on” (no end date).',
       table: {
         cols: ['Audience', 'Means'],
         rows: [
@@ -150,14 +169,15 @@ export const bannersPopups: BuildModule = {
         ],
         sections: [
           {
-            heading: 'Status options — derived from the schedule, never typed',
+            heading: 'Status options — the SAME four as a job, derived from the schedule, never typed',
             items: [
-              'Draft — created but not published, or explicitly unpublished. Never rendered on the jobseeker site. The only status that can be deleted.',
-              'Scheduled — published with a startAt in the future. Nothing shows yet; the list makes the go-live date obvious.',
-              'Live — now is between startAt and endAt. This is what jobseekers actually see.',
-              'Ended — endAt has passed. Kept for reporting (impressions / clicks stay attached); it cannot return to Live without a new date range.',
-              'Scheduled → Live and Live → Ended happen with no operator action at all (see the backend note on deriving status on read).',
-              'The operator actions that DO exist: Publish (Draft → Scheduled / Live), Unpublish (→ Draft), End now (endAt = now → Ended), Duplicate (a fresh Draft, for re-booking the next period).',
+              'Draft — created but not published. Never rendered on the jobseeker site. The only status that can be deleted.',
+              'Schedule — published with a startAt in the future. Nothing shows yet; the list makes the go-live date obvious.',
+              'Open — now is between startAt and endAt. This is what jobseekers actually see.',
+              'Expired — endAt has passed. Kept for reporting (impressions / clicks stay attached); it cannot return to Open without a new booking.',
+              'Schedule → Open and Open → Expired happen with no operator action at all (see the backend note on deriving status on read).',
+              'The operator actions that DO exist: Publish (Draft → Schedule / Open), End now (endAt = now → Expired), Duplicate (a fresh Draft, for re-booking the next period).',
+              'EXPOSURE is a SEPARATE flag, exactly as on a job: On / Off. An Open banner with Exposure Off is off screen but its booking still runs and still expires on time. That is what an operator reaches for mid-flight — pausing is not the same as ending, and the two must never share one field.',
             ],
           },
         ],

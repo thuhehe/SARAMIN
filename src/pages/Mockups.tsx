@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
+import { BenefitCards } from '@/components/BenefitsField'
 import { cn } from '@/lib/utils'
 
 /* ── Jobseeker screens (VN recruitment standard) ─────────────────────────── */
@@ -209,11 +210,6 @@ function JobDetailScreen() {
               'Strong TypeScript, HTML/CSS and REST/GraphQL skills.',
               'Good English reading & written communication.',
             ]],
-            ['Benefits', [
-              '13th-month salary and performance bonus.',
-              'Premium health insurance for you and your family.',
-              'Hybrid working — 2 days remote per week.',
-            ]],
           ] as [string, string[]][]).map(([h, items]) => (
             <div key={h} className="mt-4">
               <p className="mb-2 text-[13.5px] font-bold text-ink">{h}</p>
@@ -224,6 +220,20 @@ function JobDetailScreen() {
               </ul>
             </div>
           ))}
+
+          {/* Benefits — icon cards, not bullets. Each one is a TYPE from master data
+              (icon + label) plus the company's own description, which is what makes
+              them scannable here and filterable in search. */}
+          <div className="mt-5">
+            <p className="mb-2 text-[13.5px] font-bold text-ink">Các phúc lợi dành cho bạn</p>
+            <BenefitCards items={[
+              { key: 'pay', text: 'Lương tháng 13, thưởng KPI, xét tăng lương 2 lần/năm.' },
+              { key: 'health', text: 'BHXH – BHYT – BHTN đầy đủ, bảo hiểm sức khoẻ riêng cho CBNV và người thân.' },
+              { key: 'flexible', text: 'Làm 5 ngày/tuần, hybrid 2 ngày remote.' },
+              { key: 'training', text: 'Lộ trình thăng tiến rõ ràng, ngân sách Udemy hàng năm.' },
+              { key: 'leave', text: '19 ngày phép/năm, nghỉ sinh nhật.' },
+            ]} />
+          </div>
         </div>
         {/* right rail */}
         <div className="space-y-3">
@@ -1627,6 +1637,7 @@ const PROFILE_PREFS: { icon: string; label: string; value: string }[] = [
   { icon: '', label: 'Desired job category', value: 'Design' },
   { icon: '', label: 'Desired industry', value: 'IT / Software · FMCG' },
   { icon: '', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội' },
+  { icon: '', label: 'Desired work type', value: 'In office · Hybrid' },
   { icon: '', label: 'Expected salary', value: '20 – 30 triệu' },
 ]
 
@@ -2316,7 +2327,13 @@ function CvCompareScreen() {
    each step framed with a live job-count carrot, ending on a screen of matched
    jobs — from which we lead the candidate into creating their CV. No upload /
    build fork here; that lives on the My CVs page. */
-const VN_PROVINCES = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai', 'Hải Phòng', 'Cần Thơ', 'Bắc Ninh', 'Remote', 'Overseas']
+/* Provinces ONLY. “Remote” and “Overseas” used to sit in this list, which made
+   the field lie about what it holds: as locations they cannot express “I live in
+   HCMC and want remote”, and they are really values of the job's WORK TYPE axis
+   (in-office · remote · hybrid · oversea). They moved to their own control below,
+   which is the same question asked correctly — not a new question. */
+const VN_PROVINCES = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai', 'Hải Phòng', 'Cần Thơ', 'Bắc Ninh', 'Bình Định', 'Khánh Hoà']
+const WORK_TYPES = ['In office', 'Remote', 'Hybrid', 'Oversea']
 
 function OnboardingScreen() {
   const go = useNav()
@@ -2328,6 +2345,7 @@ function OnboardingScreen() {
      "what did I pick" answer without pretending the whole set fits on screen. */
   const [locOpen, setLocOpen] = useState(false)
   const [locs, setLocs] = useState<string[]>(['Hồ Chí Minh', 'Hà Nội'])
+  const [workTypes, setWorkTypes] = useState<string[]>(['In office', 'Hybrid'])
   const toggleLoc = (c: string) =>
     setLocs((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
   const [catOpen, setCatOpen] = useState(false)
@@ -2458,8 +2476,8 @@ function OnboardingScreen() {
             {/* 2 · WHERE */}
             {step === 2 && (
               <>
-                <p className="text-[15px] font-bold text-ink">Where would you like to work?</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">Pick up to 3.</p>
+                <p className="text-[15px] font-bold text-ink">Where and how would you like to work?</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">Up to 3 places. The rest is optional.</p>
                 <div className="mt-3">
                   {/* the field itself — click to open the province list */}
                   <button
@@ -2508,6 +2526,23 @@ function OnboardingScreen() {
                     </div>
                   )}
                   <p className="mt-1 text-[10px] text-faint">{locs.length} of 3 selected · Vietnam has 63 provinces, so this searches rather than lists.</p>
+
+                  {/* WORK TYPE — the other half of "where", and the half that used to
+                      hide inside the province list. Chips, not a search: four values,
+                      all visible. This is what the job's `job_type` matches against. */}
+                  <div className="mt-3">
+                    <p className="mb-1 text-[11.5px] font-medium text-ink">How do you want to work? <span className="font-normal text-faint">(pick any)</span></p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WORK_TYPES.map((w) => (
+                        <span
+                          key={w}
+                          onClick={() => setWorkTypes((a) => (a.includes(w) ? a.filter((x) => x !== w) : [...a, w]))}
+                          className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[11.5px]', workTypes.includes(w) ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}
+                        >{w}</span>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10px] text-faint">Leave all off and we will not rule anything out.</p>
+                  </div>
                 </div>
                 <Nav back={() => setStep(1)} next={() => setStep(3)} />
               </>

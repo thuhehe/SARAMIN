@@ -58,6 +58,28 @@ export const productsPackages: BuildModule = {
         'The deck lists ~24 “services”, but only ~14 are sellable. Popular Jobs, Highlight Jobs, Job Basic, Jobs Tailored For You and Super Hot Jobs are EFFECTS of a posting tier — the deck pitches them as benefits because that is how sales presents them. Making them products would bill twice for the same thing.',
     },
     {
+      label: 'Manual service — usage is asserted, not measured',
+      text: 'Nothing on the platform can observe a fanpage post going up or an email blast going out. So “how many of the 4 posts has this customer used?” is only answerable if the person who did the work records it. Each Manual service entitlement carries a DELIVERY LOG, and the log is the meter.',
+      table: {
+        cols: ['Field', 'Required', 'Why'],
+        rows: [
+          ['Ngày đăng', 'Yes', 'When the unit was actually delivered — not when it was logged.'],
+          ['Link bài đăng', 'Yes', 'What the customer asks for when they reconcile the invoice: “show me the post”. Without it the entry is one person’s word that a unit was spent.'],
+          ['Nội dung đã đăng', 'Yes', 'What was said. A link can rot; the copy is the durable record.'],
+          ['Ảnh chụp / ảnh đã dùng', 'No', 'A fanpage post has a screenshot worth keeping; an email blast usually does not.'],
+          ['Người thực hiện', 'Auto', 'From the signed-in operator, never picked — this is the accountability half of the record.'],
+        ],
+      },
+      items: [
+        'ONE LOG ENTRY = ONE UNIT CONSUMED. Remaining is DERIVED (total − entries), never stored and never editable. A typed remaining count is exactly the field that drifts out of step with what was actually delivered.',
+        'At zero the log button is disabled — the entitlement is spent, and more delivery needs another purchase, not a bigger number.',
+        'Correcting a delivery means editing THAT ENTRY, not adjusting a balance. The balance has no independent existence to adjust.',
+        'This lives on the company record next to the metered quota (Products & billing), because a reader wants one answer to “what has this customer used?” — but the two are different in kind: job slots and CV unlocks are OBSERVED by the platform, manual-service units are ASSERTED by a person.',
+      ],
+      warn:
+        'Never give a Manual service an editable remaining count, and never let it decrement automatically on payment. Paying for 4 posts means 4 are owed, not that any were delivered — the gap between those two is the whole reason this log exists.',
+    },
+    {
       label: 'Placements — where a product surfaces on the site',
       text: 'A placement is a display area on the jobseeker site (size, how many are shown, the rotation cap). Defined ONCE in System → Placements, so a banner sale points at a row instead of restating “1536×371, max 6, rotate 3s”. Each placement records how it gets filled — this is the product ⇄ page relationship.',
       table: {
@@ -206,6 +228,29 @@ export const productsPackages: BuildModule = {
       ready: true,
       mockup: 'admin-catalog',
       detail: {
+        requirements: [
+          {
+            label: 'Thời gian phải kích hoạt — kể từ ngày xuất hóa đơn',
+            text: 'Every sellable product declares how long the buyer has to **start using** it, counted from the **invoice date** — not from the PO, not from the payment, and not from the day they first log in.\n\nThis is the middle of three clocks that are constantly confused with one another, and it is the only one that can silently destroy quota the customer has already paid for.',
+            table: {
+              cols: ['#', 'Clock', 'Starts at', 'Set by', 'What happens at the end'],
+              rows: [
+                ['①', 'Provisioning', 'The VAT invoice is issued', '— immediate, no field', 'Quota is on the account. The customer can post a job / open a CV at once'],
+                ['②', '**Activation window** — this field', 'The invoice date', '**activationWindowMonths** on the product', 'Quota still unused **expires**. It is not refunded and not extended by default'],
+                ['③', 'Usage / display', 'The customer activates one slot or pack', 'validityDays on the product (30-day posting, 30/90-day CV pack)', 'That one slot finishes. Other unused slots are unaffected and keep running clock ②'],
+              ],
+            },
+            items: [
+              'Default **12 months**, which is what the client T&C states (clause 4). The options are 3 · 6 · 12 · 18 · 24 months.',
+              'It lives on the **product**, not in a global setting. A 12-month bank on a 13.800.000 ₫ Top Job slot and a 12-month bank on a free trial posting are not the same commercial promise — the trial is set to 3 months for exactly that reason, since a giveaway that banks for a year is a liability rather than an incentive to start.',
+              'Products with entitlementSource = **Always available** have no window at all: they are never invoiced, so there is no date to count from.',
+              'A quotation and a PO print the window alongside the line, so the customer agrees to it before they buy — it must never first appear on the invoice.',
+              'The deadline is snapshotted onto the entitlement at provisioning (invoiceDate + activationWindowMonths). Changing the product afterwards must not move the deadline for quota already sold.',
+              'The window pauses for nothing. If the deadline needs moving for a customer, that is an explicit, logged extension on the entitlement, not an edit to this field.',
+            ],
+            warn: 'Open — what happens at the deadline. Expire silently · warn the customer at 60/30/7 days · or let the sales owner extend. Expiring paid quota with no warning is the version most likely to produce a dispute, so at minimum the 12-month deadline needs a reminder job. Also confirm whether an expiry is reversible within a grace period.',
+          },
+        ],
         refDocs: [
           {
             label: 'Products.pptx — TopDev × Saramin, “New look new era”',
@@ -254,8 +299,10 @@ export const productsPackages: BuildModule = {
           {
             group: 'Fulfilment — the entitlement this product grants',
             items: [
+              { name: 'activationWindowMonths', type: 'int', required: true, notes: 'Thời gian phải kích hoạt kể từ ngày xuất hóa đơn. How long the buyer has to START using this product, counted from the INVOICE date (T&C clause 4). Default 12; 3 · 6 · 12 · 18 · 24 offered. Stored per product, never a global setting — see the rule block. n/a where entitlementSource = Always available, because that tier is never invoiced' },
+              { name: 'activationDeadline', type: 'derived', notes: 'on the entitlement, not the product: invoiceDate + activationWindowMonths. This is the “Activate by” column on the Invoice list and the date the expiry job reads' },
               { name: 'quotaAmount', type: 'int', notes: 'posting_tier: number of slots · credit_pack: number of CV unlocks' },
-              { name: 'validityDays / validityMonths', type: 'int', notes: 'how long the entitlement lives from provisioning — CV combos are 30 or 90 days; unused posting slots bank for 1 year (deck)' },
+              { name: 'validityDays / validityMonths', type: 'int', notes: 'the THIRD clock — how long one activated slot/pack runs (CV combos 30 or 90 days; a posting 30 days). Not to be confused with activationWindowMonths, which is how long it may sit unused before that clock ever starts' },
               { name: 'postingTier', type: 'enum', notes: 'posting_tier only — Basic · Basic Plus · Distinction · Top Job, the tier the bought slots may use (see Job management)' },
               { name: 'placementId', type: 'ref', notes: 'placement only — FK to the Placements registry. Size, items shown and rotation cap are READ from that row, never retyped here.' },
               { name: 'bookingUnit / slotsConsumed', type: 'enum / int', notes: 'placement only — per day/week/month, and how many of the slot’s pool one sale occupies (e.g. 1 of 6 on the hero)' },

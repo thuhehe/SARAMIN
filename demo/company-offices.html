@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Văn phòng — 3 trường hợp</title>
+<style>
+  :root{
+    --canvas:#f6f8fc; --surface:#fff; --ink:#1e293b; --muted:#64748b; --faint:#94a3b8;
+    --line:#e2e8f0; --line-soft:#eef2f7; --brand:#2563eb; --brand-soft:#eff4ff; --brand-line:#d6e2ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:23px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 28px}
+  .case{margin-bottom:34px}
+  .caselabel{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .caselabel b{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+  .caselabel span{font-size:12.5px;color:var(--muted)}
+
+  /* ── section shell (same as the page card) ── */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px}
+  .card h2{font-size:19px;margin:0 0 16px;letter-spacing:-.01em}
+  .card h2 .n{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}
+
+  /* ── A · một văn phòng ── */
+  .solo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:stretch}
+  @media(max-width:760px){.solo{grid-template-columns:1fr}}
+  .solo .info{display:flex;flex-direction:column;justify-content:center;gap:10px}
+  .addr{font-size:16px;font-weight:600;line-height:1.45}
+  .city{font-size:12.5px;color:var(--muted)}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fbfcfe;
+    border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--muted)}
+  .chip.hot{border-color:var(--brand-line);background:var(--brand-soft);color:var(--brand);font-weight:600}
+  .actions{display:flex;gap:8px;margin-top:6px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-size:13px;
+    font-weight:600;text-decoration:none;border:1px solid var(--brand);background:var(--brand);color:#fff}
+  .btn.ghost{background:#fff;color:var(--brand)}
+  .map{position:relative;min-height:190px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+    background:
+      linear-gradient(115deg,#eaf0fb 0%,#e4ecfa 40%,#eef3fc 100%);
+  }
+  .map::before,.map::after{content:"";position:absolute;background:#dbe6f7}
+  .map::before{left:0;right:0;top:38%;height:10px;transform:rotate(-4deg)}
+  .map::after{top:0;bottom:0;left:58%;width:9px;transform:rotate(6deg)}
+  .pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:2;
+    display:flex;flex-direction:column;align-items:center;gap:4px}
+  .pin .dot{width:26px;height:26px;border-radius:50% 50% 50% 0;background:var(--brand);transform:rotate(-45deg);
+    box-shadow:0 4px 10px rgba(37,99,235,.35)}
+  .maplabel{position:absolute;left:10px;bottom:10px;z-index:2;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:11.5px;color:var(--muted)}
+
+  /* ── B · 2–3 văn phòng ── */
+  .multi{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr);gap:20px}
+  @media(max-width:760px){.multi{grid-template-columns:1fr}}
+  .olist{display:flex;flex-direction:column;gap:8px}
+  .office{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;
+    background:#fff;transition:.14s;text-align:left;font:inherit;width:100%}
+  .office:hover{border-color:var(--brand-line);background:#fcfdff}
+  .office[aria-selected="true"]{border-color:var(--brand);background:var(--brand-soft)}
+  .office .ic{color:var(--faint);flex:0 0 auto;margin-top:1px}
+  .office[aria-selected="true"] .ic{color:var(--brand)}
+  .office .body{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+  .office .name{font-size:12.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .office[aria-selected="true"] .name{color:var(--brand)}
+  .office .line{display:block;font-size:14px;margin-top:2px;line-height:1.4}
+  .tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 7px;font-size:10.5px;font-weight:700;
+    letter-spacing:.02em;background:var(--brand-soft);color:var(--brand);border:1px solid var(--brand-line)}
+  .tag.grey{background:#f1f5f9;color:var(--muted);border-color:var(--line)}
+  .office .hiring{display:block;margin-top:5px;font-size:11.5px;color:var(--brand);font-weight:600}
+  .dirlink{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12.5px;font-weight:600;
+    color:var(--brand);text-decoration:none}
+
+  /* ── C · nhiều văn phòng ── */
+  .cities{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .citytab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font:inherit;
+    font-size:12.5px;color:var(--muted);cursor:pointer}
+  .citytab[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:600}
+  .citytab .c{margin-left:5px;font-size:10.5px;color:var(--faint)}
+  .citytab[aria-pressed="true"] .c{color:var(--brand)}
+  .more{display:block;width:100%;margin-top:8px;border:1px dashed var(--line);background:#fff;border-radius:12px;
+    padding:10px;font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .more:hover{border-color:var(--brand-line);color:var(--brand)}
+
+  /* ── rules ── */
+  .rules{margin-top:12px;border-left:3px solid var(--brand-line);padding:2px 0 2px 14px}
+  .rules p{margin:0 0 5px;font-size:12.5px;color:var(--muted);line-height:1.55}
+  .rules b{color:var(--ink)}
+  .bad{margin-top:26px;border:1px solid #fecaca;background:#fef2f2;border-radius:12px;padding:14px 16px}
+  .bad h3{margin:0 0 6px;font-size:13.5px;color:#b91c1c}
+  .bad p{margin:0;font-size:12.5px;color:#7f1d1d;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Văn phòng — thiết kế cho 1 địa điểm trước, rồi mới tới nhiều</h1>
+  <p class="sub">Địa chỉ là trường <b>bắt buộc</b> khi publish trang công ty, nên “chỉ có 1 văn phòng” là trường hợp phổ biến nhất, không phải ngoại lệ. Bố cục danh sách + bản đồ chỉ hợp lý từ 2 địa điểm trở lên.</p>
+
+  <!-- ══ A ══ -->
+  <div class="case">
+    <div class="caselabel"><b>Trường hợp A · 1 văn phòng</b><span>~80% doanh nghiệp SME</span></div>
+    <div class="card">
+      <h2>Văn phòng</h2>
+      <div class="solo">
+        <div class="info">
+          <div>
+            <div class="addr">6 Quang Trung, Hoàn Kiếm, Hà Nội</div>
+            <div class="city">Hà Nội · Việt Nam</div>
+          </div>
+          <div class="meta">
+            <span class="chip hot">🟢 Đang tuyển 3 vị trí tại đây</span>
+            <span class="chip">🚇 Cách ga Cát Linh 600 m</span>
+          </div>
+          <div class="actions">
+            <a class="btn" href="#">Chỉ đường ↗</a>
+            <a class="btn ghost" href="#">Xem 3 vị trí</a>
+          </div>
+        </div>
+        <div class="map">
+          <div class="pin"><span class="dot"></span></div>
+          <span class="maplabel">Bản đồ tĩnh · bấm để mở Google Maps</span>
+        </div>
+      </div>
+    </div>
+    <div class="rules">
+      <p>· Bỏ nhãn <b>“Trụ sở chính”</b> khi chỉ có một địa điểm — gọi nó là trụ sở chính hàm ý còn chỗ khác.</p>
+      <p>· Bố cục <b>một hàng ngang</b>, cao ~190px. Không dựng cột danh sách cho một thẻ duy nhất.</p>
+      <p>· Bản đồ là <b>ảnh tĩnh</b>, bấm mới mở Google Maps: nhẹ, không lộ API key, không tốn quota map SDK.</p>
+      <p>· Hai thông tin làm địa chỉ trở nên <b>hữu ích</b> chứ không chỉ để hiển thị: đang tuyển mấy vị trí ở đây, và cách ga metro bao xa (đúng chip <i>Gần ga metro</i>).</p>
+    </div>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="case">
+    <div class="caselabel"><b>Trường hợp B · 2–3 văn phòng</b><span>bố cục danh sách + bản đồ bắt đầu có ý nghĩa</span></div>
+    <div class="card">
+      <h2>Văn phòng <span class="n">3 địa điểm</span></h2>
+      <div class="multi">
+        <div class="olist" id="olist">
+          <button class="office" aria-selected="true" data-city="Hà Nội">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">Trụ sở chính <span class="tag">HÀ NỘI</span></span>
+              <span class="line">6 Quang Trung, Hoàn Kiếm, Hà Nội</span>
+              <span class="hiring">Đang tuyển 3 vị trí</span>
+              <a class="dirlink" href="#">Chỉ đường ↗</a>
+            </span>
+          </button>
+          <button class="office" data-city="TP. Hồ Chí Minh">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">Chi nhánh HCM <span class="tag grey">TP.HCM</span></span>
+              <span class="line">9 Đinh Tiên Hoàng, Quận 1, TP. Hồ Chí Minh</span>
+              <span class="hiring">Đang tuyển 5 vị trí</span>
+            </span>
+          </button>
+          <button class="office" data-city="Đà Nẵng">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">Chi nhánh Đà Nẵng <span class="tag grey">ĐÀ NẴNG</span></span>
+              <span class="line">244–248 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng</span>
+            </span>
+          </button>
+        </div>
+        <div class="map">
+          <div class="pin"><span class="dot"></span></div>
+          <span class="maplabel" id="maplabel">Hà Nội — 6 Quang Trung, Hoàn Kiếm</span>
+        </div>
+      </div>
+    </div>
+    <div class="rules">
+      <p>· Cả thẻ là vùng bấm được, bản đồ đổi theo — hiện tại chỉ có thẻ đầu được tô mà không rõ bấm được hay không.</p>
+      <p>· Thêm <b>tỉnh/thành</b> dạng tag và <b>số vị trí đang tuyển</b>: đó là thứ ứng viên thực sự cần ở khối này.</p>
+      <p>· Văn phòng không tuyển gì thì <b>không hiện dòng tuyển dụng</b>, không hiện “0 vị trí”.</p>
+      <p>· “Chỉ đường” chỉ hiện ở thẻ <b>đang chọn</b>, không lặp ở mọi thẻ.</p>
+    </div>
+  </div>
+
+  <!-- ══ C ══ -->
+  <div class="case">
+    <div class="caselabel"><b>Trường hợp C · 4+ văn phòng</b><span>ngân hàng, chuỗi bán lẻ, tập đoàn</span></div>
+    <div class="card">
+      <h2>Văn phòng <span class="n">12 địa điểm · 5 tỉnh thành</span></h2>
+      <div class="cities">
+        <button class="citytab" aria-pressed="true">Hà Nội <span class="c">4</span></button>
+        <button class="citytab">TP. Hồ Chí Minh <span class="c">5</span></button>
+        <button class="citytab">Đà Nẵng <span class="c">1</span></button>
+        <button class="citytab">Hải Phòng <span class="c">1</span></button>
+        <button class="citytab">Cần Thơ <span class="c">1</span></button>
+      </div>
+      <div class="multi">
+        <div class="olist">
+          <button class="office" aria-selected="true">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">Trụ sở chính</span>
+              <span class="line">6 Quang Trung, Hoàn Kiếm</span>
+              <span class="hiring">Đang tuyển 3 vị trí</span>
+              <a class="dirlink" href="#">Chỉ đường ↗</a>
+            </span>
+          </button>
+          <button class="office">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">VP Cầu Giấy</span>
+              <span class="line">Số 2 Phạm Văn Bạch, Cầu Giấy</span>
+              <span class="hiring">Đang tuyển 1 vị trí</span>
+            </span>
+          </button>
+          <button class="office">
+            <span class="ic">📍</span>
+            <span class="body">
+              <span class="name">VP Long Biên</span>
+              <span class="line">Khu đô thị Vinhomes Riverside, Long Biên</span>
+            </span>
+          </button>
+          <button class="more">Xem thêm 1 văn phòng tại Hà Nội</button>
+        </div>
+        <div class="map">
+          <div class="pin"><span class="dot"></span></div>
+          <span class="maplabel">Hà Nội — 4 văn phòng</span>
+        </div>
+      </div>
+    </div>
+    <div class="rules">
+      <p>· Gom theo <b>tỉnh/thành</b>. Danh sách phẳng 12 dòng là một bức tường chữ, và ứng viên chỉ quan tâm thành phố họ sống.</p>
+      <p>· Mỗi thành phố hiện tối đa <b>3 văn phòng</b>, còn lại thu vào “Xem thêm N…”.</p>
+      <p>· Thành phố mặc định = nơi có <b>nhiều vị trí đang tuyển nhất</b>, không phải nơi đặt trụ sở.</p>
+    </div>
+  </div>
+
+  <div class="bad">
+    <h3>Vấn đề của bản hiện tại</h3>
+    <p>Bố cục 2 cột (danh sách trái + bản đồ phải) được thiết kế cho nhiều địa điểm, nhưng với <b>một</b> địa điểm thì cột trái chỉ có một thẻ nhỏ nằm cạnh một ô bản đồ cao gấp ba — khoảng trắng chiếm phần lớn khối, và trang trông như đang thiếu dữ liệu. Thêm nữa: “Trụ sở chính” khi không có chi nhánh nào là một nhãn thừa, và “Chỉ đường” lặp lại ở mọi thẻ làm loãng hành động chính.</p>
+  </div>
+</div>
+
+<script>
+  /* B: chọn văn phòng → bản đồ đổi nhãn */
+  const list = document.getElementById('olist')
+  const label = document.getElementById('maplabel')
+  list?.addEventListener('click', (e) => {
+    const b = e.target.closest('.office'); if (!b) return
+    list.querySelectorAll('.office').forEach(x => x.removeAttribute('aria-selected'))
+    b.setAttribute('aria-selected', 'true')
+    label.textContent = b.dataset.city + ' — ' + b.querySelector('.line').textContent
+  })
+  /* C: tab thành phố */
+  document.querySelectorAll('.cities').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const t = e.target.closest('.citytab'); if (!t) return
+      row.querySelectorAll('.citytab').forEach(x => x.setAttribute('aria-pressed', 'false'))
+      t.setAttribute('aria-pressed', 'true')
+    })
+  })
+</script>
+</body>
+</html>

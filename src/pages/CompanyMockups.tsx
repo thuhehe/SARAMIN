@@ -32,6 +32,8 @@ import {
   Users,
 } from 'lucide-react'
 import { Btn, Chip } from '@/components/wire'
+import { BenefitsField } from '@/components/BenefitsField'
+import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { cn } from '@/lib/utils'
 
 /** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
@@ -244,10 +246,15 @@ function PostJobScreen() {
             </div>
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Contract type <span className="text-rose-500">*</span></p>
-              <Seg options={['Full-time', 'Freelancer']} value={contract} onChange={setContract} />
+              {/* All 7 of `contract_type` — the earlier 2 offered no way to post an
+                  internship or a probation role, both common here. */}
+              <Seg options={['Fulltime', 'Part-time', 'Fixed-term', 'Internship', 'Probation', 'Freelance', 'Seasonal']} value={contract} onChange={setContract} />
+              <p className="mt-1 text-[10.5px] text-faint">The employment relationship. Separate from Work type below — “Fulltime + Remote” is one posting, not a choice between two.</p>
             </div>
             <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Job type <span className="text-rose-500">*</span></p>
+              {/* Labelled Work type, never `job_type` — the column name reads like
+                  "contract type" and that is how the two got merged in the first place. */}
+              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Work type <span className="text-rose-500">*</span></p>
               <Seg options={['In office', 'Remote', 'Hybrid', 'Oversea']} value={jobType} onChange={setJobType} />
             </div>
             <div>
@@ -264,15 +271,9 @@ function PostJobScreen() {
           {/* Location, experience & salary */}
           <div className="space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Location, experience & salary</p>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Location (city) <span className="text-rose-500">*</span></p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Chip tone="blue">Hồ Chí Minh ✕</Chip>
-                <Chip tone="blue">Hà Nội ✕</Chip>
-                <span className="rounded-md border border-dashed border-line px-2 py-1 text-[11px] text-brand">+ Add city</span>
-              </div>
-              <p className="mt-1 text-[10.5px] text-faint">Multiple cities — pending client confirmation.</p>
-            </div>
+            {/* Named offices saved on the company, picked per job — same field the
+                admin form uses, so both sides write the same record. */}
+            <WorkingLocationsField initial={['hq', 'hn']} />
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Years of experience</p>
               <div className="flex items-center gap-2 text-[12px] text-faint">
@@ -312,7 +313,9 @@ function PostJobScreen() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Content · {lang.toUpperCase()}</p>
             <Field label="Your role & responsibility" req area value={t.role} />
             <Field label="Your skills & qualifications" req area value={t.quals} />
-            <Field label="Benefits" area value={t.benefits} />
+            {/* Typed benefits, not a paragraph — same picker the HQ Admin job form
+                uses, so both sides produce the same structured data. */}
+            <BenefitsField initial={['pay', 'health', 'canteen', 'transport']} />
             <div>
               <p className="mb-1 text-[11.5px] font-medium text-ink/80">Skills</p>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1198,7 +1201,7 @@ function CompanyPageScreen() {
             <Field label="Logo · cover image" req value="Uploaded ✓" />
             <Field label="About (vi required · en optional)" req area value="Hệ thống y tế tư nhân hàng đầu HCMC, tuyển dụng điều dưỡng & vận hành…" />
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Locations" req value="Quận 1, HCMC" />
+              <Field label="Locations (3 offices)" req value="Tên · tỉnh/thành · địa chỉ · toạ độ ✓ (geocode khi lưu)" />
               <Field label="Founded" value="2011" />
               <Field label="Website" value="vanphat.vn" />
             </div>
@@ -1251,6 +1254,24 @@ function CompanyPageScreen() {
                   <span key={b} className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-muted">{b}</span>
                 ))}
               </div>
+
+              {/* Văn phòng — the ONE-office layout, which is the common case: a single
+                  horizontal card, no list column, and no "Trụ sở chính" label (naming it
+                  HQ implies there are others). The open-job count is what makes the
+                  address useful — a jobseeker picks employers by what they can commute to. */}
+              <p className="mt-3 text-[11px] font-bold text-ink">Văn phòng</p>
+              <div className="mt-1.5 grid grid-cols-[1fr_0.9fr] gap-2 rounded-md border border-line p-2">
+                <div className="min-w-0">
+                  <p className="text-[11.5px] font-medium leading-snug">12 Nguyễn Huệ, Quận 1</p>
+                  <p className="text-[10px] text-faint">TP. Hồ Chí Minh</p>
+                  <p className="mt-1 text-[10px] font-semibold text-brand">Đang tuyển 4 vị trí tại đây</p>
+                  <p className="mt-1 text-[10px] font-semibold text-brand">Chỉ đường ↗</p>
+                </div>
+                {/* static map image, click-through to Google Maps — no map SDK on the
+                    public page, so no key exposed and no per-view quota */}
+                <div className="grid min-h-[54px] place-items-center rounded bg-line/60 text-[9.5px] text-faint">Bản đồ tĩnh</div>
+              </div>
+              <p className="mt-1 text-[10px] italic text-faint">2–3 offices → list + map; 4+ → tabs by city. One office never renders the list column.</p>
               <p className="mt-3 text-[10.5px] italic text-faint">Story, video, growth chart and leaders are empty → those sections do not render.</p>
             </div>
           </div>
