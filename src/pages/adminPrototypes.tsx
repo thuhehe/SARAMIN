@@ -7431,56 +7431,99 @@ function AdminManualServices() {
         minW={1280}
       />
 
-      {/* History opens BELOW the table rather than in a modal: comparing "what did we
-          post for them" against the quota above it is the whole point, and a modal
-          would cover the row it belongs to. */}
+      {/* A drawer, not a panel under the table. The list is 21 rows and will be
+          hundreds: a panel below it opens nowhere near the row that was clicked, so
+          the reader loses their place. A drawer holds still, leaves the table where
+          it was, and has room for the proof at a size worth looking at. */}
       {open && (() => {
         const r = all.find((x) => `${x.company}|${x.e.sku}` === open)
         if (!r) return null
+        const pct = (r.e.entries.length / r.e.total) * 100
         return (
-          <div className="mt-3 rounded-xl border border-line">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/50 px-3.5 py-2.5">
-              <p className="text-[12.5px] font-semibold">
-                Lịch sử — {r.company} · <span className="font-normal text-muted">{r.e.name}</span>
-              </p>
-              <span className="flex items-center gap-2">
-                <Pill tone={SVC_TONE[r.state]}>{r.state}</Pill>
-                <button onClick={() => setOpen(null)} className="text-[11px] text-muted hover:text-ink">Đóng</button>
-              </span>
-            </div>
-            <div className="p-3.5">
-              {r.e.entries.length === 0 ? (
-                <p className="text-[11.5px] text-muted">Chưa ghi nhận lượt nào.</p>
-              ) : (
-                <ol className="space-y-2.5">
-                  {r.e.entries.map((d, n) => (
-                    <li key={d.id} className="flex gap-2.5">
-                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-canvas text-[10px] font-semibold text-muted">{n + 1}</span>
-                      {/* Image kept as its own block: the proof a customer asks to see
-                          is the screenshot, so it should not be a footnote. */}
-                      <span className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-canvas text-[9px] text-faint">
-                        {d.image ? '🖼' : 'chưa có ảnh'}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline gap-x-2">
-                          <span className="text-[11.5px] font-medium tabular-nums text-ink">{d.date}</span>
-                          <a href={d.link} onClick={(ev) => ev.preventDefault()} className="min-w-0 truncate text-[11px] text-brand hover:underline">{d.link}</a>
+          <>
+            <div onClick={() => setOpen(null)} className="fixed inset-0 z-40 bg-black/25" />
+            <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[460px] flex-col border-l border-line bg-surface shadow-2xl">
+              <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3.5">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-bold">{r.e.name}</p>
+                  <p className="truncate text-[11.5px] text-muted">{r.company}</p>
+                </div>
+                <button onClick={() => setOpen(null)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+              </div>
+
+              {/* Quota and validity travel with the history: "show me the posts" and
+                  "how many are left" are one question, asked in one breath. */}
+              <div className="border-b border-line-soft px-4 py-3">
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                  <Pill tone={SVC_TONE[r.state]}>{r.state}</Pill>
+                  <span className="text-[12px] tabular-nums">
+                    <b>{r.e.entries.length}</b><span className="text-faint">/{r.e.total} {r.e.unit}</span>
+                    <span className="ml-2 text-faint">·</span>
+                    <span className={cn('ml-2 font-semibold', r.state === 'Hết hạn' ? 'text-rose-600' : r.left === 0 ? 'text-faint' : 'text-ink')}>
+                      còn {r.left}
+                    </span>
+                  </span>
+                </div>
+                <span className="block h-1.5 w-full overflow-hidden rounded-full bg-line">
+                  <span className={cn('block h-full rounded-full', r.state === 'Hết hạn' ? 'bg-rose-500' : 'bg-brand')} style={{ width: `${pct}%` }} />
+                </span>
+                <p className="mt-1.5 text-[10.5px] text-faint">Hạn dùng {r.e.validUntil}</p>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto scroll-thin px-4 py-3.5">
+                {r.e.entries.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-[11.5px] text-faint">
+                    Chưa ghi nhận lượt nào.
+                  </p>
+                ) : (
+                  <ol className="space-y-3">
+                    {r.e.entries.map((d, n) => (
+                      <li key={d.id} className="rounded-lg border border-line">
+                        <div className="flex items-center justify-between gap-2 border-b border-line-soft bg-canvas/50 px-2.5 py-1.5">
+                          <span className="flex items-center gap-2 text-[11.5px]">
+                            <span className="grid h-4 w-4 place-items-center rounded-full bg-surface text-[9px] font-semibold text-muted">{n + 1}</span>
+                            <b className="tabular-nums text-ink">{d.date}</b>
+                          </span>
+                          <span className="truncate text-[10.5px] text-faint">{d.by}</span>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-muted">{d.content}</p>
-                        <p className="mt-0.5 text-[10px] text-faint">{d.image ? <span className="font-mono">{d.image}</span> : <span className="text-amber-700">⚠️ chưa đính ảnh</span>} · {d.by}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              {r.state === 'Hết hạn' && (
-                <p className="mt-2.5 flex gap-2 rounded-md bg-rose-50 px-3 py-2 text-[11.5px] leading-relaxed text-rose-700">
-                  <span>⚠️</span>
-                  <span>Hết hạn <b>{r.e.validUntil}</b> khi còn <b>{r.left} {r.e.unit}</b> chưa giao. Không thể ghi nhận thêm — muốn bù cho khách thì bán/tặng một entitlement mới, đừng sửa hạn của cái cũ.</span>
-                </p>
-              )}
-            </div>
-          </div>
+                        <div className="p-2.5">
+                          {/* The screenshot at a size someone can actually judge —
+                              a filename in a footnote is not proof of anything. */}
+                          <div className={cn('mb-2 grid h-28 place-items-center rounded-md border text-[11px]', d.image ? 'border-line bg-canvas' : 'border-dashed border-amber-200 bg-amber-50 text-amber-700')}>
+                            {d.image
+                              ? <span className="text-center text-faint"><span className="block text-[20px]">🖼</span><span className="font-mono">{d.image}</span></span>
+                              : <span>⚠️ chưa đính ảnh</span>}
+                          </div>
+                          <p className="text-[11.5px] leading-relaxed text-ink/85">{d.content}</p>
+                          <a href={d.link} onClick={(ev) => ev.preventDefault()} className="mt-1.5 block truncate text-[11px] text-brand hover:underline">{d.link}</a>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {r.state === 'Hết hạn' && (
+                  <p className="mt-3 flex gap-2 rounded-md bg-rose-50 px-3 py-2 text-[11.5px] leading-relaxed text-rose-700">
+                    <span>⚠️</span>
+                    <span>Hết hạn <b>{r.e.validUntil}</b> khi còn <b>{r.left} {r.e.unit}</b> chưa giao. Không thể ghi nhận thêm — muốn bù cho khách thì bán/tặng một entitlement mới, đừng sửa hạn của cái cũ.</span>
+                  </p>
+                )}
+              </div>
+
+              {/* The action sits with the history, so logging a delivery happens where
+                  the reader just checked what was already delivered. */}
+              <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-3">
+                <span className="text-[10.5px] leading-relaxed text-faint">1 ghi nhận = 1 {r.e.unit}</span>
+                {r.state === 'Còn lượt' ? (
+                  <button onClick={() => setLogging({ e: r.e, company: r.company })} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+                    + Ghi nhận đã đăng
+                  </button>
+                ) : (
+                  <span className="rounded-lg border border-line bg-canvas px-3.5 py-2 text-[12.5px] font-medium text-faint">Không thể ghi nhận</span>
+                )}
+              </div>
+            </aside>
+          </>
         )
       })()}
 

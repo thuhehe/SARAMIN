@@ -162,6 +162,20 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // "Content" covered two unrelated jobs: delivering what customers BOUGHT, and
+    // editing the site's own copy. This group is now only the first — every item is
+    // a service someone paid for. Pages moved to System, where site config lives.
+    label: 'Service',
+    icon: <FileImage className="h-4 w-4" />,
+    items: [
+      { label: 'Banners', specId: 'admin-banners' },
+      { label: 'Popups', specId: 'admin-popups' },
+      // ONE page for all manual services: five products across a hundred companies
+      // is one list at the grain of (company × service), not five queues.
+      { label: 'Manual services', specId: 'admin-manual-services' },
+    ],
+  },
+  {
     // Both sides of the marketplace's people accounts in one group: the seekers
     // who apply, and the employer-side logins that hang off a company account.
     label: 'User',
@@ -192,20 +206,6 @@ const NAV_GROUPS: NavGroup[] = [
       // What every customer has actually consumed, across all four product types —
       // the screen sales opens before a renewal call.
       { label: 'Account usage', specId: 'admin-account-usage' },
-    ],
-  },
-  {
-    // "Content" covered two unrelated jobs: delivering what customers BOUGHT, and
-    // editing the site's own copy. This group is now only the first — every item is
-    // a service someone paid for. Pages moved to System, where site config lives.
-    label: 'Service',
-    icon: <FileImage className="h-4 w-4" />,
-    items: [
-      { label: 'Banners', specId: 'admin-banners' },
-      { label: 'Popups', specId: 'admin-popups' },
-      // ONE page for all manual services: five products across a hundred companies
-      // is one list at the grain of (company × service), not five queues.
-      { label: 'Manual services', specId: 'admin-manual-services' },
     ],
   },
   {
