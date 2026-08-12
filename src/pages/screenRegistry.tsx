@@ -43,7 +43,7 @@ const ADMIN_NAV_PAGES = new Set([
   // Products only: Packages and Promotions were removed from the console nav, so a
   // spec page showing those screens gets a preview but no link to a page that exists.
   'admin-catalog',
-  'admin-banners', 'admin-popups', 'admin-pages', 'admin-boards',
+  'admin-banners', 'admin-popups', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
   'admin-master-data', 'admin-audit-log', 'admin-environment', 'admin-departments',

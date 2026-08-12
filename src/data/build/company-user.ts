@@ -75,10 +75,10 @@ export const companyUser: BuildModule = {
     },
     {
       label: 'Self-serve signup — see CRM → Sign-ups',
-      text: 'Company-user sign-up is specified on the CRM → Sign-ups page. In short: a self-serve sign-up (email + company name) creates a LOGIN + a new Unverified company with that person as Admin; they can browse the whole site but every data page is empty until the company buys and is verified. One email = one employer login = at most one company at a time, separate from the jobseeker site.',
+      text: 'Company-user sign-up is specified on the CRM → Sign-ups page. In short: a self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves it with one of three actions (move the user into an existing company · create a new company + move the user in as Admin · archive), and Move/Create email the user an activation link. Access + a company are granted only after HQ places them and they activate.',
       items: [
-        'Signup with an already-registered employer email is blocked ("sign in instead") — never a duplicate login.',
-        'Duplicate / junk companies are cleaned up by HQ on the Sign-ups page: move the user into the real company and archive the empty shell (see CRM → Sign-ups and the Move-user behavior below).',
+        'One email = one employer login = at most one company at a time, separate from the jobseeker site (Phase-1). A second sign-up on the same email is blocked ("sign in instead").',
+        'No company or products are created at sign-up — the company comes from HQ (existing or newly created). Duplicate/junk requests are simply archived; a duplicate real company is cleaned up by moving its users out then archiving it (Move-user behavior below).',
       ],
     },
     {
@@ -98,7 +98,8 @@ export const companyUser: BuildModule = {
       table: {
         cols: ['Status', 'Means', 'Rule'],
         rows: [
-          ['Invited', 'Invite sent, awaiting activation', 'Person sets their own password via the invite link — no one types it for them.'],
+          ['Pending', 'Self-serve sign-up submitted, not yet placed by HQ', 'A request only — no company, no access. Becomes Invited/Active once HQ moves or creates a company and sends the activation link (see CRM → Sign-ups).'],
+          ['Invited', 'Invite/activation sent, awaiting activation', 'Person sets/confirms their own password via the link — no one types it for them. Applies to both an HR-Manager invite and a self-serve sign-up HQ has placed.'],
           ['Active', 'Link clicked / password set — full use', 'Shares the account’s pooled products/quota; can act within their assigned role’s permissions.'],
           ['Disabled', 'Access removed', 'Remove = deactivate, never hard-delete (keep the audit trail); the last Admin can’t be disabled — grant Admin to another user first.'],
         ],

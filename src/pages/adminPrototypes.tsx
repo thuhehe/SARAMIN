@@ -6265,6 +6265,9 @@ const BANNER_TONE: Record<BannerStatus, StatusTone> = {
 type Banner = {
   id: string
   name: string
+  /* Sold — bought by a customer, backed by a paid PO line.
+     House — Saramin VN's own promotion. No company, no PO, no product. */
+  source: 'Sold' | 'House'
   sku: string
   company: string
   start: string
@@ -6275,19 +6278,22 @@ type Banner = {
   creative: string | null
 }
 const BANNERS: Banner[] = [
-  { id: 'BN-1042', name: 'Hero — Tết 2026 campaign', sku: 'PLC-HOMEHERO', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', clicks: '12,480', creative: 'tet2026-hero-1536x371.jpg' },
-  { id: 'BN-1051', name: 'Hero — Tuyển dụng Q3', sku: 'PLC-HOMEHERO', company: 'Công ty Vạn Phát', start: '01/08/2026', end: '08/08/2026', status: 'Open', exposure: 'On', clicks: '3,190', creative: 'vanphat-hero-1536x371.jpg' },
-  { id: 'BN-1052', name: 'Adsense — IT jobs', sku: 'PLC-ADS-HOME', company: 'Tiki', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'tiki-ads-1260x120.jpg' },
-  { id: 'BN-1053', name: 'Hero — Employer promo', sku: 'PLC-HOMEHERO', company: 'MoMo', start: '—', end: '—', status: 'Draft', exposure: 'Off', clicks: '—', creative: null },
-  { id: 'BN-1054', name: 'Adsense — Search, Shopee', sku: 'PLC-ADS-SEARCH', company: 'Shopee', start: '05/08/2026', end: '12/08/2026', status: 'Open', exposure: 'Off', clicks: '840', creative: 'shopee-search-425x160.jpg' },
+  { id: 'BN-1042', name: 'Hero — Tết 2026 campaign', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', clicks: '12,480', creative: 'tet2026-hero-1536x371.jpg' },
+  { id: 'BN-1051', name: 'Hero — Tuyển dụng Q3', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'Công ty Vạn Phát', start: '01/08/2026', end: '08/08/2026', status: 'Open', exposure: 'On', clicks: '3,190', creative: 'vanphat-hero-1536x371.jpg' },
+  { id: 'BN-1052', name: 'Adsense — IT jobs', source: 'Sold', sku: 'PLC-ADS-HOME', company: 'Tiki', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'tiki-ads-1260x120.jpg' },
+  { id: 'BN-1053', name: 'Hero — Employer promo', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'MoMo', start: '—', end: '—', status: 'Draft', exposure: 'Off', clicks: '—', creative: null },
+  { id: 'BN-1054', name: 'Adsense — Search, Shopee', source: 'Sold', sku: 'PLC-ADS-SEARCH', company: 'Shopee', start: '05/08/2026', end: '12/08/2026', status: 'Open', exposure: 'Off', clicks: '840', creative: 'shopee-search-425x160.jpg' },
+  { id: 'BN-1060', name: 'Tuyển dụng nội bộ — Saramin VN', source: 'House', sku: 'PLC-HOMEHERO', company: 'Saramin VN', start: '01/08/2026', end: '31/08/2026', status: 'Open', exposure: 'On', clicks: '2,410', creative: 'saramin-hiring-1536x371.jpg' },
+  { id: 'BN-1061', name: 'Thông báo bảo trì hệ thống', source: 'House', sku: 'PLC-ADS-HOME', company: 'Saramin VN', start: '20/08/2026', end: '22/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'maintenance-1260x120.jpg' },
 ]
 
 function AdminBanners() {
   const [fStatus, setFStatus] = useState('')
+  const [fSource, setFSource] = useState('')
   const [edit, setEdit] = useState<Banner | null>(null)
   const [creating, setCreating] = useState(false)
 
-  const rows = BANNERS.filter((b) => !fStatus || b.status === fStatus)
+  const rows = BANNERS.filter((b) => (!fStatus || b.status === fStatus) && (!fSource || b.source === fSource))
   const slotOf = (sku: string) => CATALOG.find((c) => c.sku === sku)?.name ?? sku
 
   return (
@@ -6303,9 +6309,12 @@ function AdminBanners() {
           { label: 'Clicks', w: '0.7fr', align: 'r' },
         ]}
         rows={rows.map((b) => [
-          <button onClick={() => setEdit(b)} className="min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{b.name}</button>,
+          <span className="flex min-w-0 items-center gap-1.5">
+            <button onClick={() => setEdit(b)} className="min-w-0 truncate text-left font-medium text-brand hover:underline">{b.name}</button>
+            {b.source === 'House' && <span className="shrink-0"><Pill tone="neutral">Nội bộ</Pill></span>}
+          </span>,
           <span className="truncate">{slotOf(b.sku)}</span>,
-          <span className="truncate">{b.company}</span>,
+          <span className={cn('truncate', b.source === 'House' && 'text-faint')}>{b.company}</span>,
           <span className="tabular-nums">{b.start === '—' ? <span className="text-faint">chưa đặt</span> : `${b.start} – ${b.end}`}</span>,
           <Pill tone={BANNER_TONE[b.status]}>{b.status}</Pill>,
           b.exposure === 'On'
@@ -6313,16 +6322,22 @@ function AdminBanners() {
             : <span className="flex items-center gap-1 text-faint"><span className="h-1.5 w-1.5 rounded-full bg-line" />Off</span>,
           <span className="tabular-nums">{b.clicks}</span>,
         ])}
-        filters={<FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Schedule', 'Open', 'Expired']} />}
+        filters={
+          <>
+            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Schedule', 'Open', 'Expired']} />
+            <FilterSelect label="Nguồn" value={fSource} onChange={setFSource} options={['Sold', 'House']} />
+          </>
+        }
         total={BANNERS.length}
         searchHint="Search banner, placement, company…"
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Publish banner</button>}
         minW={1180}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Status follows the dates, never typed: publishing with a future start gives <b className="text-ink/70">Schedule</b>,
-        the start date makes it <b className="text-ink/70">Open</b>, the end date makes it <b className="text-ink/70">Expired</b> ·
-        Exposure is separate — an Open banner can be switched off without ending the booking
+        Status follows the dates, never typed: no start date means <b className="text-ink/70">publish now</b> →
+        <b className="text-ink/70"> Open</b>, a future start gives <b className="text-ink/70">Schedule</b>, the end date
+        makes it <b className="text-ink/70">Expired</b> · Exposure is separate — an Open banner can be switched off
+        without ending the booking
       </p>
       {(creating || edit) && <PublishBannerModal banner={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
     </div>
@@ -6332,11 +6347,61 @@ function AdminBanners() {
 /* Publish a banner. Two decisions only, as asked: WHEN it starts and WHAT runs.
    Everything else is read from the placement product — size, duration, the slot's
    rotation cap — because those were fixed when the product was sold. */
+/* Placement lines that have actually been BOUGHT. A banner cannot be published
+   from the catalogue — only from a paid order line — which is the module's own
+   invariant applied to this screen: nothing is entitled without a paid order.
+
+   `qty` is what the customer bought, `used` is how many bookings already exist
+   against that line. A line with none left cannot be chosen again. */
+type PoPlacementLine = { sku: string; qty: number; used: number }
+type PlacementPo = { po: string; invoiced: string | null; lines: PoPlacementLine[] }
+const PLACEMENT_POS: Record<string, PlacementPo[]> = {
+  'Công ty TNHH Vạn Phát': [
+    { po: 'PO-005812-07-2026', invoiced: '26/05/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }] },
+    { po: 'PO-005940-08-2026', invoiced: null, lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
+  ],
+  'FPT Software': [
+    { po: 'PO-005601-06-2026', invoiced: '15/06/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 1 }] },
+  ],
+  'Tiki': [
+    { po: 'PO-005733-07-2026', invoiced: '01/07/2026', lines: [{ sku: 'PLC-ADS-HOME', qty: 3, used: 1 }] },
+  ],
+  'MoMo': [
+    { po: 'PO-005888-07-2026', invoiced: '18/07/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
+  ],
+  'Shopee': [
+    { po: 'PO-005777-08-2026', invoiced: '05/08/2026', lines: [{ sku: 'PLC-ADS-SEARCH', qty: 2, used: 1 }] },
+  ],
+}
+
+/* Publish a banner. The chain is COMPANY → PO → PRODUCT, then the two decisions
+   that are actually this screen's: when it starts, and what runs.
+
+   Starting from the company rather than the placement is what keeps a banner
+   attached to something the customer paid for. Picking a placement first would let
+   an operator publish a hero banner nobody bought and only discover it at invoice
+   reconciliation, which is the wrong end of the process to find it. */
 function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClose: () => void }) {
-  const placements = CATALOG.filter((c) => c.type === 'Placement booking' && c.role !== 'Add-on')
-  const [sku, setSku] = useState(banner?.sku ?? placements[0]?.sku ?? '')
+  const editing = Boolean(banner)
+  /* House banners are Saramin VN's own promotion: no customer, no PO, no product
+     line to spend. They still occupy a rotation slot, so they are a booking like
+     any other — only the money side is absent. */
+  const [source, setSource] = useState<'Sold' | 'House'>(banner?.source ?? 'Sold')
+  const house = source === 'House'
+  const [houseEnd, setHouseEnd] = useState(banner?.source === 'House' ? banner.end : '')
+  const [purpose, setPurpose] = useState('')
+  const [exposure, setExposure] = useState<'On' | 'Off'>(banner?.exposure ?? 'On')
+  const [target, setTarget] = useState<'job' | 'company' | 'jobs'>('company')
+  const [company, setCompany] = useState(banner?.company ?? '')
+  const [po, setPo] = useState('')
+  const [sku, setSku] = useState(banner?.sku ?? '')
   const [start, setStart] = useState(banner?.start === '—' ? '' : banner?.start ?? '')
   const [file, setFile] = useState<string | null>(banner?.creative ?? null)
+
+  const companies = Object.keys(PLACEMENT_POS)
+  const pos = PLACEMENT_POS[company] ?? []
+  const chosenPo = pos.find((x) => x.po === po)
+  const lines = chosenPo?.lines ?? []
 
   const product = CATALOG.find((c) => c.sku === sku)
   const slot = PLACEMENTS.find((x) =>
@@ -6355,7 +6420,15 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
      served attributed to an image nobody can retrieve. Switch Exposure off, or wait
      for Expired, then publish a new booking. */
   const creativeLocked = status === 'Open'
-  const valid = Boolean(sku) && Boolean(start) && Boolean(file)
+  /* An empty start date is not a missing field — it MEANS publish now. So it is
+     never part of `valid`; only the things that genuinely cannot be inferred are. */
+  const valid = editing
+    ? Boolean(file)
+    : house
+      ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && Boolean(file)
+      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced)
+
+  const pick = (v: string) => { setCompany(v); setPo(''); setSku('') }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -6364,7 +6437,7 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
           <div>
             <p className="text-[15px] font-bold">{banner ? banner.name : 'Publish banner'}</p>
             <p className="flex items-center gap-1.5 text-[11px] text-muted">
-              {banner ? <>{banner.id} · {banner.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Chọn vị trí, ngày bắt đầu và tải banner lên.'}
+              {banner ? <>{banner.id} · {banner.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Chọn khách hàng → PO → sản phẩm, rồi đặt ngày và tải banner.'}
             </p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
@@ -6382,29 +6455,168 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
             </p>
           )}
 
-          <Section title="1 · Vị trí" className="mt-0" />
+          {!editing && (
+            <>
+              <Section title="1 · Nguồn" className="mt-0" />
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {([
+                  ['Sold', 'Khách hàng', 'Đã mua — gắn với dòng trong PO đã xuất hoá đơn'],
+                  ['House', 'Nội bộ — Saramin VN', 'Tự chạy: tuyển dụng nội bộ, thông báo, chiến dịch riêng'],
+                ] as const).map(([v, label, hint]) => (
+                  <button
+                    key={v}
+                    onClick={() => setSource(v)}
+                    className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', source === v ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                  >
+                    <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', source === v ? 'border-brand' : 'border-line')}>
+                      {source === v && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn('block text-[12px] font-semibold', source === v ? 'text-brand' : 'text-ink')}>{label}</span>
+                      <span className="block text-[10px] leading-relaxed text-faint">{hint}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {house && (
+                <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+                  <span>ℹ️</span>
+                  <span>
+                    Banner nội bộ <b className="text-ink/70">vẫn chiếm 1 chỗ</b> trong pool của vị trí đó — nếu không tính, chỗ
+                    bán cho khách sẽ bị vượt. Nhưng nó <b className="text-ink/70">không vào doanh thu</b> và không trừ lượt của PO nào.
+                  </span>
+                </p>
+              )}
+            </>
+          )}
+
+          {house && !editing && (
+            <>
+              <Section title="2 · Vị trí" />
+              <div>
+                <FLabel req>Placement</FLabel>
+                <select
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink"
+                >
+                  <option value="">— Chọn vị trí —</option>
+                  {CATALOG.filter((c) => c.type === 'Placement booking' && c.role !== 'Add-on').map((c) => (
+                    <option key={c.sku} value={c.sku}>{c.name}</option>
+                  ))}
+                </select>
+                {slot && (
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                    <span className="font-mono">{slot.size}</span> · {slot.shown} · {slot.cap} — đọc từ Placements.
+                  </p>
+                )}
+              </div>
+              <div>
+                <FLabel req>Mục đích</FLabel>
+                <input
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="VD: tuyển dụng nội bộ · thông báo bảo trì · chiến dịch thương hiệu"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Bắt buộc — không có PO nào giải thích vì sao banner này chạy, nên lý do phải nằm ngay trên bản ghi.</p>
+              </div>
+            </>
+          )}
+
+          {!house && !editing && <Section title="2 · Khách hàng & đơn hàng" />}
+          {!house && (
           <div>
-            <FLabel req>Placement product</FLabel>
+            <FLabel req>Khách hàng</FLabel>
             <select
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              disabled={!!banner}
+              value={company}
+              onChange={(e) => pick(e.target.value)}
+              disabled={editing}
               className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink disabled:bg-canvas/60 disabled:text-muted"
             >
-              {placements.map((c) => <option key={c.sku} value={c.sku}>{c.name}</option>)}
+              <option value="">— Chọn khách hàng —</option>
+              {companies.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
-            {slot && (
-              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-                <span className="font-mono">{slot.size}</span> · {slot.shown} · {slot.cap} — đọc từ Placements, không sửa ở đây.
-              </p>
-            )}
-            {banner && <p className="mt-1 text-[10.5px] text-faint">Vị trí đã chốt khi bán — muốn đổi thì tạo booking mới.</p>}
+            {!editing && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Chỉ hiện khách đã mua ít nhất một sản phẩm placement.</p>}
           </div>
+          )}
 
-          <Section title="2 · Thời gian hiển thị" />
+          {!editing && !house && (
+            <>
+              <div>
+                <FLabel req>Đơn hàng / PO</FLabel>
+                <select
+                  value={po}
+                  onChange={(e) => { setPo(e.target.value); setSku('') }}
+                  disabled={!company}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink disabled:bg-canvas/60 disabled:text-muted"
+                >
+                  <option value="">{company ? '— Chọn PO —' : '— Chọn khách hàng trước —'}</option>
+                  {pos.map((x) => (
+                    <option key={x.po} value={x.po}>{x.po}{x.invoiced ? ` · đã xuất HĐ ${x.invoiced}` : ' · chưa xuất hoá đơn'}</option>
+                  ))}
+                </select>
+                {chosenPo && !chosenPo.invoiced && (
+                  <p className="mt-1 flex gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+                    <span>⚠️</span><span>PO này <b>chưa xuất hoá đơn</b> — chưa có quota, chưa thể publish. Kế toán xác nhận thanh toán và xuất HĐ trước.</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <FLabel req>Sản phẩm trong PO</FLabel>
+                {!chosenPo ? (
+                  <p className="rounded-md border border-line bg-canvas/50 px-3 py-2 text-[11.5px] text-faint">Chọn PO để xem các dòng placement.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {lines.map((ln) => {
+                      const p = CATALOG.find((c) => c.sku === ln.sku)
+                      const left = ln.qty - ln.used
+                      const spent = left <= 0
+                      const on = sku === ln.sku
+                      return (
+                        <button
+                          key={ln.sku}
+                          onClick={() => !spent && setSku(ln.sku)}
+                          disabled={spent}
+                          className={cn(
+                            'flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left',
+                            on ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30',
+                            spent && 'cursor-not-allowed opacity-50 hover:border-line',
+                          )}
+                        >
+                          <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                            {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/80')}>{p?.name ?? ln.sku}</span>
+                            <span className="block text-[10px] text-faint">{ln.used}/{ln.qty} đã dùng</span>
+                          </span>
+                          <span className={cn('shrink-0 text-[11px] font-semibold tabular-nums', spent ? 'text-rose-600' : 'text-ink')}>
+                            {spent ? 'hết lượt' : `${left} còn lại`}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {slot && (
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                    <span className="font-mono">{slot.size}</span> · {slot.shown} · {slot.cap} — đọc từ Placements, không sửa ở đây.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {editing && (
+            <LField label="Sản phẩm" value={product?.name ?? banner?.sku ?? '—'} hint={banner?.source === 'House' ? 'Banner nội bộ — không gắn PO nào.' : 'Đã chốt khi bán — muốn đổi thì tạo booking mới.'} />
+          )}
+
+          <Section title="3 · Thời gian hiển thị" />
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>
-              <FLabel req>Ngày bắt đầu</FLabel>
+              <FLabel>Ngày bắt đầu<span className="ml-1 font-normal text-faint">để trống = đăng ngay</span></FLabel>
               <input
                 type="date"
                 value={start ? start.split('/').reverse().join('-') : ''}
@@ -6412,15 +6624,50 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
                 disabled={status === 'Open' || status === 'Expired'}
                 className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
               />
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                {start
+                  ? <>Ngày trong tương lai → trạng thái <b className="text-ink/70">Schedule</b>, chờ đến {start}. <button onClick={() => setStart('')} className="font-medium text-brand hover:underline">Xoá ngày — đăng ngay</button></>
+                  : <>Để trống = đăng ngay → trạng thái <b className="text-ink/70">Open</b> khi lưu.</>}
+              </p>
             </div>
-            <LField label="Ngày kết thúc" value={start ? `+${days} ngày từ ngày bắt đầu` : `— ${days} ngày sau ngày bắt đầu`} hint="Tính từ thời gian hiển thị của sản phẩm, không nhập tay." />
+            {house ? (
+              <div>
+                <FLabel req>Ngày kết thúc</FLabel>
+                <input
+                  type="date"
+                  value={houseEnd ? houseEnd.split('/').reverse().join('-') : ''}
+                  onChange={(e) => setHouseEnd(e.target.value.split('-').reverse().join('/'))}
+                  disabled={status === 'Open' || status === 'Expired'}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Nhập tay — không có sản phẩm nào quy định thời lượng, nên banner nội bộ phải tự đặt hạn kết thúc.</p>
+              </div>
+            ) : (
+              <LField label="Ngày kết thúc" value={start ? `+${days} ngày từ ngày bắt đầu` : `— ${days} ngày sau ngày bắt đầu`} hint="Tính từ thời gian hiển thị của sản phẩm, không nhập tay." />
+            )}
           </div>
-          <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
-            Ngày bắt đầu <b className="text-ink/70">trong tương lai</b> → trạng thái <b className="text-ink/70">Schedule</b>.
-            Ngày bắt đầu <b className="text-ink/70">hôm nay</b> → <b className="text-ink/70">Open</b> ngay khi lưu.
-          </p>
+          {/* Exposure: the same compact toggle a job uses — one row, a sentence and a
+              switch. Two radio cards said the same thing in four times the space. */}
+          <div>
+            <FLabel>Exposure</FLabel>
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
+              <span className="min-w-0 flex-1 text-[11.5px] text-muted">
+                {exposure === 'On'
+                  ? 'On — hiển thị trên site ngay khi Open.'
+                  : 'Off — giữ ẩn; booking vẫn chạy và vẫn hết hạn đúng ngày (không phải kết thúc).'}
+              </span>
+              <button
+                role="switch"
+                aria-checked={exposure === 'On'}
+                onClick={() => setExposure((v) => (v === 'On' ? 'Off' : 'On'))}
+                className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', exposure === 'On' ? 'bg-emerald-500' : 'bg-line')}
+              >
+                <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', exposure === 'On' ? 'left-[18px]' : 'left-0.5')} />
+              </button>
+            </div>
+          </div>
 
-          <Section title="3 · Banner" />
+          <Section title="4 · Banner" />
           <div>
             <FLabel req>Ảnh banner</FLabel>
             <div className={cn('rounded-lg border border-dashed px-3 py-4 text-center', creativeLocked ? 'border-line bg-canvas/50' : 'border-line hover:border-brand/50')}>
@@ -6433,8 +6680,8 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
                 </div>
               ) : (
                 <button
-                  onClick={() => setFile(`${sku.toLowerCase()}-${(slot?.size ?? '').replace(/[^0-9x]/g, '')}.jpg`)}
-                  disabled={creativeLocked}
+                  onClick={() => setFile(`${(sku || 'banner').toLowerCase()}-${(slot?.size ?? '').replace(/[^0-9x]/g, '')}.jpg`)}
+                  disabled={creativeLocked || (!editing && !sku)}
                   className="text-[12px] font-medium text-brand hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
                 >
                   ⬆ Tải ảnh lên
@@ -6442,10 +6689,53 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
               )}
             </div>
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-              Đúng kích thước <b className="text-ink/70">{slot?.size ?? '—'}</b>. Ảnh sai tỉ lệ bị chặn khi lưu, không tự crop.
+              Đúng kích thước <b className="text-ink/70">{slot?.size ?? '— chọn sản phẩm trước'}</b>. Ảnh sai tỉ lệ bị chặn khi lưu, không tự crop.
             </p>
           </div>
-          <LField label="Link redirect" value="https://…" hint="Khách cung cấp. Bấm banner mở link này." />
+          {/* Banners point INSIDE the site, not at an arbitrary URL: the three things
+              a placement can usefully send a jobseeker to are a job, a company page,
+              or that company's job list. Picking from those keeps the link alive when
+              slugs change and stops a paid slot pointing off-platform. */}
+          <div>
+            <FLabel req>Link đích<span className="ml-1 font-normal text-faint">nội bộ</span></FLabel>
+            <div className="grid gap-1.5 sm:grid-cols-3">
+              {([
+                ['job', 'Một job', 'Job detail'],
+                ['company', 'Trang công ty', 'Company page'],
+                ['jobs', 'Job list của công ty', 'Company job list'],
+              ] as const).map(([v, label, sub]) => (
+                <button
+                  key={v}
+                  onClick={() => setTarget(v)}
+                  className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', target === v ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                >
+                  <span className={cn('block text-[11.5px] font-medium', target === v ? 'text-brand' : 'text-ink')}>{label}</span>
+                  <span className="block text-[10px] text-faint">{sub}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-1.5">
+              <select className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                {target === 'job' && <>
+                  <option>— Chọn job —</option>
+                  <option>JOB-2109 · Digital Marketing Lead</option>
+                  <option>JOB-2101 · Product Manager</option>
+                </>}
+                {target === 'company' && <>
+                  <option>— Chọn công ty —</option>
+                  {Object.keys(PLACEMENT_POS).map((x) => <option key={x}>{x}</option>)}
+                </>}
+                {target === 'jobs' && <>
+                  <option>— Chọn công ty —</option>
+                  {Object.keys(PLACEMENT_POS).map((x) => <option key={x}>{x} · tất cả job đang mở</option>)}
+                </>}
+              </select>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                Lưu <b className="text-ink/70">ID</b>, không lưu URL — job đổi slug hay công ty đổi tên thì link vẫn đúng.
+                {target === 'job' && ' Job đóng thì banner tự trỏ về job list của công ty đó thay vì báo 404.'}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
@@ -6462,19 +6752,359 @@ function PublishBannerModal({ banner, onClose }: { banner: Banner | null; onClos
   )
 }
 
+/* A POPUP is the same kind of record as a banner — a scheduled creative with a
+   source, a status and an exposure switch. Three things differ, and all three come
+   from the fact that a popup INTERRUPTS rather than sits in a slot:
+
+     · it targets an AUDIENCE, not a placement
+     · it carries a FREQUENCY CAP, so one person is not shown it twice a day
+     · only ONE can show at a time, so it needs a PRIORITY
+
+   Everything else — Draft → Schedule → Open → Expired, Exposure separate, creative
+   frozen while Open — is deliberately identical, because an operator who has learnt
+   the banner screen should not have to learn a second one. */
+type PopupAudience = 'Guests' | 'Jobseekers' | 'Employers'
+type Popup = {
+  id: string
+  name: string
+  source: 'Sold' | 'House'
+  audience: PopupAudience
+  company: string
+  start: string
+  end: string
+  status: BannerStatus
+  exposure: 'On' | 'Off'
+  freq: string
+  priority: number
+  creative: string | null
+}
+const POPUPS: Popup[] = [
+  { id: 'PU-2010', name: 'Chào mừng người dùng mới', source: 'House', audience: 'Guests', company: 'Saramin VN', start: '01/06/2026', end: 'Always on', status: 'Open', exposure: 'On', freq: '1 / phiên', priority: 1, creative: 'welcome-popup.jpg' },
+  { id: 'PU-2011', name: 'Khảo sát NPS', source: 'House', audience: 'Jobseekers', company: 'Saramin VN', start: '01/08/2026', end: '14/08/2026', status: 'Open', exposure: 'On', freq: '1 / tuần', priority: 3, creative: 'nps-survey.jpg' },
+  { id: 'PU-2012', name: 'Tuyển dụng Q3 — Vạn Phát', source: 'Sold', audience: 'Jobseekers', company: 'Công ty TNHH Vạn Phát', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', freq: '1 / phiên', priority: 2, creative: 'vanphat-popup.jpg' },
+  { id: 'PU-2013', name: 'Employer trial', source: 'House', audience: 'Employers', company: 'Saramin VN', start: '—', end: '—', status: 'Draft', exposure: 'Off', freq: '1 / tuần', priority: 5, creative: null },
+  { id: 'PU-2009', name: 'Tết 2026 — FPT Software', source: 'Sold', audience: 'Jobseekers', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', freq: '1 / phiên', priority: 4, creative: 'fpt-tet.jpg' },
+]
+const PU_AUDIENCE: Record<PopupAudience, string> = {
+  Guests: 'Khách chưa đăng nhập',
+  Jobseekers: 'Ứng viên đã đăng nhập',
+  Employers: 'Nhà tuyển dụng',
+}
+
 function AdminPopups() {
-  const rows = [
-    ['Welcome — new visitors', 'Guests', 'Always on', <Pill tone="active">Live</Pill>, '1 / session'],
-    ['Survey — NPS', 'Logged-in seekers', '01/08 – 14/08', <Pill tone="pending">Scheduled</Pill>, '1 / week'],
-    ['Promo — Employer trial', 'Employers', '—', <Pill tone="draft">Draft</Pill>, '—'],
-  ]
+  const [fStatus, setFStatus] = useState('')
+  const [fSource, setFSource] = useState('')
+  const [edit, setEdit] = useState<Popup | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const rows = POPUPS
+    .filter((b) => (!fStatus || b.status === fStatus) && (!fSource || b.source === fSource))
+    .slice()
+    .sort((a, b) => a.priority - b.priority)
+
   return (
-    <ListPage
-      cols={[{ label: 'Popup', w: '1.6fr' }, { label: 'Audience', w: '1.2fr' }, { label: 'Schedule', w: '1.2fr' }, { label: 'Status', w: '0.9fr' }, { label: 'Frequency', w: '1fr', align: 'r' }]}
-      rows={rows}
-    />
+    <div>
+      <ListPage
+        cols={[
+          { label: 'Popup', w: '1.7fr' },
+          { label: 'Đối tượng', w: '1.2fr' },
+          { label: 'Company', w: '1.2fr' },
+          { label: 'Schedule', w: '1.3fr' },
+          { label: 'Status', w: '0.8fr' },
+          { label: 'Exposure', w: '0.8fr' },
+          { label: 'Tần suất', w: '0.8fr' },
+          { label: 'Ưu tiên', w: '0.6fr', align: 'r' },
+        ]}
+        rows={rows.map((b) => [
+          <span className="flex min-w-0 items-center gap-1.5">
+            <button onClick={() => setEdit(b)} className="min-w-0 truncate text-left font-medium text-brand hover:underline">{b.name}</button>
+            {b.source === 'House' && <span className="shrink-0"><Pill tone="neutral">Nội bộ</Pill></span>}
+          </span>,
+          <span className="truncate">{PU_AUDIENCE[b.audience]}</span>,
+          <span className={cn('truncate', b.source === 'House' && 'text-faint')}>{b.company}</span>,
+          <span className="tabular-nums">{b.start === '—' ? <span className="text-faint">chưa đặt</span> : b.end === 'Always on' ? `${b.start} – luôn bật` : `${b.start} – ${b.end}`}</span>,
+          <Pill tone={BANNER_TONE[b.status]}>{b.status}</Pill>,
+          b.exposure === 'On'
+            ? <span className="flex items-center gap-1 text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />On</span>
+            : <span className="flex items-center gap-1 text-faint"><span className="h-1.5 w-1.5 rounded-full bg-line" />Off</span>,
+          <span>{b.freq}</span>,
+          <span className="tabular-nums font-medium">{b.priority}</span>,
+        ])}
+        filters={
+          <>
+            <FilterSelect label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Schedule', 'Open', 'Expired']} />
+            <FilterSelect label="Nguồn" value={fSource} onChange={setFSource} options={['Sold', 'House']} />
+          </>
+        }
+        total={POPUPS.length}
+        searchHint="Search popup, đối tượng, company…"
+        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Publish popup</button>}
+        minW={1280}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Sorted by <b className="text-ink/70">ưu tiên</b> because only ONE popup shows at a time — this list is the order
+        the resolver walks · same Draft → Schedule → Open → Expired lifecycle and separate Exposure switch as banners
+      </p>
+      {(creating || edit) && <PublishPopupModal popup={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
+    </div>
   )
 }
+
+function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: () => void }) {
+  const editing = Boolean(popup)
+  const [source, setSource] = useState<'Sold' | 'House'>(popup?.source ?? 'House')
+  const house = source === 'House'
+  const [company, setCompany] = useState(popup?.company ?? '')
+  const [audience, setAudience] = useState<PopupAudience>(popup?.audience ?? 'Guests')
+  const [start, setStart] = useState(popup?.start === '—' ? '' : popup?.start ?? '')
+  const [alwaysOn, setAlwaysOn] = useState(popup?.end === 'Always on')
+  const [end, setEnd] = useState(popup && popup.end !== 'Always on' && popup.end !== '—' ? popup.end : '')
+  const [exposure, setExposure] = useState<'On' | 'Off'>(popup?.exposure ?? 'On')
+  const [freq, setFreq] = useState(popup?.freq ?? '1 / phiên')
+  const [priority, setPriority] = useState(String(popup?.priority ?? 3))
+  const [file, setFile] = useState<string | null>(popup?.creative ?? null)
+
+  const status = popup?.status ?? 'Draft'
+  const creativeLocked = status === 'Open'
+  const valid = Boolean(file) && (alwaysOn || Boolean(end)) && (house || Boolean(company))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">{popup ? popup.name : 'Publish popup'}</p>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted">
+              {popup ? <>{popup.id} · {popup.company} · <Pill tone={BANNER_TONE[status]}>{status}</Pill></> : 'Popup ngắt trải nghiệm — nên có đối tượng, tần suất và thứ tự ưu tiên.'}
+            </p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        <div className="space-y-3.5 p-5">
+          {creativeLocked && (
+            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+              <span>🔒</span>
+              <span>Popup đang <b>Open</b> — không thể thay ảnh. Tắt <b>Exposure</b> để gỡ khỏi màn hình, hoặc đợi hết hạn rồi tạo mới.</span>
+            </p>
+          )}
+
+          {!editing && (
+            <>
+              <Section title="1 · Nguồn" className="mt-0" />
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {([
+                  ['Sold', 'Khách hàng', 'Đã mua — gắn với một công ty'],
+                  ['House', 'Nội bộ — Saramin VN', 'Thông báo, khảo sát, chiến dịch riêng'],
+                ] as const).map(([v, label, hint]) => (
+                  <button
+                    key={v}
+                    onClick={() => setSource(v)}
+                    className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', source === v ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                  >
+                    <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', source === v ? 'border-brand' : 'border-line')}>
+                      {source === v && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn('block text-[12px] font-semibold', source === v ? 'text-brand' : 'text-ink')}>{label}</span>
+                      <span className="block text-[10px] leading-relaxed text-faint">{hint}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {!house && (
+                <div>
+                  <FLabel req>Khách hàng</FLabel>
+                  <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                    <option value="">— Chọn khách hàng —</option>
+                    {Object.keys(PLACEMENT_POS).map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+
+          <Section title={editing ? '1 · Đối tượng' : '2 · Đối tượng'} />
+          <div>
+            <FLabel req>Hiển thị cho</FLabel>
+            <div className="grid gap-1.5 sm:grid-cols-3">
+              {(Object.keys(PU_AUDIENCE) as PopupAudience[]).map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setAudience(a)}
+                  className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', audience === a ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                >
+                  <span className={cn('block text-[11.5px] font-medium', audience === a ? 'text-brand' : 'text-ink')}>{a}</span>
+                  <span className="block text-[10px] leading-tight text-faint">{PU_AUDIENCE[a]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Section title={editing ? '2 · Thời gian' : '3 · Thời gian'} />
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel>Ngày bắt đầu<span className="ml-1 font-normal text-faint">để trống = đăng ngay</span></FLabel>
+              <input
+                type="date"
+                value={start ? start.split('/').reverse().join('-') : ''}
+                onChange={(e) => setStart(e.target.value.split('-').reverse().join('/'))}
+                disabled={status === 'Open' || status === 'Expired'}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
+              />
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                {start
+                  ? <>Ngày trong tương lai → <b className="text-ink/70">Schedule</b>. <button onClick={() => setStart('')} className="font-medium text-brand hover:underline">Xoá ngày — đăng ngay</button></>
+                  : <>Để trống = đăng ngay → <b className="text-ink/70">Open</b> khi lưu.</>}
+              </p>
+            </div>
+            <div>
+              <FLabel req={!alwaysOn}>Ngày kết thúc</FLabel>
+              <input
+                type="date"
+                value={end ? end.split('/').reverse().join('-') : ''}
+                onChange={(e) => setEnd(e.target.value.split('-').reverse().join('/'))}
+                disabled={alwaysOn || status === 'Open' || status === 'Expired'}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
+              />
+              <label className="mt-1 flex items-center gap-1.5 text-[10.5px] text-muted">
+                <input type="checkbox" checked={alwaysOn} onChange={(e) => setAlwaysOn(e.target.checked)} className="h-3 w-3" />
+                Luôn bật — không có ngày kết thúc
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <FLabel>Exposure</FLabel>
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
+              <span className="min-w-0 flex-1 text-[11.5px] text-muted">
+                {exposure === 'On' ? 'On — hiển thị cho đối tượng đã chọn.' : 'Off — giữ ẩn; lịch vẫn chạy và vẫn hết hạn đúng ngày.'}
+              </span>
+              <button
+                role="switch"
+                aria-checked={exposure === 'On'}
+                onClick={() => setExposure((v) => (v === 'On' ? 'Off' : 'On'))}
+                className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', exposure === 'On' ? 'bg-emerald-500' : 'bg-line')}
+              >
+                <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', exposure === 'On' ? 'left-[18px]' : 'left-0.5')} />
+              </button>
+            </div>
+          </div>
+
+          <Section title={editing ? '3 · Hiển thị' : '4 · Hiển thị'} />
+          {/* The two fields a banner does not need. Both exist because a popup
+              interrupts: the cap stops one person seeing it twice, the priority
+              decides who wins when several are eligible at once. */}
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <FLabel req>Tần suất</FLabel>
+              <select value={freq} onChange={(e) => setFreq(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+                {['1 / phiên', '1 / ngày', '1 / tuần', '1 / người (chỉ một lần)'].map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Đã tắt thì nhớ theo người/thiết bị — không hỏi lại.</p>
+            </div>
+            <div>
+              <FLabel req>Ưu tiên</FLabel>
+              <input
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                inputMode="numeric"
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none focus:border-brand"
+              />
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Số nhỏ hơn thắng. Chỉ MỘT popup hiện tại một thời điểm.</p>
+            </div>
+          </div>
+
+          <div>
+            <FLabel req>Ảnh popup</FLabel>
+            <div className={cn('rounded-lg border border-dashed px-3 py-4 text-center', creativeLocked ? 'border-line bg-canvas/50' : 'border-line hover:border-brand/50')}>
+              {file ? (
+                <div className="flex items-center justify-center gap-2 text-[12px]">
+                  <span className="truncate font-mono text-ink/80">{file}</span>
+                  {!creativeLocked && <button onClick={() => setFile(null)} className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-muted hover:border-rose-300 hover:text-rose-600">Gỡ</button>}
+                </div>
+              ) : (
+                <button onClick={() => setFile('popup-creative.jpg')} disabled={creativeLocked} className="text-[12px] font-medium text-brand hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline">
+                  ⬆ Tải ảnh lên
+                </button>
+              )}
+            </div>
+          </div>
+          <LField label="CTA" value="Ứng tuyển ngay · Tìm hiểu thêm · Xem việc khác" select hint="Nút trên popup. Link đích chọn như banner — job, trang công ty, hoặc job list." />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Hủy</button>
+          {status === 'Draft' && (
+            <button onClick={onClose} disabled={!valid} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink/80 hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40">Lưu nháp</button>
+          )}
+          <button onClick={onClose} disabled={!valid} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+            {status === 'Draft' ? 'Publish' : 'Lưu'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Manual services, across every customer. The per-company card answers "what has
+   THIS customer used?"; ops needs the other question — "what does anyone still owe
+   delivery on?" — and that one cannot be answered by opening 30 company records.
+
+   Sorted by remaining, descending: the rows at the top are the unfulfilled promises,
+   which is the only reason to open this screen. */
+function AdminManualServices() {
+  const [logging, setLogging] = useState<{ e: ServiceEntitlement; company: string } | null>(null)
+  const [fState, setFState] = useState('')
+
+  const rows = Object.entries(SERVICE_USAGE)
+    .flatMap(([company, list]) => list.map((e) => ({ company, e })))
+    .map((r) => ({ ...r, left: r.e.total - r.e.entries.length }))
+    .filter((r) => !fState || (fState === 'Còn lượt' ? r.left > 0 : r.left === 0))
+    .sort((a, b) => b.left - a.left)
+
+  const lastOf = (e: ServiceEntitlement) => e.entries.length ? e.entries[e.entries.length - 1].date : '—'
+
+  return (
+    <div>
+      <ListPage
+        cols={[
+          { label: 'Khách hàng', w: '1.5fr' },
+          { label: 'Dịch vụ', w: '1.9fr' },
+          { label: 'Đã dùng', w: '1fr' },
+          { label: 'Còn lại', w: '0.9fr', align: 'r' },
+          { label: 'Lần gần nhất', w: '1fr' },
+          { label: '', w: '0.9fr', align: 'r' },
+        ]}
+        rows={rows.map(({ company, e, left }) => [
+          <span className="truncate font-medium text-ink">{company}</span>,
+          <span className="truncate">{e.name}</span>,
+          <span className="flex items-center gap-2">
+            <span className="tabular-nums">{e.entries.length}/{e.total}</span>
+            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-line">
+              <span className="block h-full rounded-full bg-brand" style={{ width: `${(e.entries.length / e.total) * 100}%` }} />
+            </span>
+          </span>,
+          <span className={cn('font-semibold tabular-nums', left === 0 ? 'text-faint' : 'text-ink')}>{left}</span>,
+          <span className="tabular-nums">{lastOf(e)}</span>,
+          left > 0
+            ? <button onClick={() => setLogging({ e, company })} className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white">Ghi nhận</button>
+            : <span className="text-[11px] text-faint">đã dùng hết</span>,
+        ])}
+        filters={<FilterSelect label="Trạng thái" value={fState} onChange={setFState} options={['Còn lượt', 'Đã dùng hết']} />}
+        total={Object.values(SERVICE_USAGE).flat().length}
+        searchHint="Search khách hàng, dịch vụ…"
+        minW={1020}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Sắp xếp theo <b className="text-ink/70">còn lại</b> giảm dần — trên cùng là những gì khách đã trả tiền mà chưa
+        được giao · hệ thống không tự đếm được dịch vụ thủ công, mỗi ghi nhận là <b className="text-ink/70">1 lượt</b>
+      </p>
+      {logging && <LogServiceDeliveryModal e={logging.e} company={logging.company} onClose={() => setLogging(null)} />}
+    </div>
+  )
+}
+
 function AdminPages() {
   const rows = [
     ['About Saramin Vietnam', '/about', '12/06/2026', <Pill tone="active">Published</Pill>],
@@ -6486,19 +7116,6 @@ function AdminPages() {
     <ListPage
       tabs={[{ label: 'All', count: 24, active: true }, { label: 'Published', count: 19 }, { label: 'Draft', count: 5 }]}
       cols={[{ label: 'Page', w: '1.8fr' }, { label: 'Slug', w: '1.4fr' }, { label: 'Updated', w: '1fr' }, { label: 'Status', w: '0.9fr', align: 'r' }]}
-      rows={rows}
-    />
-  )
-}
-function AdminBoards() {
-  const rows = [
-    ['Thông báo hệ thống', 'Notice', '18', '2 days ago'],
-    ['Câu hỏi thường gặp', 'Help', '42', '1 week ago'],
-    ['Cẩm nang nghề nghiệp', 'Career', '65', '3 days ago'],
-  ]
-  return (
-    <ListPage
-      cols={[{ label: 'Board', w: '1.8fr' }, { label: 'Type', w: '1fr' }, { label: 'Posts', w: '0.7fr', align: 'r' }, { label: 'Updated', w: '1fr', align: 'r' }]}
       rows={rows}
     />
   )
@@ -7781,17 +8398,190 @@ function AdminOrders() {
     />
   )
 }
+/* ── Discount programmes ──────────────────────────────────────────────────────
+   The client's own promo sheet, configured here ONCE and applied by the quotation
+   builder automatically. It is deliberately settings, not a hard-coded rule: the
+   thresholds are a commercial decision that changes every campaign, and a rep
+   typing 25 / 30 / 35 by hand gets it wrong roughly as often as they get it right.
+
+   Two programmes, two SHAPES, and the shapes are genuinely different — which is
+   why this is not one table with an audience column:
+
+     per-line volume  (Existing)  — each line earns its own % from its OWN quantity
+     flat on the order (New/Churn) — one % on everything, but only while EVERY
+                                     line stays at or under a quantity cap
+
+   The second is all-or-nothing on purpose: one line over the cap and the whole
+   50% is lost, not just that line's share. That cliff is the client's rule, and
+   it is the reason the builder has to show WHICH line broke it. */
+type PromoAudience = Account
+type VolumeTier = { minQty: number; pct: number }
+type Programme = {
+  id: string
+  name: string
+  vi: string
+  audience: PromoAudience[]
+  /** per-line: % comes from that line's quantity · flat: one % on the whole option */
+  kind: 'volume-per-line' | 'flat-order'
+  tiers?: VolumeTier[]
+  pct?: number
+  /** flat only — every non-gift line must be at or under this, or nothing applies */
+  maxQtyPerLine?: number
+  firstPoOnly?: boolean
+  /** whether it may run alongside another programme on the same quotation */
+  stackable: boolean
+  /** gift lines inherit the paid line's activation window rather than their own */
+  giftActivationFollowsPaid?: boolean
+  status: 'Active' | 'Inactive'
+  from: string
+  to: string
+  note?: string
+}
+
+const PROGRAMMES: Programme[] = [
+  {
+    id: 'EXISTING-VOLUME',
+    name: 'Volume discount — existing customers',
+    vi: 'Chiết khấu theo số lượng (cùng loại)',
+    audience: ['Existing'],
+    kind: 'volume-per-line',
+    // Thresholds, not exact matches: 7 tin earns the 5-tier, not nothing.
+    tiers: [
+      { minQty: 2, pct: 25 }, { minQty: 5, pct: 30 }, { minQty: 10, pct: 35 },
+      { minQty: 20, pct: 40 }, { minQty: 30, pct: 45 }, { minQty: 50, pct: 50 },
+      { minQty: 100, pct: 60 },
+    ],
+    stackable: true,
+    status: 'Active',
+    from: '01/01/2026',
+    to: '31/12/2026',
+    note: 'Section 1 of 3 on the client’s sheet — the other two sections that “apply at the same time” have not been supplied yet.',
+  },
+  {
+    id: 'NEWCHURN-50',
+    name: 'Welcome / win-back — 50% off everything',
+    vi: 'Giảm 50% tất cả các dịch vụ',
+    audience: ['New', 'Churn'],
+    kind: 'flat-order',
+    pct: 50,
+    maxQtyPerLine: 5,
+    firstPoOnly: true,
+    stackable: false,
+    giftActivationFollowsPaid: true,
+    status: 'Active',
+    from: '01/01/2026',
+    to: '31/12/2026',
+    note: 'Over the cap, the sheet’s own escape routes are: quote the Existing programme instead, or split into two documents so the customer gets both. Both are a rep decision, not something the system does by itself.',
+  },
+]
+
+/** The one programme that applies to a customer status, or null. */
+const programmeFor = (a?: Account) => PROGRAMMES.find((x) => x.status === 'Active' && a && x.audience.includes(a)) ?? null
+/** Highest tier whose threshold the quantity reaches. 1 earns nothing. */
+const tierPct = (p: Programme, qty: number) =>
+  (p.tiers ?? []).reduce((best, t) => (qty >= t.minQty ? t.pct : best), 0)
+
+/* The settings screen. Not a list of coupon CODES — nobody types a code here.
+   A programme is chosen BY the customer's status, so the record reads as a rule
+   the quotation builder obeys rather than as something a rep applies by hand. */
 function AdminPromotions() {
-  const rows = [
-    ['TET2026', '−20%', 'All products', '01/01 – 15/02', '128 / 500'],
-    ['NEWEMP', '−1,000,000 ₫', 'Job Posting Pro', '01/07 – 31/08', '44 / ∞'],
-    ['SUMMER', '−10%', 'Bundles', 'Ended', '210 / 200'],
-  ]
+  const [open, setOpen] = useState<Programme | null>(null)
+  if (open) return <ProgrammeDetail p={open} onBack={() => setOpen(null)} />
   return (
-    <ListPage
-      cols={[{ label: 'Code', w: '1fr' }, { label: 'Discount', w: '1fr' }, { label: 'Applies to', w: '1.4fr' }, { label: 'Validity', w: '1.2fr' }, { label: 'Uses', w: '0.9fr', align: 'r' }]}
-      rows={rows}
-    />
+    <div>
+      <ListPage
+        cols={[
+          { label: 'Programme', w: '2fr' }, { label: 'Applies to', w: '1.2fr' }, { label: 'Discount', w: '1.7fr' },
+          { label: 'Condition', w: '1.8fr' }, { label: 'Stacks', w: '0.8fr' }, { label: 'Validity', w: '1.2fr' }, { label: 'Status', w: '0.8fr', align: 'r' },
+        ]}
+        rows={PROGRAMMES.map((p) => [
+          <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-medium text-brand hover:underline">{p.vi}</button>,
+          <span className="flex flex-wrap gap-1">{p.audience.map((a) => <Pill key={a} tone={AC_STATUS[a].tone}>{a}</Pill>)}</span>,
+          <span className="text-muted">{p.kind === 'volume-per-line' ? `${p.tiers![0].pct}–${p.tiers![p.tiers!.length - 1].pct}% theo số lượng, từng dòng` : `${p.pct}% trên tổng đơn`}</span>,
+          <span className="text-muted">{p.kind === 'volume-per-line' ? `từ ${p.tiers![0].minQty} sản phẩm cùng loại` : `mọi dòng ≤ ${p.maxQtyPerLine} · chỉ PO đầu tiên`}</span>,
+          p.stackable ? <span className="text-muted">Có</span> : <Pill tone="rejected">Không</Pill>,
+          <span className="tabular-nums text-muted">{p.from} – {p.to}</span>,
+          <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>,
+        ])}
+        total={PROGRAMMES.length}
+        searchHint="Search programme…"
+        minW={1320}
+      />
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        A programme is matched to a customer by their <b className="text-muted">customer status</b> (New · Existing · Churn) and applied by the
+        quotation builder automatically — there is no code for a rep to type, and no button to press.
+      </p>
+    </div>
+  )
+}
+
+/* The record. The tier table is the point of the screen, so it is the record —
+   everything else on the page is the conditions around it. */
+function ProgrammeDetail({ p, onBack }: { p: Programme; onBack: () => void }) {
+  useDetailCrumb(p.vi, onBack)
+  const tiers = p.tiers ?? []
+  return (
+    <div className="max-w-[900px]">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
+            {p.vi} <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>
+          </h2>
+          <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted">
+            <span className="font-mono">{p.id}</span> · {p.name} · hiệu lực {p.from} – {p.to}
+          </p>
+        </div>
+        <button className="shrink-0 rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[12.5px] font-medium text-brand hover:bg-brand hover:text-white">Edit</button>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DetailCard title="Điều kiện áp dụng — conditions">
+          <KV label="Khách hàng / Customer status" value={p.audience.join(' · ')} />
+          <KV label="Cách tính" value={p.kind === 'volume-per-line' ? 'Theo từng dòng — số lượng của dòng nào quyết định % của dòng đó' : `${p.pct}% trên tổng đơn (trước VAT)`} />
+          {p.maxQtyPerLine != null && (
+            <KV label="Giới hạn số lượng" value={`Mọi dòng phải ≤ ${p.maxQtyPerLine}. Chỉ cần 1 dòng vượt là mất toàn bộ ${p.pct}% — không phải chỉ dòng đó.`} />
+          )}
+          <KV label="Phạm vi" value={p.firstPoOnly ? 'Chỉ PO đầu tiên của khách hàng' : 'Mọi đơn trong thời gian hiệu lực'} />
+          <KV label="Chạy cùng chương trình khác" value={p.stackable ? 'Có' : 'Không — loại trừ mọi chương trình khác'} />
+          {p.giftActivationFollowsPaid && (
+            <KV label="Hạn kích hoạt tin tặng" value="Giống tin mua — dùng đúng activation window của sản phẩm đã mua (xem Products management)" />
+          )}
+        </DetailCard>
+
+        <DetailCard
+          title={p.kind === 'volume-per-line' ? 'Bậc chiết khấu — theo số lượng cùng loại' : 'Mức chiết khấu'}
+          action={<span className="text-[11px] text-faint">áp dụng tự động khi tạo báo giá</span>}
+        >
+          {tiers.length > 0 ? (
+            <>
+              <div className="overflow-hidden rounded-lg border border-line">
+                <div className="grid grid-cols-3 gap-x-2 bg-canvas/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+                  <span>Từ số lượng</span><span>Đến</span><span className="text-right">Chiết khấu</span>
+                </div>
+                {tiers.map((t, i) => {
+                  const next = tiers[i + 1]
+                  return (
+                    <div key={t.minQty} className="grid grid-cols-3 gap-x-2 border-t border-line-soft px-3 py-1.5 text-[12px]">
+                      <span className="tabular-nums font-medium">{t.minQty}</span>
+                      <span className="tabular-nums text-muted">{next ? next.minQty - 1 : '∞'}</span>
+                      <span className="text-right tabular-nums font-semibold">{t.pct}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* The row the client's sheet does not print, and the one a rep will
+                  otherwise assume is 25%. */}
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                Số lượng <b className="text-ink/75">1</b> không có chiết khấu. Các mốc là <b className="text-ink/75">ngưỡng</b>, không phải con số chính xác — mua 7 tin hưởng bậc 5 (30%), không phải mất chiết khấu.
+              </p>
+            </>
+          ) : (
+            <p className="text-[13px]"><b className="text-[15px]">{p.pct}%</b> trên tổng đơn, trước VAT.</p>
+          )}
+          {p.note && <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">{p.note}</p>}
+        </DetailCard>
+      </div>
+    </div>
   )
 }
 
@@ -8339,6 +9129,48 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   ])
 
   const co = COMPANIES.find((c) => c.name === company)
+
+  /* ── Promotion, applied automatically ──────────────────────────────────────
+     The programme follows from the customer's STATUS, so it is decided the moment
+     a company is picked — the rep never chooses it. While auto is on the discount
+     cells are read-only and show what the programme grants; turning it off is an
+     explicit, visible act, because a hand-typed discount is a concession somebody
+     has to answer for. */
+  const [autoPromo, setAutoPromo] = useState(true)
+  const promo = programmeFor(co?.account)
+  /* Recompute when the company changes or any quantity moves — those are the only
+     two inputs the programmes read. Keyed on a signature rather than on `options`
+     so writing the result back cannot re-trigger the effect. */
+  const qtySig = options.map((o) => o.lines.map((l) => `${l.gift ? 'g' : 'p'}${l.qty}`).join(',')).join('|')
+  useEffect(() => {
+    if (!autoPromo || !promo) return
+    setOptions((os) => {
+      let changed = false
+      const next = os.map((o) => {
+        // Gifts are 0 ₫, so a discount on them is meaningless — and they must not
+        // count against the quantity cap either, or a "+ Gift" would silently
+        // destroy the 50%.
+        const withinCap = o.lines.every((l) => l.gift || l.qty <= (promo.maxQtyPerLine ?? Infinity))
+        const lines = o.lines.map((l) => {
+          const d = l.gift || promo.kind !== 'volume-per-line' ? 0 : tierPct(promo, l.qty)
+          if (d !== l.disc) changed = true
+          return d === l.disc ? l : { ...l, disc: d }
+        })
+        const od = promo.kind === 'flat-order' && withinCap ? promo.pct ?? 0 : 0
+        if (od !== o.optDisc) changed = true
+        return changed ? { ...o, lines, optDisc: od } : o
+      })
+      return changed ? next : os
+    })
+  }, [autoPromo, promo, qtySig])
+
+  /** Options where a flat programme is being blocked, and the line that blocks it. */
+  const capBreaches = promo?.maxQtyPerLine
+    ? options.flatMap((o, oi) => o.lines
+        .map((l, li) => ({ oi, li, l }))
+        .filter((x) => !x.l.gift && x.l.qty > promo.maxQtyPerLine!))
+    : []
+
   // Approval looks at BOTH discount levels — a 30% option-level cut is no less
   // of a concession than a 30% line-level one.
   const maxDisc = Math.max(0, ...options.flatMap((o) => [o.optDisc, ...o.lines.map((l) => l.disc)]))
@@ -8400,6 +9232,51 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
             ? <QuoteCompanyCard c={co} />
             : <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] text-faint">Pick a company to confirm its details, contact and billing data.</p>}
 
+          {/* The programme, stated before the lines rather than discovered in the
+              totals. A rep who cannot see WHY a line says 30% will type over it. */}
+          {co && (
+            promo ? (
+              <div className={cn('rounded-xl border px-3.5 py-2.5', autoPromo ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className={cn('text-[12.5px] font-semibold', autoPromo ? 'text-emerald-900' : 'text-amber-900')}>
+                      {autoPromo ? '🎁 ' : '✎ '}{promo.vi}
+                      <span className="ml-1.5 font-normal">· khách hàng <b>{co.account}</b></span>
+                    </p>
+                    <p className={cn('mt-0.5 text-[11px] leading-relaxed', autoPromo ? 'text-emerald-800' : 'text-amber-800')}>
+                      {!autoPromo
+                        ? 'Đang nhập chiết khấu thủ công — chương trình không còn được áp dụng tự động.'
+                        : promo.kind === 'volume-per-line'
+                          ? `Chiết khấu tính riêng cho từng dòng theo số lượng của dòng đó: ${promo.tiers!.map((t) => `${t.minQty}+ → ${t.pct}%`).join(' · ')}. Số lượng 1 không có chiết khấu.`
+                          : `${promo.pct}% trên tổng đơn, với điều kiện mọi dòng ≤ ${promo.maxQtyPerLine} số lượng. Chỉ áp dụng cho PO đầu tiên và không chạy cùng chương trình khác.`}
+                    </p>
+                  </div>
+                  <label className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-ink/70">
+                    <input type="checkbox" checked={autoPromo} onChange={(e) => setAutoPromo(e.target.checked)} className="h-3.5 w-3.5" />
+                    Áp dụng tự động
+                  </label>
+                </div>
+
+                {/* The cliff, named. "One line over and the whole 50% is gone" is
+                    the rule reps get wrong, so it points at the exact line and
+                    repeats the sheet's own two ways out. */}
+                {autoPromo && capBreaches.length > 0 && (
+                  <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
+                    <b>Mất toàn bộ {promo.pct}%.</b>{' '}
+                    {capBreaches.map((x) => `Option ${x.oi + 1} · dòng ${x.li + 1} (${QUOTE_CATALOG[x.l.cat].vi}) có số lượng ${x.l.qty}`).join(' · ')} — vượt giới hạn {promo.maxQtyPerLine}.
+                    Chỉ cần một dòng vượt là cả đơn mất chiết khấu, không phải riêng dòng đó.
+                    <br />
+                    <span className="text-rose-800">Hai cách xử lý theo quy định: giảm số lượng về {promo.maxQtyPerLine}, hoặc <b>tách 2 báo giá / 2 hóa đơn</b> để khách hưởng cả hai chương trình. Cả hai đều do sales quyết định — hệ thống không tự tách.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-line bg-canvas/50 px-3.5 py-2.5 text-[11.5px] text-muted">
+                Không có chương trình khuyến mãi nào áp dụng cho khách hàng <b className="text-ink/75">{co.account}</b>. Chiết khấu nhập tay và cần duyệt nếu vượt {DISCOUNT_APPROVAL}%.
+              </p>
+            )
+          )}
+
           {/* 3 · options — the heart of it */}
           <Section title="3 · Options — alternatives, not add-ons" />
           {options.map((o, oi) => {
@@ -8445,7 +9322,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                       <input type="number" min={1} value={l.qty} onChange={(e) => patch(o.id, li, { qty: Math.max(1, Number(e.target.value) || 1) })} className="w-full rounded border border-line bg-surface px-1 py-1 text-right text-[11.5px] tabular-nums" />
                       <input disabled={l.gift} value={l.gift ? '0' : l.price.toLocaleString('en-US')} onChange={(e) => patch(o.id, li, { price: Number(e.target.value.replace(/\D/g, '')) || 0 })} className={cn('w-full rounded border border-line px-1 py-1 text-right text-[11.5px] tabular-nums', l.gift ? 'bg-canvas text-faint' : 'bg-surface')} />
                       <span className="flex items-center justify-end gap-0.5">
-                        <input disabled={l.gift} type="number" min={0} max={100} value={l.disc} onChange={(e) => patch(o.id, li, { disc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', l.disc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-line bg-surface', l.gift && 'bg-canvas text-faint')} />
+                        {/* Read-only while the programme is driving it: the number
+                            is a consequence of the quantity, and an editable box
+                            invites overwriting the rule the customer was promised. */}
+                        <input disabled={l.gift || (autoPromo && !!promo)} type="number" min={0} max={100} value={l.disc} onChange={(e) => patch(o.id, li, { disc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', l.disc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : autoPromo && promo && l.disc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-surface', l.gift && 'bg-canvas text-faint')} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
                       <span className="text-right tabular-nums">{lineTotal(l).toLocaleString('en-US')}</span>
@@ -8467,9 +9347,9 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-muted">
                         Chiết khấu
-                        <input type="number" min={0} max={100} value={o.optDisc}
+                        <input type="number" min={0} max={100} value={o.optDisc} disabled={autoPromo && !!promo}
                           onChange={(e) => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, optDisc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) } : x)))}
-                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', o.optDisc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-line bg-surface')} />
+                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', o.optDisc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : autoPromo && promo && o.optDisc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-surface')} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
                       <span className={cn('tabular-nums', optCut > 0 && 'text-rose-600')}>{optCut > 0 ? '−' : ''}{optCut.toLocaleString('en-US')} ₫</span>
@@ -10096,7 +10976,7 @@ type PermLevel = 'none' | 'read' | 'write'
 const PERM_GROUPS: { key: string; label: string; resources: string[] }[] = [
   { key: 'recruitment', label: 'Recruitment', resources: ['Jobs', 'Job approval', 'Applicants', 'Resumes / candidates (PII)'] },
   { key: 'companies', label: 'Companies', resources: ['Company accounts', 'Company users', 'Company page review'] },
-  { key: 'content', label: 'Content', resources: ['Banners', 'Popups', 'Pages', 'Boards'] },
+  { key: 'content', label: 'Content', resources: ['Banners', 'Popups', 'Pages'] },
   { key: 'billing', label: 'Billing & products', resources: ['Catalog', 'Bundles', 'Credits', 'Orders', 'Promotions'] },
   { key: 'crm', label: 'CRM', resources: ['Sign-ups', 'Pipeline / leads', 'Quotes', 'Invoices', 'Purchase orders', 'Payments', 'Contracts'] },
   { key: 'analytics', label: 'Analytics', resources: ['Dashboard', 'Sales report', 'Recruit report', 'Revenue report', 'User behavior'] },
@@ -12079,8 +12959,8 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // Content
   'admin-banners': AdminBanners,
   'admin-popups': AdminPopups,
+  'admin-manual-services': AdminManualServices,
   'admin-pages': AdminPages,
-  'admin-boards': AdminBoards,
   // Billing & products
   'admin-catalog': AdminCatalog,
   'admin-placements': AdminPlacements,

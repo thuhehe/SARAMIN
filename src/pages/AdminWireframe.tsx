@@ -49,7 +49,8 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
   'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
   'admin-placements': { module: 'products-packages', feature: 'Placements registry' },
-  // NOTE: still no targets for 'admin-credits' / 'admin-orders' / 'admin-promotions'.
+  'admin-promotions': { module: 'products-packages', feature: 'Discount programmes' },
+  // NOTE: still no targets for 'admin-credits' / 'admin-orders'.
   // Discounting happens on the quotation line (one place a price can be cut), orders
   // are CRM → Purchase order, and the credit balance is the entitlement ledger on the
   // company account.
@@ -196,8 +197,10 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Banners', specId: 'admin-banners' },
       { label: 'Popups', specId: 'admin-popups' },
+      // Where Manual-service products are actually delivered. Banners and popups are
+      // the delivery surface for Placement products; this is theirs.
+      { label: 'Manual services', specId: 'admin-manual-services' },
       { label: 'Pages', specId: 'admin-pages' },
-      { label: 'Boards', specId: 'admin-boards' },
     ],
   },
   {
@@ -217,6 +220,9 @@ const NAV_GROUPS: NavGroup[] = [
       // A placement product points at a row here instead of restating
       // "1536×371, max 6, rotate 3s" on every sale.
       { label: 'Placements', specId: 'admin-placements' },
+      // The discount programmes the quotation builder applies by itself, keyed on
+      // the customer's status. Settings, not coupon codes — nobody types one.
+      { label: 'Discount programmes', specId: 'admin-promotions' },
     ],
   },
   {

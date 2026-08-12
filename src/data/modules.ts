@@ -151,7 +151,7 @@ export const MODULES: BigModule[] = [
     flow: 'Admin section-builder / banners / CMS → JS home, curation & content pages render',
     steps: [
       { surface: 'Admin', label: 'Banners & popups', featureIds: ['admin-banners', 'admin-popups'] },
-      { surface: 'Admin', label: 'CMS: pages, boards, blog/articles', featureIds: ['admin-pages', 'admin-boards', 'admin-blog'] },
+      { surface: 'Admin', label: 'CMS: pages, blog/articles', featureIds: ['admin-pages', 'admin-blog'] },
       { surface: 'JS', label: 'Homepage sections, curation, career-info render the managed content', featureIds: ['js-home', 'js-curation', 'js-career-info'] },
     ],
     keyDecisions: [

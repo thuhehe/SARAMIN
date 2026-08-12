@@ -417,20 +417,6 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     related: ['admin-banners'],
   },
   {
-    id: 'admin-boards',
-    code: 'ADM-CNT-03',
-    surface: `${S} · Content`,
-    title: 'Boards',
-    status: 'prototype',
-    summary: 'Content boards: list + detail.',
-    bbNotes: [
-      { heading: 'Approach', items: ['Prototype only (Prisma). Content-board model (e.g. notices / help boards). Needs BE migration if in launch scope.'] },
-    ],
-    whatToBuild: ['Decide launch scope vs later', 'If in scope: define content model + BE migration'],
-    unknown: ['Prototype-only (Prisma).'],
-    related: ['admin-pages', 'js-career-info'],
-  },
-  {
     id: 'admin-pages',
     code: 'ADM-CNT-04',
     surface: `${S} · Content`,
@@ -452,7 +438,7 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     ],
     unknown: ['Prototype-only (Prisma). Do we need a full CMS at launch or just banners + popups?'],
     clientQuestions: ['Full CMS (boards / pages / blog) at launch, or just banners + popups?'],
-    related: ['admin-boards', 'admin-blog', 'js-resume-templates'],
+    related: ['admin-blog', 'js-resume-templates'],
   },
   {
     id: 'admin-blog',

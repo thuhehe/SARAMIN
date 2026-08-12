@@ -133,7 +133,7 @@ export const NAV: NavModule[] = [
     children: [
       { id: 'admin-banners', label: 'Banners' },
       { id: 'admin-popups', label: 'Popups' },
-      { id: 'admin-boards', label: 'Boards' },
+      { id: 'admin-manual-services', label: 'Manual services' },
       { id: 'admin-pages', label: 'Pages' },
       { id: 'admin-blog', label: 'Blog / articles' },
     ],

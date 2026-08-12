@@ -672,7 +672,7 @@ export const JOBSEEKER_SPECS: FeatureSpec[] = [
     clientQuestions: ['Confirm what "senior list" means in VN — senior-level jobs, or senior (older) talent?'],
     adminStoreRelation:
       'Articles should be managed via Admin Content / CMS (currently prototype-only) rather than hard-coded.',
-    related: ['admin-boards', 'admin-blog'],
+    related: ['admin-blog'],
   },
 
   // ── Curation ────────────────────────────────────────────────────────────

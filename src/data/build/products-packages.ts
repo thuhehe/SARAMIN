@@ -586,5 +586,126 @@ export const productsPackages: BuildModule = {
         ],
       },
     },
+    // 3 · Discount programmes ─────────────────────────────────────────────────
+    {
+      name: 'Discount programmes',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-promotions',
+      detail: {
+        requirements: [
+          {
+            label: 'Two programmes, two different shapes',
+            text: 'The client’s promo sheet configured as settings, so the thresholds are a commercial decision somebody edits — not a number compiled into the quotation builder. A programme is matched to a customer by their **customer status** (New · Existing · Churn). There is no code to type and no button for a rep to press.\n\nThe two programmes are not one table with an audience column, because they compute differently: one earns a percentage **per line** from that line’s own quantity, the other applies **one percentage to the whole order** but only while every line stays under a cap.',
+            table: {
+              cols: ['', 'Chiết khấu theo số lượng', 'Giảm 50% tất cả dịch vụ'],
+              rows: [
+                ['Customer status', '**Existing**', '**New** and **Churn**'],
+                ['Applies to', 'Each line separately — “cùng loại”', 'The whole order, before VAT'],
+                ['Rate', '25 → 60%, from the line’s own quantity', 'A flat 50%'],
+                ['Condition', 'Quantity ≥ 2 on that line', '**Every** non-gift line ≤ 5 · first PO of that customer only'],
+                ['If the condition fails', 'That line simply earns 0%. Other lines are unaffected', '**The entire 50% is lost** — not just the offending line'],
+                ['Stacks with other programmes', 'Yes — it is section 1 of 3 on the client sheet', 'No — explicitly exclusive'],
+              ],
+            },
+            items: [
+              'The client sheet says the Existing programme applies **“đồng thời 3 mục”** — three sections at once. Only the volume table has been supplied; the other two sections are missing and are an open question below.',
+              'Gift lines (0 ₫, “Tặng”) take no discount, and they must **not** count toward the quantity cap either — otherwise adding a gift would silently destroy the customer’s 50%.',
+              'On the New/Churn programme the gift postings carry the **same activation window as the purchased ones** (12 tháng) rather than a window of their own — see Products management → activationWindowMonths.',
+            ],
+          },
+          {
+            label: 'Chiết khấu theo số lượng — the tiers are thresholds, not exact matches',
+            text: 'For an Existing customer, each line earns a percentage from **its own quantity**, and that percentage is applied to that line. Two lines of different products in the same quotation each compute separately.',
+            table: {
+              cols: ['Số lượng trên dòng', 'Đến', 'Chiết khấu áp dụng cho dòng đó'],
+              rows: [
+                ['1', '1', '0% — no discount. The sheet does not print this row, and a rep will otherwise assume 25%'],
+                ['2', '4', '25%'],
+                ['5', '9', '30%'],
+                ['10', '19', '35%'],
+                ['20', '29', '40%'],
+                ['30', '49', '45%'],
+                ['50', '99', '50%'],
+                ['100', '∞', '60%'],
+              ],
+            },
+            items: [
+              'They are **thresholds**. A line of 7 earns the 5-tier at 30%, not nothing — reading them as exact matches is the single most likely misimplementation here.',
+              'The discount lands on the **line**, before the option-level discount and before VAT, exactly where the quotation builder already computes it.',
+            ],
+          },
+          {
+            label: 'Giảm 50% — all-or-nothing on the quantity cap',
+            text: 'For a **New** or **Churn** customer, everything on the order is 50% off — but only while every non-gift line is at 5 or under. One line at 6 and the whole 50% disappears, including from the lines that were within the cap.',
+            items: [
+              'That cliff is the client’s own rule, so the builder must show **which line broke it** rather than silently dropping the total to full price.',
+              'The sheet gives two ways out, both of which are a **rep decision** rather than something the system does by itself: quote the Existing volume programme instead, or **split into two documents** (“tách 2 Hóa đơn”) so the customer takes the 50% on one and the volume discount on the other.',
+              'First PO only. A second order from the same customer no longer qualifies — by then the customer status has flipped to Existing anyway, which is what makes this self-enforcing.',
+              'Not combinable with any other programme.',
+            ],
+            warn: 'Splitting into two documents is a manual workaround the client already uses, and it produces two POs and two invoices for what the customer experiences as one purchase. Confirm this is acceptable before build — the alternative is to let one quotation carry two programmes, which contradicts “không áp dụng đồng thời”.',
+          },
+        ],
+        description:
+          'Where the promotional rules live. A programme states who it applies to (by customer status), how the discount is computed, and what conditions must hold — and the quotation builder reads it and applies it automatically.\n\nThis is deliberately not a coupon-code screen. Nobody types a code, and no rep decides which programme a customer gets: the customer status decides, which is what makes the discounting consistent across the sales team.',
+        userStory:
+          'As a sales manager, I want the promotion rules configured once, so that every rep quotes the same discount for the same customer and quantity without having to remember a table.',
+        uiFields: [
+          {
+            group: 'List',
+            items: [
+              { name: 'row', type: 'composite', notes: 'programme · applies to (customer status) · discount · condition · stacks · validity · status' },
+              { name: 'name (cell)', type: 'link', notes: 'opens the programme record — the tier table and the conditions around it' },
+            ],
+          },
+          {
+            group: 'Programme',
+            items: [
+              { name: 'programmeId / name', type: 'string', required: true },
+              { name: 'audience', type: 'enum[]', required: true, notes: 'the customer statuses this applies to — New · Existing · Churn. This is the ONLY matching input; there is no code and no manual selection' },
+              { name: 'kind', type: 'enum', required: true, notes: 'volume_per_line | flat_order — decides which of the fields below apply' },
+              { name: 'tiers[]', type: 'table', notes: 'volume_per_line — { minQty, pct }, evaluated as thresholds (highest minQty the quantity reaches wins)' },
+              { name: 'pct', type: 'percent', notes: 'flat_order — one rate on the option subtotal, before VAT' },
+              { name: 'maxQtyPerLine', type: 'int', notes: 'flat_order — every non-gift line must be at or under this or the programme does not apply at all' },
+              { name: 'firstPurchaseOnly', type: 'bool', notes: 'flat_order — restricts it to the customer’s first PO' },
+              { name: 'stackable', type: 'bool', required: true, notes: 'whether it may run alongside another programme on the same quotation' },
+              { name: 'giftActivationFollowsPaid', type: 'bool', notes: 'gift lines inherit the paid line’s activation window instead of one of their own' },
+              { name: 'status / effectiveFrom / effectiveTo', type: 'enum / date / date', required: true },
+            ],
+          },
+        ],
+        behaviors: [
+          'Picking a company in the quotation builder resolves the programme from that company’s customer status and applies it immediately — before the rep touches a line.',
+          'Changing any quantity recomputes the discount, because quantity is the only other input either programme reads.',
+          'While the programme is applied, the discount cells are read-only and show what it granted. A rep who needs a different number turns auto-apply off, which is one visible act rather than a quiet edit per line.',
+          'A blocked flat programme names the option and the line that blocked it, and restates the two documented ways out.',
+          'Turning auto-apply off leaves the discounts where they were and hands the fields back — it does not reset them to zero.',
+        ],
+        rules: [
+          'The programme is decided by customer status alone. A rep never picks one, so two reps quoting the same customer for the same quantities always produce the same price.',
+          'Volume tiers are thresholds, evaluated as the highest tier the quantity reaches.',
+          'Gift lines earn no discount and are excluded from the quantity cap.',
+          'The flat programme is all-or-nothing across the whole option, not per line.',
+          'Discounts above the standing approval threshold still need a sales lead’s approval before Send — a programme grants the discount, it does not waive the control. A 60% volume tier therefore always routes for approval.',
+          'The programme applied and the rate granted are stored on the quotation line, not recomputed at read time: a later edit to the programme must not silently reprice a quotation already sent.',
+        ],
+        acceptance: [
+          'An Existing customer with a line of 7 gets 30% on that line, and a line of 1 in the same quotation gets 0%.',
+          'A New customer with every line at 5 or under gets 50% on the option subtotal, before VAT.',
+          'Raising one line to 6 removes the whole 50% and the builder names that line.',
+          'Adding a gift line never changes the discount either way.',
+          'Turning auto-apply off makes the discount cells editable and stops the programme rewriting them.',
+          'A quotation records which programme was applied and at what rate.',
+        ],
+        openQuestions: [
+          'The Existing programme is “section 1 of 3” — the client sheet says three sections apply at the same time. What are sections 2 and 3, and do they stack additively or multiplicatively with the volume table?',
+          'Is the split-into-two-documents workaround acceptable as the answer for a New/Churn customer over the cap, or should one quotation be allowed to carry both programmes?',
+          'Does “PO đầu tiên” mean the first PO ever, or the first since a Churn customer came back?',
+          'Do the tiers apply per line, or per product across the whole quotation? “Cùng loại” reads as per product — so two separate lines of the same product may need to be summed before the tier is looked up.',
+        ],
+      },
+    },
   ],
 }

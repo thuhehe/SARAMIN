@@ -60,7 +60,29 @@ export const bannersPopups: BuildModule = {
     },
     {
       label: 'Paid ad slots are sold as products',
-      text: 'A banner placement can be backed by a purchased ad product (e.g. “Main ad — Home hero”, per week) from Products & Packages. HQ-run house banners need no product.',
+      text: 'Every banner has a SOURCE. Sold — bought by a customer, published from a paid PO line. House — Saramin VN’s own promotion (internal hiring, a maintenance notice, a brand campaign), with no company, no PO and no product.',
+    },
+    {
+      label: 'House banners — Saramin VN’s own, and the one rule that matters',
+      text: 'A house banner is published straight onto a placement: pick the slot, set both dates, write why, upload. No customer, no PO, no product line to spend — the money side of the record is simply absent.',
+      table: {
+        cols: ['', 'Sold', 'House'],
+        rows: [
+          ['Chain to publish', 'Company → PO → product line', 'Placement, directly'],
+          ['Requires a paid invoice', 'YES — an uninvoiced PO cannot publish', 'No — there is nothing to invoice'],
+          ['End date', 'Derived from the product’s display duration', 'TYPED — no product defines a duration, so it must be set by hand'],
+          ['Occupies a rotation slot', 'Yes', 'YES — the same as a sold one'],
+          ['Counts toward placement revenue', 'Yes', 'No'],
+          ['Extra required field', '—', 'Purpose — the reason it is running'],
+        ],
+      },
+      items: [
+        'THE RULE THAT MATTERS: a house banner consumes slot capacity exactly like a sold one. The hero pool is 6; if house banners are excluded from that count, the sixth sold booking has nowhere to render and the oversell is only discovered on the live page.',
+        'PURPOSE is required precisely because there is no PO. On a sold banner the order explains why it exists; on a house banner nothing does unless someone writes it down.',
+        'The list marks house rows with a “Nội bộ” pill and offers a Nguồn filter, so “what are we running for ourselves?” and “what did customers pay for?” are each one click.',
+      ],
+      warn:
+        'Two things to decide with the business, neither of which the UI can assume: (1) when a pool is full and a paying customer wants in, does a house banner yield — and is that automatic or a human call? (2) who may publish one, given it bypasses the paid-order gate that every other booking passes through.',
     },
     {
       label: 'Publishing a banner — two decisions, and one thing that locks',
@@ -75,7 +97,9 @@ export const bannersPopups: BuildModule = {
         ],
       },
       items: [
-        'To take a running banner off screen, switch EXPOSURE off. That is the mid-flight control — not editing the creative, and not ending the booking early.',
+        'START DATE IS OPTIONAL, and empty is not "missing" — it MEANS publish now. Leave it blank → Open on save. Set a future date → Schedule until that date. The form states which status it is about to produce rather than describing the rule and leaving the operator to apply it.',
+        'EXPOSURE is set at publish, not only afterwards. Publishing with Exposure Off is legitimate: the creative is approved and the dates are fixed, but it is held back a beat. The booking still runs and still expires on time.',
+        'To take a running banner off screen, switch EXPOSURE off. That is the mid-flight control — not editing the creative, and not ending the booking early. It is also the ONLY way to stop an Open banner, since the creative and dates are frozen.',
         'Image dimensions must match the slot exactly; a wrong-ratio upload is rejected on save rather than auto-cropped, because a cropped hero banner is a design nobody approved.',
         'The end date is DERIVED from the product’s display duration, never typed — an operator cannot quietly extend a booking the customer did not buy.',
       ],
