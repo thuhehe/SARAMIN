@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
 import { BenefitCards } from '@/components/BenefitsField'
+import { CopyLinkButton, initialScreenParam, useScreenParam } from '@/components/ShareLink'
 import { cn } from '@/lib/utils'
 
 /* ── Jobseeker screens (VN recruitment standard) ─────────────────────────── */
@@ -187,9 +188,14 @@ function JobDetailScreen() {
               <div className="min-w-0">
                 <p className="text-[16px] font-bold text-ink">Senior Frontend Engineer</p>
                 <p className="text-[12.5px] text-muted">FPT Software</p>
+                {/* A USD job displays the figure the employer wrote — never a
+                    conversion — plus the settlement line, which is accurate,
+                    sets expectations before the interview, and answers the
+                    foreign-currency question before a candidate asks it. */}
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <Chip tone="green">30 – 45 tr</Chip><Chip>Hồ Chí Minh</Chip><Chip>3+ years</Chip><Chip>Full-time</Chip>
+                  <Chip tone="green">1,200 – 1,800 USD</Chip><Chip>Hồ Chí Minh</Chip><Chip>3+ years</Chip><Chip>Full-time</Chip>
                 </div>
+                <p className="mt-1 text-[10.5px] text-faint">Lương thỏa thuận và chi trả bằng VND theo tỷ giá tại thời điểm ký hợp đồng.</p>
               </div>
             </div>
             <div className="mt-3 flex gap-2">
@@ -535,7 +541,9 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Desired location(s)', kind: 'tags', value: 'Hồ Chí Minh, Remote' },
       { label: 'Employment type', kind: 'select', value: 'Full-time', options: ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'], half: true },
       { label: 'Availability', kind: 'select', value: '1 month', options: ['Immediately', '2 weeks', '1 month', '2 months', 'Just exploring'], half: true },
-      { label: 'Desired salary (VND / month)', value: '35,000,000', half: true, hint: 'Optional. Never shown to employers as an exact figure without your consent.' },
+      /* Currency sits ON the amount, not in a separate row — VND default, USD for
+         the IT / FDI segment. Nothing in the platform converts between the two. */
+      { label: 'Desired salary / month', kind: 'select', value: '35,000,000 VND', options: ['35,000,000 VND', '3,000 USD'], half: true, hint: 'Optional · VND or USD. Never shown to employers as an exact figure without your consent.' },
       { label: 'Negotiable', kind: 'toggle', value: 'on', half: true },
       { label: 'Open to remote', kind: 'toggle', value: 'on', half: true },
       { label: 'Open to relocating', kind: 'toggle', value: '', half: true },
@@ -2567,8 +2575,18 @@ function OnboardingScreen() {
               <>
                 <p className="text-[15px] font-bold text-ink">What salary are you expecting?</p>
                 <p className="mt-0.5 text-[11.5px] text-muted">One of the filters recruiters use most — and no CV ever states it.</p>
-                <div className="mt-3">
-                  <Fld label="Expected salary" ph="e.g. 20 – 30 tr / month" />
+                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                  <Fld label="Expected salary" ph="e.g. 20 – 30 / month" />
+                  {/* VND pre-selected — most candidates think in triệu. USD is
+                      there so the IT / FDI segment does not leave it BLANK,
+                      which is the real alternative and the worst outcome. */}
+                  <div>
+                    <p className="mb-1 text-[11px] font-medium text-ink/70">Currency</p>
+                    <div className="flex overflow-hidden rounded-lg border border-line text-[11.5px] font-medium">
+                      <span className="bg-brand px-3 py-2 text-white">VND</span>
+                      <span className="cursor-pointer px-3 py-2 text-muted hover:bg-canvas">USD</span>
+                    </div>
+                  </div>
                 </div>
                 <p className="mt-2 text-[10.5px] text-faint">Only shown to employers as a range. You can change it any time.</p>
                 <Nav back={() => setStep(3)} next={() => setStep('results')} nextLabel="See my matches →" />
@@ -2936,9 +2954,16 @@ export const SCREENS: Screen[] = [
     only way through is the way a candidate actually goes. */
 function InteractivePrototype() {
   const byId = new Map(SCREENS.map((s) => [s.id, s]))
-  const [active, setActive] = useState('js-home')
+  /* A shared link opens the screen it names. This does NOT reintroduce the flow
+     index the comment above rules out — there is still no list to browse, only
+     the screen someone deliberately pointed a colleague at. */
+  const [active, setActive] = useState(() => {
+    const wanted = initialScreenParam()
+    return wanted && byId.has(wanted) ? wanted : 'js-home'
+  })
   const current = byId.get(active) ?? SCREENS[0]
   const Comp = current.Comp
+  useScreenParam(current.id)
   return (
     <div className="min-w-0">
       <NavContext.Provider value={setActive}>
@@ -2953,9 +2978,13 @@ function InteractivePrototype() {
 export function Mockups() {
   return (
     <div className="max-w-[1180px] pb-16">
-      <div className="mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
-        <h1 className="text-[26px] font-bold tracking-tight mt-1">Jobseeker mockups</h1>
+      <div className="mb-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframes</p>
+          <h1 className="text-[26px] font-bold tracking-tight mt-1">Jobseeker mockups</h1>
+        </div>
+        {/* the link carries the screen on show, not just "the jobseeker mockups" */}
+        <CopyLinkButton />
       </div>
 
       <section>

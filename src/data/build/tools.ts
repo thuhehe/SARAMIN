@@ -223,7 +223,7 @@ export const tools: BuildModule = {
             items: [
               { name: 'direction', type: 'toggle', required: true, notes: 'Gross → Net · Net → Gross. Net → Gross is a solve, not a formula — see Behaviours.' },
               { name: 'amount', type: 'money (₫)', required: true, notes: 'thousands-separated as typed; the single most-used field on the screen' },
-              { name: 'currency', type: 'enum', notes: '₫ primary; whether USD input is supported is an open question' },
+              { name: 'currency', type: 'enum VND · USD', notes: 'RESOLVED 2026-08-13 — two currencies platform-wide, ₫ default. See Job management → SALARY CURRENCY. The calculator computes WITHIN one currency; it never converts' },
               { name: 'region', type: 'enum', required: true, notes: 'Region I–IV — the regional minimum wage affects the unemployment-insurance cap' },
               { name: 'dependants', type: 'int', required: true, notes: 'count of registered dependants; each adds a relief amount. Default 0.' },
               { name: 'insuranceBase', type: 'enum / money', notes: 'whether contributions are computed on the full salary or a declared lower base — the current tool’s behaviour here must be matched exactly' },
@@ -332,7 +332,7 @@ export const tools: BuildModule = {
           'How does the current tool round — per component or at the end, round or floor? This decides whether the migration matches.',
           'Does it support a declared insurance base lower than the salary, as some employers use?',
           'Are foreign-worker cases in scope (different insurance participation), or local employment only?',
-          'Is USD input needed, and if so at which exchange rate source?',
+          'RESOLVED 2026-08-13 — USD input is supported (VND · USD, ₫ default) and there is NO exchange-rate source by design: nothing in the platform converts between currencies. Gross↔Net is solved within the entered currency.',
         ],
       },
     },

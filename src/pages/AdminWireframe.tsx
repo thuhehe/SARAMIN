@@ -22,6 +22,7 @@ import type { DetailCrumb } from './adminPrototypes'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
+import { CopyLinkButton, useScreenParam } from '@/components/ShareLink'
 
 interface NavItem {
   label: string
@@ -327,6 +328,9 @@ export function AdminWireframe() {
   )
   const wide = useWideViewport()
   const railOnly = collapsed || !wide
+
+  /* Keep the address bar pointing at the page on show, so it can be shared. */
+  useScreenParam(active.item.specId)
   useEffect(() => writeStored(LS_COLLAPSED, collapsed), [collapsed])
   useEffect(() => writeStored(LS_OPEN_GROUPS, openGroups), [openGroups])
 
@@ -499,16 +503,21 @@ export function AdminWireframe() {
             <div className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-[17px] font-semibold">{active.item.label}</h3>
-                {/* Create belongs to the LIST. On a detail view (detail is set) the
-                    page's verb is whatever that record allows, not "new". */}
-                {!walkthrough && !detail && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
-                  <button
-                    onClick={() => { setCreating(active.item.specId!); setCreateSeq((n) => n + 1) }}
-                    className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
-                  >
-                    {PRIMARY_ACTION[active.item.specId]}
-                  </button>
-                )}
+                <div className="flex shrink-0 items-center gap-2">
+                  {/* Every page is addressable, so a reviewer can point at THIS
+                      screen instead of describing how to click to it. */}
+                  <CopyLinkButton />
+                  {/* Create belongs to the LIST. On a detail view (detail is set) the
+                      page's verb is whatever that record allows, not "new". */}
+                  {!walkthrough && !detail && active.item.specId && PRIMARY_ACTION[active.item.specId] && (
+                    <button
+                      onClick={() => { setCreating(active.item.specId!); setCreateSeq((n) => n + 1) }}
+                      className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
+                    >
+                      {PRIMARY_ACTION[active.item.specId]}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* interactive walkthrough launched contextually from a page, else the page itself */}

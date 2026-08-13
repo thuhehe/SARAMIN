@@ -4706,20 +4706,11 @@ function CompanyPageEditor({ c }: { c: Company }) {
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line"><div className={cn('h-full rounded-full', missing.length ? 'bg-amber-500' : 'bg-brand')} style={{ width: `${pct}%` }} /></div>
 
-          <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-faint">Bắt buộc để đăng</p>
-          <div className="space-y-0.5">
-            {gates.map((g) => (
-              <div key={g.label} className={cn('flex items-center gap-1.5 text-[11px]', g.ok ? 'text-muted' : 'font-medium text-amber-800')}>
-                <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full text-[8px] font-bold text-white', g.ok ? 'bg-emerald-500' : 'bg-amber-500')}>{g.ok ? '✓' : '!'}</span>
-                <span className="min-w-0 truncate">{g.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-faint">
-            Các phần của trang <span className="font-normal normal-case tracking-normal">· bấm để mở</span>
-          </p>
-          <div className="space-y-0.5">
+          {/* The gate CHECKLIST is gone — the headline above already names how many
+              are missing, and the disabled Publish button names which. The section
+              list below carries the * markers, so the required items are still
+              visible without a second list repeating them. */}
+          <div className="mt-3 space-y-0.5">
             {secs.map((s) => (
               <button
                 key={s.n}
@@ -4735,9 +4726,6 @@ function CompanyPageEditor({ c }: { c: Company }) {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[10px] leading-relaxed text-faint">
-            Phần chưa điền thì <b className="text-ink/70">không hiện</b> trên trang, chứ không hiện ô rỗng.
-          </p>
         </div>
 
         {/* actions, next to the gate that governs them */}
@@ -4759,12 +4747,6 @@ function CompanyPageEditor({ c }: { c: Company }) {
                 className={cn('w-full rounded-lg px-3 py-2 text-[12.5px] font-semibold text-white', missing.length ? 'cursor-not-allowed bg-brand/40' : 'bg-brand hover:opacity-90')}
               >Đăng trang</button>
               <button className="w-full rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Lưu nháp</button>
-              <p className="text-[10px] leading-relaxed text-amber-700">
-                Nháp — chưa công khai.
-                {c.jobPosting
-                  ? <> Công ty <b>không đăng được tin tuyển dụng</b> cho tới khi trang này được đăng.</>
-                  : <> Chưa có sản phẩm Job Posting — trang là tuỳ chọn, nhưng chuẩn bị sẵn ở đây thì lúc chốt đơn chỉ việc bấm Đăng.</>}
-              </p>
             </>
           )}
         </div>
@@ -12413,9 +12395,9 @@ const MD_DOMAINS: MDDomain[] = [
     ],
   },
   {
-    key: 'currency', label: 'Salary currency', i18n: '—', used: 'Job form (salary range)',
-    note: 'ISO currency codes offered in the salary field. Single-level list.', kind: 'flat',
-    entries: ['USD', 'VND', 'JPY', 'CNY', 'EUR', 'INR', 'GBP', 'RUB', 'SGD'],
+    key: 'currency', label: 'Salary currency', i18n: '—', used: 'Job form (salary range) · Candidate expected salary',
+    note: 'TWO entries only, and this list must not grow. A JPY or RUB salary is unfilterable, unrankable and unmaintainable on a VN board. USD is a DISPLAY denomination — payroll settles in VND either way. Separate from the BILLING currency owned by the billing BC: what you invoice a customer in has nothing to do with what a job pays.', kind: 'flat',
+    entries: ['VND', 'USD'],
   },
   {
     key: 'company-tag', label: 'Company tag', i18n: 'vi · en', used: 'Company profile · Store filter (tags)',
@@ -13673,8 +13655,16 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
             <div className={G3}>
               <FField label="From" value="500" />
               <FField label="To" value="1500" />
-              <SelectField label="Currency" value="USD" createLabel="Create currency" options={['USD', 'VND', 'JPY', 'CNY', 'EUR', 'INR', 'GBP', 'RUB', 'SGD']} />
+              {/* TWO currencies, and no "create" affordance — a JPY or RUB salary
+                  on a VN board is unfilterable and unrankable. USD is a DISPLAY
+                  denomination: the IT / FDI segment advertises in it, and an
+                  employer who cannot say "$1,700–3,200" writes "Thỏa thuận"
+                  instead, which costs us the salary data entirely. */}
+              <SelectField label="Currency" value="USD" options={['VND', 'USD']} />
             </div>
+            <p className="mt-1 text-[10.5px] text-faint">
+              USD jobs display a settlement line to candidates: <i>“Lương thỏa thuận và chi trả bằng VND theo tỷ giá tại thời điểm ký hợp đồng.”</i>
+            </p>
           </div>
           <div>
             <LabelRow label="Number of headcount" right={<ShowToggle on={false} />} />
