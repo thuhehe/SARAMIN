@@ -233,11 +233,13 @@ function JobDetailScreen() {
           <div className="mt-5">
             <p className="mb-2 text-[13.5px] font-bold text-ink">Các phúc lợi dành cho bạn</p>
             <BenefitCards items={[
-              { key: 'pay', text: 'Lương tháng 13, thưởng KPI, xét tăng lương 2 lần/năm.' },
-              { key: 'health', text: 'BHXH – BHYT – BHTN đầy đủ, bảo hiểm sức khoẻ riêng cho CBNV và người thân.' },
-              { key: 'flexible', text: 'Làm 5 ngày/tuần, hybrid 2 ngày remote.' },
+              { key: 'salary-13th', text: 'Lương tháng 13, chi trả trước Tết.' },
+              { key: 'bonus', text: 'Thưởng KPI theo quý, xét tăng lương 2 lần/năm.' },
+              { key: 'insurance', text: 'BHXH – BHYT – BHTN đóng đầy đủ theo lương.' },
+              { key: 'health', text: 'Bảo hiểm sức khoẻ riêng cho CBNV và người thân.' },
+              { key: 'remote-support', text: 'Làm 5 ngày/tuần, hybrid 2 ngày remote.' },
               { key: 'training', text: 'Lộ trình thăng tiến rõ ràng, ngân sách Udemy hàng năm.' },
-              { key: 'leave', text: '19 ngày phép/năm, nghỉ sinh nhật.' },
+              { key: 'paid-leave', text: '19 ngày phép/năm, nghỉ sinh nhật.' },
             ]} />
           </div>
         </div>

@@ -321,7 +321,7 @@ function PostJobScreen() {
                 "↺ Về mặc định công ty" reset and the read-only preview. */}
             <BenefitsField
               initial={['pay', 'health', 'canteen', 'transport']}
-              companyBenefits={['pay', 'health', 'leave', 'canteen', 'transport', 'training']}
+              companyBenefits={['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training']}
               companyName="Cty Vạn Phát"
             />
             <div>

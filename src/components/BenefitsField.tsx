@@ -3,7 +3,8 @@
  *
  * Replaces a free-text "Benefits" textarea. Two things it has to get right:
  *
- *  · The grid is the WHOLE list, visible at once (12 types, 4×3). No accordion, no
+ *  · The grid is the WHOLE list, visible at once (11 types, from the client's
+ *    `benefit` master data). No accordion, no
  *    search box — those exist to cope with a list too long to show, and the list was
  *    deliberately cut to a size that does not need them.
  *  · Picking a type opens a description box PREFILLED with a suggestion. A blank box
@@ -22,7 +23,7 @@ import { useState } from 'react'
 import { BENEFIT_TYPES, benefitByKey } from '@/data/benefits'
 import { cn } from '@/lib/utils'
 
-export interface PickedBenefit { key: string; text: string; title?: string }
+export interface PickedBenefit { key: string; text: string }
 
 export function BenefitsField({
   initial,
@@ -41,8 +42,8 @@ export function BenefitsField({
   companyName?: string
   label?: string
 }) {
-  /* NO CAP. Each of the 12 types can be picked once, so the list is self-limiting
-     at 12 — an artificial ceiling only ever blocked a legitimate benefit and made
+  /* NO CAP. Each of the 11 types can be picked once, so the list is self-limiting
+     at 11 — an artificial ceiling only ever blocked a legitimate benefit and made
      the greyed-out grid read as "restricted to the company's set". */
   const fromKeys = (keys: string[]) =>
     keys.map((k) => ({ key: k, text: benefitByKey(k)?.hint ?? '' }))
@@ -153,7 +154,7 @@ export function BenefitsField({
         </div>
       )}
 
-      {/* the whole taxonomy, one screen — ALL 12 types, always selectable. The
+      {/* the whole taxonomy, one screen — ALL 11 codes, always selectable. The
           company set is the default the job starts from, never a restriction, and
           there is no cap: nothing here is ever greyed out. */}
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
@@ -188,16 +189,10 @@ export function BenefitsField({
               <div key={p.key} className="rounded-lg border border-line bg-canvas/30 p-2.5">
                 <div className="mb-1.5 flex items-center gap-2">
                   <t.Icon className="h-3.5 w-3.5 shrink-0 text-brand" />
-                  {p.key === 'other' ? (
-                    <input
-                      value={p.title ?? ''}
-                      onChange={(e) => setPicked((prev) => prev.map((x) => (x.key === p.key ? { ...x, title: e.target.value } : x)))}
-                      placeholder="Tên phúc lợi…"
-                      className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1 text-[11.5px] font-semibold text-ink outline-none placeholder:font-normal placeholder:text-faint focus:border-brand"
-                    />
-                  ) : (
-                    <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink">{t.vi}</span>
-                  )}
+                  {/* The title is always the master-data label. The client's list has
+                      no "Khác" code, so there is no free-text benefit name — which is
+                      what keeps every company's benefits comparable and filterable. */}
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink">{t.vi}</span>
                   <span className="flex shrink-0 items-center gap-0.5">
                     <button onClick={() => move(i, -1)} disabled={i === 0} title="Lên" className="rounded px-1 text-[11px] text-faint hover:text-ink disabled:opacity-30">↑</button>
                     <button onClick={() => move(i, 1)} disabled={i === picked.length - 1} title="Xuống" className="rounded px-1 text-[11px] text-faint hover:text-ink disabled:opacity-30">↓</button>
@@ -228,7 +223,7 @@ export function BenefitsField({
 }
 
 /** Jobseeker-facing render — icon + title + description, one card each. */
-export function BenefitCards({ items }: { items: { key: string; text: string; title?: string }[] }) {
+export function BenefitCards({ items }: { items: { key: string; text: string }[] }) {
   return (
     <div className="space-y-1.5">
       {items.map((p) => {
@@ -238,7 +233,7 @@ export function BenefitCards({ items }: { items: { key: string; text: string; ti
           <div key={p.key} className="flex gap-2.5 rounded-lg border border-line bg-surface px-3 py-2.5">
             <t.Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
             <div className="min-w-0">
-              <p className="text-[12.5px] font-semibold text-ink">{p.title || t.vi}</p>
+              <p className="text-[12.5px] font-semibold text-ink">{t.vi}</p>
               <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{p.text}</p>
             </div>
           </div>

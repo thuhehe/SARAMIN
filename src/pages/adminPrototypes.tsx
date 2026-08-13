@@ -18,7 +18,7 @@ import { LogoSizer } from '@/components/LogoSizer'
    prefilled with. It is a default, NOT a restriction: the job picker still offers
    every type and there is no cap, so a job freely adds position-specific ones on
    top of these. */
-const COMPANY_BENEFITS = ['health', 'leave', 'transport', 'canteen', 'training', 'trips']
+const COMPANY_BENEFITS = ['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training']
 
 /* ── Detail breadcrumb ───────────────────────────────────────────────────────
    A detail view publishes its own crumb (and the way back) up to the admin shell,
@@ -4499,9 +4499,9 @@ function CompanyPageEditor({ c }: { c: Company }) {
   const ro = useReadOnly()
   const [open, setOpen] = useState<number | null>(1)
   const [traits, setTraits] = useState<string[]>(c.hasPage ? ['Thành viên tập đoàn', 'Làm việc từ xa', 'Trang phục tự do'] : [])
-  /* Which of the 12 shared types this company has declared. BenefitsField owns the
+  /* Which of the 11 shared codes this company has declared. BenefitsField owns the
      editing from here; this is only the seed and the section's status line. */
-  const bens = c.hasPage ? ['health', 'pay', 'training', 'leave', 'transport'] : []
+  const bens = c.hasPage ? ['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training'] : []
   const [lang, setLang] = useState<'VI' | 'EN'>('VI')
   const has = c.hasPage
   const toggle = (n: number) => setOpen((o) => (o === n ? null : n))
@@ -4658,7 +4658,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
       </PageSec>
 
       {/* ── 7. Benefits ────────────────────────────────────────────────────── */}
-      {/* The SAME 12 types the job form uses, not a second 8-group list. The Figma
+      {/* The SAME 11 codes the job form uses, not a second 8-group list. The Figma
           draws 8 groups, but the spec already decided one shared taxonomy — that is
           what lets a job's benefits be merged with the company's and de-duplicated.
           Two lists would make "Lương thưởng" and "Lương & thưởng" different rows. */}
@@ -12799,8 +12799,19 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
   const [newName, setNewName] = useState(s.company)
   const [newTax, setNewTax] = useState(s.tax === '—' ? '' : s.tax)
   const [reason, setReason] = useState('')
+  const salesOwners = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
+  const [owner, setOwner] = useState(salesOwners[0])
   const title = mode === 'move' ? `Move ${s.person} to an existing company` : mode === 'create' ? `Create a new company & move ${s.person} in` : 'Archive this sign-up?'
   const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
+  const ownerField = (
+    <div>
+      <p className="mb-1 text-[11.5px] font-medium text-ink/80">Sales owner <span className="text-rose-500">*</span></p>
+      <select value={owner} onChange={(e) => setOwner(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
+        {salesOwners.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+      <p className="mt-1 text-[10.5px] text-faint">The rep who owns this company in the CRM.</p>
+    </div>
+  )
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -12828,6 +12839,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
                   {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
                 </select>
               </div>
+              {ownerField}
               {activation}
             </>
           )}
@@ -12843,6 +12855,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
                 <p className="mb-1 text-[11.5px] font-medium text-ink/80">Tax number</p>
                 <input value={newTax} onChange={(e) => setNewTax(e.target.value)} placeholder="Business registration no." className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink placeholder:text-faint" />
               </div>
+              {ownerField}
               <p className="text-[11px] text-faint">Role: <b className="text-ink/70">Admin</b> — the first user of a new company is always its Admin.</p>
               {activation}
             </>
@@ -12860,8 +12873,8 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          {mode === 'move' && <button onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · activation email sent`)} className="rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Move + send activation</button>}
-          {mode === 'create' && <button onClick={() => onConfirm('Resolved', `New company “${newName}” created · user is Admin · activation email sent`)} disabled={!newName.trim()} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create + move</button>}
+          {mode === 'move' && <button onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · owner ${owner} · sign-in email sent`)} className="rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Move + send sign-in</button>}
+          {mode === 'create' && <button onClick={() => onConfirm('Resolved', `New company “${newName}” created · Admin · owner ${owner} · sign-in email sent`)} disabled={!newName.trim()} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Create + move</button>}
           {mode === 'archive' && <button onClick={() => onConfirm('Archived', `Archived${reason.trim() ? ` · ${reason.trim()}` : ''}`)} disabled={!reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Archive sign-up</button>}
         </div>
       </div>
@@ -13339,11 +13352,12 @@ function AdminJobDetail({ job, onBack }: { job: JobRow; onBack: () => void }) {
             <a className="cursor-pointer text-[10.5px] font-medium text-brand hover:underline">Xem full phúc lợi công ty ↗</a>
           </div>
           <BenefitCards items={[
-            { key: 'pay', text: 'Thưởng dự án theo milestone, xét tăng lương 2 lần/năm' },
-            { key: 'health', text: 'BHXH đầy đủ + khám sức khoẻ định kỳ hằng năm' },
-            { key: 'flexible', text: 'Hybrid 2 ngày/tuần, giờ vào ca linh hoạt 8–10h' },
+            { key: 'bonus', text: 'Thưởng dự án theo milestone, xét tăng lương 2 lần/năm' },
+            { key: 'insurance', text: 'BHXH – BHYT – BHTN đóng đầy đủ theo lương' },
+            { key: 'remote-support', text: 'Hybrid 2 ngày/tuần, giờ vào ca linh hoạt 8–10h' },
             { key: 'training', text: 'Tài khoản Udemy + ngân sách đào tạo, lộ trình thăng tiến rõ' },
-            { key: 'leave', text: '19+ ngày phép/năm' },
+            { key: 'paid-leave', text: '19+ ngày phép/năm' },
+            { key: 'stock-esop', text: 'ESOP cho kỹ sư gắn bó từ 1 năm' },
           ]} />
           <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
             Danh sách của riêng tin này — được <b className="text-ink/70">điền sẵn từ bộ phúc lợi công ty</b> lúc tạo, rồi chỉnh cho vị trí
