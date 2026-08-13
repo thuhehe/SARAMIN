@@ -1374,11 +1374,17 @@ function CvDetailPage({ onBack }: { onBack: () => void }) {
 function ResumeSearchScreen() {
   const [viewing, setViewing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState('Any')
-  /* Each row carries the full locked-preview field set: demographic line
-     (gender · age), years of experience, the LATEST company (name, role, period,
-     one-line description), the LATEST education (school, degree, graduated or
-     expected), and skills. Identity (full name, contact, CV file) stays hidden
-     until unlock. */
+  /* Each row carries the full locked-preview field set: DESIRED ROLE, demographic
+     line (gender · age), years of experience, the LATEST company (name, role,
+     period, one-line description), the LATEST education (school, degree,
+     graduated or expected), and skills. Identity (full name, contact, CV file)
+     stays hidden until unlock.
+
+     `desiredRole` is where the candidate wants to go, NOT their current title —
+     the two are separate fields and only the second is readable from a CV. It
+     leads the card because it is what the Desired job role facet filters on, and
+     because a recruiter's first question is whether the candidate wants the job
+     being recruited for. */
   /*
    * WORK HISTORY ON THE CARD — the shape the client specified, matching Saramin KR:
    *   · the CURRENT (most recent) job in full — company, job title, period,
@@ -1393,9 +1399,9 @@ function ResumeSearchScreen() {
       unlocked: true,
       id: 'E1D77',
       name: 'Nguyễn Thị Hoa',
-      headline: 'Điều dưỡng viên',
+      desiredRole: 'Điều dưỡng viên',
       gender: 'Nữ', age: 28, years: '4 yrs experience',
-      company: { name: 'BV Nhân dân Gia Định', masked: 'Bệnh viện công lập · TP.HCM', title: 'Điều dưỡng viên', period: '03/2023 – nay', status: 'Đang làm việc', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca và hướng dẫn người nhà.' },
+      company: { name: 'BV Nhân dân Gia Định', masked: 'Bệnh viện công lập · TP.HCM', title: 'Điều dưỡng viên', period: '03/2023 – nay', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca và hướng dẫn người nhà.' },
       prior: [{ name: 'PK Đa khoa Vạn Hạnh', masked: 'Phòng khám đa khoa', title: 'Điều dưỡng viên', dur: '1 năm 8 tháng' }],
       education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
       skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], more: 2,
@@ -1405,9 +1411,9 @@ function ResumeSearchScreen() {
       unlocked: false,
       id: 'A2F91',
       name: 'Trần ○○',
-      headline: 'Điều dưỡng trưởng',
+      desiredRole: 'Điều dưỡng trưởng',
       gender: 'Nữ', age: 34, years: '7 yrs experience',
-      company: { name: 'BV Quốc tế Mỹ (AIH)', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – nay', status: 'Đang làm việc', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ và kiểm tra tuân thủ hằng tháng.' },
+      company: { name: 'BV Quốc tế Mỹ (AIH)', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – nay', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ và kiểm tra tuân thủ hằng tháng.' },
       prior: [
         { name: 'BV Hoàn Mỹ Sài Gòn', masked: 'Bệnh viện tư nhân', title: 'Điều dưỡng viên', dur: '2 năm 3 tháng' },
         { name: 'PK Quốc tế Columbia', masked: 'Phòng khám quốc tế', title: 'Điều dưỡng viên', dur: '1 năm' },
@@ -1421,9 +1427,12 @@ function ResumeSearchScreen() {
       unlocked: false,
       id: 'C7B04',
       name: 'Lê ○○',
-      headline: 'Kỹ thuật viên xét nghiệm',
+      // 'KTV xét nghiệm', not 'Kỹ thuật viên xét nghiệm' — the value has to be the
+      // master-data term the Desired job role facet lists, or the card shows a
+      // role the filter cannot match.
+      desiredRole: 'KTV xét nghiệm',
       gender: 'Nam', age: 26, years: '3 yrs experience',
-      company: { name: 'PK Đa khoa Medic Bình Dương', masked: 'Phòng khám đa khoa · Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – nay', status: 'Đang làm việc', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
+      company: { name: 'PK Đa khoa Medic Bình Dương', masked: 'Phòng khám đa khoa · Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – nay', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
       prior: [],
       education: { school: 'CĐ Y tế Bình Dương', masked: 'Cao đẳng y tế · Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
       skills: ['Xét nghiệm huyết học', 'Sinh hóa', 'ISO 15189'],
@@ -1433,15 +1442,21 @@ function ResumeSearchScreen() {
       unlocked: false,
       id: 'B4C22',
       name: 'Phạm ○○',
-      headline: 'Điều dưỡng viên (mới tốt nghiệp)',
+      // The fresher qualifier moved out of the value: "mới tốt nghiệp" is not a
+      // role in the master list, and `years` below already says Fresher.
+      desiredRole: 'Điều dưỡng viên',
       gender: 'Nam', age: 23, years: 'Fresher · under 1 yr',
-      company: { name: 'BV Đại học Y Dược TP.HCM', masked: 'Bệnh viện đại học · TP.HCM', title: 'Điều dưỡng thực tập', period: '06/2025 – 12/2025', status: 'Đã nghỉ', desc: 'Thực tập lâm sàng khoa Nội tổng hợp; hỗ trợ chăm sóc cơ bản và ghi chép hồ sơ.' },
+      company: { name: 'BV Đại học Y Dược TP.HCM', masked: 'Bệnh viện đại học · TP.HCM', title: 'Điều dưỡng thực tập', period: '06/2025 – 12/2025', desc: 'Thực tập lâm sàng khoa Nội tổng hợp; hỗ trợ chăm sóc cơ bản và ghi chép hồ sơ.' },
       prior: [],
       education: { school: 'ĐH Nguyễn Tất Thành', masked: 'Đại học tư thục · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Expected 06/2026', expected: true },
       skills: ['Chăm sóc cơ bản', 'Tiếng Anh giao tiếp'],
       loc: 'Hồ Chí Minh', salary: 'Thỏa thuận', updated: '4 days ago',
     },
   ]
+
+  /* Candidates whose ask is in the OTHER currency are set aside rather than
+     compared — but never silently. This is the count that says so. */
+  const otherCurrency = 12
 
   /* Unlock / View CV swaps the console to the CV detail PAGE — a CV is a document
      someone reads end to end, not a dialog. Back returns to the result list. */
@@ -1532,7 +1547,17 @@ function ResumeSearchScreen() {
                       <span className="text-[11px] font-medium text-ink/80">{cv.years}</span>
                       {cv.unlocked && <Chip tone="green">Unlocked</Chip>}
                     </div>
-                    <p className="truncate text-[11.5px] text-muted">{cv.headline}</p>
+                    {/* DESIRED ROLE, labelled — not a free-text headline. Unlabelled
+                        it read as a second job title and duplicated the current
+                        role on the line below; and it is the field the "Desired
+                        job role" facet filters on, so the card has to show what
+                        the search matched. Enum from the Job category → Role
+                        master data, which is why it never carries qualifiers
+                        like "(mới tốt nghiệp)" — seniority is the `years` slot. */}
+                    <p className="truncate text-[11.5px] text-muted">
+                      <span className="text-faint">Desired role: </span>
+                      <span className="font-medium text-ink/80">{cv.desiredRole}</span>
+                    </p>
                   </div>
                   <div className="shrink-0">
                     {cv.unlocked
@@ -1555,26 +1580,25 @@ function ResumeSearchScreen() {
                       <b className="font-semibold text-ink">{cv.unlocked ? cv.company.name : cv.company.masked}</b>
                       <span className="text-muted"> · {cv.company.title}</span>
                     </p>
-                    <p className="text-[10.5px] text-muted">
-                      {cv.company.period}
-                      <span className={cn('ml-1.5 rounded border px-1 py-px text-[9.5px] font-medium', cv.company.status === 'Đang làm việc' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-line bg-canvas text-muted')}>
-                        {cv.company.status}
-                      </span>
-                    </p>
+                    {/* No employment-status badge: the period already says it.
+                        "03/2023 – nay" is still employed; an end date is not. */}
+                    <p className="text-[10.5px] text-muted">{cv.company.period}</p>
                     <p className="mt-0.5 line-clamp-1 text-[11px] text-muted">{cv.company.desc}</p>
                   </div>
 
-                  {/* EARLIER jobs, compact: company · title (total duration). No
-                      description — the current job is the one being judged, the
-                      rest are there to show the shape of a career. Overflow → +N. */}
+                  {/* EARLIER jobs — PLAIN TEXT, not chips: company · title (total
+                      duration). A boxed chip reads as a tag you can act on; these
+                      are just the rest of the career, so they stay quiet. No
+                      description — the current job is the one being judged.
+                      Overflow → +N. */}
                   {(cv.prior.length > 0 || cv.morePrior) && (
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] text-muted">
                       {cv.prior.map((p) => (
-                        <span key={p.name} className="max-w-full truncate rounded border border-line bg-canvas/60 px-1.5 py-0.5 text-[10.5px] text-muted">
+                        <span key={p.name} className="max-w-full truncate">
                           {cv.unlocked ? p.name : p.masked} · {p.title} <span className="text-faint">({p.dur})</span>
                         </span>
                       ))}
-                      {cv.morePrior && <span className="cursor-pointer text-[10.5px] font-medium text-brand">+{cv.morePrior}</span>}
+                      {cv.morePrior && <span className="cursor-pointer font-medium text-brand">+{cv.morePrior}</span>}
                     </div>
                   )}
 
@@ -1606,10 +1630,16 @@ function ResumeSearchScreen() {
               </div>
             ))}
           </div>
+
+          {/* A currency-scoped salary query hides rows. Say so, and offer the way
+              to see them — counting them needs no exchange rate, and silence here
+              reads as "there is nobody else". */}
+          <div className="mt-3 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[11px] text-muted">
+            <b className="text-ink">{otherCurrency} candidates</b> ask in USD and are not shown, because salaries are never converted between currencies.
+            <span className="ml-1 cursor-pointer font-medium text-brand">Switch to USD to see them →</span>
+          </div>
         </div>
       </div>
-
-      {/* ── unlock confirm — the paid moment, made explicit ── */}
     </div>
   )
 }
