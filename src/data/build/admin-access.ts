@@ -687,7 +687,7 @@ export const adminAccess: BuildModule = {
           {
             group: 'Domain list (left rail)',
             items: [
-              { name: 'domain', type: 'enum', required: true, notes: 'Industry · Job categories & roles · Job level · Skills · Education level · Application language · Job types · Locations · Salary currency' },
+              { name: 'domain', type: 'enum', required: true, notes: 'Industry · Job categories & roles · Job level · Skills · Education level · Application language · Job types · Locations · Salary currency · Company tag · Image topic' },
               { name: 'entryCount', type: 'derived', notes: 'per domain, so an empty or bloated list is obvious' },
             ],
           },

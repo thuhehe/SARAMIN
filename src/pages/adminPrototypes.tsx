@@ -1974,8 +1974,53 @@ type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'L
    fact. New → Existing is one-way; a win-back returns a churned company to Existing,
    never to New. */
 type Account = 'New' | 'Existing' | 'Churn'
+/* ── Who the invoice is made out to ───────────────────────────────────────────
+   The VAT e-invoice has four different shapes depending on WHO is buying, and the
+   difference is not cosmetic: which identifier is legally required changes, and so
+   does which name block prints. Getting it wrong means re-issuing the invoice with
+   a biên bản, so the classification is asked ONCE on the company record and every
+   document reads it from there.
+
+     dn-vn        Doanh nghiệp Việt Nam — MST REQUIRED. The ordinary case.
+     dn-nn        Doanh nghiệp nước ngoài — MST may be EMPTY (they have no
+                  Vietnamese tax code), but legal name + address are still required
+                  because the invoice has to say who it was issued to.
+     ca-nhan-cccd Cá nhân có CCCD — no MST at all. The citizen ID goes in its own
+                  field and the person's name prints in "Họ tên người mua hàng",
+                  which is a DIFFERENT line from "Tên đơn vị".
+     ca-nhan      Cá nhân không có CCCD — MST and CCCD both empty. The invoice
+                  still issues, and "Họ tên người mua hàng" prints the fixed phrase
+                  "Bán cho người tiêu dùng" — the standard wording for a consumer
+                  sale. That line is never blank and never typed.
+
+   MST and CCCD are separate fields on purpose. They are different identifiers with
+   different formats and different legal meaning, and one column holding either is
+   the kind of shortcut that survives until an audit. */
+/** What prints in "Họ tên người mua hàng" for a consumer sale with no CCCD. A fixed
+    legal phrase, SUPPLIED BY THE SYSTEM and never typed: the rep should not have to
+    remember the exact wording, and a typo here lands on a filed fiscal document. */
+const RETAIL_BUYER = 'Bán cho người tiêu dùng'
+type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd' | 'ca-nhan'
+const BUYER_TYPE: Record<BuyerType, { vi: string; en: string; tax: 'req' | 'empty'; needsIdCard?: boolean; needsBuyerName?: boolean; noAddress?: boolean; hint: string }> = {
+  'dn-vn': { vi: 'Doanh nghiệp Việt Nam', en: 'Vietnamese company', tax: 'req', hint: 'MST bắt buộc — in trên hóa đơn VAT.' },
+  'dn-nn': { vi: 'Doanh nghiệp nước ngoài', en: 'Foreign company', tax: 'empty', hint: 'Không có MST Việt Nam — để trống. Vẫn bắt buộc tên pháp lý và địa chỉ.' },
+  'ca-nhan-cccd': { vi: 'Cá nhân có CCCD', en: 'Individual with ID card', tax: 'empty', needsIdCard: true, needsBuyerName: true, hint: 'Không có MST. Điền số CCCD và họ tên người mua hàng.' },
+  /* Điểm 4b, Phụ lục NĐ 254/2026: when the buyer does not provide name, address and
+     số định danh cá nhân, the invoice shows only “Bán cho người tiêu dùng”. So there
+     is no address to ask for either — the whole buyer block is that one line. */
+  'ca-nhan': { vi: 'Cá nhân không có CCCD', en: 'Individual, no ID provided', tax: 'empty', noAddress: true, hint: `Không hỏi MST, CCCD và cả địa chỉ. Hóa đơn chỉ in “${RETAIL_BUYER}” ở dòng Họ tên người mua hàng.` },
+}
+
 type Company = {
   name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
+  /** Which of the four invoice shapes this buyer takes. Defaults to a Vietnamese
+      company, which is the overwhelming majority. */
+  buyerType?: BuyerType
+  /** Số CCCD — only for an individual buyer. NEVER stored in `tax`. */
+  idCard?: string
+  /** "Họ tên người mua hàng" on the invoice — the PERSON, which is a different line
+      from Tên đơn vị / legal name and is only filled for an individual. */
+  buyerName?: string
   /** Quốc tịch — where the company is REGISTERED. 'Việt Nam' is what reveals the
       province picker; every country keeps a free-text address. */
   country: string
@@ -2004,10 +2049,12 @@ const COMPANIES: Company[] = [
   { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', country: 'Việt Nam', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 99, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
   { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', country: 'Việt Nam', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
   { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', country: 'Việt Nam', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 112, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
+  // Singaporean PARENT, but the buying entity is a VN-registered TNHH with a VN
+  // MST — so it is dn-vn. Quốc tịch does not decide the invoice shape.
   { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', country: 'Singapore', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
-  { name: 'Base.vn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', country: 'Việt Nam', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
+  { name: 'Base.vn', buyerType: 'ca-nhan-cccd', idCard: '079123456789', buyerName: 'Phan Anh Tuấn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', country: 'Việt Nam', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
   { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', country: 'Việt Nam', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
-  { name: 'Công ty TNHH Minh Long', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
+  { name: 'Công ty TNHH Minh Long', buyerType: 'ca-nhan', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
   { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', country: 'Việt Nam', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
   { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', country: 'Việt Nam', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
   { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', country: 'Việt Nam', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
@@ -2067,6 +2114,10 @@ const COMPANIES: Company[] = [
   { name: 'Công ty CP Bia Sài Gòn Miền Tây', shortName: 'Bia SG MT', legalName: 'Công ty Cổ phần Bia Sài Gòn Miền Tây', country: 'Việt Nam', tax: '0341xxxxxx', industry: 'Thực phẩm', size: '500–1000', address: 'Cần Thơ', contact: 'Ms. Phạm Ngọc Diệp', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 6, note: 'Interested in Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biasgmt.vn', since: '—' },
   { name: 'Công ty TNHH Thiết bị Y tế Việt', shortName: 'TBYT Việt', legalName: 'Công ty TNHH Thiết bị Y tế Việt', country: 'Việt Nam', tax: '0342xxxxxx', industry: 'Y tế', size: '50–200', address: 'Quận 5, HCMC', contact: 'Mr. Tôn Quang Vinh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Discovery call', idle: 4, note: 'Referred by an existing client.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tbytviet.vn', since: '—' },
   { name: 'Công ty CP Xi măng Hà Tiên', shortName: 'Hà Tiên', legalName: 'Công ty Cổ phần Xi măng Hà Tiên', country: 'Việt Nam', tax: '0343xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Kiên Giang', contact: 'Ms. Cao Thị Lệ · HR Manager', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 14, note: 'Haggling on the 6-month price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hatien.com.vn', since: '—' },
+  /* The real dn-nn case: no Vietnamese entity and no Vietnamese tax code, buying
+     employer branding from abroad. `tax` is EMPTY on purpose — that is the whole
+     point of the classification, and the invoice prints without an MST line. */
+  { name: 'Talently Pte. Ltd.', buyerType: 'dn-nn', shortName: 'Talently', legalName: 'Talently Pte. Ltd.', country: 'Singapore', tax: '', industry: 'CNTT', size: '50–200', address: '80 Robinson Road, Singapore 068898', contact: 'Ms. Rachel Ong · Head of Talent', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send bilingual quotation', idle: 4, note: 'No VN entity — invoice issues without MST.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'talently.sg', since: '' },
   { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', country: 'Nhật Bản / Japan', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
   { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
   { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', country: 'Việt Nam', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },
@@ -5578,7 +5629,14 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <>
                   <EField label="Legal name" value={c.legalName} onChange={() => {}} />
                   <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
+                  <SelectRow label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} onChange={() => {}} options={(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => BUYER_TYPE[k].vi)} hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT." />
                   <EField label="Tax code (MST)" value={c.tax} onChange={() => {}} />
+                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
+                    <>
+                      <EField label="Số CCCD" value={c.idCard ?? ''} onChange={() => {}} />
+                      <EField label="Họ tên người mua hàng" value={c.buyerName ?? ''} onChange={() => {}} />
+                    </>
+                  )}
                   <SelectRow label="Công ty mẹ" value={c.parent ?? ''} onChange={() => {}} options={COMPANIES.filter((x) => x.name !== c.name).map((x) => x.name)} placeholder="— không thuộc tập đoàn nào —" hint="Full legal names, because two companies can share a short name. Pick the DIRECT parent. Leave empty for a standalone company or a group root." />
                   <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
                   <SelectRow label="Company size" value={c.size} onChange={() => {}} options={CO_SIZES} />
@@ -5595,7 +5653,21 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <>
                   <KV label="Legal name" value={c.legalName} />
                   <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
-                  <KV label="Tax code (MST)" value={c.tax} />
+                  <KV label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} />
+                  {/* The identifier that applies to THIS buyer type, and only that
+                      one — MST for a company, CCCD for an individual. */}
+                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].tax === 'req'
+                    ? <KV label="Tax code (MST)" value={c.tax} />
+                    : <KV label="Tax code (MST)" value={c.tax?.trim() || '— (không áp dụng)'} />}
+                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
+                    <>
+                      <KV label="Số CCCD" value={c.idCard || '—'} />
+                      <KV label="Họ tên người mua hàng" value={c.buyerName || '—'} />
+                    </>
+                  )}
+                  {c.buyerType === 'ca-nhan' && (
+                    <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
+                  )}
                   <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
                   {/* Split: industry and size are two different facts, filtered separately. */}
                   <KV label="Industry" value={c.industry} />
@@ -5618,7 +5690,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 <>
                   <SelectRow label="Quốc tịch / Country" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
                   {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.groups?.[0]?.items ?? []} />}
-                  <EField label="Address" value={c.address} onChange={() => {}} hint="Prints on quotations, orders and invoices." />
+                  <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                   <EField label="Website" value={c.domain} onChange={() => {}} mono />
                   <SelectRow label="Lead source" value={coLeadSource(c)} onChange={() => {}} options={LEAD_SOURCES} />
                   <SelectRow label="Sales owner" value={c.owner} onChange={() => {}} options={[...new Set(COMPANIES.map((x) => x.owner))]} />
@@ -5629,7 +5701,9 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                   {isVNCompany(c)
                     ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
                     : <KV label="Tỉnh / Thành phố · City" value="— (không phải công ty Việt Nam · xem Address)" />}
-                  <KV label="Address" value={c.address} />
+                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
+                    ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
+                    : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                   <KV label="Website" value={c.domain} link />
                   <KV label="Lead source" value={coLeadSource(c)} />
                   <KV label="Sales owner" value={c.owner} />
@@ -7684,6 +7758,536 @@ const PLACEMENTS: Placement[] = [
   { id: 'search-highlight-jobs', page: 'Search', ref: '2.2', name: 'Highlight Jobs', size: 'Job row', shown: 'Unlimited', cap: 'random per reload', route: 'tier', fedBy: 'Basic Plus · Distinction · Top Job (tier sets the rank band)' },
   { id: 'search-adsense', page: 'Search', ref: '2.3', name: 'Banner adsense', size: '425 × 160 px', shown: '1 at a time', cap: 'unlimited · position varies on reload', route: 'booked', fedBy: 'Banner placement product · interleaved between results' },
 ]
+
+/* ── Image gallery ───────────────────────────────────────────────────────────
+   The stock pictures a JOB borrows when its product feeds a placement with image
+   slots. Classified by TOPIC — what the picture SHOWS — because that is the only
+   thing intrinsic to a photograph: two people at a laptop is a business scene
+   that serves IT, banking, marketing and a school office equally, and calling it
+   "IT / Software" is a claim about the employer, not about the frame.
+
+   Industry keeps its entry point through INDUSTRY_TOPICS: a small ordered map,
+   so "filter by industry" still works and the automatic default still resolves,
+   without any picture carrying an industry it cannot support. Rename an industry
+   and one map row changes instead of hundreds of pictures being re-tagged. */
+type GalleryImg = {
+  id: string; title: string; topics: string[]; tags: string[]
+  /** a scene with people/objects, or a texture the card lays a logo over */
+  role: 'subject' | 'background'
+  /** stand-in for the photo — the wireframe paints a gradient rather than shipping stock */
+  hue: number
+  uses: number; licence: string; expires?: string; archived?: boolean
+}
+const GALLERY: GalleryImg[] = [
+  { id: 'g1', title: 'Kho hàng · xe nâng', topics: ['Kho vận'], tags: ['xe nâng', 'trong nhà'], role: 'subject', hue: 210, uses: 12, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g2', title: 'Dây chuyền sản xuất', topics: ['Nhà máy · sản xuất', 'Kỹ thuật'], tags: ['máy móc'], role: 'subject', hue: 24, uses: 7, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g3', title: 'Nhóm họp trong văn phòng', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 268, uses: 41, licence: 'Stock · Unsplash+' },
+  { id: 'g4', title: 'Phòng khám · điều dưỡng', topics: ['Y tế · chăm sóc', 'Nhóm người'], tags: ['bệnh viện'], role: 'subject', hue: 160, uses: 5, licence: 'Nội bộ · shoot 2026' },
+  { id: 'g5', title: 'Lập trình viên & màn hình code', topics: ['Công nghệ', 'Văn phòng'], tags: ['màn hình'], role: 'subject', hue: 200, uses: 23, licence: 'Stock · Unsplash+' },
+  { id: 'g6', title: 'Quầy bán lẻ · khách hàng', topics: ['Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 340, uses: 9, licence: 'Stock · Shutterstock', expires: '28/02/2026' },
+  { id: 'g7', title: 'Công trường xây dựng', topics: ['Công trường', 'Kỹ thuật'], tags: ['ngoài trời', 'mũ bảo hộ'], role: 'subject', hue: 40, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g8', title: 'Lớp học · giảng viên', topics: ['Lớp học · đào tạo', 'Nhóm người'], tags: ['bảng'], role: 'subject', hue: 96, uses: 6, licence: 'Nội bộ · shoot 2026' },
+  { id: 'g9', title: 'Sảnh khách sạn', topics: ['Nhà hàng · khách sạn'], tags: ['dịch vụ'], role: 'subject', hue: 12, uses: 2, licence: 'Stock · Unsplash+' },
+  { id: 'g10', title: 'Quầy giao dịch ngân hàng', topics: ['Văn phòng', 'Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 224, uses: 15, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g11', title: 'Toà nhà cao tầng (nền)', topics: ['Toà nhà · kiến trúc'], tags: ['ngoài trời', 'skyline'], role: 'background', hue: 190, uses: 18, licence: 'Stock · Unsplash+' },
+  { id: 'g12', title: 'Gradient xanh (nền)', topics: ['Trừu tượng · nền'], tags: ['nền'], role: 'background', hue: 246, uses: 11, licence: 'Nội bộ · shoot 2026' },
+  { id: 'g13', title: 'Cây xanh · ánh sáng tự nhiên', topics: ['Thiên nhiên · môi trường'], tags: ['ngoài trời', 'xanh'], role: 'background', hue: 130, uses: 4, licence: 'Stock · Unsplash+' },
+  { id: 'g14', title: 'Xe tải giao hàng', topics: ['Vận tải'], tags: ['ngoài trời'], role: 'subject', hue: 350, uses: 6, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g15', title: 'Kệ hàng siêu thị (cũ)', topics: ['Bán lẻ · cửa hàng'], tags: [], role: 'subject', hue: 300, uses: 0, licence: 'Stock · hết hạn', archived: true },
+  { id: 'g16', title: 'Bàn làm việc · laptop', topics: ['Văn phòng'], tags: ['bàn làm việc'], role: 'subject', hue: 258, uses: 33, licence: 'Stock · Unsplash+' },
+  { id: 'g17', title: 'Trao đổi trong phòng họp', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 236, uses: 19, licence: 'Stock · Unsplash+' },
+  { id: 'g18', title: 'Kỹ sư kiểm tra máy', topics: ['Kỹ thuật', 'Nhà máy · sản xuất'], tags: ['mũ bảo hộ'], role: 'subject', hue: 32, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g19', title: 'Kỹ sư hiện trường', topics: ['Kỹ thuật', 'Công trường'], tags: ['ngoài trời'], role: 'subject', hue: 48, uses: 5, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g20', title: 'Chia hàng trong kho', topics: ['Kho vận'], tags: ['thùng hàng'], role: 'subject', hue: 196, uses: 10, licence: 'Stock · Unsplash+' },
+  { id: 'g21', title: 'Đóng gói đơn hàng', topics: ['Kho vận', 'Vận tải'], tags: ['thùng hàng'], role: 'subject', hue: 182, uses: 4, licence: 'Nội bộ · shoot 2026' },
+  { id: 'g22', title: 'Đội ngũ chụp chung', topics: ['Nhóm người'], tags: ['chân dung nhóm'], role: 'subject', hue: 288, uses: 27, licence: 'Stock · Unsplash+' },
+  { id: 'g23', title: 'Server room · hạ tầng', topics: ['Công nghệ'], tags: ['trung tâm dữ liệu'], role: 'subject', hue: 214, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g24', title: 'Bo mạch · cận cảnh', topics: ['Công nghệ', 'Trừu tượng · nền'], tags: ['cận cảnh'], role: 'background', hue: 172, uses: 7, licence: 'Stock · Unsplash+' },
+  { id: 'g25', title: 'Thùng carton thương hiệu', topics: ['Sản phẩm · bao bì'], tags: ['tĩnh vật', 'đóng gói'], role: 'subject', hue: 22, uses: 5, licence: 'Stock · Unsplash+' },
+  { id: 'g26', title: 'Hàng tiêu dùng bày trên bàn', topics: ['Sản phẩm · bao bì', 'Bán lẻ · cửa hàng'], tags: ['tĩnh vật'], role: 'subject', hue: 104, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g27', title: 'Ống nghiệm · mô hình phân tử', topics: ['Nghiên cứu · phòng lab'], tags: ['R&D'], role: 'background', hue: 208, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g28', title: 'Kỹ thuật viên trong phòng lab', topics: ['Nghiên cứu · phòng lab', 'Y tế · chăm sóc'], tags: ['áo blouse'], role: 'subject', hue: 174, uses: 2, licence: 'Nội bộ · shoot 2026' },
+  { id: 'g29', title: 'Biểu đồ tài chính trên máy tính bảng', topics: ['Dữ liệu · biểu đồ', 'Công nghệ'], tags: ['cận cảnh bàn tay'], role: 'background', hue: 188, uses: 14, licence: 'Stock · Unsplash+' },
+  { id: 'g30', title: 'Bảng số liệu · màn hình', topics: ['Dữ liệu · biểu đồ'], tags: ['màn hình'], role: 'background', hue: 220, uses: 6, licence: 'Stock · Unsplash+' },
+  { id: 'g31', title: 'Nhà máy nhìn từ trên cao', topics: ['Nhà xưởng · ngoại cảnh', 'Nhà máy · sản xuất'], tags: ['flycam', 'ngoài trời'], role: 'background', hue: 200, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
+  { id: 'g32', title: 'Toàn cảnh khu công nghiệp', topics: ['Nhà xưởng · ngoại cảnh'], tags: ['ngoài trời'], role: 'background', hue: 30, uses: 4, licence: 'Stock · Unsplash+' },
+  { id: 'g33', title: 'Bắt tay · chúc mừng (cận cảnh)', topics: ['Nhóm người'], tags: ['cận cảnh bàn tay', 'cử chỉ'], role: 'subject', hue: 306, uses: 21, licence: 'Stock · Unsplash+' },
+  { id: 'g34', title: 'Bàn làm việc · sổ và đồng hồ', topics: ['Văn phòng'], tags: ['tĩnh vật'], role: 'background', hue: 44, uses: 12, licence: 'Stock · Unsplash+' },
+]
+/** Master data → Image topic. ~12 values, and it does not grow when the industry list does. */
+const GALLERY_TOPICS = [
+  'Văn phòng', 'Kỹ thuật', 'Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kho vận', 'Vận tải',
+  'Công trường', 'Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Y tế · chăm sóc', 'Nghiên cứu · phòng lab',
+  'Lớp học · đào tạo', 'Nhà hàng · khách sạn', 'Công nghệ', 'Dữ liệu · biểu đồ', 'Nhóm người',
+  'Toà nhà · kiến trúc', 'Thiên nhiên · môi trường', 'Trừu tượng · nền',
+]
+/** INDUSTRY → ordered topics. The first entry is what the automatic default resolves to. */
+const INDUSTRY_TOPICS: [string, string[]][] = [
+  ['IT / Software', ['Công nghệ', 'Dữ liệu · biểu đồ', 'Văn phòng', 'Trừu tượng · nền']],
+  ['FMCG', ['Sản phẩm · bao bì', 'Nhà máy · sản xuất', 'Bán lẻ · cửa hàng', 'Kho vận']],
+  ['Banking / Finance', ['Dữ liệu · biểu đồ', 'Văn phòng', 'Toà nhà · kiến trúc']],
+  ['Healthcare', ['Y tế · chăm sóc', 'Nghiên cứu · phòng lab', 'Nhóm người']],
+  ['Manufacturing', ['Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kỹ thuật']],
+  ['Retail', ['Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Kho vận']],
+  ['Education', ['Lớp học · đào tạo', 'Nhóm người']],
+  ['Logistics', ['Kho vận', 'Vận tải', 'Nhà xưởng · ngoại cảnh']],
+  ['Construction & Real Estate', ['Công trường', 'Toà nhà · kiến trúc', 'Kỹ thuật']],
+  ['Hospitality & Tourism', ['Nhà hàng · khách sạn', 'Nhóm người']],
+  ['Media & Advertising', ['Văn phòng', 'Nhóm người', 'Trừu tượng · nền']],
+  ['Telecommunications', ['Công nghệ', 'Dữ liệu · biểu đồ', 'Toà nhà · kiến trúc']],
+]
+/** the wireframe's stand-in for a photograph */
+const imgStyle = (hue: number) => ({
+  background: `linear-gradient(135deg, hsl(${hue} 55% 62%), hsl(${hue + 28} 45% 42%))`,
+})
+
+function AdminImageGallery() {
+  /* Two ways in, one classification: pick a topic directly, or pick an industry
+     and let the map resolve which topics it prefers. */
+  const [topic, setTopic] = useState('')
+  const [industry, setIndustry] = useState('')
+  const [role, setRole] = useState<'' | 'subject' | 'background'>('')
+  const [q, setQ] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const [open, setOpen] = useState<GalleryImg | null>(null)
+  const [showMap, setShowMap] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const mapped = industry ? (INDUSTRY_TOPICS.find(([i]) => i === industry)?.[1] ?? []) : []
+  const shown = GALLERY.filter((g) => (showArchived ? true : !g.archived))
+    .filter((g) => !topic || g.topics.includes(topic))
+    .filter((g) => !industry || g.topics.some((t) => mapped.includes(t)))
+    .filter((g) => !role || g.role === role)
+    .filter((g) => !q.trim() || (g.title + ' ' + g.tags.join(' ')).toLowerCase().includes(q.trim().toLowerCase()))
+
+  const stock = (t: string) => GALLERY.filter((g) => !g.archived && g.topics.includes(t)).length
+  /* a topic under 3 pictures is a topic whose default repeats across the grid */
+  const thinTopics = GALLERY_TOPICS.filter((t) => stock(t) < 3)
+  /* and the industries that hurts — every topic they map to is thin */
+  const thinIndustries = INDUSTRY_TOPICS.filter(([, ts]) => ts.every((t) => stock(t) < 3)).map(([i]) => i)
+
+  return (
+    <div>
+      <p className="mb-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted">
+        Ảnh dùng cho <b className="text-ink/70">vị trí hiển thị có khung ảnh</b> — tin đăng mượn từ đây khi sản phẩm của
+        nó chiếm một placement cần ảnh. Phân loại theo <b className="text-ink/70">chủ đề</b> — thứ duy nhất thuộc về bản
+        thân tấm ảnh. Ngành vẫn là lối vào quen thuộc, nhưng đi qua <b className="text-ink/70">bảng ánh xạ ngành → chủ đề</b>,
+        nên không tấm ảnh nào phải mang một cái nhãn ngành mà nó không thể chứng minh.
+      </p>
+
+      {thinTopics.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+          <b>{thinTopics.length} chủ đề chưa đủ 3 ảnh</b> — {thinTopics.join(' · ')}.
+          {thinIndustries.length > 0 && (
+            <> Kéo theo <b>{thinIndustries.join(' · ')}</b> không còn ảnh mặc định nào tử tế.</>
+          )}
+          {' '}Dưới mức này thì ảnh mặc định sẽ lặp lại trên trang chủ, trông tệ hơn cả không bán placement.
+        </div>
+      )}
+
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="relative">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên ảnh, từ khoá…" className="w-[220px] rounded-lg border border-line bg-surface py-1 pl-7 pr-2 text-[11.5px] outline-none focus:border-brand" />
+        </div>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', topic ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={topic ? 'text-brand/70' : 'text-faint'}>Chủ đề</span>
+          <select value={topic} onChange={(e) => { setTopic(e.target.value); setIndustry('') }} className={cn('max-w-[190px] cursor-pointer bg-transparent text-[11.5px] outline-none', topic ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">Tất cả</option>
+            {GALLERY_TOPICS.map((t) => <option key={t} value={t}>{t} ({stock(t)})</option>)}
+          </select>
+        </label>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', industry ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={industry ? 'text-brand/70' : 'text-faint'}>Theo ngành</span>
+          <select value={industry} onChange={(e) => { setIndustry(e.target.value); setTopic('') }} className={cn('max-w-[190px] cursor-pointer bg-transparent text-[11.5px] outline-none', industry ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">—</option>
+            {INDUSTRY_TOPICS.map(([i]) => <option key={i} value={i}>{i}</option>)}
+          </select>
+        </label>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', role ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={role ? 'text-brand/70' : 'text-faint'}>Vai trò</span>
+          <select value={role} onChange={(e) => setRole(e.target.value as typeof role)} className={cn('cursor-pointer bg-transparent text-[11.5px] outline-none', role ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">Tất cả</option>
+            <option value="subject">Chủ thể (cảnh)</option>
+            <option value="background">Ảnh nền</option>
+          </select>
+        </label>
+        <button onClick={() => setShowMap((v) => !v)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', showMap ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>
+          Bảng ngành → chủ đề
+        </button>
+        <button onClick={() => setShowArchived((v) => !v)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', showArchived ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>
+          Hiện cả ảnh đã lưu trữ
+        </button>
+        <button onClick={() => setUploading(true)} className="ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">＋ Tải ảnh lên</button>
+      </div>
+
+      {industry && (
+        <p className="mb-2 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] text-brand">
+          <b>{industry}</b> → {mapped.join(' · ')} — ảnh mặc định lấy từ <b>{mapped[0]}</b>, chọn tấm ít dùng nhất trước.
+        </p>
+      )}
+
+      {showMap && (
+        <div className="mb-3 overflow-hidden rounded-xl border border-line">
+          <div className="grid grid-cols-[1fr_2fr] gap-x-4 bg-canvas/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+            <span>Ngành</span><span>Chủ đề (theo thứ tự ưu tiên)</span>
+          </div>
+          {INDUSTRY_TOPICS.map(([i, ts]) => (
+            <div key={i} className="grid grid-cols-[1fr_2fr] items-center gap-x-4 border-t border-line-soft px-3 py-1.5 text-[11.5px]">
+              <span className="truncate">{i}</span>
+              <span className="flex flex-wrap gap-1">
+                {ts.map((t, n) => (
+                  <span key={t} className={cn('rounded-full border px-1.5 py-px text-[10px]', n === 0 ? 'border-brand/30 bg-brand-soft font-medium text-brand' : 'border-line bg-canvas text-muted', stock(t) < 3 && 'border-amber-300 bg-amber-50 text-amber-800')}>
+                    {t} · {stock(t)}
+                  </span>
+                ))}
+              </span>
+            </div>
+          ))}
+          <p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-relaxed text-faint">
+            12 dòng × 2–4 chủ đề — một màn hình cấu hình. Chủ đề <b>đầu tiên</b> là nơi ảnh mặc định được lấy ra.
+            Thêm hoặc đổi tên một ngành thì sửa đúng một dòng ở đây, thay vì gắn nhãn lại hàng trăm tấm ảnh.
+          </p>
+        </div>
+      )}
+
+      <p className="mb-1.5 text-[11px] text-faint">
+        Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{shown.length}</b> / Tổng{' '}
+        <b className="font-semibold text-ink/70 tabular-nums">{GALLERY.filter((g) => !g.archived).length}</b> ảnh đang dùng được
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {shown.map((g) => (
+          <button key={g.id} onClick={() => setOpen(g)} className="overflow-hidden rounded-xl border border-line bg-surface text-left transition-colors hover:border-brand">
+            <span className="relative block h-[104px]" style={imgStyle(g.hue)}>
+              {g.archived && <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">Đã lưu trữ</span>}
+              <span className="absolute bottom-1.5 right-1.5 rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white">{g.uses} tin dùng</span>
+            </span>
+            <span className="block p-2.5">
+              <span className="block truncate text-[12px] font-medium text-ink">{g.title}</span>
+              <span className="mt-1 flex flex-wrap items-center gap-1">
+                {g.topics.map((t) => (
+                  <span key={t} className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-muted">{t}</span>
+                ))}
+                {g.role === 'background' && <span className="rounded-full border border-brand/30 bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">nền</span>}
+              </span>
+              {g.expires && (
+                <span className="mt-1 block text-[10px] text-faint">Bản quyền đến {g.expires}</span>
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {open && <GalleryImageModal img={open} onClose={() => setOpen(null)} />}
+      {uploading && <GalleryUploadModal thinTopics={thinTopics} onClose={() => setUploading(false)} />}
+
+      <p className="mt-3 text-[11px] leading-relaxed text-faint">
+        Ảnh phân loại theo <b>chủ đề</b>, không theo ngành: một tấm ảnh là một <b>cảnh</b>, còn ngành là chuyện của
+        doanh nghiệp. Nhờ vậy mỗi ảnh chỉ cần 1–2 nhãn thay vì hai mươi, và danh sách ngành có đổi thì chỉ sửa bảng ánh
+        xạ. Ảnh <b>không bao giờ bị xoá</b>, chỉ lưu trữ: tin đang chạy vẫn trỏ vào nó.
+        Nhà tuyển dụng <b>không tải ảnh lên thư viện này</b> — ảnh họ tự tải chỉ nằm trên tin của họ, vì mình không có
+        quyền phát hành lại ảnh đó cho công ty khác.
+      </p>
+    </div>
+  )
+}
+
+/* ── Upload ──────────────────────────────────────────────────────────────────
+   Two steps, because a stock pack arrives forty pictures at a time and nobody
+   classifies forty pictures one modal at a time: drop the batch, let the too-small
+   ones fail loudly, then apply topic / role / licence to the whole batch at once
+   and correct the odd one out. */
+type PendingFile = { name: string; w: number; h: number; hue: number; title: string; ok: boolean }
+const PENDING_SEED: PendingFile[] = [
+  { name: 'warehouse-forklift-02.jpg', w: 2400, h: 1600, hue: 205, title: 'Kho hàng · xe nâng', ok: true },
+  { name: 'team-meeting-natural-light.jpg', w: 3000, h: 2000, hue: 262, title: 'Họp nhóm · ánh sáng tự nhiên', ok: true },
+  { name: 'engineer-inspection.jpg', w: 2048, h: 1365, hue: 34, title: 'Kỹ sư kiểm tra thiết bị', ok: true },
+  { name: 'clinic-corridor.jpg', w: 1800, h: 1200, hue: 158, title: 'Hành lang phòng khám', ok: true },
+  { name: 'logo-square-small.png', w: 800, h: 800, hue: 320, title: 'logo-square-small', ok: false },
+]
+
+function GalleryUploadModal({ thinTopics, onClose }: { thinTopics: string[]; onClose: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [files, setFiles] = useState<PendingFile[]>([])
+  const [topics, setTopics] = useState<string[]>([])
+  const [role, setRole] = useState<'subject' | 'background'>('subject')
+  const [source, setSource] = useState('')
+  const [licence, setLicence] = useState('')
+  const [expires, setExpires] = useState('')
+
+  /* PER-IMAGE topics, keyed by file name. A batch is rarely all one thing — this
+     drop alone is warehouse, meeting, engineer and clinic — so the topic field
+     lives on the ROW, and the chips in step 2 are only a bulk shortcut into it. */
+  const [perFile, setPerFile] = useState<Record<string, string[]>>({})
+
+  const accepted = files.filter((f) => f.ok)
+  const rejected = files.filter((f) => !f.ok)
+  const topicsFor = (name: string) => perFile[name] ?? topics
+  const togglePerFile = (name: string, t: string) =>
+    setPerFile((p) => {
+      const cur = p[name] ?? topics
+      return { ...p, [name]: cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t] }
+    })
+  const toggleTopic = (t: string) => setTopics((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]))
+  /* every accepted picture needs a topic — an untagged one can never be found in
+     the picker and can never be an industry's default */
+  const untagged = accepted.filter((f) => topicsFor(f.name).length === 0)
+  /* licence and source are what make a picture publishable — the classification can
+     be corrected later, an unlicensed photo on a paid placement cannot */
+  const ready = accepted.length > 0 && untagged.length === 0 && source.trim() !== '' && licence !== ''
+  /* how much of the coverage gap this batch actually closes */
+  const fixes = [...new Set(accepted.flatMap((f) => topicsFor(f.name)))].filter((t) => thinTopics.includes(t))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[720px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Tải ảnh lên thư viện</p>
+            <p className="text-[11px] text-muted">
+              <span className={cn(step === 1 ? 'font-semibold text-brand' : '')}>1 · Chọn tệp</span>
+              <span className="mx-1.5 text-faint">→</span>
+              <span className={cn(step === 2 ? 'font-semibold text-brand' : '')}>2 · Phân loại cả lô</span>
+            </p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+
+        {step === 1 ? (
+          <div className="p-5">
+            <button
+              onClick={() => setFiles(PENDING_SEED)}
+              className="grid w-full place-items-center gap-1 rounded-xl border-2 border-dashed border-line bg-canvas/40 px-4 py-8 text-center hover:border-brand hover:bg-brand-soft/40"
+            >
+              <span className="text-[22px]">🖼️</span>
+              <span className="text-[13px] font-semibold text-ink">Kéo thả ảnh vào đây, hoặc bấm để chọn tệp</span>
+              <span className="text-[11px] text-muted">JPG · PNG · WebP — tối thiểu <b>1600 × 1200</b>, chọn nhiều tệp một lúc</span>
+            </button>
+
+            {files.length > 0 && (
+              <>
+                <div className="mt-3 space-y-1.5">
+                  {files.map((f, i) => (
+                    <div key={f.name} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-2', f.ok ? 'border-line' : 'border-rose-200 bg-rose-50')}>
+                      <span className="h-9 w-12 shrink-0 rounded" style={imgStyle(f.hue)} />
+                      <span className="min-w-0 flex-1">
+                        {f.ok ? (
+                          <input
+                            value={f.title}
+                            onChange={(e) => setFiles((p) => p.map((x, n) => (n === i ? { ...x, title: e.target.value } : x)))}
+                            className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-[12.5px] font-medium text-ink outline-none hover:border-line focus:border-brand"
+                          />
+                        ) : (
+                          <span className="block px-1 text-[12.5px] font-medium text-rose-700">{f.name}</span>
+                        )}
+                        <span className="block px-1 font-mono text-[10.5px] text-faint">{f.name} · {f.w}×{f.h}</span>
+                      </span>
+                      {/* Topics belong on the ROW: a drop is rarely one subject — this
+                          batch alone is warehouse, meeting, engineer and clinic. Multi-select,
+                          because one picture can honestly be two topics. */}
+                      {f.ok && (
+                        <span className="flex min-w-[190px] max-w-[240px] shrink-0 flex-wrap items-center gap-1">
+                          {topicsFor(f.name).map((t) => (
+                            <span key={t} className="inline-flex items-center gap-1 rounded-full border border-brand bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">
+                              {t}
+                              <button onClick={() => togglePerFile(f.name, t)} className="text-brand/60 hover:text-brand">✕</button>
+                            </span>
+                          ))}
+                          <select
+                            value=""
+                            onChange={(e) => e.target.value && togglePerFile(f.name, e.target.value)}
+                            className={cn(
+                              'cursor-pointer rounded-full border border-dashed bg-surface px-1.5 py-px text-[10px] outline-none hover:border-ink/30',
+                              topicsFor(f.name).length === 0 ? 'border-amber-300 text-amber-700' : 'border-line text-muted',
+                            )}
+                          >
+                            <option value="">{topicsFor(f.name).length === 0 ? 'Chọn chủ đề…' : '＋ chủ đề'}</option>
+                            {GALLERY_TOPICS.filter((t) => !topicsFor(f.name).includes(t)).map((t) => (
+                              <option key={t} value={t}>{t}{thinTopics.includes(t) ? ' ▲' : ''}</option>
+                            ))}
+                          </select>
+                        </span>
+                      )}
+                      {f.ok
+                        ? <Pill tone="active">Đạt</Pill>
+                        : <span title="Ảnh nhỏ hơn 1600×1200 — bị từ chối ngay, không phóng to" className="shrink-0"><Pill tone="rejected">Quá nhỏ</Pill></span>}
+                      <button onClick={() => setFiles((p) => p.filter((_, n) => n !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+                    </div>
+                  ))}
+                </div>
+                {rejected.length > 0 && (
+                  <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] leading-relaxed text-rose-800">
+                    <b>{rejected.length} tệp bị từ chối</b> vì nhỏ hơn 1600×1200. Ảnh phải cắt được cho cả khung dọc 3:4 lẫn
+                    ngang 3:2 — phóng to một ảnh nhỏ chỉ chuyển vấn đề sang trang chủ.
+                  </p>
+                )}
+                <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+                  Tên ảnh sửa được ngay ở đây — đây là chuỗi mà ô tìm kiếm sẽ khớp, không phải tên tệp.
+                  <b className="text-ink/70"> Chủ đề đặt trên từng ảnh</b> (chọn nhiều được), vì một lô thả vào hiếm khi cùng một
+                  cảnh — chính lô này đã là kho vận · họp nhóm · kỹ thuật · y tế. ▲ là chủ đề đang thiếu ảnh.
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="p-5">
+            <p className="mb-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-[11.5px] text-brand">
+              Áp cho cả <b>{accepted.length} ảnh</b> vừa chọn. Sửa riêng từng tấm sau, ở màn chi tiết.
+            </p>
+
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Gắn nhanh cho cả lô — ảnh cho thấy cái gì</p>
+            <div className="flex flex-wrap gap-1.5">
+              {GALLERY_TOPICS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { toggleTopic(t); setPerFile((p) => Object.fromEntries(accepted.map((f) => { const cur = p[f.name] ?? []; return [f.name, cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]] })) )}}
+                  className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', topics.includes(t) ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}
+                >
+                  {t}
+                  {thinTopics.includes(t) && <span className="ml-1 text-[10px] text-amber-600" title="Chủ đề đang thiếu ảnh">▲</span>}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+              Bấm một chủ đề ở đây là <b>gắn cho cả {accepted.length} ảnh</b> — tiện khi cả gói stock cùng một cảnh.
+              Khác nhau thì sửa từng ảnh ở bước 1. ▲ là chủ đề chưa đủ 3 ảnh — thêm vào đó là vá đúng chỗ đang thủng.
+            </p>
+
+            {/* One place sets a topic — the row in step 1. Here we only report what
+                came back from it, because the same field edited in two screens is the
+                fastest way to make two answers. */}
+            <div className="mt-2 rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              Chủ đề đã đặt trên từng ảnh ở bước 1: {' '}
+              {[...new Set(accepted.flatMap((f) => topicsFor(f.name)))].length === 0
+                ? <b className="text-amber-700">chưa ảnh nào có chủ đề</b>
+                : <b className="text-ink/70">{[...new Set(accepted.flatMap((f) => topicsFor(f.name)))].join(' · ')}</b>}
+              {accepted.some((f) => topicsFor(f.name).length === 0) && (
+                <span className="text-amber-700"> — còn {accepted.filter((f) => topicsFor(f.name).length === 0).length} ảnh chưa gắn, quay lại bước 1 để bổ sung.</span>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Vai trò <span className="text-rose-500">*</span></p>
+                <div className="flex gap-1.5">
+                  {([['subject', 'Chủ thể (cảnh)'], ['background', 'Ảnh nền']] as const).map(([k, l]) => (
+                    <button key={k} onClick={() => setRole(k)} className={cn('flex-1 rounded-lg border px-2.5 py-1.5 text-[11.5px]', role === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>{l}</button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+                  Khung hero 2 ảnh cần <b>một nền + một chủ thể</b>; hai chủ thể cạnh nhau là hai tấm ảnh đánh nhau.
+                </p>
+              </div>
+              <div>
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Bản quyền <span className="text-rose-500">*</span></p>
+                <select value={licence} onChange={(e) => setLicence(e.target.value)} className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand">
+                  <option value="">— chọn —</option>
+                  <option>Stock · thuê bao (có hạn)</option>
+                  <option>Stock · mua vĩnh viễn</option>
+                  <option>Nội bộ · Saramin chụp</option>
+                  <option>Khách hàng cấp quyền</option>
+                </select>
+                {licence.includes('có hạn') && (
+                  <input value={expires} onChange={(e) => setExpires(e.target.value)} placeholder="Hết hạn — dd/mm/yyyy" className="mt-1.5 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand" />
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Nguồn <span className="text-rose-500">*</span></p>
+              <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="Shutterstock · pack #4821 · hoặc: shoot nội bộ 08/2026" className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand" />
+              <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+                Nguồn và bản quyền là <b>bắt buộc</b>: một tấm ảnh không rõ quyền nằm trên placement khách đã trả tiền là
+                rủi ro pháp lý, và khi thuê bao hết hạn thì đây là thứ duy nhất giúp tìm ra hết những gì phải gỡ.
+              </p>
+            </div>
+
+            {fixes.length > 0 && (
+              <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
+                Lô này bổ sung cho <b>{fixes.join(' · ')}</b> — {accepted.length} ảnh, đủ đưa chủ đề qua ngưỡng 3 ảnh.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2 border-t border-line px-5 py-3">
+          <span className="text-[11px] text-faint">
+            {files.length === 0 ? 'Chưa chọn tệp nào' : `${accepted.length} ảnh hợp lệ${rejected.length ? ` · ${rejected.length} bị loại` : ''}`}
+          </span>
+          <div className="flex gap-2">
+            <button onClick={step === 1 ? onClose : () => setStep(1)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">
+              {step === 1 ? 'Huỷ' : '← Quay lại'}
+            </button>
+            {step === 1 ? (
+              <button disabled={accepted.length === 0} onClick={() => setStep(2)} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+                Tiếp tục · phân loại →
+              </button>
+            ) : (
+              <button disabled={!ready} onClick={onClose} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+                Thêm {accepted.length} ảnh vào thư viện
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** One picture: how it crops into each placement frame, and what it is licensed for. */
+function GalleryImageModal({ img, onClose }: { img: GalleryImg; onClose: () => void }) {
+  /* the frames the site actually paints — the aspect comes from the placement row */
+  const FRAMES = [
+    { label: 'Thẻ nhỏ (lưới platinum)', ratio: '596 × 258', cls: 'h-[86px] w-[199px]' },
+    { label: 'Thẻ lớn (hero)', ratio: '600 × 1120', cls: 'h-[187px] w-[100px]' },
+    { label: 'Ô vuông (mobile)', ratio: '1:1', cls: 'h-[120px] w-[120px]' },
+  ]
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={onClose}>
+      <div className="w-full max-w-[640px] rounded-xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+          <div>
+            <p className="text-[14px] font-bold">{img.title}</p>
+            <p className="text-[11px] text-muted">{img.licence}{img.expires ? ` · đến ${img.expires}` : ''} · đang được {img.uses} tin dùng</p>
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-ink">✕</button>
+        </div>
+        <div className="p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Cắt theo từng khung — một ảnh gốc, không cắt sẵn</p>
+          <div className="flex flex-wrap items-end gap-3">
+            {FRAMES.map((f) => (
+              <div key={f.ratio}>
+                <div className={cn('relative overflow-hidden rounded-lg border border-line', f.cls)} style={imgStyle(img.hue)}>
+                  {/* safe areas the card paints its own furniture into */}
+                  <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">badge</span>
+                  <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
+                  <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand" title="Focal point" />
+                </div>
+                <p className="mt-1 text-[10.5px] text-muted">{f.label} · {f.ratio}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-faint">
+            Chấm xanh là <b>focal point</b> — điểm mọi khung cắt phải giữ lại. Lưu <b>một ảnh gốc ≥1600×1200</b> rồi cắt
+            theo tỉ lệ lúc render; cắt sẵn từng khung thì mỗi lần thêm một kích thước mới (bản mobile chẳng hạn) là phải
+            cắt lại cả thư viện bằng tay. Ô <i>badge</i> và dấu ☆ là vùng thẻ tự vẽ đè lên — chủ thể không được nằm ở đó.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {img.topics.map((t) => <span key={t} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] text-muted">{t}</span>)}
+            <span className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] text-muted">{img.role === 'background' ? 'Ảnh nền' : 'Chủ thể (cảnh)'}</span>
+            {img.tags.map((t) => <span key={t} className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand">#{t}</span>)}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Đóng</button>
+          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Lưu trữ</button>
+          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /** Placements list — the registry the product form and the jobseeker site share. */
 function AdminPlacements() {
@@ -10019,6 +10623,11 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
   useDetailCrumb(lockedParent ? `Thêm công ty con · ${coLabel(lockedParent)}` : 'New company', onBack)
   /* Quốc tịch drives whether the Vietnamese province picker is shown at all. */
   const [country, setCountry] = useState('Việt Nam')
+  /* Which invoice shape this buyer takes — it decides whether MST is required and
+     whether the CCCD / buyer-name pair is asked for at all. */
+  const [buyer, setBuyer] = useState<BuyerType>('dn-vn')
+  /** An individual buyer has no Tên đơn vị and no MST — the person replaces both. */
+  const isIndiv = buyer === 'ca-nhan-cccd' || buyer === 'ca-nhan'
   const [tax, setTax] = useState('')
   const [looking, setLooking] = useState(false)
   const [looked, setLooked] = useState(false)
@@ -10053,14 +10662,94 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
       </div>
 
       <div className="space-y-8">
-        <JobGroup title="Company information">
-          <LField label="Legal name" req value="Công ty TNHH …" />
+        {/* TWO groups, because the fields answer two different questions. "Who is
+            this company to us" is how a rep finds and talks about them; "what must
+            print on their invoice" is a fiscal contract. Mixing them is what had a
+            rep filling in a tax code between a brand name and an industry. */}
+        <JobGroup title="Thông tin cơ bản">
+          {/* Tên hiển thị first and REQUIRED: it is the name every list, board and
+              conversation uses. The legal name lives in the invoice group, where it
+              is needed verbatim — nobody says "Công ty TNHH Phần mềm FPT" out loud. */}
+          {/* ONE name here. "Tên công ty" duplicated Tên đơn vị in the invoice group —
+              two boxes for the same company, filled by the same rep, drifting apart
+              from the first typo onwards. The display name is what the system uses
+              everywhere; the legal name is asked once, where it is needed verbatim. */}
+          <LField label="Tên hiển thị / Short name" req value="e.g. FPT, Tiki, NEC" hint="Tên dùng khắp hệ thống: danh sách, pipeline, bảng pipeline, trang công ty. Tên pháp lý để in hóa đơn nằm ở nhóm Thông tin xuất hóa đơn." />
           <div className="grid grid-cols-2 gap-3">
-            <LField label="Short name" value="e.g. FPT, Tiki, NEC" hint="Display / brand name — shown on the pipeline & company page." />
-            {/* MST first-class: it is the key the whole dedup + affiliate flow hangs
-                off, and the lookup that can fill the rest of this section. */}
+            <LField label="Industry" value="IT / Software" select />
+            <LField label="Company size" value="100–499 staff" select />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
+            <CompanyTagPicker />
+          </div>
+          {/* Quốc tịch gates the province picker: a Vietnamese company gets the
+              63-province list, a foreign one does not. */}
+          <ComboField
+            label="Quốc tịch / Country"
+            value={country}
+            onChange={setCountry}
+            placeholder="Select a country…"
+            options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? ['Việt Nam']}
+          />
+          {isVN ? (
+            <LField label="Tỉnh / Thành phố · City" value="Hồ Chí Minh" select hint="Tỉnh/thành của trụ sở — từ Master data → Locations." />
+          ) : (
+            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+              Không phải công ty Việt Nam nên <b className="text-ink">không chọn Tỉnh / Thành phố</b> — ghi thành phố vào <b className="text-ink">Địa chỉ xuất hóa đơn</b> ở nhóm dưới.
+            </p>
+          )}
+          <LField label="Website" value="company.vn" />
+        </JobGroup>
+
+        <JobGroup title="Thông tin xuất hóa đơn">
+          {/* FIRST in the group, because it decides which of the fields below even
+              exist. Asking for a tax code and then removing the field is worse than
+              asking one question up front. */}
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Phân loại người mua <span className="text-rose-500">*</span></label>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setBuyer(k)}
+                  className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', buyer === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted hover:border-ink/30')}
+                >
+                  {BUYER_TYPE[k].vi}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{BUYER_TYPE[buyer].hint}</p>
+          </div>
+
+          {/* The NAME line, and which one it is depends on the buyer. For a company
+              it is the legal name; for an individual the person REPLACES it — an
+              individual has no Tên đơn vị, and leaving an empty company-name field
+              on the form invites someone to type the person's name into it. */}
+          {isIndiv ? (
+            buyer === 'ca-nhan'
+              ? (
+                <div>
+                  <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Họ tên người mua hàng</label>
+                  <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2 text-[12.5px] text-muted">
+                    <span className="font-medium text-ink/70">{RETAIL_BUYER}</span>
+                    <span className="ml-auto shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px]">hệ thống tự điền</span>
+                  </div>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Cá nhân không có CCCD — hóa đơn in đúng câu này. Không nhập tay, không sửa.</p>
+                </div>
+              )
+              : <LField label="Họ tên người mua hàng" req value="Nguyễn Văn A" hint="In vào dòng “Họ tên người mua hàng” trên hóa đơn. Cá nhân không có Tên đơn vị." />
+          ) : (
+            <LField label="Tên đơn vị / Legal name" req value="Công ty TNHH …" hint="Đúng như trên giấy phép — in vào dòng “Tên đơn vị” trên hóa đơn VAT." />
+          )}
+
+          {/* MST exists only for a Vietnamese company. A foreign company has no
+              Vietnamese tax code and an individual has none at all, so the field is
+              REMOVED rather than shown empty with a note — an input nobody may fill
+              is a question the form should not have asked. */}
+          {BUYER_TYPE[buyer].tax === 'req' && (
             <div>
-              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Tax code (MST) <span className="text-rose-500">*</span></label>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Mã số thuế (MST) <span className="text-rose-500">*</span></label>
               <div className="flex gap-1.5">
                 <input value={tax} onChange={(e) => { setTax(e.target.value); setLooked(false) }} placeholder="0328xxxxxx-001" className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
                 <button onClick={lookup} disabled={!rootHit || looking} className={cn('shrink-0 rounded-md px-2.5 py-2 text-[11.5px] font-semibold', rootHit && !looking ? 'bg-brand text-white hover:opacity-90' : 'cursor-not-allowed bg-canvas text-faint')}>
@@ -10069,12 +10758,45 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               </div>
               <p className="mt-1 text-[10.5px] leading-relaxed text-faint">10 số, hoặc 10 số + “-001” nếu là chi nhánh.</p>
             </div>
-          </div>
+          )}
+          {buyer === 'dn-nn' && (
+            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+              Doanh nghiệp nước ngoài <b className="text-ink">không có MST Việt Nam</b> — không hỏi mã số thuế. Hóa đơn vẫn cần <b className="text-ink">tên đơn vị</b> và <b className="text-ink">địa chỉ xuất hóa đơn</b>.
+            </p>
+          )}
+
+          {/* CCCD is the individual's identifier and is never stored in the MST
+              field — different format, different legal meaning. */}
+          {BUYER_TYPE[buyer].needsIdCard && (
+            <LField label="Số CCCD" req value="079xxxxxxxxx" hint="Căn cước công dân — in vào dòng “Căn cước công dân”. Không dùng ô MST." />
+          )}
+
+          {/* No address for a buyer who provided nothing — see the note below. */}
+          {!BUYER_TYPE[buyer].noAddress && (
+            <div>
+              <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Địa chỉ xuất hóa đơn <span className="text-rose-500">*</span></label>
+              <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{isVN ? 'Số nhà, tên đường, phường/xã, quận/huyện' : 'Street, city, postal code, country'}</div>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                In trên báo giá, đơn hàng và hóa đơn VAT. Bắt buộc với các phân loại còn lại, kể cả doanh nghiệp nước ngoài không có MST. Được viết tắt các danh từ thông dụng (P, TP, VN, CP, TNHH, KCN, CN…) miễn còn xác định chính xác địa chỉ.
+              </p>
+            </div>
+          )}
+          {/* The consequence the customer feels, straight from the decree: an invoice
+              with no buyer information cannot be used by an organisation to record an
+              expense or in a tax settlement. A rep picking this for someone who is
+              really buying for a company has just guaranteed a re-issue request. */}
+          {BUYER_TYPE[buyer].noAddress && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+              Khối người mua chỉ có một dòng <b>“{RETAIL_BUYER}”</b> — không MST, không CCCD, không địa chỉ.
+              <b className="mt-1 block">Hóa đơn này khách KHÔNG dùng để hạch toán chi phí hay quyết toán thuế được</b>
+              <span className="text-amber-800/85">(điểm 4, Phụ lục NĐ 254/2026/NĐ-CP). Chỉ chọn khi khách thật sự là người tiêu dùng cá nhân và không cung cấp thông tin.</span>
+            </p>
+          )}
 
           {looked && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-emerald-900">
               <p className="font-semibold">✓ Đã lấy thông tin từ cơ quan thuế</p>
-              <p className="mt-1">Tên pháp lý, địa chỉ đăng ký và ngành nghề đã được điền. <b>Rep vẫn sửa được</b> — dữ liệu đăng ký thường là địa chỉ trụ sở, không phải nơi làm việc thực tế.</p>
+              <p className="mt-1">Tên đơn vị, địa chỉ đăng ký và ngành nghề đã được điền. <b>Rep vẫn sửa được</b> — dữ liệu đăng ký thường là địa chỉ trụ sở, không phải nơi làm việc thực tế.</p>
             </div>
           )}
 
@@ -10095,8 +10817,6 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
                   {parentPick && <> công ty con của <b>{parentPick}</b>.</>}
                   {childPicks.length > 0 && <> công ty mẹ của <b>{childPicks.join(', ')}</b>.</>}
                   <span className="block text-brand/70">Liên kết chỉ để tra cứu — MST, hợp đồng, quota, hoá đơn và sales phụ trách vẫn riêng của từng công ty.</span>
-                  {/* Both directions at once is legal (a middle layer of a group) but
-                      it is also the only way to describe a loop, so say when it is checked. */}
                   {parentPick && childPicks.length > 0 && (
                     <span className="mt-1 block rounded bg-amber-100 px-1.5 py-1 text-amber-900">Công ty này sẽ nằm giữa hai tầng. Hệ thống kiểm tra liên kết vòng khi lưu — nếu công ty mẹ đã nằm dưới một trong các công ty con, liên kết sẽ bị từ chối.</span>
                   )}
@@ -10115,43 +10835,6 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <LField label="Industry" value="IT / Software" select />
-            <LField label="Company size" value="100–499 staff" select />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
-            <CompanyTagPicker />
-          </div>
-          {/* Quốc tịch gates the province picker: a Vietnamese company gets the
-              63-province list, a foreign one does not (its city goes in Address). */}
-          <ComboField
-            label="Quốc tịch / Country"
-            value={country}
-            onChange={setCountry}
-            placeholder="Select a country…"
-            options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? ['Việt Nam']}
-          />
-          {isVN ? (
-            <LField label="Tỉnh / Thành phố · City" value="Hồ Chí Minh" select hint="Vietnamese province or city of the head office — from Master data → Locations." />
-          ) : (
-            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-              Không phải công ty Việt Nam nên <b className="text-ink">không chọn Tỉnh / Thành phố</b> — ghi thành phố vào Address bên dưới.
-            </p>
-          )}
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Address</label>
-            <div className="flex gap-1.5">
-              <div className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{isVN ? 'Số nhà, tên đường, phường/xã, quận/huyện' : 'Street, city, postal code, country'}</div>
-              {/* Optional: pick the address on a map so the pin is stored alongside
-                  the text. Sales use it to find the office; the printed documents
-                  still use the typed address. */}
-              <button className="shrink-0 rounded-md border border-line px-2.5 py-2 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">Chọn trên bản đồ</button>
-            </div>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Địa chỉ trụ sở — in trên báo giá, đơn hàng và hoá đơn. Bắt buộc với mọi quốc gia. Chọn trên bản đồ để lưu kèm toạ độ (tuỳ chọn).</p>
-          </div>
-          <LField label="Website" value="company.vn" />
         </JobGroup>
 
         {/* Uploaded at creation because it is what proves the MST belongs to them —
@@ -11100,83 +11783,415 @@ function AdminQuotes() {
    awaiting one, which is the PO list's job. So this list carries no "blocked"
    or "draft" rows: every row here is a real fiscal document with a legal number.
    That is why there are only two statuses. */
-type Inv = { code: string; legal: string; customer: string; co?: string; po: string; payment: string; total: number; issued: string; activateBy: string; cancelled?: boolean; replacedBy?: string; product: number; qty: number; issuer: string }
-const INVOICES: Inv[] = [
-  { code: 'INV-003390-07-2026', legal: '1C26TAA/0041', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', po: 'PO-005863-07-2026', payment: 'PAY-1042', total: 37_800_000, issued: '26/07/2026', activateBy: '26/07/2027', product: 1, qty: 5, issuer: 'Lê Thị Kế Toán' },
-  { code: 'INV-003389-07-2026', legal: '1C26TAA/0040', customer: 'Công ty CP Trường Sơn', co: 'Công ty CP Trường Sơn', po: 'PO-005859-07-2026', payment: 'PAY-1044', total: 73_929_353, issued: '24/07/2026', activateBy: '24/07/2027', product: 2, qty: 7, issuer: 'Lê Thị Kế Toán' },
-  { code: 'INV-003388-07-2026', legal: '1C26TAA/0039', customer: 'Hồng Đức', po: 'PO-005855-07-2026', payment: 'PAY-1039', total: 139_609_357, issued: '06/07/2026', activateBy: '—', cancelled: true, replacedBy: 'INV-003391-07-2026 · 1C26TAA/0042', product: 2, qty: 14, issuer: 'Lê Thị Kế Toán' },
-]
+/* ── VAT e-invoice ────────────────────────────────────────────────────────────
+   ONE number, the provider's own: 1C26TTD-173. The separate internal INV-…
+   sequence is gone — it existed to give an invoice a code before the provider
+   issued one, and a draft already carries a number in this series, so it bought
+   nothing and gave support two numbers to ask about.
 
-function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
-  useDetailCrumb(inv.code, onBack)
+   Four statuses, and they mirror the PO exactly, because an invoice IS the second
+   half of a PO's life:
+
+     Draft invoice      nháp — a working document. No legal force, nothing filed
+                        with the tax authority, and it grants the customer NOTHING.
+     Invoice requested  Sales has asked Kế toán to make it official.
+     Invoice issued     chính — signed and filed. THIS is what releases the product.
+     Expired            the PO lapsed at month end before it was ever made
+                        official. See the note on invExpired below.
+
+   ARCHIVED stays as a fifth, and only ever applies to an ISSUED one:
+   VN regulation forbids editing a filed invoice, so a wrong one is cancelled and
+   re-issued with a biên bản. That is also the route for an invoice issued ahead
+   of a payment that never arrived. */
+type InvStep = 'draft' | 'requested' | 'issued' | 'archived'
+const INV_STAGE: Record<InvStep, { vi: string; en: string; tone: StatusTone; by: string }> = {
+  draft: { vi: 'Hóa đơn nháp', en: 'Draft', tone: 'draft', by: 'Sales' },
+  requested: { vi: 'Đang yêu cầu xuất hóa đơn chính', en: 'Invoice requested', tone: 'schedule', by: 'Sales' },
+  issued: { vi: 'Đã xuất hóa đơn chính', en: 'Invoice issued', tone: 'active', by: 'Kế toán' },
+  archived: { vi: 'Lưu trữ — PO đã hết hạn', en: 'Archived', tone: 'expired', by: 'System' },
+}
+type Inv = { code: string; step: InvStep; customer: string; co?: string; po: string; payment?: string; total: number; issued: string; activateBy: string; product: number; qty: number; issuer: string }
+
+const invStage = (i: Inv) => INV_STAGE[i.step]
+
+/* ── VAT e-invoice as PDF ──────────────────────────────────────────────────────
+   The provider's own template (easyinvoice), reproduced because Kế toán and the
+   customer both work from this exact sheet. It renders in TWO forms off one
+   component, and the differences are the whole point:
+
+     NHÁP (draft)   Số : <Chưa cấp số>. No seller signature block, no tax-authority
+                    code, no lookup URL. It is a working proof, not a document — it
+                    grants nothing and is filed nowhere.
+     CHÍNH (issued) Số : 175 — allocated by the provider, sequential and gapless.
+                    Carries the digital signature block, the "Mã của cơ quan thuế"
+                    and the lookup page. THIS is the fiscal document.
+
+   Which buyer lines print depends on the company's BuyerType: a company shows Tên
+   đơn vị + Mã số thuế; an individual shows Họ tên người mua hàng + Căn cước công
+   dân; a foreign company shows the name and address with the tax line blank. */
+/* ── Bilingual labels on a VAT invoice ────────────────────────────────────────
+   Nghị định 123/2020 điều 10 khoản 13: the writing on an invoice is VIETNAMESE.
+   Foreign text is allowed, but only as an ADDITION — placed in parentheses to the
+   right of the Vietnamese, or on the line directly below it, and in a SMALLER
+   font. It may never replace the Vietnamese or be printed at equal size.
+
+   So the "Tên đơn vị / Legal name" slash format the quotation and the PO use is
+   fine on those documents and NOT fine here. Everything on this sheet goes
+   through InvLabel / InvHead, which enforce the shape: Vietnamese first, English parenthesised
+   and one step smaller. */
+function InvLabel({ vi, en }: { vi: string; en: string }) {
+  return (
+    <>
+      {vi} <span className="text-[8px] font-normal italic text-slate-500">({en})</span>
+    </>
+  )
+}
+/** Same rule inside a table header, where the English goes BELOW rather than beside
+    — the decree allows either placement. */
+function InvHead({ vi, en }: { vi: string; en: string }) {
+  return (
+    <>
+      {vi}
+      <span className="block text-[7px] font-normal italic text-slate-500">({en})</span>
+    </>
+  )
+}
+
+function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
   const pack = QUOTE_CATALOG[inv.product]
   const sub = Math.round(inv.total / (1 + VAT_RATE / 100))
   const vat = inv.total - sub
   const unit = Math.round(sub / inv.qty)
+  const official = inv.step === 'issued'
+  const bt = BUYER_TYPE[co?.buyerType ?? 'dn-vn']
+  // The provider allocates the number only when the invoice is made official.
+  const serial = inv.code.split('-')[0]
+  const no = official ? inv.code.split('-')[1] : null
+  const d = (official && inv.issued !== '—' ? inv.issued : '11/08/2026').split('/')
+  const COLS = '34px minmax(0,2.3fr) 52px 56px 82px 92px 40px 78px 92px'
+  const Cell = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
+    <span className={cn('border-r border-slate-300 px-1.5 py-1 text-[9px] leading-snug last:border-r-0', className)}>{children}</span>
+  )
+
+  return (
+    <div className="mx-auto bg-white text-slate-900 shadow-xl" style={{ width: 794 }}>
+      <div className="px-[44px] py-[36px]">
+        {/* seller — the issuer block is fixed, from System → Company information */}
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 pt-1"><SaraminMark width={92} /></div>
+          <div className="min-w-0 text-[9.5px] leading-relaxed">
+            <p><span className="text-slate-500"><InvLabel vi="Đơn vị bán hàng" en="Seller" /> : </span><b>{ISSUER.nameVi}</b></p>
+            <p><span className="text-slate-500"><InvLabel vi="Mã số thuế" en="Tax code" />: </span><b>0315421202</b></p>
+            <p><span className="text-slate-500"><InvLabel vi="Địa chỉ" en="Address" /> : </span>{ISSUER.addrVi}</p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-start gap-4 border-t border-slate-300 pt-3">
+          {/* the QR only exists once the provider has signed and filed it */}
+          <div className="shrink-0">
+            {official
+              ? <div className="grid h-[88px] w-[88px] place-items-center border border-slate-800 text-[8px] text-slate-400">QR</div>
+              : <div className="grid h-[88px] w-[88px] place-items-center border border-dashed border-slate-300 text-center text-[8px] leading-tight text-slate-300">chưa có<br />QR</div>}
+          </div>
+          <div className="min-w-0 flex-1 text-center">
+            <p className="text-[17px] font-bold uppercase tracking-wide text-red-600">Hóa đơn giá trị gia tăng</p>
+            <p className="text-[10px] font-semibold italic text-red-600">(VAT INVOICE)</p>
+            {!official && (
+              <p className="mx-auto mt-1 inline-block bg-yellow-100 px-2 py-0.5 text-[13px] font-bold text-red-600">
+                HÓA ĐƠN NHÁP — chưa có giá trị pháp lý
+              </p>
+            )}
+            <p className="mt-1 text-[9.5px]">
+              Ngày <b className="px-1">{d[0]}</b> tháng <b className="px-1">{d[1]}</b> năm <b className="px-1">{d[2]}</b>
+            </p>
+          </div>
+          <div className="w-[150px] shrink-0 text-[9.5px] leading-relaxed">
+            <p><span className="text-slate-500">Ký hiệu: </span><b>{serial}</b></p>
+            <p className="mt-0.5">
+              <span className="text-slate-500">Số : </span>
+              {official
+                ? <b className="rounded border border-red-300 px-2 py-0.5 text-red-600">{no}</b>
+                : <b className="text-red-600">&lt;Chưa cấp số&gt;</b>}
+            </p>
+          </div>
+        </div>
+
+        {/* buyer — WHICH lines carry a value depends on the buyer type */}
+        <dl className="mt-3 space-y-[3px] text-[9.5px] leading-relaxed">
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Họ tên người mua hàng" en="Buyer name" /> :</dt>
+            {/* A named person when we have one; the fixed consumer-sale phrase when
+                the buyer is an individual with no CCCD; blank for a company, where
+                the name belongs on Tên đơn vị instead. */}
+            <dd className="min-w-0 flex-1 font-bold">
+              {bt.needsBuyerName ? (co?.buyerName ?? '') : (co?.buyerType ?? 'dn-vn') === 'ca-nhan' ? RETAIL_BUYER : ''}
+            </dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Tên đơn vị" en="Company name" /> :</dt>
+            <dd className="min-w-0 flex-1 font-bold uppercase">{co?.legalName ?? inv.customer}</dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Mã số thuế" en="Tax code" /> :</dt>
+            <dd className="min-w-0 flex-1 font-bold tabular-nums">{bt.tax === 'req' ? (co?.tax ?? '') : ''}</dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Căn cước công dân" en="Citizen ID" /> :</dt>
+            <dd className={cn('min-w-0 flex-1 tabular-nums', bt.needsIdCard && 'font-bold')}>{bt.needsIdCard ? (co?.idCard ?? '') : ''}</dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Địa chỉ" en="Address" /> :</dt>
+            {/* Blank for a buyer who provided nothing — the decree's "Bán cho người
+                tiêu dùng" case carries no name, address or ID at all. */}
+            <dd className="min-w-0 flex-1 font-bold">{bt.noAddress ? '' : (co?.address ?? '')}</dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Hình thức thanh toán" en="Payment method" /> :</dt>
+            <dd className="min-w-0 flex-1 font-bold">Chuyển khoản</dd>
+          </div>
+          <div className="flex gap-1 border-b border-dotted border-slate-300">
+            <dt className="shrink-0 text-slate-600"><InvLabel vi="Đơn vị tiền tệ" en="Currency" /> :</dt>
+            <dd className="min-w-0 flex-1 font-bold">VND</dd>
+          </div>
+        </dl>
+
+        {/* line table — the provider's numbered column headers */}
+        <div className="mt-3 border border-slate-400">
+          <div className="grid border-b border-slate-400 bg-white text-center text-[9px] font-semibold" style={{ gridTemplateColumns: COLS }}>
+            <Cell><InvHead vi="STT" en="No." /></Cell>
+            <Cell><InvHead vi="Tên hàng hóa, dịch vụ" en="Description" /></Cell>
+            <Cell><InvHead vi="Đơn vị tính" en="Unit" /></Cell>
+            <Cell><InvHead vi="Số lượng" en="Quantity" /></Cell>
+            <Cell><InvHead vi="Đơn giá" en="Unit price" /></Cell>
+            <Cell><InvHead vi="Thành tiền trước thuế" en="Amount before VAT" /></Cell>
+            <Cell><InvHead vi="Thuế suất" en="VAT rate" /></Cell>
+            <Cell><InvHead vi="Tiền thuế" en="VAT amount" /></Cell>
+            <Cell><InvHead vi="Tổng tiền thanh toán" en="Total payable" /></Cell>
+          </div>
+          <div className="grid border-b border-slate-300 text-center text-[8px] text-slate-500" style={{ gridTemplateColumns: COLS }}>
+            <Cell>1</Cell><Cell>2</Cell><Cell>3</Cell><Cell>4</Cell><Cell>5</Cell><Cell>6=4x5</Cell><Cell>7</Cell><Cell>8</Cell><Cell>9=6+8</Cell>
+          </div>
+          <div className="grid min-h-[96px] border-b border-slate-400" style={{ gridTemplateColumns: COLS }}>
+            <Cell className="text-center">1</Cell>
+            <Cell className="text-left">{pack.vi}</Cell>
+            <Cell className="text-center">{pack.unitVi}</Cell>
+            <Cell className="text-center tabular-nums">{inv.qty}</Cell>
+            <Cell className="text-right tabular-nums">{pdfNum(unit)}</Cell>
+            <Cell className="text-right tabular-nums">{pdfNum(sub)}</Cell>
+            <Cell className="text-center tabular-nums">{VAT_RATE}%</Cell>
+            <Cell className="text-right tabular-nums">{pdfNum(vat)}</Cell>
+            <Cell className="text-right font-semibold tabular-nums">{pdfNum(inv.total)}</Cell>
+          </div>
+          {/* the provider's VAT-rate summary block, every band listed */}
+          <div className="grid border-b border-slate-400 bg-white text-[9px] font-semibold" style={{ gridTemplateColumns: 'minmax(0,2fr) 56px 1fr 1fr 1.2fr' }}>
+            <Cell><InvHead vi="Tổng hợp" en="Summary" /></Cell>
+            <Cell className="text-center"><InvHead vi="Thuế suất" en="VAT rate" /></Cell>
+            <Cell className="text-center"><InvHead vi="Tổng tiền trước thuế" en="Total before VAT" /></Cell>
+            <Cell className="text-center"><InvHead vi="Tổng tiền thuế" en="Total VAT" /></Cell>
+            <Cell className="text-center"><InvHead vi="Tổng tiền thanh toán" en="Total payable" /></Cell>
+          </div>
+          {([
+            ['Tổng tiền không chịu thuế:', 'KCT', false],
+            ['Tổng tiền chịu thuế suất:', '0%', false],
+            ['Tổng tiền chịu thuế suất:', '5%', false],
+            ['Tổng tiền chịu thuế suất:', `${VAT_RATE}%`, true],
+            ['Tổng tiền chịu thuế suất:', '10%', false],
+            ['Tổng tiền không tính thuế:', 'KKKNT', false],
+            ['Tổng tiền chịu thuế suất:', 'KHAC', false],
+          ] as const).map(([label, band, on], i) => (
+            <div key={i} className="grid border-b border-slate-300 text-[9px]" style={{ gridTemplateColumns: 'minmax(0,2fr) 56px 1fr 1fr 1.2fr' }}>
+              <Cell>{label}</Cell>
+              <Cell className="text-center">{band}</Cell>
+              <Cell className={cn('text-right tabular-nums', on && 'font-bold')}>{on ? pdfNum(sub) : ''}</Cell>
+              <Cell className={cn('text-right tabular-nums', on && 'font-bold')}>{on ? pdfNum(vat) : ''}</Cell>
+              <Cell className={cn('text-right tabular-nums', on && 'font-bold')}>{on ? pdfNum(inv.total) : ''}</Cell>
+            </div>
+          ))}
+          <div className="grid border-b border-slate-400 text-[9px] font-bold" style={{ gridTemplateColumns: 'minmax(0,2fr) 56px 1fr 1fr 1.2fr' }}>
+            <Cell>Tổng cộng :</Cell><Cell />
+            <Cell className="text-right tabular-nums">{pdfNum(sub)}</Cell>
+            <Cell className="text-right tabular-nums">{pdfNum(vat)}</Cell>
+            <Cell className="text-right tabular-nums">{pdfNum(inv.total)}</Cell>
+          </div>
+          <div className="px-1.5 py-1 text-[9px]">
+            <span className="text-slate-600"><InvLabel vi="Số tiền viết bằng chữ" en="Amount in words" /> : </span><b>{vnWords(inv.total)}</b>
+          </div>
+        </div>
+
+        {/* signature row — the seller block only exists on an official invoice */}
+        <div className="mt-4 grid grid-cols-2 gap-6 text-center text-[9.5px]">
+          <div>
+            <p className="font-bold">Người mua hàng</p>
+            <div className="h-[64px]" />
+          </div>
+          <div>
+            <p className="font-bold">Người bán hàng</p>
+            {official ? (
+              <div className="mt-1.5 inline-block rounded border border-red-300 px-3 py-1.5 text-left text-[8.5px] leading-snug">
+                <p className="font-semibold text-slate-700">Signature Valid</p>
+                <p className="mt-0.5 text-red-600">✅ bởi: {ISSUER.nameVi}</p>
+                <p className="text-red-600">Ký ngày: {inv.issued !== '—' ? inv.issued.replace(/\//g, '-') : '—'}</p>
+              </div>
+            ) : (
+              <div className="mt-1.5 inline-block rounded border border-dashed border-slate-300 px-3 py-3 text-[8.5px] text-slate-400">chưa ký số</div>
+            )}
+          </div>
+        </div>
+
+        {/* the tax-authority code and lookup page exist only once it is filed */}
+        {official ? (
+          <div className="mt-3 border-t border-slate-300 pt-2 text-[8.5px] leading-relaxed">
+            <p><span className="text-slate-600">Mã của cơ quan thuế: </span><b className="font-mono">0035FDFC78864F4C08BA320C8F8A9D9EE6</b></p>
+            <p>
+              <span className="text-slate-600">Trang tra cứu: </span>
+              <span className="text-sky-700 underline">http://0315421202hd.easyinvoice.com.vn</span>
+              <span className="text-slate-600"> · Mã tra cứu: </span><b className="font-mono">RO2NN7MLS</b>
+            </p>
+            <p className="text-slate-400">(Cần kiểm tra, đối chiếu khi lập, giao, nhận hóa đơn)</p>
+          </div>
+        ) : (
+          <p className="mt-3 border-t border-dashed border-slate-300 pt-2 text-[8.5px] leading-relaxed text-slate-400">
+            Bản nháp: chưa có số hóa đơn, chưa ký số, chưa có mã của cơ quan thuế và chưa có trang tra cứu. Chỉ dùng để khách đối chiếu thông tin trước khi xuất chính thức.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InvoicePdfModal({ inv, co, onClose }: { inv: Inv; co?: Company; onClose: () => void }) {
+  const [zoom, setZoom] = useState(0.9)
+  const official = inv.step === 'issued'
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-2.5 text-white">
+        <span className="text-[13px] font-semibold">{official ? 'Hóa đơn chính / Official invoice' : 'Hóa đơn nháp / Draft invoice'}</span>
+        <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px]">{inv.code}.pdf</span>
+        {!official && <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10.5px] font-medium text-amber-300">chưa cấp số · chưa ký số</span>}
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center overflow-hidden rounded-md border border-slate-600">
+            <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">−</button>
+            <span className="min-w-[46px] px-1 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">+</button>
+          </div>
+          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">🖨 In / Print</button>
+          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">⬇ Tải PDF</button>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-slate-300 hover:bg-white/10">✕</button>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div style={{ width: 794 * zoom, margin: '0 auto' }}>
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: 794 }}>
+            <InvoicePdfDoc inv={inv} co={co} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
+  useDetailCrumb(inv.code, onBack)
+  const [pdf, setPdf] = useState(false)
+  /* Confirming payment is ONE write, against the PO. The invoice and the PO both
+     read that fact, so the PO's payment column follows by construction rather than
+     by a second update that could fail on its own. Local state here only because
+     the mock has no store. */
+  const [paidNow, setPaidNow] = useState<string | null>(null)
+  const pay = invPay(inv)
+  const payNow = payStatus(paidNow ?? pay.paidAt, pay.poIssued)
+  /* `customer` on an invoice may be the record name, the legal name or the display
+     name depending on which row wrote it — match on all of them, or the buyer block
+     silently prints as a company when it should print as an individual. */
+  const invCo = COMPANIES.find((x) => x.name === inv.co)
+    ?? COMPANIES.find((x) => x.name === inv.customer || x.legalName === inv.customer || coLabel(x) === inv.customer)
+  const pack = QUOTE_CATALOG[inv.product]
+  const sub = Math.round(inv.total / (1 + VAT_RATE / 100))
+  const vat = inv.total - sub
+  const unit = Math.round(sub / inv.qty)
+  const st = invStage(inv)
   return (
     <div>
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Hóa đơn GTGT / VAT e-invoice</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">
+            {inv.step === 'issued'
+              ? 'Hóa đơn GTGT / VAT e-invoice'
+              : inv.step === 'archived'
+                ? 'Hóa đơn nháp / Draft — lưu trữ, PO đã hết hạn'
+                : 'Hóa đơn nháp / Draft — chưa có giá trị pháp lý, chưa cấp quota'}
+          </p>
           <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
-            <span className="font-mono">{inv.legal}</span>
-            <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled' : 'Issued'}</Pill>
+            <span className="font-mono">{inv.code}</span>
+            <Pill tone={st.tone}>{st.en}</Pill>
+            {/* The second, independent axis. An issued invoice can still be unpaid,
+                and an unpaid one can still be overdue — none of which is a document
+                status, so it gets its own badge instead of changing that one. */}
+            <PayCell paidAt={paidNow ?? pay.paidAt} poIssued={pay.poIssued} />
           </h2>
-          <p className="text-[11.5px] text-muted">Số nội bộ {inv.code} · {inv.customer}</p>
+          <p className="text-[11.5px] text-muted">{st.vi} · {inv.customer}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Tải PDF</button>
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink hover:border-ink/40">Xem PO nguồn</button>
-          {/* The ONLY place a sale is undone. The PO has no Cancelled status, so
-              this button carries both cases: a wrong invoice being replaced, and
-              an invoice issued ahead of a payment that never arrived. */}
-          {!inv.cancelled && (
+        {/* Read left to right: the action, then the documents. Every invoice has a
+            draft behind it, and an issued one has TWO documents worth opening —
+            checking the filed sheet against the draft it came from is a real task,
+            so each gets its own button rather than one button that changes meaning.
+            The official one sits furthest right: it is the one that counts.
+            Printing and downloading live inside the viewer, so neither of these is
+            a second download button. */}
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {/* A DRAFT carries a Sales action only. Kế toán opening this screen gets
+              told why there is nothing for them to do, rather than looking for a
+              button that was never rendered — "the request has not been made yet"
+              is a different problem from "I lack the permission". */}
+          {inv.step === 'draft' && (
+            <>
+              <span className="text-[11px] text-muted">Kế toán chỉ xuất được hóa đơn chính khi Sales đã <b className="text-ink/75">yêu cầu</b>.</span>
+              <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Yêu cầu xuất hóa đơn chính</button>
+            </>
+          )}
+          {inv.step === 'requested' && (
+            <button className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xuất hóa đơn chính<span className="ml-1 font-normal opacity-90">· Kế toán</span></button>
+          )}
+          {/* KẾ TOÁN ONLY, and only while the money is outstanding — Unpaid or
+              Overdue. It is independent of the document status: an invoice can be
+              issued and unpaid, or still a draft and already paid. */}
+          {payNow !== 'Paid' && (
             <button
-              title="Hủy hóa đơn + biên bản, và thu hồi quota đã cấp. Dùng cho hóa đơn sai, hoặc hóa đơn xuất trước thanh toán mà khách không trả tiền."
-              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400"
+              onClick={() => setPaidNow(dateBefore(0))}
+              title={`Xác nhận đã nhận tiền. Ghi vào PO ${inv.po} — cột Thanh toán của PO cập nhật theo. Chỉ Kế toán.`}
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90"
             >
-              Hủy hóa đơn · Kế toán
+              Confirm payment<span className="ml-1 font-normal opacity-90">· Kế toán</span>
             </button>
           )}
-          {inv.cancelled && (
-            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xem hóa đơn thay thế →</button>
+          {paidNow && (
+            <span className="text-[11px] text-emerald-700">✓ Đã ghi vào <b className="font-mono">{inv.po}</b></span>
           )}
+          {/* No draft viewer here. A draft is produced and read on its PO — this
+              screen is for the document that was filed. Two buttons that opened the
+              same modal only made a reader ask which one they were looking at. */}
+          <button
+            onClick={() => setPdf(true)}
+            className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink hover:border-brand hover:text-brand"
+          >
+            {inv.step === 'issued' ? 'Xem hóa đơn chính' : 'Xem hóa đơn'}
+          </button>
         </div>
       </div>
 
-      {/* One row, one status, and the actions that status actually permits. An
-          issued invoice has no forward action at all — that is the rule, not a
-          gap, so the row states it instead of showing an empty space. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-faint">Trạng thái</span>
-          <Pill tone={inv.cancelled ? 'expired' : 'active'}>{inv.cancelled ? 'Cancelled' : 'Issued'}</Pill>
-          <span className="text-[11px] text-muted">{inv.cancelled ? 'Đã hủy — đã có hóa đơn thay thế' : 'Đã xuất hóa đơn'}</span>
-        </div>
-        <span className="text-[11.5px] font-medium text-emerald-700">
-          {inv.cancelled
-            ? '✓ Đã xử lý xong — không còn hành động nào trên hóa đơn này'
-            : '✓ Hóa đơn hợp lệ — không sửa được. Hành động duy nhất còn lại là hủy + xuất thay thế.'}
-        </span>
-      </div>
-
-      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
-        Hóa đơn đã xuất là <b>bất biến</b> — không sửa được. Sai sót xử lý bằng <b>hủy + xuất hóa đơn thay thế kèm biên bản</b> theo
-        quy định. Chỉ <b>Kế toán</b> được thực hiện.
-      </div>
-      {inv.cancelled && (
-        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11.5px] text-rose-900">
-          Hóa đơn này đã bị hủy và thay thế bởi <b className="font-mono">{inv.replacedBy}</b>.
-        </div>
-      )}
+      {/* No status banner and no explanatory notes on the record. The eyebrow, the
+          pill beside the number and the button row already say what this document
+          is and what may be done to it; a stack of coloured boxes repeating it was
+          pushing the invoice itself below the fold. The rules live in the
+          requirement, not on every record. */}
 
       <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5 sm:grid-cols-5">
-        <InfoBit label="Số hóa đơn hợp lệ" value={inv.legal} mono hint="do nhà cung cấp cấp" />
-        <InfoBit label="Ngày xuất / Issued" value={inv.issued} hint="một SỰ KIỆN, không phải kế hoạch" />
-        <InfoBit label="Kích hoạt trước / Activate by" value={inv.activateBy} hint="ngày xuất + 12 tháng" />
+        <InfoBit label="Số hóa đơn" value={inv.code} mono hint={inv.step === 'issued' ? 'do nhà cung cấp cấp' : 'chưa có giá trị pháp lý'} />
+        <InfoBit label="Ngày xuất chính / Issued" value={inv.issued} hint={inv.step === 'issued' ? 'một SỰ KIỆN, không phải kế hoạch' : inv.step === 'archived' ? 'không bao giờ xuất chính' : 'chưa xuất chính'} />
+        <InfoBit label="Kích hoạt trước / Activate by" value={inv.activateBy} hint="ngày xuất chính + 12 tháng" />
         <InfoBit label="Từ PO" value={inv.po} mono />
-        <InfoBit label="Thanh toán đã xác nhận" value={inv.payment} mono hint={`bởi ${inv.issuer}`} />
+        <InfoBit label="Thanh toán đã xác nhận" value={inv.payment ?? '—'} mono hint={inv.payment ? `bởi ${inv.issuer}` : 'chưa có'} />
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4">
@@ -11215,6 +12230,8 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
           <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Số tiền viết bằng chữ: {vnWords(inv.total)}.</p>
         </div>
       </div>
+
+      {pdf && <InvoicePdfModal inv={inv} co={invCo} onClose={() => setPdf(false)} />}
     </div>
   )
 }
@@ -11222,314 +12239,237 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
 function AdminInvoices() {
   const [open, setOpen] = useState<Inv | null>(null)
   if (open) return <InvoiceDetail inv={open} onBack={() => setOpen(null)} />
+  /* Archived rows are withdrawn from the default list. A draft whose PO expired
+     never had legal force and granted nothing, so it is not an invoice to
+     reconcile — but it stays reachable through the Archived tab and from its PO,
+     because "what happened to that draft?" is a real month-end question. */
+  const rows = INVOICES.filter((i) => i.step !== 'archived')
   return (
+    <div>
     <ListPage
-      tabs={[{ label: 'All', count: 210, active: true }, { label: 'Issued' }, { label: 'Cancelled / replaced' }, { label: 'Activation expiring', count: 6 }]}
-      cols={[{ label: 'Invoice · legal no.', w: '1.7fr' }, { label: 'Customer', w: '1.4fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.2fr' }, { label: 'Issued', w: '0.9fr' }, { label: 'Activate by', w: '0.9fr' }]}
-      rows={INVOICES.map((i) => [
-        <button onClick={() => setOpen(i)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{i.code} · {i.legal}</button>,
-        <span className="truncate">{i.customer}</span>,
-        <span className="truncate font-mono text-[11px] text-muted">{i.po}</span>,
-        <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
-        <Pill tone={i.cancelled ? 'expired' : 'active'}>{i.cancelled ? 'Cancelled' : 'Issued'}</Pill>,
-        <span className="tabular-nums text-muted">{i.issued}</span>,
-        <span className="tabular-nums text-muted">{i.activateBy}</span>,
-      ])}
-      minW={1040}
+      tabs={[{ label: 'All', count: 210, active: true }, { label: 'Draft', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Archived', count: 4 }, { label: 'Activation expiring', count: 6 }]}
+      cols={[{ label: 'Invoice no.', w: '1.2fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.9fr' },
+        { label: 'Thanh toán', w: '1.1fr' },
+        { label: 'Issued', w: '0.9fr' }, { label: 'Activate by', w: '0.9fr' }]}
+      rows={rows.map((i) => {
+        const st = invStage(i)
+        return [
+          <button onClick={() => setOpen(i)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{i.code}</button>,
+          <span className="truncate">{i.customer}</span>,
+          <span className="truncate font-mono text-[11px] text-muted">{i.po}</span>,
+          <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
+          <Pill tone={st.tone}>{st.en}</Pill>,
+          <PayCell {...invPay(i)} />,
+          <span className="tabular-nums text-muted">{i.issued}</span>,
+          <span className="tabular-nums text-muted">{i.activateBy}</span>,
+        ]
+      })}
+      minW={1280}
+      total={rows.length}
     />
-  )
-}
-/* ── PO as PDF ─────────────────────────────────────────────────────────────────
-   Field-for-field the client's live document (PO-003971-08-2026): letterhead,
-   "XÁC NHẬN ĐƠN HÀNG / PURCHASE ORDER", the two header cells Ngày đặt hàng and
-   Số đơn hàng, client + VAT-billing blocks, ONE line table (a PO carries the one
-   option the customer accepted — never a choice), totals, amount in words, the
-   package benefits, the service terms, and a TWO-column signature page.
-
-   It shares the quotation's letterhead, table shell and terms on purpose: the
-   customer receives both documents in the same week, and a different-looking PO
-   reads as coming from a different company. */
-function PoPdfDoc({ po, co }: { po: Po; co?: Company }) {
-  const pack = QUOTE_CATALOG[po.product]
-  const sub = Math.round(po.total / (1 + VAT_RATE / 100))
-  const vat = po.total - sub
-  const unit = Math.round(sub / po.qty)
-  const issued = po.issued.replace(/\./g, '/')
-  const sd = signDate(issued)
-  const contact = co?.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0] ?? po.customer
-  const COLS = '28px minmax(0,2.6fr) 58px 46px 84px 58px 92px'
-
-  return (
-    <div className="mx-auto bg-white text-slate-800 shadow-xl" style={{ width: 794 }}>
-      <div className="px-[52px] py-[44px]">
-        {/* letterhead — identical to the quotation's */}
-        <div className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-3">
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-bold leading-snug text-slate-900">{ISSUER.nameVi}</p>
-            <p className="text-[11px] font-medium italic leading-snug text-slate-500">{ISSUER.nameEn}</p>
-            <p className="mt-1.5 text-[9.5px] leading-relaxed text-slate-600">{ISSUER.addrVi}</p>
-            <p className="text-[9.5px] italic leading-relaxed text-slate-400">{ISSUER.addrEn}</p>
-            <p className="mt-1 text-[9.5px] font-medium text-sky-700">{ISSUER.web}</p>
-          </div>
-          <div className="shrink-0 pt-0.5 text-right">
-            <SaraminMark width={104} />
-            <p className="mt-1.5 border-t border-slate-200 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              {ISSUER.brand} Vietnam
-            </p>
-          </div>
-        </div>
-
-        <p className="mt-2 text-[9.5px] text-slate-600">
-          <span className="text-slate-400">Phụ trách / Account:</span> <b className="text-slate-800">{po.seller}</b> | {po.seller.split(' ').pop()?.toLowerCase()}@topdev.vn
-        </p>
-
-        {/* title band — the PO's own two header cells */}
-        <div className="mt-5 flex items-stretch justify-between gap-6 border-y border-slate-200 py-3.5">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <span className="h-full w-[3px] shrink-0 rounded-full" style={{ backgroundColor: SARAMIN_BLUE }} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2.5">
-                <p className="text-[22px] font-black leading-none tracking-tight text-slate-900">XÁC NHẬN ĐƠN HÀNG</p>
-                <p className="text-[10.5px] font-semibold tracking-[0.28em] text-slate-400">PURCHASE ORDER</p>
-              </div>
-              <p className="mt-2 inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11.5px] font-bold tracking-tight" style={{ color: SARAMIN_BLUE }}>
-                {po.code}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2.5">
-            {([
-              { vi: 'Ngày đặt hàng', en: 'Date of purchase', v: issued },
-              { vi: 'Số đơn hàng', en: 'No. purchase order', v: po.poNo ?? po.code },
-            ]).map((d) => (
-              <div key={d.vi} className="min-w-[112px] rounded border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-center">
-                <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">{d.vi}</p>
-                <p className="text-[8px] italic text-slate-400">{d.en}</p>
-                <p className="mt-1 font-mono text-[11px] font-bold tabular-nums text-slate-900">{d.v}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* client + VAT billing */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <Bi vi="Thông tin khách hàng" en="Client information" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
-            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
-              <div><dt className="text-slate-400">Tên khách hàng / Client name</dt><dd className="font-medium text-slate-800">{contact}</dd></div>
-              <div><dt className="text-slate-400">Email</dt><dd className="font-medium text-slate-700">{co ? `contact@${co.domain}` : '—'}</dd></div>
-              <div><dt className="text-slate-400">Số điện thoại / Phone number</dt><dd className="font-medium tabular-nums text-slate-700">0978 490 363</dd></div>
-            </dl>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <Bi vi="Thông tin xuất hóa đơn VAT" en="Billing information for VAT-invoice" className="text-[10px] font-bold uppercase tracking-wide text-slate-700" />
-            <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
-              <div><dt className="text-slate-400">Tên công ty / Company name</dt><dd className="font-semibold uppercase text-slate-800">{co?.legalName ?? po.customer}</dd></div>
-              <div><dt className="text-slate-400">Địa chỉ ĐKKD / Billing Address</dt><dd className="font-medium text-slate-700">{co?.address ?? '—'}</dd></div>
-              <div><dt className="text-slate-400">Mã số thuế / Tax code</dt><dd className="font-medium tabular-nums text-slate-700">{co?.tax ?? '—'}</dd></div>
-            </dl>
-          </div>
-        </div>
-
-        {/* ONE line block — no options, because the customer already chose */}
-        <section className="mt-5">
-          <div className="rounded-lg border border-slate-200">
-            <div className="grid items-end gap-x-2 border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-[8.5px] font-bold uppercase leading-tight text-slate-600" style={{ gridTemplateColumns: COLS }}>
-              <Bi vi="STT" en="No." />
-              <Bi vi="Dịch vụ" en="Type of service" />
-              <Bi vi="Đơn vị tính" en="Unit" />
-              <Bi vi="Số lượng" en="Quantity" />
-              <Bi vi="Đơn giá" en="Unit price" className="text-right" />
-              <Bi vi="Giảm giá" en="Discount" className="text-right" />
-              <Bi vi="Tổng giá" en="Total price" className="text-right" />
-            </div>
-            <div className="grid items-center gap-x-2 border-b border-slate-100 px-3 py-2 text-[10px]" style={{ gridTemplateColumns: COLS }}>
-              <span className="tabular-nums text-slate-400">1</span>
-              <span className="block min-w-0 leading-snug text-slate-800">{pack.vi}</span>
-              <span className="leading-tight text-slate-500">{pack.unitVi}<span className="block text-[8.5px] italic text-slate-400">{pack.unitEn}</span></span>
-              <span className="tabular-nums text-slate-700">{po.qty}</span>
-              <span className="text-right tabular-nums text-slate-700">{pdfNum(unit)}</span>
-              <span className="text-right tabular-nums text-slate-500">0%</span>
-              <span className="text-right font-semibold tabular-nums text-slate-900">{pdfNum(sub)}</span>
-            </div>
-            <div className="flex justify-end px-3 py-2.5">
-              <div className="w-[300px] text-[10px]">
-                <div className="flex items-center justify-between py-1">
-                  <Bi vi="Tạm tính" en="Subtotal" className="text-slate-500" />
-                  <span className="tabular-nums text-slate-700">{pdfNum(sub)}</span>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-200 py-1">
-                  <span className="text-slate-500">Thuế GTGT ({VAT_RATE}%)</span>
-                  <span className="tabular-nums text-slate-700">{pdfNum(vat)}</span>
-                </div>
-                <div className="flex items-center justify-between border-t-2 border-slate-800 pt-1.5">
-                  <Bi vi={`Tổng đơn hàng sau thuế VAT ${VAT_RATE}%`} en={`Total price after VAT ${VAT_RATE}%`} className="text-[9.5px] font-bold text-slate-800" />
-                  <span className="shrink-0 pl-2 text-[13px] font-black tabular-nums text-slate-900">{pdfNum(po.total)}</span>
-                </div>
-              </div>
-            </div>
-            <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-[9.5px] leading-relaxed">
-              <p className="text-slate-700"><span className="font-semibold">Bằng chữ:</span> {vnWords(po.total)}.</p>
-              <p className="italic text-slate-400"><span className="font-semibold not-italic">In words:</span> {enWords(po.total)}.</p>
-            </div>
-          </div>
-
-          <div className="mt-2 rounded-lg border border-slate-200 px-3 py-2">
-            <p className="text-[9.5px] font-bold text-slate-700">
-              Quyền lợi gói {pack.short} trên TopDev.vn
-              <span className="block font-medium italic text-slate-400">Features of {pack.short} Package on TopDev.vn</span>
-            </p>
-            <ol className="mt-1.5 space-y-0.5">
-              {pack.feats.map((it, j) => (
-                <li key={j} className="flex gap-1.5 text-[9.5px] leading-relaxed text-slate-600">
-                  <span className="shrink-0 tabular-nums text-slate-400">{j + 1}.</span>{it}
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* service terms — same clauses the quotation carries */}
-        <section className="mt-6 break-before-page">
-          <Bi vi="Điều kiện sử dụng dịch vụ" en="Terms of Service" className="border-b-2 border-slate-800 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-900" />
-          <ol className="mt-2.5 space-y-2.5">
-            {QUOTE_TERMS.map((t, i) => (
-              <li key={i} className="flex gap-2 text-[9.5px] leading-relaxed">
-                <span className="shrink-0 font-bold tabular-nums text-slate-400">{i + 1}.</span>
-                <span className="min-w-0">
-                  {t.vi.map((x, j) => <span key={j} className={cn('block text-slate-700', j > 0 && 'pl-2')}>{x}</span>)}
-                  {t.en.map((x, j) => <span key={j} className={cn('block italic text-slate-400', j > 0 && 'pl-2')}>{x}</span>)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* TRANG KÝ — a PO is signed by BOTH sides, unlike a quotation */}
-        <section className="mt-7 break-before-page">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-900">Trang ký</p>
-          <p className="mt-0.5 text-[9.5px] leading-relaxed text-slate-500">
-            Dành cho đại diện của khách hàng và {ISSUER.brand} để xác nhận sử dụng dịch vụ và chấp thuận các điều kiện &amp; điều khoản dịch vụ đã nêu.
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-6">
-            <div className="text-center">
-              <Bi vi={`Đại diện ${ISSUER.brand}`} en={ISSUER.brand} className="text-[10px] font-bold text-slate-800" />
-              <p className="mt-0.5 text-[9.5px] text-slate-600">{sd.vi}</p>
-              <p className="text-[9.5px] italic text-slate-400">{sd.en}</p>
-              <div className="mt-14 border-t border-slate-400 pt-1 text-[9px] text-slate-500">Authorized Signature</div>
-            </div>
-            <div className="text-center">
-              <Bi vi="Đại diện Khách hàng" en="Customer" className="text-[10px] font-bold text-slate-800" />
-              {/* Left blank on purpose: the customer dates it when they sign. */}
-              <p className="mt-0.5 text-[9.5px] text-slate-600">Ngày ____ tháng ____ năm ______</p>
-              <p className="text-[9.5px] italic text-slate-400">Date: ____________________</p>
-              <div className="mt-14 border-t border-slate-400 pt-1 text-[9px] text-slate-500">Authorized Signature</div>
-            </div>
-          </div>
-        </section>
-      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        A draft invoice whose PO expired at month end is <b className="text-muted">withdrawn from this list</b> — it never had legal force and granted
+        nothing, so it is not an invoice to reconcile. The record stays on its PO and in the audit log.
+      </p>
     </div>
   )
 }
-
-function PoPdfModal({ po, co, onClose }: { po: Po; co?: Company; onClose: () => void }) {
-  const [zoom, setZoom] = useState(0.85)
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-2.5 text-white">
-        <span className="text-[13px] font-semibold">Xuất PDF / Export purchase order</span>
-        <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px]">{po.code}.pdf</span>
-        <span className="hidden text-[11px] text-slate-400 sm:inline">A4 · dọc / portrait</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="flex items-center overflow-hidden rounded-md border border-slate-600">
-            <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">−</button>
-            <span className="min-w-[46px] px-1 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
-            <button onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))} className="px-2 py-1 text-[12px] hover:bg-white/10">+</button>
-          </div>
-          <button className="rounded-md border border-slate-600 px-2.5 py-1 text-[12px] font-medium hover:bg-white/10">🖨 In / Print</button>
-          <button className="rounded-md bg-white px-3 py-1 text-[12px] font-semibold text-slate-900 hover:opacity-90">⬇ Tải PDF</button>
-          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-slate-300 hover:bg-white/10">✕</button>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto p-6">
-        <div style={{ width: 794 * zoom, margin: '0 auto' }}>
-          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: 794 }}>
-            <PoPdfDoc po={po} co={co} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ── Purchase order ───────────────────────────────────────────────────────────
    Page layout follows the client's live system. Numbering is PO-{seq6}-{MM}-
    {YYYY}, issuer block on the left, recipient + dates on the right, line items
-   with the package benefits printed inline.
+   with the package benefits printed inline. */
+/* FIVE statuses. The PO and the invoice on it move together — the PO status IS
+   the invoice's status, seen from the commercial side:
 
-   The three accounting milestones from that screen — ĐÃ THANH TOÁN · ĐÃ YÊU CẦU
-   XUẤT HÓA ĐƠN · ĐÃ XUẤT HÓA ĐƠN — are modelled as an ordered STATE here rather
-   than a row of independent toggles, so a PO cannot be marked invoiced before the
-   money is confirmed (T&C clause 3). Exactly one primary action is offered at a
-   time, and the two money steps are Accounting-only. */
-/* FOUR statuses, and only ONE of them is a step: a PO is Active from the moment
-   it is issued off an accepted quotation option, and the single action on it is
-   Kế toán issuing the VAT invoice. Everything else is an exit.
+     Active             the PO exists. No invoice yet.
+     Draft invoice      Sales issued a draft (hóa đơn nháp)   → invoice: Draft
+     Invoice requested  Sales asked for the official one      → invoice: Invoice requested
+     Invoice issued     Kế toán filed it (hóa đơn chính)      → invoice: Invoice issued
+     Expired            the month ended first                 → invoice: Archived
 
-   Draft / Sent / Paid were all removed, each for the same reason — they permitted
-   the same actions and carried the same obligations as Active:
-     · "Draft" and "Sent" — a PO is created BY being issued to the customer; there
-       is no state in which one exists but has not gone out.
-     · "Paid" — payment is a FACT recorded against the PO, not a stage of it. The
-       invoice can legitimately be issued before the money lands (customers
-       routinely need the invoice to release payment internally), so a PO that
-       reads "Paid" would say nothing the payment record does not.
-   One exit: Expired — nobody acts, the PO lapses at the end of its month, the
-   same rule as the quotation it came from.
+   Two things give this its shape rather than a straight line:
 
-   There is deliberately NO Cancelled here. Withdrawing a sale means withdrawing
-   the INVOICE, which is the fiscal document and the thing that granted the quota;
-   the PO is only the commercial record behind it. Putting a second cancel on the
-   PO would give two places to undo one event and two records that can disagree
-   about whether the sale happened. The invoice-before-payment case is handled
-   where it belongs: Invoice → Hủy hóa đơn (Kế toán). */
-type PoStep = 'active' | 'invoiced' | 'expired'
+   1 · From Active, Sales has a CHOICE. Issue a draft, or skip it and request the
+       official invoice directly. The draft is never a precondition.
+
+   2 · Expiry beats everything. A PO lapses at the end of the month it was issued
+       in whether it is Active, Draft invoice or Invoice requested — no matter
+       what. Only an official invoice takes it out of reach of the clock.
+
+   The line that matters commercially: ONLY the official invoice releases the
+   product. A draft grants nothing, however long it has existed.
+
+   There is deliberately NO Cancelled on a PO. A PO that goes nowhere expires. */
+type PoStep = 'active' | 'draft-inv' | 'requested' | 'invoiced' | 'expired'
 type PoStage = { key: PoStep; vi: string; en: string; by: string }
 const PO_FLOW: PoStage[] = [
   { key: 'active', vi: 'Đang hiệu lực', en: 'Active', by: 'Sales' },
-  { key: 'invoiced', vi: 'Đã xuất hóa đơn', en: 'Issued invoice', by: 'Kế toán' },
+  { key: 'draft-inv', vi: 'Đã xuất hóa đơn nháp', en: 'Draft invoice', by: 'Sales' },
+  { key: 'requested', vi: 'Đang yêu cầu xuất hóa đơn chính', en: 'Invoice requested', by: 'Sales' },
+  { key: 'invoiced', vi: 'Đã xuất hóa đơn chính', en: 'Invoice issued', by: 'Kế toán' },
 ]
 /* An exit, not a step — nobody reaches it by clicking the flow forward. */
 const PO_EXITS: Record<string, PoStage> = {
   expired: { key: 'expired', vi: 'Hết hạn', en: 'Expired', by: 'System' },
 }
 const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_EXITS[k]
-/** The single next action, and who may click it. Only Active has one. */
-function poNext(step: PoStep) {
-  if (step !== 'active') return null
-  return { label: 'Xuất hóa đơn', by: 'Kế toán', accounting: true }
+/* The forward action. Active and Draft invoice share one, because issuing a draft
+   is optional — a PO can go straight from Active to Invoice requested. */
+const PO_ACTIONS: Partial<Record<PoStep, { label: string; en: string; by: string; accounting: boolean }>> = {
+  active: { label: 'Yêu cầu xuất hóa đơn chính', en: 'Request official invoice', by: 'Sales', accounting: false },
+  'draft-inv': { label: 'Yêu cầu xuất hóa đơn chính', en: 'Request official invoice', by: 'Sales', accounting: false },
+  requested: { label: 'Xuất hóa đơn chính', en: 'Issue official invoice', by: 'Kế toán', accounting: true },
 }
-type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; seller: string; product: number; qty: number }
+const poNext = (step: PoStep) => PO_ACTIONS[step] ?? null
+/** Still running out of month. Expiry beats all three of these. */
+const poLive = (step: PoStep) => step === 'active' || step === 'draft-inv' || step === 'requested'
+/* ONE button, one action, three statuses. On Active it creates the draft; after
+   that the same click opens it. They were never two different things — a rep
+   issues a draft precisely in order to look at it. Gone once the official invoice
+   exists (that is the document you read then) and gone once expired. */
+const poDraftBtn = (step: PoStep) => poLive(step)
+
+/* ── Payment status — a THIRD axis, independent of both document statuses ──────
+   Money is not a stage of a document. A PO can be Active and already paid; an
+   invoice can be issued and still unpaid (VN practice routinely invoices ahead of
+   the transfer). So payment is tracked on its own and never folded into PoStep or
+   InvStep — the moment it becomes a stage, one of the two has to lie.
+
+   Only two of the three values are STORED, and only one of them as a fact:
+     Paid     paidAt has a date. The one thing a human records.
+     Unpaid   no paidAt yet, and inside the 14-day window.
+     Overdue  no paidAt and MORE THAN 14 DAYS since the PO was issued. Derived, so
+              it turns over by itself at midnight — nobody has to run anything, and
+              there is no stored "overdue" that can go stale.
+
+   Counted from the PO's issue date, not the invoice's: the customer's obligation
+   starts when the order is confirmed, and an invoice issued late must not reset
+   the clock the customer is already late against. */
+const PAY_TERMS_DAYS = 14
+type PayStatus = 'Paid' | 'Unpaid' | 'Overdue'
+const PAY_META: Record<PayStatus, { tone: StatusTone; vi: string }> = {
+  Paid: { tone: 'active', vi: 'Đã thanh toán' },
+  Unpaid: { tone: 'pending', vi: 'Chưa thanh toán' },
+  Overdue: { tone: 'rejected', vi: `Quá hạn — hơn ${PAY_TERMS_DAYS} ngày kể từ ngày xuất PO` },
+}
+/** Dotted or slashed dd.mm.yyyy → days elapsed against the mock's fixed today. */
+const daysFromDoc = (d: string) => {
+  const [dd, mm, yy] = d.replace(/\./g, '/').split('/').map(Number)
+  if (!dd || !mm || !yy) return 0
+  return Math.round((MOCK_TODAY.getTime() - new Date(yy, mm - 1, dd).getTime()) / 86_400_000)
+}
+/* An invoice's payment status is its PO's — the same money, read from one place.
+   Confirming on the invoice therefore updates the PO by construction rather than by
+   a second write that could fail on its own. */
+const poOf = (code: string) => POS.find((p) => p.code === code)
+const invPay = (i: Inv): { paidAt?: string; poIssued: string } => {
+  const po = poOf(i.po)
+  // Older rows carry a payment reference instead of a date; treat it as paid.
+  return { paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined), poIssued: po?.issued ?? i.issued }
+}
+
+/** Payment read-out. Overdue also says HOW late, because "overdue" alone does not
+    tell a rep whether to send a reminder or escalate. */
+function PayCell({ paidAt, poIssued }: { paidAt?: string; poIssued: string }) {
+  const st = payStatus(paidAt, poIssued)
+  const late = daysFromDoc(poIssued) - PAY_TERMS_DAYS
+  return (
+    <span className="flex min-w-0 items-center gap-1.5" title={PAY_META[st].vi}>
+      <Pill tone={PAY_META[st].tone}>{st}</Pill>
+      {st === 'Paid' && paidAt && <span className="shrink-0 text-[10px] text-faint tabular-nums">{paidAt.replace(/\./g, '/')}</span>}
+      {st === 'Overdue' && <span className="shrink-0 text-[10px] font-medium text-rose-600 tabular-nums">+{late}d</span>}
+    </span>
+  )
+}
+
+function payStatus(paidAt: string | undefined, poIssued: string): PayStatus {
+  if (paidAt) return 'Paid'
+  return daysFromDoc(poIssued) > PAY_TERMS_DAYS ? 'Overdue' : 'Unpaid'
+}
+
+/** `invNo` is allocated by the provider the moment the FIRST draft is issued, so
+    a PO that never got one has none — that is what tells the two apart. `invIssued`
+    is filled only when the official invoice is filed. */
+type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; seller: string; product: number; qty: number; invNo?: string; invIssued?: string
+  /** the date Kế toán confirmed the money arrived — the ONLY stored payment fact */
+  paidAt?: string }
 /* A PO lapses at the end of the month it was issued in — the same end-of-month
    rule as the quotation it came from, so the two documents can never disagree
    about how long the commercial terms stand. Dates on the document are dotted. */
 const poExpiry = (p: Po) => endOfMonth(p.issued.replace(/\./g, '/'))
 const POS: Po[] = [
-  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1 },
-  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'invoiced', issued: '22.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6 },
-  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'active', issued: '20.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1 },
-  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'active', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  // Issued inside the 14-day window and not yet paid — the plain Unpaid case, which
+  // needs no chasing yet. Without a row like this the column only ever shows the
+  // two loud states and nobody sees what "on time" looks like.
+  { code: 'PO-005865-08-2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
+  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '29.07.2026', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '29/07/2026' },
+  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'requested', issued: '22.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
+  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'draft-inv', issued: '20.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
+  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'active', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
   { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  // issued in June and never invoiced — lapsed on 30/06, not on a rolling 30 days
-  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'expired', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10 },
+  // issued in June and never made official — lapsed on 30/06, not on a rolling 30 days
+  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'expired', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
+  // lapsed while still Active — no draft was ever issued, so this PO has no
+  // invoice row at all. The contrast with PO-005859 is the point.
   { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'expired', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
-const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', invoiced: 'active', expired: 'expired' }
+const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', 'draft-inv': 'draft', requested: 'schedule', invoiced: 'active', expired: 'expired' }
+
+/* ── Where the invoice list comes from ────────────────────────────────────────
+   DERIVED from the POs, never hand-written beside them. An invoice is not a
+   record with a lifecycle of its own — it is the fiscal half of a PO — so its
+   status is a function of the PO's status and nothing else:
+
+     PO draft-inv → Draft · requested → Invoice requested
+     PO invoiced  → Invoice issued    · expired   → Archived
+
+   Two hand-maintained arrays drifted the moment they existed: a PO reading
+   "Invoice requested" carried an invoice reading "Invoice issued", and one PO
+   had two invoices contradicting each other. Deriving makes that unrepresentable.
+
+   A PO appears here only once it has an `invNo`, i.e. once a draft was actually
+   issued. An Active PO has no invoice, and a PO that expired while still Active
+   never had one either. */
+const PO_TO_INV: Partial<Record<PoStep, InvStep>> = {
+  'draft-inv': 'draft', requested: 'requested', invoiced: 'issued', expired: 'archived',
+}
+/** invoice date + the product's activation window (clause 4). */
+const activateByOf = (issued: string) => {
+  const [dd, mm, yy] = issued.split('/').map(Number)
+  return dd && mm && yy ? `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yy + 1}` : '—'
+}
+const invOf = (p: Po): Inv => ({
+  code: p.invNo!,
+  step: PO_TO_INV[p.step]!,
+  customer: p.customer,
+  co: p.co,
+  po: p.code,
+  payment: p.step === 'invoiced' ? 'PAY-1042' : undefined,
+  total: p.total,
+  issued: p.invIssued ?? '—',
+  activateBy: p.invIssued ? activateByOf(p.invIssued) : '—',
+  product: p.product,
+  qty: p.qty,
+  issuer: p.step === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
+})
+const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[p.step]).map(invOf)
+
+/** The draft VAT invoice a PO would produce. Not stored — a draft only becomes a
+    record when the rep actually issues one, and until then this is what it WOULD
+    say. Rendered through the real invoice component so the two can never drift. */
+const draftInvOf = (po: Po): Inv => ({
+  code: '1C26TTD-—', step: 'draft', customer: po.customer, co: po.co, po: po.code,
+  total: po.total, issued: '—', activateBy: '—', product: po.product, qty: po.qty, issuer: po.seller,
+})
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
-  const [pdf, setPdf] = useState(false)
-  const poCo = COMPANIES.find((x) => x.name === po.co || x.legalName === po.customer || coLabel(x) === po.customer)
+  /* Only one document opens from here now: the draft VAT invoice. The PO itself is
+     printed in full further down the page, so a viewer for it was a second copy of
+     something already on screen. */
+  const [draftPdf, setDraftPdf] = useState(false)
+  const poCo = COMPANIES.find((x) => x.name === po.co)
+    ?? COMPANIES.find((x) => x.name === po.customer || x.legalName === po.customer || coLabel(x) === po.customer)
   const cur = poStage(po.step)
   const next = poNext(po.step)
   const pack = QUOTE_CATALOG[po.product]
@@ -11547,46 +12487,46 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
           {/* An Active PO is running out of month, and that is the only thing on
               this bar the rep can still change the outcome of. */}
-          {po.step === 'active' && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
+          {/* A draft invoice does not stop the clock: the PO still lapses at the
+              end of its month unless the OFFICIAL invoice goes out. */}
+          {poLive(po.step) && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
         </span>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Export is available in EVERY state, expired included: a copy of the
-              document is what gets asked for long after the deal is over, and
-              refusing it then would be the one time it mattered. */}
-          <button onClick={() => setPdf(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
-            ⬇ Xuất PO (PDF)
-          </button>
-          {/* No cancel on a PO. Undoing a sale is a fiscal act — it happens on the
-              invoice, which is also what granted the quota. This link is the way
-              there rather than a second button that does the same thing badly. */}
-          {po.step === 'invoiced' && (
-            <button
-              title="Hủy sale = hủy hóa đơn (kèm biên bản, xuất hóa đơn thay thế nếu cần). PO không có trạng thái Đã hủy."
-              className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40"
-            >
-              Xem hóa đơn →
+          {/* ONE button for the draft, on exactly the statuses where a draft is the
+              live document. "Xuất" not "Xem": the PO is where a draft is PRODUCED,
+              and this is now the only place it can be — the invoice screen shows
+              the filed document, not the working one. */}
+          {poDraftBtn(po.step) && (
+            <button onClick={() => setDraftPdf(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
+              Xuất hóa đơn nháp
             </button>
           )}
-          {next
-            ? (
-              <button className={cn('rounded-lg px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90', next.accounting ? 'bg-amber-600' : 'bg-brand')}>
-                {next.label} →{next.accounting && <span className="ml-1 font-normal opacity-90">· Kế toán</span>}
-              </button>
-            )
-            : po.step === 'expired'
-              ? <span className="text-[11.5px] font-medium text-muted">Hết hạn {poExpiry(po)} — tạo PO mới từ báo giá</span>
-              : <span className="text-[11.5px] font-medium text-emerald-700">✓ Sản phẩm đã vào tài khoản khách hàng</span>}
+          {/* Once the official invoice exists it is the document worth opening, and
+              it lives on its own screen. */}
+          {po.step === 'invoiced' && (
+            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">
+              Xem hóa đơn chính
+            </button>
+          )}
+          {/* SALES steps only. Issuing the official invoice is Kế toán's act and it
+              is taken on the invoice itself — that is where the document, its number
+              and its signature live. A duplicate button here would let the fiscal
+              document be created from a screen that does not show it. */}
+          {next && !next.accounting && (
+            <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
+              {next.label}
+            </button>
+          )}
+          {next?.accounting && (
+            <span className="text-[11.5px] text-muted">Đang chờ <b className="text-ink/75">Kế toán</b> xuất hóa đơn chính — thao tác trên hóa đơn.</span>
+          )}
         </div>
       </div>
 
-      {/* The consequence of the invoice, stated where it happens. Provisioning is
-          immediate — not a queue, not a manual hand-off — so this is the line that
-          tells a rep the customer can already work. */}
-      {po.step === 'invoiced' && (
-        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-emerald-900">
-          <b>Đã xuất hóa đơn → sản phẩm chạy về tài khoản khách hàng ngay.</b> {pack.vi} × {po.qty} {pack.unitVi} hiển thị trong trang chi tiết công ty, và khách có thể đăng tin / xem CV ngay từ lúc này — không chờ thao tác nào khác.
-        </div>
-      )}
+      {/* No explanatory callouts on the record. The status pill, the expiry date
+          beside it and the buttons already say what this PO is and what may be
+          done to it; the rules behind them live in the requirement, not repeated
+          on every record a rep opens. */}
 
       {/* document */}
       <div className="mt-4 rounded-xl border border-line bg-surface p-4">
@@ -11638,7 +12578,10 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
         </div>
       </div>
 
-      {pdf && <PoPdfModal po={po} co={poCo} onClose={() => setPdf(false)} />}
+      {/* The draft invoice this PO would produce — rendered by the SAME component
+          the Invoice screen uses, in its draft form, so the rep is looking at the
+          document that will actually exist rather than a preview of it. */}
+      {draftPdf && <InvoicePdfModal inv={draftInvOf(po)} co={poCo} onClose={() => setDraftPdf(false)} />}
     </div>
   )
 }
@@ -11652,10 +12595,14 @@ function AdminPOs() {
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
   return (
     <ListPage
-      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Issued invoice' }, { label: 'Expired' }]}
+      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Draft invoice', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Expired' }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
-        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.4fr' }, { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
+        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.9fr' },
+        // Payment sits NEXT TO the document status, never merged into it: they are
+        // two independent facts and a rep reads them together.
+        { label: 'Thanh toán', w: '1.1fr' },
+        { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
       ]}
       rows={POS.map((p) => [
         <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
@@ -11663,10 +12610,11 @@ function AdminPOs() {
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[p.step]}>{poStage(p.step).en}</Pill>,
+        <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
         <span className="tabular-nums text-muted">{p.issued}</span>,
-        <span className={cn('tabular-nums', p.step === 'active' ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
+        <span className={cn('tabular-nums', poLive(p.step) ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
       ])}
-      minW={1080}
+      minW={1240}
     />
   )
 }
@@ -12303,8 +13251,7 @@ const MD_DOMAINS: MDDomain[] = [
       'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
       'Quotation — QUO-{seq6}-{MM}-{YYYY} · e.g. QUO-009909-07-2026 · sequential',
       'Sales order / PO — PO-{seq6}-{MM}-{YYYY} · e.g. PO-005864-07-2026 · sequential',
-      'Invoice, internal — INV-{seq6}-{MM}-{YYYY} · e.g. INV-003390-07-2026 · sequential',
-      'Invoice, legal series — issued by the e-invoice provider · e.g. 1C26TAA/0041 · sequential and gapless, required by law',
+      'Invoice — the e-invoice provider’s own series · e.g. 1C26TTD-173 · sequential and gapless, required by law. ONE number: a draft already carries one, so there is no separate internal INV- code',
       'Customer’s own PO number — free text, recorded exactly as given · e.g. PO-VP/2026/044',
     ],
   },
@@ -12403,6 +13350,11 @@ const MD_DOMAINS: MDDomain[] = [
     key: 'company-tag', label: 'Company tag', i18n: 'vi · en', used: 'Company profile · Store filter (tags)',
     note: 'Editorial labels applied to a company (a company can carry several). Displayed as tags on the Company site. Free-growing list — start with the two below.', kind: 'tags',
     entries: ['Korean company', 'Big company'],
+  },
+  {
+    key: 'image-topic', label: 'Image topic', i18n: 'vi · en', used: 'Image gallery · job picture picker',
+    note: 'WHAT A PICTURE SHOWS — the gallery is classified on this, not on industry, because a photograph is a scene and industry is a fact about the employer. Industry reaches the pictures through the industry → topic map beside the gallery, so this list stays small and does not grow when the industry list does.', kind: 'flat',
+    entries: ['Văn phòng', 'Kỹ thuật', 'Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kho vận', 'Vận tải', 'Công trường', 'Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Y tế · chăm sóc', 'Nghiên cứu · phòng lab', 'Lớp học · đào tạo', 'Nhà hàng · khách sạn', 'Công nghệ', 'Dữ liệu · biểu đồ', 'Nhóm người', 'Toà nhà · kiến trúc', 'Thiên nhiên · môi trường', 'Trừu tượng · nền'],
   },
 ]
 
@@ -12715,7 +13667,7 @@ function AdminAuditLog() {
     ['10:31', 'Phạm Quang Huy', 'Viewed resume (PII)', 'CV #48211'],
     ['09:58', 'Lê Hữu Phong', 'Approved job', 'Digital Marketing Lead · Tiki'],
     ['09:40', 'Trần Quốc Trung', 'Granted credits (+500)', 'FPT Software'],
-    ['09:12', 'System', 'Issued e-invoice', 'INV-003390-07-2026'],
+    ['09:12', 'Kế toán', 'Issued official e-invoice', '1C26TTD-173'],
   ]
   return (
     <ListPage
@@ -13801,6 +14753,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   // Billing & products
   'admin-catalog': AdminCatalog,
   'admin-placements': AdminPlacements,
+  'admin-image-gallery': AdminImageGallery,
   'admin-bundles': AdminBundles,
   'admin-credits': AdminCredits,
   'admin-orders': AdminOrders,

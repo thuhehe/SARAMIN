@@ -1622,7 +1622,7 @@ function ProfilePhoto({ photo, size = 'sm' }: { photo?: boolean; size?: 'sm' | '
   )
 }
 
-type PField = { label: string; value: string; kind: 'text' | 'email' | 'phone' | 'date' | 'select' | 'number' }
+type PField = { label: string; value: string; kind: 'text' | 'email' | 'phone' | 'date' | 'select' | 'number' | 'salary' }
 
 /* Basic information — the 9 fields, in the order the client's field sheet lists
    them, with WHERE each is collected. The demographic four are reinstated per
@@ -1641,14 +1641,18 @@ const PROFILE_BASIC: PField[] = [
   { label: 'Years of work experience', value: '4', kind: 'number' },
 ]
 
-/* Desired work condition — all five collected at onboarding or added later. */
-const PROFILE_PREFS: { icon: string; label: string; value: string }[] = [
-  { icon: '', label: 'Desired job role', value: 'Senior Product Designer' },
-  { icon: '', label: 'Desired job category', value: 'Design' },
-  { icon: '', label: 'Desired industry', value: 'IT / Software · FMCG' },
-  { icon: '', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội' },
-  { icon: '', label: 'Desired work type', value: 'In office · Hybrid' },
-  { icon: '', label: 'Expected salary', value: '20 – 30 triệu' },
+/* Desired work condition — all SIX collected at onboarding or added later.
+   `kind` decides which control the quick-edit popup renders; without it every
+   field became a dropdown, and Expected salary is a number, not a list. */
+const PROFILE_PREFS: { icon: string; label: string; value: string; kind: PField['kind'] }[] = [
+  { icon: '', label: 'Desired job role', value: 'Senior Product Designer', kind: 'select' },
+  { icon: '', label: 'Desired job category', value: 'Design', kind: 'select' },
+  { icon: '', label: 'Desired industry', value: 'IT / Software · FMCG', kind: 'select' },
+  { icon: '', label: 'Desired work location', value: 'Hồ Chí Minh · Hà Nội', kind: 'select' },
+  { icon: '', label: 'Desired work type', value: 'In office · Hybrid', kind: 'select' },
+  /* ONE figure, not a range — the candidate says what they expect, the employer
+     searches by a band and tests this figure against it. See Resume management. */
+  { icon: '', label: 'Expected salary', value: 'Từ 20 triệu', kind: 'salary' },
 ]
 
 function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') => void }) {
@@ -1715,7 +1719,7 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
   const fields: PField[] =
     section === 'basic'
       ? PROFILE_BASIC
-      : PROFILE_PREFS.map((f) => ({ label: f.label, value: f.value, kind: 'select' as const }))
+      : PROFILE_PREFS.map((f) => ({ label: f.label, value: f.value, kind: f.kind }))
   return (
     <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
       <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
@@ -1755,12 +1759,30 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
               before clicking it. Everything here rendered as a dropdown before. */}
           <div className="grid grid-cols-2 gap-2.5">
             {fields.map((f, i) => (
-              <div key={f.label} className={cn(i === 0 && 'col-span-2')}>
+              <div key={f.label} className={cn((i === 0 || f.kind === 'salary') && 'col-span-2')}>
                 <p className="mb-1 text-[11px] font-medium text-ink/80">{f.label}<span className="text-rose-500"> *</span></p>
                 {f.kind === 'phone' ? (
                   <div className="flex items-center gap-1.5">
                     <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">+84 <span className="text-faint">▾</span></span>
                     <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">{f.value}</div>
+                  </div>
+                ) : f.kind === 'salary' ? (
+                  /* ONE number + a currency, never a from–to pair: the candidate
+                     states what they expect and the employer searches by a band.
+                     "Thỏa thuận" is a real answer here, not an empty field —
+                     without it people who are open to negotiation leave the most
+                     filtered-on question on the profile blank. */
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex h-9 shrink-0 items-center rounded-md border border-line bg-surface px-2 text-[11px] font-medium text-ink/80">Từ</span>
+                      <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">20</div>
+                      <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">triệu / tháng <span className="text-faint">▾</span></span>
+                      <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">VND <span className="text-faint">▾</span></span>
+                    </div>
+                    <label className="mt-1.5 flex items-center gap-1.5 text-[10.5px] text-muted">
+                      <span className="h-3 w-3 shrink-0 rounded-[3px] border border-line" />
+                      Thỏa thuận — I’d rather discuss it
+                    </label>
                   </div>
                 ) : (
                   <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">

@@ -380,7 +380,7 @@ export const jobseekerUser: BuildModule = {
               { name: 'highestEducation', type: 'select', notes: 'the level only — school and major live on the CV' },
             ],
           },
-          { group: 'Step 4 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'number range (VND)', notes: 'the most-requested employer filter that no CV supplies; shown to employers as a range' }] },
+          { group: 'Step 4 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'ONE number + currency (VND · USD)', notes: 'CANONICAL RULES: Resume management → CV data & matching architecture → "★ SALARY — the one contract". CORRECTED 2026-08-13 — this step asks for a SINGLE expected figure, not a range: an earlier draft here said "number range", which never matched the form. The candidate gives one number, the employer searches by a BAND, and a CV matches when the figure falls inside the band (see Resume management → the salary case table). Stored as { kind, currency, min, max } with max null, so the shape still works if a range is ever wanted. Also offers "Thỏa thuận". The most-requested employer filter, and the one thing no CV ever supplies' }] },
         ],
         sections: [
           {

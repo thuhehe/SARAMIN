@@ -1127,9 +1127,21 @@ function FilterSelect({ f }: { f: Facet }) {
   )
 }
 
-/** Desired salary — reads `expectedSalary { kind, currency, min, max }`, which
-    already carries VND · USD. The switch re-labels the bounds and picks which
-    currency's asks are in scope; it does NOT convert what the candidate wrote. */
+/*
+ * Desired salary — a RANGE on the employer's side, matched against the ONE figure
+ * the candidate stated.
+ *
+ * The two sides are deliberately different shapes, and the asymmetry is the whole
+ * logic: a candidate enters a single expected figure, an employer sets a band, and
+ * a CV matches when THE CANDIDATE'S FIGURE FALLS INSIDE THE BAND. It is a
+ * point-in-range test, not two ranges overlapping — there is no second candidate
+ * number to overlap with.
+ *
+ * Reads `expectedSalary { kind, currency, min, max }`; today `max` is null because
+ * the candidate form takes one number. Writing the query as an overlap against
+ * [min, max ?? min] gives the point-in-range behaviour now AND keeps working
+ * unchanged if the candidate form ever becomes a range.
+ */
 function SalaryRange() {
   const [cur, setCur] = useState<'VND' | 'USD'>('VND')
   const unit = cur === 'VND' ? 'triệu/mo' : 'USD/mo'
@@ -1161,6 +1173,7 @@ function SalaryRange() {
           </div>
         ))}
       </div>
+      <p className="mt-1 text-[9.5px] leading-snug text-faint">Matches candidates whose stated expected salary falls in this band. Either bound may be left as Any.</p>
     </div>
   )
 }
@@ -1308,7 +1321,7 @@ function CvDetailPage({ onBack }: { onBack: () => void }) {
             <CvPair label="Desired job category" value="Y tế – Điều dưỡng" />
             <CvPair label="Desired industry" value="Healthcare · Bệnh viện / Phòng khám" />
             <CvPair label="Desired work location" value="Hồ Chí Minh, Bình Dương" />
-            <CvPair label="Expected salary" value="12 – 15 triệu / tháng (VND)" />
+            <CvPair label="Expected salary" value="Từ 15 triệu / tháng (VND)" />
             <CvPair label="Desired work type" value="In office" />
           </div>
         </CvSection>
@@ -1405,7 +1418,7 @@ function ResumeSearchScreen() {
       prior: [{ name: 'PK Đa khoa Vạn Hạnh', masked: 'Phòng khám đa khoa', title: 'Điều dưỡng viên', dur: '1 năm 8 tháng' }],
       education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
       skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], more: 2,
-      loc: 'Hồ Chí Minh', salary: '12–15 tr', updated: '2 days ago',
+      loc: 'Hồ Chí Minh', salary: 'Từ 15 triệu', updated: '2 days ago',
     },
     {
       unlocked: false,
@@ -1421,7 +1434,7 @@ function ResumeSearchScreen() {
       morePrior: 2,
       education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', masked: 'Đại học y khoa · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
       skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], more: 3,
-      loc: 'Hồ Chí Minh', salary: '20–25 tr', updated: '1 week ago',
+      loc: 'Hồ Chí Minh', salary: 'Từ 25 triệu', updated: '1 week ago',
     },
     {
       unlocked: false,
@@ -1436,7 +1449,7 @@ function ResumeSearchScreen() {
       prior: [],
       education: { school: 'CĐ Y tế Bình Dương', masked: 'Cao đẳng y tế · Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
       skills: ['Xét nghiệm huyết học', 'Sinh hóa', 'ISO 15189'],
-      loc: 'Bình Dương', salary: '10–13 tr', updated: '3 weeks ago',
+      loc: 'Bình Dương', salary: 'Từ 12 triệu', updated: '3 weeks ago',
     },
     {
       unlocked: false,

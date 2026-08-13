@@ -567,12 +567,24 @@ export const productsPackages: BuildModule = {
               'Both — the same area is fed by a tier AND sold standalone. Three placements are in this state and each needs one resolver with an explicit priority rule.',
             ],
           },
+          {
+            heading: 'Image slots — the placement decides how many pictures a job must supply',
+            items: [
+              'A placement row carries `imageSlots: ImageSlot[]` — 0, 1 or 2 entries, each `{ key, label, aspect, minWidth, safeAreas, prefersRole }`. The reference site runs two very different frames on the same grid: the small platinum card is 596×258 (a 2.3:1 strip) and the hero is 600×1120 (a 1:1.9 tower). A card area that shows one thumbnail declares one slot; the large hero card that shows a background AND a thumbnail declares two. Zero means the area is text + logo only. `prefersRole` says whether the frame wants a SUBJECT (a scene) or a BACKGROUND (skyline, texture) — a two-frame hero asking for two subjects gets two photographs fighting each other.',
+              'This is what the JOB FORM reads: a job posted on a product feeding a 2-slot placement is asked for 2 images, on a 1-slot placement 1 image, and on a tier with no image-bearing placement it is never asked at all. The count is never typed on the job and never hard-coded in the form.',
+              'The LOGO is not a slot. It is pulled from the company profile (creativeSource = company profile) and cannot be replaced per job — that is what keeps a company recognisable across the grid.',
+              'ONE PICTURE CANNOT SERVE BOTH FRAMES. A 2.3:1 strip and a 1:1.9 tower share almost no pixels, so a two-frame placement genuinely needs two pictures — not one master cropped twice. Merging asks is only correct for slots with the SAME aspect. Being made to upload the same 3:2 photo three times because a tier lights up three areas is how employers learn to skip the step.',
+              'safeAreas records where the card paints its own furniture — the badge bottom-left, the save-star top-right, the gradient behind the title. The picker draws them over the preview so nobody chooses a photo whose subject sits under a chip.',
+            ],
+          },
         ],
         rules: [
           'A placement is created and edited by HQ only, and only when the jobseeker site actually gains or changes an area — it describes the site, it does not drive it.',
           'Size, items shown and rotation cap are defined here once. A placement product references the row; it never restates them.',
           'A tier-driven placement is not bookable and must not appear in the placement product picker.',
           'A booked placement may never have more concurrent bookings than its pool cap.',
+          'A placement with ≥1 image slot may never render an empty frame. The resolver falls through job image → company default → the image gallery’s AUTOMATIC DEFAULT (the job’s industry → its first mapped topic → least-used picture), so a card always has a picture even when the employer skipped the step. Changing a placement from 0 to 1 slots is blocked until every topic those industries map to is stocked.',
+          'The same gallery image must not appear twice in one render of one placement. Two logistics companies picking the same warehouse photo, shown side by side, reads as a bug — the resolver pushes the duplicate apart or falls through to the next candidate.',
         ],
         acceptance: [
           'Every homepage and search area in the client deck has exactly one row, with its size and cap.',

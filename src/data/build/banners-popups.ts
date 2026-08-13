@@ -142,7 +142,154 @@ export const bannersPopups: BuildModule = {
     },
   ],
   features: [
-    // 0 · Banner admin ────────────────────────────────────────────────────────
+    // 0 · Image gallery ───────────────────────────────────────────────────────
+    {
+      name: 'Image gallery',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-image-gallery',
+      detail: {
+        description:
+          'The stock picture library, classified by industry, that a JOB borrows from when its product feeds a placement with image slots. It exists because the premium homepage grid is mostly pictures, and most of the companies filling it are SMEs with no photography and no designer: without a library the grid renders holes, and the placement they paid for looks cheap. HQ curates it; employers only ever pick from it or upload their own.',
+        userStory:
+          'As an HQ content operator, I want a library of licensed pictures classified by what they SHOW, so that every job on a picture placement has something good to display without anyone designing per posting.',
+        sections: [
+          {
+            heading: 'Three sources for a placement picture — in this order',
+            items: [
+              '1 · The employer’s OWN upload on the job. Their real workplace beats stock every time, so it always wins.',
+              '2 · A GALLERY pick. The picker opens on the topics that suit the job’s industry (see the map below) and can be widened to any topic. The normal path — thirty seconds and the card looks professional.',
+              '3 · The AUTOMATIC DEFAULT, applied when nobody chose anything: the industry’s first mapped topic, least-used picture first. This is the rule that protects the homepage — a paid placement card can never render an empty frame.',
+              'The company page’s own `photos` are NOT a fourth source. Those are workplace shots sized for the company profile and often unusable at a card ratio; wiring them in silently would put a blurry canteen photo on the homepage.',
+            ],
+          },
+          {
+            heading: 'What this is NOT',
+            items: [
+              'Not the company page photo set — that belongs to the company and is capped at 18, for the profile page only.',
+              'Not banner creatives — a booked banner is a finished design supplied by the client (see Create banner). The gallery is raw pictures the SITE composes a card from, with the logo, title and badge drawn on top by the layout.',
+              'Not a general media manager. Nothing outside placement pictures is stored here, because everything here carries a topic and a licence, and a dumping ground has neither.',
+            ],
+          },
+          {
+            heading: 'Upload — one batch, MANY topics per picture, and a per-image override',
+            text: 'Upload is two steps: choose files, then classify them. Classification applies to the whole batch, because a batch is usually one shoot — but "usually" is not "always", and the override is what stops the exception being mis-tagged.',
+            items: [
+              'TOPICS IS MULTI-SELECT, always. `topics` is a `ref[]`, and the picker is a row of toggle chips, not a dropdown — a picture of two nurses in a lab is "y tế · chăm sóc" AND "nghiên cứu · phòng lab", and forcing one loses half its reach. The hint under the chips says so out loud, because a chip row can be mistaken for a radio group.',
+              'THE BATCH SETS A DEFAULT, NOT A VERDICT. The chips apply to every accepted file in the upload; a collapsed "Đặt chủ đề riêng cho từng ảnh" panel lists the files and lets any one of them differ. A file nobody touches simply follows the batch, so the common case stays two clicks.',
+              'WHY THE OVERRIDE EARNS ITS SPACE: a wrongly tagged picture is WORSE than an untagged one. An untagged picture is never chosen; a mis-tagged one becomes the AUTOMATIC DEFAULT on jobs it does not suit, and lands on the homepage without anyone deciding it should.',
+              'The per-image control shows the current topics as removable chips plus a "＋ chủ đề" dropdown — the full 19-topic chip row repeated per file would be longer than the modal. A file left with no topics at all is flagged inline ("chưa có chủ đề") rather than silently accepted.',
+              'The thin-topic ▲ marker (fewer than 3 pictures) shows on the batch chips, because that is where someone is deciding what to classify as — it is a nudge to fill a gap, not a warning.',
+            ],
+            warn: 'Role and licence stay BATCH-ONLY on purpose: a shoot shares its rights and a subject/background split is a per-picture judgement made later, in the detail screen. Adding per-image overrides for those two would turn a two-step upload into a form filled once per file, which is how bulk upload stops being used.',
+          },
+          {
+            heading: 'Topic classifies the picture · industry reaches it through a map',
+            items: [
+              'A picture is classified by TOPIC because that is the only thing intrinsic to it. Industry is a fact about the employer, and tagging a photo of two people at a laptop as “IT / Software” is simply false — the same frame serves banking, marketing and a school office.',
+              'Industry access is preserved by a small lookup, INDUSTRY → ordered topics: Logistics → kho vận · vận tải · ngoài trời · business scene; IT / Software → công nghệ · business scene · trừu tượng; Healthcare → y tế · nhóm người; Construction → công trường · toà nhà · engineer scene. Twelve industries × two to four topics is one screen of configuration.',
+              'So “filter by industry” in the picker means “topics this industry prefers”, and the automatic default resolves industry → first topic → least-used Active picture. Nobody loses the industry entry point; the pictures simply stop carrying a claim they cannot support.',
+              'This also survives the industry list changing. Industries are editable master data — add or rename one and only the map row changes, instead of re-tagging hundreds of pictures.',
+              'The map is edited by HQ next to the gallery, and a topic with no pictures is flagged there rather than discovered on the homepage.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Image',
+            items: [
+              { name: 'title', type: 'i18n string', required: true, notes: 'what the picture shows ("kho hàng · xe nâng") — the searchable human label, not a filename' },
+              { name: 'topics', type: 'ref[] → Master data · Image topic', required: true, notes: 'WHAT THE PICTURE SHOWS. The list was checked against the live saramin.co.kr platinum grid and four topics were missing from the first draft — sản phẩm · bao bì (branded packaging still-life), nghiên cứu · phòng lab, dữ liệu · biểu đồ (charts / holographic overlays), nhà xưởng · ngoại cảnh (plant seen from outside or from a drone, which is a different frame from a production line inside). This is the classification, because a photograph is a SCENE, not an industry: two people at a laptop is a business scene that suits IT, banking, marketing and school administration equally. Usually 1–2 topics, occasionally 3 — a row needing ten values is the sign the axis is wrong. MULTI-SELECT everywhere it is edited: chips on upload (batch, with a per-image override) and on the detail screen; never a single-value dropdown.' },
+              { name: 'role', type: "enum('subject'|'background')", required: true, notes: 'a scene with people or objects in it, versus a texture / skyline / abstract that a card lays a logo and title over. The 2-slot hero wants one of each, and asking for “another photo” without this distinction gets you two subjects fighting each other.' },
+              { name: 'tags', type: 'string[]', notes: 'free keywords for the search box — xe nâng · phòng họp · ngoài trời · nhóm người. Topics classify, tags find.' },
+              { name: 'masterFile', type: 'file (image)', required: true, notes: 'ONE master, ≥1600×1200 (4:3). Every placement ratio is cropped from it at render — 900×1200 for a 3:4 hero, 1600×1067 for a 3:2 card. Never store per-placement crops: the registry still has to gain mobile variants, and pre-cropping means re-cutting the whole library by hand each time a size appears.' },
+              { name: 'focalPoint', type: '{ x, y }', required: true, notes: 'the point every crop keeps in frame. Defaults to centre; the editor drags it onto the subject.' },
+              { name: 'orientation / dominantColor', type: 'derived', notes: 'orientation drives which slots it can fill; the colour is the loading placeholder and the contrast check against the white logo lockup' },
+            ],
+          },
+          {
+            group: 'Rights & lifecycle',
+            items: [
+              { name: 'source', type: 'string', required: true, notes: 'where it came from — stock provider + asset id, a photographer, or an internal shoot' },
+              { name: 'licence', type: 'enum + note', required: true, notes: 'what we are allowed to do with it. A picture with no recorded licence cannot be activated.' },
+              { name: 'licenceExpiresAt', type: 'date?', notes: 'stock licences lapse. This is the field that lets one query find everything to pull when a subscription ends — the thing that bites eighteen months later.' },
+              { name: 'status', type: "enum('Active'|'Archived')", required: true, notes: 'Archived disappears from the picker but keeps resolving for jobs already using it' },
+              { name: 'usageCount / lastUsedAt', type: 'derived', notes: 'shown in the picker ("đang được 12 tin dùng") so employers self-select away from the over-used ones' },
+            ],
+          },
+        ],
+        behaviors: [
+          'UPLOAD IS TWO STEPS, batched: drop the files, then classify the whole batch at once. A stock pack arrives forty pictures at a time and nobody classifies forty pictures one modal at a time.',
+          'Step 1 validates each file and shows the outcome per row — accepted, or REJECTED for being under 1600×1200. A too-small picture is refused at the door, never upscaled: it has to survive both a 3:4 and a 3:2 crop, and upscaling only moves the problem to the homepage. The title is editable here, because that string is what the search box matches — not the filename.',
+          'Step 2 applies topic · role · source · licence to the entire batch, with per-picture corrections left to the detail screen. Topics already under the 3-picture floor are marked in the picker, and the batch reports which coverage gap it closes — so the operator can see they are filling a hole rather than deepening a pile.',
+          'Source and licence are required before a batch can be saved; classification can be corrected later, an unlicensed picture on a paid placement cannot. Choosing a subscription licence reveals the expiry date field.',
+          'Bulk edit works the same way from the grid — multi-select, then apply topics and tags to the selection.',
+          'The editor shows the picture cropped to every live placement ratio side by side, with the safe areas drawn on, so the focal point is set against real cards rather than a guess.',
+          'Filter by industry · tag · orientation · status, and a keyword search across title and tags.',
+          'A COVERAGE panel lists topics with fewer than 3 Active pictures, and any industry whose mapped topics are all thin — those are the cards about to fall back onto the same photograph.',
+          'Archiving a picture that live jobs still use warns with the count and offers to move those jobs to the automatic default for their industry.',
+        ],
+        rules: [
+          'HQ uploads to the gallery; employers never do. An employer’s upload stays on their job and is never promoted into the shared library — we do not hold the right to redistribute their photo to another company.',
+          'Every topic that an industry maps to needs at least 3 Active pictures. Below that the automatic default repeats across the grid, which looks worse than no placement at all.',
+          'A picture is never deleted, only archived — live jobs and past renders point at it.',
+          'Licence and source are mandatory before Activate. An unlicensed picture on a paid placement is the client’s legal exposure, not ours to gamble with.',
+          'The gallery is the same picture set for every company. It carries no company branding, no text baked into the image, and no logos — the card draws those itself.',
+        ],
+        states: [
+          'Empty library (first run — the picker tells the employer to upload their own)',
+          'Industry below the 3-picture floor (flagged in the coverage panel)',
+          'Upload · step 1: no files yet · files validating · batch with some rows rejected (under 1600×1200) · every row rejected',
+          'Upload · step 2: nothing classified yet (save disabled) · classified but unlicensed (save still disabled) · ready',
+          'Active · Archived · Licence expiring within 30 days',
+          'In use by N live jobs (blocks silent archiving)',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'galleryImageId', type: 'uuid', required: true },
+            { name: 'title', type: 'i18n jsonb', required: true },
+            { name: 'topicIds', type: 'uuid[]', required: true, notes: 'FK → master data image-topic; indexed — this is the classification' },
+            { name: 'role', type: "enum('subject'|'background')", required: true },
+            { name: 'IndustryTopicMap', type: 'entity', required: true, notes: '(industryId, topicId, rank) — the lookup that keeps the industry entry point without putting an industry claim on a photograph. Ranked, because the first row is what the automatic default resolves to.' },
+            { name: 'tags', type: 'text[]' },
+            { name: 'masterUrl / width / height', type: 'string / int / int', required: true, notes: 'min 1600×1200 enforced on upload' },
+            { name: 'focalX / focalY', type: 'numeric', required: true, notes: '0–1 relative, so it survives any re-encode' },
+            { name: 'dominantColor', type: 'string' },
+            { name: 'source / licence / licenceExpiresAt', type: 'string / enum / date?', required: true },
+            { name: 'status', type: "enum('active'|'archived')", required: true },
+            { name: 'usageCount', type: 'derived', notes: 'never stored — counted from live jobs referencing it' },
+          ],
+          endpoints: [
+            'GET /admin/gallery?industry=&tag=&status=&q=',
+            'POST /admin/gallery (bulk) · PATCH /admin/gallery/:id · POST /admin/gallery/:id/archive',
+            'GET /gallery/pick?topic=&industry=&role=&aspect=&q= — the employer-facing picker; Active only, least-used first. `industry` resolves through the map to its topics.',
+            'GET /gallery/default?industry=&role=&aspect= — the fallback resolver used at render (industry → first mapped topic → least-used)',
+            'GET · PUT /admin/gallery/industry-topics — the map',
+          ],
+          integrations: [
+            'Master data (image-topic enum — the classification; industry enum — the map’s other half)',
+            'Placements registry (image slots: how many pictures and at what aspect)',
+            'Job management (the job form’s picture step; jobs hold the reference)',
+            'Object storage / CDN (master file + derived crops, cached per aspect)',
+          ],
+          notes:
+            'Crops are derived and cached per (image, aspect, size) — the master is never served to the site. Least-used-first ordering in the picker is what spreads the library out instead of letting the first three pictures cover the whole homepage.',
+        },
+        acceptance: [
+          'A job on a 2-slot placement is asked for exactly 2 pictures; on a 1-slot placement, 1; on a tier with no picture placement, none.',
+          'The picker opens on the topics mapped to the job’s industry, and the filter can be switched to any topic or cleared.',
+          'A job published with no picture still renders a complete card, using its industry default.',
+          'Archiving a picture in use warns with the job count and never leaves a card blank.',
+          'The coverage panel names every topic under 3 Active pictures, and every industry whose mapped topics are all under it.',
+        ],
+        openQuestions: [
+          'Who licenses the seed set, and at what volume? Three pictures per TOPIC is the floor — roughly a dozen topics, so ~40 pictures, and it does not grow when the industry list does.',
+          'Do we want AI auto-tagging on upload (topic + keyword suggestions), or is manual classification acceptable for a library this size?',
+        ],
+      },
+    },
+    // 1 · Banner admin ────────────────────────────────────────────────────────
     {
       name: 'Create banner + Banner list',
       site: 'Admin',

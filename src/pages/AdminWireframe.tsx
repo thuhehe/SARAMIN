@@ -44,6 +44,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // Jobseekers
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
   // Content
+  'admin-image-gallery': { module: 'banners-popups', feature: 'Image gallery' },
   'admin-banners': { module: 'banners-popups', feature: 'Create banner + Banner list' },
   // Billing & products
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
@@ -226,6 +227,10 @@ const NAV_GROUPS: NavGroup[] = [
       // A placement product points at a row here instead of restating
       // "1536×371, max 6, rotate 3s" on every sale.
       { label: 'Placements', specId: 'admin-placements' },
+      // The stock pictures those placements' image slots are filled from. It sits
+      // beside Placements rather than under Service because it is configuration a
+      // placement reads, not something a customer bought.
+      { label: 'Image gallery', specId: 'admin-image-gallery' },
       // The discount programmes the quotation builder applies by itself, keyed on
       // the customer's status. Settings, not coupon codes — nobody types one.
       { label: 'Discount programmes', specId: 'admin-promotions' },
