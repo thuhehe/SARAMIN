@@ -10,13 +10,14 @@ import { createContext, isValidElement, useContext, useEffect, useRef, useState 
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { BenefitsField, BenefitCards } from '@/components/BenefitsField'
-import { BENEFIT_TYPES } from '@/data/benefits'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { LogoSizer } from '@/components/LogoSizer'
 
 /* The benefit types declared on the COMPANY page. Every job of that company
-   inherits them read-only, so a posting only ever writes what is specific to the
-   position — one source of truth, two renderings. */
+   The benefit types declared on the COMPANY page — the DEFAULT SET a new job is
+   prefilled with. It is a default, NOT a restriction: the job picker still offers
+   every type and there is no cap, so a job freely adds position-specific ones on
+   top of these. */
 const COMPANY_BENEFITS = ['health', 'leave', 'transport', 'canteen', 'training', 'trips']
 
 /* ── Detail breadcrumb ───────────────────────────────────────────────────────
@@ -4665,7 +4666,6 @@ function CompanyPageEditor({ c }: { c: Company }) {
         <div className="rounded-md border border-line bg-canvas/30 p-2.5">
           <BenefitsField
             label="Phúc lợi chung của công ty"
-            max={BENEFIT_TYPES.length}
             initial={bens}
           />
         </div>

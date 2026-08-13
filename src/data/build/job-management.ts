@@ -140,7 +140,7 @@ export const jobManagement: BuildModule = {
       items: [
         'TWELVE types, sized to fit one 4×3 grid on a single screen — no accordion and no search box, because those exist to cope with a list too long to show. An earlier draft ran to 66 types across 9 groups and an employer scrolls instead of choosing.',
         'The merges are lossless because the DESCRIPTION carries the detail: one “Phụ cấp” covers ăn trưa / xăng xe / điện thoại / chuyên cần, so four types are not needed.',
-        'MAX 6 per job. Twenty benefits on one ad reads as noise — nothing stands out and nobody believes any of it.',
+        'NO MAXIMUM per job. Each type can be picked once, so the list is self-limiting at the size of the taxonomy; a hard cap only ever blocked a benefit the employer genuinely offers. Ranking, not truncation, is what keeps a long list readable — selection order is display order, so the employer leads with their strongest benefit.',
         'Selection ORDER is display order on the jobseeker page, so an employer can lead with their strongest benefit.',
         'Each type carries a suggested description that is PREFILLED when it is picked. An employer given a blank box writes nothing or one dead word; given a sentence to edit, they edit it — and the edited version is always better than the empty one. This is the single biggest lever on benefit-content quality.',
         '“Khác” allows a typed title, has no icon of its own and always sorts last — otherwise every employer picks it and the structured data is lost.',
@@ -154,13 +154,14 @@ export const jobManagement: BuildModule = {
       table: {
         cols: ['Moment', 'What happens', 'Rule'],
         rows: [
-          ['Create job', 'Picker is prefilled with the company set (in the company’s display order)', 'If the company set exceeds the job cap (max 6), the first 6 are taken and the form says so'],
-          ['Editing the job', 'Add / remove / reword / reorder freely — same 12-type picker', 'Per-job curation is the point: a remote role removes “Đưa đón & chỗ ở”, a night-shift role adds its allowance'],
+          ['Create job', 'Picker is prefilled with the company set, whole, in the company’s display order', 'A DEFAULT, not a restriction — the picker still offers all 12 types, and there is no cap, so nothing is ever truncated or greyed out'],
+          ['Editing the job', 'Add / remove / reword / reorder freely — the full 12-type picker, including types the company never declared', 'Per-job curation is the point: a remote role removes “Đưa đón & chỗ ở”, a night-shift role adds its allowance even though no company-level entry exists for it'],
           ['Reset', 'One click returns the job’s list to the current company default', 'REPLACES, never merges — confirm before discarding per-job edits'],
           ['Company set changes later', 'Existing jobs are untouched; new jobs prefill from the new set', 'An old job adopts the new set only by pressing Reset — a company-page edit must not silently undo per-job curation'],
         ],
       },
       items: [
+        'THE COMPANY SET NEVER NARROWS THE PICKER. All 12 types stay selectable on every job, including ones the company page does not list — the company set only decides what is PREFILLED. Nothing in the grid is ever disabled, so it can never read as “you may only use the company’s benefits”.',
         'One taxonomy (the shared 12 types) is what makes Reset and the preview possible — the two surfaces stay mutually convertible even when their content diverges.',
         'The prefill means the form is STILL not retyping: the employer starts from the company set and only touches what differs for the position.',
         'The jobseeker job page renders ONE benefits list — the job’s own. There is no separate read-only company block on the posting; the company page remains one click away for the full picture.',

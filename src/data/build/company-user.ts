@@ -185,11 +185,12 @@ export const companyUser: BuildModule = {
         ],
       },
       items: [
+        'A DEFAULT, NOT A WHITELIST. The company set decides what a new job is PREFILLED with — it never narrows the job’s picker. A job can select any of the 12 types, including ones the company page does not list (a night-shift allowance for one position, say), and there is no maximum on either surface.',
         'COPY, NOT LIVE LINK — deliberately. The job editor may have removed “Đưa đón & chỗ ở” from a remote role on purpose; a company-page edit silently re-adding it would undo per-job curation. The cost is accepted drift between page and posting; the RESET button is the one-click way back.',
         'The job form shows the full company set read-only (preview) next to the picker, so the editor always sees what the default is before and after diverging from it.',
         'Descriptions are i18n { vi, en } on BOTH surfaces. VI required, EN optional and falling back to VI — otherwise a foreign candidate reads the company page in Vietnamese and the job in English.',
       ],
-      warn: 'Reset REPLACES the job’s current benefit list with the company set — it does not merge. The form confirms before discarding per-job edits. And the job cap (max 6) still applies: if the company set is larger than the cap, Reset takes the first 6 in the company’s display order and says so.',
+      warn: 'Reset REPLACES the job’s current benefit list with the company set — it does not merge. The form confirms before discarding per-job edits. There is no cap on either surface, so Reset restores the company set whole, in its display order.',
     },
   ],
   features: [

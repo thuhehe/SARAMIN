@@ -19,7 +19,7 @@
  * the employer's only way to lead with their strongest benefit.
  */
 import { useState } from 'react'
-import { BENEFIT_TYPES, BENEFIT_MAX, benefitByKey } from '@/data/benefits'
+import { BENEFIT_TYPES, benefitByKey } from '@/data/benefits'
 import { cn } from '@/lib/utils'
 
 export interface PickedBenefit { key: string; text: string; title?: string }
@@ -28,11 +28,10 @@ export function BenefitsField({
   initial,
   companyBenefits = [],
   companyName = 'công ty',
-  max = BENEFIT_MAX,
   label = 'Phúc lợi của tin này',
 }: {
   /** Per-job benefit keys. Omit on a NEW job — the field then prefills from
-      `companyBenefits` (copy-on-create, capped at `max`). */
+      `companyBenefits` (copy-on-create). */
   initial?: string[]
   /** Benefit type keys declared on the COMPANY page — the DEFAULT SET a job starts
       from. Powers the prefill, the "↺ Về mặc định công ty" reset and the read-only
@@ -40,14 +39,13 @@ export function BenefitsField({
       rewrite a posting someone curated on purpose. */
   companyBenefits?: string[]
   companyName?: string
-  /** The JOB cap is 6 — twenty benefits on one ad reads as noise and nothing
-      stands out. The COMPANY PAGE declares the employer's general welfare, is read
-      once rather than scanned against rivals, and is allowed the whole list. */
-  max?: number
   label?: string
 }) {
+  /* NO CAP. Each of the 12 types can be picked once, so the list is self-limiting
+     at 12 — an artificial ceiling only ever blocked a legitimate benefit and made
+     the greyed-out grid read as "restricted to the company's set". */
   const fromKeys = (keys: string[]) =>
-    keys.slice(0, max).map((k) => ({ key: k, text: benefitByKey(k)?.hint ?? '' }))
+    keys.map((k) => ({ key: k, text: benefitByKey(k)?.hint ?? '' }))
   const companyDefault = () => fromKeys(companyBenefits)
 
   // Copy-on-create: a new job starts as the company set; `initial` (an existing
@@ -55,19 +53,16 @@ export function BenefitsField({
   const [picked, setPicked] = useState<PickedBenefit[]>(() => fromKeys(initial ?? companyBenefits))
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [previewing, setPreviewing] = useState(false)
-  const full = picked.length >= max
   const has = (k: string) => picked.some((p) => p.key === k)
-  const capped = companyBenefits.length > max
 
   // Diverged = a reset would change something. Order counts: it is display order.
   const diverged =
-    picked.length !== Math.min(companyBenefits.length, max) ||
+    picked.length !== companyBenefits.length ||
     picked.some((p, i) => p.key !== companyBenefits[i] || p.text !== (benefitByKey(p.key)?.hint ?? ''))
 
   const toggle = (k: string) => {
     setPicked((prev) => {
       if (prev.some((p) => p.key === k)) return prev.filter((p) => p.key !== k)
-      if (prev.length >= max) return prev
       return [...prev, { key: k, text: benefitByKey(k)?.hint ?? '' }]
     })
   }
@@ -106,9 +101,7 @@ export function BenefitsField({
               </button>
             </>
           )}
-          <span className={cn('text-[10.5px]', full ? 'font-medium text-amber-700' : 'text-faint')}>
-            {picked.length}/{max} {full ? '— đã đủ' : 'đã chọn'}
-          </span>
+          <span className="text-[10.5px] text-faint">{picked.length} đã chọn</span>
         </span>
       </div>
 
@@ -116,8 +109,7 @@ export function BenefitsField({
       {confirmingReset && (
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-[11px] leading-relaxed text-amber-800">
-            Thay toàn bộ danh sách hiện tại bằng bộ mặc định của {companyName}
-            {capped ? ` (lấy ${max} mục đầu — bộ công ty có ${companyBenefits.length})` : ''}? Các chỉnh sửa riêng của tin sẽ mất.
+            Thay toàn bộ danh sách hiện tại bằng bộ mặc định của {companyName} ({companyBenefits.length} mục)? Các chỉnh sửa riêng của tin sẽ mất.
           </p>
           <span className="flex shrink-0 gap-1.5">
             <button onClick={() => setConfirmingReset(false)} className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium text-muted hover:border-ink/40">Giữ nguyên</button>
@@ -155,26 +147,26 @@ export function BenefitsField({
             })}
           </div>
           <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-            Tin mới mở form sẽ được điền sẵn bộ này; sửa trang công ty <b className="text-ink/70">không</b> tự đổi các tin đã đăng — dùng “↺ Về mặc định công ty” khi muốn lấy bản mới nhất.
+            Tin mới mở form sẽ được điền sẵn bộ này — <b className="text-ink/70">chỉ là mặc định</b>, tin vẫn chọn được loại ngoài bộ này.
+            Sửa trang công ty <b className="text-ink/70">không</b> tự đổi các tin đã đăng — dùng “↺ Về mặc định công ty” khi muốn lấy bản mới nhất.
           </p>
         </div>
       )}
 
-      {/* the whole taxonomy, one screen */}
+      {/* the whole taxonomy, one screen — ALL 12 types, always selectable. The
+          company set is the default the job starts from, never a restriction, and
+          there is no cap: nothing here is ever greyed out. */}
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
         {BENEFIT_TYPES.map((b) => {
           const on = has(b.key)
-          const blocked = !on && full
           return (
             <button
               key={b.key}
               onClick={() => toggle(b.key)}
-              disabled={blocked}
-              title={blocked ? `Tối đa ${max} phúc lợi — bỏ bớt một mục trước` : b.en}
+              title={b.en}
               className={cn(
                 'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors',
                 on ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand/40',
-                blocked && 'cursor-not-allowed opacity-40 hover:border-line',
               )}
             >
               <b.Icon className={cn('h-4 w-4 shrink-0', on ? 'text-brand' : 'text-faint')} />
@@ -226,9 +218,10 @@ export function BenefitsField({
       )}
 
       <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-        Tin mới được <b className="text-ink/70">điền sẵn bộ phúc lợi của công ty</b> — thêm, bớt, sửa lời tuỳ ý cho vị trí này
-        (bỏ mục không liên quan, thêm thưởng dự án, phụ cấp ca đêm…). Loại phúc lợi lấy từ Master data (có icon, dịch sẵn,
-        dùng được cho bộ lọc tìm việc); mô tả tiếng Việt bắt buộc. Thứ tự ở đây là thứ tự hiển thị trên trang jobseeker.
+        Tin mới được <b className="text-ink/70">điền sẵn bộ phúc lợi của công ty</b> — đó chỉ là <b className="text-ink/70">mặc định để hiển thị</b>,
+        không phải danh sách bị giới hạn: chọn được <b className="text-ink/70">bất kỳ loại nào, không giới hạn số lượng</b>, kể cả loại công ty chưa khai
+        (thưởng dự án, phụ cấp ca đêm, laptop cấp riêng…), và bỏ mục không liên quan đến vị trí. Loại phúc lợi lấy từ Master data
+        (có icon, dịch sẵn, dùng được cho bộ lọc tìm việc); mô tả tiếng Việt bắt buộc. Thứ tự ở đây là thứ tự hiển thị trên trang jobseeker.
       </p>
     </div>
   )

@@ -48,8 +48,9 @@ export const BENEFIT_TYPES: BenefitType[] = [
   { key: 'other',      vi: 'Khác',               en: 'Other',               Icon: MoreHorizontal,  hint: '' },
 ]
 
-/** How many a single job may advertise. Twenty benefits on one ad reads as noise —
-    nothing stands out and nobody believes any of it. */
-export const BENEFIT_MAX = 6
+/* There is deliberately NO per-job maximum. Each type can be picked once, so a job
+   is self-limiting at the length of this list; an artificial ceiling only ever
+   blocked a benefit the employer genuinely offers, and the greyed-out grid it
+   produced read as "you may only use the company's set". */
 
 export const benefitByKey = (k: string) => BENEFIT_TYPES.find((b) => b.key === k)
