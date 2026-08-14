@@ -12397,21 +12397,41 @@ type Po = { code: string; customer: string; co?: string; poNo?: string; quote: s
    rule as the quotation it came from, so the two documents can never disagree
    about how long the commercial terms stand. Dates on the document are dotted. */
 const poExpiry = (p: Po) => endOfMonth(p.issued.replace(/\./g, '/'))
+/* Expiry is a nightly JOB, not a field anyone sets — so the mock must not store
+   it either. A PO whose month has ended is Expired no matter what its last
+   recorded step was, and the invoice on it is Archived with it. Keeping a stored
+   `step` and a computed expiry date side by side and hoping they agree is the
+   same bug as keeping the invoice status beside the PO's: the demo drifted into
+   showing a "Draft invoice" PO that had lapsed a week earlier.
+
+   Only `invoiced` is immune — an official invoice takes the PO out of reach of
+   the clock, which is the whole point of the rule. */
+const poStep = (p: Po): PoStep =>
+  p.step !== 'invoiced' && MOCK_TODAY.getTime() > asDate(poExpiry(p)).getTime() ? 'expired' : p.step
 const POS: Po[] = [
-  // Issued inside the 14-day window and not yet paid — the plain Unpaid case, which
-  // needs no chasing yet. Without a row like this the column only ever shows the
-  // two loud states and nobody sees what "on time" looks like.
+  /* Dated against MOCK_TODAY = 08/08/2026, and every status below is DERIVED from
+     that date plus the stored step — nothing here asserts "Expired" by hand. The
+     August rows are the live ones; the July and June rows are what the nightly
+     expiry job has already caught, which is why four of them read Expired no
+     matter what step they were left in. */
+
+  // Issued inside the 14-day payment window and not yet paid — the plain Unpaid
+  // case. Without a row like this the column only ever shows the two loud states
+  // and nobody sees what "on time" looks like.
   { code: 'PO-005865-08-2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
-  { code: 'PO-005864-07-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '29.07.2026', quote: 'QUO-009911-07-2026', total: 12_960_000, step: 'invoiced', issued: '27.07.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '29/07/2026' },
-  { code: 'PO-005863-07-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-07-2026', total: 40_824_000, step: 'requested', issued: '22.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
-  { code: 'PO-005862-07-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-07-2026', total: 6_588_000, step: 'draft-inv', issued: '20.07.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
-  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'active', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8 },
+  { code: 'PO-005864-08-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
+  { code: 'PO-005863-08-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
+  { code: 'PO-005862-08-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
+
+  /* Left at "Invoice requested" in July and never made official. Expiry beats it:
+     the PO reads Expired and its invoice is Archived — the single clearest proof
+     that a draft does not stop the clock. */
+  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
+  // never got past Active — expired with no invoice at all
   { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  // issued in June and never made official — lapsed on 30/06, not on a rolling 30 days
-  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'expired', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
-  // lapsed while still Active — no draft was ever issued, so this PO has no
-  // invoice row at all. The contrast with PO-005859 is the point.
-  { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'expired', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  // a June draft, lapsed on 30/06 — not on a rolling 30 days
+  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
+  { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
 const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', 'draft-inv': 'draft', requested: 'schedule', invoiced: 'active', expired: 'expired' }
 
@@ -12440,19 +12460,19 @@ const activateByOf = (issued: string) => {
 }
 const invOf = (p: Po): Inv => ({
   code: p.invNo!,
-  step: PO_TO_INV[p.step]!,
+  step: PO_TO_INV[poStep(p)]!,
   customer: p.customer,
   co: p.co,
   po: p.code,
-  payment: p.step === 'invoiced' ? 'PAY-1042' : undefined,
+  payment: poStep(p) === 'invoiced' ? 'PAY-1042' : undefined,
   total: p.total,
   issued: p.invIssued ?? '—',
   activateBy: p.invIssued ? activateByOf(p.invIssued) : '—',
   product: p.product,
   qty: p.qty,
-  issuer: p.step === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
+  issuer: poStep(p) === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
 })
-const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[p.step]).map(invOf)
+const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[poStep(p)]).map(invOf)
 
 /** The draft VAT invoice a PO would produce. Not stored — a draft only becomes a
     record when the rep actually issues one, and until then this is what it WOULD
@@ -12470,8 +12490,9 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   const [draftPdf, setDraftPdf] = useState(false)
   const poCo = COMPANIES.find((x) => x.name === po.co)
     ?? COMPANIES.find((x) => x.name === po.customer || x.legalName === po.customer || coLabel(x) === po.customer)
-  const cur = poStage(po.step)
-  const next = poNext(po.step)
+  const step = poStep(po)
+  const cur = poStage(step)
+  const next = poNext(step)
   const pack = QUOTE_CATALOG[po.product]
   const sub = Math.round(po.total / (1 + VAT_RATE / 100))
   const vat = po.total - sub
@@ -12484,26 +12505,26 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           screen every time a rep opens a PO. */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5">
         <span className="flex flex-wrap items-center gap-2">
-          <Pill tone={PO_TONE[po.step]}>{cur.en}</Pill>
+          <Pill tone={PO_TONE[step]}>{cur.en}</Pill>
           {/* An Active PO is running out of month, and that is the only thing on
               this bar the rep can still change the outcome of. */}
           {/* A draft invoice does not stop the clock: the PO still lapses at the
               end of its month unless the OFFICIAL invoice goes out. */}
-          {poLive(po.step) && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
+          {poLive(step) && <span className="text-[11px] text-muted">Hết hạn <b className="text-ink/75">{poExpiry(po)}</b> — cuối tháng</span>}
         </span>
         <div className="flex flex-wrap items-center gap-2">
           {/* ONE button for the draft, on exactly the statuses where a draft is the
               live document. "Xuất" not "Xem": the PO is where a draft is PRODUCED,
               and this is now the only place it can be — the invoice screen shows
               the filed document, not the working one. */}
-          {poDraftBtn(po.step) && (
+          {poDraftBtn(step) && (
             <button onClick={() => setDraftPdf(true)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
               Xuất hóa đơn nháp
             </button>
           )}
           {/* Once the official invoice exists it is the document worth opening, and
               it lives on its own screen. */}
-          {po.step === 'invoiced' && (
+          {step === 'invoiced' && (
             <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">
               Xem hóa đơn chính
             </button>
@@ -12609,10 +12630,10 @@ function AdminPOs() {
         <span className="truncate">{p.customer}</span>,
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
-        <Pill tone={PO_TONE[p.step]}>{poStage(p.step).en}</Pill>,
+        <Pill tone={PO_TONE[poStep(p)]}>{poStage(poStep(p)).en}</Pill>,
         <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
         <span className="tabular-nums text-muted">{p.issued}</span>,
-        <span className={cn('tabular-nums', poLive(p.step) ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
+        <span className={cn('tabular-nums', poLive(poStep(p)) ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
       ])}
       minW={1240}
     />
@@ -13250,7 +13271,7 @@ const MD_DOMAINS: MDDomain[] = [
     entries: [
       'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
       'Quotation — QUO-{seq6}-{MM}-{YYYY} · e.g. QUO-009909-07-2026 · sequential',
-      'Sales order / PO — PO-{seq6}-{MM}-{YYYY} · e.g. PO-005864-07-2026 · sequential',
+      'Sales order / PO — PO-{seq6}-{MM}-{YYYY} · e.g. PO-005864-08-2026 · sequential',
       'Invoice — the e-invoice provider’s own series · e.g. 1C26TTD-173 · sequential and gapless, required by law. ONE number: a draft already carries one, so there is no separate internal INV- code',
       'Customer’s own PO number — free text, recorded exactly as given · e.g. PO-VP/2026/044',
     ],

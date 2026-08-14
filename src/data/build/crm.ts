@@ -64,7 +64,7 @@ export const crm: BuildModule = {
         rows: [
           ['Company (record)', 'CO- + 6 encoded chars + 1 check char', 'CO-P9FCEPD', 'NO — deliberately scrambled'],
           ['Quotation', 'QUO-{seq6}-{MM}-{YYYY}', 'QUO-009909-07-2026', 'Yes'],
-          ['Sales order / PO', 'PO-{seq6}-{MM}-{YYYY}', 'PO-005864-07-2026', 'Yes'],
+          ['Sales order / PO', 'PO-{seq6}-{MM}-{YYYY}', 'PO-005864-08-2026', 'Yes'],
           ['Invoice', 'The e-invoice provider’s own series', '1C26TTD-173', 'Yes — gapless, required by law'],
           ['Customer’s own PO no.', 'Free text, recorded exactly as they give it', 'PO-VP/2026/044', 'Theirs, not ours'],
         ],
@@ -174,7 +174,7 @@ export const crm: BuildModule = {
         rows: [
           ['What it is', 'The commitment + the request for payment', 'Legal proof of a taxable sale'],
           ['Binds', 'Us and the customer', 'Us and the tax AUTHORITY'],
-          ['Numbering', 'Our own series — PO-005864-07-2026', 'The provider’s legal series — e.g. 1C26TTD-173, gapless, government-controlled. A draft already carries one, which is why there is no second internal code'],
+          ['Numbering', 'Our own series — PO-005864-08-2026', 'The provider’s legal series — e.g. 1C26TTD-173, gapless, government-controlled. A draft already carries one, which is why there is no second internal code'],
           ['Editable', 'no — issue a new PO instead', 'never — fix by cancel + credit note + re-issue (VN regulation)'],
           ['Cancellable', '**no** — an unused PO simply expires', 'yes — this is where a sale is undone'],
           ['Expires', 'end of the month it was issued in', 'never — an issued invoice is permanent unless cancelled'],
@@ -699,6 +699,7 @@ export const crm: BuildModule = {
         'The CCCD and buyer-name fields are shown only for an individual buyer. A permanently “n/a” field on a company record teaches people to stop reading the form.',
         'This case asks for NOTHING — no MST, no CCCD, and no address. Per điểm 4b the invoice for a buyer who does not provide their details shows only “Bán cho người tiêu dùng”, so an address field here would collect something the document must not print. The invoice line “Họ tên người mua hàng” is never blank: it carries that fixed phrase.',
         'AND THE CONSEQUENCE THE CUSTOMER FEELS: an invoice with no buyer information, or one issued to “người tiêu dùng”, CANNOT be used by an organisation to record an expense (hạch toán chi phí) or in a tax settlement (quyết toán thuế) — last paragraph of điểm 4. Choosing this for someone who is really buying for a company guarantees a re-issue request, so the form warns on it.',
+        'OPEN — điểm 4b is written as ALL-OR-NOTHING: a người tiêu dùng either provides tên + địa chỉ + số định danh cá nhân and all three print, or provides nothing and the invoice reads “Bán cho người tiêu dùng”. There is no documented middle state, so **địa chỉ is NOT optional for a cá nhân có CCCD** — name + ID alone is not one of the two shapes the decree describes. What is genuinely undecided is what to do when a real buyer gives their name and CCCD but declines an address: refuse to issue until they supply one · fall back to “Bán cho người tiêu dùng” and lose their name from the invoice · or print name + ID with địa chỉ blank, which is the option with no legal basis in the text. Confirm with the client’s accountant before build.',
         'OPEN — the label “Cá nhân không có CCCD” describes the wrong thing. The decree distinguishes whether the buyer PROVIDES their details (không cung cấp), not whether they possess an ID: someone who has a CCCD but declines to give it lands in exactly this shape. Recommend renaming to “Cá nhân không cung cấp thông tin”.',
         'GAP — a FOREIGN INDIVIDUAL has no place in the four types. Điểm 4b lets địa chỉ + số định danh cá nhân be replaced by PASSPORT / entry-exit document number + NATIONALITY. Today such a buyer must be forced into “có CCCD” (they have none) or “không cung cấp” (which discards details they may want on the invoice). Needs a fifth type, a passport field and a buyer-nationality field.',
         'The legal term is SỐ ĐỊNH DANH CÁ NHÂN. In practice the 12-digit CCCD number IS that number, and the client’s template prints the line as “Căn cước công dân”, so the printed sheet is fine — but the field and this requirement should name the legal term so an auditor and a developer are reading the same thing.',
@@ -2155,6 +2156,7 @@ export const crm: BuildModule = {
             ],
           },
           items: [
+            'Expiry is derived the same way, and it **overrides** the recorded step. A PO left at Draft invoice or Invoice requested when its month ends reads **Expired**, and its invoice reads **Archived** — nobody has to have run anything for the two to agree. Storing a step and a separate expiry date and hoping they match is the same class of bug as storing the invoice status beside the PO’s.',
             'The invoice number is allocated **when the first draft is issued**, not at official filing. That is what distinguishes a PO that produced a draft from one that never did, and it is why an archived row still has a number.',
             'A PO carries **at most one** invoice. Two invoices on one PO — one reading “issued” while the PO reads “requested” — is exactly the drift this rule exists to prevent, and it is unrepresentable once the status is derived.',
             'Consequence for build: `invoice.status` is a computed column or a view, not a writable field. Any migration that copies it into a stored column re-opens the possibility of the two disagreeing.',
