@@ -1652,7 +1652,7 @@ const PROFILE_PREFS: { icon: string; label: string; value: string; kind: PField[
   { icon: '', label: 'Desired work type', value: 'In office · Hybrid', kind: 'select' },
   /* ONE figure, not a range — the candidate says what they expect, the employer
      searches by a band and tests this figure against it. See Resume management. */
-  { icon: '', label: 'Expected salary', value: 'Từ 20 triệu', kind: 'salary' },
+  { icon: '', label: 'Expected salary', value: '20 triệu / tháng', kind: 'salary' },
 ]
 
 function ProfileSummaryCard({ onEdit }: { onEdit?: (section: 'basic' | 'prefs') => void }) {
@@ -1774,7 +1774,6 @@ function ProfileEditPopup({ section, onClose }: { section: 'basic' | 'prefs'; on
                      filtered-on question on the profile blank. */
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="flex h-9 shrink-0 items-center rounded-md border border-line bg-surface px-2 text-[11px] font-medium text-ink/80">Từ</span>
                       <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-ink/80">20</div>
                       <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">triệu / tháng <span className="text-faint">▾</span></span>
                       <span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink/80">VND <span className="text-faint">▾</span></span>
@@ -2371,7 +2370,7 @@ function OnboardingScreen() {
   const go = useNav()
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 'results'>(1)
   /* Every taxonomy field is a DROPDOWN, not a chip grid. The real master data is
-     far longer than any mockup list — 63 provinces, ~30 industries, hundreds of
+     far longer than any mockup list — 34 provincial units, ~30 industries, hundreds of
      roles — so a chip grid would either lie about the choice or scroll forever.
      Selections stay visible as removable chips UNDER the field, which keeps the
      "what did I pick" answer without pretending the whole set fits on screen. */
@@ -2557,7 +2556,7 @@ function OnboardingScreen() {
                       ))}
                     </div>
                   )}
-                  <p className="mt-1 text-[10px] text-faint">{locs.length} of 3 selected · Vietnam has 63 provinces, so this searches rather than lists.</p>
+                  <p className="mt-1 text-[10px] text-faint">{locs.length} of 3 selected · Vietnam has 34 provincial units, so this searches rather than lists.</p>
 
                   {/* WORK TYPE — the other half of "where", and the half that used to
                       hide inside the province list. Chips, not a search: four values,
@@ -2796,6 +2795,61 @@ function MyApplicationsScreen() {
    The last one alone makes this step mandatory, which is why asking for the phone
    here is nearly free: we are stopping the candidate anyway. Modelled on the
    Saramin KR completion screen (agree-to-all + itemised required/optional). */
+/* The rest of Basic information, shared by both sign-up paths (email and social)
+   so the two can never drift. All of it is OPTIONAL — none is an employer search
+   facet, so none may block finishing sign-up.
+
+   Nationality is a two-way split, not a country list: the only thing the platform
+   does with it is decide whether to ask about a work permit. Two labelled options
+   answer that in one tap; a 200-country dropdown makes the candidate do the
+   mapping instead. `bg` matches the surrounding form's field background. */
+function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
+  const [natOpen, setNatOpen] = useState(false)
+  const [nat, setNat] = useState('Người Việt Nam')
+  return (
+    <div>
+      <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <p className="mb-1 text-[11px] font-medium text-ink/80">Nationality</p>
+          <button
+            onClick={() => setNatOpen((o) => !o)}
+            className={cn('flex h-9 w-full items-center justify-between rounded-md border px-2.5 text-[11.5px] text-ink/80', bg, natOpen ? 'border-brand' : 'border-line')}
+          >
+            {nat}
+            <span className="text-faint">{natOpen ? '▴' : '▾'}</span>
+          </button>
+          {natOpen && (
+            <div className="mt-1 overflow-hidden rounded-md border border-line bg-surface shadow-sm">
+              {['Người Việt Nam', 'Người nước ngoài'].map((o) => (
+                <button
+                  key={o}
+                  onClick={() => { setNat(o); setNatOpen(false) }}
+                  className={cn(
+                    'flex w-full items-center gap-2 border-b border-line-soft px-2.5 py-2 text-left text-[11.5px] last:border-b-0',
+                    o === nat ? 'bg-brand-soft/50 font-medium text-brand' : 'text-ink/80 hover:bg-canvas/60',
+                  )}
+                >
+                  <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', o === nat ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+                  {o}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="mt-1 text-[10px] text-faint">Chọn “Người nước ngoài” sẽ hỏi thêm về giấy phép lao động.</p>
+        </div>
+        {([['Date of birth', 'DD/MM/YYYY'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
+          <div key={label}>
+            <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
+            <div className={cn('flex h-9 items-center justify-between rounded-md border border-line px-2.5 text-[11.5px] text-faint', bg)}>{ph}<span className="text-faint">▾</span></div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] text-faint">Shown on your CV if you fill them in. Employers can never search or filter by these.</p>
+    </div>
+  )
+}
+
 function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Facebook'; onBack: () => void }) {
   const go = useNav()
   /* One consent line — the same control the email Create-account form uses. */
@@ -2844,21 +2898,7 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
               <label className="mt-1.5 flex items-center gap-2 text-[10.5px] text-muted"><span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I live abroad — I don’t have a Vietnamese number</label>
             </div>
 
-            {/* personal details — the rest of Basic information, collected here.
-                All four are OPTIONAL: they are never employer search facets, so
-                they must never block someone from finishing sign-up. */}
-            <div className="mt-4">
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
-              <div className="grid grid-cols-2 gap-2">
-                {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
-                  <div key={label}>
-                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
-                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-surface px-2.5 text-[11.5px] text-faint">{ph}<span className="text-faint">▾</span></div>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-1 text-[10px] text-faint">Shown on your CV if you fill them in. Employers can never search or filter by these.</p>
-            </div>
+            <div className="mt-4"><PersonalDetails /></div>
 
             {/* consent — the same single line as the email Create-account form */}
             <label onClick={() => setAgreed((v) => !v)} className="mt-4 flex cursor-pointer items-start gap-2 text-[10.5px] leading-relaxed text-muted">
@@ -2915,18 +2955,7 @@ function SignUpScreen() {
             </div>
             <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone</p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">+84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
 
-            {/* the rest of Basic information — optional, never search facets */}
-            <div>
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
-              <div className="grid grid-cols-2 gap-2">
-                {([['Date of birth', 'DD/MM/YYYY'], ['Nationality', 'Việt Nam'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
-                  <div key={label}>
-                    <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
-                    <div className="flex h-9 items-center justify-between rounded-md border border-line bg-canvas/30 px-2.5 text-[11.5px] text-faint">{ph}<span className="text-faint">▾</span></div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PersonalDetails bg="bg-canvas/30" />
 
             <label className="flex items-start gap-2 text-[10.5px] leading-relaxed text-muted"><span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border border-line" />I agree to Saramin’s Terms &amp; Privacy Policy.</label>
           </div>

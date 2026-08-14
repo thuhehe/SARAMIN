@@ -5689,7 +5689,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
               {editInfo ? (
                 <>
                   <SelectRow label="Quốc tịch / Country" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
-                  {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.groups?.[0]?.items ?? []} />}
+                  {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.entries ?? []} />}
                   <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                   <EField label="Website" value={c.domain} onChange={() => {}} mono />
                   <SelectRow label="Lead source" value={coLeadSource(c)} onChange={() => {}} options={LEAD_SOURCES} />
@@ -13350,17 +13350,22 @@ const MD_DOMAINS: MDDomain[] = [
     // Gates the Locations field: a Vietnamese company picks a province from
     // Locations below; a foreign one does not, and writes its city into Address.
     key: 'country', label: 'Country (quốc tịch công ty)', i18n: 'vi · en', used: 'Company profile (create + detail)',
-    note: 'Nationality of the COMPANY — where it is registered, not where its office is. Việt Nam is the default and the only value that reveals the Vietnamese province picker. Single-level list.',
+    note: 'Quốc gia ĐĂNG KÝ của công ty — nơi thành lập theo giấy chứng nhận đăng ký, KHÔNG phải nơi đặt văn phòng và KHÔNG phải quốc tịch của chủ sở hữu (một công ty Hàn Quốc đầu tư, thành lập tại VN thì vẫn là Việt Nam — dùng Company tag cho phần sở hữu). Danh sách ĐẦY ĐỦ theo ISO 3166-1: các nước hay gặp trong kinh doanh tại VN được xếp lên đầu và có tên tiếng Việt, phần còn lại theo tên tiếng Anh, A→Z. Không có mục “Khác” — một quốc gia có thật luôn chọn được, và “Khác” thì không dùng được vào việc gì (hiệp định thuế, báo cáo).',
     kind: 'flat',
-    entries: ['Việt Nam', 'Hàn Quốc / Korea', 'Nhật Bản / Japan', 'Singapore', 'Hoa Kỳ / United States', 'Trung Quốc / China', 'Đài Loan / Taiwan', 'Thái Lan / Thailand', 'Malaysia', 'Đức / Germany', 'Pháp / France', 'Anh / United Kingdom', 'Úc / Australia', 'Ấn Độ / India', 'Khác / Other'],
+    entries: ['Việt Nam', 'Hàn Quốc / Korea, Republic of', 'Nhật Bản / Japan', 'Singapore', 'Hoa Kỳ / United States', 'Trung Quốc / China', 'Đài Loan / Taiwan', 'Hồng Kông / Hong Kong', 'Thái Lan / Thailand', 'Malaysia', 'Indonesia', 'Philippines', 'Ấn Độ / India', 'Úc / Australia', 'Đức / Germany', 'Pháp / France', 'Anh / United Kingdom', 'Hà Lan / Netherlands', 'Thụy Sĩ / Switzerland', 'Canada', 'Nga / Russian Federation', 'Campuchia / Cambodia', 'Lào / Laos', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei Darussalam', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cameroon', 'Central African Republic', 'Chad', 'Chile', 'Colombia', 'Comoros', 'Congo', 'Congo, Democratic Republic of the', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Côte d\'Ivoire', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'Gabon', 'Gambia', 'Georgia', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Korea, Democratic People\'s Republic of', 'Kuwait', 'Kyrgyzstan', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Palestine, State of', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Syria', 'Tajikistan', 'Tanzania', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkmenistan', 'Tuvalu', 'Türkiye', 'Uganda', 'Ukraine', 'United Arab Emirates', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Yemen', 'Zambia', 'Zimbabwe'],
+  },
+  {
+    key: 'js-nationality', label: 'Quốc tịch ứng viên / Jobseeker nationality', i18n: 'vi · en',
+    used: 'Job form (yêu cầu ứng viên) · Jobseeker profile · Applicant filter',
+    note: 'HAI giá trị, và danh sách này không được phép dài ra. Câu hỏi mà nhà tuyển dụng thực sự cần trả lời là “có phải bảo lãnh giấy phép lao động không”, chứ không phải “hộ chiếu nước nào” — mà câu đó chỉ có hai vế. Tách theo từng quốc gia sẽ biến một trường dữ liệu cá nhân nhạy cảm thành bộ lọc phân biệt đối xử, và nếu vai trò cần tiếng Nhật hay tiếng Hàn thì đó là KỸ NĂNG NGÔN NGỮ, không phải quốc tịch.\n\nKhác hẳn Country của CÔNG TY (đủ ~196 nước): quốc gia đăng ký của công ty là dữ liệu công khai trên giấy phép và quyết định cách tính thuế; quốc tịch ứng viên là dữ liệu cá nhân nhạy cảm (NĐ 13/2023) nên chỉ thu thập đúng phần dùng đến.',
+    kind: 'flat',
+    entries: ['Việt Nam / Vietnamese', 'Nước ngoài / Foreigner'],
   },
   {
     key: 'locations', label: 'Locations', i18n: 'vi · en', used: 'Company profile · job form · Store filter',
-    note: 'Vietnamese provinces/cities plus an International bucket. Grouped list.', kind: 'grouped',
-    groups: [
-      { name: 'Vietnam', items: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Bình Dương', 'Đồng Nai', 'Khánh Hòa', '… 63 provinces'] },
-      { name: 'International', items: ['International (remote)', 'Japan', 'Singapore', 'Korea', 'Other'] },
-    ],
+    note: 'ĐỦ 34 đơn vị hành chính cấp tỉnh của Việt Nam sau sáp nhập 01/7/2025 (6 thành phố trực thuộc trung ương + 28 tỉnh), và giá trị CUỐI CÙNG là “Quốc tế / International”. Sáu thành phố xếp trước vì phần lớn tin tuyển dụng nằm ở đó; 28 tỉnh còn lại A→Z. Danh sách phẳng, không nhóm — một tin đăng chọn một tỉnh, không chọn một vùng.\n\nQuốc tế nằm CUỐI, không nằm đầu và không tách thành từng nước: ở một sàn tuyển dụng Việt Nam đây là ngoại lệ, và tách Japan/Singapore/Korea thành từng mục sẽ tạo ra bộ lọc gần như luôn rỗng.',
+    kind: 'flat',
+    entries: ['Hà Nội', 'Hồ Chí Minh', 'Hải Phòng', 'Đà Nẵng', 'Huế', 'Cần Thơ', 'An Giang', 'Bắc Ninh', 'Cao Bằng', 'Cà Mau', 'Gia Lai', 'Hà Tĩnh', 'Hưng Yên', 'Khánh Hòa', 'Lai Châu', 'Lào Cai', 'Lâm Đồng', 'Lạng Sơn', 'Nghệ An', 'Ninh Bình', 'Phú Thọ', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị', 'Sơn La', 'Thanh Hóa', 'Thái Nguyên', 'Tuyên Quang', 'Tây Ninh', 'Vĩnh Long', 'Điện Biên', 'Đắk Lắk', 'Đồng Nai', 'Đồng Tháp', 'Quốc tế / International'],
   },
   {
     key: 'currency', label: 'Salary currency', i18n: '—', used: 'Job form (salary range) · Candidate expected salary',
