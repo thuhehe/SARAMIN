@@ -5688,7 +5688,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                   only for a Vietnamese company, Address for everyone. */}
               {editInfo ? (
                 <>
-                  <SelectRow label="Quốc tịch / Country" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
+                  <SelectRow label="Quốc gia đăng ký / Country of registration" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
                   {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.entries ?? []} />}
                   <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                   <EField label="Website" value={c.domain} onChange={() => {}} mono />
@@ -5697,7 +5697,7 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
                 </>
               ) : (
                 <>
-                  <KV label="Quốc tịch / Country" value={c.country} />
+                  <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />
                   {isVNCompany(c)
                     ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
                     : <KV label="Tỉnh / Thành phố · City" value="— (không phải công ty Việt Nam · xem Address)" />}
@@ -10683,10 +10683,11 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
             <CompanyTagPicker />
           </div>
-          {/* Quốc tịch gates the province picker: a Vietnamese company gets the
-              63-province list, a foreign one does not. */}
+          {/* Country of registration gates the province picker: a Vietnamese company
+              gets the 34 provincial units, a foreign one does not. A company has a
+              country of REGISTRATION, not a nationality. */}
           <ComboField
-            label="Quốc tịch / Country"
+            label="Quốc gia đăng ký / Country of registration"
             value={country}
             onChange={setCountry}
             placeholder="Select a country…"
