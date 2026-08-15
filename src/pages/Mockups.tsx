@@ -2795,14 +2795,17 @@ function MyApplicationsScreen() {
    The last one alone makes this step mandatory, which is why asking for the phone
    here is nearly free: we are stopping the candidate anyway. Modelled on the
    Saramin KR completion screen (agree-to-all + itemised required/optional). */
-/* The rest of Basic information, shared by both sign-up paths (email and social)
-   so the two can never drift. All of it is OPTIONAL — none is an employer search
-   facet, so none may block finishing sign-up.
+/* The red asterisk, so "required" reads the same everywhere it appears. */
+const Req = () => <span className="text-rose-500"> *</span>
 
-   Nationality is a two-way split, not a country list: the only thing the platform
-   does with it is decide whether to ask about a work permit. Two labelled options
-   answer that in one tap; a 200-country dropdown makes the candidate do the
-   mapping instead. `bg` matches the surrounding form's field background. */
+/* The rest of Basic information, shared by both sign-up paths (email and social)
+   so the two can never drift. All of it is REQUIRED — the client wants a complete
+   profile at sign-up rather than a partial one topped up later.
+
+   Nationality is a two-option list, not a country list: the only thing the platform
+   does with it is decide whether to ask about a work permit, so a 200-country
+   dropdown would make the candidate do that mapping instead.
+   `bg` matches the surrounding form's field background. */
 function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
   const [natOpen, setNatOpen] = useState(false)
   const [nat, setNat] = useState('Người Việt Nam')
@@ -2811,7 +2814,7 @@ function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
       <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Personal details</p>
       <div className="grid grid-cols-2 gap-2">
         <div className="col-span-2">
-          <p className="mb-1 text-[11px] font-medium text-ink/80">Nationality</p>
+          <p className="mb-1 text-[11px] font-medium text-ink/80">Nationality<Req /></p>
           <button
             onClick={() => setNatOpen((o) => !o)}
             className={cn('flex h-9 w-full items-center justify-between rounded-md border px-2.5 text-[11.5px] text-ink/80', bg, natOpen ? 'border-brand' : 'border-line')}
@@ -2840,12 +2843,12 @@ function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
         </div>
         {([['Date of birth', 'DD/MM/YYYY'], ['Gender', 'Select…'], ['Marital status', 'Select…']] as [string, string][]).map(([label, ph]) => (
           <div key={label}>
-            <p className="mb-1 text-[11px] font-medium text-ink/80">{label}</p>
+            <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<Req /></p>
             <div className={cn('flex h-9 items-center justify-between rounded-md border border-line px-2.5 text-[11.5px] text-faint', bg)}>{ph}<span className="text-faint">▾</span></div>
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-faint">Shown on your CV if you fill them in. Employers can never search or filter by these.</p>
+      <p className="mt-1 text-[10px] text-faint">Shown on your CV. Employers can never search or filter by these.</p>
     </div>
   )
 }
@@ -2942,18 +2945,20 @@ function SignUpScreen() {
           </div>
           <div className="my-3 flex items-center gap-2 text-[11px] text-faint"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
 
-          {/* email */}
+          {/* email — every field on this form is REQUIRED, including the personal
+              details below. The asterisk is on every label rather than a "all fields
+              required" note, so the rule is readable field-by-field while scrolling. */}
           <div className="space-y-2.5">
-            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Full name</p><div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">One field — no first / last split</div></div>
-            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Email</p><div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">you@email.com</div></div>
+            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Full name<Req /></p><div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">One field — no first / last split</div></div>
+            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Email<Req /></p><div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">you@email.com</div></div>
             <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink">Password</p>
+              <p className="mb-1 text-[11.5px] font-medium text-ink">Password<Req /></p>
               <div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">••••••••</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {['12+ chars', '1 number', '1 symbol', '1 uppercase'].map((r) => <span key={r} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] text-muted"><span className="text-emerald-500">✓</span>{r}</span>)}
               </div>
             </div>
-            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone</p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">+84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
+            <div><p className="mb-1 text-[11.5px] font-medium text-ink">Phone<Req /></p><div className="flex items-center gap-1.5"><span className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-surface px-2 text-[12px] text-ink/80">+84 <span className="text-faint">▾</span></span><div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">Enter your phone number</div></div></div>
 
             <PersonalDetails bg="bg-canvas/30" />
 
