@@ -14538,7 +14538,19 @@ function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolea
   )
 }
 
-function AdminJobCreate({ onBack }: { onBack: () => void }) {
+/* ONE create-job form for both surfaces. The Company site renders this same
+   component rather than a look-alike, because two hand-maintained copies of a
+   40-field form drift within a sprint and the drift is invisible until a field
+   exists on one side only.
+
+   Only two things differ, and both come from the spec rather than from taste:
+   ① the company picker is Admin-only — an employer is already scoped to their
+     own company, so there is nothing to choose;
+   ② the free tier is Admin-only too. "Employers can NEVER post a free job"
+     (Products & Packages), so on the Company surface a PO is the only way to a
+     product and the no-PO free list must not be offered. */
+export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => void; surface?: 'admin' | 'company' }) {
+  const isAdmin = surface === 'admin'
   useDetailCrumb('New job', onBack)
   const [exposed, setExposed] = useState(true)
   const [postMenu, setPostMenu] = useState(false)
@@ -14550,13 +14562,18 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
   /* Products offered depend on the PO, straight from the product's `entitlement`:
      with no PO only the always-available (free) tiers can be picked; choosing a PO adds
      that PO's paid lines. Nothing here matches on the product NAME. */
-  const NO_PO = '— none (Free job) —'
+  /* The no-PO option reads differently per surface: for HQ it is the route to the
+     free tier, for an employer it is simply "nothing to post from" — never a
+     free job. */
+  const NO_PO = isAdmin ? '— none (Free job) —' : '— none —'
   const [po, setPo] = useState(NO_PO)
   const hasPo = po !== NO_PO
   const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement === 'free' && c.status === 'Active')
   const paidProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement !== 'free' && c.status === 'Active')
   const label = (c: (typeof CATALOG)[number]) => `${c.name} · ${c.fulfilment.split(' · ')[0]}`
-  const productOptions = (hasPo ? paidProducts : freeProducts).map(label)
+  /* No PO on the Company surface means NO product — never the free tier, which is
+     Admin-only. An employer without an active PO has nothing to post from. */
+  const productOptions = (hasPo ? paidProducts : isAdmin ? freeProducts : []).map(label)
 
   return (
     <div className="max-w-[860px]">
@@ -14574,8 +14591,13 @@ function AdminJobCreate({ onBack }: { onBack: () => void }) {
       <div className="space-y-8">
         {/* ═══ POSTING SETUP (company · package · exposure) ═════════════════ */}
         <JobGroup title="Posting setup">
-          <SelectField label="Company" req value="NEC Vietnam · CO-1042" createLabel="Create company" options={['NEC Vietnam · CO-1042', 'FPT Software · CO-1007', 'VNG Corporation · CO-2231', 'Tiki · CO-1890', 'MoMo · CO-3120']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— searchable by name or ID</span>} />
-          <CompanyInfoCard />
+          {/* Admin-only: an employer is already scoped to their own company. */}
+          {isAdmin && (
+            <>
+              <SelectField label="Company" req value="NEC Vietnam · CO-1042" createLabel="Create company" options={['NEC Vietnam · CO-1042', 'FPT Software · CO-1007', 'VNG Corporation · CO-2231', 'Tiki · CO-1890', 'MoMo · CO-3120']} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— searchable by name or ID</span>} />
+              <CompanyInfoCard />
+            </>
+          )}
           {/* PO → Products sit side by side: the PO scopes which products can be picked */}
           <div className="grid grid-cols-2 gap-3">
             <SelectField

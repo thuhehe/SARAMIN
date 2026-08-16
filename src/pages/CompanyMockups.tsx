@@ -32,9 +32,8 @@ import {
   Users,
 } from 'lucide-react'
 import { Btn, Chip } from '@/components/wire'
-import { BenefitsField } from '@/components/BenefitsField'
-import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { CopyLinkButton, initialScreenParam, useScreenParam } from '@/components/ShareLink'
+import { AdminJobCreate } from './adminPrototypes'
 import { cn } from '@/lib/utils'
 
 /** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
@@ -177,32 +176,17 @@ function DashboardScreen() {
   )
 }
 
-/** Bilingual copy for the demo posting — swapped by the VI / EN tab. */
-const JOB_I18N = {
-  vi: {
-    title: 'Điều dưỡng viên (Khoa Nội)',
-    role: 'Chăm sóc bệnh nhân nội trú, theo dõi dấu hiệu sinh tồn, phối hợp với bác sĩ trong điều trị…',
-    quals: 'Bằng cao đẳng/đại học điều dưỡng, chứng chỉ hành nghề, tối thiểu 1 năm kinh nghiệm…',
-    benefits: 'Bảo hiểm sức khỏe, thưởng tháng 13, phụ cấp ca đêm…',
-  },
-  en: {
-    title: 'Registered Nurse (Internal Medicine)',
-    role: 'Care for inpatients, monitor vital signs, coordinate with treating physicians…',
-    quals: 'Nursing college/university degree, valid practice certificate, 1+ year experience…',
-    benefits: 'Health insurance, 13th-month bonus, night-shift allowance…',
-  },
-}
-
 function PostJobScreen() {
   const go = useCoNav()
-  const [lang, setLang] = useState<'vi' | 'en'>('vi')
-  const [salaryMode, setSalaryMode] = useState('From – to')
-  const [exposure, setExposure] = useState('Exposed')
-  const [pkg, setPkg] = useState('Basic')
-  const [jobType, setJobType] = useState('In office')
-  const [contract, setContract] = useState('Full-time')
-  const t = JOB_I18N[lang]
+  /* THE SAME create-job form the Admin console uses — the component itself, not a
+     copy of it. Two hand-maintained versions of a 40-field form drift within a
+     sprint, and a field that exists on only one surface is invisible until an
+     employer cannot enter something HQ can.
 
+     `surface="company"` drops the two Admin-only parts: the company picker (an
+     employer is already scoped to their own company) and the free tier, because
+     an employer can never post a free job — a PO is their only route to a
+     product. */
   return (
     <div>
       <PageBar
@@ -211,162 +195,12 @@ function PostJobScreen() {
         action={
           <div className="flex gap-2">
             <Btn onClick={() => go('co-jobs')}>Save draft</Btn>
-            <Btn primary onClick={() => go('co-jobs')}>Post now</Btn>
+            <Btn primary onClick={() => go('co-jobs')}>Publish</Btn>
           </div>
         }
       />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* form */}
-        <div className="space-y-4">
-          {/* language tab — controls all bilingual fields */}
-          <div className="flex items-center justify-between rounded-lg border border-line bg-canvas/40 px-3 py-2">
-            <span className="text-[11px] font-medium text-ink/70">Content language</span>
-            <div className="flex overflow-hidden rounded-md border border-line text-[11px] font-medium">
-              {(['vi', 'en'] as const).map((l) => (
-                <button key={l} onClick={() => setLang(l)} className={cn('px-2.5 py-1 uppercase', lang === l ? 'bg-brand text-white' : 'text-muted')}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Basics */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Basics</p>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Company <span className="text-rose-500">*</span></p>
-              <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/50 px-3 py-2 text-[12px] text-ink/70">
-                Vạn Phát Healthcare
-                <span className="ml-auto text-[10.5px] text-violet-600">from Company API · ID VP-1042</span>
-              </div>
-            </div>
-            <Field label={`Job title · ${lang.toUpperCase()}`} req value={t.title} />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Category / industry" req value="Healthcare ▾" />
-              <Field label="Position level" value="Junior ▾" />
-            </div>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Contract type <span className="text-rose-500">*</span></p>
-              {/* All 7 of `contract_type` — the earlier 2 offered no way to post an
-                  internship or a probation role, both common here. */}
-              <Seg options={['Fulltime', 'Part-time', 'Fixed-term', 'Internship', 'Probation', 'Freelance', 'Seasonal']} value={contract} onChange={setContract} />
-              <p className="mt-1 text-[10.5px] text-faint">The employment relationship. Separate from Work type below — “Fulltime + Remote” is one posting, not a choice between two.</p>
-            </div>
-            <div>
-              {/* Labelled Work type, never `job_type` — the column name reads like
-                  "contract type" and that is how the two got merged in the first place. */}
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Work type <span className="text-rose-500">*</span></p>
-              <Seg options={['In office', 'Remote', 'Hybrid', 'Oversea']} value={jobType} onChange={setJobType} />
-            </div>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Exposure status <span className="text-rose-500">*</span></p>
-              <Seg options={['Exposed', 'Unexposed']} value={exposure} onChange={setExposure} />
-              <p className="mt-1 text-[10.5px] text-faint">Whether this job shows on the jobseeker site (hiển thị trên trang jobseeker hay không).</p>
-            </div>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Package <span className="text-rose-500">*</span></p>
-              <Seg options={['Free', 'Basic', 'Basic plus', 'Distinction']} value={pkg} onChange={setPkg} />
-            </div>
-          </div>
-
-          {/* Location, experience & salary */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Location, experience & salary</p>
-            {/* Named offices saved on the company, picked per job — same field the
-                admin form uses, so both sides write the same record. */}
-            <WorkingLocationsField initial={['hq', 'hn']} />
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Years of experience</p>
-              <div className="flex items-center gap-2 text-[12px] text-faint">
-                <span className="rounded-md border border-line bg-surface px-3 py-2">From 1</span>
-                <span className="text-muted">—</span>
-                <span className="rounded-md border border-line bg-surface px-3 py-2">To 3</span>
-                <span className="text-[11px] text-faint">years</span>
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Salary <span className="text-rose-500">*</span></p>
-              <div className="flex gap-4 text-[12px]">
-                {['Negotiable', 'From – to'].map((m) => (
-                  <label key={m} onClick={() => setSalaryMode(m)} className="flex cursor-pointer items-center gap-1.5 text-ink/80">
-                    <span className={cn('grid h-3.5 w-3.5 place-items-center rounded-full border-2', salaryMode === m ? 'border-brand' : 'border-line')}>
-                      {salaryMode === m && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                    </span>
-                    {m}
-                  </label>
-                ))}
-              </div>
-              {salaryMode === 'From – to' ? (
-                <div className="mt-2 flex items-center gap-2 text-[12px] text-faint">
-                  <span className="rounded-md border border-line bg-surface px-3 py-2">12,000,000</span>
-                  <span className="text-muted">—</span>
-                  <span className="rounded-md border border-line bg-surface px-3 py-2">18,000,000</span>
-                  <span className="text-[11px] text-faint">VND</span>
-                </div>
-              ) : (
-                <p className="mt-2 rounded-md border border-line bg-canvas/40 px-3 py-2 text-[12px] text-muted">Shown as “Thỏa thuận” to jobseekers.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Content (bilingual) */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-faint">Content · {lang.toUpperCase()}</p>
-            <Field label="Your role & responsibility" req area value={t.role} />
-            <Field label="Your skills & qualifications" req area value={t.quals} />
-            {/* Typed benefits, not a paragraph — same picker the HQ Admin job form
-                uses, so both sides produce the same structured data. An EXISTING job
-                passes its own list as `initial`; the company set still powers the
-                "↺ Về mặc định công ty" reset and the read-only preview. */}
-            <BenefitsField
-              initial={['pay', 'health', 'canteen', 'transport']}
-              companyBenefits={['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training']}
-              companyName="Cty Vạn Phát"
-            />
-            <div>
-              <p className="mb-1 text-[11.5px] font-medium text-ink/80">Skills</p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Chip>Điều dưỡng ✕</Chip><Chip>Chăm sóc bệnh nhân ✕</Chip><Chip>Sơ cấp cứu ✕</Chip>
-                <span className="rounded-md border border-line px-2 py-1 text-[11px] text-muted">Select skills ▾</span>
-              </div>
-            </div>
-            <Field label="Application deadline" req value="31/08/2026" />
-          </div>
-        </div>
-
-        {/* preview + notes */}
-        <div className="space-y-3">
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-faint">Jobseeker view →</p>
-            <div className={cn('rounded-lg border border-line p-3', exposure === 'Unexposed' && 'opacity-50')}>
-              <div className="flex gap-3">
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-canvas text-[11px] font-bold text-brand">VP</div>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-ink">{t.title}</p>
-                  <p className="text-[12px] text-muted">Vạn Phát Healthcare</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <Chip tone="green">{salaryMode === 'From – to' ? '12 – 18 tr' : 'Thỏa thuận'}</Chip>
-                    <Chip>Hồ Chí Minh</Chip>
-                    <Chip>{jobType}</Chip>
-                    <Chip>{contract}</Chip>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {exposure === 'Unexposed' && (
-              <p className="mt-1.5 rounded-md border border-line bg-canvas/50 px-3 py-1.5 text-[11px] text-muted">Unexposed — hidden from the jobseeker site until you set it to Exposed.</p>
-            )}
-          </div>
-          <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
-            Package: <b>{pkg}</b>{pkg === 'Free' ? ' — standard listing.' : ' — higher visibility & ranking.'}
-          </div>
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11.5px] text-emerald-800">
-            Goes live immediately — no approval wait. Visible to jobseekers while the job is <b>Open</b> and <b>Exposure is On</b>.
-          </div>
-          <div className="rounded-md bg-brand-soft px-3 py-2.5 text-[11.5px] text-brand">
-            Publishing consumes <b>1 posting slot</b>. You have <b>3 slots</b> left after this one.
-          </div>
-        </div>
+      <div className="px-5 py-4">
+        <AdminJobCreate surface="company" onBack={() => go('co-jobs')} />
       </div>
     </div>
   )
