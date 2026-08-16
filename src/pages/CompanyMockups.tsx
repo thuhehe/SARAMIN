@@ -13,7 +13,6 @@
 import { createContext, Fragment, useContext, useState } from 'react'
 import {
   Search,
-  Bell,
   ChevronDown,
   ChevronUp,
   Crown,
@@ -2353,10 +2352,8 @@ function CoHeader({ active, onSelect }: { active: CoActive; onSelect: (a: CoActi
         >
           Create account
         </span>
-        <span className="relative text-muted">
-          <Bell className="h-4 w-4" />
-          <span className="absolute -right-1.5 -top-1.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-rose-500 text-[8px] font-bold text-white">1</span>
-        </span>
+        {/* No notification bell — removed on the same call as the Admin console's:
+            a badge that never changes is decoration, not a signal. */}
         <span className="hidden items-center gap-1.5 text-[12px] md:flex">
           <Building2 className="h-4 w-4 text-faint" />
           <span className="text-ink/80">Vạn Phát Healthcare</span>

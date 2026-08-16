@@ -2138,14 +2138,24 @@ function MyCvsScreen() {
                       {/* The switch that decides which CV recruiters can find. Its old
                           label “Cho phép tìm kiếm” read as a privacy switch; it actually
                           means “THIS is the one employers see”, so it says that now. */}
+                      {/* A RADIO, not a switch — the flag moves between CVs and can
+                          never reach zero, because "Discoverable with nothing
+                          indexed" is the worst state in the product: the candidate
+                          consented, believes they are findable, and gets nothing.
+                          It used to render as an on/off toggle that could not
+                          actually be switched off, which promised the opposite. */}
                       <div className="mt-1 border-t border-line-soft px-3 py-2.5">
                         <label onClick={() => { setSearchable(i); setMenu(null) }} className="flex cursor-pointer items-center justify-between gap-2">
-                          <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy</span>
-                          <span className={cn('relative h-4 w-7 shrink-0 rounded-full transition-colors', searchable === i ? 'bg-emerald-500' : 'bg-line')}>
-                            <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
+                          <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy CV này</span>
+                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
+                            {searchable === i && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                           </span>
                         </label>
-                        <p className="mt-1 text-[10.5px] leading-snug text-faint">Chỉ 1 CV được tìm thấy. Các CV khác vẫn ứng tuyển được.</p>
+                        <p className="mt-1 text-[10.5px] leading-snug text-faint">
+                          {searchable === i
+                            ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế — luôn có đúng 1 CV được tìm thấy.'
+                            : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
+                        </p>
                       </div>
                     </div>
                   </>

@@ -5,7 +5,6 @@ import {
   Package,
   Users,
   FileImage,
-  Bell,
   Handshake,
   BarChart3,
   Settings,
@@ -475,10 +474,9 @@ export function AdminWireframe() {
               <div className="flex h-full items-center gap-2 px-3">
                 {/* No language control: the Admin console is English-only, so a
                     switcher would offer exactly one choice. See SH-I18N-01. */}
-                <span className="relative grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line text-muted">
-                  <Bell className="h-3.5 w-3.5" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500" />
-                </span>
+                {/* No notification bell: nothing in this console pushes an alert a
+                    reader can act on, so a permanently-dotted bell only promises
+                    something that never arrives. */}
                 <span className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-brand to-violet-500" />
               </div>
             </div>
