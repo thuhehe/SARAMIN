@@ -331,6 +331,27 @@ function ApplyScreen() {
                     </span>
                   </label>
                 ))}
+                {/* APPLY-ELIGIBLE gate (see Resume management): a Saramin CV whose
+                    CV content is below the named minimum (≥1 experience — or ≥1
+                    education entry for a fresher — and ≥3 skills) cannot be SENT.
+                    VNW pattern: greyed, unselectable, the missing fields NAMED and
+                    one link into the editor. Uploaded files are never gated here —
+                    a doubtful file is checked after submit instead (Pending). */}
+                <div className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas/40 p-2.5">
+                  <span className="grid h-3.5 w-3.5 shrink-0 rounded-full border-2 border-line bg-canvas" />
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50"></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-[12.5px] font-semibold text-muted">UX Designer CV</span>
+                      <Chip tone="blue">Saramin</Chip>
+                      <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>
+                    </span>
+                    <span className="block text-[11px] text-faint">
+                      Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng{' '}
+                      <span onClick={() => go('js-create-cv')} className="cursor-pointer font-medium text-brand">Cập nhật →</span>
+                    </span>
+                  </span>
+                </div>
                 <button
                   onClick={() => go('js-add-cv')}
                   className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-dashed border-line px-3 py-2.5 text-left hover:border-brand/50"
@@ -2046,9 +2067,16 @@ function MyCvsScreen() {
   /* Skills are per-CV (CvSkill: cvId · skillId), so two CVs genuinely differ here —
      which is the reason the row shows them at all: it is how a candidate compares
      their CVs and decides which one employers should find. */
-  const cvs = [
+  /* `missing` = the APPLY-ELIGIBLE gate (see Resume management): a Saramin CV
+     needs ≥1 experience (or ≥1 education entry for a fresher) and ≥3 skills
+     before it can be SENT with an application. The label shows HERE, on the
+     shelf, so the candidate learns it before the apply modal greys the row.
+     It does not touch the searchable flag — an incomplete CV can still be
+     the one employers find. */
+  const cvs: { name: string; kind: string; meta: string; icon: string; skills?: string[]; missing?: string }[] = [
     { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '', skills: ['Business Development', 'B2B Sales', 'Account Management', 'Excel'] },
+    { name: 'UX Designer CV', kind: 'Saramin', meta: 'Generated 14/08/2026', icon: '', skills: ['Figma'], missing: 'kinh nghiệm làm việc · thêm 2 kỹ năng' },
   ]
 
   return (
@@ -2066,7 +2094,9 @@ function MyCvsScreen() {
             <div>
               <p className="text-[15px] font-bold text-ink">My CVs <span className="text-[11px] font-normal text-faint">· {cvs.length} of 3</span></p>
             </div>
-            <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>
+            {cvs.length >= 3
+              ? <span className="rounded-md border border-line px-3 py-1.5 text-[11.5px] text-faint">Đã đủ 3 CV — xoá một CV để thêm mới</span>
+              : <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>}
           </div>
 
           {/* CV list — ONE named action per row (View as employer, the only thing a
@@ -2083,6 +2113,7 @@ function MyCvsScreen() {
                     {c.name}
                     <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
                     {searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
+                    {c.missing && <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>}
                   </p>
                   <p className="text-[11px] text-faint">{c.meta}</p>
 
@@ -2104,6 +2135,14 @@ function MyCvsScreen() {
                       className="cursor-pointer text-[11px] font-medium text-brand"
                     >✎ Edit</span>
                   </div>
+
+                  {/* The gate, spelled out — named fields, never a % (see spec) */}
+                  {c.missing && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      Thiếu: {c.missing} —{' '}
+                      <span onClick={() => go('js-create-cv')} className="cursor-pointer font-medium text-brand">Hoàn thiện →</span>
+                    </p>
+                  )}
 
                   {/* The one named action, LAST — it sends the candidate away from
                       this list, so it sits under what describes the CV rather than

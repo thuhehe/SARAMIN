@@ -104,7 +104,7 @@ function TableSearch({ q, onChange, placeholder, dropdown }: { q: string; onChan
       <input
         value={q}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder ?? 'Search all columns…'}
+        placeholder={placeholder ?? 'Tìm trong tất cả các cột…'}
         className="w-[210px] rounded-lg border border-line bg-surface py-1 pl-7 pr-7 text-[11.5px] outline-none transition-[width,border-color] focus:w-[280px] focus:border-brand"
       />
       {q && (
@@ -310,7 +310,7 @@ function Footer({ size, onSize }: { size: number; onSize: (n: number) => void })
   return (
     <div className="mt-3 flex items-center justify-between gap-3">
       <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
-        Rows per page
+        Số dòng mỗi trang
         <select
           value={size}
           onChange={(e) => onSize(Number(e.target.value))}
@@ -459,10 +459,10 @@ function ListPage({ tabs, cols, rows, minW, action, leading, filters, searchHint
       {/* Result count sits directly on top of the table it describes — how many rows
           the current search/filters left, against the whole list. */}
       <p className="mb-1.5 text-[11px] text-faint">
-        Search <b className="font-semibold text-ink/70 tabular-nums">{matched.length}</b>
-        {' / '}Total <b className="font-semibold text-ink/70 tabular-nums">{total ?? rows.length}</b>
+        Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{matched.length}</b>
+        {' / '}Tổng <b className="font-semibold text-ink/70 tabular-nums">{total ?? rows.length}</b>
       </p>
-      <Table cols={cols} rows={matched.slice(0, size)} minW={minW} empty={`No rows match “${q.trim()}”.`} />
+      <Table cols={cols} rows={matched.slice(0, size)} minW={minW} empty={`Không có dòng nào khớp “${q.trim()}”.`} />
       <Footer size={size} onSize={setSize} />
     </div>
   )
@@ -603,12 +603,17 @@ function CvCell({ label, kind }: { label: string; kind: 'saramin' | 'upload' }) 
  *   stage  (Layer 3, company-owned, read-only here)
  *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
  *
- * Layer 1 (screening) is dormant: every application is written `passed` at apply
- * and it is never displayed, so there is no column for it.
+ * Layer 1 (screening) is a single TECHNICAL hold: nearly every application is
+ * written `passed` at apply and never displayed. Only the "is this a CV?"
+ * check (see Application management) holds one as Pending — unreadable file,
+ * or fewer than 2 of the 6 CV signals — for a human to resolve with two
+ * verbs: Real CV → send · Not a CV → reject. Each decision is logged against
+ * the fired signals, which is what tunes the check over time.
  */
-type Delivery = 'Sent' | 'Recalled' | 'Blocked'
+type Delivery = 'Pending' | 'Sent' | 'Recalled' | 'Blocked'
 
 const DELIVERY_TONE: Record<Delivery, StatusTone> = {
+  Pending: 'pending',
   Sent: 'neutral',
   Recalled: 'draft',
   Blocked: 'rejected',
@@ -625,14 +630,16 @@ const STAGE_TONE: Record<string, StatusTone> = {
   Rejected: 'rejected',
 }
 
-type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; status: Delivery; stage: string; when: string }
+/* `held` — Pending only: which "is this a CV?" signals fired, shown on the row
+   and in the detail so the reviewer (and later the model) knows WHY it stopped. */
+type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; status: Delivery; stage: string; when: string; held?: string }
 
 /* Applicant detail under status model v2. There is NO pre-send gate any more:
    the employer already has this CV, so HQ cannot approve or reject it. What is
    left is oversight — read the same information the employer sees, then either
    pull it back (Recall) or shut the whole account off (Block). The quality
    checks stay on screen as LABELS: they inform, they never block. */
-function ApplicantDetail({ name, status, onClose }: { name: string; status: Delivery; onClose: () => void }) {
+function ApplicantDetail({ name, status, held, onClose }: { name: string; status: Delivery; held?: string; onClose: () => void }) {
   const [decision, setDecision] = useState<'none' | 'recall' | 'block'>('none')
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
@@ -664,6 +671,17 @@ function ApplicantDetail({ name, status, onClose }: { name: string; status: Deli
           </div>
           {/* labels + the two oversight actions */}
           <div className="space-y-3">
+            {/* Pending only — WHY the check held it. The reviewer decides against
+                these signals, and the decision is logged against them: that log is
+                the labelled data that tunes the check (and trains it in Phase 2). */}
+            {held && (
+              <div>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-600">Held by the “is this a CV?” check</p>
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
+                  Held: <b className="font-semibold">{held}</b>. The employer has NOT received this application. Decide below — the decision is logged against these signals, and that log is what teaches the check.
+                </p>
+              </div>
+            )}
             <div>
               <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Labels · never blocking</p>
               <div className="space-y-1">
@@ -697,15 +715,30 @@ function ApplicantDetail({ name, status, onClose }: { name: string; status: Deli
           </div>
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
-          <span className="text-[10.5px] text-faint">No approve / reject — the employer already has this CV. Every action is audited.</span>
+          <span className="text-[10.5px] text-faint">
+            {status === 'Pending'
+              ? 'Held — the employer has received nothing yet. Both verbs are audited and logged against the fired signals.'
+              : 'No approve / reject — the employer already has this CV. Every action is audited.'}
+          </span>
           <div className="flex shrink-0 gap-2 whitespace-nowrap">
             {decision === 'none' ? (
-              <>
-                <RowAction>Note</RowAction>
-                <RowAction>Edit</RowAction>
-                <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
-                <button onClick={() => setDecision('recall')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Recall…</button>
-              </>
+              status === 'Pending' ? (
+                /* The Pending pair — the ONLY place HQ ever gates a send, and it is
+                   a technical verdict on the FILE, never a quality judgement on the
+                   candidate. */
+                <>
+                  <RowAction>Note</RowAction>
+                  <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Not a CV — reject</button>
+                  <button onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-semibold text-white">Real CV — send now</button>
+                </>
+              ) : (
+                <>
+                  <RowAction>Note</RowAction>
+                  <RowAction>Edit</RowAction>
+                  <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
+                  <button onClick={() => setDecision('recall')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Recall…</button>
+                </>
+              )
             ) : (
               <>
                 <button onClick={() => setDecision('none')} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-semibold text-muted">Cancel</button>
@@ -729,6 +762,10 @@ function AdminApplicants() {
   const [fLoc, setFLoc] = useState('')
   const [fCv, setFCv] = useState('')
   const raw: Applicant[] = [
+    /* The one held row — an uploaded file the "is this a CV?" check doubted.
+       Role is "—" because it comes from the CV (unreadable); years and education
+       survive because they are PROFILE fields, stated at onboarding. */
+    { name: 'Trương Văn Bình', role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], status: 'Pending', held: '1/6 CV signals — no contact, no dates', stage: 'New', when: '10m ago' },
     { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], status: 'Sent', stage: 'Reviewing', when: '2h ago' },
     { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], status: 'Sent', stage: 'Interview', when: '5h ago' },
     { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], status: 'Sent', stage: 'Hired', when: '1d ago' },
@@ -765,7 +802,14 @@ function AdminApplicants() {
     <ExtLink>{a.job}</ExtLink>,
     <ExtLink>{a.company}</ExtLink>,
     <CvCell label={a.cv[0]} kind={a.cv[1]} />,
-    <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
+    /* Pending carries its WHY on the row — the fired signals are what the
+       reviewer resolves against, and what the check later learns from. */
+    a.status === 'Pending'
+      ? <div className="min-w-0">
+          <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>
+          <p className="mt-0.5 truncate text-[10.5px] text-amber-700" title={a.held}>held: {a.held}</p>
+        </div>
+      : <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
     /* Recalled and Blocked CVs are off the employer's dashboard, so their funnel
        stops moving — an em-dash says that better than a frozen badge would. */
     a.status === 'Sent'
@@ -777,6 +821,9 @@ function AdminApplicants() {
        user-level, and both open the detail for the reason + confirm step. */
     <div className="flex flex-wrap items-center justify-end gap-1">
       <RowAction title="Opens the CV in a viewer — audited" onClick={() => setOpen(a)}>CV</RowAction>
+      {a.status === 'Pending' && (
+        <RowAction tone="amber" title="Real CV → send · Not a CV → reject — each decision is logged against the fired signals and teaches the check" onClick={() => setOpen(a)}>Review</RowAction>
+      )}
       {a.status === 'Sent' && (
         <RowAction tone="amber" title="Pull this CV off the employer’s dashboard — terminal" onClick={() => setOpen(a)}>Recall</RowAction>
       )}
@@ -792,8 +839,10 @@ function AdminApplicants() {
           owners once rather than leaving a reader to guess which badge is whose. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
         <b className="font-semibold text-ink/80">Status</b> is Saramin’s — Sent on apply, then Recalled or Blocked by HQ.{' '}
-        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. There is no screening
-        queue: an application is sent to the employer the moment it is submitted.
+        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. An application is sent
+        the moment it is submitted — <b className="font-semibold text-ink/80">unless the “is this a CV?” check holds it as Pending</b>{' '}
+        (unreadable file, or fewer than 2 of 6 CV signals). A human resolves those with two verbs — real CV → send, not a CV → reject —
+        and each decision is logged against the fired signals, which is how the check learns.
       </p>
       <ListPage
         minW={1700}
@@ -823,7 +872,7 @@ function AdminApplicants() {
         ]}
         rows={rows}
       />
-      {open && <ApplicantDetail name={open.name} status={open.status} onClose={() => setOpen(null)} />}
+      {open && <ApplicantDetail name={open.name} status={open.status} held={open.held} onClose={() => setOpen(null)} />}
     </div>
   )
 }
@@ -2672,7 +2721,7 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
           onChange={(e) => { setQ(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search any company — name, tax code, company ID…"
+          placeholder="Tìm công ty — tên, mã số thuế, mã công ty…"
           className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-faint"
         />
         {q ? (
@@ -7532,6 +7581,264 @@ function svcState(e: ServiceEntitlement): SvcState {
   return left > 0 ? 'Còn lượt' : 'Đã dùng hết'
 }
 
+/* ── CV search usage ──────────────────────────────────────────────────────────
+   HQ's view of how the CV-search product is actually USED. Same grain and same
+   shape as Manual services — one row per (customer × package bought) — because it
+   is the same kind of object: something a customer paid for that either gets
+   consumed or quietly does not.
+
+   Account usage answers "how much quota is left". This answers "is anybody
+   searching", and the two give opposite readings on the same account: a customer
+   who bought 40 unlocks and never logged in reads as 40 REMAINING there and as a
+   dead renewal here. */
+const CV_SEARCH_PACKAGES = [
+  { pkg: 'CV Search 100 · 6 tháng', co: 'Vạn Phát Healthcare', coId: 'VP-1042', owner: 'Ngọc Anh', used: 39, total: 100, until: '31/12/2026', searches: 142, last: '2 giờ trước' },
+  { pkg: 'CV Search 50 · 3 tháng', co: 'FPT Software', coId: 'FS-0318', owner: 'Minh Tuấn', used: 31, total: 50, until: '30/09/2026', searches: 96, last: 'Hôm nay' },
+  { pkg: 'CV Search 50 · 3 tháng', co: 'Tiki', coId: 'TK-0771', owner: 'Ngọc Anh', used: 12, total: 50, until: '15/10/2026', searches: 61, last: '3 ngày trước' },
+  { pkg: 'CV Search 30 · 1 tháng', co: 'MoMo', coId: 'MM-0209', owner: 'Hải Yến', used: 4, total: 30, until: '05/09/2026', searches: 24, last: '1 tuần trước' },
+  { pkg: 'CV Search 50 · 3 tháng', co: 'Zenpay', coId: 'ZP-1130', owner: 'Minh Tuấn', used: 0, total: 50, until: '20/11/2026', searches: 4, last: '3 tuần trước' },
+  { pkg: 'CV Search 40 · 6 tháng', co: 'One Mount', coId: 'OM-0455', owner: 'Hải Yến', used: 0, total: 40, until: '28/02/2027', searches: 0, last: '—' },
+]
+
+/* Two failures that look identical to the employer and are fixed by different
+   people. The labels say which is which without needing the legend. */
+const ZERO_RESULT_TERMS = [
+  { term: 'Kubernetes + Hà Nội', n: 14, why: 'Không có ứng viên' as const },
+  { term: 'kiến trúc sư giải pháp', n: 11, why: 'Không hiểu từ khoá' as const },
+  { term: 'RPA', n: 9, why: 'Không hiểu từ khoá' as const },
+  { term: 'Điều dưỡng + tiếng Nhật N2', n: 7, why: 'Không có ứng viên' as const },
+  { term: 'flutter dev', n: 5, why: 'Không hiểu từ khoá' as const },
+]
+
+/* ── Unresolved terms ─────────────────────────────────────────────────────────
+   Promoted out of a panel on CV search because it is a QUEUE, not a report: every
+   row needs somebody to do something and then say they did it. A panel cannot
+   hold a status, an owner or a decision, and at real volume this is hundreds of
+   rows a month rather than five.
+
+   The important move is the MERGE. The same failure arrives from two directions —
+   an employer searches "RPA" and gets nothing, a candidate's PDF says "RPA" and it
+   resolves to nothing — and the fix is identical: one alias, one row, both sides
+   fixed at once. Two lists would mean the taxonomy owner watches two queues and
+   fixes the same word twice.
+
+   Tab 2 is deliberately NOT the same problem. A term we understood against a pool
+   that is empty is a sourcing job, not a data job, and it belongs to Sales. It sits
+   here only because both are discovered the same way — by a search returning
+   nothing — and separating them at the tab level is what stops them being confused. */
+type TermStatus = 'Mới' | 'Đã xử lý' | 'Bỏ qua'
+/* `from` is a LIST, not a value. The same word often arrives from both directions —
+   an employer types it into CV search and gets nothing, and a candidate's PDF
+   contains it and resolves to nothing — and seeing both on one row is the clearest
+   possible evidence that one alias fixes two problems. */
+type TermSource = 'search' | 'cv'
+const SOURCE_LABEL: Record<TermSource, string> = { search: 'NTD tìm kiếm', cv: 'CV ứng viên' }
+const UNRESOLVED_TERMS: { term: string; from: TermSource[]; n: number; first: string; last: string; suggest: string; status: TermStatus }[] = [
+  { term: 'RPA', from: ['search', 'cv'], n: 23, first: '02/08', last: 'Hôm nay', suggest: 'Kỹ năng mới · nhóm IT — Software', status: 'Mới' },
+  { term: 'ReactJs', from: ['search', 'cv'], n: 34, first: '21/07', last: 'Hôm nay', suggest: 'Alias của “React”', status: 'Đã xử lý' },
+  { term: 'flutter dev', from: ['search'], n: 5, first: '05/08', last: 'Hôm qua', suggest: 'Alias của “Flutter”', status: 'Mới' },
+  { term: 'kiến trúc sư giải pháp', from: ['search'], n: 11, first: '28/07', last: 'Hôm nay', suggest: 'Chức danh, không phải kỹ năng — bỏ qua', status: 'Mới' },
+  { term: 'kế toán công nợ', from: ['cv'], n: 22, first: '19/07', last: 'Hôm nay', suggest: 'Kỹ năng mới · nhóm Accounting & Finance', status: 'Mới' },
+  { term: 'MS Ofice', from: ['cv'], n: 17, first: '25/07', last: '3 ngày trước', suggest: 'Lỗi chính tả → alias của “Microsoft Office”', status: 'Mới' },
+  { term: 'chăm chỉ', from: ['cv'], n: 63, first: '18/07', last: 'Hôm nay', suggest: 'Không phải kỹ năng — bỏ qua', status: 'Bỏ qua' },
+]
+
+const SUPPLY_GAPS = [
+  { query: 'Kubernetes + Hà Nội', n: 14, pool: 3, note: 'Có 3 ứng viên nhưng đều ở HCM' },
+  { query: 'Điều dưỡng + tiếng Nhật N2', n: 7, pool: 0, note: 'Chưa có ai trong kho' },
+  { query: 'SAP FICO + 5 năm', n: 6, pool: 1, note: 'Có 1, đã bị unlock 4 lần' },
+]
+
+const TERM_TONE: Record<TermStatus, StatusTone> = { 'Mới': 'pending', 'Đã xử lý': 'active', 'Bỏ qua': 'draft' }
+
+function AdminUnresolvedTerms() {
+  const [tab, setTab] = useState<'terms' | 'supply'>('supply')
+  const [fStatus, setFStatus] = useState('')
+
+  const rows = UNRESOLVED_TERMS
+    .filter((r) => !fStatus || r.status === fStatus)
+    .slice()
+    .sort((a, b) => (a.status === 'Mới' ? -1 : 1) - (b.status === 'Mới' ? -1 : 1) || b.n - a.n)
+
+  const fresh = UNRESOLVED_TERMS.filter((r) => r.status === 'Mới').length
+
+  return (
+    <div className="space-y-4">
+      <StatCards
+        cards={[
+          { label: 'Chờ xử lý', value: String(fresh) },
+          { label: 'Có ở NTD tìm kiếm', value: String(UNRESOLVED_TERMS.filter((r) => r.from.includes('search')).length) },
+          { label: 'Có ở CV ứng viên', value: String(UNRESOLVED_TERMS.filter((r) => r.from.includes('cv')).length) },
+          { label: 'Thiếu nguồn ứng viên', value: `${SUPPLY_GAPS.length} truy vấn` },
+        ]}
+      />
+
+      {tab === 'terms' ? (
+        <ListPage
+          minW={1340}
+          searchHint="Tìm từ khoá…"
+          total={UNRESOLVED_TERMS.length}
+          leading={<TabSwitch tab={tab} setTab={setTab} />}
+          filters={<FilterSelect label="Trạng thái" value={fStatus} onChange={setFStatus} options={['Mới', 'Đã xử lý', 'Bỏ qua']} />}
+          cols={[
+            { label: 'Từ khoá', w: '1.6fr' },
+            { label: 'Phát hiện từ', w: '1.5fr' },
+            { label: 'Số lần', w: '0.6fr', align: 'r' },
+            { label: 'Lần đầu', w: '0.7fr' },
+            { label: 'Gần nhất', w: '0.9fr' },
+            { label: 'Đề xuất', w: '2fr' },
+            { label: 'Trạng thái', w: '0.9fr' },
+            { label: '', w: '1.5fr', align: 'r' },
+          ]}
+          rows={rows.map((r) => [
+            <span className="min-w-0 max-w-full truncate font-medium text-ink">{r.term}</span>,
+            <span className="flex flex-wrap items-center gap-1">
+              {r.from.map((f) => <Pill key={f} tone={f === 'cv' ? 'neutral' : 'draft'}>{SOURCE_LABEL[f]}</Pill>)}
+            </span>,
+            <span className="tabular-nums">{r.n}</span>,
+            <span className="tabular-nums text-muted">{r.first}</span>,
+            <span className="tabular-nums text-muted">{r.last}</span>,
+            <span className="truncate text-muted">{r.suggest}</span>,
+            <Pill tone={TERM_TONE[r.status]}>{r.status}</Pill>,
+            <span className="flex items-center justify-end gap-1.5">
+              <button className="rounded-md border border-brand/30 bg-brand-soft px-2 py-1 text-[11px] font-medium text-brand">Gộp vào kỹ năng</button>
+              <button className="rounded-md border border-line px-2 py-1 text-[11px] text-muted hover:border-ink/40">Tạo mới</button>
+              <button className="rounded-md border border-line px-2 py-1 text-[11px] text-muted hover:border-ink/40">Bỏ qua</button>
+            </span>,
+          ])}
+        />
+      ) : (
+        <ListPage
+          minW={1100}
+          searchHint="Tìm truy vấn…"
+          total={SUPPLY_GAPS.length}
+          leading={<TabSwitch tab={tab} setTab={setTab} />}
+          cols={[
+            { label: 'Truy vấn', w: '2fr' },
+            { label: 'Số lần tìm', w: '0.8fr', align: 'r' },
+            { label: 'Ứng viên trong kho', w: '1fr', align: 'r' },
+            { label: 'Ghi chú', w: '2fr' },
+          ]}
+          rows={SUPPLY_GAPS.map((g) => [
+            <span className="min-w-0 max-w-full truncate font-medium text-ink">{g.query}</span>,
+            <span className="tabular-nums">{g.n}</span>,
+            <span className={cn('font-semibold tabular-nums', g.pool === 0 ? 'text-rose-600' : 'text-ink')}>{g.pool}</span>,
+            <span className="truncate text-muted">{g.note}</span>,
+          ])}
+        />
+      )}
+
+      <div className="rounded-xl border border-line bg-canvas/40 p-4 text-[11.5px] leading-relaxed text-muted">
+        <p className="mb-1"><b className="text-ink">Mọi lượt tìm ra 0 kết quả đều rơi vào đúng MỘT trong hai nhóm.</b> Hệ thống tự phân loại ngay tại thời điểm chạy truy vấn, không đoán lại về sau.</p>
+        <p className="mb-1"><b className="text-ink">1 · Thiếu ứng viên</b> — logic chạy đúng: hiểu từ khoá, áp đúng bộ lọc, nhưng trong kho thật sự không có ai. Đây <b>không phải lỗi</b>. Việc của Sales / tuyển nguồn.</p>
+        <p><b className="text-ink">2 · Logic chưa đúng</b> — hệ thống lẽ ra phải trả về kết quả nhưng đã không trả. Đây <b>là lỗi của mình</b>: không hiểu từ khoá, bộ lọc loại nhầm ứng viên, ứng viên chưa được đánh chỉ mục, hoặc truy vấn lỗi. Việc của dev + người quản lý danh mục kỹ năng. <b className="text-ink">Chỉ số cần theo dõi là nhóm 2 phải giảm dần về 0.</b></p>
+      </div>
+    </div>
+  )
+}
+
+function TabSwitch({ tab, setTab }: { tab: 'terms' | 'supply'; setTab: (t: 'terms' | 'supply') => void }) {
+  return (
+    <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+      {([['supply', '1 · Thiếu ứng viên'], ['terms', '2 · Logic chưa đúng']] as const).map(([k, label]) => (
+        <button key={k} onClick={() => setTab(k)} className={cn('rounded-md px-3 py-1 transition-colors', tab === k ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>{label}</button>
+      ))}
+    </span>
+  )
+}
+
+function AdminCvSearchUsage() {
+  const [scope, setScope] = useState('Tất cả')
+
+  const stateOf = (r: typeof CV_SEARCH_PACKAGES[number]) =>
+    r.searches === 0 ? 'Chưa dùng' : r.used >= r.total ? 'Đã dùng hết' : 'Còn lượt'
+
+  const rows = CV_SEARCH_PACKAGES
+    .filter((r) => (scope === 'Chưa dùng' ? r.searches < 10 : scope === 'Dùng nhiều' ? r.searches >= 60 : true))
+    .slice()
+    .sort((a, b) => b.searches - a.searches)
+
+  const sum = (f: (r: typeof CV_SEARCH_PACKAGES[number]) => number) => CV_SEARCH_PACKAGES.reduce((n, r) => n + f(r), 0)
+  const idle = CV_SEARCH_PACKAGES.filter((r) => r.searches < 10).length
+
+  return (
+    <div className="space-y-4">
+      <StatCards
+        cards={[
+          { label: 'Lượt tìm · 30 ngày', value: String(sum((r) => r.searches)) },
+          { label: 'Lượt mở CV đã dùng', value: `${sum((r) => r.used)} / ${sum((r) => r.total)}` },
+          { label: 'Lượt mở CV còn lại', value: String(sum((r) => r.total - r.used)) },
+          { label: 'Mua nhưng chưa dùng', value: `${idle} gói` },
+        ]}
+      />
+
+      <ListPage
+        minW={1560}
+        searchHint="Tìm gói, khách hàng, mã công ty…"
+        searchExtra={CV_SEARCH_PACKAGES.map((r) => `${r.coId} ${r.owner}`)}
+        total={CV_SEARCH_PACKAGES.length}
+        leading={
+          <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+            {['Tất cả', 'Dùng nhiều', 'Chưa dùng'].map((o) => (
+              <button key={o} onClick={() => setScope(o)} className={cn('rounded-md px-3 py-1 transition-colors', scope === o ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>{o}</button>
+            ))}
+          </span>
+        }
+        cols={[
+          { label: 'Gói tìm kiếm CV', w: '1.8fr' },
+          { label: 'Khách hàng', w: '1.4fr' },
+          { label: 'Mã công ty', w: '0.8fr' },
+          { label: 'Hạn mức', w: '1.2fr' },
+          { label: 'Còn lại', w: '0.7fr', align: 'r' },
+          { label: 'Sales phụ trách', w: '1fr' },
+          { label: 'Hạn dùng', w: '0.9fr' },
+          { label: 'Trạng thái', w: '1fr' },
+          { label: 'Lần tìm cuối', w: '1fr', align: 'r' },
+        ]}
+        rows={rows.map((r) => {
+          const state = stateOf(r)
+          const left = r.total - r.used
+          return [
+            <span className="min-w-0 max-w-full truncate font-medium text-brand">{r.pkg}</span>,
+            <span className="truncate text-ink/85">{r.co}</span>,
+            <span className="tabular-nums text-muted">{r.coId}</span>,
+            <span className="flex items-center gap-2">
+              <span className="shrink-0 tabular-nums">{r.used}/{r.total}</span>
+              <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-line">
+                <span className={cn('block h-full rounded-full', state === 'Chưa dùng' ? 'bg-line' : 'bg-brand')} style={{ width: `${(r.used / r.total) * 100}%` }} />
+              </span>
+            </span>,
+            <span className={cn('font-semibold tabular-nums', left === 0 ? 'text-faint' : 'text-ink')}>{left}</span>,
+            <span className="truncate text-muted">👤 {r.owner}</span>,
+            <span className="tabular-nums text-muted">{r.until}</span>,
+            <Pill tone={state === 'Chưa dùng' ? 'pending' : state === 'Đã dùng hết' ? 'draft' : 'active'}>{state}</Pill>,
+            <span className={cn(r.searches === 0 ? 'text-faint' : 'text-muted')}>{r.last}</span>,
+          ]
+        })}
+      />
+
+      {/* The queue moved to System → Từ khoá chưa khớp: it needs a status, an owner
+          and a decision per row, none of which fit in a panel. What stays here is the
+          number, because a spike in it is a symptom of THIS product underperforming. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line p-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[12.5px] font-semibold text-ink">Tìm kiếm không ra kết quả · {ZERO_RESULT_TERMS.reduce((n, z) => n + z.n, 0)} lượt / 30 ngày</p>
+          <p className="mt-0.5 text-[11px] text-muted">
+            {ZERO_RESULT_TERMS.filter((z) => z.why === 'Không hiểu từ khoá').length} từ khoá hệ thống không hiểu (sửa được bằng dữ liệu) ·{' '}
+            {ZERO_RESULT_TERMS.filter((z) => z.why === 'Không có ứng viên').length} truy vấn thiếu nguồn ứng viên (việc của Sales)
+          </p>
+        </div>
+        {/* A real link, not a dead button — the queue is a page in System, and a
+            button that goes nowhere is the fastest way to make a wireframe unreadable. */}
+        <a
+          href="/wireframe/admin?screen=admin-unresolved-terms"
+          className="shrink-0 rounded-md border border-brand/30 bg-brand-soft px-3 py-1.5 text-[11.5px] font-medium text-brand hover:bg-brand hover:text-white"
+        >Mở danh sách xử lý →</a>
+      </div>
+    </div>
+  )
+}
+
 function AdminManualServices() {
   const [fState, setFState] = useState('')
   const [fSku, setFSku] = useState('')
@@ -9784,7 +10091,7 @@ function PipelineTable({ onConvert, onOpen }: { onConvert: (d: Deal) => void; on
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-muted">Sort: <b className="font-medium text-ink">Priority — most idle first</b> ▾</span>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-muted">▽ Filter</span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-muted">▽ Bộ lọc</span>
         <span className="text-faint">by owner · stage · industry · last contact</span>
       </div>
       <Table
@@ -12866,7 +13173,7 @@ function RoleEditor({ role, onClose }: { role: Role | null; onClose: () => void 
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search pages / permissions…"
+          placeholder="Tìm trang / quyền…"
           className="w-[240px] rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] outline-none placeholder:text-faint focus:border-brand"
         />
         <span className="ml-auto text-[11px] font-medium text-faint">Apply to all pages:</span>
@@ -14798,6 +15105,8 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-banners': AdminDisplay,
   'admin-account-usage': AdminAccountUsage,
   'admin-manual-services': AdminManualServices,
+  'admin-cv-search-usage': AdminCvSearchUsage,
+  'admin-unresolved-terms': AdminUnresolvedTerms,
   'admin-pages': AdminPages,
   // Billing & products
   'admin-catalog': AdminCatalog,

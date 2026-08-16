@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Job detail — Saramin VN redesign</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  /* ─────────────────────────────────────────────────────────────────────────
+     Tokens read off saramin.co.kr (job detail), not eyeballed:
+       ink        #292E41 heading · #373F57 value · #5C667B label · #8491A7 muted
+       brand      #2D67FF button · #003FE5 link · #E5ECFF tint
+       surface    #F1F3F9 page · #FFFFFF card · #FAFBFD sub-panel
+       line       #E5E6EB · #D7DCE5
+       radius     4 chips/buttons · 8 cards
+       type       26/700 h1 (lh 1.5) · 20/700 section · 16 base · 14 meta · 13 small
+     Layout is unchanged from the Figma frame: 1440 page, 960 content column,
+     868 inner width, 952 recommended-jobs table.
+  ───────────────────────────────────────────────────────────────────────── */
+  :root{
+    --ink:#292E41; --val:#373F57; --label:#5C667B; --muted:#8491A7;
+    --brand:#2D67FF; --link:#003FE5; --tint:#E5ECFF;
+    --page:#F1F3F9; --card:#fff; --sub:#FAFBFD;
+    --line:#E5E6EB; --line2:#D7DCE5; --red:#E4453A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--val);
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--link);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .page{width:1440px;margin:0 auto}
+
+  /* ── promo strip + header ────────────────────────────────────────────── */
+  .promo{height:48px;background:#2B1C5B;color:#fff;display:flex;align-items:center;justify-content:center;gap:14px;font-size:14px}
+  .promo b{color:#FFD84D}
+  .promo .close{position:absolute;right:96px;opacity:.7;font-size:13px}
+  .promowrap{position:relative}
+  header{background:#fff;border-bottom:1px solid var(--line)}
+  .hdr{width:1260px;margin:0 auto;height:88px;display:flex;align-items:center;gap:28px}
+  .logo{font-size:28px;font-weight:800;letter-spacing:-.03em;color:#2D67FF}
+  .search{flex:1;max-width:640px;height:48px;border:2px solid var(--brand);border-radius:26px;
+    display:flex;align-items:center;gap:10px;padding:0 20px;color:var(--muted);font-size:15px}
+  .hdr-right{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:14px;color:var(--val)}
+  .hdr-right .divider{width:1px;height:12px;background:var(--line2)}
+  .btn-biz{border:1px solid var(--line2);border-radius:4px;padding:7px 12px;font-size:14px;color:var(--val);display:flex;gap:6px;align-items:center}
+  nav.gnb{background:#fff;border-bottom:1px solid var(--line)}
+  .gnb-inner{width:1260px;margin:0 auto;height:60px;display:flex;align-items:center;gap:28px;font-size:16px;font-weight:600;color:var(--ink)}
+  .gnb-inner .ham{font-size:20px;color:var(--ink)}
+  .gnb-right{margin-left:auto;display:flex;align-items:center;gap:16px;font-size:14px;font-weight:400;color:var(--label)}
+
+  /* ── content column ─────────────────────────────────────────────────── */
+  .wrap{width:960px;margin:0 auto;padding:32px 0 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:0 46px 46px}
+
+  /* job header */
+  .jv-head{padding-top:42px}
+  .co-row{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--val)}
+  .co-row .co{font-weight:600}
+  .chip-follow{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border:1px solid var(--line2);
+    border-radius:4px;font-size:12px;color:var(--label)}
+  .views{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted)}
+  .jv-title{display:flex;align-items:flex-start;gap:24px;margin-top:10px}
+  h1{margin:0;font-size:26px;line-height:39px;font-weight:700;color:#222;letter-spacing:-.02em;flex:1}
+  .jv-cta{display:flex;align-items:center;gap:8px;padding-top:2px}
+  .icon-btn{width:48px;height:48px;border:1px solid var(--line2);border-radius:4px;background:#fff;
+    display:grid;place-items:center;color:var(--muted);font-size:18px;cursor:pointer}
+  .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+  .apply-wrap{position:relative}
+  .pill-dday{position:absolute;top:-13px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    background:#fff;border:1px solid var(--red);color:var(--red);border-radius:999px;
+    height:24px;padding:0 12px;display:flex;align-items:center;font-size:12px;font-weight:700}
+  .btn-apply{width:154px;height:48px;background:var(--brand);color:#fff;border:0;border-radius:4px;
+    font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-apply:hover{background:#1F55E0}
+
+  /* meta grid */
+  .meta{display:grid;grid-template-columns:420px 420px;column-gap:28px;margin-top:24px;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 0}
+  .meta dl{margin:0;display:grid;grid-template-columns:104px 1fr;row-gap:8px}
+  .meta dt{font-size:14px;line-height:24px;color:var(--label)}
+  .meta dd{margin:0;font-size:14px;line-height:24px;color:var(--val)}
+  .meta-foot{display:flex;gap:40px;padding:14px 0 0;font-size:14px}
+  .meta-foot .k{color:var(--label);margin-right:10px}
+  .meta-foot .v{color:var(--val)}
+  .meta-foot .v.red{color:var(--red);font-weight:700}
+
+  /* sections */
+  section{padding-top:44px}
+  h2{margin:0 0 16px;font-size:20px;line-height:1.4;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+  h2 .sub{margin-left:8px;font-size:13px;font-weight:400;color:var(--muted)}
+  .body-copy{font-size:15px;line-height:1.8;color:var(--val)}
+  .body-copy p{margin:0 0 10px}
+  .body-copy ul{margin:0;padding-left:0;list-style:none}
+  .body-copy li{position:relative;padding-left:14px;margin-bottom:7px}
+  .body-copy li::before{content:"";position:absolute;left:0;top:12px;width:4px;height:4px;border-radius:50%;background:var(--muted)}
+  .lead{font-size:15px;color:var(--label);margin:0 0 14px}
+
+  /* benefits */
+  .benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .benefit{border:1px solid var(--line);border-radius:8px;padding:20px}
+  .benefit .ico{width:36px;height:36px;border-radius:8px;background:var(--tint);display:grid;place-items:center;font-size:17px;margin-bottom:12px}
+  .benefit h3{margin:0 0 6px;font-size:15px;font-weight:700;color:var(--ink)}
+  .benefit p{margin:0;font-size:13px;line-height:1.65;color:var(--label)}
+
+  /* job info: chips + kv */
+  .panel{border:1px solid var(--line);border-radius:8px;padding:24px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{height:32px;padding:0 12px;border-radius:4px;background:var(--tint);color:var(--link);
+    font-size:14px;display:inline-flex;align-items:center}
+  .chip.grey{background:var(--page);color:var(--label)}
+  .kv{display:grid;grid-template-columns:repeat(2,1fr);column-gap:40px;row-gap:2px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+  .kv .row{display:grid;grid-template-columns:120px 1fr;font-size:14px;line-height:30px}
+  .kv .k{color:var(--label)}
+  .kv .v{color:var(--val)}
+  .sub-label{font-size:13px;font-weight:700;color:var(--ink);margin:0 0 10px}
+
+  /* locations */
+  .loc{border:1px solid var(--line);border-radius:8px;padding:20px 24px;display:flex;align-items:center;gap:16px}
+  .loc + .loc{margin-top:12px}
+  .loc .pin{width:36px;height:36px;border-radius:50%;background:var(--tint);display:grid;place-items:center;color:var(--link);flex:0 0 36px}
+  .loc .addr{flex:1;min-width:0}
+  .loc .addr .t{font-size:13px;color:var(--label);margin-bottom:2px}
+  .loc .addr .a{font-size:15px;color:var(--val)}
+  .btn-ghost{height:36px;padding:0 14px;border:1px solid var(--line2);border-radius:4px;background:#fff;
+    font-size:13px;color:var(--val);cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn-ghost:hover{border-color:var(--brand);color:var(--brand)}
+
+  /* deadline */
+  .deadline{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .deadline .top{display:flex;align-items:center;gap:28px;padding:24px;background:var(--sub)}
+  .cd{display:flex;align-items:baseline;gap:10px}
+  .cd .d{font-size:15px;font-weight:700;color:var(--val)}
+  .cd .t{font-size:34px;font-weight:800;letter-spacing:-.02em;color:var(--brand);font-variant-numeric:tabular-nums}
+  .cd .u{font-size:13px;color:var(--muted)}
+  .dl-dates{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:14px;row-gap:4px;font-size:13px}
+  .dl-dates .k{color:var(--label)}
+  .dl-dates .v{color:var(--val)}
+  .deadline .bot{display:flex;align-items:center;gap:12px;padding:16px 24px;border-top:1px solid var(--line)}
+  .deadline .bot .note{font-size:13px;color:var(--label)}
+
+  /* company info */
+  .company{display:flex;align-items:center;gap:16px;border:1px solid var(--line);border-radius:8px;padding:20px 24px}
+  .company .logo-box{width:56px;height:56px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;
+    font-size:12px;color:var(--muted);flex:0 0 56px}
+  .company .name{font-size:16px;font-weight:700;color:var(--ink)}
+  .company .m{font-size:13px;color:var(--label);margin-top:2px}
+  .company .kv2{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:12px;row-gap:2px;font-size:13px}
+  .company .kv2 .k{color:var(--label)}
+  .company .kv2 .v{color:var(--val)}
+
+  /* hot cards */
+  .hot-head{display:flex;align-items:center;margin-bottom:16px}
+  .hot-nav{margin-left:auto;display:flex;gap:8px}
+  .hot-nav button{width:32px;height:32px;border:1px solid var(--line2);border-radius:4px;background:#fff;color:var(--label);cursor:pointer}
+  .hot{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .hot .c{border:1px solid var(--line);border-radius:8px;padding:18px}
+  .hot .c .co{font-size:13px;color:var(--label)}
+  .hot .c .t{font-size:14px;font-weight:700;color:var(--ink);margin:6px 0 10px;line-height:1.45}
+  .hot .c .m{font-size:12px;color:var(--muted)}
+  .hot .c .b{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;align-items:center;font-size:12px;color:var(--label)}
+  .hot .c .b .dd{margin-left:auto;color:var(--red);font-weight:700}
+  .cloud{display:flex;flex-wrap:wrap;gap:6px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+
+  /* recommended jobs table */
+  .rec{width:952px;margin:40px auto 0}
+  .rec h2{display:flex;align-items:center}
+  .rec-table{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .rec-row{display:grid;grid-template-columns:214px 1fr 250px;align-items:center;height:90px;padding:0 24px;border-top:1px solid var(--line)}
+  .rec-row:first-child{border-top:0}
+  .rec-row:hover{background:#FAFBFD}
+  .rec .co{font-size:14px;color:var(--val);display:flex;align-items:center;gap:8px}
+  .rec .co .heart{color:var(--muted);font-size:13px}
+  .rec .ti{font-size:15px;color:var(--ink);font-weight:600;line-height:1.45}
+  .rec .mt{font-size:13px;color:var(--label);margin-top:6px}
+  .rec .right{display:flex;align-items:center;gap:16px;justify-content:flex-end}
+  .rec .dl{text-align:right;font-size:13px;line-height:1.5}
+  .rec .dl .d{color:var(--red);font-weight:700}
+  .rec .dl .s{color:var(--muted)}
+  .btn-apply-sm{width:90px;height:34px;border:1px solid var(--brand);color:var(--brand);background:#fff;
+    border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-apply-sm:hover{background:var(--brand);color:#fff}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── promo + header ─────────────────────────────────────────────── -->
+  <div class="promowrap">
+    <div class="promo">
+      <span><b>Ưu đãi 1+1</b> — mua Prepass tặng NCS Prepass miễn phí</span>
+      <span class="close">Không hiện lại trong 3 ngày ✕</span>
+    </div>
+  </div>
+
+  <header>
+    <div class="hdr">
+      <span class="logo">saramin</span>
+      <div class="search">🔍 <span>Khởi đầu sự nghiệp cùng Saramin</span></div>
+      <div class="hdr-right">
+        <a href="#">Đăng nhập</a><span class="divider"></span><a href="#">Đăng ký</a>
+        <span class="btn-biz">Dịch vụ doanh nghiệp ⌄</span>
+      </div>
+    </div>
+  </header>
+  <nav class="gnb">
+    <div class="gnb-inner">
+      <span class="ham">☰</span>
+      <span>Top 100 việc làm</span><span>Tập đoàn lớn</span><span>DN Hàn Quốc</span>
+      <span class="gnb-right">Cần tư vấn? <b style="color:var(--link)">Hỏi chuyên gia</b></span>
+    </div>
+  </nav>
+
+  <!-- ── job detail ─────────────────────────────────────────────────── -->
+  <div class="wrap">
+    <div class="card">
+
+      <div class="jv-head">
+        <div class="co-row">
+          <a href="#" class="co">Lotteria Innovate</a>
+          <span class="chip-follow">♡ Quan tâm</span>
+          <span class="views">👁 4,343 lượt xem</span>
+        </div>
+        <div class="jv-title">
+          <h1>Expert, Site Reliability Engineer</h1>
+          <div class="jv-cta">
+            <button class="icon-btn" title="Lưu tin">☆</button>
+            <div class="apply-wrap">
+              <span class="pill-dday">Còn 3 ngày</span>
+              <button class="btn-apply">Ứng tuyển</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <dl>
+          <dt>Ngành nghề</dt><dd><a href="#">Kinh doanh · Phát triển thị trường</a></dd>
+          <dt>Vị trí</dt><dd><a href="#">Business Developer</a></dd>
+          <dt>Cấp bậc</dt><dd><a href="#">Nhân viên</a></dd>
+        </dl>
+        <dl>
+          <dt>Lĩnh vực</dt><dd><a href="#">Thực phẩm &amp; Đồ uống</a></dd>
+          <dt>Mức lương</dt><dd>Thỏa thuận</dd>
+          <dt>Nơi làm việc</dt><dd>TP. Hồ Chí Minh, Đà Nẵng, Hà Nội</dd>
+        </dl>
+      </div>
+      <div class="meta-foot">
+        <span><span class="k">Hạn nộp hồ sơ</span><span class="v red">31/08/2026 (Còn 3 ngày)</span></span>
+        <span><span class="k">Hình thức</span><span class="v">Toàn thời gian · Tại văn phòng</span></span>
+      </div>
+
+      <section>
+        <h2>Job description</h2>
+        <div class="body-copy">
+          <p class="lead">We're looking for a Senior Site Reliability Engineer to own and operate the platform our jobseekers rely on.</p>
+          <ul>
+            <li>Design, build and maintain backend services in Java 17 / Spring Boot, from API and through to production.</li>
+            <li>Own the job-posting and application pipeline end to end, including the ads-tier translation that powers our paid placements.</li>
+            <li>Model and optimise data in MySQL and Redis, and lay the groundwork for the reporting layer that grows past 10M rows.</li>
+            <li>Build and instrument REST and event-driven APIs behind our load balancer.</li>
+            <li>Improve search and matching relevance in partnership with the data team.</li>
+            <li>Set up monitoring, alerting and tracing so problems surface before a user reports them.</li>
+            <li>Review code, mentor mid-level engineers, and help shape our technical standards.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>Job requirement</h2>
+        <div class="body-copy">
+          <ul>
+            <li>4+ years building production backend services, with at least 2 on a team that owned its own uptime.</li>
+            <li>Strong Java and Spring Boot; comfortable reading code you did not write.</li>
+            <li>Solid SQL — you can explain an index, a lock and a slow query without reaching for a search engine.</li>
+            <li>Experience with cloud infrastructure (AWS or GCP) and containerised deployments.</li>
+            <li>Vietnamese and working English — our specs and code reviews run in both.</li>
+            <li>Nice to have: Kafka, Elasticsearch, or experience on a recruitment or marketplace product.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>Phúc lợi <span class="sub">Benefits</span></h2>
+        <div class="benefits">
+          <div class="benefit">
+            <div class="ico">💰</div>
+            <h3>Thưởng</h3>
+            <p>Lương tháng 13 · thưởng theo hiệu suất · review lương 2 lần/năm.</p>
+          </div>
+          <div class="benefit">
+            <div class="ico">🎓</div>
+            <h3>Đào tạo</h3>
+            <p>Ngân sách học tập 15 triệu/năm · khóa nội bộ · hỗ trợ thi chứng chỉ.</p>
+          </div>
+          <div class="benefit">
+            <div class="ico">🏥</div>
+            <h3>Khác</h3>
+            <p>Bảo hiểm sức khỏe cao cấp cho nhân viên và người thân · khám định kỳ.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Thông tin việc làm</h2>
+        <div class="panel">
+          <p class="sub-label">Kỹ năng</p>
+          <div class="chips">
+            <span class="chip">Java</span><span class="chip">Spring Boot</span><span class="chip">MySQL</span>
+            <span class="chip">Redis</span><span class="chip">AWS</span><span class="chip">Kubernetes</span>
+            <span class="chip">Elasticsearch</span><span class="chip">CI/CD</span>
+          </div>
+          <div class="kv">
+            <div class="row"><span class="k">Kinh nghiệm</span><span class="v">4 – 8 năm</span></div>
+            <div class="row"><span class="k">Số lượng tuyển</span><span class="v">2 người</span></div>
+            <div class="row"><span class="k">Bằng cấp</span><span class="v">Đại học trở lên</span></div>
+            <div class="row"><span class="k">Hình thức làm việc</span><span class="v">Nhân viên chính thức</span></div>
+            <div class="row"><span class="k">Giờ làm việc</span><span class="v">Thứ 2 – Thứ 6, 09:00 – 18:00</span></div>
+            <div class="row"><span class="k">Ngôn ngữ</span><span class="v">Tiếng Việt · Tiếng Anh</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Nơi làm việc</h2>
+        <div class="loc">
+          <div class="pin">📍</div>
+          <div class="addr">
+            <div class="t">Trụ sở chính</div>
+            <div class="a">Vinhomes Symphony, Phường Phúc Lợi, quận Long Biên, Hà Nội</div>
+          </div>
+          <button class="btn-ghost">Xem bản đồ</button>
+        </div>
+        <div class="loc">
+          <div class="pin">📍</div>
+          <div class="addr">
+            <div class="t">Chi nhánh TP. Hồ Chí Minh</div>
+            <div class="a">Số 146 Quang Trung, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh</div>
+          </div>
+          <button class="btn-ghost">Xem bản đồ</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Thời hạn &amp; cách thức ứng tuyển</h2>
+        <div class="deadline">
+          <div class="top">
+            <div class="cd">
+              <span class="d">Còn 3 ngày</span>
+              <span class="t">04:47:09</span>
+              <span class="u">giờ : phút : giây</span>
+            </div>
+            <div class="dl-dates">
+              <span class="k">Bắt đầu</span><span class="v">01/08/2026 14:00</span>
+              <span class="k">Kết thúc</span><span class="v">31/08/2026 23:59</span>
+            </div>
+          </div>
+          <div class="bot">
+            <span class="note">Nộp hồ sơ trực tuyến qua Saramin · nhà tuyển dụng phản hồi trong 7 ngày làm việc.</span>
+            <button class="btn-ghost" style="margin-left:auto">Lưu tin</button>
+            <button class="btn-apply" style="width:120px;height:36px;font-size:14px">Ứng tuyển</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Thông tin công ty</h2>
+        <div class="company">
+          <div class="logo-box">LOGO</div>
+          <div>
+            <div class="name">Lotteria Innovate Vietnam</div>
+            <div class="m">Food &amp; Beverage · 500–1.000 nhân viên · Thành lập 2011</div>
+          </div>
+          <div class="kv2">
+            <span class="k">Người đại diện</span><span class="v">Nguyễn Văn A</span>
+            <span class="k">Website</span><span class="v"><a href="#">lotteria.vn</a></span>
+          </div>
+          <button class="btn-ghost" style="margin-left:24px">Xem trang công ty</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="hot-head">
+          <h2 style="margin:0">Tuyển dụng nổi bật <span class="sub">HOT 100</span></h2>
+          <div class="hot-nav"><button>‹</button><button>›</button></div>
+        </div>
+        <div class="hot">
+          <div class="c">
+            <div class="co">Công ty CP Đại Dương</div>
+            <div class="t">Nhân viên kinh doanh khu vực miền Bắc</div>
+            <div class="m">Hà Nội · 1–3 năm · Thỏa thuận</div>
+            <div class="b"><span>Toàn thời gian</span><span class="dd">Còn 5 ngày</span></div>
+          </div>
+          <div class="c">
+            <div class="co">Vạn Phát Healthcare</div>
+            <div class="t">Điều dưỡng viên (Khoa Nội)</div>
+            <div class="m">TP.HCM · Không yêu cầu KN · 12–15 triệu</div>
+            <div class="b"><span>Toàn thời gian</span><span class="dd">Còn 12 ngày</span></div>
+          </div>
+          <div class="c">
+            <div class="co">FPT Software</div>
+            <div class="t">Senior Frontend Engineer (ReactJS)</div>
+            <div class="m">Hà Nội · 3–5 năm · 25–40 triệu</div>
+            <div class="b"><span>Toàn thời gian</span><span class="dd">Hôm nay</span></div>
+          </div>
+        </div>
+        <div class="cloud">
+          <span class="chip grey">#Kinh doanh</span><span class="chip grey">#Marketing</span><span class="chip grey">#CNTT</span>
+          <span class="chip grey">#Kế toán</span><span class="chip grey">#Nhân sự</span><span class="chip grey">#Logistics</span>
+          <span class="chip grey">#Xây dựng</span><span class="chip grey">#Y tế</span><span class="chip grey">#Giáo dục</span>
+          <span class="chip grey">#Bán lẻ</span><span class="chip grey">#Sản xuất</span><span class="chip grey">#Ngân hàng</span>
+        </div>
+      </section>
+
+    </div><!-- /card -->
+  </div><!-- /wrap -->
+
+  <!-- ── recommended jobs ───────────────────────────────────────────── -->
+  <div class="rec">
+    <h2>Việc làm gợi ý cho bạn <span class="sub" title="Dựa trên hồ sơ và lịch sử xem của bạn">ⓘ</span></h2>
+    <div class="rec-table" id="recTable"></div>
+  </div>
+</div>
+
+<script>
+  /* the 14 rows the frame lays out — generated so the markup above stays readable */
+  const ROWS = [
+    ['Công ty CP Forest Avenue','[Tuyển gấp] Nhân viên kinh doanh khu vực Hà Nội','Hà Nội · 1–3 năm · 12–18 triệu','Còn 3 ngày','~31/08'],
+    ['Công ty TNHH Riman Việt Nam','Chuyên viên tư vấn khách hàng cao cấp','TP.HCM · 2–4 năm · Thỏa thuận','Còn 7 ngày','~04/09'],
+    ['Công ty CP Laser Valve','Kỹ sư thiết kế cơ khí (CAD/CAM)','Bình Dương · 3–5 năm · 18–25 triệu','Còn 9 ngày','~06/09'],
+    ['Công ty TNHH CTTD','Nhân viên kho vận – ca ngày','Hải Phòng · Không yêu cầu · 9–11 triệu','Hôm nay','~28/08'],
+    ['Nuart Vietnam','Thiết kế đồ họa (Junior/Middle)','TP.HCM · 1–2 năm · 12–16 triệu','Còn 14 ngày','~11/09'],
+    ['Công ty CP Dr.Think','Chuyên viên Marketing Digital','Hà Nội · 2–4 năm · 15–22 triệu','Còn 5 ngày','~02/09'],
+    ['Lam Style Company','Nhân viên bán hàng showroom','Đà Nẵng · Không yêu cầu · 8–12 triệu','Còn 21 ngày','~18/09'],
+    ['Công ty CP Dr.Think','Kế toán tổng hợp','Hà Nội · 3–5 năm · 15–20 triệu','Còn 5 ngày','~02/09'],
+    ['Công ty CP Dr.Think','Trưởng nhóm chăm sóc khách hàng','TP.HCM · 4–6 năm · Thỏa thuận','Còn 11 ngày','~08/09'],
+    ['Công ty CP Dr.Think','Nhân viên IT Helpdesk','Hà Nội · 1–3 năm · 10–14 triệu','Còn 2 ngày','~30/08'],
+    ['Công ty CP Dr.Think','Quản lý cửa hàng khu vực miền Trung','Đà Nẵng · 3–5 năm · 18–24 triệu','Còn 16 ngày','~13/09'],
+    ['Công ty CP Dr.Think','Chuyên viên tuyển dụng','Hà Nội · 2–3 năm · 12–17 triệu','Còn 8 ngày','~05/09'],
+    ['Công ty CP Dr.Think','Nhân viên vận hành sàn thương mại điện tử','TP.HCM · 1–3 năm · 11–15 triệu','Còn 6 ngày','~03/09'],
+    ['Công ty CP Dr.Think','Kỹ sư QA/QC nhà máy','Bắc Ninh · 2–4 năm · 14–19 triệu','Còn 19 ngày','~16/09'],
+  ]
+  document.getElementById('recTable').innerHTML = ROWS.map(([co,title,meta,dd,end]) => `
+    <div class="rec-row">
+      <div class="co">${co} <span class="heart">♡</span></div>
+      <div>
+        <div class="ti">${title}</div>
+        <div class="mt">${meta}</div>
+      </div>
+      <div class="right">
+        <div class="dl"><div class="d">${dd}</div><div class="s">${end}</div></div>
+        <button class="btn-apply-sm">Ứng tuyển</button>
+      </div>
+    </div>`).join('')
+</script>
+</body>
+</html>

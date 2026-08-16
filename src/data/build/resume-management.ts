@@ -442,6 +442,45 @@ export const resumeManagement: BuildModule = {
       warn: 'NARROWED — the ZERO alias rows are no longer a launch blocker. An analysed index (folding + prefix + typeahead fuzziness) covers most of what aliases were for, so Phase-1 ships without a curated list and `unmatched_term` tells the client which aliases are worth writing; see SKILLS → “search engine first”.\n\nWhat DOES still block is the CANONICAL ROWS, which no search engine can fix — it only finds a wrong row faster. `Product Manager`, `Project Manager` and `Business Analyst` are stored as skills; `English`, `Japanese - N2` and `Korean` are stored as skills while a proper `language` table sits unused; 141 rows are Ungrouped; and `Soft skill` holds two rows, so non-IT candidates find nothing that describes them. Agree an owner and a date for THAT cleanup before the skills screens are estimated.',
     },
     {
+      label: 'SEARCH QUALITY TRACKING — not a feature, a parallel obligation while the logic is being built',
+      text: 'Every CV search that returns ZERO results is classified at query time into exactly ONE of two buckets, and logged. This ships WITH the search logic, not after it — while matching is being built we cannot tell "working as intended" from "silently broken" without it, and retrofitting the classification later means losing the history that shows whether the logic improved.',
+      table: {
+        cols: ['Bucket', 'What happened', 'Owner', 'What done looks like'],
+        rows: [
+          ['1 · Thiếu ứng viên (supply gap)', 'The logic ran CORRECTLY — the term resolved, filters applied — but no candidate in the pool matches. NOT a bug.', 'Sales / sourcing', 'A sourcing target list. This number never goes to zero and is not supposed to.'],
+          ['2 · Logic chưa đúng (search defect)', 'The system SHOULD have returned results and did not: the term did not resolve to any skill row (no alias), a filter wrongly excluded matching candidates, a candidate was not indexed, or the query errored.', 'Dev + taxonomy owner', 'TRENDS TO ZERO. This is the search-quality metric. Each fix is verifiable: re-run the logged query, results now appear.'],
+        ],
+      },
+      items: [
+        'HOW TO CLASSIFY, mechanically — no judgement call at runtime: if every term in the query resolved to a taxonomy row AND all filters were applied AND the query executed, zero results = bucket 1. Anything else = bucket 2, with the failing stage recorded (term-unresolved · filter-excluded-all · index-miss · error).',
+        'WHAT TO LOG per zero-result search: the query terms verbatim · which terms resolved to which skillId (and which did not) · the filters applied · the bucket · the failing stage for bucket 2 · companyId · timestamp. Verbatim terms are the point — “MS Ofice” must be stored misspelled or it cannot become an alias.',
+        'BUCKET 2 FEEDS TWO EXISTING QUEUES, it does not create new ones: unresolved terms land in `unmatched_term` (the same table CV import already writes to — one alias then fixes both sides at once), and filter/index/error failures land with dev as bugs.',
+        'THE ADMIN PAGE (System → Chất lượng tìm kiếm, mockup admin-unresolved-terms) is just the window onto this log: tab 1 = bucket 1 grouped by query, for Sales; tab 2 = bucket 2 grouped by term/cause, with Gộp vào kỹ năng / Tạo mới / Bỏ qua actions for the taxonomy owner.',
+        'THE ONE METRIC: bucket-2 count per week, trending to zero. Bucket 1 is market information, not a defect count — mixing the two makes the metric unactionable, which is why the classification is mandatory rather than nice-to-have.',
+        'RETENTION — decide before launch, not by default: search terms tied to a companyId are plausibly personal data under Decree 13. Recommend: verbatim queries kept 90 days, then aggregate to (term · count · bucket) with the companyId dropped.',
+      ],
+    },
+    {
+      label: 'RECOMMENDED JOBS — one scorer, four completeness tiers, and which CV feeds it',
+      text: 'There is no separate recommender per user type. Every account runs through the SAME match score; what differs is which signals exist to read. The candidate-missing-data rule already covers this — constraint signals score NEUTRAL when silent, evidence signals score LOW — so an emptier profile does not break the computation, it just flattens the ranking. The product decision is therefore not “which algorithm”, it is WHAT TO CALL THE LIST at each tier, because labelling a barely-personalised feed “Recommended for you” is a promise the data cannot keep.',
+      table: {
+        cols: ['Tier — what the user has filled', 'Signals available (of 100)', 'What the list really is', 'Heading + nudge'],
+        rows: [
+          ['1 · Basic information only', '≤ 21 — years + education. NO direction: desired role, category, location are all empty, and current location is deliberately not held.', 'Not personalised. Popular / newest jobs, at most eligibility-ranked by years and education.', '“Việc làm nổi bật” — NEVER “for you”. Nudge: one line + CTA into onboarding: “Cho biết bạn muốn làm gì để nhận việc phù hợp”.'],
+          ['2 · Basic + Work preference', '≤ 60 — adds location+type 17 · category 10 · salary 7 · industry 5. Direction exists; no evidence.', 'Genuinely personalised by DIRECTION — right city, right category, right salary band — but blind to ability: it cannot tell a junior from a senior in that category.', '“Việc làm phù hợp” — real matches. Most sit below the 60 floor, so cards carry no % (they sit under Related). Nudge: “Thêm kỹ năng / tạo CV để thấy độ phù hợp”.'],
+          ['3 · Basic + CV, no Work preference', '≤ 61 — skills 38 + language 2 + years/education. Evidence exists; DIRECTION is missing and must be inferred.', 'Skills-driven: jobs that overlap what the CV proves. Direction fallback: the latest job title and its category act as the implied desired role — clearly a proxy, and it recommends MORE OF THE SAME career, which is exactly wrong for someone trying to switch.', '“Việc làm giống hồ sơ của bạn” — honest about what it is. Nudge: the onboarding questions (“Bạn đang tìm vị trí gì? Ở đâu? Mức lương?”) — 4 answers, +39 points.'],
+          ['4 · Basic + Work preference + CV', 'Up to 100.', 'The full model: preference sets direction, CV sets level, per the rules above.', '“Việc làm phù hợp với bạn” — with the match % on cards at or above the floor.'],
+        ],
+      },
+      items: [
+        'AN INCOMPLETE CV IS NOT A TIER — it is just tier 3 or 4 with fewer CvSkill rows and thinner work history, and the evidence-scores-LOW rule already prices that in. No special handling; the CV-completeness nudges are the fix, and “add your skills to see better matches” should state the mechanism.',
+        'WHICH CV FEEDS THE FEED — the SEARCHABLE-FLAGGED one, same as employer search. One representative CV for both directions keeps the two surfaces agreeing about who the candidate is; scoring the UNION of 3 CVs would blend a Dev skill list into a Sales one and recommend the midpoint, which fits neither. The candidate re-aims their feed the same way they re-aim their public face: move the flag.',
+        '“NONE MARKED” CANNOT HAPPEN — the flag is a radio that auto-assigns on first CV, moves on delete, and never clears (see STORED vs SEARCHABLE vs INDEXED). Defensive rule for dirty data anyway (migration, manual DB edits): if the recommender ever finds zero flagged CVs, it reads the most recently updated CV and logs the account for repair — it must not silently degrade to tier 1/2 while the candidate believes their CV is working for them.',
+        'HIDDEN STILL GETS RECOMMENDATIONS — visibility gates the EMPLOYER index, not the candidate’s own feed. A Hidden candidate’s flagged CV still drives their recommendations; anything else punishes a privacy choice with a worse product, which teaches people to stay discoverable for the wrong reason.',
+        'THE TIERS ARE A FUNNEL, NOT SEGMENTS — every heading change and nudge above exists to move the user one tier up, and the +points framing is honest because the score genuinely improves. Do not gate the list (“complete your profile to see jobs”): an empty-handed screen at tier 1 teaches a new user the product has nothing for them, on day one, which is the most expensive lesson they can learn.',
+      ],
+    },
+    {
       label: 'CV search is a DISCOVERY task before it is a build task',
       text: 'How the CV pool is structured, indexed, searched and ranked must be researched before any build — see “Resume list — Companies”, and “CV data & matching architecture” → Kick-off for the research spike. That spike is the first thing to assign: CV search, matching and recommendations all sit on top of it.',
     },
@@ -463,6 +502,31 @@ export const resumeManagement: BuildModule = {
         'DISCOVERABLE NEEDS ONE CV — a candidate with a profile and no CV cannot be discoverable, because an unlock would deliver contact details and no document — the employer spent a credit on nothing. This also matches the existing rule that a structured profile alone is not a CV. Surface it plainly on My CVs: “Add a CV to appear in employer search.”',
         'PARSE ON WRITE, INDEX ON FLAG — never re-parse when the flag flips. Every CV is parsed when it is saved, including ones the candidate never makes searchable, because they may flip it on later and a toggle that triggers a parse is a toggle that is slow and can fail. Flipping the flag moves rows in and out of the INDEX only.',
         'THE UNSEARCHABLE CVs ARE NOT DEAD DATA — they are still applied with, still downloadable, still hold their own CvSkill rows, and are still what the candidate compares in My CVs. Only employer SEARCH ignores them.',
+      ],
+    },
+    {
+      label: 'APPLY-ELIGIBLE — when a Saramin CV can be sent to an employer (decided)',
+      text: 'The gate names CV-CONTENT fields only (group 3) — never a percentage, and never Profile fields: name, contact, education level and preferences live on the Profile (groups 1–2), are collected at sign-up / onboarding, and are confirmed on the apply read-back. Below the gate, the CV renders greyed on the apply modal with the missing fields NAMED and one Cập nhật link into the editor — the VietnamWorks pattern, minus the opaque “Chưa được duyệt”.',
+      table: {
+        cols: ['Must have (CV content)', 'Why this and nothing more'],
+        rows: [
+          [
+            '≥ 1 work experience — OR ≥ 1 education entry when there is no experience yet (fresher / student)',
+            'The body of the generated PDF, and the source of the DERIVED header line. Without one entry the employer opens an empty document — which reflects on the platform, not the candidate.',
+          ],
+          [
+            '≥ 3 skills (taxonomy)',
+            'What CV search and matching join on — a CV with no skills is invisible to the paid product.',
+          ],
+        ],
+      },
+      items: [
+        'NAMED FIELDS, never a % — “Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng” is actionable; “47%” is not.',
+        'The header line is DERIVED, not asked: title from the most recent experience (or “Fresh graduate · {major}” from education), years computed from the date ranges — with an editable override, so it never goes stale on its own and adds NOTHING to the gate.',
+        'UPLOADED CVs are NEVER gated at apply — always selectable. A doubtful file is checked AFTER submit and may hold the application as Pending; see Application management → the “is this a CV?” check.',
+        'A Saramin CV that meets this gate passes that check BY CONSTRUCTION — structured content cannot be “not a CV” — so it is never held.',
+        'The same gate is enforced server-side at POST /applications; the greyed row is a courtesy, not the control.',
+        'The gate does NOT touch the searchable flag — an incomplete Saramin CV can still be the flagged one (the flag never empties); it simply cannot be SENT until it meets the gate. My CVs shows the same “Chưa đủ để ứng tuyển” label so the candidate learns it before they need it.',
       ],
     },
     {

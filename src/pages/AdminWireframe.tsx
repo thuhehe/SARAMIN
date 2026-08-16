@@ -168,6 +168,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Service',
     icon: <FileImage className="h-4 w-4" />,
     items: [
+      // CV search leads the group — it is the service HQ watches most closely,
+      // being the one customers buy and then quietly fail to use.
+      { label: 'Tìm kiếm CV', specId: 'admin-cv-search-usage' },
       // One page with a Banners / Popups switcher — both are Display placement
       // products on the same lifecycle, so they are not two console pages.
       { label: 'Displays', specId: 'admin-banners' },
@@ -252,6 +255,10 @@ const NAV_GROUPS: NavGroup[] = [
       // Static site copy — configuration, not a sold service.
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Master data', specId: 'admin-master-data' },
+      // The taxonomy's maintenance queue, and the answer to "who keeps the skill
+      // list from rotting". Fed from BOTH sides — employer searches that matched
+      // nothing and CV imports that resolved nothing — because one alias fixes both.
+      { label: 'Chất lượng tìm kiếm', specId: 'admin-unresolved-terms' },
       { label: 'Audit log', specId: 'admin-audit-log' },
       { label: 'Environment', specId: 'admin-environment' },
       { label: 'Departments', specId: 'admin-departments' },

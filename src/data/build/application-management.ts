@@ -134,6 +134,38 @@ export const applicationManagement: BuildModule = {
         'Does blocking a user also pull back the applications already sent? We recommend YES.',
         'Can a candidate apply to the same job twice? We recommend one live application per job, re-apply only after a recall.',
         'When do we build screening if spam does show up? We recommend agreeing a trigger now — first abuse case, or the first promotion campaign.',
+        'The Pending SLA: what happens to a held application nobody reviews within 24h? We recommend AUTO-SEND — the doubt was ours and unproven, and a false hold hurts a real candidate more than one odd file hurts an employer.',
+      ],
+    },
+    {
+      label: 'The “is this a CV?” check — what holds an application as Pending (decided)',
+      text: 'DECIDED: the jobseeker site never blocks an upload or an apply. The check runs in OUR system after submit: a doubtful file holds the application as Pending for a human, and every human decision is logged against the signals that fired — the review queue doubles as the training set that teaches the check. Only UPLOADED files are ever checked: a Saramin CV meets the apply gate by construction (see Resume management → APPLY-ELIGIBLE) and skips this entirely.',
+      table: {
+        cols: ['Group', 'Signals', 'Held when'],
+        rows: [
+          [
+            'A · Technical — always hold',
+            'A1 corrupt / cannot be opened · A2 password-protected · A3 < ~200 chars of extracted text even after OCR · A4 malware scan failed or flagged',
+            'ANY A-signal fires. Not a judgement — the file physically cannot be read or safely served.',
+          ],
+          [
+            'B · Content — “CV-ness”, 6 signals',
+            'B1 an email or VN phone pattern · B2 a date range (2020 – 2023, 03/2021 – nay, Present, Hiện tại) · B3 a section heading from the VI+EN list (Kinh nghiệm / Experience, Học vấn / Education, Kỹ năng / Skills, Mục tiêu / Objective …) · B4 ≥ 1 term resolving to the Skill taxonomy · B5 ≥ 1 term resolving to the Job Role taxonomy · B6 a 2–4-word capitalised name-like line in the first text block',
+            'FEWER THAN 2 of the 6 fire. A real CV — even a designer’s strange one — almost always has contact + dates; a menu, an invoice or a homework essay almost never has two of these.',
+          ],
+          [
+            'C · Abuse patterns',
+            'C1 the same file hash uploaded by many different accounts · C2 extracted text near-identical to the job description being applied to · C3 one account applying with N different files inside an hour',
+            'C1 or C2 fires → hold. C3 is a RATE LIMIT at the front door, not a hold — throttling is cheap and self-service; a review backlog is neither.',
+          ],
+        ],
+      },
+      items: [
+        'The admin sees WHICH signals fired on every held row — “held: 1/6 CV signals — no contact, no dates” — and resolves it with exactly two verbs: Real CV → send · Not a CV → reject.',
+        'Each decision is logged against the fired signals. That labelled data is how the check learns: tune the B-threshold, extend the heading list, and (Phase-2) train a classifier on our own labels. No log, no learning.',
+        'QUALITY NEVER HOLDS — low match score, few skills, “looks unqualified”, no cover letter: none of these is a signal. The moment we hold on quality, Saramin owns the filtering decision and the queue becomes a silent black hole.',
+        'The candidate is told AT HOLD TIME — “We’re checking your CV — we’ll send it shortly” — never upfront, and never left believing a held application was delivered.',
+        'appliedAt is the SUBMIT time: a job deadline passing while a valid application sits in Pending does not invalidate it.',
       ],
     },
     {
@@ -141,7 +173,7 @@ export const applicationManagement: BuildModule = {
       text: 'Quick apply with a selected CV — the jobseeker picks one of their existing CVs. No re-typing of profile data.',
       items: [
         'One application = one jobseeker + one job. Applying twice to the same job is blocked; the jobseeker is shown their existing application instead.',
-        'No “screened by Saramin” promise at apply time — an application normally goes straight to the employer. Only the Pending case (scan failed / information missing) is held, and the candidate is told then, not upfront.',
+        'No “screened by Saramin” promise at apply time — an application normally goes straight to the employer. Only the Pending case (unreadable file, a file that fails the “is this a CV?” check, or required information missing) is held, and the candidate is told then, not upfront.',
       ],
     },
     {
@@ -180,7 +212,7 @@ export const applicationManagement: BuildModule = {
           {
             group: 'Application',
             items: [
-              { name: 'cvId', type: 'ref → CV', required: true, notes: 'radio list of the candidate’s CVs (file name + last-updated). Pre-selects the primary CV. Phase-1 = one primary CV — see Resume management.' },
+              { name: 'cvId', type: 'ref → CV', required: true, notes: 'radio list of ALL the candidate’s CVs (≤3), same row shape as My CVs. A Saramin CV below the apply gate (Resume management → APPLY-ELIGIBLE) renders GREYED and unselectable with the missing fields NAMED plus one Cập nhật link into the editor — the VNW pattern. Uploaded files are never gated here; a doubtful file is checked AFTER submit (see the “is this a CV?” check).' },
               { name: 'upload new CV', type: 'file (pdf/doc)', notes: 'inline escape hatch — a CV uploaded here is also saved to My CVs, never an orphan one-off file' },
               { name: 'coverMessage', type: 'text (optional)', notes: 'short note to the employer; max 1,000 chars' },
               { name: 'fullName', type: 'string', required: true, notes: 'pre-filled from the profile and ALWAYS editable — a social login supplies a display name, a nickname or the wrong capitalisation often enough that a read-only name sends the employer the wrong one' },
@@ -274,6 +306,7 @@ export const applicationManagement: BuildModule = {
         rules: [
           'One application per (jobseeker, job). A second attempt is blocked and resolves to the existing application — never a duplicate row.',
           'A CV is required; a cover message is not.',
+          'A Saramin CV can be sent only when its CV CONTENT meets the apply gate — ≥1 work experience (or ≥1 education entry when there is no experience yet) and ≥3 skills. Named fields, never a percentage; the greyed row says WHAT is missing, and the same gate is enforced server-side at POST /applications — the greyed row is a courtesy, not the control.',
           'An application is never delivered without a name, a contact email and a phone number — the three are required at apply time, server-side.',
           'The login email can never be changed from this screen; it is the identity key. Only the contact email is writable.',
           'Confirming contact details writes them to the jobseeker profile. Apply-time capture is a shortcut to the profile, not a parallel store — there is exactly one name, contact email and phone per candidate.',
@@ -297,6 +330,8 @@ export const applicationManagement: BuildModule = {
           'Job closed / hidden',
           'Deadline passed',
           'Upload error (type / size)',
+          'Saramin CV ineligible (greyed — missing fields named + Cập nhật link)',
+          'Held as Pending after submit (uploaded file failed the “is this a CV?” check — candidate told “we’re checking your CV”)',
         ],
         backend: {
           dataModel: [
