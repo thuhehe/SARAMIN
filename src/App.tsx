@@ -176,7 +176,7 @@ function Layout() {
               <Route path="/wireframe/admin" element={<AdminWireframe />} />
               <Route path="/legend" element={<Legend />} />
               <Route path="/m/:moduleId" element={<ModuleDetail />} />
-              <Route path="/m/:moduleId/:featureIndex" element={<FeatureDetail />} />
+              <Route path="/m/:moduleId/:featureKey" element={<FeatureDetail />} />
               <Route path="/f/:id" element={<FeaturePage />} />
               {/* Landing strip for the BB PM sign-in round trip. It
                   redirects onward as soon as the code is exchanged. */}

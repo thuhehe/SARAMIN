@@ -16,6 +16,7 @@ import { COMMENT_ROOT_ID, NO_COMMENT_ATTR, resolveAnchor } from './anchor'
 import { QUICK_KEY_LABEL, isTypingTarget } from './hotkeys'
 import { NameField } from './NameField'
 import type { Comment, CommentThread, ShareMember } from './types'
+import { canonicalDocKey } from '@/data/featureSlug'
 
 /** Which threads the rail is showing. `open` is the working default. */
 type StatusFilter = 'open' | 'resolved' | 'all'
@@ -553,11 +554,11 @@ export function CommentRail({ onClose }: { onClose: () => void }) {
   const groups = useMemo(() => {
     const byDoc = new Map<string, CommentThread[]>()
     for (const thread of allThreads) {
-      if (thread.docKey === docKey) continue
+      if (canonicalDocKey(thread.docKey) === docKey) continue
       if (!keep(thread)) continue
-      const list = byDoc.get(thread.docKey) ?? []
+      const list = byDoc.get(canonicalDocKey(thread.docKey)) ?? []
       list.push(thread)
-      byDoc.set(thread.docKey, list)
+      byDoc.set(canonicalDocKey(thread.docKey), list)
     }
 
     const built = [...byDoc.entries()].map(([key, list]) => ({

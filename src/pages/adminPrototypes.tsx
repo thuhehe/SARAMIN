@@ -603,12 +603,16 @@ function CvCell({ label, kind }: { label: string; kind: 'saramin' | 'upload' }) 
  *   stage  (Layer 3, company-owned, read-only here)
  *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
  *
- * Layer 1 (screening) is a single TECHNICAL hold: nearly every application is
- * written `passed` at apply and never displayed. Only the "is this a CV?"
- * check (see Application management) holds one as Pending — unreadable file,
- * or fewer than 2 of the 6 CV signals — for a human to resolve with two
- * verbs: Real CV → send · Not a CV → reject. Each decision is logged against
- * the fired signals, which is what tunes the check over time.
+ * CV QUALITY IS NOT CHECKED HERE — an uploaded CV is parsed and evaluated once,
+ * at UPLOAD (Resume management → "CV qualification — apply & CV search"), so it
+ * arrives carrying its own verdict. When that verdict is unresolved the
+ * application is PENDING: the apply succeeded, delivery is waiting on the CV.
+ *
+ * The hold belongs to the CV, not to the application, which is why there is no
+ * decision to make on this screen — the reviewer works Admin → CV check, and ONE
+ * verdict releases (or drops) every application waiting on that CV. A held
+ * application auto-sends at 24h regardless, so an unworked queue can never cost
+ * a candidate a deadline.
  */
 type Delivery = 'Pending' | 'Sent' | 'Recalled' | 'Blocked'
 
@@ -630,16 +634,25 @@ const STAGE_TONE: Record<string, StatusTone> = {
   Rejected: 'rejected',
 }
 
-/* `held` — Pending only: which "is this a CV?" signals fired, shown on the row
-   and in the detail so the reviewer (and later the model) knows WHY it stopped. */
-type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; status: Delivery; stage: string; when: string; held?: string }
+/* `hold` — Pending only: why delivery is waiting, and how long is left on the
+   24h net. The decision itself is made on the CV, not here. */
+/* `cvStatus` — the verdict the CV carried in from upload, and the reason a row is
+   Pending at all. Without it the delivery status looks arbitrary. */
+type CvStatus = 'Qualified' | 'Not enough information' | "Can't read"
+type Applicant = { name: string; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string }
+
+const CV_STATUS_TONE: Record<CvStatus, StatusTone> = {
+  Qualified: 'active',
+  'Not enough information': 'pending',
+  "Can't read": 'draft',
+}
 
 /* Applicant detail under status model v2. There is NO pre-send gate any more:
    the employer already has this CV, so HQ cannot approve or reject it. What is
    left is oversight — read the same information the employer sees, then either
    pull it back (Recall) or shut the whole account off (Block). The quality
    checks stay on screen as LABELS: they inform, they never block. */
-function ApplicantDetail({ name, status, held, onClose }: { name: string; status: Delivery; held?: string; onClose: () => void }) {
+function ApplicantDetail({ name, status, hold, onClose }: { name: string; status: Delivery; hold?: string; onClose: () => void }) {
   const [decision, setDecision] = useState<'none' | 'recall' | 'block'>('none')
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
@@ -671,15 +684,15 @@ function ApplicantDetail({ name, status, held, onClose }: { name: string; status
           </div>
           {/* labels + the two oversight actions */}
           <div className="space-y-3">
-            {/* Pending only — WHY the check held it. The reviewer decides against
-                these signals, and the decision is logged against them: that log is
-                the labelled data that tunes the check (and trains it in Phase 2). */}
-            {held && (
+            {/* Pending only. Deliberately NOT a verdict UI: the decision lives on
+                the CV, because one CV can hold many applications. */}
+            {hold && (
               <div>
-                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-600">Held by the “is this a CV?” check</p>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-600">Delivery is waiting</p>
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
-                  Held: <b className="font-semibold">{held}</b>. The employer has NOT received this application. Decide below — the decision is logged against these signals, and that log is what teaches the check.
+                  {hold}. The employer has not received this yet. Decide on the <b className="font-semibold">CV</b> — that verdict resolves every application using it. If nobody does, it sends automatically at 24h.
                 </p>
+                <button className="mt-1.5 w-full rounded-md border border-amber-300 px-2 py-1.5 text-[11px] font-semibold text-amber-700">Open in CV check ↗</button>
               </div>
             )}
             <div>
@@ -717,28 +730,21 @@ function ApplicantDetail({ name, status, held, onClose }: { name: string; status
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
           <span className="text-[10.5px] text-faint">
             {status === 'Pending'
-              ? 'Held — the employer has received nothing yet. Both verbs are audited and logged against the fired signals.'
+              ? 'Waiting on the CV verdict — resolved in CV check, or automatically at 24h. Nothing to decide here.'
               : 'No approve / reject — the employer already has this CV. Every action is audited.'}
           </span>
           <div className="flex shrink-0 gap-2 whitespace-nowrap">
             {decision === 'none' ? (
-              status === 'Pending' ? (
-                /* The Pending pair — the ONLY place HQ ever gates a send, and it is
-                   a technical verdict on the FILE, never a quality judgement on the
-                   candidate. */
-                <>
-                  <RowAction>Note</RowAction>
-                  <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Not a CV — reject</button>
-                  <button onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-semibold text-white">Real CV — send now</button>
-                </>
-              ) : (
-                <>
-                  <RowAction>Note</RowAction>
-                  <RowAction>Edit</RowAction>
-                  <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
+              <>
+                <RowAction>Note</RowAction>
+                <RowAction>Edit</RowAction>
+                <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
+                {/* Recall pulls something back from the employer — meaningless while
+                    delivery has not happened yet. */}
+                {status !== 'Pending' && (
                   <button onClick={() => setDecision('recall')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Recall…</button>
-                </>
-              )
+                )}
+              </>
             ) : (
               <>
                 <button onClick={() => setDecision('none')} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-semibold text-muted">Cancel</button>
@@ -761,26 +767,27 @@ function AdminApplicants() {
   const [fCompany, setFCompany] = useState('')
   const [fLoc, setFLoc] = useState('')
   const [fCv, setFCv] = useState('')
+  const [fCvSt, setFCvSt] = useState('')
   const raw: Applicant[] = [
-    /* The one held row — an uploaded file the "is this a CV?" check doubted.
-       Role is "—" because it comes from the CV (unreadable); years and education
-       survive because they are PROFILE fields, stated at onboarding. */
-    { name: 'Trương Văn Bình', role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], status: 'Pending', held: '1/6 CV signals — no contact, no dates', stage: 'New', when: '10m ago' },
-    { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], status: 'Sent', stage: 'Reviewing', when: '2h ago' },
-    { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], status: 'Sent', stage: 'Interview', when: '5h ago' },
-    { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], status: 'Sent', stage: 'Hired', when: '1d ago' },
-    { name: 'Phạm Thu Dung', role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], status: 'Sent', stage: 'New', when: '1d ago' },
-    { name: 'Vũ Minh Đức', role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Backend Engineer CV', 'saramin'], status: 'Sent', stage: 'Rejected', when: '3d ago' },
-    { name: 'Đặng Thị Hoa', role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], status: 'Sent', stage: 'New', when: '3d ago' },
-    { name: 'Bùi Quang Huy', role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], status: 'Recalled', stage: 'Reviewing', when: '4d ago' },
-    { name: 'Ngô Thị Lan', role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], status: 'Sent', stage: 'Interview', when: '4d ago' },
-    { name: 'Hoàng Văn Nam', role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], status: 'Sent', stage: 'New', when: '5d ago' },
-    { name: 'Trịnh Mỹ Linh', role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], status: 'Blocked', stage: 'New', when: '5d ago' },
-    { name: 'Đỗ Anh Tú', role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['iOS Developer CV', 'saramin'], status: 'Sent', stage: 'Shortlisted', when: '6d ago' },
-    { name: 'Lý Thu Trang', role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], status: 'Sent', stage: 'Interview', when: '6d ago' },
-    { name: 'Phan Văn Kiên', role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Sales Executive CV', 'saramin'], status: 'Sent', stage: 'New', when: '1w ago' },
-    { name: 'Võ Thị Ngọc', role: 'Business Analyst', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · IS', job: 'Business Analyst', company: 'Shopee', cv: ['ngoc-cv.pdf', 'upload'], status: 'Sent', stage: 'Shortlisted', when: '1w ago' },
-    { name: 'Mai Đức Thắng', role: 'Solution Architect', years: '10 yrs', loc: 'Hồ Chí Minh', edu: 'Master · CS', job: 'Solution Architect', company: 'Techcombank', cv: ['Solution Architect CV', 'saramin'], status: 'Sent', stage: 'Hired', when: '1w ago' },
+    /* Applied with a CV whose verdict is unresolved → delivery waits. Role reads
+       "—" because extraction found nothing; years and education survive because
+       they are PROFILE fields, stated at onboarding. */
+    { name: 'Trương Văn Bình', role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], cvStatus: 'Not enough information', status: 'Pending', hold: 'CV: Not enough information · tự động gửi sau 23h', stage: 'New', when: '10m ago' },
+    { name: 'Nguyễn Văn An', role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Reviewing', when: '2h ago' },
+    { name: 'Trần Thị Bích', role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '5h ago' },
+    { name: 'Lê Hoàng Cường', role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Hired', when: '1d ago' },
+    { name: 'Phạm Thu Dung', role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1d ago' },
+    { name: 'Vũ Minh Đức', role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Backend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Rejected', when: '3d ago' },
+    { name: 'Đặng Thị Hoa', role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Sent', stage: 'New', when: '3d ago' },
+    { name: 'Bùi Quang Huy', role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Qualified', status: 'Recalled', stage: 'Reviewing', when: '4d ago' },
+    { name: 'Ngô Thị Lan', role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '4d ago' },
+    { name: 'Hoàng Văn Nam', role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '5d ago' },
+    { name: 'Trịnh Mỹ Linh', role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Qualified', status: 'Blocked', stage: 'New', when: '5d ago' },
+    { name: 'Đỗ Anh Tú', role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['iOS Developer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Shortlisted', when: '6d ago' },
+    { name: 'Lý Thu Trang', role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '6d ago' },
+    { name: 'Phan Văn Kiên', role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Sales Executive CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1w ago' },
+    { name: 'Võ Thị Ngọc', role: 'Business Analyst', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · IS', job: 'Business Analyst', company: 'Shopee', cv: ['ngoc-cv.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Shortlisted', when: '1w ago' },
+    { name: 'Mai Đức Thắng', role: 'Solution Architect', years: '10 yrs', loc: 'Hồ Chí Minh', edu: 'Master · CS', job: 'Solution Architect', company: 'Techcombank', cv: ['Solution Architect CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Hired', when: '1w ago' },
   ]
   const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
   const cvKind = (a: Applicant) => (a.cv[1] === 'saramin' ? 'Saramin CV' : 'Uploaded file')
@@ -791,7 +798,8 @@ function AdminApplicants() {
       (!fStage || a.stage === fStage) &&
       (!fCompany || a.company === fCompany) &&
       (!fLoc || a.loc === fLoc) &&
-      (!fCv || cvKind(a) === fCv),
+      (!fCv || cvKind(a) === fCv) &&
+      (!fCvSt || a.cvStatus === fCvSt),
   )
   const rows = shown.map((a) => [
     <span onClick={() => setOpen(a)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{a.name}</span>,
@@ -802,19 +810,20 @@ function AdminApplicants() {
     <ExtLink>{a.job}</ExtLink>,
     <ExtLink>{a.company}</ExtLink>,
     <CvCell label={a.cv[0]} kind={a.cv[1]} />,
-    /* Pending carries its WHY on the row — the fired signals are what the
-       reviewer resolves against, and what the check later learns from. */
+    <Pill tone={CV_STATUS_TONE[a.cvStatus]}>{a.cvStatus}</Pill>,
+    /* Pending carries WHY and the time left — the row explains itself, but the
+       ACTION is on the CV, so it links there instead of offering a verdict. */
     a.status === 'Pending'
       ? <div className="min-w-0">
           <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>
-          <p className="mt-0.5 truncate text-[10.5px] text-amber-700" title={a.held}>held: {a.held}</p>
+          <p className="mt-0.5 truncate text-[10.5px] text-amber-700" title={a.hold}>{a.hold}</p>
         </div>
       : <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
     /* Recalled and Blocked CVs are off the employer's dashboard, so their funnel
        stops moving — an em-dash says that better than a frozen badge would. */
     a.status === 'Sent'
       ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
-      : <span className="text-faint" title="Off the employer dashboard — the funnel no longer applies">—</span>,
+      : <span className="text-faint" title={a.status === 'Pending' ? 'Not delivered yet — the employer funnel has not started' : 'Off the employer dashboard — the funnel no longer applies'}>—</span>,
     <span className="text-muted">{a.when}</span>,
     /* Row actions are STATE-AWARE: an action that cannot apply is not rendered,
        so the row never offers a dead button. Recall is terminal, Block is
@@ -822,7 +831,7 @@ function AdminApplicants() {
     <div className="flex flex-wrap items-center justify-end gap-1">
       <RowAction title="Opens the CV in a viewer — audited" onClick={() => setOpen(a)}>CV</RowAction>
       {a.status === 'Pending' && (
-        <RowAction tone="amber" title="Real CV → send · Not a CV → reject — each decision is logged against the fired signals and teaches the check" onClick={() => setOpen(a)}>Review</RowAction>
+        <RowAction tone="amber" title="The decision is made on the CV, not here — one verdict resolves every application waiting on it" onClick={() => setOpen(a)}>Check CV ↗</RowAction>
       )}
       {a.status === 'Sent' && (
         <RowAction tone="amber" title="Pull this CV off the employer’s dashboard — terminal" onClick={() => setOpen(a)}>Recall</RowAction>
@@ -839,13 +848,14 @@ function AdminApplicants() {
           owners once rather than leaving a reader to guess which badge is whose. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
         <b className="font-semibold text-ink/80">Status</b> is Saramin’s — Sent on apply, then Recalled or Blocked by HQ.{' '}
-        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. An application is sent
-        the moment it is submitted — <b className="font-semibold text-ink/80">unless the “is this a CV?” check holds it as Pending</b>{' '}
-        (unreadable file, or fewer than 2 of 6 CV signals). A human resolves those with two verbs — real CV → send, not a CV → reject —
-        and each decision is logged against the fired signals, which is how the check learns.
+        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. An application is sent on
+        submit unless the CV it used has an <b className="font-semibold text-ink/80">unresolved verdict</b> from upload — then it sits at{' '}
+        <b className="font-semibold text-ink/80">Pending</b> and <b className="font-semibold text-ink/80">auto-sends within 24h regardless</b>, so an
+        unworked queue can never cost a candidate a deadline. There is no decision to make on this screen: the hold belongs to the CV, so the
+        reviewer works <b className="font-semibold text-ink/80">CV check</b> and one verdict resolves every application waiting on that CV.
       </p>
       <ListPage
-        minW={1700}
+        minW={1880}
         /* rows are already narrowed by the filter row, so Total means every
            application HQ holds, not what survived the filters */
         total={raw.length}
@@ -857,6 +867,7 @@ function AdminApplicants() {
             <FilterSelect label="Company" value={fCompany} onChange={setFCompany} options={uniq(raw.map((a) => a.company))} />
             <FilterSelect label="Location" value={fLoc} onChange={setFLoc} options={uniq(raw.map((a) => a.loc))} />
             <FilterSelect label="CV" value={fCv} onChange={setFCv} options={uniq(raw.map(cvKind))} />
+            <FilterSelect label="Trạng thái CV" value={fCvSt} onChange={setFCvSt} options={uniq(raw.map((a) => a.cvStatus))} />
           </>
         }
         cols={[
@@ -865,6 +876,7 @@ function AdminApplicants() {
           { label: 'Applied to', w: '1.3fr' },
           { label: 'Company', w: '1fr' },
           { label: 'CV', w: '1.2fr' },
+          { label: 'Trạng thái CV', w: '1fr' },
           { label: 'Status · Saramin', w: '0.9fr' },
           { label: 'Stage · employer', w: '0.9fr' },
           { label: 'Applied', w: '0.8fr', align: 'r' },
@@ -872,7 +884,7 @@ function AdminApplicants() {
         ]}
         rows={rows}
       />
-      {open && <ApplicantDetail name={open.name} status={open.status} held={open.held} onClose={() => setOpen(null)} />}
+      {open && <ApplicantDetail name={open.name} status={open.status} hold={open.hold} onClose={() => setOpen(null)} />}
     </div>
   )
 }
@@ -946,76 +958,316 @@ function ResumeCandidateDetail({ name, onClose }: { name: string; onClose: () =>
 function AdminResumes() {
   const [creating, setCreating] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
+  const [menu, setMenu] = useState<number | null>(null)
   if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
-  /* `index` — does this candidate's searchable CV actually reach the employer
-     index? Flagging an uploaded CV runs the same "is this a CV?" signals an
-     application runs (Application management → 4a–4d) and holds it at Pending.
-     DECIDED: no auto-pass here, so this queue must be WORKED — a held CV is
-     invisible forever and nothing complains. That is why the age is on the row. */
-  type Idx = { s: 'Indexed' } | { s: 'Pending'; why: string; age: string } | { s: 'Rejected'; why: string }
-  const raw: [string, string, string, number, boolean, string, Idx][] = [
-    // candidate, searchable-CV title/yrs, location, cv count, discoverable, updated, index state
-    ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', 2, true, '2 days ago', { s: 'Indexed' }],
-    ['Trương Văn Bình', '— (scan_0816.pdf)', 'Hà Nội', 1, true, '10m ago', { s: 'Pending', why: '1/6 CV signals — no contact, no dates', age: 'held 10m' }],
-    ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', 1, true, '1 week ago', { s: 'Indexed' }],
-    ['Đỗ Thanh Hà', '— (portfolio-2026.pdf)', 'Hồ Chí Minh', 2, true, '6 days ago', { s: 'Pending', why: 'unreadable — image scan, OCR returned nothing', age: 'held 6d' }],
-    ['Lê Hoàng Cường', 'Product Manager · 8 yrs', 'Hồ Chí Minh', 3, false, '3 weeks ago', { s: 'Indexed' }],
-    ['Phạm Thu Dung', 'Kế toán · 3 yrs', 'Đà Nẵng', 1, true, '1 month ago', { s: 'Indexed' }],
-    ['Ngô Bảo Khánh', '— (menu_final.pdf)', 'Cần Thơ', 1, true, '2 months ago', { s: 'Rejected', why: '0/6 CV signals — not a CV' }],
-    ['Vũ Minh Đức', 'Backend Engineer · 5 yrs', 'Hồ Chí Minh', 2, true, '2 months ago', { s: 'Indexed' }],
+  /* THE TALENT POOL — only candidates who are actually in the employer index.
+     Deliberately NOT a work queue: failures live on their own list (CV check),
+     because browsing what we can sell and deciding on broken files are two
+     different jobs and one list was bad at both. So there is no Index column
+     here — every row in this list is, by definition, indexed. */
+  /* ONE status per CV, and every action an operator has lives on it — there is no
+     second "moderation" column, because HQ's outcome IS a status value (Removed).
+     Two columns that both describe a CV's standing are two columns that eventually
+     disagree.
+
+     Columns follow the decided candidate-data vocabulary: BASIC INFORMATION and
+     WORK PREFERENCE are what an operator scans a pool by, so each gets its own
+     column. "Location" is explicitly the DESIRED one — current location is not a
+     field we hold, and the old bare label invited the wrong reading. */
+  type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Not a CV' | 'Removed'
+  const CV_ST_TONE: Record<CvSt, StatusTone> = {
+    Qualified: 'active',
+    'Not enough information': 'pending',
+    "Can't read": 'draft',
+    'Not a CV': 'rejected',
+    Removed: 'rejected',
+  }
+  /* Which actions a status allows, and what each produces. Mirrors the spec table
+     one-for-one, so a reader can check them against each other. */
+  const ACTIONS: Record<CvSt, [string, string][]> = {
+    Qualified: [['Gỡ khỏi pool', 'Removed']],
+    'Not enough information': [['Đúng là CV', 'Qualified'], ['Không phải CV', 'Not a CV']],
+    "Can't read": [['Nhắc ứng viên tải lại', 'không đổi']],
+    'Not a CV': [['Phục hồi để xem lại', 'Not enough information']],
+    Removed: [['Phục hồi', 'Qualified']],
+  }
+  type PoolRow = { name: string; basic: string; pref: string; cv: string; st: CvSt; extracted: string; disc: boolean; updated: string }
+  const raw: PoolRow[] = [
+    { name: 'Nguyễn Văn An', basic: '4 năm KN · Cử nhân CNTT', pref: 'Frontend Engineer · Hồ Chí Minh · 25–35 tr', cv: 'Frontend Engineer CV', st: 'Qualified', extracted: '3 kinh nghiệm · 8 kỹ năng', disc: true, updated: '2 days ago' },
+    { name: 'Trần Thị Bích', basic: '6 năm KN · Cử nhân Marketing', pref: 'Digital Marketing Lead · Hà Nội · 30–40 tr', cv: 'bich-portfolio.pdf', st: 'Qualified', extracted: '2 kinh nghiệm · 11 kỹ năng', disc: true, updated: '1 week ago' },
+    { name: 'Lê Hoàng Cường', basic: '8 năm KN · Thạc sĩ MBA', pref: 'Product Manager · Hồ Chí Minh · 50–70 tr', cv: 'Product Manager CV', st: 'Qualified', extracted: '4 kinh nghiệm · 9 kỹ năng', disc: false, updated: '3 weeks ago' },
+    { name: 'Phạm Thu Dung', basic: '3 năm KN · Cử nhân Kế toán', pref: 'Kế toán tổng hợp · Đà Nẵng · 12–18 tr', cv: 'thu-dung-cv.pdf', st: 'Qualified', extracted: '1 kinh nghiệm · 3 kỹ năng', disc: true, updated: '1 month ago' },
+    { name: 'Vũ Minh Đức', basic: '5 năm KN · Cử nhân KTPM', pref: 'Backend Engineer · Hồ Chí Minh · 35–45 tr', cv: 'Backend Engineer CV', st: 'Qualified', extracted: '3 kinh nghiệm · 12 kỹ năng', disc: true, updated: '2 months ago' },
+    { name: 'Lâm Thị Kiều', basic: '2 năm KN · Cử nhân Thiết kế', pref: 'UI Designer · Hồ Chí Minh · 15–20 tr', cv: 'CV_2026_final.docx', st: 'Not enough information', extracted: '2 kinh nghiệm · 1 kỹ năng', disc: true, updated: '5 hours ago' },
+    { name: 'Trương Văn Bình', basic: '3 năm KN · Cao đẳng QTKD', pref: 'Sales Executive · Hà Nội · 12–18 tr', cv: 'scan_0816.pdf', st: "Can't read", extracted: 'Không đọc được nội dung', disc: true, updated: '10 min ago' },
+    { name: 'Đỗ Thanh Hà', basic: '4 năm KN · Cử nhân Mỹ thuật', pref: 'Product Designer · Hồ Chí Minh · 20–30 tr', cv: 'portfolio-2026.pdf', st: 'Not enough information', extracted: '0 kinh nghiệm · 0 kỹ năng', disc: true, updated: '6 days ago' },
+    { name: 'Ngô Bảo Khánh', basic: '1 năm KN · Cao đẳng', pref: 'Nhân viên kinh doanh · Cần Thơ · 8–12 tr', cv: 'menu_final.pdf', st: 'Not a CV', extracted: '0 kinh nghiệm · 0 kỹ năng', disc: true, updated: '2 months ago' },
+    { name: 'Hoàng Văn Nam', basic: '6 năm KN · Cử nhân CNTT', pref: 'DevOps Engineer · Đà Nẵng · 35–50 tr', cv: 'DevOps Engineer CV', st: 'Removed', extracted: '3 kinh nghiệm · 9 kỹ năng', disc: true, updated: '2 weeks ago' },
+    { name: 'Ngô Thị Lan', basic: '7 năm KN · Cử nhân QTNS', pref: 'HR Business Partner · Hồ Chí Minh · 30–40 tr', cv: 'lan-cv.docx', st: 'Qualified', extracted: '4 kinh nghiệm · 10 kỹ năng', disc: true, updated: '1 day ago' },
+    { name: 'Trịnh Mỹ Linh', basic: '3 năm KN · Cử nhân Báo chí', pref: 'Content Writer · Hà Nội · 12–16 tr', cv: 'my-linh.pdf', st: 'Qualified', extracted: '1 kinh nghiệm · 3 kỹ năng', disc: true, updated: '3 days ago' },
   ]
-  const rows = raw.map(([name, title, loc, count, disc, updated, idx]) => [
-    <span onClick={() => setSel(name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{name}</span>,
-    /* The WHY (and, on a hold, the AGE) sits under the CV it describes — leaving
-       the Index cell as the pill alone, which is what the Status filter matches
-       against. With no timer releasing these, an ageing row is the only thing
-       that says "work me". */
-    <div className="min-w-0">
-      <p className="truncate text-ink/80">{title}</p>
-      {idx.s !== 'Indexed' && (
-        <p className={cn('truncate text-[10.5px]', idx.s === 'Pending' ? 'text-amber-700' : 'text-rose-600')} title={idx.why}>
-          {idx.s === 'Pending' ? `${idx.age} · ${idx.why}` : idx.why}
-        </p>
+  const rows = raw.map((r, i) => [
+    <span onClick={() => setSel(r.name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
+    <span className="truncate text-ink/80">{r.basic}</span>,
+    <span className="truncate text-ink/80">{r.pref}</span>,
+    <span className="truncate text-muted">{r.cv}</span>,
+    <Pill tone={CV_ST_TONE[r.st]}>{r.st}</Pill>,
+    /* At the bare minimum is worth noticing — it ranks last and is the first thing
+       to nudge, so it is toned rather than left to read as healthy. */
+    <span className={cn('truncate', r.st !== 'Qualified' ? 'text-amber-700' : /^1 kinh nghiệm · [123] /.test(r.extracted) ? 'text-amber-700' : 'text-muted')}>{r.extracted}</span>,
+    r.disc ? <Pill tone="active">Discoverable</Pill> : <Pill tone="draft">Hidden</Pill>,
+    <span className="text-muted">{r.updated}</span>,
+    /* Every action the status allows, and nothing it does not — behind a ⋯ so a
+       consequential verb is never one stray click from a read-only one. */
+    <div className="relative flex items-center justify-end">
+      <button
+        onClick={() => setMenu(menu === i ? null : i)}
+        className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border text-[15px] leading-none text-muted', menu === i ? 'border-line bg-canvas' : 'border-transparent hover:border-line hover:bg-canvas')}
+      >⋯</button>
+      {menu === i && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
+          <div className="absolute right-0 top-8 z-30 w-[264px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
+            <button onClick={() => { setMenu(null); setSel(r.name) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] text-ink hover:bg-canvas">
+              <span className="w-3.5 text-center text-faint">👁</span>Xem hồ sơ
+              <span className="ml-auto text-[10px] text-faint">PII · log</span>
+            </button>
+            <div className="my-1 border-t border-line-soft" />
+            {ACTIONS[r.st].map(([label, next]) => (
+              <button key={label} onClick={() => setMenu(null)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-ink hover:bg-canvas">
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                <span className="shrink-0 text-[10px] text-faint">→ {next}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>,
-    loc,
-    <span className="text-muted">{count} of 3</span>,
-    disc ? <Pill tone="active">Discoverable</Pill> : <Pill tone="draft">Hidden</Pill>,
-    <Pill tone={idx.s === 'Indexed' ? 'active' : idx.s === 'Pending' ? 'pending' : 'rejected'}>{idx.s}</Pill>,
-    <Pill tone="active">Normal</Pill>,
-    <span className="text-muted">{updated}</span>,
   ])
   return (
     <div>
-      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">ONE row per candidate — the row shows their SEARCHABLE CV (what employer CV search reads). Open a candidate to see all their CVs (max 3). Resumes contain PII — every open is audited.</div>
-      {/* The index queue has NO auto-pass by decision, so it has to be worked by
-          hand — this line is what tells an operator that, and the Pending tab is
-          where they work it. */}
+      {/* ONE note, and it has to be honest about what this list contains: after the
+          status model was unified, failures are listed here too — they are simply
+          not indexed. CV check is the ACTIONABLE SUBSET, not a separate population. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
-        <b className="font-semibold text-ink/80">Index</b> is whether the candidate’s searchable CV actually reaches employer CV search. Flagging an uploaded CV
-        runs the same “is this a CV?” check an application runs and holds it at <b className="font-semibold text-ink/80">Pending</b>.{' '}
-        <b className="font-semibold text-ink/80">There is no auto-pass</b> — unlike an application, nothing is waiting on it, so a held CV stays invisible until
-        someone clears it. Filter Status → <b className="font-semibold text-ink/80">Pending</b> to work the queue; the age on each row is the only thing that complains.
+        Every candidate and the CV they chose for employers to find, whatever its status. Only <b className="font-semibold text-ink/80">Qualified</b> CVs are actually
+        in employer search — and being live also needs the candidate <b className="font-semibold text-ink/80">Discoverable</b> (their switch) and not{' '}
+        <b className="font-semibold text-ink/80">Removed</b> (ours). The other statuses are listed rather than hidden, so nobody has to wonder where a candidate went.{' '}
+        <b className="font-semibold text-ink/80">CV check</b> is the same data filtered to the rows that owe someone an action — a queue to work, not a separate pool.
+        Every action a status allows is on its <b className="font-semibold text-ink/80">⋯</b> menu.{' '}
+        <b className="font-semibold text-amber-700">Resumes contain PII — every open is audited.</b>
       </p>
-      {/* `tabs` doubles as the Status filter and is matched against the rendered
-          cell text, so each label must equal a pill exactly. */}
       <ListPage
-        minW={1500}
+        minW={1820}
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
-        tabs={[{ label: 'All candidates', count: 8420, active: true }, { label: 'Indexed', count: 6087 }, { label: 'Pending', count: 13 }, { label: 'Rejected', count: 9 }, { label: 'Discoverable', count: 6100 }, { label: 'Hidden', count: 2320 }]}
+        tabs={[{ label: 'Tất cả', count: 8420, active: true }, { label: 'Qualified', count: 6087 }, { label: 'Not enough information', count: 13 }, { label: "Can't read", count: 7 }, { label: 'Not a CV', count: 9 }, { label: 'Removed', count: 4 }]}
         cols={[
-          { label: 'Candidate', w: '1.2fr' },
-          { label: 'Searchable CV — title / exp', w: '2fr' },
-          { label: 'Location', w: '0.9fr' },
-          { label: 'CVs', w: '0.6fr' },
-          { label: 'Visibility (candidate)', w: '1fr' },
-          { label: 'Index · CV search', w: '0.9fr' },
-          { label: 'Moderation (HQ)', w: '0.9fr' },
-          { label: 'Updated', w: '0.9fr', align: 'r' },
+          { label: 'Ứng viên', w: '1.1fr' },
+          { label: 'Thông tin cơ bản', w: '1.3fr' },
+          { label: 'Công việc mong muốn', w: '1.9fr' },
+          { label: 'CV đang hiển thị', w: '1.2fr' },
+          { label: 'Trạng thái CV', w: '1.2fr' },
+          { label: 'Trích xuất được', w: '1.2fr' },
+          { label: 'Ứng viên cho hiển thị', w: '1fr' },
+          { label: 'Cập nhật', w: '0.8fr' },
+          { label: '', w: '0.35fr', align: 'r' },
         ]}
         rows={rows}
       />
       {sel && <ResumeCandidateDetail name={sel} onClose={() => setSel(null)} />}
+    </div>
+  )
+}
+
+/* ── CV check — the review QUEUE, deliberately not the talent pool ────────────
+   Two different jobs, so two different lists: Resumes is for BROWSING the pool
+   (one row per candidate, their searchable CV); this is for DECIDING on the
+   handful of uploaded PDFs whose extraction fell under the rule. Only PDFs
+   appear — a Saramin CV is arithmetic over typed fields and never needs a human.
+
+   The reviewer's real job is telling "not a CV" apart from "our parser failed on
+   this layout", so the row shows WHAT WE EXTRACTED next to the file. One verdict
+   resolves the CV *and* every application waiting on it. Applications auto-send
+   at 24h regardless, which is why the applications-waiting count carries its own
+   countdown — after that the CV is still held, but nobody is blocked. */
+/* TWO buckets, deliberately distinct:
+   · `thin`  — “Chưa đủ thông tin”. We read the file fine but it is below the rule.
+               Delivery WAITS, and there is a real decision to make.
+   · `tech`  — “Không đọc được nội dung”. The file has no text layer (image-only
+               scan). Applications go out NORMALLY — a human can read the file even
+               when we cannot — so there is nothing to approve. It is listed only so
+               the candidate can be nudged to upload a text-based PDF. */
+type CvCheckRow = { name: string; file: string; extracted: string; apps: number; left: string; age: string; hint: 'likely' | 'unlikely'; kind: 'thin' | 'tech' }
+
+function AdminCvCheck() {
+  const [open, setOpen] = useState<CvCheckRow | null>(null)
+  /* Actions behind a ⋯ menu rather than three peer buttons: the two verdicts are
+     consequential (they release or recall real applications), and peer buttons put
+     "Không phải CV" one stray click from "Xem CV". A menu costs one click and
+     removes that. It also lets each row offer only the actions that apply — an
+     unreadable file has no verdict to give. */
+  const [menu, setMenu] = useState<number | null>(null)
+  const raw: CvCheckRow[] = [
+    { name: 'Trương Văn Bình', file: 'scan_0816.pdf', extracted: 'Không đọc được nội dung — ảnh scan', apps: 1, left: 'đã gửi bình thường', age: '10m', hint: 'likely', kind: 'tech' },
+    { name: 'Lâm Thị Kiều', file: 'CV_2026_final.docx', extracted: '2 kinh nghiệm · 1 kỹ năng', apps: 2, left: '19h', age: '5h', hint: 'likely', kind: 'thin' },
+    { name: 'Hồ Nhật Minh', file: 'cv-hnm.pdf', extracted: '1 kinh nghiệm · 2 kỹ năng', apps: 1, left: '21h', age: '3h', hint: 'likely', kind: 'thin' },
+    { name: 'Tạ Thu Phương', file: 'resume_scan.jpg.pdf', extracted: 'Không đọc được nội dung — ảnh scan', apps: 0, left: '—', age: '8h', hint: 'likely', kind: 'tech' },
+    { name: 'Đỗ Thanh Hà', file: 'portfolio-2026.pdf', extracted: '0 kinh nghiệm · 0 kỹ năng', apps: 3, left: 'đã tự động gửi', age: '6d', hint: 'likely', kind: 'thin' },
+    { name: 'Chu Văn Sơn', file: 'bang-gia-2026.pdf', extracted: '0 kinh nghiệm · 0 kỹ năng', apps: 1, left: 'đã tự động gửi', age: '2d', hint: 'unlikely', kind: 'thin' },
+    { name: 'Ngô Bảo Khánh', file: 'menu_final.pdf', extracted: '0 kinh nghiệm · 0 kỹ năng', apps: 0, left: '—', age: '2m', hint: 'unlikely', kind: 'thin' },
+    { name: 'Vương Gia Bảo', file: 'bai-tap-lon.docx', extracted: '0 kinh nghiệm · 1 kỹ năng', apps: 0, left: '—', age: '4d', hint: 'unlikely', kind: 'thin' },
+    { name: 'Lý Khánh Vy', file: 'CV-KhanhVy-design.pdf', extracted: '0 kinh nghiệm · 2 kỹ năng', apps: 4, left: '11h', age: '13h', hint: 'likely', kind: 'thin' },
+    { name: 'Mai Tuấn Kiệt', file: 'cv_scan_2026.pdf', extracted: 'Không đọc được nội dung — ảnh scan', apps: 2, left: 'đã gửi bình thường', age: '1d', hint: 'likely', kind: 'tech' },
+  ]
+  const rows = raw.map((r, i) => [
+    <span onClick={() => setOpen(r)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
+    <span className="truncate text-ink/80">{r.file}</span>,
+    <Pill tone={r.kind === 'tech' ? 'draft' : 'pending'}>{r.kind === 'tech' ? "Can't read" : 'Not enough information'}</Pill>,
+    /* What we got out of the file, beside the file — the whole basis of the call. */
+    <span className={cn('truncate', r.kind === 'tech' ? 'text-muted' : 'text-amber-700')}>{r.extracted}</span>,
+    r.apps === 0
+      ? <span className="text-faint">—</span>
+      : <div className="min-w-0">
+          <span className="text-ink/80">{r.apps} đơn</span>
+          <p className={cn('truncate text-[10.5px]', r.left === 'đã tự động gửi' ? 'text-faint' : 'text-amber-700')}>{r.left}</p>
+        </div>,
+    <span className="text-muted">{r.age}</span>,
+    /* Nothing to approve on an unreadable file — the fix belongs to the candidate,
+       so that row's menu offers only the nudge. */
+    <div className="relative flex items-center justify-end">
+      <button
+        onClick={() => setMenu(menu === i ? null : i)}
+        className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border text-[15px] leading-none text-muted', menu === i ? 'border-line bg-canvas' : 'border-transparent hover:border-line hover:bg-canvas')}
+      >⋯</button>
+      {menu === i && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
+          <div className="absolute right-0 top-8 z-30 w-[236px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
+            <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] text-ink hover:bg-canvas">
+              <span className="w-3.5 text-center text-faint">👁</span>Xem CV
+              <span className="ml-auto text-[10px] text-faint">PII · log</span>
+            </button>
+            {r.kind === 'tech' ? (
+              <button onClick={() => setMenu(null)} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] text-ink hover:bg-canvas">
+                <span className="w-3.5 text-center text-faint">✉</span>Nhắc ứng viên tải lại
+              </button>
+            ) : (
+              <>
+                <div className="my-1 border-t border-line-soft" />
+                <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-medium text-emerald-700 hover:bg-canvas">
+                  <span className="w-3.5 text-center">✓</span>Đúng là CV — cho hiển thị
+                </button>
+                <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-medium text-rose-600 hover:bg-canvas">
+                  <span className="w-3.5 text-center">✕</span>Không phải CV
+                </button>
+                {r.apps > 0 && (
+                  <p className="border-t border-line-soft px-3 py-1.5 text-[10px] leading-snug text-faint">Quyết định này ảnh hưởng tới {r.apps} đơn ứng tuyển.</p>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>,
+  ])
+  return (
+    <div>
+      <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+        Uploaded PDFs only — a Saramin CV is arithmetic over typed fields and never appears here. TWO different failures, and they are not handled alike.{' '}
+        <b className="font-semibold text-ink/80">Chưa đủ thông tin</b>: we read the file fine but it is under the rule — delivery WAITS and there is a real call to
+        make, almost always <b className="font-semibold text-ink/80">“not a CV” vs “our parser failed on this layout”</b>. One verdict resolves the CV{' '}
+        <b className="font-semibold text-ink/80">and every application waiting on it</b>; held applications auto-send at 24h regardless.{' '}
+        <b className="font-semibold text-ink/80">Không đọc được nội dung</b>: the file has no text layer (ảnh scan) — applications go out NORMALLY, because a human
+        can read the file even when we cannot. Nothing to approve; the fix is the candidate uploading a text-based PDF.
+      </p>
+      <ListPage
+        minW={1240}
+        total={raw.length}
+        searchHint="Tìm ứng viên, tên file…"
+        tabs={[{ label: 'Tất cả', count: raw.length, active: true }, { label: 'Not enough information', count: raw.filter((r) => r.kind === 'thin').length }, { label: "Can't read", count: raw.filter((r) => r.kind === 'tech').length }]}
+        cols={[
+          { label: 'Ứng viên', w: '1.1fr' },
+          { label: 'File', w: '1.2fr' },
+          { label: 'Trạng thái CV', w: '1fr' },
+          { label: 'Trích xuất được', w: '1.4fr' },
+          { label: 'Đơn ứng tuyển', w: '1fr' },
+          { label: 'Chờ đã', w: '0.6fr' },
+          { label: '', w: '0.4fr', align: 'r' },
+        ]}
+        rows={rows}
+      />
+      {open && <CvCheckDetail row={open} onClose={() => setOpen(null)} />}
+    </div>
+  )
+}
+
+/* The decision screen: the file on one side, what we extracted on the other, and
+   exactly two verbs. Everything else is context for telling them apart. */
+function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
+      <div className="flex max-h-[600px] w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{row.name}<Pill tone="pending">Chờ kiểm tra</Pill></p>
+            <p className="truncate text-[11px] text-muted">{row.file} · chờ {row.age} · {row.apps} đơn ứng tuyển đang chờ</p>
+          </div>
+          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
+        </div>
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-2">
+          <div className="rounded-lg border border-line bg-canvas/30 p-4">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">File gốc</p>
+            <div className="grid h-44 place-items-center rounded-md border border-dashed border-line text-[11px] text-faint">Xem trước PDF — mở file là thao tác PII, có ghi log</div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Trích xuất được</p>
+              <p className={cn('rounded-md border px-2 py-1.5 text-[11.5px]', row.kind === 'tech' ? 'border-line bg-canvas/60 text-muted' : 'border-amber-200 bg-amber-50 text-amber-800')}>
+                {row.extracted}{row.kind === 'thin' && ' — dưới mức tối thiểu (≥1 kinh nghiệm và ≥3 kỹ năng)'}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">{row.kind === 'tech' ? 'Không có gì để duyệt' : 'Câu hỏi duy nhất'}</p>
+              {row.kind === 'tech' ? (
+                <p className="text-[11.5px] leading-relaxed text-ink/80">
+                  File không có lớp văn bản nên hệ thống không trích xuất được nội dung. Nhà tuyển dụng vẫn đọc được file, nên <b className="font-semibold">đơn ứng tuyển đã được gửi bình thường</b>. CV chỉ không xuất hiện trong tìm kiếm CV — cách sửa là ứng viên tải lên PDF dạng văn bản.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[11.5px] leading-relaxed text-ink/80">
+                    Đây có phải CV thật mà <b className="font-semibold">hệ thống đọc không được</b>, hay <b className="font-semibold">không phải CV</b>?
+                  </p>
+                  <p className="mt-1 text-[10.5px] text-faint">{row.hint === 'likely' ? 'Gợi ý: bố cục nhiều cột / thiết kế — nhiều khả năng là CV thật, lỗi ở bộ đọc.' : 'Gợi ý: không có dấu hiệu nào của một CV.'}</p>
+                </>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Quyết định này ảnh hưởng tới</p>
+              <ul className="space-y-1 text-[11px] text-ink/80">
+                <li>· CV có vào được tìm kiếm CV hay không</li>
+                <li>· {row.apps} đơn ứng tuyển đang chờ — nhả hết hoặc thu hồi hết</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
+          <span className="text-[10.5px] text-faint">
+            {row.kind === 'tech'
+              ? 'Không chặn ứng viên — đơn đã gửi. Chỉ cần nhắc họ tải lên PDF dạng văn bản.'
+              : 'Đơn ứng tuyển tự động gửi sau 24h dù chưa ai duyệt — quyết định ở đây là cho CV.'}
+          </span>
+          <div className="flex shrink-0 gap-2 whitespace-nowrap">
+            {row.kind === 'tech' ? (
+              <button onClick={onClose} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Nhắc ứng viên tải lại</button>
+            ) : (
+              <>
+                <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Không phải CV</button>
+                <button onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-semibold text-white">Đúng là CV — cho hiển thị</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -7149,7 +7401,7 @@ function AdminPopups({ leading }: { leading?: React.ReactNode }) {
            purpose, customer, PO, product, schedule, creative, exposure, status.
            Audience / frequency / priority were columns the form never captured —
            either the form should ask for them or the table should not claim them. */
-        minW={1560}
+        minW={1820}
         leading={leading}
         cols={[
           { label: 'Popup', w: '1.5fr' },
@@ -7807,7 +8059,7 @@ function AdminCvSearchUsage() {
       />
 
       <ListPage
-        minW={1560}
+        minW={1820}
         searchHint="Tìm gói, khách hàng, mã công ty…"
         searchExtra={CV_SEARCH_PACKAGES.map((r) => `${r.coId} ${r.owner}`)}
         total={CV_SEARCH_PACKAGES.length}
@@ -15128,6 +15380,7 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-job-create': AdminJobCreateStandalone,
   'admin-job-applicants': AdminApplicants,
   'admin-resumes': AdminResumes,
+  'admin-cv-check': AdminCvCheck,
   'admin-resume-new': AdminResumeNewStandalone,
   // Companies
   'admin-company-list': AdminCompanyList,

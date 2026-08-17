@@ -307,7 +307,11 @@ function ApplyScreen() {
             {/* Your CV — choose which CV to send (Saramin CV or an uploaded CV) */}
             <ApplyGroup n={1} title="Your CV">
               {/* SAME row shape as the My CVs list — a candidate should recognise
-                  their own shelf here, not learn a second layout for the same thing. */}
+                  their own shelf here, not learn a second layout for the same thing.
+                  productdesign.pdf did NOT qualify for CV search (its extraction was
+                  thin) and is still fully selectable here — an uploaded file is never
+                  gated at apply, because the doubt is about OUR parser. Only the
+                  Saramin CV below the same rule is greyed, further down. */}
               <div className="space-y-1.5">
                 {([
                   ['portfolio', '', 'productdesign.pdf', 'Uploaded', 'Uploaded 26/07/2026'],
@@ -331,12 +335,11 @@ function ApplyScreen() {
                     </span>
                   </label>
                 ))}
-                {/* APPLY-ELIGIBLE gate (see Resume management): a Saramin CV whose
-                    CV content is below the named minimum (≥1 experience — or ≥1
-                    education entry for a fresher — and ≥3 skills) cannot be SENT.
-                    VNW pattern: greyed, unselectable, the missing fields NAMED and
-                    one link into the editor. Uploaded files are never gated here —
-                    a doubtful file is checked after submit instead (Pending). */}
+                {/* The SAME qualification rule as every other CV (≥1 experience — or
+                    ≥1 education entry for a fresher — and ≥3 skills), but the strict
+                    consequence: a SARAMIN CV below it cannot be sent, because we
+                    generate that document ourselves. VNW pattern — greyed,
+                    unselectable, missing fields NAMED, one link into the editor. */}
                 <div className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas/40 p-2.5">
                   <span className="grid h-3.5 w-3.5 shrink-0 rounded-full border-2 border-line bg-canvas" />
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50"></span>
@@ -352,6 +355,14 @@ function ApplyScreen() {
                     </span>
                   </span>
                 </div>
+                {/* Told AT THE MOMENT it applies, never as an upfront warning — a
+                    pre-emptive notice would discourage every normal applicant to
+                    catch a rare unreadable file. The apply still succeeds. */}
+                {cv === 'portfolio' && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+                    CV này đang được kiểm tra. Đơn của bạn vẫn được nộp, và sẽ gửi tới nhà tuyển dụng <b className="font-semibold">trong vòng 24 giờ</b>.
+                  </p>
+                )}
                 <button
                   onClick={() => go('js-add-cv')}
                   className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-dashed border-line px-3 py-2.5 text-left hover:border-brand/50"
@@ -2073,18 +2084,19 @@ function MyCvsScreen() {
      shelf, so the candidate learns it before the apply modal greys the row.
      It does not touch the searchable flag — an incomplete CV can still be
      the one employers find. */
-  /* `indexStatus` — the CV-SEARCH half, and a different object from an
-     application's status: it decides whether this CV enters the EMPLOYER INDEX.
-     Flagging an uploaded CV runs the same "is this a CV?" signals an application
-     runs, so it sits at `pending` until a human clears it. Decided: there is NO
-     auto-pass here — nothing is waiting on it, so the index fails CLOSED while
-     applications fail OPEN. That is exactly why the candidate must be able to
-     SEE the pending state instead of assuming they are already findable. */
+  /* `indexStatus` — CV SEARCH only. ONE rule qualifies a CV (≥1 experience or
+     education entry + ≥3 skills), read off the fields an upload is parsed into
+     at UPLOAD time. An uploaded CV that fails is NOT blocked from applying —
+     that would punish the candidate for our parser — it simply waits outside
+     the index until a reviewer clears it. Decided: no auto-pass, so the
+     candidate must be able to SEE the wait rather than assume they are already
+     findable. A Saramin CV below the same rule is the stricter case: it cannot
+     apply either, because we generate that document ourselves (`missing`). */
   const cvs: { name: string; kind: string; meta: string; icon: string; skills?: string[]; missing?: string; indexStatus?: 'pending' | 'rejected' }[] = [
-    /* Just toggled on for search → sitting at indexStatus = pending. The
-       Business Developer CV below keeps "Đang hiển thị" meanwhile, which is the
-       rule: the flag does not move until the new CV passes, so the candidate is
-       never discoverable with nothing indexed. */
+    /* Parsed at upload to too little to qualify → indexStatus = pending, so it
+       waits outside CV search. It still applies normally. The Business Developer
+       CV keeps "Đang hiển thị" meanwhile: the flag never moves to a CV that has
+       not qualified, so the candidate is never indexed on nothing. */
     { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '', indexStatus: 'pending' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '', skills: ['Business Development', 'B2B Sales', 'Account Management', 'Excel'] },
     { name: 'UX Designer CV', kind: 'Saramin', meta: 'Generated 14/08/2026', icon: '', skills: ['Figma'], missing: 'kinh nghiệm làm việc · thêm 2 kỹ năng' },
@@ -2123,16 +2135,24 @@ function MyCvsScreen() {
                   <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink">
                     {c.name}
                     <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
-                    {/* index (CV SEARCH) vs apply — two different gates, two chips */}
+                    {/* index (CV SEARCH) vs apply — two different gates, two chips.
+                        A CV that is FLAGGED but no longer qualifies (case: the
+                        candidate edited a qualifying CV and removed a required
+                        field) keeps its flag and leaves the index, so it shows
+                        neither "Đang hiển thị" nor a plain Active — it says it is
+                        not being shown, and why. The flag is deliberately NOT
+                        auto-moved: the edit is usually transient, and flags do not
+                        auto-revert. */}
                     {c.indexStatus === 'pending' && <Chip tone="amber">Đang kiểm tra</Chip>}
-                    {!c.indexStatus && searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
+                    {!c.indexStatus && searchable === i && !c.missing && <Chip tone="green">Đang hiển thị</Chip>}
+                    {!c.indexStatus && searchable === i && c.missing && <Chip tone="amber">Tạm không hiển thị</Chip>}
                     {c.missing && <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>}
                   </p>
                   {/* No auto-pass on the index queue, so the candidate must be able
                       to SEE the hold rather than assume they are already findable. */}
                   {c.indexStatus === 'pending' && (
                     <p className="mt-1 text-[11px] text-amber-700">
-                      Đang kiểm tra CV trước khi hiển thị với nhà tuyển dụng — CV <b className="font-semibold">Business Developer CV</b> vẫn đang hiển thị.
+                      Vẫn dùng để ứng tuyển bình thường. Đang kiểm tra trước khi hiển thị trong tìm kiếm CV — <b className="font-semibold">Business Developer CV</b> vẫn đang hiển thị.
                     </p>
                   )}
                   <p className="text-[11px] text-faint">{c.meta}</p>
@@ -2159,7 +2179,8 @@ function MyCvsScreen() {
                   {/* The gate, spelled out — named fields, never a % (see spec) */}
                   {c.missing && (
                     <p className="mt-1 text-[11px] text-amber-700">
-                      Thiếu: {c.missing} —{' '}
+                      Thiếu: {c.missing}
+                      {searchable === i && ' — CV vẫn được chọn hiển thị, nhưng tạm rời khỏi tìm kiếm CV cho tới khi đủ điều kiện'} —{' '}
                       <span onClick={() => go('js-create-cv')} className="cursor-pointer font-medium text-brand">Hoàn thiện →</span>
                     </p>
                   )}
@@ -2203,25 +2224,33 @@ function MyCvsScreen() {
                           consented, believes they are findable, and gets nothing.
                           It used to render as an on/off toggle that could not
                           actually be switched off, which promised the opposite. */}
-                      {/* A CV already at indexStatus = pending has been chosen; the
-                          radio is spent until the check clears, and because there is
-                          NO auto-pass the menu says what it is waiting for. */}
+                      {/* THREE states on one control, and the split is fact vs doubt:
+                          · `missing` (Saramin CV below the rule) — DISABLED. It is a
+                            fact the candidate can fix in a minute, so we say so
+                            rather than let them switch it on and wait for nothing.
+                          · `indexStatus = pending` (thin extraction) — chosen, but
+                            waiting on a human. Our doubt, so the choice stayed theirs.
+                          · otherwise — a normal radio. */}
                       <div className="mt-1 border-t border-line-soft px-3 py-2.5">
                         <label
-                          onClick={() => { if (!c.indexStatus) { setSearchable(i); setMenu(null) } }}
-                          className={cn('flex items-center justify-between gap-2', c.indexStatus ? 'cursor-default opacity-60' : 'cursor-pointer')}
+                          onClick={() => { if (!c.indexStatus && !c.missing) { setSearchable(i); setMenu(null) } }}
+                          className={cn('flex items-center justify-between gap-2', c.indexStatus || c.missing ? 'cursor-default opacity-60' : 'cursor-pointer')}
                         >
                           <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy CV này</span>
-                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', c.indexStatus === 'pending' ? 'border-amber-400 bg-amber-400' : searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
-                            {(searchable === i || c.indexStatus === 'pending') && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', c.missing && searchable !== i ? 'border-line bg-canvas' : c.indexStatus === 'pending' || (c.missing && searchable === i) ? 'border-amber-400 bg-amber-400' : searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
+                            {(searchable === i || c.indexStatus === 'pending') && !(c.missing && searchable !== i) && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                           </span>
                         </label>
-                        <p className="mt-1 text-[10.5px] leading-snug text-faint">
-                          {c.indexStatus === 'pending'
-                            ? 'Đã chọn — đang kiểm tra trước khi hiển thị. Không có thời hạn tự động: CV chỉ hiển thị sau khi được duyệt.'
-                            : searchable === i
-                              ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế — luôn có đúng 1 CV được tìm thấy.'
-                              : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
+                        <p className={cn('mt-1 text-[10.5px] leading-snug', c.missing ? 'text-amber-700' : 'text-faint')}>
+                          {c.missing
+                            ? searchable === i
+                              ? 'Vẫn là CV bạn đã chọn, nhưng đang thiếu điều kiện nên tạm không hiển thị với nhà tuyển dụng. Hoàn thiện là hiển thị lại ngay — không cần chọn lại.'
+                              : 'Chưa đủ điều kiện hiển thị — cần kinh nghiệm làm việc và ≥3 kỹ năng. CV này cũng chưa dùng để ứng tuyển được.'
+                            : c.indexStatus === 'pending'
+                              ? 'Đã chọn — đang kiểm tra trước khi hiển thị; không có thời hạn tự động. Vẫn ứng tuyển bình thường.'
+                              : searchable === i
+                                ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế.'
+                                : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
                         </p>
                       </div>
                     </div>
@@ -2462,6 +2491,11 @@ function OnboardingScreen() {
   const [inds, setInds] = useState<string[]>(['IT / Software', 'FMCG'])
   const toggleInd = (c: string) =>
     setInds((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
+  /* Step 3 is the CANDIDATE side of the shared salary contract: ONE figure,
+     never a range — the employer states the band and this number has to fall
+     inside it. See Resume management → "★ SALARY — the one contract". The
+     amount is always monthly VND here, so there is no period or currency
+     control to hold state for. */
 
   /* One picker for every taxonomy field. `max` set → multi-select with a cap and
      removable chips; unset → single-select that closes on pick. Open state is
@@ -2534,10 +2568,7 @@ function OnboardingScreen() {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${(n / 3) * 100}%` }} /></div>
     </div>
   )
-  const Fld = ({ label, ph }: { label: string; ph?: string }) => (
-    <div><p className="mb-1 text-[11.5px] font-medium text-ink">{label}</p><div className="flex h-9 items-center rounded-md border border-line bg-canvas/30 px-3 text-[12px] text-faint">{ph}</div></div>
-  )
-  const Nav = ({ back, next, nextLabel = 'Next' }: { back?: () => void; next: () => void; nextLabel?: string }) => (
+  const Nav =({ back, next, nextLabel = 'Next' }: { back?: () => void; next: () => void; nextLabel?: string }) => (
     <div className="mt-5 flex justify-between">{back ? <Btn onClick={back}>Before</Btn> : <span />}<Btn primary onClick={next}>{nextLabel}</Btn></div>
   )
   return (
@@ -2664,20 +2695,24 @@ function OnboardingScreen() {
               <>
                 <p className="text-[15px] font-bold text-ink">What salary are you expecting?</p>
                 <p className="mt-0.5 text-[11.5px] text-muted">One of the filters recruiters use most — and no CV ever states it.</p>
-                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-                  <Fld label="Expected salary" ph="e.g. 20 – 30 / month" />
-                  {/* VND pre-selected — most candidates think in triệu. USD is
-                      there so the IT / FDI segment does not leave it BLANK,
-                      which is the real alternative and the worst outcome. */}
-                  <div>
-                    <p className="mb-1 text-[11px] font-medium text-ink/70">Currency</p>
-                    <div className="flex overflow-hidden rounded-lg border border-line text-[11.5px] font-medium">
-                      <span className="bg-brand px-3 py-2 text-white">VND</span>
-                      <span className="cursor-pointer px-3 py-2 text-muted hover:bg-canvas">USD</span>
+                {/* ONE figure, NOT a range: the employer states the band, and this
+                    single number has to fall inside it (point-in-range). An earlier
+                    draft here showed "20 – 30", which never matched the contract. */}
+                <div className="mt-3">
+                  <p className="mb-1 text-[11.5px] font-medium text-ink">Expected salary</p>
+                  {/* The amount is always MONTHLY, so the unit sits inline instead of
+                      being a control: one figure, one fixed period, nothing to choose. */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] text-muted">Từ</span>
+                    <div className="flex h-10 flex-1 items-center rounded-lg border border-line bg-canvas/30 px-3 text-[12px] text-faint">
+                      20
                     </div>
+                    <span className="whitespace-nowrap text-[12px] text-muted">triệu / tháng</span>
                   </div>
                 </div>
-                <p className="mt-2 text-[10.5px] text-faint">Only shown to employers as a range. You can change it any time.</p>
+                <p className="mt-2 text-[10.5px] text-faint">
+                  Employers see it exactly as written — “Từ 20 triệu / tháng”. One number: nobody turns down more.
+                </p>
                 <Nav back={() => setStep(2)} next={() => setStep('results')} nextLabel="See my matches →" />
               </>
             )}
@@ -2754,21 +2789,35 @@ function OnboardingScreen() {
    honestly), which CV was sent, and what happened when. List + detail. */
 function MyApplicationsScreen() {
   const [sel, setSel] = useState<number | null>(null)
+  /* Applications are SENT on submit. The one exception is an application whose
+     uploaded CV still has an unresolved verdict from upload — it waits on the CV,
+     not on itself, and auto-sends within 24h either way. So there is no blanket
+     "screened by Saramin" step here, and never was under this model. */
   const APPS = [
     { job: 'Senior Frontend Engineer', co: 'FPT Software', applied: '02/08/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Interview', tone: 'amber' as const, note: 'Interview scheduled — 08/08, 10:00' },
-    { job: 'Product Designer', co: 'Lantern Digital', applied: '30/07/2026', cv: 'My Saramin CV', status: 'Forwarded', tone: 'blue' as const, note: 'Passed Saramin screening · sent to employer' },
-    { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'My Saramin CV', status: 'Screening', tone: 'blue' as const, note: 'Being screened by Saramin' },
+    { job: 'Product Designer', co: 'Lantern Digital', applied: '30/07/2026', cv: 'My Saramin CV', status: 'Đã gửi', tone: 'blue' as const, note: 'Đã gửi tới nhà tuyển dụng' },
+    { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'productdesign.pdf', status: 'Đang kiểm tra CV', tone: 'amber' as const, note: 'Sẽ gửi tới nhà tuyển dụng trong 24 giờ' },
     { job: 'UX Researcher', co: 'Tiki', applied: '20/07/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Offer', tone: 'green' as const, note: 'Offer received' },
     { job: 'Design Lead', co: 'MWG', applied: '12/07/2026', cv: 'My Saramin CV', status: 'Not selected', tone: 'muted' as const, note: 'Closed by employer' },
   ]
-  const TIMELINE: [string, string, boolean][] = [
-    ['Submitted', 'You applied with CV_TranMinhAnh.pdf', true],
-    ['Saramin screening', 'Quality-checked by Saramin — passed', true],
-    ['Forwarded to employer', 'Your application reached FPT Software', true],
-    ['Viewed by employer', 'FPT Software opened your CV', true],
-    ['Interview', 'Scheduled — 08/08, 10:00 (check email)', true],
-    ['Result', 'Waiting', false],
-  ]
+  /* Two shapes, and the difference is the point: a normal application has NO
+     Saramin step at all, while one waiting on its CV shows exactly what it is
+     waiting for and that it leaves anyway. */
+  const timelineFor = (app: (typeof APPS)[number]): [string, string, boolean][] =>
+    app.status === 'Đang kiểm tra CV'
+      ? [
+          ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
+          ['Đang kiểm tra CV', 'Chúng tôi đang kiểm tra file CV của bạn — tự động gửi sau 24 giờ dù chưa kiểm tra xong', false],
+          ['Gửi tới nhà tuyển dụng', 'Chưa gửi', false],
+          ['Kết quả', 'Đang chờ', false],
+        ]
+      : [
+          ['Submitted', `You applied with ${app.cv}`, true],
+          ['Sent to employer', `Your application reached ${app.co}`, true],
+          ['Viewed by employer', `${app.co} opened your CV`, true],
+          ['Interview', 'Scheduled — 08/08, 10:00 (check email)', true],
+          ['Result', 'Waiting', false],
+        ]
   const a = sel !== null ? APPS[sel] : null
   return (
     <div className="relative">
@@ -2803,7 +2852,7 @@ function MyApplicationsScreen() {
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-faint">Every application passes Saramin screening before it reaches the employer — that is why high-quality CVs get responses faster.</p>
+          <p className="text-[11px] text-faint">Đơn ứng tuyển được gửi ngay khi bạn nộp. Chỉ khi file CV cần kiểm tra thì đơn mới chờ — và vẫn tự động gửi trong 24 giờ.</p>
         </div>
       </div>
 
@@ -2823,11 +2872,11 @@ function MyApplicationsScreen() {
               <div>
                 <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Progress</p>
                 <div className="space-y-0">
-                  {TIMELINE.map(([t, d, done], i) => (
+                  {timelineFor(a).map(([t, d, done], i) => (
                     <div key={t} className="flex gap-2.5">
                       <div className="flex flex-col items-center">
                         <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px]', done ? 'bg-emerald-500 text-white' : 'border-2 border-line bg-surface')}>{done ? '✓' : ''}</span>
-                        {i < TIMELINE.length - 1 && <span className={cn('w-px flex-1', done ? 'bg-emerald-300' : 'bg-line')} style={{ minHeight: 18 }} />}
+                        {i < timelineFor(a).length - 1 && <span className={cn('w-px flex-1', done ? 'bg-emerald-300' : 'bg-line')} style={{ minHeight: 18 }} />}
                       </div>
                       <div className="pb-3">
                         <p className={cn('text-[12px] font-medium', done ? 'text-ink' : 'text-faint')}>{t}</p>
@@ -2934,7 +2983,12 @@ function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
   )
 }
 
-function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Facebook'; onBack: () => void }) {
+/* The step that FINISHES a social sign-up. Reached from SignUpScreen in the
+   gallery, and registered on its own (js-signup-social) so the requirement page can
+   show it beside the entry screen — it is where a social candidate enters every
+   field the provider could not give us, which is the point reviewers must see.
+   `onBack` is optional: there is nothing to go back to when it stands alone. */
+function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Facebook'; onBack?: () => void }) {
   const go = useNav()
   /* One consent line — the same control the email Create-account form uses. */
   const [agreed, setAgreed] = useState(false)
@@ -2993,11 +3047,18 @@ function SocialCompleteScreen({ provider, onBack }: { provider: 'Google' | 'Face
             <button onClick={() => go('js-onboarding')} className="mt-4 w-full rounded-lg bg-brand py-2.5 text-[13px] font-semibold text-white">Create account</button>
           </div>
 
-          <p onClick={onBack} className="mt-3 cursor-pointer text-center text-[11.5px] text-muted hover:text-brand">← Use a different method</p>
+          {onBack && (
+            <p onClick={onBack} className="mt-3 cursor-pointer text-center text-[11.5px] text-muted hover:text-brand">← Use a different method</p>
+          )}
         </div>
       </div>
     </div>
   )
+}
+
+/** The completion step on its own, for the requirement page and the gallery. */
+function SignUpSocialScreen() {
+  return <SocialCompleteScreen provider="Google" />
 }
 
 function SignUpScreen() {
@@ -3077,6 +3138,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
   { id: 'js-applications', site: 'Jobseeker', title: 'My applications', url: 'saramin.vn/my-page/applications', Comp: MyApplicationsScreen },
   { id: 'js-signup', site: 'Jobseeker', title: 'Sign up', url: 'saramin.vn/signup', Comp: SignUpScreen },
+  { id: 'js-signup-social', site: 'Jobseeker', title: 'Sign up — social login completion', url: 'saramin.vn/signup/complete', Comp: SignUpSocialScreen },
   { id: 'js-onboarding', site: 'Jobseeker', title: 'Onboarding', url: 'saramin.vn/welcome', Comp: OnboardingScreen },
   // Admin / CRM — the lead → customer activation flow
   { id: 'crm-pipeline', site: 'Admin · CRM', title: '1 · Sales pipeline', url: 'admin/sales/customers', Comp: CrmPipelineScreen },

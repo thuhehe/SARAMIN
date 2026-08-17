@@ -118,9 +118,24 @@ export interface BuildFeature {
   name: string
   site: Site
   scope: Scope[]
+  /**
+   * URL id of this feature's page, `/m/{moduleId}/{slug}`. Defaults to the
+   * slugified NAME — set it explicitly only when two features in the same
+   * module share a name (the Admin vs Companies pairs). Once a slug is
+   * published it is a permanent address: renaming the feature is fine,
+   * changing this breaks every link and comment thread pointing at it.
+   */
+  slug?: string
   notes?: string
   /** id of a wireframe on the Mockups page, if one exists */
   mockup?: string
+  /**
+   * FURTHER screens of the same feature, rendered as their own Screen UI blocks
+   * after `mockup`. Use it when one requirement legitimately covers more than one
+   * screen — a form plus the step that finishes it — so the flow can be reviewed
+   * whole instead of being split into two requirements to fit one preview.
+   */
+  mockups?: string[]
   /**
    * Is this requirement ready for the BA to pick up? Drives the nav dot:
    * green when true, grey otherwise. Set by hand — see READY_META.

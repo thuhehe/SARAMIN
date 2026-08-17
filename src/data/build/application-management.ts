@@ -22,15 +22,22 @@ import type { BuildModule } from './types'
  * ONE application = one jobseeker + one job, and it carries TWO status
  * dimensions that must never be confused:
  *
- *   1. status  — Saramin's. Pending (scan failed / information missing) →
- *                Sent → Recalled. Blocked is user-level and recalls everything.
+ *   1. status  — Saramin's. Pending → Sent → Recalled. Blocked is user-level and
+ *                recalls everything. Pending is written ONLY when the applied-with
+ *                CV has an unresolved verdict from upload (see block 4); it always
+ *                auto-sends within 24h, so it can never strand a candidate.
  *   2. stage   — the employer's hiring pipeline, defaulting to New → Reviewing
  *                → Shortlisted → Interview → Hired / Rejected. Owned by the
  *                company, which can RENAME/ADD/REMOVE stages, so these six are
  *                a default set and never a hard-coded enum. HQ is read-only.
  *
- *   Jobseeker applies ──▶ scan ──┬─ ok ──▶ Sent ──▶ stage = New (employer's queue)
- *                                └─ fails ▶ Pending (admin fixes it or marks ready)
+ *   Jobseeker applies ──┬─ CV cleared ─▶ Sent ──▶ stage = New (employer's queue)
+ *                       └─ CV unresolved ─▶ Pending ──┬─ reviewer clears the CV ─▶ Sent
+ *                                                     ├─ reviewer rejects it ────▶ dropped
+ *                                                     └─ 24h with no review ─────▶ Sent
+ *
+ *   The CV carries its verdict in from upload; applying re-checks nothing. The hold
+ *   belongs to the CV, and ONE decision resolves every application waiting on it.
  *
  * The candidate-facing status in "My application" is a LABEL derived from those
  * two — never a third source of truth.
@@ -101,7 +108,7 @@ export const applicationManagement: BuildModule = {
         'Spam is gone as an automatic status. What is left is a manual Block user, which recalls everything that user has sent.',
         'Admin actions drop from 7 to 6: Mark as ready · Recall · Block/Unblock user · Fix information · Edit · Note.',
       ],
-      warn: 'Keeping Pending means the CV scan can fail or be slow, so apply is no longer instant for every application. That is fine — but it is exactly why the status column has to exist in the database. Everything else in Layer 1 goes; this one value stays.',
+      warn: 'REFINED BY BLOCK 4 — Pending survives, but it is narrower and bounded than this table implies. It is written only when the applied-with CV has an unresolved verdict from upload, it is resolved by a decision on the CV rather than on the application, and it auto-sends at 24h no matter what. Everything else in Layer 1 is still gone.',
     },
     {
       label: '3 · What we need you to decide',
@@ -109,26 +116,25 @@ export const applicationManagement: BuildModule = {
         'Does blocking a user also pull back the applications already sent? We recommend YES.',
         'Can a candidate apply to the same job twice? We recommend one live application per job, re-apply only after a recall.',
         'When do we build screening if spam does show up? We recommend agreeing a trigger now — first abuse case, or the first promotion campaign.',
-        'The Pending SLA for APPLICATIONS: what happens to a held application nobody reviews within 24h? We recommend AUTO-SEND — the doubt was ours and unproven, an employer and a deadline are waiting, and a false hold hurts a real candidate more than one odd file hurts an employer. The CV-search half of this is already DECIDED and deliberately opposite: an index-Pending CV never auto-passes, because nothing is waiting on it (Resume management → STORED vs SEARCHABLE vs INDEXED).',
+        'DECIDED, recorded here because it is counter-intuitive — the two review queues fail in OPPOSITE directions. A held APPLICATION auto-sends at 24h (an employer and a deadline are waiting, so an unworked queue must not cost a job). A held CV never auto-passes into CV search (nobody is waiting, so it can wait for a human). Same verdict, opposite defaults, on purpose. See Resume management → “CV qualification — apply & CV search”.'
       ],
     },
     {
-      label: '4 · The “is this a CV?” check — see its own page',
-      text: 'A CV reaches an employer through TWO doors — it is SENT (this module’s apply flow) or it is FOUND (Resume management’s searchable flag). Both let an uploaded file we have never inspected reach a paying customer, so BOTH run the same check, with one signal set and one review queue. All of it — the A / B / C signals, the worked examples, the threshold reasoning, the two verbs and the learning loop, the data model and the endpoints — lives on ONE page so the two halves cannot drift: Resume management → “CV quality check — one gate, two doors”.',
+      label: '4 · CV quality is evaluated at UPLOAD — what reaches this module is the verdict',
+      text: 'DECIDED — an uploaded PDF is parsed into the Saramin CV fields and evaluated ONCE, at upload. Applying re-checks nothing; it READS the verdict the CV already carries. A CV that failed the rule does not refuse the apply — it holds DELIVERY while a human looks at the CV, and the application auto-sends within 24h regardless. One review covers every application on that CV. The rule itself lives on one page: Resume management → “CV qualification — apply & CV search”.',
       table: {
-        cols: ['', 'This module’s door — SENT', 'The other door — FOUND'],
+        cols: ['A CV that fails the rule', 'What happens to the apply', 'Can it be found in CV search?'],
         rows: [
-          ['Status written', 'application.status = Pending', 'cv.indexStatus = pending'],
-          ['A hold blocks', 'ONE application to ONE employer.', 'Entry to the employer search index.'],
-          ['Nobody reviews it', 'AUTO-SEND after ~24h — fails OPEN, because an employer and a deadline are waiting.', 'NEVER auto-passes — fails CLOSED, because nothing is waiting.'],
-          ['Worked in', 'Admin → Applicants, Status = Pending.', 'Admin → Resumes, Status = Pending.'],
+          ['Uploaded PDF — extraction produced too little', 'The apply SUCCEEDS; delivery waits for the CV verdict and AUTO-SENDS at 24h. Refusing it would punish the candidate for OUR parser.', 'No, until a reviewer clears it.'],
+          ['Saramin CV — the candidate has not written the section', 'Refused before submit — greyed and unselectable, missing fields named.', 'No.'],
         ],
       },
       items: [
-        'ONLY UPLOADED FILES are checked. A Saramin CV cannot be “not a CV”; at this door it must instead meet the APPLY-ELIGIBLE gate (Resume management).',
-        'QUALITY NEVER HOLDS — match score, skill count, no cover letter: not signals, at either door.',
-        'appliedAt IS THE SUBMIT TIME — a deadline passing during review does not invalidate the application. The delay was ours.',
-        'A held application shows no employer STAGE — the funnel has not started, so an em-dash is honest where “New” would be a lie.',
+        'THE HOLD IS ON THE CV, NOT THE APPLICATION — an application waits only because the CV it references is unresolved. The review queue is a CV queue (Admin → CV check); the Applicants list shows the consequence and links to it.',
+        'ONE EVALUATION PER CV, and ONE DECISION — a candidate applying to thirty jobs with the same file is evaluated once at upload and reviewed once. The verdict releases or recalls all thirty in the same transaction.',
+        'THE 24h TIMER IS A CEILING ON OUR OWN FAILURE, not a review target. A held application auto-sends whether or not anyone looked, so an unworked queue can never cost a candidate a deadline. Releases are stamped review or timer, and a rising share of `timer` means the queue is not being staffed.',
+        'THE ONLY APPLY-TIME GATE is the Saramin CV one, and it is deterministic: ≥1 experience (or education) and ≥3 skills. It is enforced server-side at POST /applications, not merely greyed in the UI.',
+        'QUALITY IS NEVER A SIGNAL — match score, skill count above the minimum, or a missing cover letter may not affect anything here.',
       ],
     },
   ],
@@ -155,7 +161,7 @@ export const applicationManagement: BuildModule = {
           {
             group: 'Application',
             items: [
-              { name: 'cvId', type: 'ref → CV', required: true, notes: 'radio list of ALL the candidate’s CVs (≤3), same row shape as My CVs. A Saramin CV below the apply gate (Resume management → APPLY-ELIGIBLE) renders GREYED and unselectable with the missing fields NAMED plus one Cập nhật link into the editor — the VNW pattern. Uploaded files are never gated here; a doubtful file is checked AFTER submit (see the “is this a CV?” check).' },
+              { name: 'cvId', type: 'ref → CV', required: true, notes: 'radio list of ALL the candidate’s CVs (≤3), same row shape as My CVs. A Saramin CV below the qualification rule renders GREYED and unselectable with the missing fields NAMED plus one Cập nhật link into the editor — the VNW pattern. Uploaded files are NEVER gated here, whatever their extraction produced: they were evaluated at upload, and failing costs CV-search entry only (Resume management → “CV qualification — one rule, two sources”).' },
               { name: 'upload new CV', type: 'file (pdf/doc)', notes: 'inline escape hatch — a CV uploaded here is also saved to My CVs, never an orphan one-off file' },
               { name: 'coverMessage', type: 'text (optional)', notes: 'short note to the employer; max 1,000 chars' },
               { name: 'fullName', type: 'string', required: true, notes: 'pre-filled from the profile and ALWAYS editable — a social login supplies a display name, a nickname or the wrong capitalisation often enough that a read-only name sends the employer the wrong one' },
@@ -242,13 +248,13 @@ export const applicationManagement: BuildModule = {
           'Editing a contact field and submitting updates the profile in the same request — the candidate is never asked to go and update their profile separately.',
           'A guest who taps Apply is sent to sign-in / sign-up and returned here with the job kept.',
           'A candidate with no CV yet is routed to Create CV first, then back here with the new CV pre-selected.',
-          'Submitting creates the application with screeningStatus = Pending and NO stage yet — the employer queue has not started.',
+          'Submitting creates the application as Sent with stage = New when the CV is cleared. When the CV still has an unresolved verdict from upload, it is created as PENDING — the apply itself never fails — and the candidate is told: “Đang kiểm tra CV — sẽ gửi tới nhà tuyển dụng trong 24 giờ.” Nothing is evaluated here; the CV carries its verdict in.',
           'On success the candidate lands on a confirmation that links to My application and explains the screening step.',
           'Re-opening the same job after applying replaces the Apply button with "Applied — view application", linking to the existing record.',
         ],
         rules: [
           'One application per (jobseeker, job). A second attempt is blocked and resolves to the existing application — never a duplicate row.',
-          'A CV is required; a cover message is not.',
+          'A CV is required; a cover message is not. Any uploaded CV may be used, whatever its qualification status.',
           'A Saramin CV can be sent only when its CV CONTENT meets the apply gate — ≥1 work experience (or ≥1 education entry when there is no experience yet) and ≥3 skills. Named fields, never a percentage; the greyed row says WHAT is missing, and the same gate is enforced server-side at POST /applications — the greyed row is a courtesy, not the control.',
           'An application is never delivered without a name, a contact email and a phone number — the three are required at apply time, server-side.',
           'The login email can never be changed from this screen; it is the identity key. Only the contact email is writable.',
@@ -273,8 +279,10 @@ export const applicationManagement: BuildModule = {
           'Job closed / hidden',
           'Deadline passed',
           'Upload error (type / size)',
-          'Saramin CV ineligible (greyed — missing fields named + Cập nhật link)',
-          'Held as Pending after submit (uploaded file failed the “is this a CV?” check — candidate told “we’re checking your CV”)',
+          'Saramin CV unqualified (greyed — missing fields named + Cập nhật link)',
+          'Submitted, held — the applied-with CV is unresolved; “sẽ gửi trong 24 giờ”',
+          'Released — the CV was cleared, or the 24h timer fired',
+          'Dropped — the CV was rejected as not a CV',
         ],
         backend: {
           dataModel: [
@@ -284,7 +292,8 @@ export const applicationManagement: BuildModule = {
             { name: 'companyId', type: 'uuid', required: true, notes: 'denormalised from the job — every list filters by it' },
             { name: 'cvId / cvSnapshot', type: 'uuid / file ref', notes: 'snapshot so the employer keeps what was actually sent' },
             { name: 'coverMessage', type: 'text?' },
-            { name: 'screeningStatus', type: 'enum', required: true, notes: 'pending|forwarded|rejected — starts at pending' },
+            { name: 'screeningStatus', type: 'enum', required: true, notes: 'pending|forwarded|rejected — pending ONLY when the applied-with CV has an unresolved verdict; otherwise forwarded at apply' },
+            { name: 'holdReleasedBy', type: 'enum?', notes: 'review | timer — how a held application left Pending. A rising share of `timer` means the CV queue is not being staffed' },
             { name: 'stage', type: 'enum?', notes: 'null until forwarded, then new|reviewing|shortlisted|interview|hired|rejected' },
             { name: 'matchScore', type: 'number?', notes: 'snapshotted at apply time' },
             { name: 'appliedAt', type: 'timestamp', required: true },
@@ -298,13 +307,15 @@ export const applicationManagement: BuildModule = {
             'PATCH /jobseeker/contact { fullName, contactEmail, phone } — the same write, from the profile screen',
           ],
           notes:
-            'Creating an application runs the CV check inline and writes Sent, or Pending when the check fails. The unique (jobseekerId, jobId) index is the real duplicate guard. Contact details are written to the jobseeker in the SAME transaction as the application, so a submitted application can never reference contact data that failed to save. The apply-eligibility response tells the client whether to expand the contact block or render the read-back, so the "ask once" rule is decided server-side rather than by client state that a new device would get wrong.',
+            'Creating an application reads the CV’s stored verdict and writes Sent, or Pending when it is unresolved — no check RUNS here, because the CV was evaluated at upload. The unique (jobseekerId, jobId) index is the real duplicate guard. Contact details are written to the jobseeker in the SAME transaction as the application, so a submitted application can never reference contact data that failed to save. The apply-eligibility response tells the client whether to expand the contact block or render the read-back, so the "ask once" rule is decided server-side rather than by client state that a new device would get wrong.',
         },
         acceptance: [
           'A candidate with an existing CV can apply in one screen without typing profile data.',
           'Applying twice to the same job never creates a second application — the UI shows the existing one.',
           'A submitted application is visible to the company immediately — there is no screening queue and no “screened by Saramin” promise on the apply screen.',
-          'An application whose CV cannot be read, fails the “is this a CV?” check, or is missing required information lands in Pending instead, and the candidate is told at that moment — not warned upfront.',
+          'An apply is NEVER refused for an uploaded CV, whatever its verdict — what waits is delivery, for at most 24h. The only apply-time refusal is a Saramin CV below the rule, and it is refused BEFORE submit: greyed with the missing fields named, never accepted and then held.',
+          'A held application is resolved by the decision on its CV, never by a decision on the application itself. One verdict releases or drops every application waiting on that CV.',
+          'No application may wait longer than 24h. The timer is a ceiling on our own failure, not a review target, and every release records whether it came from a reviewer or the timer.',
           'A social-login candidate applying for the first time is asked for a phone number, because no provider supplied one.',
           'A candidate can correct a name that came from their social provider, and the employer receives the corrected name.',
           'The login email cannot be edited from the apply screen; the contact email can.',
@@ -318,7 +329,7 @@ export const applicationManagement: BuildModule = {
           'Should apply be blocked for a job the candidate was already Rejected on, or allowed after a cool-down?',
           'DECISION TAKEN, needs client sign-off: contact details resolve LIVE while the CV stays a snapshot — so a candidate who updates their phone becomes reachable on already-sent applications. The alternative (snapshot contact too) is more auditable but leaves recruiters calling dead numbers. Confirm which the client wants.',
           '[C5] ASSUMED, needs confirmation: a failed phone OTP does NOT block submission — the number is captured and marked unverified, and the employer sees "phone unverified". Blocking on an SMS that did not arrive loses the candidate at the moment they decided to convert, and applying is already gated on account verification. Does the client accept unverified phones reaching employers?',
-          '[C7] If an application lands in Pending (scan failed / information missing), what is the candidate told and when? The old "screened by Saramin" upfront promise is gone with the screening layer — but a held application still needs an explanation at the moment it is held, or the delay reads as the employer ignoring them.',
+          '[C7] RESOLVED — applications are never held, so there is nothing to explain and no delay to account for. The equivalent question now lives on the CV: what a candidate is told when their uploaded CV does not qualify for CV search (Resume management → “CV qualification — one rule, two sources”).',
           'REOPENED (2026-08-09) — the 2026-08-05 cut was REVERSED on client direction: nationality, gender, marital status and date of birth ARE collected again, and appear in Basic information on My CVs, Create CV and the apply read-back. UPDATED 2026-08-12: ALL FOUR now have a consumer. Gender and date of birth (as an age) show on the employer CV-search row, and all four — gender, age, nationality, marital status — are filters in the Profile group of the CV-search rail (see Resume management → Resume list). The "adds length without adding findability" objection is therefore answered, and replaced by a sharper one: a field that is merely stored is a privacy question, a field an employer can FILTER a pool by is a discrimination question. Recommend: all four optional and never required to apply; all four facets reviewed and signed off by the client’s legal side before launch; and MARITAL STATUS specifically reconsidered, because it is the one field of the four with no defensible hiring purpose we can identify, and filtering by it is in practice a proxy for guessing who might take maternity leave. Nationality is different — work-permit eligibility and native-speaker roles are genuine uses.',
           'BLOCKER — if the CV parser is not live in Phase-1, the profile card at apply time is mostly EMPTY rather than pre-filled, and "confirm your details" becomes "fill them in now", at the exact moment the candidate wanted to apply. The slim field set softens this but does not remove it. Is apply gated on extraction shipping, or do we accept a partly-blank card at launch?',
           'How long before a confirmation goes stale — 6 months or 12?',
@@ -332,6 +343,7 @@ export const applicationManagement: BuildModule = {
     {
       name: 'Application list',
       site: 'Admin',
+      slug: 'application-list-admin',
       scope: ['BE', 'FE'],
       mockup: 'admin-job-applicants',
       detail: {
@@ -482,6 +494,7 @@ export const applicationManagement: BuildModule = {
     {
       name: 'Application list',
       site: 'Companies',
+      slug: 'application-list-companies',
       scope: ['BE', 'FE', 'UI'],
       mockup: 'co-application-list',
       detail: {

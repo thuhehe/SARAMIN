@@ -777,6 +777,46 @@ export const productsPackages: BuildModule = {
             },
             warn: 'Keeping these two apart is the whole point of the panel. Merged into one "zero results" figure, a sourcing problem and a broken index look identical, and the number stops meaning anything to either team.',
           },
+          {
+            heading: 'N\u0103m c\u00e2u h\u1ecfi c\u1ea7n kh\u00e1ch h\u00e0ng quy\u1ebft \u2014 gi\u1ea3i th\u00edch',
+            text: 'Nh\u1eefng g\u00ec c\u00f2n \u0111ang m\u1edf tr\u00ean trang n\u00e0y, vi\u1ebft \u0111\u1ec3 \u0111\u1ecdc l\u00e0 quy\u1ebft \u0111\u01b0\u1ee3c ngay. M\u1ed7i d\u00f2ng: hi\u1ec7n t\u1ea1i \u0111ang th\u1ebf n\u00e0o, v\u00ec sao c\u1ea7n ch\u1ed1t, v\u00e0 BB \u0111\u1ec1 xu\u1ea5t g\u00ec.',
+            table: {
+              cols: ['C\u00e2u h\u1ecfi', 'Hi\u1ec7n t\u1ea1i', 'V\u00ec sao c\u1ea7n ch\u1ed1t', 'BB \u0111\u1ec1 xu\u1ea5t'],
+              rows: [
+                [
+                  '1 \u00b7 G\u00f3i s\u1eafp h\u1ebft h\u1ea1n m\u00e0 c\u00f2n nhi\u1ec1u l\u01b0\u1ee3t m\u1edf CV \u2014 c\u00f3 c\u1ea7n tr\u1ea1ng th\u00e1i ri\u00eang?',
+                  'Hi\u1ec3n th\u1ecb nh\u01b0 m\u1ecdi g\u00f3i kh\u00e1c, pill \u201cC\u00f2n l\u01b0\u1ee3t\u201d. Kh\u00f4ng c\u00f3 g\u00ec l\u00e0m n\u00f3 n\u1ed5i l\u00ean.',
+                  '\u0110\u00e2y l\u00e0 d\u00f2ng \u0111\u00e1ng g\u1ecdi nh\u1ea5t c\u1ea3 trang: kh\u00e1ch \u0111\u00e3 tr\u1ea3 ti\u1ec1n, ch\u01b0a d\u00f9ng h\u1ebft, v\u00e0 s\u1eafp m\u1ea5t quy\u1ec1n. G\u00f3i c\u00f2n 5 th\u00e1ng th\u00ec ch\u1edd \u0111\u01b0\u1ee3c; g\u00f3i c\u00f2n 2 tu\u1ea7n th\u00ec kh\u00f4ng.',
+                  'Th\u00eam tr\u1ea1ng th\u00e1i th\u1ee9 t\u01b0 (c\u00f2n l\u01b0\u1ee3t + d\u01b0\u1edbi 30 ng\u00e0y) ho\u1eb7c m\u1ed9t tab ri\u00eang. Kh\u00e1ch ch\u1ed1t gi\u00fap ng\u01b0\u1ee1ng bao nhi\u00eau ng\u00e0y.',
+                ],
+                [
+                  '2 \u00b7 Tab \u201cCh\u01b0a d\u00f9ng\u201d s\u1eafp x\u1ebfp theo g\u00ec?',
+                  '\u0110ang s\u1eafp theo s\u1ed1 l\u01b0\u1ee3t t\u00ecm nhi\u1ec1u nh\u1ea5t.',
+                  'Trong ch\u00ednh tab \u201cCh\u01b0a d\u00f9ng\u201d th\u00ec s\u1ed1 l\u01b0\u1ee3t t\u00ecm g\u1ea7n nh\u01b0 b\u1eb1ng 0 h\u1ebft \u2014 s\u1eafp theo n\u00f3 kh\u00f4ng ph\u00e2n bi\u1ec7t \u0111\u01b0\u1ee3c d\u00f2ng n\u00e0o g\u1ea5p h\u01a1n d\u00f2ng n\u00e0o.',
+                  'S\u1eafp theo H\u1ea0N D\u00d9NG g\u1ea7n nh\u1ea5t tr\u01b0\u1edbc. G\u1ea5p hay kh\u00f4ng l\u00e0 do c\u00f2n bao nhi\u00eau ng\u00e0y, kh\u00f4ng ph\u1ea3i do h\u1ecd t\u00ecm bao nhi\u00eau l\u1ea7n.',
+                ],
+                [
+                  '3 \u00b7 \u201cCh\u01b0a d\u00f9ng\u201d = d\u01b0\u1edbi 10 l\u01b0\u1ee3t t\u00ecm, hay 0 l\u01b0\u1ee3t m\u1edf CV?',
+                  '\u0110ang l\u00e0 d\u01b0\u1edbi 10 l\u01b0\u1ee3t t\u00ecm.',
+                  'Hai \u0111\u1ecbnh ngh\u0129a ch\u1ecdn ra hai nh\u00f3m kh\u00e1ch kh\u00e1c h\u1eb3n nhau. Kh\u00e1ch T\u00ccM NHI\u1ec0U nh\u01b0ng KH\u00d4NG M\u1ede CV n\u00e0o l\u00e0 v\u1ea5n \u0111\u1ec1 ch\u1ea5t l\u01b0\u1ee3ng k\u1ebft qu\u1ea3 \u2014 Sales g\u1ecdi \u0111i\u1ec7n kh\u00f4ng gi\u1ea3i quy\u1ebft \u0111\u01b0\u1ee3c, ph\u1ea3i l\u00e0 dev + ng\u01b0\u1eddi qu\u1ea3n l\u00fd danh m\u1ee5c k\u1ef9 n\u0103ng.',
+                  'T\u00e1ch l\u00e0m HAI: \u201cCh\u01b0a v\u00e0o d\u00f9ng\u201d (0 l\u01b0\u1ee3t t\u00ecm \u2014 vi\u1ec7c c\u1ee7a Sales) v\u00e0 \u201cT\u00ecm nh\u01b0ng kh\u00f4ng m\u1edf\u201d (c\u00f3 t\u00ecm, 0 l\u01b0\u1ee3t m\u1edf \u2014 vi\u1ec7c c\u1ee7a s\u1ea3n ph\u1ea9m). C\u00f9ng \u201c\u00edt d\u00f9ng\u201d nh\u01b0ng hai cu\u1ed9c g\u1ecdi ho\u00e0n to\u00e0n kh\u00e1c nhau.',
+                ],
+                [
+                  '4 \u00b7 HQ c\u00f3 c\u1ea7n xem chi ti\u1ebft t\u1eebng kh\u00e1ch \u2014 ai t\u00ecm, \u0111\u00e3 m\u1edf CV n\u00e0o?',
+                  'Kh\u00f4ng c\u00f3. Trang ch\u1ec9 d\u1eebng \u1edf m\u1ee9c g\u00f3i.',
+                  'H\u1eefu \u00edch khi h\u1ed7 tr\u1ee3 kh\u00e1ch, nh\u01b0ng m\u1edf ra l\u00e0 nh\u00ecn th\u1ea5y d\u1eef li\u1ec7u c\u00e1 nh\u00e2n c\u1ee7a \u1ee9ng vi\u00ean V\u00c0 h\u00e0nh vi c\u1ee7a t\u1eebng nh\u00e2n vi\u00ean b\u00ean kh\u00e1ch h\u00e0ng \u2014 hai lo\u1ea1i d\u1eef li\u1ec7u nh\u1ea1y c\u1ea3m kh\u00e1c nhau.',
+                  'Ch\u01b0a l\u00e0m \u1edf Phase 1: console c\u1ee7a ch\u00ednh kh\u00e1ch \u0111\u00e3 c\u00f3 l\u1ecbch s\u1eed d\u00f9ng. N\u1ebfu l\u00e0m th\u00ec b\u1eaft bu\u1ed9c ghi log truy c\u1eadp nh\u01b0 m\u1ecdi thao t\u00e1c PII kh\u00e1c.',
+                ],
+                [
+                  '5 \u00b7 Ai ch\u1ecbu tr\u00e1ch nhi\u1ec7m nh\u00f3m 2 \u201cLogic ch\u01b0a \u0111\u00fang\u201d?',
+                  'Ch\u01b0a ai. Trang hi\u1ec7n con s\u1ed1 nh\u01b0ng kh\u00f4ng g\u1eafn v\u1edbi ng\u01b0\u1eddi n\u00e0o.',
+                  'Ch\u1ec9 s\u1ed1 n\u00e0y ch\u1ec9 gi\u1ea3m v\u1ec1 0 n\u1ebfu c\u00f3 M\u1ed8T ng\u01b0\u1eddi theo d\u00f5i n\u00f3 \u0111\u1ec1u \u0111\u1eb7n. Kh\u00f4ng c\u00f3 t\u00ean c\u1ee5 th\u1ec3 th\u00ec n\u00f3 ch\u1ec9 l\u00e0 m\u1ed9t con s\u1ed1 \u0111\u1eb9p tr\u00ean dashboard.',
+                  'Giao cho ng\u01b0\u1eddi qu\u1ea3n l\u00fd danh m\u1ee5c k\u1ef9 n\u0103ng (master data), dev h\u1ed7 tr\u1ee3. \u0110\u1eb7t l\u1ecbch xem l\u1ea1i h\u1eb1ng tu\u1ea7n.',
+                ],
+              ],
+            },
+            warn: 'C\u00e2u 1 v\u00e0 c\u00e2u 3 \u1ea3nh h\u01b0\u1edfng \u0111\u1ebfn c\u00e1ch t\u00ednh tr\u1ea1ng th\u00e1i, n\u00ean c\u1ea7n ch\u1ed1t TR\u01af\u1edaC khi build. C\u00e2u 2, 4, 5 c\u00f3 th\u1ec3 quy\u1ebft sau m\u00e0 kh\u00f4ng ph\u1ea3i s\u1eeda d\u1eef li\u1ec7u.',
+          },
         ],
         uiFields: [
           {
@@ -832,11 +872,12 @@ export const productsPackages: BuildModule = {
           'Every row states who at Saramin owns the customer.',
         ],
         openQuestions: [
-          'EXPIRING WITH QUOTA UNSPENT is the highest-value row on this page and has no state of its own \u2014 it currently renders as an ordinary "C\u00f2n l\u01b0\u1ee3t". Add a fourth derived state (say, unspent quota + under 30 days remaining) or a dedicated view?',
-          'Should the "Ch\u01b0a d\u00f9ng" view default to SOONEST EXPIRY rather than most searches? An idle package with two weeks left is worth more than an idle package with five months.',
-          'Is "idle" the right threshold at fewer than 10 searches, or should it be zero UNLOCKS regardless of searching? The two pick different customers \u2014 and the searching-but-not-unlocking one is the relevance problem, which Sales cannot fix alone.',
-          'Does HQ need a per-customer drill-down (which users searched, which CVs were unlocked), or is the company console\u2019s own usage history enough? Opening it is a PII action and would need auditing.',
-          'Who owns bucket 2 day to day \u2014 the dev team, or the operator who maintains the skill taxonomy? The target only trends to zero if one named person is watching it.',
+          '1 \u00b7 G\u00f3i s\u1eafp h\u1ebft h\u1ea1n m\u00e0 v\u1eabn c\u00f2n nhi\u1ec1u l\u01b0\u1ee3t m\u1edf CV \u2014 c\u00f3 c\u1ea7n m\u1ed9t tr\u1ea1ng th\u00e1i ri\u00eang kh\u00f4ng? (Expiring with quota unspent has no state of its own.)',
+          '2 \u00b7 Tab \u201cCh\u01b0a d\u00f9ng\u201d n\u00ean s\u1eafp x\u1ebfp theo h\u1ea1n d\u00f9ng g\u1ea7n nh\u1ea5t, thay v\u00ec theo s\u1ed1 l\u01b0\u1ee3t t\u00ecm? (Default sort for the idle view.)',
+          '3 \u00b7 \u201cCh\u01b0a d\u00f9ng\u201d ngh\u0129a l\u00e0 d\u01b0\u1edbi 10 l\u01b0\u1ee3t t\u00ecm, hay 0 l\u01b0\u1ee3t m\u1edf CV? (Two definitions pick two different customers.)',
+          '4 \u00b7 HQ c\u00f3 c\u1ea7n xem chi ti\u1ebft t\u1eebng kh\u00e1ch \u2014 ai t\u00ecm, m\u1edf CV n\u00e0o? (Per-customer drill-down \u2014 a PII action.)',
+          '5 \u00b7 Ai ch\u1ecbu tr\u00e1ch nhi\u1ec7m nh\u00f3m 2 \u201cLogic ch\u01b0a \u0111\u00fang\u201d h\u1eb1ng tu\u1ea7n? (Who owns the defect bucket.)',
+          '\u2192 Gi\u1ea3i th\u00edch \u0111\u1ea7y \u0111\u1ee7 t\u1eebng c\u00e2u \u1edf b\u1ea3ng \u201cN\u0103m c\u00e2u h\u1ecfi c\u1ea7n kh\u00e1ch h\u00e0ng quy\u1ebft\u201d ngay tr\u00ean \u2014 c\u00f3 hi\u1ec7n tr\u1ea1ng, l\u00fd do v\u00e0 \u0111\u1ec1 xu\u1ea5t c\u1ee7a BB.',
         ],
       },
     },

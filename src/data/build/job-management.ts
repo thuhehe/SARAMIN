@@ -261,6 +261,7 @@ export const jobManagement: BuildModule = {
     {
       name: 'Create job',
       site: 'Admin',
+      slug: 'create-job-admin',
       scope: ['BE', 'FE'],
       ready: true,
       mockup: 'admin-job-create',
@@ -387,6 +388,7 @@ export const jobManagement: BuildModule = {
     {
       name: 'Create job',
       site: 'Companies',
+      slug: 'create-job-companies',
       scope: ['BE', 'FE', 'UI'],
       notes: "Company user can't post job today (draft only); SVN wants company users to post by themselves.",
       mockup: 'co-create-job',
@@ -446,6 +448,7 @@ export const jobManagement: BuildModule = {
     {
       name: 'Job list',
       site: 'Admin',
+      slug: 'job-list-admin',
       scope: ['BE', 'FE'],
       ready: true,
       mockup: 'admin-job-list',
@@ -602,6 +605,7 @@ export const jobManagement: BuildModule = {
     {
       name: 'Job list',
       site: 'Companies',
+      slug: 'job-list-companies',
       scope: ['BE', 'FE', 'UI'],
       mockup: 'co-job-list',
       detail: {

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
+import { featurePath } from '@/data/featureSlug'
 import { cn } from '@/lib/utils'
 import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewPackageModal, NewQuotationModal, GlobalCompanySearch, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx, CreateSignalCtx } from './adminPrototypes'
 import type { DetailCrumb } from './adminPrototypes'
@@ -31,7 +32,7 @@ interface NavItem {
 /* ── "View full spec" target ──────────────────────────────────────────────────
    The button used to link to /f/:id (the LEGACY FeatureSpec route), which is not
    where the authored spec lives any more — that is BUILD_MODULES at
-   /m/:moduleId/:featureIndex. Map each admin page to its build feature by NAME +
+   /m/:moduleId/:slug. Map each admin page to its build feature by NAME +
    SITE (never by index, which shifts whenever a feature is added or reordered).
    A page with no authored feature yet simply shows no button. */
 const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site }> = {
@@ -39,6 +40,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-job-list': { module: 'job-management', feature: 'Job list', site: 'Admin' },
   'admin-job-applicants': { module: 'application-management', feature: 'Application list', site: 'Admin' },
   'admin-resumes': { module: 'resume-management', feature: 'Resume list', site: 'Admin' },
+  'admin-cv-check': { module: 'resume-management', feature: 'CV qualification — apply & CV search' },
   'admin-resume-new': { module: 'resume-management', feature: 'Create resume', site: 'Admin' },
   // Jobseekers
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
@@ -134,8 +136,8 @@ function specPath(specId?: string): string | null {
   if (!t) return null
   const m = BUILD_MODULES.find((x) => x.id === t.module)
   if (!m) return null
-  const i = m.features.findIndex((f) => f.name === t.feature && (!t.site || f.site === t.site))
-  return i < 0 ? null : `/m/${m.id}/${i}`
+  const f = m.features.find((x) => x.name === t.feature && (!t.site || x.site === t.site))
+  return f ? featurePath(m, f) : null
 }
 interface NavGroup {
   label: string
@@ -162,6 +164,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Jobs', specId: 'admin-job-list' },
       { label: 'Applicants', specId: 'admin-job-applicants' },
       { label: 'Resumes', specId: 'admin-resumes' },
+      { label: 'CV check', specId: 'admin-cv-check' },
     ],
   },
   {

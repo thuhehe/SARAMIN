@@ -28,6 +28,15 @@ const Agentation = import.meta.env.DEV
     )
   : null
 
+/* Feature URLs are slugs, and two features in one module sharing a slug would
+   make one of them unreachable. Cheap to check, and it has to fail loudly at
+   authoring time — nobody notices a missing page in a 60-feature nav. */
+if (import.meta.env.DEV) {
+  void Promise.all([import('./data/featureSlug'), import('./data/buildModules')]).then(
+    ([slug, modules]) => slug.assertUniqueSlugs(modules.BUILD_MODULES),
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

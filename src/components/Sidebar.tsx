@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, Monitor, Building2 } from 'lucide-react'
 import { BUILD_MODULES, SITE_META, READY_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
+import { featurePath } from '@/data/featureSlug'
 import { cn } from '@/lib/utils'
 import { useComments } from '@/comments/CommentsProvider'
 
@@ -143,7 +144,7 @@ function ModuleRow({
 
   const modulePath = `/m/${m.id}`
   const moduleActive = activePath === modulePath
-  const hasActiveChild = visible.some(({ i }) => activePath === `/m/${m.id}/${i}`)
+  const hasActiveChild = visible.some(({ f }) => activePath === featurePath(m, f))
   const [open, setOpen] = useState(true)
   const isOpen = forceOpen || open || hasActiveChild || moduleActive
 
@@ -178,7 +179,7 @@ function ModuleRow({
       {isOpen && (
         <ul className="pb-1">
           {visible.map(({ f, i }) => {
-            const to = `/m/${m.id}/${i}`
+            const to = featurePath(m, f)
             const active = activePath === to
             return (
               <li key={i}>

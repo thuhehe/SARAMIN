@@ -19,6 +19,7 @@ import {
   type ShareMember,
   type ShareSession,
 } from './types'
+import { canonicalDocKey } from '@/data/featureSlug'
 
 /** How often to re-read the current document while the tab is visible. */
 const POLL_MS = 5000
@@ -144,7 +145,10 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
   const [tick, setTick] = useState(0)
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
-  const docKey = useMemo(() => pathname.replace(/\/+$/, '') || '/', [pathname])
+  const docKey = useMemo(
+    () => canonicalDocKey(pathname.replace(/\/+$/, '') || '/'),
+    [pathname],
+  )
 
   // Keep the latest docKey in a ref so the poll timer never closes over
   // a stale route after navigation.
@@ -157,7 +161,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
    * loaded, and its highlight can paint in the first frame of the new page.
    */
   const threads = useMemo(
-    () => allThreads.filter((t) => t.docKey === docKey),
+    () => allThreads.filter((t) => canonicalDocKey(t.docKey) === docKey),
     [allThreads, docKey],
   )
 
@@ -170,11 +174,11 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     const byDoc = new Map<string, DocCommentCount>()
     for (const thread of allThreads) {
       const entry =
-        byDoc.get(thread.docKey) ??
-        { docKey: thread.docKey, open: 0, resolved: 0 }
+        byDoc.get(canonicalDocKey(thread.docKey)) ??
+        { docKey: canonicalDocKey(thread.docKey), open: 0, resolved: 0 }
       if (thread.resolvedAt === null) entry.open += 1
       else entry.resolved += 1
-      byDoc.set(thread.docKey, entry)
+      byDoc.set(canonicalDocKey(thread.docKey), entry)
     }
     return byDoc
   }, [allThreads])
@@ -195,12 +199,12 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
 
   const jumpTo = useCallback<CommentsContextValue['jumpTo']>(
     (thread) => {
-      if (thread.docKey === docKeyRef.current) {
+      if (canonicalDocKey(thread.docKey) === docKeyRef.current) {
         setActiveId(thread.id)
         return
       }
       pendingJump.current = thread.id
-      navigate(thread.docKey)
+      navigate(canonicalDocKey(thread.docKey))
     },
     [navigate, setActiveId],
   )

@@ -1,24 +1,38 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink, ImageIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
+import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { cn } from '@/lib/utils'
 
 /* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
    mark the words that carry the rule — bold reads as emphasis without SHOUTING,
    which is hard to scan and reads as anger in a document people work from. */
+/* Inline markup inside any requirement string: **bold** and [label](href).
+   Links matter because the module page constantly refers to its own feature pages
+   ("see MATCH SCORE", "the Logic pages") and a reader should not have to hunt the
+   sidebar for a page the text just named. */
 function Rich({ t }: { t: string }) {
-  if (!t.includes('**')) return <>{t}</>
+  if (!t.includes('**') && !t.includes('](')) return <>{t}</>
   return (
     <>
-      {t.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-        part.startsWith('**') && part.endsWith('**')
-          ? <b key={i} className="font-semibold text-ink">{part.slice(2, -2)}</b>
-          : <span key={i}>{part}</span>,
-      )}
+      {t.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <b key={i} className="font-semibold text-ink">{part.slice(2, -2)}</b>
+        }
+        const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part)
+        if (link) {
+          return (
+            <Link key={i} to={link[2]} className="font-medium text-brand underline decoration-brand/30 underline-offset-2 hover:decoration-brand">
+              {link[1]}
+            </Link>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
     </>
   )
 }
@@ -99,7 +113,7 @@ function ReqBullets({ items, dense }: { items: string[]; dense?: boolean }) {
           >
             {m ? (
               <>
-                <span className="font-medium text-ink">{m[1]}</span>
+                <span className="font-medium text-ink"><Rich t={m[1]} /></span>
                 <span className="min-w-0 text-ink/75"><Rich t={m[3]} /></span>
               </>
             ) : (
@@ -581,26 +595,35 @@ export function ModuleDetail() {
 
       {/* The "Flow · features" list used to sit here. Removed: the sidebar already
           lists every feature in this module, so the section was a second copy of the
-          same navigation. Feature pages are still routed at /m/:moduleId/:index. */}
+          same navigation. Feature pages are still routed at /m/:moduleId/:slug. */}
     </div>
   )
 }
 
 /* ── Feature view: detail + related UI mockup ─────────────────────────────── */
 export function FeatureDetail() {
-  const { moduleId, featureIndex } = useParams<{ moduleId: string; featureIndex: string }>()
+  const { moduleId, featureKey } = useParams<{ moduleId: string; featureKey: string }>()
   // before the early returns below — a hook cannot sit after a conditional exit
   useHashTarget()
   const m = BUILD_MODULES.find((x) => x.id === moduleId)
-  const idx = Number(featureIndex)
-  const f = m && Number.isInteger(idx) ? m.features[idx] : undefined
+  const hit = m ? resolveFeature(m, featureKey) : null
   if (!m) return <Navigate to="/" replace />
-  if (!f) return <Navigate to={`/m/${m.id}`} replace />
+  if (!hit) return <Navigate to={`/m/${m.id}`} replace />
+  /* An old `/m/{module}/{index}` link still resolves, then rewrites itself to the
+     slug — so a link shared before this change keeps working AND stops being
+     index-based the moment it is opened. */
+  if (hit.legacy) return <Navigate to={featurePath(m, hit.feature)} replace />
 
-  const prev = idx > 0 ? { i: idx - 1, f: m.features[idx - 1] } : undefined
-  const next = idx < m.features.length - 1 ? { i: idx + 1, f: m.features[idx + 1] } : undefined
+  const { feature: f, index: idx } = hit
+  const prev = idx > 0 ? { f: m.features[idx - 1] } : undefined
+  const next = idx < m.features.length - 1 ? { f: m.features[idx + 1] } : undefined
   const screen = resolveScreen(f.mockup)
   const href = screen ? mockupHref(screen) : null
+  /* Extra screens of the same feature (f.mockups) render as their own blocks under
+     the primary one, each labelled with the screen's own title — a two-screen flow
+     is one requirement, and splitting it in two just to fit one preview is how the
+     second screen ends up under-specified. */
+  const extraScreens = (f.mockups ?? []).map((id) => resolveScreen(id)).filter((s): s is NonNullable<typeof s> => !!s)
 
   /* The screen sits BELOW Overview (and below Key points), not above them: a reader
      who lands here needs to know what the screen is for before looking at it, and
@@ -608,8 +631,13 @@ export function FeatureDetail() {
      resolveScreen returns the very component the mockup gallery renders, so a screen
      is only ever built in one place. The link opens it in that gallery. */
   const screenBlock = (
+    <>
+    {/* A feature with no wired mockup shows NOTHING here. The old empty-state
+        card announced an absence on every logic-only feature — a placeholder
+        that only ever says "there is nothing to see" is noise, not a to-do. */}
+    {screen && (
     <SpecBlock
-      title="Screen UI"
+      title={extraScreens.length ? `Screen UI · ${screen?.title ?? 'Screen'}` : 'Screen UI'}
       note={
         screen ? (
           <span className="flex items-center gap-3">
@@ -636,13 +664,31 @@ export function FeatureDetail() {
         <div className="max-h-[640px] overflow-y-auto scroll-thin">
           <screen.Comp />
         </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-line bg-canvas/40 p-6 text-center">
-          <ImageIcon className="mx-auto h-5 w-5 text-faint" />
-          <p className="mt-2 text-[13px] text-muted">No screen mockup wired for this feature yet.</p>
-        </div>
-      )}
+      ) : null}
     </SpecBlock>
+    )}
+    {extraScreens.map((s) => (
+      <SpecBlock
+        key={s.screenId}
+        title={`Screen UI · ${s.title ?? s.screenId}`}
+        note={
+          <span className="flex items-center gap-3">
+            {s.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{s.url}</span>}
+            {mockupHref(s) && (
+              <Link to={mockupHref(s)!} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
+                Open in {s.src === 'admin' ? 'Admin' : s.src === 'co' ? 'Company' : 'Jobseeker'} mockups
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </span>
+        }
+      >
+        <div className="max-h-[640px] overflow-y-auto scroll-thin">
+          <s.Comp />
+        </div>
+      </SpecBlock>
+    ))}
+    </>
   )
 
   return (
@@ -682,7 +728,7 @@ export function FeatureDetail() {
       <div className="mt-10 flex items-stretch justify-between gap-3 border-t border-line pt-5">
         {prev ? (
           <Link
-            to={`/m/${m.id}/${prev.i}`}
+            to={featurePath(m, prev.f)}
             className="group flex max-w-[46%] flex-col items-start rounded-xl border border-line bg-surface px-4 py-2.5 transition-colors hover:border-brand"
           >
             <span className="flex items-center gap-1 text-[11px] text-muted">
@@ -695,7 +741,7 @@ export function FeatureDetail() {
         )}
         {next ? (
           <Link
-            to={`/m/${m.id}/${next.i}`}
+            to={featurePath(m, next.f)}
             className="group flex max-w-[46%] flex-col items-end rounded-xl border border-line bg-surface px-4 py-2.5 text-right transition-colors hover:border-brand"
           >
             <span className="flex items-center gap-1 text-[11px] text-muted">

@@ -41,27 +41,31 @@ export const jobseekerUser: BuildModule = {
         ],
       },
       items: [
+        'ONE feature, two routes. Both must end with the SAME NINE fields on the record: 1 Full name · 2 Email · 3 Phone · 4 Nationality · 5 Gender · 6 Marital status · 7 Date of birth · 8 Highest education · 9 Years of work experience — plus a password (email route only) and the terms consent. The routes differ only in how the identity arrives.',
+        'Highest education and years of work experience are asked HERE, not in onboarding and not on the CV, because CV search filters on both — an account without them is invisible to employers from the moment it exists. They are totals; the schools and jobs themselves go on the CV.',
         'Password reset is available for email accounts.',
-        'A social sign-up is NOT finished at the OAuth callback. A provider gives us a verified email and nothing else we can rely on, so it lands on a completion step — confirm name, add phone, accept terms — and only then becomes Active.',
+        'A social sign-up is NOT finished at the OAuth callback. A provider gives us a verified email and nothing else we can rely on, so it lands on a completion step — which collects the same Basic information the email form does — and only then becomes Active.',
       ],
       warn: 'Email is the IDENTITY KEY — one account per email address. A social login on an email that already exists LINKS to that account; it never creates a second one.',
     },
     {
-      label: 'Social sign-up completion step — three things a provider cannot give us',
-      text: 'OAuth returns a verified email. It does not return anything else the platform can act on, which is why a social sign-up finishes on its own screen rather than dropping the candidate straight into the site.',
+      label: 'Social sign-up completion step — where the social route collects Basic information',
+      text: 'OAuth returns a verified email. It does not return anything else the platform can act on, which is why a social sign-up finishes on its own screen rather than dropping the candidate straight into the site. The step is the social route’s copy of the sign-up form, not a small confirmation dialog.',
       table: {
         cols: ['Field', 'Why the provider cannot settle it', 'On the completion step'],
         rows: [
-          ['Terms consent', 'A provider cannot accept our terms on someone’s behalf. This ALONE makes the step mandatory — there is no legal route around it.', 'Required checkbox + optional consents, agree-to-all shortcut'],
+          ['Terms consent', 'A provider cannot accept our terms on someone’s behalf. This ALONE makes the step mandatory — there is no legal route around it.', 'One required consent checkbox, then “Create account”'],
           ['Full name', 'What comes back is a DISPLAY name — a nickname, a handle, or the wrong capitalisation. It is the name employers will read.', 'Pre-filled, always editable'],
           ['Mobile phone', 'None of the four providers returns one, ever. In Vietnam this is the field a recruiter calls.', 'Required, with an “I live abroad” escape'],
+          ['Highest education', 'No provider knows it — and CV search filters on it, so the account is undiscoverable without it.', 'Required, Master-data value'],
+          ['Years of work experience', 'Same: no provider has it, and it is the other CV-search filter.', 'Required, Master-data value'],
+          ['Personal details', 'Not returned by any provider. Shown on the CV, never a search facet.', 'Date of birth · nationality · gender · marital status'],
         ],
       },
       items: [
-        'The login email is shown LOCKED with the provider named — it is the identity key and cannot be changed here.',
-        'Because the step is unavoidable for consent, asking for the phone here is nearly free: the candidate is already stopped. This is the one place onboarding earns an extra field.',
-        'The confirm button reads “Đồng ý điều khoản của chúng tôi” — accepting the terms IS completing the sign-up; there is no separate submit.',
-        'Optional consents (location-based terms, marketing email, marketing SMS/Zalo) are individually toggleable and default to OFF; only the membership terms gate the button.',
+        'The login email is shown LOCKED with the provider chip — it is the identity key and cannot be changed here.',
+        'Because the step is unavoidable for consent, the rest of Basic information costs nothing extra: the candidate is already stopped, so this is where the phone, personal details and Background fields are asked.',
+        'It ends with the same control pair as the email form — one consent checkbox, then “Create account”. Only the consent gates the button.',
       ],
       warn: 'An account that has not passed the completion step is NOT Active — it cannot apply, and it must never be counted as a registration. Abandoning here is a drop-off to measure, not a signed-up user.',
     },
@@ -120,99 +124,200 @@ export const jobseekerUser: BuildModule = {
     },
     {
       label: 'Full name — one field, no first/last split',
-      text: 'A jobseeker’s name is stored and captured in a SINGLE "Full name" field — the only profile field asked at sign-up — the same platform-wide standard as HQ staff and company (employer) users.',
+      text: 'A jobseeker’s name is stored and captured in a SINGLE "Full name" field, the same platform-wide standard as HQ staff and company (employer) users.',
       warn: 'Do NOT split any person’s name into first name / last name anywhere. One field: Full name.',
     },
   ],
   features: [
-    // 0 · Identity ────────────────────────────────────────────────────────────
+    // 0 · Sign up — ONE feature, two routes ───────────────────────────────────
+    // Deliberately not split into "email sign-up" and "social sign-up": the two
+    // routes differ only in how the identity arrives. Both must end with the SAME
+    // Basic information on the record, which is the whole point of the screen —
+    // so specifying them apart is what let the social route quietly collect less.
     {
-      name: 'Create account (email) & Sign in',
+      name: 'Sign up',
       site: 'Jobseekers',
-      scope: ['BE', 'FE'],
+      scope: ['BE', 'FE', 'UI'],
       ready: true,
       mockup: 'js-signup',
-      notes: 'The normal email route. Social sign-up is its own feature below.',
+      // Two screens, one requirement: the entry screen and the step that finishes a
+      // social sign-up. The completion step is where the social route collects the
+      // same fields the email form does, so it has to be reviewable right here.
+      mockups: ['js-signup-social'],
+      notes: 'Email + password OR a social provider. Either way the account ends up with the same NINE fields — including highest education and years of work experience. Sign-in, verification and password reset live here too.',
       detail: {
+        keyPoints: [
+          {
+            vi: 'Màn hình đăng ký gom đúng **9 field**: **1** Họ và tên (một ô duy nhất) · **2** Email · **3** Số điện thoại · **4** Quốc tịch · **5** Giới tính · **6** Tình trạng hôn nhân · **7** Ngày sinh · **8** Trình độ học vấn cao nhất · **9** Số năm kinh nghiệm. Cả 9 đều bắt buộc, và biểu mẫu cũng dừng lại ở đó — kèm theo là mật khẩu (chỉ ở lối email) và ô xác nhận đồng ý điều khoản.',
+            en: 'Sign-up gathers exactly **9 fields**: **1** Full name (a single field) · **2** Email · **3** Phone · **4** Nationality · **5** Gender · **6** Marital status · **7** Date of birth · **8** Highest education · **9** Years of work experience. All nine are required and the form stops there — alongside them sit a password (email route only) and the terms consent.',
+          },
+          {
+            vi: '**Trình độ học vấn** và **số năm kinh nghiệm** là hai câu trả lời đáng giá nhất ở bước này: nhà tuyển dụng lọc CV theo đúng hai tiêu chí đó, nên hỏi ngay khi đăng ký giúp ứng viên có thể được tìm thấy ngay từ ngày đầu. Ở đây chỉ cần con số tổng — trường học và từng công ty sẽ được kể chi tiết trong CV.',
+            en: '**Highest education** and **years of work experience** are the two most valuable answers on this screen: they are exactly what employers filter CVs by, so asking at sign-up lets a candidate be found from day one. Totals are enough here — the schools and the individual jobs tell their story on the CV.',
+          },
+          {
+            vi: 'Hai lối vào, một bộ dữ liệu: form email và bước hoàn tất sau social login cùng hỏi một bộ field như nhau, chỉ khác ở cách danh tính đến (người dùng tự nhập rồi xác thực email, hoặc provider cung cấp sẵn và được khoá lại). Dùng chung một validator cho cả hai là cách gọn nhất để hai lối luôn thu về đủ như nhau.',
+            en: 'Two doors, one data set: the email form and the post-social completion step ask for the same fields — only the identity arrives differently (typed then verified, or supplied by the provider and locked). Sharing one validator between them is the simplest way to keep both doors collecting the same set.',
+          },
+          {
+            vi: 'Quay về từ provider vẫn chưa phải là đăng ký xong: OAuth chỉ xác thực email, không thể đồng ý điều khoản thay người dùng, và cũng không mang theo số điện thoại, học vấn hay kinh nghiệm. Đó là lý do có bước hoàn tất — tài khoản được tính là một lượt đăng ký khi bước này được gửi đi.',
+            en: 'Coming back from the provider is not yet a finished sign-up: OAuth verifies an email, but it cannot accept the terms on someone’s behalf and carries no phone, education or experience. That is what the completion step is for — the account counts as a registration once that step is submitted.',
+          },
+          {
+            vi: 'Email là khoá danh tính: mỗi địa chỉ một tài khoản. Khi ai đó dùng social login với email đã có sẵn, provider được liên kết vào tài khoản cũ thay vì mở thêm một tài khoản mới.',
+            en: 'Email is the identity key: one account per address. When someone signs in socially with an email we already know, the provider is linked to the existing account rather than opening a second one.',
+          },
+        ],
+        // One sentence on purpose. The nine fields, the two routes and the
+        // completion step are all spelled out in Key points and the table below —
+        // an overview that repeats them is a paragraph nobody needs to read twice.
         description:
-          'The jobseeker’s way in: email + password, or one of four social providers (Facebook, Google, LinkedIn, GitHub). Email sign-ups must confirm their address before they can apply. Social sign-ups skip that wait — the provider already verified the email — but they are NOT done: they land on a completion step to confirm their name, add a phone number and accept the terms, because a provider can supply none of those. The same screen pair covers sign-in, forgotten password and re-entry after a withdrawal, because email is the single identity key for all of them.',
+          'The jobseeker’s way in: one form with two routes — email + password, or a social provider — collecting the nine fields every account starts with, including highest education and years of work experience.',
         userStory:
-          'As a jobseeker, I want to sign up in seconds — ideally with an account I already have — so that I can apply to a job without filling in a registration form first.',
+          'As a jobseeker, I want to sign up in one short form — with my email or an account I already have — so that I am immediately findable by recruiters without having built a CV yet.',
         uiFields: [
           {
-            group: 'Sign up',
+            // The nine. Both routes must produce all of them; only the WHERE differs.
+            group: 'The 9 fields — collected on BOTH routes',
             items: [
-              { name: 'email', type: 'email', required: true, notes: 'the identity key — unique across all jobseeker accounts, stored lower-cased' },
-              { name: 'password', type: 'password', required: true, notes: 'min 8 chars with a mix of letters and digits; strength meter shown, never a silent truncation' },
-              { name: 'fullName', type: 'string', required: true, notes: 'the only profile field asked at sign-up — everything else comes later or from the CV' },
-              { name: 'termsAccepted', type: 'checkbox', required: true, notes: 'T&C + privacy policy, with the version stored against the account' },
-              { name: 'social buttons', type: 'oauth', notes: 'Facebook · Google · LinkedIn · GitHub — same four on sign-up and sign-in' },
+              { name: '1 · fullName', type: 'string', required: true, notes: 'ONE field, no first/last split. Typed on the email route; pre-filled but always editable on the social route' },
+              { name: '2 · email', type: 'email', required: true, notes: 'the identity key — unique, lower-cased. Typed + verified by link (email route) or supplied by the provider and locked (social route)' },
+              { name: '3 · phone', type: 'string (+84)', required: true, notes: 'in Vietnam this is the field a recruiter calls. No provider ever returns one, which is why the social route must ask' },
+              { name: '4 · nationality', type: 'enum', required: true, notes: 'Người Việt Nam / Người nước ngoài — picking “Người nước ngoài” opens the work-permit follow-up' },
+              { name: '5 · gender', type: 'enum', required: true, notes: 'shown on the CV; never a search facet' },
+              { name: '6 · maritalStatus', type: 'enum', required: true, notes: 'shown on the CV; never a search facet' },
+              { name: '7 · dateOfBirth', type: 'date', required: true, notes: 'DD/MM/YYYY. Shown on the CV as age; never a search facet' },
+              { name: '8 · highestEducation', type: 'enum', required: true, notes: 'from Master data. A TOTAL, not history — the schools go on the CV. Employers FILTER on it, so it cannot wait for the CV' },
+              { name: '9 · yearsOfExperience', type: 'enum', required: true, notes: 'from Master data. Also a total — the jobs go on the CV. Also a CV-search filter, so it is asked the moment the account exists' },
             ],
           },
           {
-            group: 'Sign in',
+            // Not part of the nine: a credential and a consent, not profile data.
+            group: 'Alongside the nine — a credential and a consent',
+            items: [
+              { name: 'termsAccepted', type: 'checkbox', required: true, notes: 'T&C + privacy policy, version stored against the account. A provider cannot consent on someone’s behalf, so it is asked on both routes' },
+              { name: 'password', type: 'password', required: true, notes: 'EMAIL ROUTE ONLY — a social account has none. Live rule checklist (12+ chars · 1 number · 1 symbol · 1 uppercase); never silently truncated' },
+            ],
+          },
+          {
+            group: 'Email route — verification & reset',
+            items: [
+              { name: 'verification email', type: 'email + token', required: true, notes: 'single-use link, expires in 24h, resend with a 60s cooldown' },
+              { name: 'reset email', type: 'email + token', notes: 'single-use, expires in 1h; using it invalidates existing sessions' },
+            ],
+          },
+          {
+            group: 'Social route — the completion step (2nd screen below)',
+            items: [
+              { name: 'social buttons', type: 'oauth', notes: 'on the entry screen, above the email form. The mockup draws Google + Facebook; whether LinkedIn and GitHub ship in Phase-1 is the open question below' },
+              { name: 'loginEmail (locked)', type: 'derived (read-only)', required: true, notes: 'from the provider, shown read-only with the provider chip — it is the identity key and cannot change here' },
+              { name: 'fullName (pre-filled)', type: 'string', required: true, notes: 'a provider display name is often a nickname or wrongly capitalised — and it is what employers read, so it stays editable' },
+              { name: 'phone (empty)', type: 'string (+84)', required: true, notes: 'always blank — includes an "I live abroad — I don’t have a Vietnamese number" escape' },
+              { name: 'personalDetails + Background', type: 'group', required: true, notes: 'the SAME two groups the email form renders, including highest education and years of experience — this is why the step is a full screen, not a confirmation modal' },
+              { name: 'termsAccepted + Create account', type: 'checkbox + button', required: true, notes: 'one consent line, then the same “Create account” submit as the email form — the two screens deliberately end identically' },
+            ],
+          },
+          {
+            group: 'Sign in / reset',
             items: [
               { name: 'email / password', type: 'email / password', required: true },
               { name: 'rememberMe', type: 'checkbox', notes: 'longer refresh-token lifetime; off by default on shared devices' },
-              { name: 'forgot password', type: 'link', notes: 'starts the reset flow' },
+              { name: 'forgot password', type: 'link', notes: 'starts the reset flow; on a social-only account it offers to SET a password' },
               { name: 'error', type: 'message', notes: 'one generic "email or password is incorrect" — never reveals whether the email exists' },
-            ],
-          },
-          {
-            group: 'Verification & reset',
-            items: [
-              { name: 'verification email', type: 'email + token', required: true, notes: 'single-use link, expires in 24h, resend allowed with a cooldown' },
-              { name: 'reset email', type: 'email + token', notes: 'single-use, expires in 1h; using it invalidates existing sessions' },
-              { name: 'resend cooldown', type: 'derived', notes: '60s between sends — the anti-spam control' },
             ],
           },
         ],
         sections: [
           {
-            heading: 'FLOW — create an account with email',
+            heading: 'The 9 fields — what sign-up collects, and where each route collects it',
+            early: true,
+            text: 'Exactly nine, the same nine on the record either way. Read this table as the definition of the feature: the two routes are two doors into one form. Every field is required — the screens carry an asterisk on each label rather than a blanket "all fields required" note.',
+            table: {
+              cols: ['#', 'Field', 'Email route — the sign-up form', 'Social route — the completion step', 'Why it is asked at sign-up'],
+              rows: [
+                ['1', 'Full name', 'Typed — one field, no first/last split', 'Pre-filled by the provider, always editable', 'The name employers read — a provider display name is often a nickname'],
+                ['2', 'Email', 'Typed, then verified by an emailed link', 'From the provider: shown locked with the provider chip', 'The identity key — one account per email address'],
+                ['3', 'Phone', 'Required, +84 country picker', 'Required, +84 picker + “I live abroad” escape', 'No provider returns one, and in VN a recruiter calls before emailing'],
+                ['4', 'Nationality', 'Người Việt Nam / Người nước ngoài', 'The same picker', 'Choosing “Người nước ngoài” opens the work-permit follow-up'],
+                ['5', 'Gender', 'Select', 'Select', 'Shown on the CV, never a search facet'],
+                ['6', 'Marital status', 'Select', 'Select', 'Shown on the CV, never a search facet'],
+                ['7', 'Date of birth', 'DD/MM/YYYY', 'DD/MM/YYYY', 'Shown on the CV as age, never a search facet'],
+                ['8', 'Highest education', 'Background group — select from Master data', 'The same Background group', 'Employers filter on it in CV search, so a brand-new account needs it to be findable'],
+                ['9', 'Years of work experience', 'Background group — select from Master data', 'The same Background group', 'The other CV-search filter, so it cannot wait for the CV to be built'],
+              ],
+            },
             items: [
-              '1. Jobseeker opens Sign up (header "Sign up" button, or from a job when they try to apply).',
-              '2. Fills the form — this is where the WHOLE of Basic information is collected: Full name (ONE field) · Email · Password (live rule checklist) · Phone · Personal details (date of birth, nationality, gender, marital status) · Background (highest education, years of work experience) · accept Terms & Privacy. The four personal details are optional; nothing else on the form is.',
-              '3. "Create account" → the account is created with status Pending verification, and a verification email is sent.',
-              '4. The jobseeker continues straight into ONBOARDING — verification does not block them from browsing or finishing their profile.',
-              '5. Clicking the emailed link sets the account Active. Applying is blocked until it is.',
-              '→ Next: ONBOARDING — Work preference (this module) → CREATE CV (Resume management) → Apply (Application management). One group per step: sign up takes Basic information, onboarding takes Work preference, the CV carries the career content.',
+              'Two more things travel with the nine without being profile fields: a **password** (email route only — a social account has none) and the **terms & privacy consent** (a checkbox on both routes, stored with its version).',
+              'Fields 8 and 9 are totals, not history: the schools and the individual jobs are told in full on the CV. The totals are what make a brand-new account discoverable.',
+              'Nothing beyond the nine is asked here — work preference belongs to onboarding, career content to the CV. One group per step.',
+              '→ Next: ONBOARDING — Work preference (this module) → CREATE CV (Resume management) → Apply (Application management).',
             ],
           },
           {
-            heading: 'Status options — what each account status allows',
+            heading: 'Status after sign-up — the two routes do not land in the same place',
+            table: {
+              cols: ['Route', 'Right after submit', 'Reaches Active when', 'Verification email'],
+              rows: [
+                ['Email + password', 'Pending verification — can browse, cannot apply', 'The emailed link is clicked', 'Sent immediately'],
+                ['Social provider', 'Not a registration at all until the step is submitted (signupCompletedAt is null)', 'The completion step is submitted', 'None — the provider already verified the address'],
+              ],
+            },
             items: [
-              'Pending verification — created by an email/password sign-up. Can sign in and browse, CANNOT apply or be discovered in CV search. The whole UI carries a "confirm your email" banner with a resend action.',
-              'Active — a verified email, or a social sign-up that has completed the completion step. Full use of the site.',
-              'Suspended — blocked by HQ with a reason. Sign-in is refused with a support contact, never with the reason text (which is internal).',
-              'Deactivated — the user withdrew. Sign-in inside the grace window offers reactivation; after it, the account is treated as gone.',
-              'Only Active can apply to a job. Every other status is a read-only visitor with an account.',
+              'An abandoned completion step is a DROP-OFF to measure, not a signed-up user: it must never be counted as a registration.',
+              'Suspended (blocked by HQ) and Deactivated (withdrawn) are the other two statuses — see the module’s account status model.',
+            ],
+          },
+          {
+            heading: 'FLOW — email + password',
+            items: [
+              '1. Jobseeker opens Sign up (header button, or from a job when they try to apply).',
+              '2. Fills ONE form: Full name · Email · Password (live rule checklist) · Phone · Personal details · Background (highest education, years of work experience) · accept Terms & Privacy.',
+              '3. "Create account" → the account is created as Pending verification and a verification email is sent.',
+              '4. They continue straight into ONBOARDING — verification never blocks browsing or finishing the profile.',
+              '5. Clicking the emailed link sets the account Active. Applying is blocked until it is.',
+            ],
+          },
+          {
+            heading: 'FLOW — social provider',
+            items: [
+              '1. Jobseeker opens Sign up and picks a provider (Google · Facebook · LinkedIn · GitHub).',
+              '2. OAuth runs at the provider and returns a VERIFIED email.',
+              '3. If that email already has an account → the provider is LINKED and they are signed in. A social login never creates a second account on an existing email.',
+              '4. Otherwise the COMPLETION STEP opens: locked email · editable full name · empty phone · personal details · Background (highest education, years of experience) · accept terms.',
+              '5. Submitting it creates the account as Active — no verification email, because the provider already verified the address.',
+              '6. Continue into ONBOARDING, exactly as the email route does.',
             ],
           },
           {
             heading: 'Social login — linking, not duplicating',
             items: [
-              'A provider returns a verified email. If an account already exists on that email, the provider is LINKED to it and the user is signed in — we never create a second account on the same address.',
               'If the provider does not release an email (a real case with some Facebook and GitHub accounts), we cannot key the identity: ask for an email and verify it before creating the account.',
-              'An account created socially has no password. "Forgot password" on such an account offers to set one, which is how a social-only user gains an email login.',
-              'The linked providers are listed in My page so a user can see how they sign in, and unlink any provider as long as one login method remains.',
+              'An account created socially has no password. "Forgot password" on it offers to set one — that is how a social-only user gains an email login.',
+              'Linked providers are listed in My page; any one can be unlinked as long as one login method remains.',
+              'The provider email is immutable. A candidate who wants employers to use a different address changes contactEmail, not the login email.',
             ],
           },
         ],
         behaviors: [
+          'One entry screen for both routes: the provider buttons sit above the email form, so the choice is made before anything is typed.',
+          'Nationality is a two-option picker (Người Việt Nam / Người nước ngoài); choosing “Người nước ngoài” asks the work-permit follow-up questions.',
+          'Both screens end with the same control pair — one consent checkbox, then “Create account”. The consent gates the button; nothing else on either screen does.',
           'Sign-up sends the verification email immediately and lands the user on the site with a persistent "confirm your email" banner — never on a dead-end "check your inbox" page.',
           'Tapping the verification link sets Active, signs the user in and returns them to whatever they were doing (the job they wanted to apply to, if any).',
+          'The completion step cannot be skipped or dismissed — leaving it means the account is never created as a registration.',
           'Attempting to apply while Pending opens the verification prompt rather than a bare error.',
           'A guest who tries to apply is brought here and returned to the apply screen with the job kept (see Application management → Apply flow).',
-          'Social sign-in on a new email creates an Active account and asks for nothing more.',
           'Password reset always reports "if that email exists we have sent a link", so the form cannot be used to enumerate accounts.',
           'Completing a reset invalidates every other session — the standard assumption is that the old password is compromised.',
           'Repeated failed sign-ins are rate-limited per email and per IP, with a lockout window rather than a permanent block.',
           'Signing in to a Deactivated account inside the grace window offers "reactivate your account" instead of refusing.',
         ],
         rules: [
+          'BOTH routes must collect all nine fields, including highest education and years of work experience — a route that collects eight is incomplete, not lighter.',
+          'Highest education and years of experience are single-value totals from Master data, never free text, because they are search facets.',
           'One account per email address. Uniqueness is enforced in the DB on a lower-cased email, not just in the form.',
           'A social login on an existing email links to that account; it never creates a second one.',
+          'A social sign-up is NOT a registration until the completion step is submitted — an abandoned completion leaves an unusable account.',
           'Verification is required before applying, and it gates writes only — browsing stays open.',
           'Passwords are stored only as a salted hash (bcrypt / argon2). No plaintext, no reversible encryption, and no password is ever emailed.',
           'Verification tokens are single-use and expire (24h verify, 1h reset); a used or expired token offers a clean resend path.',
@@ -221,9 +326,14 @@ export const jobseekerUser: BuildModule = {
           'Sign-in must not reveal whether an email exists — the same message for a wrong password and an unknown email.',
         ],
         states: [
-          'Sign-up (empty)',
+          'Entry screen (providers + email form)',
           'Validation errors',
           'Email already registered (offer sign-in / reset)',
+          'OAuth in progress',
+          'Completion step (empty phone)',
+          'Completion step abandoned (account not created)',
+          'Existing email → signed in instead',
+          'Provider released no email (blocked)',
           'Pending verification (banner)',
           'Verification link expired / already used',
           'Active',
@@ -231,26 +341,29 @@ export const jobseekerUser: BuildModule = {
           'Rate-limited / locked out',
           'Suspended (blocked message)',
           'Deactivated (reactivate offer)',
-          'Social provider cancelled / returned no email',
         ],
         backend: {
           dataModel: [
             { name: 'jobseekerId', type: 'uuid', required: true },
-            { name: 'email', type: 'string', required: true, notes: 'UNIQUE, lower-cased — the identity key' },
+            { name: 'loginEmail', type: 'string', required: true, notes: 'UNIQUE, lower-cased — the identity key' },
             { name: 'passwordHash', type: 'string?', notes: 'null for social-only accounts' },
-            { name: 'fullName', type: 'string', required: true },
+            { name: 'fullName', type: 'string', required: true, notes: 'one field — never split' },
+            { name: 'phone', type: 'string', required: true, notes: 'collected on both routes; blank only for the "I live abroad" case' },
+            { name: 'highestEducation / yearsOfExperience', type: 'enum / enum', required: true, notes: 'Master-data values, set at sign-up on BOTH routes — the two CV-search facets a new account must already have' },
+            { name: 'dateOfBirth / nationality / gender / maritalStatus', type: 'date / enum / enum / enum', notes: 'personal details — displayed on the CV, never queryable' },
             { name: 'status', type: 'enum', required: true, notes: 'pending_verification|active|suspended|deactivated' },
-            { name: 'emailVerifiedAt', type: 'timestamp?', notes: 'set by the link, or immediately on social sign-up' },
-            { name: 'signupCompletedAt', type: 'timestamp?', notes: 'social accounts only — null until the completion step is finished. An account with a null value here is NOT Active and must not be counted as a registration' },
+            { name: 'emailVerifiedAt', type: 'timestamp?', notes: 'set by the link, or immediately on the social route' },
+            { name: 'signupCompletedAt', type: 'timestamp?', notes: 'social accounts only — null until the completion step is submitted. Null here means NOT a registration' },
             { name: 'SocialIdentity', type: 'entity', notes: 'jobseekerId, provider(facebook|google|linkedin|github), providerUserId, linkedAt — UNIQUE (provider, providerUserId)' },
             { name: 'VerificationToken', type: 'entity', notes: 'token hash, purpose(verify|reset), expiresAt, usedAt — single-use' },
             { name: 'termsVersion / termsAcceptedAt', type: 'string / timestamp' },
             { name: 'lastLoginAt / failedAttempts / lockedUntil', type: 'timestamp / int / timestamp?' },
           ],
           endpoints: [
-            'POST /auth/signup { email, password, fullName, termsAccepted }',
+            'POST /auth/signup { fullName, email, password, phone, nationality, gender, maritalStatus, dateOfBirth, highestEducation, yearsOfExperience, termsAccepted }',
+            'POST /auth/social/:provider/callback → { needsCompletion: true, prefill } | signs in to the linked account',
+            'POST /auth/social/:provider/complete { fullName, phone, nationality, gender, maritalStatus, dateOfBirth, highestEducation, yearsOfExperience, termsAccepted } → Active (email comes from the provider, never from the body)',
             'POST /auth/login { email, password }',
-            'POST /auth/social/:provider/callback',
             'POST /auth/verify { token }',
             'POST /auth/verify/resend',
             'POST /auth/password/forgot { email }',
@@ -259,16 +372,20 @@ export const jobseekerUser: BuildModule = {
           ],
           integrations: [
             'Facebook Login · Google · LinkedIn · GitHub OAuth',
+            'Master data (education levels, experience bands, nationality)',
             'Transactional email (verification, reset)',
             'Rate limiting / abuse protection',
           ],
           notes:
-            'Store social identities in their own table rather than as columns, so one account can carry several providers. Keep token hashes, not tokens. The lower-cased unique index on email is what actually prevents the duplicate-account class of bug — form validation alone will not.',
+            'Validate the Basic-information set in ONE shared validator used by both the /signup and /social/:provider/complete handlers — two separate validators is exactly how the social route drifts into collecting less. Store social identities in their own table so one account can carry several providers. Keep token hashes, not tokens. The lower-cased unique index on email is what actually prevents the duplicate-account class of bug; form validation alone will not.',
         },
         acceptance: [
+          'After either route, the account holds all nine fields — full name, email, phone, nationality, gender, marital status, date of birth, highest education, years of work experience — plus a recorded terms acceptance.',
+          'Every field on both screens is required — a submit with any of them empty is refused, with the error against the field.',
+          'A social sign-up cannot be completed without highest education and years of experience — the same two fields the email form requires.',
+          'A brand-new account, with no CV yet, is already filterable in CV search by education level and experience band.',
           'A new email/password sign-up lands on Pending verification and cannot apply until verified.',
-          'A social sign-up cannot apply until the completion step is finished — abandoning it leaves an account that is not Active.',
-          'A social sign-up captures a phone number, so a social candidate arrives at their first apply with contact details already filled.',
+          'Abandoning the completion step leaves no registration — the account is not Active and is not counted.',
           'Clicking the verification link sets Active and returns the user to where they left off.',
           'A social sign-in on an email that already has an account signs into that account and does not create a second one.',
           'Signing up with an existing email offers sign-in or reset rather than creating a duplicate.',
@@ -277,83 +394,20 @@ export const jobseekerUser: BuildModule = {
           'A Suspended account cannot sign in and sees a support message with no internal reason.',
         ],
         openQuestions: [
+          'Which providers ship in Phase-1? The screens draw Google + Facebook; LinkedIn and GitHub are named in the module requirement but not yet drawn.',
+          'What do the work-permit follow-up questions ask, for a candidate who picks “Người nước ngoài”? The screen opens the branch but the fields are not specified.',
+          'What happens when a provider releases no email at all (some Facebook accounts) — support it with a typed email, or drop that provider?',
           '[C5] Do we need phone / OTP sign-in for the Vietnamese market, where phone is often the primary identity?',
           'Is 2FA in scope for jobseekers in Phase-1, or employer-side only?',
           'How long may an unverified account live before it is purged?',
-          'Should a social provider that releases no email be supported at all, or dropped?',
           'Session lifetime and "remember me" duration — what do we commit to?',
-        ],
-      },
-    },
-
-    // 0b · Social sign-up ─────────────────────────────────────────────────────
-    {
-      name: 'Sign up with social login',
-      site: 'Jobseekers',
-      scope: ['BE', 'FE', 'UI'],
-      mockup: 'js-signup',
-      notes: 'Facebook · Google · LinkedIn · GitHub — verified email, but NOT a finished account.',
-      detail: {
-        description:
-          'A provider verifies an EMAIL. It cannot accept our terms, and none of the four providers returns a phone number — so an OAuth callback is not a finished sign-up. It lands on a COMPLETION STEP: confirm the name the provider supplied, add a phone, accept the terms. Only then is the account Active. Because the email is already verified, this route skips the verification wait entirely.',
-        userStory:
-          'As a jobseeker, I want to sign up with an account I already have, so that I skip typing a password and email verification — and only answer what the provider could not tell you.',
-        uiFields: [
-          {
-            group: 'Completion step',
-            items: [
-              { name: 'email', type: 'derived (read-only)', required: true, notes: 'from the provider and LOCKED with the provider named ("🔒 Google") — it is the identity key and cannot change' },
-              { name: 'fullName', type: 'string', required: true, notes: 'pre-filled from the provider but ALWAYS editable — a display name is often a nickname or the wrong capitalisation' },
-              { name: 'phone', type: 'string (+84)', required: true, notes: 'NO provider returns one, so it is always empty here. Includes an "I live abroad" escape' },
-              { name: 'personal details', type: 'group (optional)', notes: 'date of birth · nationality · gender · marital status — optional, and never a search facet' },
-              { name: 'termsAccepted', type: 'checkbox', required: true, notes: 'the provider cannot accept terms on the user’s behalf' },
-            ],
-          },
-        ],
-        sections: [
-          {
-            heading: 'FLOW — sign up with a social provider',
-            items: [
-              '1. Jobseeker opens Sign up and picks a provider (Google · Facebook · LinkedIn · GitHub).',
-              '2. OAuth runs at the provider and returns a VERIFIED email.',
-              '3. If that email already has an account → sign in to it. A social login NEVER creates a second account on an existing email.',
-              '4. Otherwise the completion step opens: locked email · editable full name · required phone · optional personal details · accept terms.',
-              '5. "Create account" → the account is Active immediately (no verification email — the provider already verified it).',
-              '6. Continue into ONBOARDING.',
-            ],
-          },
-          {
-            heading: 'Why a completion step exists at all',
-            items: [
-              'A provider verifies identity, not consent — our terms must still be accepted by the person.',
-              'None of the four providers releases a phone number, and in Vietnam recruiters call before they email.',
-              'Provider display names are frequently nicknames — the employer-facing name has to be confirmable.',
-            ],
-          },
-        ],
-        rules: [
-          'Email is the identity key: a social login on an existing email LINKS to that account, never creates a second one.',
-          'The provider email is immutable. A candidate who wants employers to use a different address changes contactEmail, not the login email.',
-          'A social sign-up is NOT Active until the completion step is finished — an abandoned completion leaves an unusable account.',
-          'No verification email is sent on this route — the provider already verified the address.',
-        ],
-        states: ['Provider chooser', 'OAuth in progress', 'Completion step (empty phone)', 'Existing email → signed in instead', 'Provider released no email (blocked)', 'Completed → Active'],
-        acceptance: [
-          'A social sign-up reaches Active without any verification email.',
-          'The provider-supplied email is displayed locked, with the provider named.',
-          'The account cannot be completed without a phone and an accepted terms checkbox.',
-          'Signing in socially with an email that already exists lands in the SAME account.',
-        ],
-        openQuestions: [
-          'Which of the four providers ship in Phase-1 — all four, or Google + Facebook first?',
-          'What happens when a provider releases no email at all (some Facebook accounts)?',
         ],
       },
     },
 
     // 0c · Onboarding ─────────────────────────────────────────────────────────
     {
-      name: 'Onboarding (build the profile)',
+      name: 'Onboarding',
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
       mockup: 'js-onboarding',
@@ -363,6 +417,30 @@ export const jobseekerUser: BuildModule = {
           'Straight after an account is created, a short guided wizard collects WORK PREFERENCE — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. THREE topic-grouped steps, each framed with a live job-count carrot, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Work-preference field (group 2 — see Resume management → Candidate data). Basic information was already taken at sign-up, and CV content comes from the CV: the wizard asks nothing from either.',
         userStory:
           'As a new jobseeker, I want to answer a few quick questions and immediately see jobs that match, so that I know the site is worth my time before I invest in a CV.',
+        requirements: [
+          {
+            label: 'The six fields this wizard writes — and nothing else',
+            text: 'The wizard has three steps: step 1 asks what kind of work, step 2 asks where and how, step 3 asks the expected salary. Between them they collect these six fields and no others — the screen and this table must always agree, and a field that appears in one but not the other is the mistake this table exists to catch.',
+            table: {
+              cols: ['Step', 'Field', 'How the candidate enters it', 'How many they may pick'],
+              rows: [
+                ['Step 1', 'Desired job category', 'Dropdown, from the Category master data', 'Exactly one — it is picked first because it narrows the job-role list below it'],
+                ['Step 1', 'Desired job role', 'Text box with suggestions, from the Job-title master data', 'Exactly one'],
+                ['Step 1', 'Desired industry', 'Dropdown, more than one allowed, from the Industry master data', 'Up to 3'],
+                ['Step 2', 'Desired work location', 'Dropdown the candidate types into to search, more than one allowed — province / city', 'Up to 3'],
+                ['Step 2', 'Desired work type', 'Chips: in office · remote · hybrid · oversea', 'Any number, or none at all'],
+                ['Step 3', 'Expected salary', 'One amount, typed. It is always a monthly VND figure, so "triệu / tháng" is printed beside the box rather than being a control the candidate sets', 'One amount only, never a from–to range'],
+              ],
+            },
+            items: [
+              'Desired job role is the field recruiters search on most, which is why it sits on the very first step.',
+              'The four fields drawn from master data are dropdowns or type-to-search lists, never a grid of chips: the real lists are far longer than any screen (34 provincial units, roughly 30 industries, hundreds of job titles), so a grid would either hide most of the options or scroll forever. Desired work type is the one exception — it has only four values, so all of them can be shown at once.',
+              'Whatever the candidate picks stays visible as removable chips underneath the field, so they can see what they chose without reopening the list.',
+              'Leaving desired work type empty does NOT narrow anything — it simply rules nothing out, so the candidate still sees every kind of job.',
+            ],
+            warn: 'ONE GROUP PER STEP is what keeps this wizard short: sign-up takes Basic information, this wizard takes Work preference, the CV carries work history, education detail and skills. Years of experience and highest education are Basic information and were ALREADY taken at registration — do not re-add them here.',
+          },
+        ],
         uiFields: [
           {
             group: 'Step 1 · What kind of work are you looking for?',
@@ -379,7 +457,14 @@ export const jobseekerUser: BuildModule = {
               { name: 'desiredWorkType', type: 'multi-select', notes: 'in office · remote · hybrid · oversea — the same `job_type` master the job side uses. A SEPARATE axis from location: it is what lets someone say "I live in HCMC and want remote". Leaving all off rules nothing out' },
             ],
           },
-          { group: 'Step 3 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'ONE number + currency (VND · USD)', notes: 'CANONICAL RULES: Resume management → CV data & matching architecture → "★ SALARY — the one contract". CORRECTED 2026-08-13 — this step asks for a SINGLE expected figure, not a range: an earlier draft here said "number range", which never matched the form. The candidate gives one number, the employer searches by a BAND, and a CV matches when the figure falls inside the band (see Resume management → the salary case table). Stored as { kind, currency, min, max } with max null, so the shape still works if a range is ever wanted. Also offers "Thỏa thuận". The most-requested employer filter, and the one thing no CV ever supplies' }] },
+          {
+            group: 'Step 3 · What salary are you expecting?',
+            items: [
+              { name: 'expectedSalary', type: 'ONE figure — stored in `min`', notes: 'CANONICAL RULES: Resume management → "★ SALARY — the one contract". A SINGLE figure ("Từ 20 triệu"), never a range: the employer searches by a BAND and a CV matches when this figure falls INSIDE it (point-in-range, not two ranges overlapping — there is no second candidate number to overlap with). Stored as { kind, currency, min, max } with max NULL, so the shape still works if a range is ever wanted. The most-requested employer filter, and the one thing no CV ever supplies' },
+              { name: 'period + currency', type: 'fixed — MONTHLY / VND', notes: 'ONBOARDING ONLY, client direction: this step has NO period or currency control. The figure is always monthly VND and the screen prints "triệu / tháng" beside the box. `kind` and `currency` are still stored (MONTHLY, VND) so the record matches every other surface — see the open question about where a USD or annual expectation is then entered' },
+              { name: 'negotiable — "Thỏa thuận"', type: 'NOT on this step', notes: 'CUT from onboarding on client direction. "Thỏa thuận" remains a valid stored value (`kind = INTERVIEW`) that PASSES an employer salary bound rather than being dropped by it — a candidate who wants it must set it elsewhere (My page / CV quick-edit). Do not re-add it here without asking' },
+            ],
+          },
         ],
         sections: [
           {
@@ -430,6 +515,8 @@ export const jobseekerUser: BuildModule = {
         openQuestions: [
           'Are the match counts real (a live query) in Phase-1, or an approximation?',
           'Do we re-prompt the wizard later if it was skipped, and after how long?',
+          'CONFLICT TO SETTLE — onboarding step 3 now has no currency picker (monthly VND only), but Resume management → "★ SALARY — the one contract" states the candidate control is "Từ [n] [period] [currency]" and Job management → "SALARY CURRENCY (decided 2026-08-13)" decided VND + USD precisely so the IT / FDI segment does not leave salary blank. Where does a candidate who thinks in USD, or in an annual figure, enter it — My page only? If the answer is "nowhere", the two-currency decision needs revisiting rather than quietly differing per screen.',
+          'Same for "Thỏa thuận": it is cut from this step but remains a valid stored value that passes employer salary filters. Which screen lets a candidate choose it, now that onboarding does not?',
         ],
       },
     },

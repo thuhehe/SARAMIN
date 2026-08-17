@@ -1,5 +1,6 @@
 import { BUILD_MODULES } from '@/data/buildModules'
 import { NAV_ORDER, SPECS } from '@/data'
+import { featurePath } from '@/data/featureSlug'
 
 /**
  * `docKey` is a router path — the API never dereferences it, so the job of
@@ -35,9 +36,14 @@ add('/legend', 'Status legend')
 
 for (const module of BUILD_MODULES) {
   add(`/m/${module.id}`, module.title)
-  module.features.forEach((feature, index) =>
-    add(`/m/${module.id}/${index}`, `${module.title} › ${feature.name}`),
-  )
+  module.features.forEach((feature, index) => {
+    const label = `${module.title} › ${feature.name}`
+    // canonical, slug-based
+    add(featurePath(module, feature), label)
+    // the old index-based path, so a thread left on `/m/x/9` still shows a
+    // title in the rail instead of a bare path
+    add(`/m/${module.id}/${index}`, label)
+  })
 }
 
 for (const id of NAV_ORDER) {
