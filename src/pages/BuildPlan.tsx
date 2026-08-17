@@ -46,7 +46,7 @@ export function BuildPlan() {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">
           <span className="font-medium text-ink">Legend:</span>
-          <SitePill site="Jobseekers" /> <SitePill site="Companies" /> <SitePill site="Admin" />
+          <SitePill site="Jobseekers" /> <SitePill site="Companies" /> <SitePill site="Admin" /> <SitePill site="Logic" />
           <span className="mx-1 text-faint">·</span>
           <ScopePills scope={['BE', 'FE', 'UI']} /> BE backend · FE frontend · UI design
         </div>

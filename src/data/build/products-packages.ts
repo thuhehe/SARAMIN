@@ -728,5 +728,117 @@ export const productsPackages: BuildModule = {
         ],
       },
     },
+    // 4 · CV search usage ─────────────────────────────────────────────────────
+    {
+      name: 'CV search usage',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-cv-search-usage',
+      detail: {
+        description:
+          'HQ\u2019s view of the CV-search product AFTER it is sold \u2014 one row per package sold, showing how much of it is actually being used. It sits first in the Service menu because CV search is the service customers buy and then quietly fail to use, and an unused package is a renewal that will not happen. This page is not a report anybody reads monthly; it is a WORK QUEUE for Sales, and every column exists to answer "who do I call today".',
+        userStory:
+          'As HQ / Sales, I want to see which customers bought CV search and are not using it, so that I can reach them while the package still has time left instead of finding out at renewal.',
+        keyPoints: [
+          {
+            vi: 'Ch\u1ec9 s\u1ed1 quan tr\u1ecdng nh\u1ea5t kh\u00f4ng ph\u1ea3i doanh thu, m\u00e0 l\u00e0 \u201cmua nh\u01b0ng ch\u01b0a d\u00f9ng\u201d \u2014 g\u00f3i kh\u00f4ng d\u00f9ng l\u00e0 h\u1ee3p \u0111\u1ed3ng s\u1ebd kh\u00f4ng gia h\u1ea1n.',
+            en: 'The number that matters here is not revenue, it is BOUGHT-BUT-IDLE. An unused package is a renewal that will not happen, and it is only fixable while the package still has time on it.',
+          },
+          {
+            vi: 'Hai th\u1ee9 kh\u00e1c nhau: LO\u1ea0T T\u00ccM (mi\u1ec5n ph\u00ed, kh\u00f4ng gi\u1edbi h\u1ea1n) v\u00e0 L\u01af\u1ee2T M\u1ede CV (t\u00ednh ti\u1ec1n, tr\u1eeb v\u00e0o h\u1ea1n m\u1ee9c). M\u1ed9t kh\u00e1ch t\u00ecm nhi\u1ec1u nh\u01b0ng kh\u00f4ng m\u1edf CV l\u00e0 m\u1ed9t v\u1ea5n \u0111\u1ec1 kh\u00e1c h\u1eb3n kh\u00e1ch kh\u00f4ng \u0111\u0103ng nh\u1eadp.',
+            en: 'SEARCHES and CV UNLOCKS are different numbers and must never be merged. Searching is free and unlimited; unlocking is what the package meters. A customer searching hard but never unlocking has a RELEVANCE problem; a customer not searching at all has an ONBOARDING problem. Same low usage, opposite phone call.',
+          },
+        ],
+        sections: [
+          {
+            heading: 'Package state \u2014 derived, never stored',
+            early: true,
+            text: 'One pill per row, computed from the two counters. It is derived on read because a stored status would need a job to keep it true, and the inputs already say everything.',
+            table: {
+              cols: ['State', 'Derived when', 'What Sales does about it'],
+              rows: [
+                ['Ch\u01b0a d\u00f9ng (idle)', 'searches = 0', 'The urgent one. They paid and never arrived \u2014 call, walk them through one search, book the first unlock.'],
+                ['C\u00f2n l\u01b0\u1ee3t (in use)', 'unlocks used < quota, and they are searching', 'Healthy. Watch the burn rate against the expiry date.'],
+                ['\u0110\u00e3 d\u00f9ng h\u1ebft (exhausted)', 'unlocks used \u2265 quota', 'The upsell moment \u2014 they exhausted the pack before it expired, so a bigger one is an easy conversation.'],
+              ],
+            },
+            warn: 'A package near expiry with unlocks unspent is the worst combination on this page and currently reads as an ordinary "C\u00f2n l\u01b0\u1ee3t" row. Surface it \u2014 see the open questions.',
+          },
+          {
+            heading: 'Zero-result searches \u2014 two causes, and only one is ours',
+            text: 'Every search returning nothing is classified AT QUERY TIME into exactly one of two buckets, never re-guessed afterwards. The page shows the count and links to the queue; the queue itself lives in System \u2192 T\u1eeb kho\u00e1 ch\u01b0a kh\u1edbp, because working a row needs a status, an owner and a decision, none of which fit in a panel.',
+            table: {
+              cols: ['Bucket', 'Means', 'Owner', 'Target'],
+              rows: [
+                ['1 \u00b7 Thi\u1ebfu \u1ee9ng vi\u00ean (supply gap)', 'The logic worked: the term was understood, the filters applied, and the pool genuinely holds nobody. NOT a defect.', 'Sales / sourcing', 'Never zero \u2014 it is market information, not a bug.'],
+                ['2 \u00b7 Logic ch\u01b0a \u0111\u00fang (our defect)', 'We should have returned somebody and did not \u2014 the term was not understood, a filter excluded the wrong people, a CV was not indexed, or the query errored.', 'Dev + whoever owns the skill taxonomy', 'MUST TREND TO ZERO. This is the one number on the page that is a scorecard.'],
+              ],
+            },
+            warn: 'Keeping these two apart is the whole point of the panel. Merged into one "zero results" figure, a sourcing problem and a broken index look identical, and the number stops meaning anything to either team.',
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Summary cards',
+            items: [
+              { name: 'searches \u00b7 30 days', type: 'derived count', notes: 'free and unmetered \u2014 the demand signal' },
+              { name: 'CV unlocks used / quota', type: 'derived', notes: 'the metered number, summed across live packages' },
+              { name: 'unlocks remaining', type: 'derived', notes: 'money already paid for and not yet consumed' },
+              { name: 'bought but idle', type: 'derived count of packages', required: true, notes: 'the headline. Counts packages with almost no searching \u2014 the call list' },
+            ],
+          },
+          {
+            group: 'Package list \u2014 one row per package sold',
+            items: [
+              { name: 'package', type: 'link', required: true, notes: 'SKU + validity as sold, e.g. "CV Search 100 \u00b7 6 th\u00e1ng"' },
+              { name: 'customer + company code', type: 'link', required: true, notes: 'the code is the handle support and Sales quote to each other' },
+              { name: 'quota', type: 'used / total + bar', required: true, notes: 'CV UNLOCKS, not searches' },
+              { name: 'remaining', type: 'int', required: true },
+              { name: 'sales owner', type: 'ref \u2192 staff', required: true, notes: 'the page is a call list, so it must say whose call it is' },
+              { name: 'valid until', type: 'date', required: true, notes: 'read together with remaining \u2014 unspent quota plus a near date is the churn signal' },
+              { name: 'state', type: 'derived enum', required: true, notes: 'Ch\u01b0a d\u00f9ng \u00b7 C\u00f2n l\u01b0\u1ee3t \u00b7 \u0110\u00e3 d\u00f9ng h\u1ebft \u2014 see the state table' },
+              { name: 'last search', type: 'relative date', required: true, notes: 'recency beats totals: "3 tu\u1ea7n tr\u01b0\u1edbc" on a live package is the row to act on' },
+            ],
+          },
+          {
+            group: 'Controls',
+            items: [
+              { name: 'scope', type: 'segmented', notes: 'T\u1ea5t c\u1ea3 \u00b7 D\u00f9ng nhi\u1ec1u \u00b7 Ch\u01b0a d\u00f9ng \u2014 three saved views, because those are the three questions actually asked' },
+              { name: 'search', type: 'string', notes: 'matches package, customer AND company code' },
+              { name: 'default sort', type: 'rule', required: true, notes: 'busiest first today. Consider defaulting the "Ch\u01b0a d\u00f9ng" view to soonest-expiry instead \u2014 see open questions' },
+            ],
+          },
+        ],
+        backend: {
+          dataModel: [
+            { name: 'CvSearchEntitlement', type: 'entity', notes: 'companyId \u00b7 productSku \u00b7 unlockQuota \u00b7 unlockUsed \u00b7 validFrom / validUntil \u00b7 orderId \u2014 the sold package. Already exists as the quota the company console reads' },
+            { name: 'CvSearchQuery', type: 'event', notes: 'companyId \u00b7 userId \u00b7 terms \u00b7 filters \u00b7 resultCount \u00b7 zeroReason(null|supply_gap|logic) \u00b7 at. `zeroReason` is written AT QUERY TIME by the search service, which is the only place that knows whether the term resolved and whether a filter did the excluding' },
+            { name: 'CvUnlock', type: 'event', notes: 'the existing unlock ledger \u2014 companyId \u00b7 userId \u00b7 cvId \u00b7 at. Decrements unlockUsed; already the source for the company-side usage history' },
+          ],
+          endpoints: [
+            'GET /admin/cv-search/usage \u2014 package rows + the four summary counts',
+            'GET /admin/cv-search/zero-results?bucket=supply|logic \u2014 counts for the panel; the working queue is served by the unresolved-terms page',
+          ],
+          integrations: ['Products & packages (the SKU and its quota)', 'CRM (the sales owner and the company record)', 'Resume management \u2192 Resume list (the search and unlock events)', 'Master data \u2192 skill taxonomy (bucket 2 fixes)'],
+          notes:
+            'Nothing here is a new counter. Both events already exist for the company-facing quota and usage history; this page is a second READ of them, grouped by package instead of by company. Aggregate on read for Phase-1 volumes and revisit only if the list gets slow.',
+        },
+        acceptance: [
+          'A package sold but never searched appears in "Ch\u01b0a d\u00f9ng" with its sales owner named.',
+          'Searches and CV unlocks are shown as separate numbers everywhere on the page.',
+          'A zero-result search is attributed to exactly one bucket at query time, and the two counts never overlap.',
+          '"M\u1edf danh s\u00e1ch x\u1eed l\u00fd" opens the unresolved-terms queue in System \u2014 the panel here never becomes a second place to work rows.',
+          'Every row states who at Saramin owns the customer.',
+        ],
+        openQuestions: [
+          'EXPIRING WITH QUOTA UNSPENT is the highest-value row on this page and has no state of its own \u2014 it currently renders as an ordinary "C\u00f2n l\u01b0\u1ee3t". Add a fourth derived state (say, unspent quota + under 30 days remaining) or a dedicated view?',
+          'Should the "Ch\u01b0a d\u00f9ng" view default to SOONEST EXPIRY rather than most searches? An idle package with two weeks left is worth more than an idle package with five months.',
+          'Is "idle" the right threshold at fewer than 10 searches, or should it be zero UNLOCKS regardless of searching? The two pick different customers \u2014 and the searching-but-not-unlocking one is the relevance problem, which Sales cannot fix alone.',
+          'Does HQ need a per-customer drill-down (which users searched, which CVs were unlocked), or is the company console\u2019s own usage history enough? Opening it is a PII action and would need auditing.',
+          'Who owns bucket 2 day to day \u2014 the dev team, or the operator who maintains the skill taxonomy? The target only trends to zero if one named person is watching it.',
+        ],
+      },
+    },
   ],
 }

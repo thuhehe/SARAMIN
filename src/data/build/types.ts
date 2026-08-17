@@ -10,13 +10,19 @@
  */
 import type { FieldGroup, BackendSpec, SpecSection, SpecTable } from '../types'
 
-export type Site = 'Jobseekers' | 'Companies' | 'Admin'
+/*
+ * Which surface a feature belongs to. `Logic` is not a surface — it marks the
+ * cross-cutting computations (scoring, salary, quality gates) that several
+ * surfaces read from, so they are specced once instead of once per site.
+ */
+export type Site = 'Jobseekers' | 'Companies' | 'Admin' | 'Logic'
 export type Scope = 'BE' | 'FE' | 'UI'
 
 export const SITE_META: Record<Site, { label: string; tag: string; pill: string; dot: string }> = {
   Jobseekers: { label: 'Jobseekers', tag: 'JS', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
   Companies: { label: 'Companies', tag: 'CO', pill: 'bg-sky-50 text-sky-700 border-sky-200', dot: 'bg-sky-500' },
   Admin: { label: 'Admin', tag: 'Admin', pill: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' },
+  Logic: { label: 'Logic', tag: 'Logic', pill: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500' },
 }
 
 export const SCOPE_META: Record<Scope, { pill: string }> = {

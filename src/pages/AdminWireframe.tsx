@@ -50,6 +50,9 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
   'admin-placements': { module: 'products-packages', feature: 'Placements registry' },
   'admin-promotions': { module: 'products-packages', feature: 'Discount programmes' },
+  // Service — the CV-search product after it is sold. Lives with Products &
+  // Packages because the row is a package, not a search.
+  'admin-cv-search-usage': { module: 'products-packages', feature: 'CV search usage' },
   // NOTE: still no targets for 'admin-credits' / 'admin-orders'.
   // Discounting happens on the quotation line (one place a price can be cut), orders
   // are CRM → Purchase order, and the credit balance is the entitlement ledger on the

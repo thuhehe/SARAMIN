@@ -113,102 +113,22 @@ export const applicationManagement: BuildModule = {
       ],
     },
     {
-      label: '4 · The “is this a CV?” check — the principle (decided)',
-      text: 'DECIDED: the jobseeker site NEVER blocks an upload or an apply. Whatever the candidate uploads, the apply succeeds from their side. The check runs in OUR system AFTER submit — a doubtful file holds the APPLICATION (never the account) as Pending, a human looks at it, and every human decision is recorded against the signals that fired. That recording is the point: the review queue doubles as the training set that teaches the check.',
+      label: '4 · The “is this a CV?” check — see its own page',
+      text: 'A CV reaches an employer through TWO doors — it is SENT (this module’s apply flow) or it is FOUND (Resume management’s searchable flag). Both let an uploaded file we have never inspected reach a paying customer, so BOTH run the same check, with one signal set and one review queue. All of it — the A / B / C signals, the worked examples, the threshold reasoning, the two verbs and the learning loop, the data model and the endpoints — lives on ONE page so the two halves cannot drift: Resume management → “CV quality check — one gate, two doors”.',
       table: {
-        cols: ['Group', 'What it detects', 'Held when'],
+        cols: ['', 'This module’s door — SENT', 'The other door — FOUND'],
         rows: [
-          ['A · Technical', 'The file cannot be read or safely served.', 'ANY A-signal fires — not a judgement, a fact about the file.'],
-          ['B · Content', '“CV-ness” — 6 independent signals.', 'FEWER THAN 2 of the 6 fire.'],
-          ['C · Abuse', 'Bot / farm / copy-paste patterns.', 'C1 or C2 fires. C3 is a rate limit, not a hold.'],
+          ['Status written', 'application.status = Pending', 'cv.indexStatus = pending'],
+          ['A hold blocks', 'ONE application to ONE employer.', 'Entry to the employer search index.'],
+          ['Nobody reviews it', 'AUTO-SEND after ~24h — fails OPEN, because an employer and a deadline are waiting.', 'NEVER auto-passes — fails CLOSED, because nothing is waiting.'],
+          ['Worked in', 'Admin → Applicants, Status = Pending.', 'Admin → Resumes, Status = Pending.'],
         ],
       },
       items: [
-        'ONLY UPLOADED FILES are ever checked. A Saramin CV meets the apply gate by construction (see Resume management → APPLY-ELIGIBLE) — structured content cannot be “not a CV” — so it skips this entirely.',
-        'THE SAME CHECK SERVES BOTH DOORS — a CV reaches an employer either by being SENT (an application) or by being FOUND (CV search). Flagging an uploaded CV as searchable runs these identical signals and holds it at indexStatus = Pending until it passes; see Resume management → STORED vs SEARCHABLE vs INDEXED. One quality bar, one pipeline, two entry points.',
-        'The hold is on the APPLICATION, not the candidate: nothing about their account, their other applications or their other CVs changes.',
-        'The three groups are detailed in blocks 4a–4d below; the admin loop and the guard-rails are in 4e.',
-      ],
-    },
-    {
-      label: '4a · GROUP A — technical signals (always hold)',
-      text: 'No judgement is involved in any of these: the file physically cannot be read, or cannot be safely served to an employer.',
-      table: {
-        cols: ['Signal', 'Example', 'Why it cannot be sent'],
-        rows: [
-          ['A1 · Corrupt / cannot be opened', 'A 0-byte CV.pdf; a .zip renamed to .pdf', 'The employer clicks and gets an error — on our platform, that reads as OUR bug, not the candidate’s.'],
-          ['A2 · Password-protected', 'An encrypted PDF exported from banking or HR software', 'The employer cannot open it either.'],
-          ['A3 · < ~200 chars of extracted text, even after OCR', 'A photo of a CV shot at an angle in bad light; a scan where OCR returns garbage', 'Nothing to extract → the candidate is invisible to CV search, and the file may be unreadable to a human too.'],
-          ['A4 · Malware scan failed or flagged', 'A .docx carrying an embedded macro', 'Never serve it — full stop.'],
-        ],
-      },
-    },
-    {
-      label: '4b · GROUP B — content “CV-ness”, 6 signals (hold below 2)',
-      text: 'After extraction, count how many of these six fire. Fewer than two → Pending. Each signal is independent and cheap to compute; none of them requires a model.',
-      table: {
-        cols: ['#', 'Signal', 'Example that fires it'],
-        rows: [
-          ['B1', 'An email or VN phone pattern anywhere in the text', 'thu.nguyen@gmail.com · 0382 233 670 · +84-38…'],
-          ['B2', 'A date range', '2020 – 2023 · 03/2021 – nay · Jun 2019 – Present · 2018 – Hiện tại'],
-          ['B3', 'A section heading from the VI + EN list', 'KINH NGHIỆM LÀM VIỆC · Work Experience · Học vấn · Education · Kỹ năng · Skills · Mục tiêu nghề nghiệp'],
-          ['B4', '≥ 1 term resolving to the SKILL taxonomy', '“Excel”, “Kế toán”, “React” — resolved through the same alias index CV import uses'],
-          ['B5', '≥ 1 term resolving to the JOB ROLE taxonomy', '“Business Analyst”, “Nhân viên kinh doanh”'],
-          ['B6', 'A name-like line in the first text block', 'A short 2–4-word capitalised line: NGUYỄN MINH THU'],
-        ],
-      },
-      items: [
-        'B4 and B5 reuse the taxonomy resolution already built for CV import (see Resume management → SKILLS) — this check adds no new matching logic of its own.',
-      ],
-    },
-    {
-      label: '4c · GROUP B — worked examples, and why the threshold is 2',
-      text: 'The threshold is deliberately LOW. We hold only what almost certainly is not a CV; everything ambiguous goes through.',
-      table: {
-        cols: ['File uploaded', 'Signals fired', 'Result'],
-        rows: [
-          ['A real but ugly one-page CV — no headings, just paragraphs', 'B1 (email) + B2 (dates) = 2', '✅ Sent'],
-          ['A designer’s infographic CV (text still extractable)', 'B1 + B6, often B4 = 2–3', '✅ Sent — exactly the CV a stricter rule would wrongly kill'],
-          ['A restaurant menu PDF', '0 of 6 — no contact, no dates, no headings', '🔒 Pending — “0/6 CV signals”'],
-          ['A university homework essay', 'B6 (a name) at most = 1', '🔒 Pending — “1/6 signals — no contact, no dates”'],
-          ['An invoice', 'B1 may fire on a company email = 1', '🔒 Pending'],
-        ],
-      },
-      items: [
-        'WHY 2 AND NOT 3 — the costs are asymmetric. Wrongly holding a real CV delays a real candidate and needs a human to undo. Wrongly sending a menu wastes an employer five seconds. Tune toward the cheaper error.',
-        'A scanned CV usually fails A3 before it ever reaches Group B — the two groups catch different failures and do not overlap.',
-      ],
-    },
-    {
-      label: '4d · GROUP C — abuse patterns',
-      table: {
-        cols: ['Signal', 'Example', 'Action'],
-        rows: [
-          ['C1 · Same file hash across many accounts', '40 “different” candidates upload a byte-identical CV_2026.pdf', 'HOLD — bot / farm behaviour'],
-          ['C2 · Extracted text ≈ the job description being applied to', 'Someone downloads the JD and uploads it back as their CV (more common than it sounds)', 'HOLD'],
-          ['C3 · One account, N different files in an hour', '12 applies with 12 different PDFs in 30 minutes during a promotion', 'RATE-LIMIT at the front door — throttling is cheap and self-service; a review backlog is neither'],
-        ],
-      },
-      items: [
-        'C3 deliberately does NOT create review work. Anything that can be solved by a limit should never become a queue an operator has to work.',
-      ],
-    },
-    {
-      label: '4e · The review queue IS the training set',
-      text: 'Every held row shows WHICH signals fired — “held: 1/6 CV signals — no contact, no dates” — and the reviewer resolves it with exactly two verbs. Both are logged against those signals, and that log is the labelled data that improves the check.',
-      table: {
-        cols: ['Verb', 'What happens', 'What the log records'],
-        rows: [
-          ['Real CV — send now', 'The employer receives it; the application becomes Sent and enters their funnel at New.', '“signals said no, human said yes” — a false positive'],
-          ['Not a CV — reject', 'The candidate is notified to upload a proper CV; the employer never sees it.', '“signals were right” — a true positive'],
-        ],
-      },
-      items: [
-        'AFTER A MONTH the log answers the question we cannot answer today: “files at 1/6 signals were real CVs 40% of the time, files at 0/6 never were.” That is how the threshold gets tuned, how the B3 heading list grows, and how Phase-2 gets a classifier trained on OUR OWN labels rather than a generic model.',
-        'QUALITY NEVER HOLDS — low match score, few skills, “looks unqualified”, no cover letter: none of these is a signal, and none may ever become one. The moment we hold on quality, Saramin owns the filtering decision and the queue becomes a silent black hole between candidate and employer.',
-        'THE CANDIDATE IS TOLD AT HOLD TIME — “Chúng tôi đang kiểm tra CV của bạn — sẽ gửi tới nhà tuyển dụng sớm.” Never warned upfront (it would discourage every normal applicant), and never left believing a held application was delivered.',
-        'appliedAt IS THE SUBMIT TIME — a job deadline passing while a valid application sits in Pending does not invalidate it. The delay was ours.',
-        'A held application shows no employer STAGE at all — the employer’s funnel has not started, so an em-dash is honest where a “New” badge would be a lie.',
+        'ONLY UPLOADED FILES are checked. A Saramin CV cannot be “not a CV”; at this door it must instead meet the APPLY-ELIGIBLE gate (Resume management).',
+        'QUALITY NEVER HOLDS — match score, skill count, no cover letter: not signals, at either door.',
+        'appliedAt IS THE SUBMIT TIME — a deadline passing during review does not invalidate the application. The delay was ours.',
+        'A held application shows no employer STAGE — the funnel has not started, so an em-dash is honest where “New” would be a lie.',
       ],
     },
   ],

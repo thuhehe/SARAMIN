@@ -121,7 +121,7 @@ export const resumeManagement: BuildModule = {
         'The practical cost, and it is real: only ONE of the 3 CVs feeds search at a time. A candidate with a Developer CV and a Sales CV is discoverable as one of them, never both. VietnamWorks has no such ambiguity because it only ever has one profile.',
         'Naming follows the model: a CV is labelled by its FORMAT (“Uploaded” / “Saramin”), never by a class of object. Wording that implies “your profile vs your files” recreates the VietnamWorks split we deliberately avoided.',
       ],
-      warn: 'A raw uploaded PDF has NO structured layer — we never parse a file the candidate did not ask us to convert. A candidate whose searchable CV is an unconverted PDF is therefore findable on Profile facets only (desired title, location, salary, years, education) and INVISIBLE to skill search, the most-used facet of all. OPEN: may an unconverted PDF be marked searchable at all, or does choosing it trigger the conversion offer?\n\nBecause 2 of 3 CVs are invisible to search at any moment, the control that picks the searchable one is load-bearing UI, not a nicety. It reads “Cho nhà tuyển dụng tìm thấy” with the helper “Chỉ 1 CV được tìm thấy. Các CV khác vẫn ứng tuyển được.”, and the chosen CV carries an “Đang hiển thị” badge in the list. The earlier label “Cho phép tìm kiếm” was dropped: it reads as a privacy switch (“allow searching”) when it actually means “THIS is the CV employers see” — the most likely source of a “my skills are on my CV but nobody finds me” support ticket.',
+      warn: 'A raw uploaded PDF has NO structured layer — we never parse a file the candidate did not ask us to convert. A candidate whose searchable CV is an unconverted PDF is therefore findable on Profile facets only (desired title, location, salary, years, education) and INVISIBLE to skill search, the most-used facet of all. Whether such a PDF may be flagged searchable at all is an OPEN decision, specced with its options on **[Logic] Apply & CV search eligibility**.\n\nBecause 2 of 3 CVs are invisible to search at any moment, the control that picks the searchable one is load-bearing UI, not a nicety. It reads “Cho nhà tuyển dụng tìm thấy” with the helper “Chỉ 1 CV được tìm thấy. Các CV khác vẫn ứng tuyển được.”, and the chosen CV carries an “Đang hiển thị” badge in the list. The earlier label “Cho phép tìm kiếm” was dropped: it reads as a privacy switch (“allow searching”) when it actually means “THIS is the CV employers see” — the most likely source of a “my skills are on my CV but nobody finds me” support ticket.',
     },
     {
       label: 'Add a new CV — ONE entry, two routes, shared everywhere',
@@ -304,7 +304,7 @@ export const resumeManagement: BuildModule = {
     },
     {
       label: 'MATCH SCORE — the recommended model: one hard gate, then a weighted 0–100',
-      text: 'RECOMMENDATION, for sign-off. Two stages, and keeping them separate is the whole design. Stage 1 GATES on eligibility only — searchable CV, not hidden, moderation approved, account active. Nothing about the work itself may exclude anybody, because every domain filter can empty the result set and none of them can explain why. Stage 2 SCORES the survivors on nine signals summing to 100. The score orders results; it never removes them.',
+      text: 'RECOMMENDATION, for sign-off. Two stages, and keeping them separate is the whole design. Stage 1 GATES on eligibility only, and the gate DIFFERS BY DIRECTION because each side gates the other side’s rows. ① EMPLOYER SEARCH gates CANDIDATES: a flagged searchable CV, visibility not Hidden, moderation approved, account active. ② JOBSEEKER FEED gates JOBS: open, not expired, moderation approved, exposure on — it does NOT read the candidate’s own visibility or searchable flag at all, which is why a Hidden candidate still gets recommendations. Nothing about the work itself may exclude anybody in either direction, because every domain filter can empty the result set and none of them can explain why. Stage 2 SCORES the survivors on nine signals summing to 100. The score orders results; it never removes them.',
       table: {
         cols: ['Signal', 'Weight', 'Full credit', 'Partial credit', 'Zero'],
         rows: [
@@ -326,9 +326,7 @@ export const resumeManagement: BuildModule = {
         'THE RULE THIS ILLUSTRATES, worth applying to any future signal: a scoring signal may only read a field the candidate ACTUALLY FILLS on the self-serve path, and it must score NEUTRAL when they leave it blank. A signal that reads an Admin-only field, or that punishes silence, compresses every score toward the middle and makes the ranking look broken.',
         'CROSS-CURRENCY SALARY SCORES NEUTRAL — never a raw numeric comparison, and this is a correctness rule rather than a nicety. Salary may be stated in VND or USD on BOTH sides. Compare the two raw numbers and “$3,000/mo asked” against “30,000,000 ₫ maximum” evaluates as 3000 ≤ 30000000 → ranges overlap → FULL marks, when the candidate is really asking ≈2.5× the job’s maximum. That is a false positive, which is worse than a miss because nobody sees it. When the currencies differ, score the signal NEUTRAL exactly as an INTERVIEW / unset salary is scored — no exchange rate needed, and it matches the constraint-signal rule above.',
         'WE DO NOT HOLD AN EXCHANGE RATE, on purpose. Any stored rate is stale within weeks, a live lookup makes the score non-deterministic and blocks scoring during an outage, and a converted figure shown to anyone is a number neither side stated. Neutral scoring costs 7 points of precision on a minority of pairs; a rate costs correctness on all of them.',
-        'A FEED IS NOT A QUERY — what the recommender adds on top of the shared score. (1) EXCLUDE: jobs already applied to, saved-and-dismissed, expired, and — as an opt-in — the candidate’s own current employer. (2) FRESHNESS: an employer search is a deliberate query and may return the same people twice; a recommendation list that never changes is dead, so posting recency joins the tie-break. (3) PREFERENCE RANKS, IT NEVER FILTERS — a candidate who asked for one city and one category would otherwise see four jobs. Same rule as skills on the job side.',
-        'COLD START IS A LADDER — not a special algorithm. A brand-new account holds only sign-up fields and can be scored on almost nothing, so recommendation quality tracks how much of the profile exists: onboarding answers alone (desired role · category · location · salary) already carry 39 of the 100 points, which is why the onboarding’s last step can show real jobs at all. Say this in the UI — “add your skills to see better matches” — rather than silently serving a weak list.',
-        'THE RENORMALISE RULE, and it is the load-bearing one: any signal the JOB does not specify is DROPPED and its weight redistributed proportionally across the rest, so the total is always exactly 100. A job that states no language requirement does not score language — it does not score it as zero either. Without this, every under-specified job posting quietly compresses its own scores into the 60s and the number stops meaning anything.',
+                                'THE RENORMALISE RULE, and it is the load-bearing one: any signal the JOB does not specify is DROPPED and its weight redistributed proportionally across the rest, so the total is always exactly 100. A job that states no language requirement does not score language — it does not score it as zero either. Without this, every under-specified job posting quietly compresses its own scores into the 60s and the number stops meaning anything.',
         'MISSING CANDIDATE DATA — and the distinction matters, because getting it wrong turns the score into a measure of form-filling. CONSTRAINT signals (salary, employment type, education, mobility) score NEUTRAL when the candidate is silent: silence means "no constraint", and punishing it would rank the fussy above the flexible. EVIDENCE signals (skills, years) score LOW when absent: silence means "no evidence", and ranking below someone who provided it is correct, not unfair.',
         'A CONSEQUENCE WORTH STATING OUT LOUD — a candidate whose CV yields no CvSkill rows forfeits the 38-point skills block and caps at 62. That is honest: we genuinely do not know their skills. NOTE this is now RARE, not the norm for uploads: since the upload-only decision every PDF is parsed at write, so an uploaded CV normally does have skills. It applies to CVs the parser could not read at all — image scans, heavily designed layouts — which is exactly the case the “we couldn’t read this PDF” prompt exists to surface. Say the cost plainly there rather than hiding it.',
         'The score is DETERMINISTIC: same inputs, same output, no randomness and no time decay inside it. Recency belongs in the TIE-BREAK, applied only to equal scores, in this order — profile completeness, then last-active, then CV updated-at. This keeps fresh candidates surfacing without letting freshness masquerade as fit.',
@@ -352,7 +350,7 @@ export const resumeManagement: BuildModule = {
         cols: ['Surface', 'What it shows', 'Why'],
         rows: [
           ['Jobseeker · matched job card', '“92% match” plus the top two contributing signals — “8/10 skills · Hồ Chí Minh”.', 'The candidate can only act on reasons. A score they cannot decompose reads as a verdict on them.'],
-          ['Jobseeker · below the floor', 'No number. The card sits under a “Related” heading instead.', '“34% match” is both useless and insulting, and it invites a support ticket we cannot answer well. Recommended floor: 60.'],
+          ['Jobseeker · below the floor', 'No number. The card sits under a “Related” heading instead.', '“34% match” is both useless and insulting, and it invites a support ticket we cannot answer well. Recommended floor: 60. NOTE the floor is a PER-CARD rule, not a tier setting — but it interacts with the tier ceilings in RECOMMENDED JOBS: tier 2 tops out at 60 and tier 3 at 61, so those users see a number almost never, while tier 4 reaches 100 and sees one routinely. That is what makes “add your skills to see your match %” literally true rather than a growth tactic: the 38-point skills block is what lifts a card over the floor at all.'],
           ['Employer · search result row', 'Rank position and the same signal breakdown — never a bare percentage.', 'An employer paying to unlock needs to know WHICH candidate is stronger and on what. A percentage implies a precision the model does not have.'],
           ['Employer · job form pool line', '“≈ 224 candidates have all of these”, updating as skills are picked.', 'Set intersection, not score. It answers “is my skill combination too rare to fill” BEFORE publishing, which is when it can still be changed.'],
           ['Nobody', 'The score’s inputs for protected fields.', 'They are not in the model at all, so there is nothing to show — see the warning above.'],
@@ -382,6 +380,7 @@ export const resumeManagement: BuildModule = {
         'VERSION ROLL-UP — decide this before import ships. `skill` is a three-level tree (group → skill → version) and `Angular` alone has FIFTEEN version children (Angular 2, 2+, 4, 4+, 5 …). If a CV resolves to the version node, one candidate pool fragments across nine spellings of the same skill and search silently under-returns. Recommendation: CV import resolves UP to the base skill; version nodes stay available to job posts, where a specific version is a real requirement.',
         'Confidence is a display cue, never a threshold — showing “92%” next to a chip helps the candidate skim. Auto-accepting above some score does not: the failure it creates is a skill the candidate never chose, discovered months later by an employer.',
         'The same pipeline serves the typeahead — the only difference is that a human is present, so an ambiguous key MAY offer both rows instead of falling through to a miss.',
+        'STILL OPEN — BUILD vs BUY the parser itself. Run 2–3 approaches (an LLM prompt against a resume-parsing vendor such as Affinda or Daxtra) over 10–20 real Vietnamese and English CVs in mixed formats, and MEASURE per-field accuracy — Vietnamese accuracy is the deciding number and the one vendors are weakest on. Deliverable: a comparison table and a recommendation. This is the last undecided piece of the extraction route; everything downstream of it is specified.',
         'This pipeline is why “extract, don’t ask” is safe to promise. Exact-match-only resolution means a bad extraction produces a MISS, not a wrong row — so the cost is one skill the candidate adds by hand, never a claim they have to discover and undo.',
       ],
     },
@@ -464,98 +463,12 @@ export const resumeManagement: BuildModule = {
       text: 'How the CV pool is structured, indexed, searched and ranked must be researched before any build — see “Resume list — Companies”, and “CV data & matching architecture” → Kick-off for the research spike. That spike is the first thing to assign: CV search, matching and recommendations all sit on top of it.',
     },
     {
-      label: 'RECOMMENDED JOBS — one scorer, four completeness tiers, and WHICH CV feeds it',
-      text: 'There is no separate recommender per user type. Every account runs through the SAME match score; what differs is which signals exist to read. The missing-candidate-data rule already covers it — constraint signals score NEUTRAL when silent, evidence signals score LOW — so an emptier profile does not break the computation, it flattens the ranking. The product decision is therefore not “which algorithm”, it is WHAT TO CALL THE LIST at each tier, because labelling a barely-personalised feed “dành cho bạn” is a promise the data cannot keep.',
-      table: {
-        cols: ['Tier — what the user has filled', 'Signals available (of 100)', 'What the list really is', 'Heading + nudge'],
-        rows: [
-          ['1 · Basic information only', '≤ 21 — years + education. NO direction: desired role, category and location are all empty, and current location is deliberately not held.', 'Not personalised. Popular / newest jobs, at most eligibility-ranked by years and education.', '“Việc làm nổi bật” — NEVER “dành cho bạn”. Nudge into onboarding: “Cho biết bạn muốn làm gì để nhận việc phù hợp”.'],
-          ['2 · Basic + Work preference', '≤ 60 — adds location+type 17 · category 10 · salary 7 · industry 5. Direction exists; no evidence.', 'Genuinely personalised by DIRECTION — right city, category and salary band — but blind to ability: it cannot tell a junior from a senior inside that category.', '“Việc làm phù hợp”. Most sit below the 60 floor so cards carry no %. Nudge: “Thêm kỹ năng / tạo CV để thấy độ phù hợp”.'],
-          ['3 · Basic + CV, no Work preference', '≤ 61 — skills 38 + language 2 + years/education. Evidence exists; DIRECTION is missing and must be inferred.', 'Skills-driven: jobs overlapping what the CV proves. Direction falls back to the latest job title — a proxy, and one that recommends MORE OF THE SAME career, which is exactly wrong for someone trying to switch.', '“Việc làm giống hồ sơ của bạn” — honest about what it is. Nudge: the 4 onboarding questions, +39 points.'],
-          ['4 · Basic + Work preference + CV', 'Up to 100.', 'The full model: preference sets direction, the CV sets level.', '“Việc làm phù hợp với bạn”, with the match % on cards at or above the floor.'],
-        ],
-      },
-      items: [
-        'AN INCOMPLETE CV IS NOT A TIER — it is tier 3 or 4 with fewer CvSkill rows and thinner work history, and the evidence-scores-LOW rule already prices that in. No special handling; the completeness nudges are the fix.',
-        'THE FEED READS EVERY CV — not the flagged one; corrected 2026-08-13. The searchable flag is a PUBLIC decision (“which CV may employers find me by”, tied to exposure); recommendations are a PRIVATE one (“what jobs do I want to see”). Reading the flag for both means a candidate who exposes their Sales CV while quietly exploring Dev roles gets Sales recommendations forever, with nothing on screen to explain why.',
-        'BEST CV PER JOB — score each open job against EVERY CV the candidate holds and keep the HIGHEST score for that job. Never average, and never merge the CVs into one profile first: merging is what produces a Dev/Sales midpoint that fits neither, while taking the max means each job is judged by the CV that actually argues for it. At a cap of 3 CVs the extra compute is nothing.',
-        'SHOW WHICH CV MATCHED — a mixed feed is confusing without it and obvious with it: “Phù hợp với CV Business Developer của bạn” on the card. It also turns the feed into a quiet argument for keeping each CV current.',
-        'A SECOND FLAG IS THE WRONG FIX — a “default CV for recommendations” adds a decision to a screen being trimmed, is one most users would never touch, and creates two flags that are usually identical and can silently drift. Reading all CVs needs no control at all.',
-        'DIRECTION IS ALREADY SHARED — the CVs diverge less than they appear to. Work preference is ONE record per account, not per CV: desired role, category, location and salary apply to every CV alike. The CVs differ only on EVIDENCE — skills, titles, years — which is precisely the part the best-CV-per-job rule handles.',
-        '“NONE MARKED” IS MOOT FOR THE FEED — since recommendations read every CV, a candidate with zero flagged CVs still gets a fully CV-driven feed. The flag only ever gated the EMPLOYER index, and that path is protected by the radio behaviour in the next block. One less state to get wrong, which is the second reason to separate the two concepts rather than add a flag.',
-        'HIDDEN STILL GETS RECOMMENDATIONS — visibility gates the employer index, not the candidate’s own feed. Anything else punishes a privacy choice with a worse product, which teaches people to stay discoverable for the wrong reason.',
-        'THE TIERS ARE A FUNNEL, NOT SEGMENTS — every heading change and nudge above exists to move the user one tier up, and the “+points” framing is honest because the score genuinely improves. Do NOT gate the list (“complete your profile to see jobs”): an empty screen at tier 1 teaches a new user on day one that the product has nothing for them.',
-      ],
+      label: 'RECOMMENDED JOBS — specced on its own page',
+      text: 'The jobseeker-facing recommendation feed — the four completeness tiers, which CVs feed it, the feed’s own gate and its exclusions — has its own page: **Resume management → Job recommendations**, the first feature below. The SCORE itself stays in this module’s requirements because it has TWO consumers and must not be specced twice: employer applicant ranking and the jobseeker feed are the same computation read from opposite ends.',
     },
     {
-      label: 'STORED vs SEARCHABLE vs INDEXED — three different things, and the searchable flag NEVER empties',
-      text: 'All three CVs ARE “CV content” (group 3). The searchable CV is not a copy promoted into some other place — it is a FLAG on one of the CV rows. Anyone who models it as “write the searchable CV into the profile” ends up with two copies of the same career data and no way to keep them agreeing.',
-      table: {
-        cols: ['', 'Happens when', 'Depends on'],
-        rows: [
-          ['STORED', 'Profile row at sign-up; a CV row the moment a CV is created or uploaded; parsed at write.', 'Nothing — always, whatever the candidate wants employers to see.'],
-          ['SEARCHABLE FLAG', 'Points at exactly ONE CV row at all times.', 'The candidate’s choice of which CV represents them.'],
-          ['INDEXED', 'The candidate appears in employer CV search.', 'BOTH: account visibility = Discoverable AND a flagged CV.'],
-        ],
-      },
-      items: [
-        'THE FLAG MOVES, IT NEVER CLEARS — a radio button, not a checkbox. Turning searchable ON for CV B turns it OFF for CV A; there is no interaction that leaves zero CVs flagged. Default on first CV: it is flagged automatically. Deleting the flagged CV moves the flag to the most recently updated survivor, silently.',
-        'WHY ZERO IS FORBIDDEN — “Discoverable with nothing indexed” is the worst state in the product. The candidate has consented to be found, believes they are, and receives nothing, with no error anywhere to explain it. Support cannot diagnose it because everything looks correct.',
-        'HIDDEN DOES NOT CLEAR THE FLAG — a Hidden account keeps pointing at a CV; the index simply does not read it. Switching back to Discoverable is then instant and asks the candidate nothing — they do not have to re-choose a CV they already chose.',
-        'DISCOVERABLE NEEDS ONE CV — a candidate with a profile and no CV cannot be discoverable, because an unlock would deliver contact details and no document — the employer spent a credit on nothing. This also matches the existing rule that a structured profile alone is not a CV. Surface it plainly on My CVs: “Add a CV to appear in employer search.”',
-        'PARSE ON WRITE, INDEX ON FLAG — never re-parse when the flag flips. Every CV is parsed when it is saved, including ones the candidate never makes searchable, because they may flip it on later and a toggle that triggers a parse is a toggle that is slow and can fail. Flipping the flag moves rows in and out of the INDEX only.',
-        'FLAGGING AN UPLOADED CV RUNS THE SAME CHECK AS AN APPLICATION (decided) — the file is converted to the database on write, then the flag puts it at indexStatus = PENDING and runs the identical “is this a CV?” signals (Application management → 4a–4d). Passing indexes it; failing holds it for the same two human verbs. One quality bar, one pipeline, whether a CV reaches an employer by being SENT or by being FOUND.',
-        'PENDING IS INTERNAL — the toggle succeeds, nothing is blocked, and the candidate sees only “Đang kiểm tra CV”. The hold protects the employer-facing pool; it is never presented as a rejection of the candidate.',
-        'THE FLAG DOES NOT MOVE UNTIL THE NEW CV PASSES — the previously flagged CV keeps the flag while the new one is pending, so the candidate is never “Discoverable with nothing indexed” (the forbidden state above). With no previous CV they are simply not yet discoverable, and the toggle says so.',
-        'indexStatus: pending | indexed | rejected — one column on the Cv row, distinct from the APPLICATION’s status. Same word, different object: one keeps a CV out of the employer INDEX, the other holds one application from one employer. Never render them with the same label.',
-        'NO AUTO-PASS (decided) — unlike an application, an index-Pending CV is NEVER released on a timer. Nobody is waiting on it: an application has an employer at the other end and a deadline running, so a stale hold costs the candidate a job; a CV waiting to enter the search pool costs only time. When the two errors are that different, so are the defaults — applications fail OPEN, the index fails CLOSED.',
-        'FAILING CLOSED NEEDS THE QUEUE ACTUALLY WORKED — with no timer, an unreviewed CV is invisible forever and nothing complains. Two safeguards, both required: the admin CV queue shows an AGE so an old hold is visible, and the candidate can see their own CV sitting at “Đang kiểm tra” on My CVs rather than believing they are already discoverable.',
-        'REJECTED IS TOLD, NOT SILENT — a rejected CV names the reason and keeps the fix one tap away (“Tải lên CV khác” / “Tạo Saramin CV”). A candidate who is not in the pool must always know they are not in the pool.',
-        'THE UNSEARCHABLE CVs ARE NOT DEAD DATA — they are still applied with, still downloadable, still hold their own CvSkill rows, and are still what the candidate compares in My CVs. Only employer SEARCH ignores them.',
-      ],
-    },
-    {
-      label: 'APPLY-ELIGIBLE — when a Saramin CV can be sent to an employer (decided)',
-      text: 'The gate names CV-CONTENT fields only (group 3) — never a percentage, and never Profile fields: name, contact, education level and preferences live on the Profile (groups 1–2), are collected at sign-up / onboarding, and are confirmed on the apply read-back. Below the gate, the CV renders greyed on the apply modal with the missing fields NAMED and one Cập nhật link into the editor — the VietnamWorks pattern, minus the opaque “Chưa được duyệt”.',
-      table: {
-        cols: ['Must have (CV content)', 'Why this and nothing more'],
-        rows: [
-          [
-            '≥ 1 work experience — OR ≥ 1 education entry when there is no experience yet (fresher / student)',
-            'The body of the generated PDF, and the source of the DERIVED header line. Without one entry the employer opens an empty document — which reflects on the platform, not the candidate.',
-          ],
-          [
-            '≥ 3 skills (taxonomy)',
-            'What CV search and matching join on — a CV with no skills is invisible to the paid product.',
-          ],
-        ],
-      },
-      items: [
-        'WHY A GATE AT ALL, and only here — an application carries three things: the Profile confirm (Basic information + Work preference, already required), ONE CV document, and an optional cover letter. Uploaded files are never gated, because the candidate authored them and we only pass them on. The Saramin CV is different: WE generate its PDF, so an almost-empty one embarrasses the platform rather than the candidate.',
-        'NAMED FIELDS, never a % — “Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng” is actionable; “47%” is not. A percentage also FAILS THE JOB: our completeness score gives points for photo, About, languages, certificates, awards and publications, so a candidate could reach 70% with the easy optional sections and still have an empty Experience — the exact case this gate exists to stop. And a % gate is silently unstable: re-weight the score later and CVs that could apply yesterday cannot today, with nothing telling the candidate why.',
-        'THE FRESHER EXCEPTION IS NOT OPTIONAL — without “or ≥ 1 education entry”, every graduate with no job history is locked out of applying, which is the entire entry-level market and a large share of VN volume.',
-        'The header line is DERIVED, not asked: title from the most recent experience (or “Fresh graduate · {major}” from education), years computed from the date ranges — with an editable override, so it never goes stale on its own and adds NOTHING to the gate.',
-        'UPLOADED CVs are NEVER gated at apply — always selectable. A doubtful file is checked AFTER submit and may hold the application as Pending; see Application management → the “is this a CV?” check.',
-        'A Saramin CV that meets this gate passes that check BY CONSTRUCTION — structured content cannot be “not a CV” — so it is never held.',
-        'The gate does NOT touch the searchable flag — an incomplete Saramin CV can still be the flagged one (the flag never empties); it simply cannot be SENT until it meets the gate.',
-      ],
-    },
-    {
-      label: 'APPLY-ELIGIBLE — worked examples, and what is deliberately OUT of the gate',
-      table: {
-        cols: ['Candidate', 'Eligible?', 'What the apply modal shows'],
-        rows: [
-          ['2 experience entries, 5 skills', '✅', 'A normal, selectable CV row.'],
-          ['Fresh graduate — no jobs, 1 education entry, 3 skills', '✅ (fresher exception)', 'A normal, selectable row. Without the exception we would lock out the whole entry-level market.'],
-          ['Created a Saramin CV, added only 1 skill (“Figma”)', '❌', 'Greyed, unselectable: “UX Designer CV · Saramin · Chưa đủ để ứng tuyển” → “Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng — Cập nhật →”'],
-        ],
-      },
-      items: [
-        'OUT OF THE GATE, deliberately: name · email · phone · highest education (all Basic information, group 1 — collected at sign-up / onboarding and CONFIRMED on the apply read-back, so re-checking them here would gate on data we already hold); desired role / location / salary (Work preference, group 2); and photo, About, projects, certificates, languages, awards (CV content, but none of them is what an employer needs to assess someone).',
-        'COMPARE THE COPY — VietnamWorks greys the row with “Chưa được duyệt · 47%”, which tells the candidate they failed but not what to do. Naming the missing fields and linking straight into the editor is the same pattern with the dead end removed.',
-        'WHERE THE CANDIDATE MEETS THIS RULE, in order: ① My CVs — the “Chưa đủ để ứng tuyển” chip + “Hoàn thiện →” warns them early, long before they need the CV; ② the apply modal — the greyed row with the named fields; ③ POST /applications — server-side, the actual control. The first two are courtesies; only the third is enforcement.',
-        'DISPLAY IT ON THE COMPLETENESS BAR TOO — a threshold marker at the apply-eligible point, and the fill-list split into “Bắt buộc” (the gate — blocks applying) versus “Tăng thêm” (the impact-% boosts, which only improve search ranking). That gives the client the familiar “minimum completeness” framing while the GATE itself stays on named fields.',
-      ],
+      label: 'APPLY-ELIGIBLE and SEARCHABLE — specced on their own page',
+      text: 'When a Saramin CV can be SENT to an employer, and when a CV can be FOUND in employer search, are two independent gates — both defined on their own page: **Resume management → [Logic] Apply & CV search eligibility**. They are kept together there because the commonest mistake is assuming one implies the other, and kept OUT of here because a rule restated in two places is a rule that will disagree with itself. The two open decisions (does the apply bar gate the paid index; may an unconverted PDF be flagged searchable) are on that page too.',
     },
     {
       label: 'CV visibility (candidate-owned) — ONE account-level switch',
@@ -1006,6 +919,485 @@ export const resumeManagement: BuildModule = {
       },
     },
 
+    // ── CV DATABASE & SEARCH (paid) — the employer-facing search over the CV pool.
+    //    Authored as a research/discovery brief because we have no data model yet.
+    {
+      name: 'Resume list',
+      site: 'Companies',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'co-resume-search',
+      detail: {
+        description:
+          'The paid CV-search feature (Phase-1 flow #3): an employer buys a package, searches our pool of CVs by criteria, sees matching results with details LOCKED, then unlocks a candidate to view the full CV and contact them. ' +
+          'This is a DISCOVERY / RESEARCH task before it is a build task. We do not yet have a CV data model, a criteria set, or ranking logic. The developer + BA must first investigate how a CV pool should be organised, indexed, searched and ranked — validate it against real sample CVs (2–3, provided later) and against reference products — and maintain a living design document as they go. Nothing here is final; treat the data model and endpoints below as a starting sketch to refine, not a spec to implement.',
+        userStory:
+          'As an employer, I want to search the CV database by the criteria that matter to me (title, skills, experience, location, salary…) and see the most relevant candidates first, so that I can find and contact the right people directly instead of waiting for applications.',
+
+        keyPoints: [
+          {
+            vi: 'Một dòng kết quả phải đủ để quyết định có mở khoá hay không: giới tính · tuổi, số năm kinh nghiệm, công ty HIỆN TẠI đầy đủ (tên, chức danh, thời gian, mô tả 1 dòng), các công ty TRƯỚC ĐÓ dạng chữ ngắn gọn (tên · chức danh · tổng thời gian), phần còn lại gộp thành "+N", rồi học vấn và kỹ năng.',
+            en: 'A result row must be enough to decide whether to unlock: gender · age, years of experience, the CURRENT job in full (company, title, period, one line of description), EARLIER jobs as plain compact text (company · title · total duration), the rest collapsed into "+N", then education and skills.',
+          },
+          {
+            vi: 'Danh tính bị che cho tới khi mở khoá: họ tên đầy đủ, email, số điện thoại và file CV. Mọi thứ khác ở trên đều hiển thị khi còn khoá.',
+            en: 'Identity stays masked until unlock: full name, email, phone and the CV file. Everything listed above IS shown while locked.',
+          },
+          {
+            vi: 'Mỗi trường hiển thị trên dòng kết quả cũng phải là một bộ lọc — hiển thị mà không lọc được thì nhà tuyển dụng vẫn phải cuộn 248 kết quả.',
+            en: 'Every field shown on the row must also be a filter — a field you can read but not filter on still leaves the recruiter scrolling 248 results.',
+          },
+          {
+            vi: 'Ô tìm kiếm theo mô hình Saramin Hàn Quốc: BA ô — OR (chứa bất kỳ từ nào), AND (phải chứa tất cả), NOT (loại trừ) — nhà tuyển dụng không phải học cú pháp toán tử.',
+            en: 'The keyword bar follows Saramin KR: THREE boxes — OR (any of these), AND (must contain every one), NOT (exclude) — so a recruiter never has to learn an operator syntax.',
+          },
+          {
+            vi: 'Bộ lọc nằm ở CỘT TRÁI, chia 4 nhóm theo nguồn dữ liệu: Work preference → Profile → Work information → CV activity. Mỗi trường là một dropdown, riêng "Last resume update" là dãy nút chọn nhanh.',
+            en: 'Filters sit in the LEFT RAIL, in four collapsible groups by data source: Work preference → Profile → Work information → CV activity. Every field is a dropdown; only "Last resume update" is a pill row.',
+          },
+          {
+            vi: 'Không có bộ lọc nào bịa ra trường mới — mỗi bộ lọc đều đọc từ một trường đã có trong hồ sơ hoặc CV. Xem bảng "Every filter, and the field it reads".',
+            en: 'No filter invents a field: every one reads something the profile or the CV already holds. See the "Every filter, and the field it reads" table — anything that cannot fill a row there does not ship.',
+          },
+          {
+            vi: 'Giới tính và tuổi là dữ liệu nhạy cảm về phân biệt đối xử. Hai trường này chỉ hiển thị/lọc được nếu ứng viên đã điền (tuỳ chọn) và cần được pháp lý của khách hàng duyệt trước khi ra mắt.',
+            en: 'Gender and age are discrimination-sensitive. They render and filter only when the candidate supplied them (both optional), and the client’s legal side must sign the facets off before launch.',
+          },
+        ],
+
+        uiFields: [
+          {
+            group: 'Result row — identity line (masked while locked)',
+            items: [
+              { name: 'maskedName', type: 'derived string', required: true, notes: 'surname + ○○ (e.g. "Trần ○○"). The full name appears only after unlock — never send the real name to the locked endpoint, mask it server-side' },
+              { name: 'gender', type: 'enum (Nam · Nữ · Khác)', notes: 'OPTIONAL on the candidate side — the row omits it silently when blank, it never renders "Not specified". Shown as "Nữ · 28 tuổi" on one line, Saramin-KR style' },
+              { name: 'age', type: 'int (derived)', notes: 'computed from dateOfBirth at query time — never stored as a number, or it goes stale. Blank DOB → no age shown' },
+              { name: 'headline / currentTitle', type: 'string → Title taxonomy', required: true, notes: 'the candidate’s own job title line, e.g. "Điều dưỡng trưởng"' },
+              { name: 'totalYearsExperience', type: 'int (derived)', required: true, notes: 'summed from work history. 0 renders as "Fresher · under 1 yr", not "0 years"' },
+              { name: 'lockState', type: 'derived', required: true, notes: 'Locked → "Name & contact locked" + [Unlock · 1 credit]; Unlocked → "Unlocked" + [View CV], free to re-open' },
+            ],
+          },
+          {
+            group: 'Result row — WORK HISTORY (the client’s specified shape, 2026-08-13)',
+            items: [
+              { name: 'RULE', type: 'layout', required: true, notes: 'the CURRENT job is shown in FULL; every earlier job is a COMPACT one-line chip; anything past the chips that fit becomes a "+N" count. One card therefore shows the whole shape of a career without ever running past four or five lines' },
+              { name: 'current.company', type: 'string', required: true, notes: 'the most recent work-experience entry. Employer name as written on the CV — masked to employer TYPE + city while locked, see the re-identification note' },
+              { name: 'current.jobTitle', type: 'string → Title taxonomy', required: true, notes: 'role held there — may differ from the headline' },
+              { name: 'current.period', type: 'derived string', required: true, notes: 'from–to, e.g. "03/2023 – nay" or "06/2025 – 12/2025". "nay" / "now" when isCurrent — and this is ALSO how employment status is expressed: an open end means still employed, a closed one means they left. There is NO separate status badge (cut 2026-08-13); a badge repeating what the date range already says is noise on a card this dense' },
+              { name: 'current.description', type: 'text, ONE line', required: true, notes: 'clamped to exactly ONE line on the card (was two). The full text is on the CV detail page. One line is enough to tell a nurse in an ICU from a nurse in an outpatient clinic; more turns the list into a wall' },
+              { name: 'prior[]', type: 'PLAIN TEXT, not chips', notes: 'every earlier job as "Company · Job title (total duration)", set as quiet muted text rather than bordered chips — a chip reads as a tag you can click or filter by, and these are just the rest of the career. NO description, NO from–to dates: the total duration is the signal (job-hopping vs. tenure). Masked to employer type while locked, like the current one' },
+              { name: 'morePrior', type: 'derived count', notes: '"+N" after the chips when the history is longer than the row can hold — e.g. "+2" means two further employers. Clicking it opens the CV detail page rather than expanding in place' },
+              { name: 'no-experience case', type: 'empty state', notes: 'a candidate with no work history shows "No work experience yet" rather than an empty block — absence is a screening signal, especially for campus hiring' },
+              { name: 'NOT SHOWN: previous salary', type: 'gap vs. the reference', notes: 'Saramin KR’s card carries 직전연봉 (previous annual salary) next to the employment status. We do NOT hold it: `expectedSalary` is what the candidate WANTS, not what they earn now, and previous salary is not one of the client’s 15 fields. Adding it would mean asking the candidate a new and sensitive question' },
+              { name: 'NOT SHOWN: category tags', type: 'gap vs. the reference', notes: 'the reference also carries computed badges (요즘 뜨는 인재 "trending", 대기업 "large employer", 최근 제안 많이 받음 "gets many offers"). Each needs a scoring job behind it and none exists yet — a Phase-2 idea, not a field' },
+            ],
+          },
+          {
+            group: 'Result row — latest education (most recent education entry)',
+            items: [
+              { name: 'education.school', type: 'string', required: true },
+              { name: 'education.degree / major', type: 'string + level enum', required: true, notes: 'e.g. "Cử nhân Điều dưỡng"; the level enum (High school · College · Bachelor · Master · Doctor) is what the Education-level facet filters on' },
+              { name: 'education.graduationStatus', type: 'enum', required: true, notes: 'Graduated (MM/YYYY) · Expected (MM/YYYY) · Attending · Left. Rendered as a small badge; Expected is toned differently so campus candidates are visible at a glance' },
+            ],
+          },
+          {
+            group: 'Result row — skills & asks',
+            items: [
+              { name: 'skills', type: 'skillId[] → Skill taxonomy', required: true, notes: 'top N by taxonomy weight, the rest collapsed into "+N more". Query-matched skills sort first so the recruiter sees why the row matched' },
+              { name: 'location', type: 'enum (province/city)', required: true },
+              { name: 'desiredSalary', type: 'int (VND) / Thỏa thuận', notes: 'optional candidate ask — see the open question on whether it is shown while locked' },
+              { name: 'availability', type: 'enum', notes: 'Open now · 1 month · 2+ months' },
+              { name: 'lastUpdatedAt', type: 'relative date', required: true, notes: '"Updated 2 days ago" — the freshness cue that stops a recruiter spending a credit on a dead CV' },
+            ],
+          },
+          {
+            group: 'Keyword bar — three boxes (the Saramin KR model)',
+            items: [
+              { name: 'OR terms', type: 'comma-separated list', required: true, notes: 'the main query — a CV matches if it contains ANY of these. "điều dưỡng, y tá" finds both spellings of the same role' },
+              { name: 'AND terms', type: 'comma-separated list', notes: 'every one of these must ALSO appear. This is the narrowing box' },
+              { name: 'NOT terms', type: 'comma-separated list', notes: 'exclude any CV containing any of these — the box that removes the near-miss profession a broad term keeps dragging in' },
+              { name: 'combined query', type: 'derived', required: true, notes: '(or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …). Three plain lists rather than one box with an operator syntax to learn — the recruiter never types AND, OR or a bracket' },
+              { name: 'keywordScope', type: 'dropdown', notes: 'All fields · Job title only · Skills only · Company only, under the bar. Orthogonal to the operators: the boxes say WHICH words, the scope says WHERE to look' },
+              { name: 'autocomplete', type: 'behaviour', notes: 'each box autocompletes against the Title + Skill taxonomies, so a typed word resolves to a canonical tag where one exists — the same join the extractor writes' },
+              { name: 'Reset · Load a saved search · Save this search', type: 'actions', required: true, notes: 'on the same band as the bar. Saving the whole search CONDITION — three keyword lists plus every filter — is what makes a 6-month package get used in month 5 instead of abandoned in month 2. See the saved-search open question' },
+              { name: 'NO location box', type: 'removed', notes: 'DELIBERATE: location is two distinct fields (lives in / wants to work in) and a single box beside the keyword could only guess which one was meant. Both are dropdowns in the rail instead' },
+            ],
+          },
+          {
+            group: 'Filter rail · 1. CV ACTIVITY',
+            items: [
+              { name: 'lastResumeUpdate', type: 'single-select pill row', required: true, notes: 'Any · Today · Yesterday · 3 days ago · 1 Week · 2 Weeks · 1 Month · 2 Months · 6 Months · 12 Months. Pills, not a dropdown — it is the most-used control here and one click beats two. Values are CUMULATIVE ("1 Week" = updated within the last week), and Any is the default: a date filter nobody set must never quietly hide CVs. FIRST in the rail, because freshness is the cheapest way to avoid spending a credit on someone who has stopped looking' },
+              { name: 'exclude already-unlocked / already-in-pipeline', type: 'CUT from the rail', notes: 'the two credit-protection toggles were removed on client direction (2026-08-12). The protection now rests on the row instead: an already-unlocked CV shows an "Unlocked" pill and a free "View CV" button rather than "Unlock · 1 credit", so a second recruiter can SEE they would not be paying again. That is weaker than a filter — it does not shorten the list — but it does stop the double charge' },
+            ],
+          },
+          {
+            group: 'Filter rail · 2. WORK PREFERENCE — the client field sheet’s six "Desired work condition" fields, in its order',
+            items: [
+              { name: 'desiredJobRole', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 1 of 6' },
+              { name: 'desiredJobCategory', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 2 of 6 — the same category master the job form writes, so both sides of a match share one vocabulary' },
+              { name: 'desiredIndustry', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 3 of 6' },
+              { name: 'desiredWorkLocation', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 4 of 6, labelled "Desired locations". THE ONLY LOCATION WE HOLD — the field sheet is explicit that CURRENT location is not a field, so the earlier "Currently living in" filter was reading something that does not exist and has been cut' },
+              { name: 'desiredWorkType', type: 'multi-select dropdown', required: true, notes: 'field 5 of 6 — in office · remote · hybrid · oversea, the same `job_type` master the job side uses' },
+              { name: 'expectedSalary', type: 'currency + range', required: true, notes: 'field 6 of 6 — see the salary block below' },
+              { name: 'CUT: availability / employment type', type: 'removed', notes: 'neither is one of the client’s 15 candidate-data fields. "Availability / notice period" was never collected, and employment type is not separate from desiredWorkType. Both removed 2026-08-12 rather than left as filters over data we do not have' },
+              { name: 'expectedSalary', type: 'currency switch + from/to dropdowns', notes: 'reads `expectedSalary { kind, currency, min?, max? }` — the field ALREADY carries currency: VND · USD, so the two-currency control needs no new data. The switch re-labels the bounds and SCOPES the query to that currency; it must NOT convert. Defaults to VND. See the salary case table for every combination' },
+              { name: 'range semantics', type: 'query rule', required: true, notes: 'POINT-IN-RANGE, because the candidate states ONE figure and the employer states a band: `filter.from ≤ candidate.expectedSalary ≤ filter.to`, both bounds inclusive, unset From = 0, unset To = +∞. Implement it as `candidate.min ≤ filter.to AND (candidate.max ?? candidate.min) ≥ filter.from` so the same expression still works if the candidate form ever becomes a range' },
+              { name: 'salary period', type: 'derived comparison rule', required: true, notes: '`kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. A range query MUST normalise ANNUAL to monthly (÷12) WITHIN the same currency before comparing, or a 30,000/year ask is matched against a 30,000/month bound. Division by 12 is arithmetic, not an exchange rate — it is safe; currency conversion is not' },
+              { name: 'pass-through cases', type: 'query rule', required: true, notes: 'THREE kinds of candidate are INCLUDED by any salary bound rather than dropped by it: `kind = INTERVIEW` ("thỏa thuận"), `kind = INTERNAL_RULE` ("theo quy định công ty"), and a salary left BLANK — the field is optional and blanks are common. The "Also include Thỏa thuận" checkbox was cut from the UI on 2026-08-12; the behaviour it protected did NOT go with it and now lives in the query as the default. Excluding any of the three must be an explicit, labelled control, never a side effect of setting a bound' },
+              { name: 'excluded-count line', type: 'UI', required: true, notes: 'under the results: "12 candidates ask in USD — switch the currency to see them." Counting them needs no exchange rate, and without the line a currency-scoped search silently under-returns' },
+              { name: 'blank-data rule', type: 'rule, no longer UI copy', required: true, notes: 'the permanent caution was removed from the mockup on client direction (2026-08-12) — correctly, since explanations belong in the requirement, not in the screen. THE RULE STILL APPLIES: every field in this group is optional and none can be extracted from a CV ("a CV records where someone HAS BEEN, never where they want to go"), so choosing any of them drops every CV that left the field blank as well as every CV that does not match. Option counts are now the only thing telling a recruiter that, which is a reason the counts must be right' },
+            ],
+          },
+          {
+            group: 'Filter rail · 3. CANDIDATE INFORMATION → Basic information (EXACTLY four)',
+            items: [
+              { name: 'the four', type: 'rule', required: true, notes: 'the client field sheet lists NINE Basic-information fields. Five are not filters: full name (masked until unlock), email + phone (contact details, revealed by an unlock, never a search facet), and gender + marital status (the client’s own 🔒 rule — see the CUT rows below). The remaining FOUR are the whole of this sub-group — nothing else may be added to it' },
+              { name: 'nationality', type: 'dropdown (derived options)', notes: 'defensible for work-permit and native-speaker roles — see the ⚠ block on protected fields' },
+              { name: 'CUT: gender', type: 'removed', notes: 'built on the 2026-08-12 instruction, REMOVED 2026-08-13 — back in line with the client’s own master data, which marks it "stored but never a filter/matching key". Displaying gender on a result row is unchanged and still fine; FILTERING on it is gone. Do not re-add it from an older draft — see the ⚠ block on protected fields' },
+              { name: 'CUT: maritalStatus', type: 'removed', notes: 'same 🔒 constraint and the field with no defensible hiring purpose. Built 2026-08-12, REMOVED 2026-08-13' },
+              { name: 'age (from dateOfBirth)', type: 'dropdown', notes: 'Under 25 · 25–34 · 35–44 · 45+ — BUCKETS, never a free min/max pair, so the UI cannot be pointed at a single birth year. Not marked 🔒, but carries the same discrimination exposure as gender — the client’s legal side signs it off before launch' },
+              { name: 'highestEducation', type: 'dropdown', notes: 'High school · College · Bachelor · Master · Doctor. A Basic-information field in its own right — collected at onboarding, not derived from the CV’s education entries' },
+              { name: 'yearsOfWorkExperience', type: 'dropdown', notes: 'No experience / fresher · 1–3 · 3–5 · 5+ years. Also Basic information, candidate-stated and overridable' },
+              { name: 'CUT: currently living in', type: 'removed', notes: 'the field sheet is explicit: "CURRENT location is not a field. Matching reads DESIRED work location." The filter was reading data we do not hold and is gone; location now appears once, in Work preference' },
+              { name: 'CUT: graduation status', type: 'removed', notes: 'not one of the nine. Expected-graduate remains VISIBLE on the result row (derived from the education entry’s end date) but is no longer a filter' },
+            ],
+          },
+          {
+            group: 'Filter rail · 4. CANDIDATE INFORMATION → CV content',
+            items: [
+              { name: 'jobTitle', type: 'multi-select dropdown (derived options)', required: true, notes: 'from the latest work-experience entry, resolved to the Title taxonomy. Its own field, not only reachable through the keyword box — title is the first thing a recruiter narrows on' },
+              { name: 'skills', type: 'multi-select dropdown (derived options)', required: true, notes: 'CvSkill[] — options come from the skills present in the CURRENT results, top N by count. Taxonomy ids, never strings' },
+              { name: 'certificates', type: 'multi-select dropdown (derived options)', notes: 'in regulated sectors (healthcare, accounting) this is often the hardest requirement of the whole search' },
+              { name: 'language + level', type: 'ONE paired control', required: true, notes: 'a single bordered block containing two dropdowns, because it is one question ("English, at professional level") and two loose dropdowns invite the wrong query. They MUST be applied together against the SAME languages[] entry: English-professional must not match a candidate who is basic in English and professional in Korean' },
+              { name: 'CUT: industry experience', type: 'removed', notes: 'CV content is About · work experience · education · skills · certificates · languages · projects. There is no industry field on a CV — industry is a Work-preference field (desired industry) and appears there only' },
+              { name: 'About / projects', type: 'not facets', notes: 'free text. They are searched by the keyword bar, never filtered on' },
+            ],
+          },
+          {
+            group: 'Filter rail · mechanics (apply to every group)',
+            items: [
+              { name: 'layout', type: 'UI', required: true, notes: 'a LEFT RAIL of ~240px beside the results, each group a collapsible card, all open by default. 240 rather than 200 because every field is a dropdown; the salary bounds stack rather than sitting side by side' },
+              { name: 'option counts', type: 'derived per option', required: true, notes: 'every option carries its count for the current search, rendered INSIDE the open dropdown. This is what dropdowns cost us against a checkbox list — counts are no longer visible at a glance — so the rail header says where they went' },
+              { name: 'type-to-filter', type: 'UI', required: true, notes: 'any field whose options come from a TAXONOMY rather than a short enum (job category, industry, both locations, job title, skills, certification, language) opens with a search box above the list. Nobody should scroll 42 skills to find one. It matches the canonical name AND its aliases, so "ReactJS" finds "React"' },
+              { name: 'default value', type: 'UI', required: true, notes: 'every dropdown reads "Any" when unset, and "Any" is always the first option in the list — clearing one filter must never require Clear all' },
+              { name: 'active-filter chips', type: 'derived', notes: 'above the results, each removable. In a rail this long the cause of a small result set is usually a field the recruiter has forgotten they set' },
+            ],
+          },
+        ],
+
+        sections: [
+          {
+            heading: 'Result row — what is visible while LOCKED, and what an unlock adds',
+            early: true,
+            text: 'The commercial design of the whole feature sits in this one table. Too little on the locked row and no recruiter risks a credit; too much and there is nothing left to buy. The line we draw: everything that describes the CANDIDATE’S FIT is free to read, everything that lets you CONTACT them is paid.',
+            table: {
+              cols: ['Field on the row', 'While locked', 'After unlock'],
+              rows: [
+                ['Name', 'Masked — surname + ○○ ("Trần ○○")', 'Full name'],
+                ['Gender · age', 'Shown, when the candidate supplied them', 'Shown, plus date of birth'],
+                ['Years of experience', 'Shown', 'Shown'],
+                ['Current job — company, title, period', 'Shown, employer name masked to type + city. The period carries employment status: an open end ("– nay") means still employed', 'Employer named, plus the full work history'],
+                ['Current job — description', 'Shown, clamped to ONE line', 'Shown in full'],
+                ['Earlier jobs', 'Plain text — company · title (total duration), employer masked. Overflow as "+N"', 'All of them, with dates and descriptions'],
+                ['Latest education — school, degree, graduated / expected', 'Shown', 'Shown, plus the full education history'],
+                ['Skills', 'Top skills + "+N more"', 'All skills, languages and certificates'],
+                ['Location · desired salary · availability · last updated', 'Shown', 'Shown'],
+                ['Email · phone', 'Hidden', 'Shown'],
+                ['CV file (the PDF)', 'Hidden — no preview, no thumbnail', 'Viewable and downloadable'],
+              ],
+            },
+            warn: 'CHANGED 2026-08-12 — the button now reads just "Unlock" (no "· 1 credit"), and clicking it opens the CV page DIRECTLY: the confirm dialog that showed cost and remaining balance is gone. The unlock is still logged and still pools across the team, but there is no longer a moment where the recruiter is told what it costs before it is spent. That is a real change to the paid moment, not a label tweak — if unlocks remain metered, the balance has to surface somewhere else (the page header already shows "62 / 100 unlocks left") and an accidental click now spends one. Confirm with the client whether per-CV metering is being dropped, or whether the confirm step should come back.',
+          },
+          {
+            heading: 'Filter rail — four groups, in this order',
+            text: 'A COLLAPSIBLE LEFT RAIL beside the results, with one dropdown per field. The fields are grouped by WHERE THE DATA COMES FROM, which is not cosmetic — it tells a recruiter how much to trust a field, and tells the developer which fields go thin when the CV parser is not live. Work preference sits first because it is what a recruiter with a specific vacancy narrows on first.',
+            table: {
+              cols: ['Group', 'Fields, in order', 'Source, and what it means for the recruiter'],
+              rows: [
+                ['1 · CV ACTIVITY', 'Last resume update', 'Not candidate data — our own record of when the CV was last touched. FIRST in the rail because freshness is the cheapest way to avoid spending an unlock on someone who has stopped looking.'],
+                ['2 · WORK PREFERENCE', 'Desired job role · Desired job category · Desired industry · Desired locations · Desired work type · Expected salary', 'TABLE 2 of the client’s field sheet — "Desired work condition", all six, in the sheet’s own order. Captured at onboarding, ALL OPTIONAL, and a CV can never supply them: it records where someone HAS BEEN, never where they want to go. Filtering here narrows hard, because it drops every CV that left the field blank as well as every CV that does not match.'],
+                ['3 · CANDIDATE INFORMATION → Basic information', 'Nationality · Age · Highest education · Years of work experience', 'FOUR facets since 2026-08-13. Table 1 of the field sheet minus full name (masked until unlock), minus email + phone (contact, never a filter), and minus GENDER + MARITAL STATUS — both 🔒 in the client’s own master data and removed from the panel. Nothing else belongs here.'],
+                ['4 · CANDIDATE INFORMATION → CV content', 'Job title · Skills · Certificates · Language + level', 'TABLE 3 — the searchable parts of a CV. About and projects are free text and belong to the keyword bar; education is covered by Highest education above.'],
+              ],
+            },
+            items: [
+              'TWO SPLITS the grouping exposed, both now real pairs of fields rather than one ambiguous filter. LOCATION: where the candidate LIVES (Profile) versus where they WANT TO WORK (Work preference) — a recruiter filtering "Hồ Chí Minh" almost always means the second. INDUSTRY: where they HAVE worked ("Industry experience", Work information) versus the industry they are aiming for ("Desired industry", Work preference). Neither pair may silently stand in for the other, and the ambiguous free location box beside the keyword field is gone for the same reason.',
+              'SUMMARY versus DETAIL is why Highest education and Years of work experience sit in Profile rather than Work information. A recruiter screens on "bachelor, 5+ years" before reading which school and which jobs; the per-entry data stays CV content.',
+              'LANGUAGE + LEVEL render as ONE bordered block containing two dropdowns, because they are one question. They must be applied together against the SAME languages[] entry: "English · Professional" must not match a candidate who is basic in English and professional in Korean.',
+              'LAST RESUME UPDATE is a pill row, not a dropdown — it is the most-used control in the rail and one click beats two. Any · Today · Yesterday · 3 days ago · 1 Week · 2 Weeks · 1 Month · 2 Months · 6 Months · 12 Months, cumulative, defaulting to Any.',
+              'TYPE-TO-FILTER inside any dropdown whose options come from a taxonomy rather than a short enum. Nobody should scroll 42 skills to find one, and the search must match aliases as well as canonical names.',
+              'THE OPTIONAL-DATA WARNING that used to sit in the Work preference group was removed from the screen (2026-08-12) — correctly, since explanations belong here rather than in a mockup. The rule it carried has not changed: choosing any Work-preference filter also drops every CV that left that field blank, and those are the most-skipped fields on the profile. Option counts are now the only signal of that, which is one more reason the counts have to be right.',
+            ],
+          },
+          {
+            heading: '⚠ GENDER AND MARITAL STATUS AS FILTERS CONTRADICT THE CLIENT’S OWN WRITTEN RULE',
+            text: 'This is not our objection — it is the client’s. Their master-data export marks the gender and marital-status tables 🔒 and states the constraint in their own words: "stored but never a filter/matching key; enforce at API + search when wired." The Resume-management module already carries that quote, with a note to repeat it back whenever someone asks for a gender filter on CV search. On 2026-08-12 we were asked to add exactly those two as filters and both were built; on 2026-08-13 they were REMOVED again, putting us back in line with the client’s written rule. This block stays as the record of that round trip, so nobody re-adds them from an older draft.',
+            table: {
+              cols: ['Field', 'Defensible hiring use', 'Where it stands'],
+              rows: [
+                ['Gender', 'None as a FILTER. Legitimate to display on a row.', '✅ RESOLVED — REMOVED from the filter panel 2026-08-13, back in line with the client’s own 🔒 rule. Displaying gender on a result row is unchanged and still fine; FILTERING on it is gone.'],
+                ['Marital status', 'None we can identify. It predicts neither performance, availability nor tenure.', '✅ RESOLVED — REMOVED 2026-08-13. It was also the single most challengeable field here: in practice it is used to infer whether a woman may take maternity leave, which is precisely the inference discrimination law exists to prevent.'],
+                ['Nationality', 'Real, and common in Vietnam: work-permit eligibility, native-speaker roles, foreign-invested employers with quotas.', 'NOT marked 🔒. A protected characteristic, but defensible where the requirement is genuine and recorded. **TWO VALUES ONLY — Việt Nam / Nước ngoài** (Master data → Quốc tịch ứng viên), decided 2026-08-13.'],
+                ['Age (from date of birth)', 'Weak as a filter; legitimate to display.', 'Not marked 🔒, but carries the same discrimination exposure as gender. Buckets only, never a free min/max.'],
+              ],
+            },
+            items: [
+              'NATIONALITY IS A TWO-VALUE LIST — Việt Nam / Nước ngoài — not a country picker. The question an employer actually needs answered is “do we have to sponsor a work permit?”, and that has two answers. A per-country list would turn a sensitive personal field into a filter that sorts a candidate pool by passport, which is the discrimination exposure this whole block is about; and a role that genuinely needs Japanese or Korean is a LANGUAGE SKILL, which is already its own field and a better match anyway.',
+              'Deliberately ASYMMETRIC with the company Country list, which holds all ~196 countries. A company’s country of registration is public data on its licence and decides tax treatment, so it must be exact. A jobseeker’s nationality is sensitive personal data (NĐ 13/2023) with one narrow use, so it is collected at the coarsest grain that still answers the question.',
+              'If work-permit status itself becomes a filter later, model THAT — đã có GPLĐ / được miễn / cần bảo lãnh — rather than widening nationality. It is the fact employers want, and it is not a protected characteristic.',
+            ],
+            warn: '✅ CLOSED 2026-08-13 — gender and marital status are no longer filters, so no written reversal is needed and none should be requested. The rest is kept as the argument to reach for if the request returns. BEFORE BUILDING: get the client to confirm IN WRITING that they are reversing their own "never a filter/matching key" rule for gender and marital status. Their sheet also specifies WHERE the old rule was to be enforced — at the API layer AND in the search index — so reversing it is not a UI change, it is a decision to let those two fields enter the index at all. Recommendation unchanged: ship nationality, and put gender + marital status in front of the client’s legal counsel first. Every query using them is logged (FacetAudit); cutting two dropdowns is a five-minute change.',
+          },
+          {
+            heading: 'CV detail — a PAGE, and the same three groups as the data model',
+            text: 'Unlock (and View CV on an already-unlocked row) opens the CV as its OWN PAGE, not a dialog. A CV is a document a recruiter reads end to end, forwards to a colleague and prints; a 560px modal fights all three. Back returns to the result list with the search intact.',
+            table: {
+              cols: ['Section', 'Holds', 'Note'],
+              rows: [
+                ['1 · Basic information', 'Full name · email · phone · nationality · gender · marital status · date of birth (with age) · highest education · years of work experience', 'All NINE, including the three that are not search facets. Contact details are the thing an unlock actually buys.'],
+                ['2 · Work preference', 'Desired job role · desired job category · desired industry · desired work location · expected salary · desired work type', 'The six the candidate set. Saramin KR gives this its own heading at the foot of the resume ("the conditions ○○ set"), and we follow that placement.'],
+                ['3 · CV content', 'About · work experience[] · education[] · certificates[] · skills[] · languages[] · projects[] · the CV document', 'The CV itself. Work experience and education render as period-left / content-right rows so the dates can be scanned as a column.'],
+              ],
+            },
+            items: [
+              'Header: photo (initials where there is none), full name, and the identity line — role · gender · age · years. Plus who unlocked it and when, because the unlock is pooled across the team.',
+              'Page actions: Download CV · Add to a job pipeline · Contact candidate. Download serves the ORIGINAL document, not a re-render.',
+              'Row layout follows the client’s Figma reference: a fixed ~130px period column on the left, bold entity + meta + description on the right, sections separated by a rule under the heading.',
+              'The three section numbers are deliberate — they are the same 1/2/3 as the candidate-data model, so a developer reading this page and a developer reading the schema are looking at the same structure.',
+            ],
+          },
+          {
+            heading: 'Keyword search — three boxes, no operator syntax',
+            text: 'Following Saramin KR’s employer search: instead of one box in which a recruiter must know to type AND, OR, quotes and minus signs, there are three boxes, each a plain comma-separated list. The screen states the logic; the recruiter states the words.',
+            table: {
+              cols: ['Box', 'Placeholder', 'Meaning'],
+              rows: [
+                ['OR', 'any of these words', 'The main query. A CV matches if it contains at least one — "điều dưỡng, y tá" catches both names for the same role.'],
+                ['AND', 'must contain every one', 'Narrowing. Every term here must also appear.'],
+                ['NOT', 'exclude these words', 'Removal. Any CV containing one of these is dropped — the box that gets rid of the near-miss profession a broad term keeps dragging in.'],
+              ],
+            },
+            items: [
+              'The combined query is (or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …). Empty boxes drop out of the expression; an empty OR box with filters set is a valid "browse the pool" search.',
+              'The keyword scope selector (All fields · Job title only · Skills only · Company only) sits under the bar and is ORTHOGONAL to the operators: the boxes say which words, the scope says where to look. "điều dưỡng" as a job TITLE and as a word buried in a description return very different people.',
+              'Matched across title, skills, work-experience company/title/description, education school/major, and certifications. Never across contact fields.',
+              'RESET · LOAD A SAVED SEARCH · SAVE THIS SEARCH sit on the same band. A saved search stores the three keyword lists AND every filter — the whole condition, not just the words.',
+            ],
+          },
+          {
+            heading: 'Every filter, and the field it reads',
+            text: 'No filter on this screen invents a field. Each one maps to something the profile or the CV already holds — this table is the check, and anything that cannot fill a row here does not ship as a filter.',
+            table: {
+              cols: ['Filter', 'Field it reads', 'Where that field comes from'],
+              rows: [
+                ['CV ACTIVITY — Last resume update', 'lastUpdatedAt', 'System'],
+                ['WORK PREF — Desired job role', 'desiredJobRole', 'Field sheet, Desired work condition 1/6'],
+                ['WORK PREF — Desired job category', 'desiredJobCategory', 'Field sheet 2/6 — the same category master the job form writes'],
+                ['WORK PREF — Desired industry', 'desiredIndustry', 'Field sheet 3/6'],
+                ['WORK PREF — Desired locations', 'desiredWorkLocation', 'Field sheet 4/6 — THE ONLY location we hold'],
+                ['WORK PREF — Desired work type', 'desiredWorkType', 'Field sheet 5/6 — in office · remote · hybrid · oversea, the shared `job_type` master'],
+                ['WORK PREF — Expected salary (VND · USD)', 'expectedSalary { kind, currency, min, max }', 'Field sheet 6/6 — currency is ALREADY on the field; no data work needed'],
+                ['BASIC INFO — Nationality', 'nationality', 'Field sheet, Basic information (sign-up)'],
+                ['BASIC INFO — Gender', 'gender', 'Basic information (sign-up) — ⚠ marked 🔒 "never a filter key" in the client’s own master data'],
+                ['BASIC INFO — Marital status', 'maritalStatus', 'Basic information (sign-up) — ⚠ marked 🔒 in the client’s own master data'],
+                ['BASIC INFO — Age', 'dateOfBirth', 'Basic information (sign-up) — age is COMPUTED at query time, never stored'],
+                ['BASIC INFO — Highest education', 'highestEducation', 'Basic information (onboarding) — a stated field, NOT derived from the CV’s education entries'],
+                ['BASIC INFO — Years of work experience', 'yearsOfWorkExperience', 'Basic information (onboarding) — stated, overridable'],
+                ['CV CONTENT — Job title', 'workExperience[latest].title', 'CV content → Title taxonomy'],
+                ['CV CONTENT — Skills', 'CvSkill[] (cvId · skillId · source)', 'CV content — extracted or hand-added → Skill taxonomy'],
+                ['CV CONTENT — Certificates', 'certificates[] { name, issuer, date }', 'CV content'],
+                ['CV CONTENT — Language + level', 'languages[] { language, proficiency }', 'The `language` (8 rows) and `language_proficiency` (7 rows, CEFR) masters. Indexed AS A PAIR — languages are NOT skills'],
+              ],
+            },
+            warn: 'CUT because the field does not exist in the client’s 15-field sheet — do not re-add without adding the field first: AVAILABILITY / notice period, EMPLOYMENT TYPE (full-time/part-time is not separate from desired work type), CURRENTLY LIVING IN (the sheet states plainly that current location is not a field), INDUSTRY EXPERIENCE (a CV has no industry field), GRADUATION STATUS (not one of the nine; still shown on the row, just not filterable). Separately cut on client direction, all backed by real fields and re-addable in minutes: the "include Thỏa thuận" checkbox and the two credit-protection toggles. Also recorded so nobody builds from an earlier draft: `expectedSalary` always carried currency VND · USD — the older `desiredSalary: int (VND)` sketch in CV data & matching architecture is superseded by it.',
+          },
+          {
+            heading: 'Salary — ONE figure from the candidate, a RANGE from the employer',
+            text: 'CANONICAL RULES live in the feature "Salary — the one contract" in this module, which covers all five surfaces at once; this section is the CV-SEARCH application of them, case by case. The two sides are deliberately different shapes, and that asymmetry IS the logic. A CANDIDATE states a single expected figure ("Từ 15 triệu"). An EMPLOYER posting a job states a band, and an employer searching CVs also filters by a band (DECIDED 2026-08-13, client direction). So a CV matches when THE CANDIDATE’S ONE FIGURE FALLS INSIDE THE EMPLOYER’S BAND — a point-in-range test, not two ranges overlapping. There is no second candidate number to overlap with.',
+            table: {
+              cols: ['What the candidate stated', 'Employer filters VND 15 – 25 triệu / month', 'Why'],
+              rows: [
+                ['MONTHLY · VND · 18 triệu', 'MATCH', '18 falls inside 15 – 25.'],
+                ['MONTHLY · VND · 15 triệu', 'MATCH', 'Bounds are INCLUSIVE at both ends.'],
+                ['MONTHLY · VND · 30 triệu', 'no match', 'Above the band — the recruiter cannot afford them, which is the whole point of the ceiling.'],
+                ['MONTHLY · VND · 12 triệu', 'no match', 'Below the band. Note this is the one case worth watching — see the "From" bound item below.'],
+                ['Filter has only a To bound (Any – 25)', 'MATCH for anything ≤ 25', 'An unset From is treated as 0. This is the affordability screen most recruiters actually want.'],
+                ['Filter has only a From bound (15 – Any)', 'MATCH for anything ≥ 15', 'An unset To is treated as +∞.'],
+                ['ANNUAL · VND · 240 triệu / year', 'MATCH', 'Normalised ÷12 to 20 triệu / month FIRST, then tested. Without this a 240/year figure is compared against a monthly band and fails.'],
+                ['MONTHLY · USD · 1,200', 'not shown, but COUNTED', 'Different currency: never compared numerically. Excluded from this result set and reported under it — "12 candidates ask in USD — switch the currency to see them."'],
+                ['kind = INTERVIEW ("thỏa thuận")', 'MATCH', 'Negotiable is a VALUE, not a null. There is no figure to test, and these are often the candidates most worth calling.'],
+                ['kind = INTERNAL_RULE ("theo quy định công ty")', 'MATCH', 'Same reasoning as INTERVIEW.'],
+                ['Nothing stated at all (field left blank)', 'MATCH, and flagged on the row', 'Expected salary is OPTIONAL. Excluding blanks would silently delete most of the pool the moment a recruiter touches the salary filter — the single most damaging default available here.'],
+              ],
+            },
+            items: [
+              'THE TEST, in one line: `filter.from ≤ candidate.expectedSalary ≤ filter.to`, both bounds inclusive, an unset From meaning 0 and an unset To meaning +∞.',
+              'WRITE IT AS AN OVERLAP ANYWAY — `candidate.min ≤ filter.to AND (candidate.max ?? candidate.min) ≥ filter.from`. With today’s single-figure candidate form `max` is null, so this evaluates to exactly the point-in-range test above; if the candidate form ever becomes a range it becomes a true overlap with no change to the query. One expression, correct in both worlds.',
+              'THE "FROM" BOUND EXCLUDES CHEAPER CANDIDATES, and that is worth a conscious decision rather than a shrug. A recruiter with a 15 – 25 band does not see someone who asked 12, even though that candidate would almost certainly say yes. Recruiters do use a floor as a rough seniority proxy, so the bound is not useless — but if the client finds the behaviour too strict, the fix is to make From optional-by-default in the UI, NOT to change the comparison. Softening the comparison would make the two bounds mean different things, which nobody can predict.',
+              'PERIOD: `kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. Normalise ANNUAL to monthly (÷12) WITHIN the same currency before comparing. Dividing by 12 is arithmetic and always safe; converting between currencies is not.',
+              'CURRENCY: the switch re-labels the bounds and scopes the query to that currency. It must NOT convert — we hold no exchange rate, any rate is stale within weeks, and a converted salary shown to an employer is a number the candidate never said.',
+              'SAY WHAT THE CURRENCY SCOPE EXCLUDED, because silence here reads as “there is nobody else”. Under the results: “12 candidates ask in USD and are not shown — switch the currency to see them.” No exchange rate is needed to count them, and one line turns an invisible gap into a visible, fixable one. Same rule anywhere a currency-scoped query hides rows.',
+              'THE THREE PASS-THROUGH CASES — INTERVIEW, INTERNAL_RULE and blank — are included by DEFAULT and that default lives in the query, not in a checkbox. The "Also include Thỏa thuận" checkbox was cut from the UI on 2026-08-12; the behaviour it protected did not go with it. If the client ever wants these excluded, that must be an explicit, labelled control — never a side effect of setting a bound.',
+              'Bounds are PRESETS in a dropdown, not free number entry. Free entry invites 15000000 against 15 and a result set of zero.',
+              'DEFAULT CURRENCY is VND, because the overwhelming majority of a Vietnamese pool states VND. The switch is there for the minority, and the excluded-count line is what tells a recruiter the minority exists.',
+              'FACET COUNTS obey the same scope: the counts shown on every other filter are counts WITHIN the current currency scope. A recruiter who switches VND → USD should expect every count in the rail to change, and nothing else about the query to.',
+              'Display always shows what the candidate wrote — currency, period and all. Normalisation exists for comparison inside the index and must never reach the screen.',
+              'WHY THE FILTER EXCLUDES CROSS-CURRENCY WHILE THE MATCH SCORE STAYS NEUTRAL. These look inconsistent and are not: a FILTER is a question a recruiter asked ("show me people in this band"), and a number we cannot compare cannot answer it — so it is set aside and counted out loud. A MATCH SCORE is our own summary of fit, where an unanswerable signal must not be allowed to punish a candidate, so it scores neutral (see the CV↔JD matching rules). Do not "fix" either one to match the other.',
+            ],
+          },
+          {
+            heading: 'Filter panel — what is query-driven and what is fixed',
+            text: 'The panel is dynamic in only two ways, and confusing them produces a panel that is either useless or unlearnable. The GROUPS and the fields inside them are FIXED and always render in the same order, even when one is entirely empty for the current query. What changes with the query is the counts on every option, and the option LIST of the open-ended fields.',
+            table: {
+              cols: ['Part of the panel', 'Query-driven?', 'Rule'],
+              rows: [
+                ['The four groups, the fields in them, and their order', 'No — fixed', 'A recruiter who learns where Desired salary sits must find it in the same place on the next search. Never hide, reorder or add a field based on the query.'],
+                ['Counts on every option', 'Yes — always live', 'Each option shows how many of the CURRENT results it would keep, e.g. "Hồ Chí Minh (181)". With dropdowns these render inside the open list. This is what turns the panel from guesswork into navigation.'],
+                ['Options of Job category · Desired industry · Industry experience · Job title · Skills · Certification · Language · Nationality · both Locations', 'Yes — drawn from the results', 'List only values PRESENT in the current result set, top N by count, with a type-to-filter box above the list. Searching "điều dưỡng" surfaces nursing skills; "kế toán" surfaces accounting ones. A hardcoded list of three skills is decoration, not a filter.'],
+                ['Options of Gender · Age · Marital status · Highest education · Graduation · Years of experience · Level · Availability · Employment type · Salary bounds · Last update', 'No — fixed enums', 'These are closed vocabularies with a natural order. Render every value always, including the zero ones.'],
+                ['A zero-count option', 'n/a', 'Shown, greyed and unselectable — NOT hidden. "Master (0)" tells the recruiter the pool has no masters; a missing row tells them nothing and reads as a bug.'],
+                ['The "Any" option', 'n/a', 'Always first in every dropdown, and the default. Clearing one filter must never require Clear all.'],
+              ],
+            },
+            items: [
+              'THE COUNTING RULE, and the one most implementations get wrong: a field’s counts are computed with every OTHER active filter applied, but WITHOUT its own. Choose "Hồ Chí Minh" and the location list must still show Hà Nội (21) — computed as if that field were unset — while every other field’s counts drop to the HCMC subset. Count a field against its own selection and every unchosen option in it reads 0, which makes multi-select impossible.',
+              'An option the recruiter has already chosen is NEVER removed, even when a later filter drops its count to 0. Their own choice vanishing from the list is the most disorienting thing a faceted search can do.',
+              'Active filters also render as removable chips above the results, because in a panel this size the reason a search returned 3 people is usually a field the recruiter has forgotten they set.',
+              'Counts come back from the search engine in the SAME response as the results — one round trip, not one request per field. Facet aggregation is a solved feature in every search index; the choice of index (see the research task) should be made partly on how well it does this.',
+              'Phase-1 fallback: if the launch index cannot aggregate cheaply, ship the fixed groups WITHOUT counts rather than with stale or wrong ones. A wrong count is worse than no count — it is a promise about the result set.',
+            ],
+          },
+          {
+            heading: 'Re-identification — the risk this field set creates',
+            text: 'Masking the name is not the same as anonymity. Gender + age + employer name + job title + school is, in a market the size of Vietnam, frequently enough to identify one person — a recruiter who reads "Nữ · 34 · Điều dưỡng trưởng khoa Ngoại · BV Quốc tế Mỹ" has effectively identified the candidate without spending a credit. This is a deliberate trade, not an oversight, and it needs a decision rather than a default.',
+            items: [
+              'The value case: a recruiter who cannot see the current employer cannot judge seniority or sector fit, and will not spend credits blind. Reference products (Saramin KR, VietnamWorks) all show it.',
+              'Mitigation held in Phase-1: contact details and the CV file stay locked, every unlock is logged and attributed, and the candidate can leave the pool at any time via visibility consent.',
+              'Alternative if legal objects to the employer name: show industry + company size instead ("Bệnh viện tư · 500–1000 nhân sự"), keeping the signal and dropping the identifier. Costs a mapping table, nothing more.',
+              'Third option, candidate-controlled: let the candidate hide their current employer from search the way they already control overall visibility — Saramin KR and LinkedIn both do this. Costs one more field on the CV visibility screen.',
+            ],
+            warn: 'Do not ship gender and age as facets before the client’s legal side has signed them off. Filtering a candidate pool by gender or age is the textbook shape of a discrimination claim, and the log of who filtered by what is discoverable.',
+          },
+          {
+            heading: 'Where each field comes from — nothing new is asked of the candidate',
+            text: 'Every field on the row already exists upstream. This screen is a read model, not a new collection point; if a field is blank here the fix is upstream, in extraction or in the CV form.',
+            table: {
+              cols: ['Row field', 'Source', 'If missing'],
+              rows: [
+                ['Gender, date of birth → age', 'Basic information on the CV (reinstated 2026-08-09, both optional)', 'The row silently omits the demographic line — never a placeholder'],
+                ['Years of experience', 'Derived from CV work history (totalYearsExperience)', 'No work history → "Fresher · under 1 yr"'],
+                ['Latest company block', 'The most recent Work-experience entry (isCurrent first, else latest endDate)', '"No work experience yet"'],
+                ['Latest education block', 'The most recent Education entry', 'The block is omitted; the CV loses completeness score and drops in ranking'],
+                ['Skills', 'CvSkill[] resolved to the Skill taxonomy', 'The row still renders; unresolved free-text skills are NOT shown, because they are not searchable'],
+              ],
+            },
+          },
+          {
+            heading: 'Research scope — what to investigate',
+            items: [
+              'A. DATA & STRUCTURE — what fields make up a CV; which are structured (searchable/filterable) vs. free text; how each CV is stored so search is fast; how we "featurize" a CV (which attributes we extract and index).',
+              'B. SEARCH & FILTER CRITERIA — the realistic criteria employers search by: keyword, job title, skills, years of experience, location, industry, education level, salary expectation, availability, last-active/updated date. Which are hard filters vs. soft/optional, and which matter most.',
+              'C. MATCHING & RANKING — how results are ordered (relevance scoring, field weighting, recency, profile completeness); how to handle "no exact match" (fuzzy / related results).',
+              'D. REFERENCE STUDY — how existing products organise and expose CV search, what to copy / avoid / do better (see Reference products below).',
+              'E. GATING & PRIVACY — how results stay LOCKED until a package is bought; candidate visibility consent (a seeker must be discoverable); what an unlock consumes (credits) and reveals.',
+            ],
+          },
+          {
+            heading: 'Living document — maintain as you go (not just a final answer)',
+            items: [
+              'Findings — data structure, criteria, ranking approach.',
+              'Reference notes — screenshots + notes from VietnamWorks and others.',
+              'Proposed data model & search logic — recommended fields, filters, index, ranking.',
+              'Open questions / decisions needed — anything blocking, for us to decide or provide.',
+              'Assumptions — what was assumed where information was missing.',
+              'Keep it updated continuously and flag blockers early so we can support you.',
+            ],
+          },
+          {
+            heading: 'Reference products to study',
+            items: [
+              'VietnamWorks — primary reference. We provide a login/account ID and buy the credits needed to test search, filters, result presentation and the unlock/credit model.',
+              'Our own Admin "Resume list" — how HQ already views CVs.',
+              'Secondary comparisons: TopCV, ITviec, LinkedIn Recruiter — filter sets and ranking cues.',
+            ],
+          },
+          {
+            heading: 'What we provide / how we support',
+            items: [
+              'Sample CV data — a small set (~2–3 CVs) to validate the model against, provided later.',
+              'VietnamWorks access — account ID + purchased test credits.',
+              'Fast product decisions — raise questions in the living document or directly.',
+            ],
+          },
+          {
+            heading: 'Suggested phases',
+            items: [
+              '1. Study references (VietnamWorks + our Admin resume list) → notes.',
+              '2. Draft data model + criteria list → review with BA / product.',
+              '3. Validate against real sample CVs once provided → refine.',
+              '4. Propose search + ranking logic → review before any build.',
+            ],
+          },
+        ],
+
+        backend: {
+          notes:
+            'STARTING SKETCH ONLY — to be confirmed by the research. The point of the discovery task is to decide the real shape of this. Search likely needs a dedicated index (e.g. full-text / faceted) separate from the primary CV store.',
+          dataModel: [
+            { name: 'cvId', type: 'uuid', notes: 'the searchable CV — one per seeker (up to 3 held)' },
+            { name: 'seekerId', type: 'uuid' },
+            { name: 'title / desiredPosition', type: 'string', notes: 'primary keyword field' },
+            { name: 'skills', type: 'skillId[]', notes: 'the indexed facet, denormalised from CvSkill — taxonomy ids, never strings' },
+            { name: 'experienceYears', type: 'enum/number', notes: 'derived from work history?' },
+            { name: 'currentLocation', type: 'enum (province/city)', notes: 'where the candidate LIVES — from Basic information. Its own facet ("Currently living in")' },
+            { name: 'desiredLocation', type: 'enum (province/city)[]', notes: 'where they WANT TO WORK — a candidate ask, optional, possibly several. Its own facet ("Wants to work in"). Never conflate the two: see the location split in the filter-rail section' },
+            { name: 'industry / category', type: 'enum' },
+            { name: 'educationLevel', type: 'enum' },
+            { name: 'expectedSalary', type: '{ kind, currency, min, max? }', notes: 'EXISTING FIELD from Job preferences — kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE, currency: VND · USD. ONE figure today: the candidate form writes `min` and leaves `max` null; the employer filters by a BAND and the figure is tested against it. Index a derived MONTHLY value PER CURRENCY for that test, and keep the written value for display. Never converted between currencies' },
+            { name: 'desiredEmploymentTypes / desiredWorkTypes', type: 'enum[] / enum[]', notes: 'EXISTING fields from Job preferences — employment type (FULL_TIME · CONTRACT · FREELANCE · INTERN · DISPATCH · ENTRUSTED · PART_TIME) and work type (in-office · remote · hybrid · oversea, the shared `job_type` master). Indexed as facets; nothing new to collect' },
+            { name: 'desiredJobCategories', type: 'string[]', notes: 'Job preferences — the "Desired role" facet, resolving to the same category master the job form writes' },
+            { name: 'languages', type: '{ language, proficiency }[]', notes: 'INDEXED AS A PAIR, not as two independent lists — "English · Professional" must match the same entry, never English from one row and Professional from another' },
+            { name: 'certifications', type: 'embedded[]', notes: 'already on CandidateProfile — now indexed as a facet' },
+            { name: 'unlockedByCompany', type: 'derived per query', notes: 'joins the unlock log for the SEARCHING company — powers "exclude already unlocked". Scoped to companyId, never to the individual user, because the quota is pooled' },
+            { name: 'inPipelineForCompany', type: 'derived per query', notes: 'joins this company’s applications — powers "exclude already in one of our pipelines"' },
+            { name: 'gender', type: 'enum? (nam|nu|khac)', notes: 'ROW + FACET. Denormalised from Basic information; nullable because the field is optional. A null must be excluded from a gender facet query, not bucketed into "other"' },
+            { name: 'dateOfBirth', type: 'date?', notes: 'INDEXED, but age is computed at query time — storing an integer age silently rots. Age buckets are the only exposed form (see the UI fields)' },
+            { name: 'latestExperience', type: 'embedded object', notes: 'ROW BLOCK — { companyName, title, titleId, startDate, endDate, isCurrent, description }. Denormalised onto the search document at index time: the row must never fan out a second query per result' },
+            { name: 'latestEducation', type: 'embedded object', notes: 'ROW BLOCK — { school, degree, major, level, graduationStatus, graduationDate }' },
+            { name: 'graduationStatus', type: 'enum', notes: 'FACET — graduated · expected · attending · left. Derived from the latest education entry’s dates when the candidate did not state it explicitly' },
+            { name: 'visibility', type: 'enum', notes: 'discoverable · hidden — candidate consent gate' },
+            { name: 'lastUpdatedAt / lastActiveAt', type: 'timestamp', notes: 'recency signal for ranking' },
+            { name: 'completenessScore', type: 'number', notes: 'ranking signal — how filled-in the CV is' },
+            { name: 'FacetAudit', type: 'entity', notes: 'companyUserId, filters used, resultCount, timestamp — a query log kept because gender/age filtering has to be answerable after the fact. Retention to be set with legal' },
+          ],
+          endpoints: [
+            'GET /company/resumes/search — faceted search; returns LOCKED previews + result count + FACET AGGREGATIONS (per-option counts, and the derived option lists for skills/industry/location) in ONE response. Each facet is aggregated with the other active filters applied but not its own — see the filter-rail counting rule',
+            'POST /company/resumes/:id/unlock — consume a credit/package to reveal full CV + contact',
+            'GET /company/resumes/:id — full CV (only after unlock)',
+          ],
+          integrations: ['Package / credit balance (Products & packages)', 'Candidate visibility consent'],
+        },
+
+        openQuestions: [
+          'ANSWERED (2026-08-10, client direction) — what a locked row shows: masked name, gender · age, years of experience, latest company (name, title, period, description), latest education (school, degree, graduated / expected) and skills. See the locked/unlocked table above. What remains open is only the four items below.',
+          '[LEGAL — blocker for the facets, not for the display] Gender and age as FILTERS. Showing them on a row is one thing; letting an employer exclude a pool by them is another, and it is the shape a discrimination claim takes. Does the client accept the facets, and does their legal side sign them off? If not, we keep the fields on the row and drop the two facets — a one-line change.',
+          'Does the locked row show the latest company by NAME, or by industry + size? Name is what the reference products do and what makes the field worth reading; it is also, combined with gender + age + title, usually enough to identify the candidate before any credit is spent. Client decision.',
+          'Should a candidate be able to hide their current employer from search while staying discoverable (the LinkedIn / Saramin-KR control)? Costs one field on the CV visibility screen and closes most of the re-identification objection.',
+          'Is desired salary shown on the LOCKED row, or only after unlock? It is one of the strongest screening signals, so showing it lifts unlock rates — and it is also the field candidates are least comfortable broadcasting.',
+          'CLOSED — "desired job type" needs no new field. It is `desiredEmploymentTypes`, already an enum on Job preferences, and `desiredWorkTypes` covers remote/hybrid. Both are now facets.',
+          'RESOLVED by removing it — the ambiguous free "Location" box beside the keyword field is gone. Location is two dropdowns inside the panel ("Currently living in", "Wants to work in"), so nothing has to guess which one the recruiter meant.',
+          'CLOSED — the two-currency salary filter needs no new field. `expectedSalary` already carries `currency: VND · USD` and `kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE`; the full behaviour is specified in the salary case table.',
+          '[CLIENT] Salary — the one decision left: we never convert between currencies, so a VND-bounded search sets USD asks aside and reports them as a count ("12 candidates ask in USD — switch the currency to see them"). The alternative is an admin-maintained exchange rate used for COMPARISON ONLY, never displayed, so one search spans both currencies. That is more convenient and strictly less honest: the rate goes stale, and a candidate can be included or excluded by a number nobody agreed to. Recommend shipping the count-and-switch behaviour and revisiting only if USD asks turn out to be more than a few percent of the pool — which the count line will tell us.',
+          '[CLIENT] Should a salary bound be allowed to EXCLUDE the pass-through cases (thỏa thuận, theo quy định công ty, and blank)? Today all three are always included, because excluding blanks alone would delete most of the pool. If a recruiter genuinely wants "only candidates who stated a number in this band", that needs its own labelled checkbox — confirm whether it is wanted before we add one.',
+          'Does the client want language and proficiency filtered as a PAIR (English at professional level) or independently (speaks English · has some professional-level language)? The pair is what the reference screenshot implies and what recruiters mean, but it is the more expensive index.',
+          'Does an unlock consume credits per-CV, and does re-viewing an already-unlocked CV cost again?',
+          'Is "one seeker = one CV" firm for Phase-1, or can a seeker have multiple CVs to search over?',
+          'What is the default candidate visibility — opt-in (discoverable only if the seeker allows) or opt-out?',
+          'Which criteria are the priority filters for launch, and what drives default result ranking?',
+          'Do we need our own search index (full-text/faceted), or is DB querying enough for Phase-1 volume?',
+        ],
+      },
+    },
+
     {
       name: 'Create resume',
       site: 'Admin',
@@ -1332,11 +1724,471 @@ export const resumeManagement: BuildModule = {
         ],
       },
     },
+    {
+      name: 'Salary — the one contract',
+      site: 'Logic',
+      scope: ['BE', 'FE', 'UI'],
+      ready: true,
+      notes: 'Cross-cutting. Salary is WRITTEN on two surfaces and READ on three, and every one of them has to agree. This page is the single source for all five.',
+      detail: {
+        description:
+          'Salary touches more screens than any other field in the product: a candidate states one, an employer posts one, and search, matching and the job card all read them. Until this page existed the rules were spread across Job management, Resume management and the onboarding spec, and they did not fully agree. This is the canonical version — extracted here so it can be found by someone looking for salary rules rather than by someone who happens to open a page about CV architecture.',
+        userStory:
+          'As a developer touching any screen that shows or captures a salary, I want ONE place that says what shape it takes, how it is stored and how it is compared — so that the figure a candidate typed and the band an employer posted can actually be matched.',
+        keyPoints: [
+          { vi: 'Ứng viên nhập MỘT con số. Nhà tuyển dụng nhập một KHOẢNG. Hai hình dạng khác nhau, đừng ép chung một kiểu.', en: 'A candidate states ONE figure. An employer posts a BAND. Two different shapes — do not force one type on both.' },
+          { vi: '“Thỏa thuận” là một giá trị hợp lệ ở cả hai phía, không phải ô để trống.', en: '“Thỏa thuận” (negotiable) is a valid VALUE on both sides, not an empty field.' },
+          { vi: 'Không có lương thì KHÔNG bị trừ điểm — thiếu ràng buộc khác với không phù hợp.', en: 'A missing salary is never penalised in matching — absence of a constraint is not a mismatch.' },
+        ],
+        sections: [
+          {
+            heading: '★ SALARY — the one contract, across all five surfaces',
+            early: true,
+            text:
+              'THE CANONICAL SALARY SPEC. Salary is written on two surfaces and read on three, and until 2026-08-13 the rules lived scattered across Job management, Jobseeker user management and this module — which is how the candidate form came to take one number while its own requirement said "range", and how the jobseeker-side job-search salary facet ended up with no currency at all. Everything below is authoritative; anywhere else that mentions salary points here rather than restating it. If you change a rule, change it HERE.',
+            table: {
+              cols: ['Surface', 'Shape', 'Stored as', 'Why this shape'],
+              rows: [
+                ['1 · CANDIDATE states an expected salary (onboarding step 3 / profile edit)', 'ONE figure + period + currency, or "Thỏa thuận"', '`expectedSalary { kind, currency, min, max }` — the figure goes in `min`, `max` stays NULL', 'Nobody turns down more money, so a candidate’s upper bound is noise. One number is also the lowest-friction version of the single most-skipped field on the profile.'],
+                ['2 · EMPLOYER posts a job', 'A from–to BAND + currency, or "Thỏa thuận"', '`salaryType(negotiable|range) · salaryMin · salaryMax · salaryCurrency`', 'A hiring budget genuinely is a band, and the posted range is a marketing signal that drives applications.'],
+                ['3 · EMPLOYER filters CV search', 'A from–to BAND + currency (client direction, 2026-08-13)', 'query only — nothing stored', 'The recruiter is screening for affordability against a budget they already have.'],
+                ['4 · JOBSEEKER filters job search', 'A from–to BAND + currency', 'query only — nothing stored', 'The mirror image of surface 3, and the one that was MISSING a currency until 2026-08-13. Same rules apply in both directions.'],
+                ['5 · SYSTEM scores CV ↔ JD', 'derived, weight 7', 'no new storage', 'Reads surfaces 1 and 2 and produces a fit signal — see the match-weights table in this module.'],
+              ],
+            },
+            items: [
+              'THE COMPARISON, and it is the SAME test for surfaces 3 and 4: the candidate’s ONE figure must fall inside the employer’s band — `band.from ≤ figure ≤ band.to`, both bounds inclusive, an unset from meaning 0 and an unset to meaning +∞. Point-in-range, NOT two ranges overlapping: there is no second candidate number to overlap with.',
+              'WRITE IT AS AN OVERLAP ANYWAY — `candidate.min ≤ band.to AND (candidate.max ?? candidate.min) ≥ band.from`. With `max` null today this is exactly the point-in-range test; if the candidate form ever becomes a range it becomes a true overlap with no change to the query. One expression, correct in both worlds.',
+              'PERIOD FIRST: `kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. Normalise ANNUAL to monthly (÷12) WITHIN one currency before any comparison. Dividing by 12 is arithmetic and always safe.',
+              'EITHER SIDE MAY PICK EITHER CURRENCY, INDEPENDENTLY. A candidate asking in USD and a job posted in VND is a normal, expected combination — not an error state, and never something to block at input. Both default to VND; the full policy (why USD exists at all, the settlement line, the legal confirmation still owed, the master-data cut to two entries) is owned by Job management → "SALARY CURRENCY (decided 2026-08-13)" and is not repeated here.',
+              'CURRENCY NEVER CONVERTS. The two are compared only against their own kind. On a FILTER (surfaces 3 and 4) the other currency is set aside and COUNTED out loud — "12 candidates ask in USD — switch the currency to see them". On the MATCH SCORE it is scored NEUTRAL instead, because a score must not punish a candidate for an unanswerable signal. Those two behaviours differ on purpose; do not "fix" one to match the other.',
+              'SWITCHING CURRENCY ON AN INPUT DOES NOT TOUCH THE NUMBER. If a candidate types 20 with VND selected and then switches to USD, the field still reads 20 — now meaning $20, which is wrong, and theirs to correct. We must not helpfully convert it (we hold no rate) and must not silently clear it (they may be fixing a mis-selected currency). Show the unit beside the number at all times so the mismatch is visible while typing. Same rule on the job form.',
+              'SWITCHING CURRENCY ON A FILTER DOES NOT TOUCH THE BOUNDS EITHER, for the same reason — but a filter is cheap to redo, so re-labelling the bounds and leaving them is enough. What must change is every facet count in the rail, because the scope changed.',
+              'NEVER BLOCK A CURRENCY COMBINATION AT INPUT. There is no validation anywhere that says "this job is in VND so the candidate must be too". Cross-currency is handled at READ time, by the three rules above, and nowhere else.',
+              'THREE VALUES ALWAYS PASS A SALARY FILTER rather than being dropped by it: `kind = INTERVIEW` ("thỏa thuận"), `kind = INTERNAL_RULE` ("theo quy định công ty"), and a BLANK salary. The field is optional and blanks are common — excluding them the moment a recruiter sets a bound would silently delete most of the pool.',
+              'DISPLAY ALWAYS SHOWS WHAT WAS WRITTEN — the figure, its period and its currency, exactly as entered. Normalisation exists for comparison inside the index and must never reach a screen. A converted salary is a number nobody stated.',
+              'TWO CURRENCIES ONLY, and the list never grows. A JPY or SGD salary is unfilterable, unrankable and unmaintainable. Do not reuse the billing currency table: what you invoice a customer in has nothing to do with what a job pays.',
+            ],
+            warn:
+              'THE FAILURE THIS PREVENTS — comparing raw numbers across currencies produces FALSE POSITIVES, not misses, and nobody sees a false positive. "$3,000/mo asked" against "30,000,000 ₫ maximum" evaluates as 3000 ≤ 30000000 → inside the band → full marks, when the candidate is really asking ≈2.5× the budget.',
+          },
+          {
+            heading: 'Where each salary rule is implemented',
+            text: 'The contract above is the single source of truth. These are the places that IMPLEMENT it — each one should read as an application of the rules, never as a second set of them.',
+            table: {
+              cols: ['Place', 'Module → feature', 'What it owns'],
+              rows: [
+                ['Candidate input', 'Jobseeker user management → Onboarding, step 3 · and Resume management → CV management (profile quick-edit)', 'The single-figure control: Từ [n] [period] [currency], plus the "Thỏa thuận" checkbox.'],
+                ['Job posting form', 'Job management → Create job, "Location, experience & salary"', '`salaryType` radio, the from–to pair, `salaryCurrency`, and the rule that max ≥ min within one currency.'],
+                ['Two-currency POLICY (owner)', 'Job management → "SALARY CURRENCY (decided 2026-08-13)"', 'THE OWNER of the currency decision itself: why USD exists (IT / FDI segment), the settlement line shown on a USD job, cross-currency SORTING, the master-data cut from 9 currencies to 2, and the legal confirmation still owed on advertising in USD. Richer than the summary above — read it before touching currency anywhere.'],
+                ['Jobseeker job search', 'Job management → Job list (Search result), "Query & facets"', 'The mirror-image salary facet — range + currency, scoped not converted, with its own excluded-count line.'],
+                ['CV-search filter', 'Resume management → Resume list (Companies), "Salary — ONE figure from the candidate, a RANGE from the employer"', 'The full case table, the currency scoping and the excluded-count line.'],
+                ['Match score', 'Resume management → match weights table, "Expected salary" row (weight 7)', 'Full / partial / zero bands, including the 20%-over partial credit.'],
+                ['Row + profile display', 'Resume management → Resume list, and the ProfileSummaryCard', 'Renders "Từ 20 triệu" or "Thỏa thuận" — never a converted figure.'],
+              ],
+            },
+          },
+        ],
+        openQuestions: [
+          'Cross-currency comparison — a VND expectation against a USD job band needs a rate and a refresh policy. Recommendation: store both figures as entered, convert only for comparison, and pin the rate used on the stored match score so an old score stays explainable.',
+        ],
+      },
+    },
+    {
+      name: 'Apply & CV search eligibility',
+      site: 'Logic',
+      scope: ['BE', 'FE'],
+      ready: true,
+      detail: {
+        description:
+          'One CV, two independent permissions: it can be SENT to an employer, and it can be FOUND by one. They are different gates with different rules, different enforcement points and opposite failure modes, and confusing them is how a candidate ends up believing they are discoverable when nothing of theirs is indexed. This page is the single place both are defined; the module requirements point here rather than restating them.',
+        userStory:
+          'As a jobseeker, I want to know exactly what my CV needs before I can apply with it or be found by employers, so that I am never blocked by a rule nobody showed me.',
+        requirements: [
+          {
+            label: 'THE TWO GATES — one CV, two permissions that do not talk to each other',
+            text: 'Read this table first. Passing one gate says NOTHING about the other, and that is deliberate.',
+            table: {
+              cols: ['', 'Can be SENT (apply)', 'Can be FOUND (CV search)'],
+              rows: [
+                [
+                  'What it needs',
+                  '≥ 1 work experience OR ≥ 1 education entry, AND ≥ 3 skills',
+                  'The searchable FLAG on this CV, AND account visibility = Discoverable',
+                ],
+                [
+                  'Which CVs it applies to',
+                  'Saramin CVs only — uploaded files are NEVER gated at apply',
+                  'Every CV EXCEPT an unconverted PDF, which is undecided — see the per-CV-type table below',
+                ],
+                [
+                  'Who decides',
+                  'The CV’s own content — enforced server-side at POST /applications',
+                  'The candidate — which CV carries the flag, and Discoverable vs Hidden',
+                ],
+                [
+                  'What failure looks like',
+                  'Greyed, unselectable row on the apply modal with the missing fields NAMED',
+                  'indexStatus = pending — held for human review, and it fails CLOSED (no timer)',
+                ],
+                [
+                  'Who is waiting',
+                  'An employer, with a deadline running — so a stale hold costs the candidate a job',
+                  'Nobody — a CV waiting to enter the pool costs only time',
+                ],
+              ],
+            },
+            items: [
+              'THE GATES ARE INDEPENDENT — an incomplete Saramin CV can be the flagged/searchable one (the flag never empties) and still be unsendable. See the open decision at the foot of this page, because that combination lets an employer PAY to unlock a CV the platform itself judges too thin to send.',
+              'A Saramin CV that meets the apply gate passes the “is this a CV?” check BY CONSTRUCTION — structured content cannot be “not a CV” — so it is never held as Pending on an application.',
+              'OPPOSITE DEFAULTS ON PURPOSE: applications fail OPEN (auto-released on a timer), the index fails CLOSED (never auto-released). The errors are not symmetrical, so neither are the defaults.',
+            ],
+          },
+          {
+            label: 'WHICH CV CAN BE TOGGLED ON FOR CV SEARCH — by CV type',
+            text: 'The mirror of the apply gate, and the answer to “can I switch THIS CV on for employers to find?”. Read the three columns as three separate moments: being ALLOWED to flag it (immediate, the candidate’s own choice), being INDEXED (later, and it can fail), and what the candidate is then FINDABLE BY.',
+            table: {
+              cols: ['CV type', 'Can be flagged?', 'Indexed when', 'Findable by'],
+              rows: [
+                [
+                  'Saramin CV that meets the apply bar',
+                  '✅ Yes',
+                  'Immediately — it passes the “is this a CV?” check by construction',
+                  'Every facet: skills, desired title, location, salary, years, education',
+                ],
+                [
+                  'Saramin CV BELOW the apply bar (e.g. 1 skill, no experience)',
+                  '✅ Yes, today — the apply gate does not touch the flag',
+                  'Immediately, same as above',
+                  'Every facet — but this is exactly the case OPEN DECISION 1 below is about',
+                ],
+                [
+                  'Uploaded file that was CONVERTED',
+                  '✅ Yes',
+                  'After the “is this a CV?” check passes; held at indexStatus = pending until then',
+                  'Every facet — conversion is what gives it a structured layer',
+                ],
+                [
+                  'Uploaded PDF, NOT converted',
+                  '⚠️ UNDECIDED — see open decision 2 below',
+                  'n/a until that is decided',
+                  'Profile facets only. INVISIBLE to skill search, the most-used facet of all',
+                ],
+              ],
+            },
+            items: [
+              'FLAGGED ≠ INDEXED ≠ FINDABLE, and conflating them is the commonest error here. Flagging always succeeds and is never blocked; indexing can be held; being findable additionally needs the ACCOUNT to be Discoverable.',
+              'THERE ARE TWO SEPARATE CONTROLS, and a reader asking “can I toggle this CV on” usually means the first: ① WHICH CV — a per-CV radio, exactly one at a time, never empty; ② DISCOVERABLE / HIDDEN — ONE account-level switch covering the whole account. Switching ① never changes ②.',
+              'THERE IS NO CONTENT MINIMUM ON THE FLAG — unlike applying, no number of skills or experience entries is required to make a CV searchable. That is a deliberate consequence of the flag never being allowed to empty, not an oversight; whether it should stay that way is open decision 1.',
+              'WHILE A NEW CV IS PENDING the previously flagged CV keeps the flag, so the candidate is never Discoverable with nothing indexed.',
+            ],
+            warn: 'Two of the four rows are still open. Until decisions 1 and 2 below are made, this table is the honest state of the rule — not the final rule — and the searchable toggle cannot be built from it.',
+          },
+          {
+            label: 'STORED vs SEARCHABLE vs INDEXED — three different things, and the searchable flag NEVER empties',
+            text: 'All three CVs ARE “CV content” (group 3). The searchable CV is not a copy promoted into some other place — it is a FLAG on one of the CV rows. Anyone who models it as “write the searchable CV into the profile” ends up with two copies of the same career data and no way to keep them agreeing.',
+            table: {
+              cols: ['', 'Happens when', 'Depends on'],
+              rows: [
+                ['STORED', 'Profile row at sign-up; a CV row the moment a CV is created or uploaded; parsed at write.', 'Nothing — always, whatever the candidate wants employers to see.'],
+                ['SEARCHABLE FLAG', 'Points at exactly ONE CV row at all times.', 'The candidate’s choice of which CV represents them.'],
+                ['INDEXED', 'The candidate appears in employer CV search.', 'BOTH: account visibility = Discoverable AND a flagged CV.'],
+              ],
+            },
+            items: [
+              'THE FLAG MOVES, IT NEVER CLEARS — a radio button, not a checkbox. Turning searchable ON for CV B turns it OFF for CV A; there is no interaction that leaves zero CVs flagged. Default on first CV: it is flagged automatically. Deleting the flagged CV moves the flag to the most recently updated survivor, silently.',
+              'WHY ZERO IS FORBIDDEN — “Discoverable with nothing indexed” is the worst state in the product. The candidate has consented to be found, believes they are, and receives nothing, with no error anywhere to explain it. Support cannot diagnose it because everything looks correct.',
+              'HIDDEN DOES NOT CLEAR THE FLAG — a Hidden account keeps pointing at a CV; the index simply does not read it. Switching back to Discoverable is then instant and asks the candidate nothing — they do not have to re-choose a CV they already chose.',
+              'DISCOVERABLE NEEDS ONE CV — a candidate with a profile and no CV cannot be discoverable, because an unlock would deliver contact details and no document — the employer spent a credit on nothing. This also matches the existing rule that a structured profile alone is not a CV. Surface it plainly on My CVs: “Add a CV to appear in employer search.”',
+              'PARSE ON WRITE, INDEX ON FLAG — never re-parse when the flag flips. Every CV is parsed when it is saved, including ones the candidate never makes searchable, because they may flip it on later and a toggle that triggers a parse is a toggle that is slow and can fail. Flipping the flag moves rows in and out of the INDEX only.',
+              'FLAGGING AN UPLOADED CV RUNS THE SAME CHECK AS AN APPLICATION (decided) — the file is converted to the database on write, then the flag puts it at indexStatus = PENDING and runs the identical “is this a CV?” signals (Application management → 4a–4d). Passing indexes it; failing holds it for the same two human verbs. One quality bar, one pipeline, whether a CV reaches an employer by being SENT or by being FOUND.',
+              'PENDING IS INTERNAL — the toggle succeeds, nothing is blocked, and the candidate sees only “Đang kiểm tra CV”. The hold protects the employer-facing pool; it is never presented as a rejection of the candidate.',
+              'THE FLAG DOES NOT MOVE UNTIL THE NEW CV PASSES — the previously flagged CV keeps the flag while the new one is pending, so the candidate is never “Discoverable with nothing indexed” (the forbidden state above). With no previous CV they are simply not yet discoverable, and the toggle says so.',
+              'indexStatus: pending | indexed | rejected — one column on the Cv row, distinct from the APPLICATION’s status. Same word, different object: one keeps a CV out of the employer INDEX, the other holds one application from one employer. Never render them with the same label.',
+              'NO AUTO-PASS (decided) — unlike an application, an index-Pending CV is NEVER released on a timer. Nobody is waiting on it: an application has an employer at the other end and a deadline running, so a stale hold costs the candidate a job; a CV waiting to enter the search pool costs only time. When the two errors are that different, so are the defaults — applications fail OPEN, the index fails CLOSED.',
+              'FAILING CLOSED NEEDS THE QUEUE ACTUALLY WORKED — with no timer, an unreviewed CV is invisible forever and nothing complains. Two safeguards, both required: the admin CV queue shows an AGE so an old hold is visible, and the candidate can see their own CV sitting at “Đang kiểm tra” on My CVs rather than believing they are already discoverable.',
+              'REJECTED IS TOLD, NOT SILENT — a rejected CV names the reason and keeps the fix one tap away (“Tải lên CV khác” / “Tạo Saramin CV”). A candidate who is not in the pool must always know they are not in the pool.',
+              'THE UNSEARCHABLE CVs ARE NOT DEAD DATA — they are still applied with, still downloadable, still hold their own CvSkill rows, and are still what the candidate compares in My CVs. Only employer SEARCH ignores them.',
+            ],
+          },
+          {
+            label: 'APPLY-ELIGIBLE — when a Saramin CV can be sent to an employer (decided)',
+            text: 'The gate names CV-CONTENT fields only (group 3) — never a percentage, and never Profile fields: name, contact, education level and preferences live on the Profile (groups 1–2), are collected at sign-up / onboarding, and are confirmed on the apply read-back. Below the gate, the CV renders greyed on the apply modal with the missing fields NAMED and one Cập nhật link into the editor — the VietnamWorks pattern, minus the opaque “Chưa được duyệt”.',
+            table: {
+              cols: ['Must have (CV content)', 'Why this and nothing more'],
+              rows: [
+                [
+                  '≥ 1 work experience — OR ≥ 1 education entry when there is no experience yet (fresher / student)',
+                  'The body of the generated PDF, and the source of the DERIVED header line. Without one entry the employer opens an empty document — which reflects on the platform, not the candidate.',
+                ],
+                [
+                  '≥ 3 skills (taxonomy)',
+                  'What CV search and matching join on — a CV with no skills is invisible to the paid product.',
+                ],
+              ],
+            },
+            items: [
+              'WHY A GATE AT ALL, and only here — an application carries three things: the Profile confirm (Basic information + Work preference, already required), ONE CV document, and an optional cover letter. Uploaded files are never gated, because the candidate authored them and we only pass them on. The Saramin CV is different: WE generate its PDF, so an almost-empty one embarrasses the platform rather than the candidate.',
+              'NAMED FIELDS, never a % — “Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng” is actionable; “47%” is not. A percentage also FAILS THE JOB: our completeness score gives points for photo, About, languages, certificates, awards and publications, so a candidate could reach 70% with the easy optional sections and still have an empty Experience — the exact case this gate exists to stop. And a % gate is silently unstable: re-weight the score later and CVs that could apply yesterday cannot today, with nothing telling the candidate why.',
+              'THE FRESHER EXCEPTION IS NOT OPTIONAL — without “or ≥ 1 education entry”, every graduate with no job history is locked out of applying, which is the entire entry-level market and a large share of VN volume.',
+              'The header line is DERIVED, not asked: title from the most recent experience (or “Fresh graduate · {major}” from education), years computed from the date ranges — with an editable override, so it never goes stale on its own and adds NOTHING to the gate.',
+              'UPLOADED CVs are NEVER gated at apply — always selectable. A doubtful file is checked AFTER submit and may hold the application as Pending; see Application management → the “is this a CV?” check.',
+              'A Saramin CV that meets this gate passes that check BY CONSTRUCTION — structured content cannot be “not a CV” — so it is never held.',
+              'The gate does NOT touch the searchable flag — an incomplete Saramin CV can still be the flagged one (the flag never empties); it simply cannot be SENT until it meets the gate.',
+            ],
+          },
+          {
+            label: 'APPLY-ELIGIBLE — worked examples, and what is deliberately OUT of the gate',
+            table: {
+              cols: ['Candidate', 'Eligible?', 'What the apply modal shows'],
+              rows: [
+                ['2 experience entries, 5 skills', '✅', 'A normal, selectable CV row.'],
+                ['Fresh graduate — no jobs, 1 education entry, 3 skills', '✅ (fresher exception)', 'A normal, selectable row. Without the exception we would lock out the whole entry-level market.'],
+                ['Created a Saramin CV, added only 1 skill (“Figma”)', '❌', 'Greyed, unselectable: “UX Designer CV · Saramin · Chưa đủ để ứng tuyển” → “Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng — Cập nhật →”'],
+              ],
+            },
+            items: [
+              'OUT OF THE GATE, deliberately: name · email · phone · highest education (all Basic information, group 1 — collected at sign-up / onboarding and CONFIRMED on the apply read-back, so re-checking them here would gate on data we already hold); desired role / location / salary (Work preference, group 2); and photo, About, projects, certificates, languages, awards (CV content, but none of them is what an employer needs to assess someone).',
+              'COMPARE THE COPY — VietnamWorks greys the row with “Chưa được duyệt · 47%”, which tells the candidate they failed but not what to do. Naming the missing fields and linking straight into the editor is the same pattern with the dead end removed.',
+              'WHERE THE CANDIDATE MEETS THIS RULE, in order: ① My CVs — the “Chưa đủ để ứng tuyển” chip + “Hoàn thiện →” warns them early, long before they need the CV; ② the apply modal — the greyed row with the named fields; ③ POST /applications — server-side, the actual control. The first two are courtesies; only the third is enforcement.',
+              'DISPLAY IT ON THE COMPLETENESS BAR TOO — a threshold marker at the apply-eligible point, and the fill-list split into “Bắt buộc” (the gate — blocks applying) versus “Tăng thêm” (the impact-% boosts, which only improve search ranking). That gives the client the familiar “minimum completeness” framing while the GATE itself stays on named fields.',
+            ],
+          },
+          {
+            label: 'OPEN — should the apply bar also gate what enters the PAID index?',
+            text: 'Raised in review, NOT yet decided. The two gates being independent has one consequence nobody has signed off: a Saramin CV below the apply bar — say one skill and no experience — cannot be sent to an employer, but CAN be the flagged CV, be indexed, and be unlocked for a credit. Because the flag never empties, a candidate whose only CV is that thin has it flagged automatically.',
+            table: {
+              cols: ['Option', 'What it means', 'Cost'],
+              rows: [
+                [
+                  'A · Leave it (status quo)',
+                  'Thin CVs stay in the index and are handled by ranking — completeness is already a ranking signal, so they surface last.',
+                  'An employer can still spend a credit on one. Ranking last is not the same as being labelled thin BEFORE the unlock.',
+                ],
+                [
+                  'B · Show it in the locked preview (recommended)',
+                  'Index them, but surface completeness — and a “thin CV” marker below the apply bar — in the locked preview, so the unlock is an informed choice.',
+                  'Needs the preview to carry one more field. Keeps candidate reach intact, which matters most at launch when the pool is small.',
+                ],
+                [
+                  'C · Apply the same bar to indexing',
+                  'A CV below ≥1 experience/education + ≥3 skills is not indexed at all.',
+                  'Shrinks the searchable pool at exactly the moment it is smallest, and can leave a Discoverable candidate with nothing indexed — the state the model forbids.',
+                ],
+              ],
+            },
+            items: [
+              'WHY IT IS A REAL TENSION, in the doc’s own words: Discoverable already requires ≥ 1 CV because “an unlock would deliver contact details and no document — the employer spent a credit on nothing.” A near-empty CV is the softer version of that same failure, and it is the one the employer PAID for.',
+              'And the apply gate exists because “WE generate its PDF, so an almost-empty one embarrasses the platform rather than the candidate” — an argument that gets STRONGER, not weaker, once money has changed hands.',
+              'BB recommends B: it removes the bad surprise without shrinking the pool, and it is the only option that does not risk the forbidden “Discoverable with nothing indexed” state. Revisit C only if unlock-refund complaints actually appear.',
+              'Whatever is chosen, it belongs on the LOCKED PREVIEW spec (Resume list — Companies), not here — this page only records that the gap exists and who decides.',
+            ],
+          },
+          {
+            label: 'OPEN — may an UNCONVERTED PDF be flagged searchable at all?',
+            text: 'Carried over from the module requirements, still undecided, and it belongs on this page because it decides who can be FOUND. A raw uploaded PDF has no structured layer — we never parse a file the candidate did not ask us to convert.',
+            table: {
+              cols: ['If the flagged CV is…', 'The candidate is findable by', 'And invisible to'],
+              rows: [
+                ['A Saramin CV (or a converted upload)', 'Every facet — skills, desired title, location, salary, years, education', '—'],
+                [
+                  'An unconverted PDF',
+                  'Profile facets only: desired title, location, salary, years, education',
+                  'SKILL SEARCH — the most-used facet of all',
+                ],
+              ],
+            },
+            items: [
+              'THE THREE ANSWERS: ① allow it, and say plainly in the toggle what the candidate loses; ② block it — only a structured CV may be flagged; ③ allow it, but choosing it TRIGGERS the conversion offer, so the candidate converts at the moment they care about being found.',
+              'BB leans ③ — it is the only one that turns the limitation into the fix, and the moment a candidate flips “let employers find me” is exactly when converting is worth their time. ② is the harshest and would leave upload-only candidates undiscoverable with no obvious route out.',
+              'This interacts with the paid-index decision above: an unconverted PDF is a different kind of thin — complete to a human reader, empty to search — so a completeness marker in the locked preview would NOT describe it correctly. Decide the two together.',
+              'Whichever way it goes, the searchable-flag toggle copy has to change: today it reads “Cho nhà tuyển dụng tìm thấy” with no hint that the chosen CV may be unsearchable in practice.',
+            ],
+          },
+        ],
+      },
+    },
+    {
+      name: 'CV quality check — one gate, two doors',
+      site: 'Logic',
+      scope: ['BE', 'FE'],
+      ready: true,
+      mockup: 'admin-job-applicants',
+      notes: 'Cross-cutting. ONE service called by BOTH the apply flow (Application management) and the searchable-CV flag (this module). Not a screen of its own — it writes a status the Applicants list and the Resumes list each render.',
+      detail: {
+        description:
+          'A CV reaches an employer through exactly TWO doors: it is SENT (the candidate applies) or it is FOUND (the candidate flags it searchable and an employer finds it in CV search). Both doors let an uploaded file we have never inspected reach a paying customer, so both run the SAME check — one service, one signal set, one review queue. What differs is only what a hold blocks (one application vs. entry to the search index) and what happens when nobody reviews it.',
+        userStory:
+          'As Saramin, I want one quality gate in front of both doors, so that an employer never receives a file that is not a CV — without ever blocking a candidate at the moment they are trying to use the product.',
+        keyPoints: [
+          'The jobseeker site NEVER blocks an upload, an apply, or a search toggle. Every check runs on OUR side, after the fact.',
+          'ONE signal set (A / B / C) and ONE review queue serve both doors. Duplicating them is how the two halves silently diverge.',
+          'Only UPLOADED files are checked. A Saramin CV is structured content — it cannot be “not a CV” — so it skips the check entirely at both doors.',
+          'Quality NEVER holds. Weak experience, few skills, no cover letter: not signals, and never to become signals.',
+          'Applications fail OPEN (auto-send recommended); the search index fails CLOSED (no auto-pass). Same check, opposite defaults, because the cost of being wrong is opposite.',
+        ],
+        sections: [
+          {
+            heading: 'The two doors',
+            table: {
+              cols: ['', 'Door 1 — SENT', 'Door 2 — FOUND'],
+              rows: [
+                ['Triggered by', 'The candidate submits an application.', 'The candidate flags a CV as searchable (“Cho nhà tuyển dụng tìm thấy CV này”).'],
+                ['What is checked', 'The uploaded file attached to that application.', 'The uploaded file being flagged. It is already parsed — it was converted to the database on write — so this verifies the result, it does not re-parse.'],
+                ['Status written', 'application.status = Pending', 'cv.indexStatus = pending'],
+                ['What a hold blocks', 'ONE application to ONE employer. Nothing else about the candidate changes.', 'Entry to the employer search INDEX. The previously flagged CV keeps the flag meanwhile.'],
+                ['Who is waiting', 'An employer, with a job deadline running.', 'Nobody.'],
+                ['If nobody reviews it', 'AUTO-SEND after ~24h (recommended, open for client sign-off) — fails OPEN.', 'NEVER auto-passes — fails CLOSED. Decided.'],
+                ['Where it is worked', 'Admin → Applicants, Status = Pending.', 'Admin → Resumes, Status = Pending.'],
+                ['What the candidate sees', '“Chúng tôi đang kiểm tra CV của bạn — sẽ gửi tới nhà tuyển dụng sớm.”', '“Đang kiểm tra CV” on My CVs, plus which CV is still showing meanwhile.'],
+              ],
+            },
+            items: [
+              'WHY THE DEFAULTS DIFFER, in one line: a stale hold on an application costs a candidate a job; a stale hold on an index entry costs them time. Fail open where the damage is irreversible, closed where it is not.',
+              'BOTH STATUSES ARE SEPARATE COLUMNS on separate tables and must never share a UI label. “Pending” on an application and “Pending” on a CV are different objects with different consequences.',
+            ],
+          },
+          {
+            heading: 'Group A — technical signals (always hold, at both doors)',
+            text: 'No judgement is involved: the file physically cannot be read, or cannot be safely served.',
+            table: {
+              cols: ['Signal', 'Example', 'Why it cannot reach an employer'],
+              rows: [
+                ['A1 · Corrupt / cannot be opened', 'A 0-byte CV.pdf; a .zip renamed to .pdf', 'The employer clicks and gets an error — which reads as OUR bug, not the candidate’s.'],
+                ['A2 · Password-protected', 'An encrypted PDF exported from banking or HR software', 'The employer cannot open it either.'],
+                ['A3 · < ~200 chars of extracted text, even after OCR', 'A photo of a CV shot at an angle; a scan where OCR returns garbage', 'Nothing to extract → invisible in CV search, and possibly unreadable to a human too.'],
+                ['A4 · Malware scan failed or flagged', 'A .docx carrying an embedded macro', 'Never serve it — full stop.'],
+              ],
+            },
+          },
+          {
+            heading: 'Group B — content “CV-ness”, 6 signals (hold below 2)',
+            text: 'After extraction, count how many fire. Fewer than two → hold. Each is cheap to compute and none needs a model.',
+            table: {
+              cols: ['#', 'Signal', 'Example that fires it'],
+              rows: [
+                ['B1', 'An email or VN phone pattern anywhere', 'thu.nguyen@gmail.com · 0382 233 670 · +84-38…'],
+                ['B2', 'A date range', '2020 – 2023 · 03/2021 – nay · Jun 2019 – Present · 2018 – Hiện tại'],
+                ['B3', 'A section heading from the VI + EN list', 'KINH NGHIỆM LÀM VIỆC · Work Experience · Học vấn · Education · Kỹ năng · Skills · Mục tiêu nghề nghiệp'],
+                ['B4', '≥ 1 term resolving to the SKILL taxonomy', '“Excel”, “Kế toán”, “React” — through the same alias index CV import uses'],
+                ['B5', '≥ 1 term resolving to the JOB ROLE taxonomy', '“Business Analyst”, “Nhân viên kinh doanh”'],
+                ['B6', 'A name-like line in the first text block', 'A short 2–4-word capitalised line: NGUYỄN MINH THU'],
+              ],
+            },
+            items: [
+              'B4 and B5 reuse the taxonomy resolution already built for CV import (see SKILLS) — this check adds no new matching logic of its own.',
+            ],
+          },
+          {
+            heading: 'Group B — worked examples, and why the threshold is 2',
+            table: {
+              cols: ['File uploaded', 'Signals fired', 'Result'],
+              rows: [
+                ['A real but ugly one-page CV — no headings, just paragraphs', 'B1 (email) + B2 (dates) = 2', '✅ Passes'],
+                ['A designer’s infographic CV (text still extractable)', 'B1 + B6, often B4 = 2–3', '✅ Passes — exactly the CV a stricter rule would wrongly kill'],
+                ['A restaurant menu PDF', '0 of 6', '🔒 Held — “0/6 CV signals”'],
+                ['A university homework essay', 'B6 (a name) at most = 1', '🔒 Held — “1/6 signals — no contact, no dates”'],
+                ['An invoice', 'B1 may fire on a company email = 1', '🔒 Held'],
+              ],
+            },
+            items: [
+              'WHY 2 AND NOT 3 — the costs are asymmetric. Wrongly holding a real CV delays a real candidate and needs a human to undo; wrongly passing a menu wastes an employer five seconds. Tune toward the cheaper error.',
+              'A scanned CV usually fails A3 before it reaches Group B — the groups catch different failures and do not overlap.',
+            ],
+          },
+          {
+            heading: 'Group C — abuse patterns',
+            table: {
+              cols: ['Signal', 'Example', 'Action'],
+              rows: [
+                ['C1 · Same file hash across many accounts', '40 “different” candidates upload a byte-identical CV_2026.pdf', 'HOLD — bot / farm behaviour'],
+                ['C2 · Extracted text ≈ the job description being applied to', 'Someone downloads the JD and uploads it back as their CV', 'HOLD (apply door only — there is no JD to compare against at the search door)'],
+                ['C3 · One account, N different files in an hour', '12 applies with 12 different PDFs in 30 minutes during a promotion', 'RATE-LIMIT at the front door — never a queue an operator has to work'],
+              ],
+            },
+          },
+          {
+            heading: 'The review queue IS the training set',
+            text: 'Every held row shows WHICH signals fired, and the reviewer resolves it with exactly two verbs. Both are logged against those signals — that log is the labelled data that improves the check.',
+            table: {
+              cols: ['Verb', 'Door 1 — application', 'Door 2 — CV index', 'What the log records'],
+              rows: [
+                ['Real CV', 'Sent to the employer; enters their funnel at New.', 'Indexed; the searchable flag moves to it.', '“signals said no, human said yes” — a false positive'],
+                ['Not a CV', 'Never delivered; the candidate is told to upload a proper CV.', 'Not indexed; indexStatus = rejected with the reason shown to the candidate.', '“signals were right” — a true positive'],
+              ],
+            },
+            items: [
+              'AFTER A MONTH the log answers what we cannot answer today: “files at 1/6 signals were real CVs 40% of the time, files at 0/6 never were.” That tunes the threshold, grows the B3 heading list, and gives Phase-2 a classifier trained on OUR OWN labels instead of a generic model.',
+              'ONE QUEUE, TWO SURFACES — the same signals and the same two verbs, rendered in Applicants (per application) and Resumes (per candidate). A reviewer learns the job once.',
+            ],
+          },
+        ],
+        behaviors: [
+          'Nothing on the jobseeker site blocks: the upload succeeds, the apply succeeds, the searchable toggle succeeds. The hold is always ours and always after the fact.',
+          'A Saramin CV skips the check at both doors. At the apply door it must instead meet the APPLY-ELIGIBLE gate (≥1 experience or education entry, ≥3 skills) — a content minimum, not a quality judgement.',
+          'On the search door the searchable flag does NOT move until the new CV passes, so the candidate is never “Discoverable with nothing indexed”.',
+          'A held application keeps its original appliedAt, so a deadline passing during review does not invalidate it. The delay was ours.',
+          'A rejected CV names its reason to the candidate and keeps the fix one tap away (“Tải lên CV khác” / “Tạo Saramin CV”).',
+          'Re-uploading a replacement file re-runs the check from the start; a previous rejection never carries over to the new file.',
+        ],
+        rules: [
+          'ONE implementation, called by both doors. If the apply path and the index path ever hold different opinions about the same file, the check has been duplicated and must be merged back.',
+          'Quality is never a signal — match score, skill count, seniority, cover letter, or “looks unqualified” may not hold anything at either door.',
+          'The candidate is informed at hold time, never warned upfront: a pre-emptive warning discourages every normal applicant to catch a rare bad file.',
+          'Every hold records the exact signals that fired; a hold with no recorded reason is a bug, because it cannot be reviewed fairly or learned from.',
+          'Every review decision is written to the log with the reviewer, the verdict and the signals — this is the dataset, not an audit nicety.',
+          'Application Pending fails OPEN on the SLA; index Pending never auto-passes. Neither default may be changed without changing this page.',
+        ],
+        states: [
+          'Passed — never shown (the overwhelming majority)',
+          'Application held — Pending, signals listed, employer has received nothing',
+          'Application released — Real CV → Sent',
+          'Application rejected — Not a CV, candidate notified',
+          'CV index held — indexStatus = pending, previous searchable CV still showing',
+          'CV index passed — indexStatus = indexed, flag moves',
+          'CV index rejected — indexStatus = rejected, reason shown to the candidate with a fix link',
+          'Ageing hold — no timer on the index queue, so the row’s age is the only signal it is stale',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'CvCheck', type: 'entity', required: true, notes: 'cvId · door(apply|index) · applicationId? · verdict(passed|held|rejected) · signalsFired jsonb · createdAt — ONE row per run, and the training set' },
+            { name: 'signalsFired', type: 'jsonb', required: true, notes: 'e.g. { A: [], B: ["B6"], C: [] } — what the reviewer sees and what the log learns from' },
+            { name: 'CvCheckReview', type: 'entity', notes: 'cvCheckId · reviewerId · decision(real_cv|not_a_cv) · note? · decidedAt — the human label against the signals above' },
+            { name: 'application.status', type: 'enum', notes: 'pending|sent|recalled — the SENT door’s hold' },
+            { name: 'cv.indexStatus', type: 'enum', notes: 'pending|indexed|rejected — the FOUND door’s hold. A different column on a different table; never merge the two' },
+          ],
+          endpoints: [
+            'POST /internal/cv-check { cvId, door, applicationId? } → { verdict, signalsFired } — the single entry point both doors call',
+            'GET /admin/cv-checks?verdict=held&door=… — the review queue, ordered oldest-first because the index door has no timer',
+            'POST /admin/cv-checks/:id/review { decision, note? } — writes the label and releases or rejects at the right door',
+          ],
+          integrations: [
+            'Application management → apply flow (door 1) and the Applicants list',
+            'Resume management → searchable flag (door 2) and the Resumes list',
+            'Skill / Job-role taxonomy resolution (signals B4, B5)',
+            'Malware scanning + OCR (signals A3, A4)',
+          ],
+        },
+        acceptance: [
+          'A jobseeker can upload any file and always complete an apply and a searchable toggle without being blocked.',
+          'An uploaded file failing Group A or scoring under 2 on Group B holds at the correct door, and the employer receives nothing until it is released.',
+          'A Saramin CV never enters the queue at either door.',
+          'Every held row displays the fired signals, and every review writes a CvCheckReview row.',
+          'An index-Pending CV is never released without a human decision, and the previously searchable CV stays visible throughout.',
+          'A held application released by a reviewer reaches the employer with its original appliedAt.',
+        ],
+        openQuestions: [
+          'Who owns the review queue day to day, and what volume is acceptable per operator per day? The index door has no timer, so this is a standing staffing commitment.',
+          'The application SLA (auto-send at ~24h) still needs client sign-off; the index no-auto-pass is decided.',
+          'At what sample size do we revisit the Group-B threshold from the collected labels — a fixed date, or a row count?',
+        ],
+      },
+    },
 
     // ── CV DATA & MATCHING ARCHITECTURE — how data is sourced, structured & connected.
     {
       name: 'Search quality tracking',
-      site: 'Admin',
+      site: 'Logic',
       scope: ['BE', 'FE'],
       ready: true,
       mockup: 'admin-unresolved-terms',
@@ -1417,700 +2269,59 @@ export const resumeManagement: BuildModule = {
       },
     },
     {
-      name: 'CV data & matching architecture',
-      site: 'Jobseekers',
+      name: 'Job recommendations — the jobseeker feed',
+      site: 'Logic',
       scope: ['BE', 'FE'],
-      notes: 'Cross-cutting foundation — connects the Jobseeker CV, the Job JD, employer CV-search and the CV↔JD match score. Data model, not a single screen.',
+      ready: true,
       detail: {
         description:
-          'The plan for getting the structured data that matching and CV-search need WITHOUT asking candidates to fill long forms. Instead of VietnamWorks-style manual profiles, the candidate just uploads their CV and AI extracts a structured Candidate Profile from it. That one profile powers both (a) the CV↔JD match score and (b) employer CV search — so we never ask the user for data the CV already contains.',
+          'The jobseeker-facing feed of recommended jobs. It is deliberately NOT a second matching model: the employer’s applicant ranking and this feed are the SAME weighted 0–100 computation over the same nine signals, read from opposite ends of one CV × job pair, and that model is specced in this module’s MATCH SCORE requirements. What follows is only what is true of the FEED and false of employer search — which CVs it reads, what it gates, what it excludes, how it degrades on a thin profile, and what the list is honestly called at each stage of completeness.',
         userStory:
-          'As a candidate, I want to just upload my CV and be discoverable & matched, without filling in dozens of fields — so that applying is effortless while recruiters still get searchable, rankable data.',
-        uiFields: [
-          {
-            group: 'Candidate Profile — the canonical schema (the contract everything builds on)',
-            items: [
-              { name: 'headline / currentTitle', type: 'string → Title taxonomy', notes: 'from CV; the primary keyword field for search' },
-              { name: 'location', type: 'enum (province/city)', notes: 'from CV; a core search facet' },
-              { name: 'totalYearsExperience', type: 'number (derived)', notes: 'computed from work history — a core filter' },
-              { name: 'seniorityLevel', type: 'enum', notes: 'Intern · Fresher · Junior · Senior · Manager · Director — derived from titles/years' },
-              { name: 'industry', type: 'enum → Industry taxonomy', notes: 'from CV' },
-            ],
-          },
-          {
-            group: 'Work experience (repeatable)',
-            items: [
-              { name: 'company / title', type: 'string', notes: 'title normalises to the Title taxonomy' },
-              { name: 'startDate / endDate / isCurrent', type: 'date / date / bool', notes: 'drives totalYearsExperience and "currently employed"' },
-              { name: 'description', type: 'text', notes: 'free text — a source for skill extraction' },
-            ],
-          },
-          {
-            group: 'Education (repeatable)',
-            items: [
-              { name: 'school / degree / major', type: 'string', notes: 'degree maps to a level enum' },
-              { name: 'startDate / endDate', type: 'date', notes: 'derives highestEducationLevel' },
-            ],
-          },
-          {
-            group: 'Skills & languages',
-            items: [
-              { name: 'skills', type: 'CvSkill[] → Skill taxonomy', notes: 'THE key facet — must be normalised, never free strings (see “The join”)' },
-              { name: 'totalYearsExperience', type: 'int', notes: 'PROFILE-level, not per skill — this is the seniority signal ranking uses now that CvSkill carries no years' },
-              { name: 'languages', type: '{ language, proficiency }[]', notes: 'e.g. English — Professional; a search facet' },
-              { name: 'certifications', type: '{ name, issuer, date }[]', notes: 'optional' },
-            ],
-          },
-          {
-            group: 'Candidate asks — the ~5 fields AI cannot read (user input, optional)',
-            items: [
-              { name: 'desiredSalary', type: 'int (VND) / negotiable', notes: 'CVs rarely state this — ask, do not infer' },
-              { name: 'desiredRole / desiredLocation', type: 'string / enum', notes: 'preferences for matching & recommendations' },
-              { name: 'availability / noticePeriod', type: 'enum', notes: 'Immediate · 1 month · … — a recruiter filter' },
-              { name: 'visibility', type: 'enum (discoverable|hidden)', required: true, notes: 'explicit consent — NEVER inferred' },
-            ],
-          },
-          {
-            group: 'System / derived (not shown as inputs)',
-            items: [
-              { name: 'fieldSource / fieldConfidence', type: 'enum / 0–1', notes: 'per field: parsed vs user-confirmed, and how sure the parser was' },
-              { name: 'lastUpdatedAt', type: 'timestamp', notes: 'recency — a ranking signal' },
-              { name: 'completenessScore', type: 'number', notes: 'how filled-in the profile is — a ranking signal' },
-            ],
-          },
-        ],
-        sections: [
-          {
-            heading: '★ SALARY — the one contract, across all five surfaces',
-            early: true,
-            text:
-              'THE CANONICAL SALARY SPEC. Salary is written on two surfaces and read on three, and until 2026-08-13 the rules lived scattered across Job management, Jobseeker user management and this module — which is how the candidate form came to take one number while its own requirement said "range", and how the jobseeker-side job-search salary facet ended up with no currency at all. Everything below is authoritative; anywhere else that mentions salary points here rather than restating it. If you change a rule, change it HERE.',
-            table: {
-              cols: ['Surface', 'Shape', 'Stored as', 'Why this shape'],
-              rows: [
-                ['1 · CANDIDATE states an expected salary (onboarding step 3 / profile edit)', 'ONE figure + period + currency, or "Thỏa thuận"', '`expectedSalary { kind, currency, min, max }` — the figure goes in `min`, `max` stays NULL', 'Nobody turns down more money, so a candidate’s upper bound is noise. One number is also the lowest-friction version of the single most-skipped field on the profile.'],
-                ['2 · EMPLOYER posts a job', 'A from–to BAND + currency, or "Thỏa thuận"', '`salaryType(negotiable|range) · salaryMin · salaryMax · salaryCurrency`', 'A hiring budget genuinely is a band, and the posted range is a marketing signal that drives applications.'],
-                ['3 · EMPLOYER filters CV search', 'A from–to BAND + currency (client direction, 2026-08-13)', 'query only — nothing stored', 'The recruiter is screening for affordability against a budget they already have.'],
-                ['4 · JOBSEEKER filters job search', 'A from–to BAND + currency', 'query only — nothing stored', 'The mirror image of surface 3, and the one that was MISSING a currency until 2026-08-13. Same rules apply in both directions.'],
-                ['5 · SYSTEM scores CV ↔ JD', 'derived, weight 7', 'no new storage', 'Reads surfaces 1 and 2 and produces a fit signal — see the match-weights table in this module.'],
-              ],
-            },
-            items: [
-              'THE COMPARISON, and it is the SAME test for surfaces 3 and 4: the candidate’s ONE figure must fall inside the employer’s band — `band.from ≤ figure ≤ band.to`, both bounds inclusive, an unset from meaning 0 and an unset to meaning +∞. Point-in-range, NOT two ranges overlapping: there is no second candidate number to overlap with.',
-              'WRITE IT AS AN OVERLAP ANYWAY — `candidate.min ≤ band.to AND (candidate.max ?? candidate.min) ≥ band.from`. With `max` null today this is exactly the point-in-range test; if the candidate form ever becomes a range it becomes a true overlap with no change to the query. One expression, correct in both worlds.',
-              'PERIOD FIRST: `kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. Normalise ANNUAL to monthly (÷12) WITHIN one currency before any comparison. Dividing by 12 is arithmetic and always safe.',
-              'EITHER SIDE MAY PICK EITHER CURRENCY, INDEPENDENTLY. A candidate asking in USD and a job posted in VND is a normal, expected combination — not an error state, and never something to block at input. Both default to VND; the full policy (why USD exists at all, the settlement line, the legal confirmation still owed, the master-data cut to two entries) is owned by Job management → "SALARY CURRENCY (decided 2026-08-13)" and is not repeated here.',
-              'CURRENCY NEVER CONVERTS. The two are compared only against their own kind. On a FILTER (surfaces 3 and 4) the other currency is set aside and COUNTED out loud — "12 candidates ask in USD — switch the currency to see them". On the MATCH SCORE it is scored NEUTRAL instead, because a score must not punish a candidate for an unanswerable signal. Those two behaviours differ on purpose; do not "fix" one to match the other.',
-              'SWITCHING CURRENCY ON AN INPUT DOES NOT TOUCH THE NUMBER. If a candidate types 20 with VND selected and then switches to USD, the field still reads 20 — now meaning $20, which is wrong, and theirs to correct. We must not helpfully convert it (we hold no rate) and must not silently clear it (they may be fixing a mis-selected currency). Show the unit beside the number at all times so the mismatch is visible while typing. Same rule on the job form.',
-              'SWITCHING CURRENCY ON A FILTER DOES NOT TOUCH THE BOUNDS EITHER, for the same reason — but a filter is cheap to redo, so re-labelling the bounds and leaving them is enough. What must change is every facet count in the rail, because the scope changed.',
-              'NEVER BLOCK A CURRENCY COMBINATION AT INPUT. There is no validation anywhere that says "this job is in VND so the candidate must be too". Cross-currency is handled at READ time, by the three rules above, and nowhere else.',
-              'THREE VALUES ALWAYS PASS A SALARY FILTER rather than being dropped by it: `kind = INTERVIEW` ("thỏa thuận"), `kind = INTERNAL_RULE` ("theo quy định công ty"), and a BLANK salary. The field is optional and blanks are common — excluding them the moment a recruiter sets a bound would silently delete most of the pool.',
-              'DISPLAY ALWAYS SHOWS WHAT WAS WRITTEN — the figure, its period and its currency, exactly as entered. Normalisation exists for comparison inside the index and must never reach a screen. A converted salary is a number nobody stated.',
-              'TWO CURRENCIES ONLY, and the list never grows. A JPY or SGD salary is unfilterable, unrankable and unmaintainable. Do not reuse the billing currency table: what you invoice a customer in has nothing to do with what a job pays.',
-            ],
-            warn:
-              'THE FAILURE THIS PREVENTS — comparing raw numbers across currencies produces FALSE POSITIVES, not misses, and nobody sees a false positive. "$3,000/mo asked" against "30,000,000 ₫ maximum" evaluates as 3000 ≤ 30000000 → inside the band → full marks, when the candidate is really asking ≈2.5× the budget.',
-          },
-          {
-            heading: 'Where each salary rule is implemented',
-            text: 'The contract above is the single source of truth. These are the places that IMPLEMENT it — each one should read as an application of the rules, never as a second set of them.',
-            table: {
-              cols: ['Place', 'Module → feature', 'What it owns'],
-              rows: [
-                ['Candidate input', 'Jobseeker user management → Onboarding, step 3 · and Resume management → CV management (profile quick-edit)', 'The single-figure control: Từ [n] [period] [currency], plus the "Thỏa thuận" checkbox.'],
-                ['Job posting form', 'Job management → Create job, "Location, experience & salary"', '`salaryType` radio, the from–to pair, `salaryCurrency`, and the rule that max ≥ min within one currency.'],
-                ['Two-currency POLICY (owner)', 'Job management → "SALARY CURRENCY (decided 2026-08-13)"', 'THE OWNER of the currency decision itself: why USD exists (IT / FDI segment), the settlement line shown on a USD job, cross-currency SORTING, the master-data cut from 9 currencies to 2, and the legal confirmation still owed on advertising in USD. Richer than the summary above — read it before touching currency anywhere.'],
-                ['Jobseeker job search', 'Job management → Job list (Search result), "Query & facets"', 'The mirror-image salary facet — range + currency, scoped not converted, with its own excluded-count line.'],
-                ['CV-search filter', 'Resume management → Resume list (Companies), "Salary — ONE figure from the candidate, a RANGE from the employer"', 'The full case table, the currency scoping and the excluded-count line.'],
-                ['Match score', 'Resume management → match weights table, "Expected salary" row (weight 7)', 'Full / partial / zero bands, including the 20%-over partial credit.'],
-                ['Row + profile display', 'Resume management → Resume list, and the ProfileSummaryCard', 'Renders "Từ 20 triệu" or "Thỏa thuận" — never a converted figure.'],
-              ],
-            },
-          },
-          {
-            heading: 'Principle — extract, don’t ask',
-            items: [
-              'Structured data is required for two things: matching (CV↔JD score) and CV search (facets + the general info shown to recruiters).',
-              'The tension: asking users to type it = friction & drop-off (the VNW problem); not having it = weak matching & unsearchable CVs.',
-              'Resolution: extract the structured layer from the uploaded CV with AI. The user only supplies the handful of things a CV cannot contain.',
-            ],
-          },
-          {
-            heading: 'Three data sources',
-            items: [
-              'CV (uploaded PDF/doc) → via AI parse: current role/title, years of experience, skills, work history, education, industry, location, languages. This is the bulk of the data — zero typing.',
-              'User input (keep to ~4–5, optional): desired salary, desired role/location, availability / notice period, visibility consent, verified phone/email. Only what AI can’t read.',
-              'Job description (JD) → already structured from the Create-job form: title, category, level, skills, experience range, industry, location, salary. See Job management.',
-            ],
-          },
-          {
-            heading: 'What AI can vs. cannot extract from a CV',
-            items: [
-              'CAN (auto-fill, high value): role/title, years of experience, skills, education, work history, industry, location, languages.',
-              'CANNOT — must ask (optional): current/expected salary, desired role & location, availability. CVs rarely state these. This is the real (small) boundary of user input — not laziness.',
-              'CONSENT is never inferred: candidate visibility (discoverable / hidden) is always an explicit user choice.',
-            ],
-          },
-          {
-            heading: 'Data flow — upload → profile → matching + search',
-            items: [
-              '1. Candidate uploads a CV (the only required action).',
-              '2. AI parses it → a structured Candidate Profile, each field tagged with a confidence score + source.',
-              '3. Candidate confirms low-confidence fields and adds the ~4–5 things AI can’t read (salary, preferences, consent) — one light screen, optional.',
-              '4. The profile is normalised against a shared Skill/Title/Industry taxonomy, then indexed.',
-              '5. That single profile powers BOTH employer CV search (facets + ranking) AND the CV↔JD match score.',
-            ],
-          },
-          {
-            heading: 'The join — a normalised taxonomy (the linchpin)',
-            items: [
-              'CV says “ReactJS”, JD says “React”, another says “React.js” — without a canonical vocabulary, matching & search silently fail.',
-              'One canonical Skill / Title / Industry taxonomy that BOTH the AI extractor and the Create-job form map into.',
-              'This is the highest-value backend investment — it is what actually lets CV and JD data connect.',
-            ],
-          },
-          {
-            heading: 'Matching score (CV ↔ JD)',
-            items: [
-              'Compare the Candidate Profile vector (skills, title, years, level, location, industry, salary) against the JD’s structured fields → a % fit.',
-              'Phase 1 (no AI): simple field overlap + weights (skills ∩, years ≥, location =) — labelled “basic match”.',
-              'Phase 2 (AI): embeddings / LLM for semantic match (React ≈ Frontend, “điều dưỡng” ≈ nurse) so exact tags aren’t needed.',
-              'Store a match-score snapshot on the Application at apply time (stable + auditable).',
-            ],
-          },
-          {
-            heading: 'CV search (employer)',
-            items: [
-              'Faceted query over the extracted fields: role, skills, years, location, industry, salary expectation, last-updated.',
-              'The extracted fields ARE the “general info to show” (current role, industry, years) AND the searchable facets — solved without asking the user.',
-              'Ranking: relevance + recency (lastUpdatedAt) + completenessScore. Gated by package/credits + candidate visibility consent (see “Resume list — Companies”).',
-            ],
-          },
-          {
-            heading: 'Phasing',
-            items: [
-              'Phase 1 — launch without AI: upload CV + capture ~5 fields; keyword search + field-overlap matching. Ships fast, gathers CV volume.',
-              'Phase 2 — turn on AI: parse each CV → auto-fill the Candidate Profile → real match % + rich CV search. Removes the user-input burden entirely.',
-            ],
-          },
-          {
-            heading: 'Kick-off — what the developer starts NOW (a research spike, before any build)',
-            items: [
-              '1. GATHER SAMPLE CVs — 10–20 real ones: Vietnamese + English, mixed formats (clean PDF, exported-from-Word, scanned). The 2–3 client test CVs are the seed. (PM/BA supplies.)',
-              '2. LOCK THE SCHEMA — turn the Candidate Profile above into a concrete JSON contract. Everything (search, matching, storage) builds on it, so it is decided first. Deliverable: schema doc + example JSON.',
-              '3. DECIDE THE TAXONOMY — where the canonical Skill / Title / Industry lists come from (adopt an existing set vs. curate our own). This is the linchpin that lets CV and JD data connect.',
-              '4. PARSER SPIKE — run 2–3 approaches (LLM prompt vs. a resume-parsing vendor e.g. Affinda / Daxtra) over the sample CVs and MEASURE per-field accuracy, especially Vietnamese. Deliverable: comparison table + a build-vs-buy recommendation.',
-              '5. STORAGE DESIGN — RawCV (file) + CandidateProfile (structured, with per-field source & confidence) + how the search index is fed from it.',
-              '6. PHASE-1 FALLBACK — define the ≤5 fields to ask when AI is off, and the light review screen, so we can ship before the parser is ready.',
-              '7. CONFIDENCE & REVIEW RULE — the confidence threshold below which a field is shown to the candidate to confirm (human-in-the-loop).',
-              'Output: the living design doc + a recommendation reviewed with PM/BA BEFORE the build starts. Do not build the parser into production until step 4 has a verdict.',
-            ],
-          },
-        ],
-        backend: {
-          notes: 'One extracted structured layer (Candidate Profile) is the source of truth for both matching and search. Search likely needs a dedicated faceted index; matching may need a vector store in Phase 2.',
-          dataModel: [
-            { name: 'RawCV', type: 'file (pdf/doc)', notes: 'the uploaded document — human-readable, sent to employers' },
-            { name: 'CandidateProfile', type: 'entity', notes: 'AI-extracted structured fields (role, skills[], years, education, industry, location, languages)' },
-            { name: '  fieldSource / fieldConfidence', type: 'enum / 0–1', notes: 'per field: parsed vs user-confirmed, and extraction confidence' },
-            { name: '  desiredSalary / desiredLocation / availability', type: 'user input', notes: 'the ~4–5 fields AI cannot read' },
-            { name: '  visibility', type: 'enum(discoverable|hidden)', notes: 'explicit consent — never inferred' },
-            { name: '  lastUpdatedAt / completenessScore', type: 'timestamp / number', notes: 'search-ranking signals' },
-            { name: 'Skill/Title/Industry taxonomy', type: 'canonical lists', notes: 'the join both CV extraction and JD map into (normalisation)' },
-            { name: 'MatchScore(profile, job)', type: 'computed', notes: 'field-overlap (P1) → embeddings/LLM (P2); snapshotted on Application' },
-          ],
-          integrations: [
-            'AI CV-parsing (LLM or a vendor e.g. Affinda/Daxtra) — Phase 2',
-            'Job management (JD structured fields)',
-            'Application management (match-score snapshot)',
-            'Products & packages + visibility consent (CV-search gating)',
-          ],
-        },
-        openQuestions: [
-          '[C2] Build vs. buy the CV parser — LLM prompt vs. a dedicated resume-parsing vendor? How good is Vietnamese-language extraction?',
-          '[C1] Where does the canonical Skill/Title/Industry taxonomy come from — adopt an existing one, or curate our own? Who owns it after launch?',
-          'Matching: field-weighted score vs. embeddings — and is a match % shown to candidates, employers, or both?',
-          'Salary data: ask candidates (optional) or leave blank — and do we ever show it in search?',
-          'Does the match score run at apply time only, or continuously for recommendations?',
+          'As a jobseeker, I want the jobs I am shown to reflect both what I want and what I can actually do, so that the list is worth reading instead of being a generic feed with my name on it.',
+        requirements: [
+
+      {
+        label: 'THE SCORE IS SHARED — this module does not define a second one',
+        text: 'Recommendations rank OPEN JOBS against a candidate; the employer’s applicant list ranks CANDIDATES against one job. Both are the SAME weighted 0–100 computation over the same nine signals, specced in **Resume management → MATCH SCORE**. A second scoring path is how two screens start disagreeing about who fits what, so nothing here re-states a weight or a credit rule — only what the feed does differently.',
+        items: [
+          'READ THE SCORE SPEC FIRST — the nine signals and their weights (skills 38 · years + level 18 · location + work type 17 · category 10 · salary 7 · industry 5 · education 3 · language 2), the renormalise rule, constraint-vs-evidence scoring for missing data, the cross-currency salary rule, and the protected-fields prohibition all live in Resume management and apply here unchanged.',
+          'WHERE THE 100 POINTS COME FROM, because it decides what this feed can do at all: CV CONTENT = 40 · WORK PREFERENCE = 39 · BASIC INFORMATION = 3 · SHARED (years + derived career level) = 18. Direction comes from the profile, evidence comes from the CV, and a feed missing either half is measurably worse — see the tiers below.',
         ],
       },
-    },
-
-    // ── CV DATABASE & SEARCH (paid) — the employer-facing search over the CV pool.
-    //    Authored as a research/discovery brief because we have no data model yet.
-    {
-      name: 'Resume list',
-      site: 'Companies',
-      scope: ['BE', 'FE', 'UI'],
-      mockup: 'co-resume-search',
-      detail: {
-        description:
-          'The paid CV-search feature (Phase-1 flow #3): an employer buys a package, searches our pool of CVs by criteria, sees matching results with details LOCKED, then unlocks a candidate to view the full CV and contact them. ' +
-          'This is a DISCOVERY / RESEARCH task before it is a build task. We do not yet have a CV data model, a criteria set, or ranking logic. The developer + BA must first investigate how a CV pool should be organised, indexed, searched and ranked — validate it against real sample CVs (2–3, provided later) and against reference products — and maintain a living design document as they go. Nothing here is final; treat the data model and endpoints below as a starting sketch to refine, not a spec to implement.',
-        userStory:
-          'As an employer, I want to search the CV database by the criteria that matter to me (title, skills, experience, location, salary…) and see the most relevant candidates first, so that I can find and contact the right people directly instead of waiting for applications.',
-
-        keyPoints: [
-          {
-            vi: 'Một dòng kết quả phải đủ để quyết định có mở khoá hay không: giới tính · tuổi, số năm kinh nghiệm, công ty HIỆN TẠI đầy đủ (tên, chức danh, thời gian, mô tả 1 dòng), các công ty TRƯỚC ĐÓ dạng chữ ngắn gọn (tên · chức danh · tổng thời gian), phần còn lại gộp thành "+N", rồi học vấn và kỹ năng.',
-            en: 'A result row must be enough to decide whether to unlock: gender · age, years of experience, the CURRENT job in full (company, title, period, one line of description), EARLIER jobs as plain compact text (company · title · total duration), the rest collapsed into "+N", then education and skills.',
-          },
-          {
-            vi: 'Danh tính bị che cho tới khi mở khoá: họ tên đầy đủ, email, số điện thoại và file CV. Mọi thứ khác ở trên đều hiển thị khi còn khoá.',
-            en: 'Identity stays masked until unlock: full name, email, phone and the CV file. Everything listed above IS shown while locked.',
-          },
-          {
-            vi: 'Mỗi trường hiển thị trên dòng kết quả cũng phải là một bộ lọc — hiển thị mà không lọc được thì nhà tuyển dụng vẫn phải cuộn 248 kết quả.',
-            en: 'Every field shown on the row must also be a filter — a field you can read but not filter on still leaves the recruiter scrolling 248 results.',
-          },
-          {
-            vi: 'Ô tìm kiếm theo mô hình Saramin Hàn Quốc: BA ô — OR (chứa bất kỳ từ nào), AND (phải chứa tất cả), NOT (loại trừ) — nhà tuyển dụng không phải học cú pháp toán tử.',
-            en: 'The keyword bar follows Saramin KR: THREE boxes — OR (any of these), AND (must contain every one), NOT (exclude) — so a recruiter never has to learn an operator syntax.',
-          },
-          {
-            vi: 'Bộ lọc nằm ở CỘT TRÁI, chia 4 nhóm theo nguồn dữ liệu: Work preference → Profile → Work information → CV activity. Mỗi trường là một dropdown, riêng "Last resume update" là dãy nút chọn nhanh.',
-            en: 'Filters sit in the LEFT RAIL, in four collapsible groups by data source: Work preference → Profile → Work information → CV activity. Every field is a dropdown; only "Last resume update" is a pill row.',
-          },
-          {
-            vi: 'Không có bộ lọc nào bịa ra trường mới — mỗi bộ lọc đều đọc từ một trường đã có trong hồ sơ hoặc CV. Xem bảng "Every filter, and the field it reads".',
-            en: 'No filter invents a field: every one reads something the profile or the CV already holds. See the "Every filter, and the field it reads" table — anything that cannot fill a row there does not ship.',
-          },
-          {
-            vi: 'Giới tính và tuổi là dữ liệu nhạy cảm về phân biệt đối xử. Hai trường này chỉ hiển thị/lọc được nếu ứng viên đã điền (tuỳ chọn) và cần được pháp lý của khách hàng duyệt trước khi ra mắt.',
-            en: 'Gender and age are discrimination-sensitive. They render and filter only when the candidate supplied them (both optional), and the client’s legal side must sign the facets off before launch.',
-          },
+      {
+        label: 'HOW THE FEED DIFFERS FROM A SEARCH',
+        text: 'An employer search is a deliberate query: it may return the same people twice and nobody minds. A feed is ambient — it is re-read, it must move, and it must never be empty. These are the rules that follow from that difference.',
+        items: [
+  'THE FEED GATES JOBS, NOT CANDIDATES — on top of the shared eligibility gate: open · not expired · moderation approved · exposure on. It never reads the candidate’s visibility or searchable flag, so Hidden accounts and accounts with no flagged CV both still receive a full feed.',
+  'A FEED IS NOT A QUERY — what the recommender adds on top of the shared score. (1) EXCLUDE: jobs already applied to, saved-and-dismissed, expired, and — as an opt-in — the candidate’s own current employer. (2) FRESHNESS: an employer search is a deliberate query and may return the same people twice; a recommendation list that never changes is dead, so posting recency joins the tie-break. (3) PREFERENCE RANKS, IT NEVER FILTERS — a candidate who asked for one city and one category would otherwise see four jobs. Same rule as skills on the job side.',
+  'COLD START IS A LADDER — not a special algorithm. A brand-new account holds only sign-up fields and can be scored on almost nothing, so recommendation quality tracks how much of the profile exists: onboarding answers alone (desired role · category · location · salary) already carry 39 of the 100 points, which is why the onboarding’s last step can show real jobs at all. Say this in the UI — “add your skills to see better matches” — rather than silently serving a weak list.',
+          'THE FEED IS RE-COMPUTED, NOT STORED — a recommendation is only as good as the moment it is read: jobs expire, new ones post, and the candidate edits their profile. Cache for minutes, never persist a ranked list as if it were a result. The score itself is deterministic, so re-computing is cheap and returns the same answer for the same inputs.',
         ],
-
-        uiFields: [
-          {
-            group: 'Result row — identity line (masked while locked)',
-            items: [
-              { name: 'maskedName', type: 'derived string', required: true, notes: 'surname + ○○ (e.g. "Trần ○○"). The full name appears only after unlock — never send the real name to the locked endpoint, mask it server-side' },
-              { name: 'gender', type: 'enum (Nam · Nữ · Khác)', notes: 'OPTIONAL on the candidate side — the row omits it silently when blank, it never renders "Not specified". Shown as "Nữ · 28 tuổi" on one line, Saramin-KR style' },
-              { name: 'age', type: 'int (derived)', notes: 'computed from dateOfBirth at query time — never stored as a number, or it goes stale. Blank DOB → no age shown' },
-              { name: 'headline / currentTitle', type: 'string → Title taxonomy', required: true, notes: 'the candidate’s own job title line, e.g. "Điều dưỡng trưởng"' },
-              { name: 'totalYearsExperience', type: 'int (derived)', required: true, notes: 'summed from work history. 0 renders as "Fresher · under 1 yr", not "0 years"' },
-              { name: 'lockState', type: 'derived', required: true, notes: 'Locked → "Name & contact locked" + [Unlock · 1 credit]; Unlocked → "Unlocked" + [View CV], free to re-open' },
-            ],
-          },
-          {
-            group: 'Result row — WORK HISTORY (the client’s specified shape, 2026-08-13)',
-            items: [
-              { name: 'RULE', type: 'layout', required: true, notes: 'the CURRENT job is shown in FULL; every earlier job is a COMPACT one-line chip; anything past the chips that fit becomes a "+N" count. One card therefore shows the whole shape of a career without ever running past four or five lines' },
-              { name: 'current.company', type: 'string', required: true, notes: 'the most recent work-experience entry. Employer name as written on the CV — masked to employer TYPE + city while locked, see the re-identification note' },
-              { name: 'current.jobTitle', type: 'string → Title taxonomy', required: true, notes: 'role held there — may differ from the headline' },
-              { name: 'current.period', type: 'derived string', required: true, notes: 'from–to, e.g. "03/2023 – nay" or "06/2025 – 12/2025". "nay" / "now" when isCurrent — and this is ALSO how employment status is expressed: an open end means still employed, a closed one means they left. There is NO separate status badge (cut 2026-08-13); a badge repeating what the date range already says is noise on a card this dense' },
-              { name: 'current.description', type: 'text, ONE line', required: true, notes: 'clamped to exactly ONE line on the card (was two). The full text is on the CV detail page. One line is enough to tell a nurse in an ICU from a nurse in an outpatient clinic; more turns the list into a wall' },
-              { name: 'prior[]', type: 'PLAIN TEXT, not chips', notes: 'every earlier job as "Company · Job title (total duration)", set as quiet muted text rather than bordered chips — a chip reads as a tag you can click or filter by, and these are just the rest of the career. NO description, NO from–to dates: the total duration is the signal (job-hopping vs. tenure). Masked to employer type while locked, like the current one' },
-              { name: 'morePrior', type: 'derived count', notes: '"+N" after the chips when the history is longer than the row can hold — e.g. "+2" means two further employers. Clicking it opens the CV detail page rather than expanding in place' },
-              { name: 'no-experience case', type: 'empty state', notes: 'a candidate with no work history shows "No work experience yet" rather than an empty block — absence is a screening signal, especially for campus hiring' },
-              { name: 'NOT SHOWN: previous salary', type: 'gap vs. the reference', notes: 'Saramin KR’s card carries 직전연봉 (previous annual salary) next to the employment status. We do NOT hold it: `expectedSalary` is what the candidate WANTS, not what they earn now, and previous salary is not one of the client’s 15 fields. Adding it would mean asking the candidate a new and sensitive question' },
-              { name: 'NOT SHOWN: category tags', type: 'gap vs. the reference', notes: 'the reference also carries computed badges (요즘 뜨는 인재 "trending", 대기업 "large employer", 최근 제안 많이 받음 "gets many offers"). Each needs a scoring job behind it and none exists yet — a Phase-2 idea, not a field' },
-            ],
-          },
-          {
-            group: 'Result row — latest education (most recent education entry)',
-            items: [
-              { name: 'education.school', type: 'string', required: true },
-              { name: 'education.degree / major', type: 'string + level enum', required: true, notes: 'e.g. "Cử nhân Điều dưỡng"; the level enum (High school · College · Bachelor · Master · Doctor) is what the Education-level facet filters on' },
-              { name: 'education.graduationStatus', type: 'enum', required: true, notes: 'Graduated (MM/YYYY) · Expected (MM/YYYY) · Attending · Left. Rendered as a small badge; Expected is toned differently so campus candidates are visible at a glance' },
-            ],
-          },
-          {
-            group: 'Result row — skills & asks',
-            items: [
-              { name: 'skills', type: 'skillId[] → Skill taxonomy', required: true, notes: 'top N by taxonomy weight, the rest collapsed into "+N more". Query-matched skills sort first so the recruiter sees why the row matched' },
-              { name: 'location', type: 'enum (province/city)', required: true },
-              { name: 'desiredSalary', type: 'int (VND) / Thỏa thuận', notes: 'optional candidate ask — see the open question on whether it is shown while locked' },
-              { name: 'availability', type: 'enum', notes: 'Open now · 1 month · 2+ months' },
-              { name: 'lastUpdatedAt', type: 'relative date', required: true, notes: '"Updated 2 days ago" — the freshness cue that stops a recruiter spending a credit on a dead CV' },
-            ],
-          },
-          {
-            group: 'Keyword bar — three boxes (the Saramin KR model)',
-            items: [
-              { name: 'OR terms', type: 'comma-separated list', required: true, notes: 'the main query — a CV matches if it contains ANY of these. "điều dưỡng, y tá" finds both spellings of the same role' },
-              { name: 'AND terms', type: 'comma-separated list', notes: 'every one of these must ALSO appear. This is the narrowing box' },
-              { name: 'NOT terms', type: 'comma-separated list', notes: 'exclude any CV containing any of these — the box that removes the near-miss profession a broad term keeps dragging in' },
-              { name: 'combined query', type: 'derived', required: true, notes: '(or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …). Three plain lists rather than one box with an operator syntax to learn — the recruiter never types AND, OR or a bracket' },
-              { name: 'keywordScope', type: 'dropdown', notes: 'All fields · Job title only · Skills only · Company only, under the bar. Orthogonal to the operators: the boxes say WHICH words, the scope says WHERE to look' },
-              { name: 'autocomplete', type: 'behaviour', notes: 'each box autocompletes against the Title + Skill taxonomies, so a typed word resolves to a canonical tag where one exists — the same join the extractor writes' },
-              { name: 'Reset · Load a saved search · Save this search', type: 'actions', required: true, notes: 'on the same band as the bar. Saving the whole search CONDITION — three keyword lists plus every filter — is what makes a 6-month package get used in month 5 instead of abandoned in month 2. See the saved-search open question' },
-              { name: 'NO location box', type: 'removed', notes: 'DELIBERATE: location is two distinct fields (lives in / wants to work in) and a single box beside the keyword could only guess which one was meant. Both are dropdowns in the rail instead' },
-            ],
-          },
-          {
-            group: 'Filter rail · 1. CV ACTIVITY',
-            items: [
-              { name: 'lastResumeUpdate', type: 'single-select pill row', required: true, notes: 'Any · Today · Yesterday · 3 days ago · 1 Week · 2 Weeks · 1 Month · 2 Months · 6 Months · 12 Months. Pills, not a dropdown — it is the most-used control here and one click beats two. Values are CUMULATIVE ("1 Week" = updated within the last week), and Any is the default: a date filter nobody set must never quietly hide CVs. FIRST in the rail, because freshness is the cheapest way to avoid spending a credit on someone who has stopped looking' },
-              { name: 'exclude already-unlocked / already-in-pipeline', type: 'CUT from the rail', notes: 'the two credit-protection toggles were removed on client direction (2026-08-12). The protection now rests on the row instead: an already-unlocked CV shows an "Unlocked" pill and a free "View CV" button rather than "Unlock · 1 credit", so a second recruiter can SEE they would not be paying again. That is weaker than a filter — it does not shorten the list — but it does stop the double charge' },
-            ],
-          },
-          {
-            group: 'Filter rail · 2. WORK PREFERENCE — the client field sheet’s six "Desired work condition" fields, in its order',
-            items: [
-              { name: 'desiredJobRole', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 1 of 6' },
-              { name: 'desiredJobCategory', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 2 of 6 — the same category master the job form writes, so both sides of a match share one vocabulary' },
-              { name: 'desiredIndustry', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 3 of 6' },
-              { name: 'desiredWorkLocation', type: 'multi-select dropdown (derived options)', required: true, notes: 'field 4 of 6, labelled "Desired locations". THE ONLY LOCATION WE HOLD — the field sheet is explicit that CURRENT location is not a field, so the earlier "Currently living in" filter was reading something that does not exist and has been cut' },
-              { name: 'desiredWorkType', type: 'multi-select dropdown', required: true, notes: 'field 5 of 6 — in office · remote · hybrid · oversea, the same `job_type` master the job side uses' },
-              { name: 'expectedSalary', type: 'currency + range', required: true, notes: 'field 6 of 6 — see the salary block below' },
-              { name: 'CUT: availability / employment type', type: 'removed', notes: 'neither is one of the client’s 15 candidate-data fields. "Availability / notice period" was never collected, and employment type is not separate from desiredWorkType. Both removed 2026-08-12 rather than left as filters over data we do not have' },
-              { name: 'expectedSalary', type: 'currency switch + from/to dropdowns', notes: 'reads `expectedSalary { kind, currency, min?, max? }` — the field ALREADY carries currency: VND · USD, so the two-currency control needs no new data. The switch re-labels the bounds and SCOPES the query to that currency; it must NOT convert. Defaults to VND. See the salary case table for every combination' },
-              { name: 'range semantics', type: 'query rule', required: true, notes: 'POINT-IN-RANGE, because the candidate states ONE figure and the employer states a band: `filter.from ≤ candidate.expectedSalary ≤ filter.to`, both bounds inclusive, unset From = 0, unset To = +∞. Implement it as `candidate.min ≤ filter.to AND (candidate.max ?? candidate.min) ≥ filter.from` so the same expression still works if the candidate form ever becomes a range' },
-              { name: 'salary period', type: 'derived comparison rule', required: true, notes: '`kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. A range query MUST normalise ANNUAL to monthly (÷12) WITHIN the same currency before comparing, or a 30,000/year ask is matched against a 30,000/month bound. Division by 12 is arithmetic, not an exchange rate — it is safe; currency conversion is not' },
-              { name: 'pass-through cases', type: 'query rule', required: true, notes: 'THREE kinds of candidate are INCLUDED by any salary bound rather than dropped by it: `kind = INTERVIEW` ("thỏa thuận"), `kind = INTERNAL_RULE` ("theo quy định công ty"), and a salary left BLANK — the field is optional and blanks are common. The "Also include Thỏa thuận" checkbox was cut from the UI on 2026-08-12; the behaviour it protected did NOT go with it and now lives in the query as the default. Excluding any of the three must be an explicit, labelled control, never a side effect of setting a bound' },
-              { name: 'excluded-count line', type: 'UI', required: true, notes: 'under the results: "12 candidates ask in USD — switch the currency to see them." Counting them needs no exchange rate, and without the line a currency-scoped search silently under-returns' },
-              { name: 'blank-data rule', type: 'rule, no longer UI copy', required: true, notes: 'the permanent caution was removed from the mockup on client direction (2026-08-12) — correctly, since explanations belong in the requirement, not in the screen. THE RULE STILL APPLIES: every field in this group is optional and none can be extracted from a CV ("a CV records where someone HAS BEEN, never where they want to go"), so choosing any of them drops every CV that left the field blank as well as every CV that does not match. Option counts are now the only thing telling a recruiter that, which is a reason the counts must be right' },
-            ],
-          },
-          {
-            group: 'Filter rail · 3. CANDIDATE INFORMATION → Basic information (EXACTLY four)',
-            items: [
-              { name: 'the four', type: 'rule', required: true, notes: 'the client field sheet lists NINE Basic-information fields. Five are not filters: full name (masked until unlock), email + phone (contact details, revealed by an unlock, never a search facet), and gender + marital status (the client’s own 🔒 rule — see the CUT rows below). The remaining FOUR are the whole of this sub-group — nothing else may be added to it' },
-              { name: 'nationality', type: 'dropdown (derived options)', notes: 'defensible for work-permit and native-speaker roles — see the ⚠ block on protected fields' },
-              { name: 'CUT: gender', type: 'removed', notes: 'built on the 2026-08-12 instruction, REMOVED 2026-08-13 — back in line with the client’s own master data, which marks it "stored but never a filter/matching key". Displaying gender on a result row is unchanged and still fine; FILTERING on it is gone. Do not re-add it from an older draft — see the ⚠ block on protected fields' },
-              { name: 'CUT: maritalStatus', type: 'removed', notes: 'same 🔒 constraint and the field with no defensible hiring purpose. Built 2026-08-12, REMOVED 2026-08-13' },
-              { name: 'age (from dateOfBirth)', type: 'dropdown', notes: 'Under 25 · 25–34 · 35–44 · 45+ — BUCKETS, never a free min/max pair, so the UI cannot be pointed at a single birth year. Not marked 🔒, but carries the same discrimination exposure as gender — the client’s legal side signs it off before launch' },
-              { name: 'highestEducation', type: 'dropdown', notes: 'High school · College · Bachelor · Master · Doctor. A Basic-information field in its own right — collected at onboarding, not derived from the CV’s education entries' },
-              { name: 'yearsOfWorkExperience', type: 'dropdown', notes: 'No experience / fresher · 1–3 · 3–5 · 5+ years. Also Basic information, candidate-stated and overridable' },
-              { name: 'CUT: currently living in', type: 'removed', notes: 'the field sheet is explicit: "CURRENT location is not a field. Matching reads DESIRED work location." The filter was reading data we do not hold and is gone; location now appears once, in Work preference' },
-              { name: 'CUT: graduation status', type: 'removed', notes: 'not one of the nine. Expected-graduate remains VISIBLE on the result row (derived from the education entry’s end date) but is no longer a filter' },
-            ],
-          },
-          {
-            group: 'Filter rail · 4. CANDIDATE INFORMATION → CV content',
-            items: [
-              { name: 'jobTitle', type: 'multi-select dropdown (derived options)', required: true, notes: 'from the latest work-experience entry, resolved to the Title taxonomy. Its own field, not only reachable through the keyword box — title is the first thing a recruiter narrows on' },
-              { name: 'skills', type: 'multi-select dropdown (derived options)', required: true, notes: 'CvSkill[] — options come from the skills present in the CURRENT results, top N by count. Taxonomy ids, never strings' },
-              { name: 'certificates', type: 'multi-select dropdown (derived options)', notes: 'in regulated sectors (healthcare, accounting) this is often the hardest requirement of the whole search' },
-              { name: 'language + level', type: 'ONE paired control', required: true, notes: 'a single bordered block containing two dropdowns, because it is one question ("English, at professional level") and two loose dropdowns invite the wrong query. They MUST be applied together against the SAME languages[] entry: English-professional must not match a candidate who is basic in English and professional in Korean' },
-              { name: 'CUT: industry experience', type: 'removed', notes: 'CV content is About · work experience · education · skills · certificates · languages · projects. There is no industry field on a CV — industry is a Work-preference field (desired industry) and appears there only' },
-              { name: 'About / projects', type: 'not facets', notes: 'free text. They are searched by the keyword bar, never filtered on' },
-            ],
-          },
-          {
-            group: 'Filter rail · mechanics (apply to every group)',
-            items: [
-              { name: 'layout', type: 'UI', required: true, notes: 'a LEFT RAIL of ~240px beside the results, each group a collapsible card, all open by default. 240 rather than 200 because every field is a dropdown; the salary bounds stack rather than sitting side by side' },
-              { name: 'option counts', type: 'derived per option', required: true, notes: 'every option carries its count for the current search, rendered INSIDE the open dropdown. This is what dropdowns cost us against a checkbox list — counts are no longer visible at a glance — so the rail header says where they went' },
-              { name: 'type-to-filter', type: 'UI', required: true, notes: 'any field whose options come from a TAXONOMY rather than a short enum (job category, industry, both locations, job title, skills, certification, language) opens with a search box above the list. Nobody should scroll 42 skills to find one. It matches the canonical name AND its aliases, so "ReactJS" finds "React"' },
-              { name: 'default value', type: 'UI', required: true, notes: 'every dropdown reads "Any" when unset, and "Any" is always the first option in the list — clearing one filter must never require Clear all' },
-              { name: 'active-filter chips', type: 'derived', notes: 'above the results, each removable. In a rail this long the cause of a small result set is usually a field the recruiter has forgotten they set' },
-            ],
-          },
-        ],
-
-        sections: [
-          {
-            heading: 'Result row — what is visible while LOCKED, and what an unlock adds',
-            early: true,
-            text: 'The commercial design of the whole feature sits in this one table. Too little on the locked row and no recruiter risks a credit; too much and there is nothing left to buy. The line we draw: everything that describes the CANDIDATE’S FIT is free to read, everything that lets you CONTACT them is paid.',
-            table: {
-              cols: ['Field on the row', 'While locked', 'After unlock'],
-              rows: [
-                ['Name', 'Masked — surname + ○○ ("Trần ○○")', 'Full name'],
-                ['Gender · age', 'Shown, when the candidate supplied them', 'Shown, plus date of birth'],
-                ['Years of experience', 'Shown', 'Shown'],
-                ['Current job — company, title, period', 'Shown, employer name masked to type + city. The period carries employment status: an open end ("– nay") means still employed', 'Employer named, plus the full work history'],
-                ['Current job — description', 'Shown, clamped to ONE line', 'Shown in full'],
-                ['Earlier jobs', 'Plain text — company · title (total duration), employer masked. Overflow as "+N"', 'All of them, with dates and descriptions'],
-                ['Latest education — school, degree, graduated / expected', 'Shown', 'Shown, plus the full education history'],
-                ['Skills', 'Top skills + "+N more"', 'All skills, languages and certificates'],
-                ['Location · desired salary · availability · last updated', 'Shown', 'Shown'],
-                ['Email · phone', 'Hidden', 'Shown'],
-                ['CV file (the PDF)', 'Hidden — no preview, no thumbnail', 'Viewable and downloadable'],
-              ],
-            },
-            warn: 'CHANGED 2026-08-12 — the button now reads just "Unlock" (no "· 1 credit"), and clicking it opens the CV page DIRECTLY: the confirm dialog that showed cost and remaining balance is gone. The unlock is still logged and still pools across the team, but there is no longer a moment where the recruiter is told what it costs before it is spent. That is a real change to the paid moment, not a label tweak — if unlocks remain metered, the balance has to surface somewhere else (the page header already shows "62 / 100 unlocks left") and an accidental click now spends one. Confirm with the client whether per-CV metering is being dropped, or whether the confirm step should come back.',
-          },
-          {
-            heading: 'Filter rail — four groups, in this order',
-            text: 'A COLLAPSIBLE LEFT RAIL beside the results, with one dropdown per field. The fields are grouped by WHERE THE DATA COMES FROM, which is not cosmetic — it tells a recruiter how much to trust a field, and tells the developer which fields go thin when the CV parser is not live. Work preference sits first because it is what a recruiter with a specific vacancy narrows on first.',
-            table: {
-              cols: ['Group', 'Fields, in order', 'Source, and what it means for the recruiter'],
-              rows: [
-                ['1 · CV ACTIVITY', 'Last resume update', 'Not candidate data — our own record of when the CV was last touched. FIRST in the rail because freshness is the cheapest way to avoid spending an unlock on someone who has stopped looking.'],
-                ['2 · WORK PREFERENCE', 'Desired job role · Desired job category · Desired industry · Desired locations · Desired work type · Expected salary', 'TABLE 2 of the client’s field sheet — "Desired work condition", all six, in the sheet’s own order. Captured at onboarding, ALL OPTIONAL, and a CV can never supply them: it records where someone HAS BEEN, never where they want to go. Filtering here narrows hard, because it drops every CV that left the field blank as well as every CV that does not match.'],
-                ['3 · CANDIDATE INFORMATION → Basic information', 'Nationality · Age · Highest education · Years of work experience', 'FOUR facets since 2026-08-13. Table 1 of the field sheet minus full name (masked until unlock), minus email + phone (contact, never a filter), and minus GENDER + MARITAL STATUS — both 🔒 in the client’s own master data and removed from the panel. Nothing else belongs here.'],
-                ['4 · CANDIDATE INFORMATION → CV content', 'Job title · Skills · Certificates · Language + level', 'TABLE 3 — the searchable parts of a CV. About and projects are free text and belong to the keyword bar; education is covered by Highest education above.'],
-              ],
-            },
-            items: [
-              'TWO SPLITS the grouping exposed, both now real pairs of fields rather than one ambiguous filter. LOCATION: where the candidate LIVES (Profile) versus where they WANT TO WORK (Work preference) — a recruiter filtering "Hồ Chí Minh" almost always means the second. INDUSTRY: where they HAVE worked ("Industry experience", Work information) versus the industry they are aiming for ("Desired industry", Work preference). Neither pair may silently stand in for the other, and the ambiguous free location box beside the keyword field is gone for the same reason.',
-              'SUMMARY versus DETAIL is why Highest education and Years of work experience sit in Profile rather than Work information. A recruiter screens on "bachelor, 5+ years" before reading which school and which jobs; the per-entry data stays CV content.',
-              'LANGUAGE + LEVEL render as ONE bordered block containing two dropdowns, because they are one question. They must be applied together against the SAME languages[] entry: "English · Professional" must not match a candidate who is basic in English and professional in Korean.',
-              'LAST RESUME UPDATE is a pill row, not a dropdown — it is the most-used control in the rail and one click beats two. Any · Today · Yesterday · 3 days ago · 1 Week · 2 Weeks · 1 Month · 2 Months · 6 Months · 12 Months, cumulative, defaulting to Any.',
-              'TYPE-TO-FILTER inside any dropdown whose options come from a taxonomy rather than a short enum. Nobody should scroll 42 skills to find one, and the search must match aliases as well as canonical names.',
-              'THE OPTIONAL-DATA WARNING that used to sit in the Work preference group was removed from the screen (2026-08-12) — correctly, since explanations belong here rather than in a mockup. The rule it carried has not changed: choosing any Work-preference filter also drops every CV that left that field blank, and those are the most-skipped fields on the profile. Option counts are now the only signal of that, which is one more reason the counts have to be right.',
-            ],
-          },
-          {
-            heading: '⚠ GENDER AND MARITAL STATUS AS FILTERS CONTRADICT THE CLIENT’S OWN WRITTEN RULE',
-            text: 'This is not our objection — it is the client’s. Their master-data export marks the gender and marital-status tables 🔒 and states the constraint in their own words: "stored but never a filter/matching key; enforce at API + search when wired." The Resume-management module already carries that quote, with a note to repeat it back whenever someone asks for a gender filter on CV search. On 2026-08-12 we were asked to add exactly those two as filters and both were built; on 2026-08-13 they were REMOVED again, putting us back in line with the client’s written rule. This block stays as the record of that round trip, so nobody re-adds them from an older draft.',
-            table: {
-              cols: ['Field', 'Defensible hiring use', 'Where it stands'],
-              rows: [
-                ['Gender', 'None as a FILTER. Legitimate to display on a row.', '✅ RESOLVED — REMOVED from the filter panel 2026-08-13, back in line with the client’s own 🔒 rule. Displaying gender on a result row is unchanged and still fine; FILTERING on it is gone.'],
-                ['Marital status', 'None we can identify. It predicts neither performance, availability nor tenure.', '✅ RESOLVED — REMOVED 2026-08-13. It was also the single most challengeable field here: in practice it is used to infer whether a woman may take maternity leave, which is precisely the inference discrimination law exists to prevent.'],
-                ['Nationality', 'Real, and common in Vietnam: work-permit eligibility, native-speaker roles, foreign-invested employers with quotas.', 'NOT marked 🔒. A protected characteristic, but defensible where the requirement is genuine and recorded. **TWO VALUES ONLY — Việt Nam / Nước ngoài** (Master data → Quốc tịch ứng viên), decided 2026-08-13.'],
-                ['Age (from date of birth)', 'Weak as a filter; legitimate to display.', 'Not marked 🔒, but carries the same discrimination exposure as gender. Buckets only, never a free min/max.'],
-              ],
-            },
-            items: [
-              'NATIONALITY IS A TWO-VALUE LIST — Việt Nam / Nước ngoài — not a country picker. The question an employer actually needs answered is “do we have to sponsor a work permit?”, and that has two answers. A per-country list would turn a sensitive personal field into a filter that sorts a candidate pool by passport, which is the discrimination exposure this whole block is about; and a role that genuinely needs Japanese or Korean is a LANGUAGE SKILL, which is already its own field and a better match anyway.',
-              'Deliberately ASYMMETRIC with the company Country list, which holds all ~196 countries. A company’s country of registration is public data on its licence and decides tax treatment, so it must be exact. A jobseeker’s nationality is sensitive personal data (NĐ 13/2023) with one narrow use, so it is collected at the coarsest grain that still answers the question.',
-              'If work-permit status itself becomes a filter later, model THAT — đã có GPLĐ / được miễn / cần bảo lãnh — rather than widening nationality. It is the fact employers want, and it is not a protected characteristic.',
-            ],
-            warn: '✅ CLOSED 2026-08-13 — gender and marital status are no longer filters, so no written reversal is needed and none should be requested. The rest is kept as the argument to reach for if the request returns. BEFORE BUILDING: get the client to confirm IN WRITING that they are reversing their own "never a filter/matching key" rule for gender and marital status. Their sheet also specifies WHERE the old rule was to be enforced — at the API layer AND in the search index — so reversing it is not a UI change, it is a decision to let those two fields enter the index at all. Recommendation unchanged: ship nationality, and put gender + marital status in front of the client’s legal counsel first. Every query using them is logged (FacetAudit); cutting two dropdowns is a five-minute change.',
-          },
-          {
-            heading: 'CV detail — a PAGE, and the same three groups as the data model',
-            text: 'Unlock (and View CV on an already-unlocked row) opens the CV as its OWN PAGE, not a dialog. A CV is a document a recruiter reads end to end, forwards to a colleague and prints; a 560px modal fights all three. Back returns to the result list with the search intact.',
-            table: {
-              cols: ['Section', 'Holds', 'Note'],
-              rows: [
-                ['1 · Basic information', 'Full name · email · phone · nationality · gender · marital status · date of birth (with age) · highest education · years of work experience', 'All NINE, including the three that are not search facets. Contact details are the thing an unlock actually buys.'],
-                ['2 · Work preference', 'Desired job role · desired job category · desired industry · desired work location · expected salary · desired work type', 'The six the candidate set. Saramin KR gives this its own heading at the foot of the resume ("the conditions ○○ set"), and we follow that placement.'],
-                ['3 · CV content', 'About · work experience[] · education[] · certificates[] · skills[] · languages[] · projects[] · the CV document', 'The CV itself. Work experience and education render as period-left / content-right rows so the dates can be scanned as a column.'],
-              ],
-            },
-            items: [
-              'Header: photo (initials where there is none), full name, and the identity line — role · gender · age · years. Plus who unlocked it and when, because the unlock is pooled across the team.',
-              'Page actions: Download CV · Add to a job pipeline · Contact candidate. Download serves the ORIGINAL document, not a re-render.',
-              'Row layout follows the client’s Figma reference: a fixed ~130px period column on the left, bold entity + meta + description on the right, sections separated by a rule under the heading.',
-              'The three section numbers are deliberate — they are the same 1/2/3 as the candidate-data model, so a developer reading this page and a developer reading the schema are looking at the same structure.',
-            ],
-          },
-          {
-            heading: 'Keyword search — three boxes, no operator syntax',
-            text: 'Following Saramin KR’s employer search: instead of one box in which a recruiter must know to type AND, OR, quotes and minus signs, there are three boxes, each a plain comma-separated list. The screen states the logic; the recruiter states the words.',
-            table: {
-              cols: ['Box', 'Placeholder', 'Meaning'],
-              rows: [
-                ['OR', 'any of these words', 'The main query. A CV matches if it contains at least one — "điều dưỡng, y tá" catches both names for the same role.'],
-                ['AND', 'must contain every one', 'Narrowing. Every term here must also appear.'],
-                ['NOT', 'exclude these words', 'Removal. Any CV containing one of these is dropped — the box that gets rid of the near-miss profession a broad term keeps dragging in.'],
-              ],
-            },
-            items: [
-              'The combined query is (or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …). Empty boxes drop out of the expression; an empty OR box with filters set is a valid "browse the pool" search.',
-              'The keyword scope selector (All fields · Job title only · Skills only · Company only) sits under the bar and is ORTHOGONAL to the operators: the boxes say which words, the scope says where to look. "điều dưỡng" as a job TITLE and as a word buried in a description return very different people.',
-              'Matched across title, skills, work-experience company/title/description, education school/major, and certifications. Never across contact fields.',
-              'RESET · LOAD A SAVED SEARCH · SAVE THIS SEARCH sit on the same band. A saved search stores the three keyword lists AND every filter — the whole condition, not just the words.',
-            ],
-          },
-          {
-            heading: 'Every filter, and the field it reads',
-            text: 'No filter on this screen invents a field. Each one maps to something the profile or the CV already holds — this table is the check, and anything that cannot fill a row here does not ship as a filter.',
-            table: {
-              cols: ['Filter', 'Field it reads', 'Where that field comes from'],
-              rows: [
-                ['CV ACTIVITY — Last resume update', 'lastUpdatedAt', 'System'],
-                ['WORK PREF — Desired job role', 'desiredJobRole', 'Field sheet, Desired work condition 1/6'],
-                ['WORK PREF — Desired job category', 'desiredJobCategory', 'Field sheet 2/6 — the same category master the job form writes'],
-                ['WORK PREF — Desired industry', 'desiredIndustry', 'Field sheet 3/6'],
-                ['WORK PREF — Desired locations', 'desiredWorkLocation', 'Field sheet 4/6 — THE ONLY location we hold'],
-                ['WORK PREF — Desired work type', 'desiredWorkType', 'Field sheet 5/6 — in office · remote · hybrid · oversea, the shared `job_type` master'],
-                ['WORK PREF — Expected salary (VND · USD)', 'expectedSalary { kind, currency, min, max }', 'Field sheet 6/6 — currency is ALREADY on the field; no data work needed'],
-                ['BASIC INFO — Nationality', 'nationality', 'Field sheet, Basic information (sign-up)'],
-                ['BASIC INFO — Gender', 'gender', 'Basic information (sign-up) — ⚠ marked 🔒 "never a filter key" in the client’s own master data'],
-                ['BASIC INFO — Marital status', 'maritalStatus', 'Basic information (sign-up) — ⚠ marked 🔒 in the client’s own master data'],
-                ['BASIC INFO — Age', 'dateOfBirth', 'Basic information (sign-up) — age is COMPUTED at query time, never stored'],
-                ['BASIC INFO — Highest education', 'highestEducation', 'Basic information (onboarding) — a stated field, NOT derived from the CV’s education entries'],
-                ['BASIC INFO — Years of work experience', 'yearsOfWorkExperience', 'Basic information (onboarding) — stated, overridable'],
-                ['CV CONTENT — Job title', 'workExperience[latest].title', 'CV content → Title taxonomy'],
-                ['CV CONTENT — Skills', 'CvSkill[] (cvId · skillId · source)', 'CV content — extracted or hand-added → Skill taxonomy'],
-                ['CV CONTENT — Certificates', 'certificates[] { name, issuer, date }', 'CV content'],
-                ['CV CONTENT — Language + level', 'languages[] { language, proficiency }', 'The `language` (8 rows) and `language_proficiency` (7 rows, CEFR) masters. Indexed AS A PAIR — languages are NOT skills'],
-              ],
-            },
-            warn: 'CUT because the field does not exist in the client’s 15-field sheet — do not re-add without adding the field first: AVAILABILITY / notice period, EMPLOYMENT TYPE (full-time/part-time is not separate from desired work type), CURRENTLY LIVING IN (the sheet states plainly that current location is not a field), INDUSTRY EXPERIENCE (a CV has no industry field), GRADUATION STATUS (not one of the nine; still shown on the row, just not filterable). Separately cut on client direction, all backed by real fields and re-addable in minutes: the "include Thỏa thuận" checkbox and the two credit-protection toggles. Also recorded so nobody builds from an earlier draft: `expectedSalary` always carried currency VND · USD — the older `desiredSalary: int (VND)` sketch in CV data & matching architecture is superseded by it.',
-          },
-          {
-            heading: 'Salary — ONE figure from the candidate, a RANGE from the employer',
-            text: 'CANONICAL RULES live in CV data & matching architecture → "★ SALARY — the one contract", which covers all four surfaces at once; this section is the CV-SEARCH application of them, case by case. The two sides are deliberately different shapes, and that asymmetry IS the logic. A CANDIDATE states a single expected figure ("Từ 15 triệu"). An EMPLOYER posting a job states a band, and an employer searching CVs also filters by a band (DECIDED 2026-08-13, client direction). So a CV matches when THE CANDIDATE’S ONE FIGURE FALLS INSIDE THE EMPLOYER’S BAND — a point-in-range test, not two ranges overlapping. There is no second candidate number to overlap with.',
-            table: {
-              cols: ['What the candidate stated', 'Employer filters VND 15 – 25 triệu / month', 'Why'],
-              rows: [
-                ['MONTHLY · VND · 18 triệu', 'MATCH', '18 falls inside 15 – 25.'],
-                ['MONTHLY · VND · 15 triệu', 'MATCH', 'Bounds are INCLUSIVE at both ends.'],
-                ['MONTHLY · VND · 30 triệu', 'no match', 'Above the band — the recruiter cannot afford them, which is the whole point of the ceiling.'],
-                ['MONTHLY · VND · 12 triệu', 'no match', 'Below the band. Note this is the one case worth watching — see the "From" bound item below.'],
-                ['Filter has only a To bound (Any – 25)', 'MATCH for anything ≤ 25', 'An unset From is treated as 0. This is the affordability screen most recruiters actually want.'],
-                ['Filter has only a From bound (15 – Any)', 'MATCH for anything ≥ 15', 'An unset To is treated as +∞.'],
-                ['ANNUAL · VND · 240 triệu / year', 'MATCH', 'Normalised ÷12 to 20 triệu / month FIRST, then tested. Without this a 240/year figure is compared against a monthly band and fails.'],
-                ['MONTHLY · USD · 1,200', 'not shown, but COUNTED', 'Different currency: never compared numerically. Excluded from this result set and reported under it — "12 candidates ask in USD — switch the currency to see them."'],
-                ['kind = INTERVIEW ("thỏa thuận")', 'MATCH', 'Negotiable is a VALUE, not a null. There is no figure to test, and these are often the candidates most worth calling.'],
-                ['kind = INTERNAL_RULE ("theo quy định công ty")', 'MATCH', 'Same reasoning as INTERVIEW.'],
-                ['Nothing stated at all (field left blank)', 'MATCH, and flagged on the row', 'Expected salary is OPTIONAL. Excluding blanks would silently delete most of the pool the moment a recruiter touches the salary filter — the single most damaging default available here.'],
-              ],
-            },
-            items: [
-              'THE TEST, in one line: `filter.from ≤ candidate.expectedSalary ≤ filter.to`, both bounds inclusive, an unset From meaning 0 and an unset To meaning +∞.',
-              'WRITE IT AS AN OVERLAP ANYWAY — `candidate.min ≤ filter.to AND (candidate.max ?? candidate.min) ≥ filter.from`. With today’s single-figure candidate form `max` is null, so this evaluates to exactly the point-in-range test above; if the candidate form ever becomes a range it becomes a true overlap with no change to the query. One expression, correct in both worlds.',
-              'THE "FROM" BOUND EXCLUDES CHEAPER CANDIDATES, and that is worth a conscious decision rather than a shrug. A recruiter with a 15 – 25 band does not see someone who asked 12, even though that candidate would almost certainly say yes. Recruiters do use a floor as a rough seniority proxy, so the bound is not useless — but if the client finds the behaviour too strict, the fix is to make From optional-by-default in the UI, NOT to change the comparison. Softening the comparison would make the two bounds mean different things, which nobody can predict.',
-              'PERIOD: `kind` is ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE. Normalise ANNUAL to monthly (÷12) WITHIN the same currency before comparing. Dividing by 12 is arithmetic and always safe; converting between currencies is not.',
-              'CURRENCY: the switch re-labels the bounds and scopes the query to that currency. It must NOT convert — we hold no exchange rate, any rate is stale within weeks, and a converted salary shown to an employer is a number the candidate never said.',
-              'SAY WHAT THE CURRENCY SCOPE EXCLUDED, because silence here reads as “there is nobody else”. Under the results: “12 candidates ask in USD and are not shown — switch the currency to see them.” No exchange rate is needed to count them, and one line turns an invisible gap into a visible, fixable one. Same rule anywhere a currency-scoped query hides rows.',
-              'THE THREE PASS-THROUGH CASES — INTERVIEW, INTERNAL_RULE and blank — are included by DEFAULT and that default lives in the query, not in a checkbox. The "Also include Thỏa thuận" checkbox was cut from the UI on 2026-08-12; the behaviour it protected did not go with it. If the client ever wants these excluded, that must be an explicit, labelled control — never a side effect of setting a bound.',
-              'Bounds are PRESETS in a dropdown, not free number entry. Free entry invites 15000000 against 15 and a result set of zero.',
-              'DEFAULT CURRENCY is VND, because the overwhelming majority of a Vietnamese pool states VND. The switch is there for the minority, and the excluded-count line is what tells a recruiter the minority exists.',
-              'FACET COUNTS obey the same scope: the counts shown on every other filter are counts WITHIN the current currency scope. A recruiter who switches VND → USD should expect every count in the rail to change, and nothing else about the query to.',
-              'Display always shows what the candidate wrote — currency, period and all. Normalisation exists for comparison inside the index and must never reach the screen.',
-              'WHY THE FILTER EXCLUDES CROSS-CURRENCY WHILE THE MATCH SCORE STAYS NEUTRAL. These look inconsistent and are not: a FILTER is a question a recruiter asked ("show me people in this band"), and a number we cannot compare cannot answer it — so it is set aside and counted out loud. A MATCH SCORE is our own summary of fit, where an unanswerable signal must not be allowed to punish a candidate, so it scores neutral (see the CV↔JD matching rules). Do not "fix" either one to match the other.',
-            ],
-          },
-          {
-            heading: 'Filter panel — what is query-driven and what is fixed',
-            text: 'The panel is dynamic in only two ways, and confusing them produces a panel that is either useless or unlearnable. The GROUPS and the fields inside them are FIXED and always render in the same order, even when one is entirely empty for the current query. What changes with the query is the counts on every option, and the option LIST of the open-ended fields.',
-            table: {
-              cols: ['Part of the panel', 'Query-driven?', 'Rule'],
-              rows: [
-                ['The four groups, the fields in them, and their order', 'No — fixed', 'A recruiter who learns where Desired salary sits must find it in the same place on the next search. Never hide, reorder or add a field based on the query.'],
-                ['Counts on every option', 'Yes — always live', 'Each option shows how many of the CURRENT results it would keep, e.g. "Hồ Chí Minh (181)". With dropdowns these render inside the open list. This is what turns the panel from guesswork into navigation.'],
-                ['Options of Job category · Desired industry · Industry experience · Job title · Skills · Certification · Language · Nationality · both Locations', 'Yes — drawn from the results', 'List only values PRESENT in the current result set, top N by count, with a type-to-filter box above the list. Searching "điều dưỡng" surfaces nursing skills; "kế toán" surfaces accounting ones. A hardcoded list of three skills is decoration, not a filter.'],
-                ['Options of Gender · Age · Marital status · Highest education · Graduation · Years of experience · Level · Availability · Employment type · Salary bounds · Last update', 'No — fixed enums', 'These are closed vocabularies with a natural order. Render every value always, including the zero ones.'],
-                ['A zero-count option', 'n/a', 'Shown, greyed and unselectable — NOT hidden. "Master (0)" tells the recruiter the pool has no masters; a missing row tells them nothing and reads as a bug.'],
-                ['The "Any" option', 'n/a', 'Always first in every dropdown, and the default. Clearing one filter must never require Clear all.'],
-              ],
-            },
-            items: [
-              'THE COUNTING RULE, and the one most implementations get wrong: a field’s counts are computed with every OTHER active filter applied, but WITHOUT its own. Choose "Hồ Chí Minh" and the location list must still show Hà Nội (21) — computed as if that field were unset — while every other field’s counts drop to the HCMC subset. Count a field against its own selection and every unchosen option in it reads 0, which makes multi-select impossible.',
-              'An option the recruiter has already chosen is NEVER removed, even when a later filter drops its count to 0. Their own choice vanishing from the list is the most disorienting thing a faceted search can do.',
-              'Active filters also render as removable chips above the results, because in a panel this size the reason a search returned 3 people is usually a field the recruiter has forgotten they set.',
-              'Counts come back from the search engine in the SAME response as the results — one round trip, not one request per field. Facet aggregation is a solved feature in every search index; the choice of index (see the research task) should be made partly on how well it does this.',
-              'Phase-1 fallback: if the launch index cannot aggregate cheaply, ship the fixed groups WITHOUT counts rather than with stale or wrong ones. A wrong count is worse than no count — it is a promise about the result set.',
-            ],
-          },
-          {
-            heading: 'Re-identification — the risk this field set creates',
-            text: 'Masking the name is not the same as anonymity. Gender + age + employer name + job title + school is, in a market the size of Vietnam, frequently enough to identify one person — a recruiter who reads "Nữ · 34 · Điều dưỡng trưởng khoa Ngoại · BV Quốc tế Mỹ" has effectively identified the candidate without spending a credit. This is a deliberate trade, not an oversight, and it needs a decision rather than a default.',
-            items: [
-              'The value case: a recruiter who cannot see the current employer cannot judge seniority or sector fit, and will not spend credits blind. Reference products (Saramin KR, VietnamWorks) all show it.',
-              'Mitigation held in Phase-1: contact details and the CV file stay locked, every unlock is logged and attributed, and the candidate can leave the pool at any time via visibility consent.',
-              'Alternative if legal objects to the employer name: show industry + company size instead ("Bệnh viện tư · 500–1000 nhân sự"), keeping the signal and dropping the identifier. Costs a mapping table, nothing more.',
-              'Third option, candidate-controlled: let the candidate hide their current employer from search the way they already control overall visibility — Saramin KR and LinkedIn both do this. Costs one more field on the CV visibility screen.',
-            ],
-            warn: 'Do not ship gender and age as facets before the client’s legal side has signed them off. Filtering a candidate pool by gender or age is the textbook shape of a discrimination claim, and the log of who filtered by what is discoverable.',
-          },
-          {
-            heading: 'Where each field comes from — nothing new is asked of the candidate',
-            text: 'Every field on the row already exists upstream. This screen is a read model, not a new collection point; if a field is blank here the fix is upstream, in extraction or in the CV form.',
-            table: {
-              cols: ['Row field', 'Source', 'If missing'],
-              rows: [
-                ['Gender, date of birth → age', 'Basic information on the CV (reinstated 2026-08-09, both optional)', 'The row silently omits the demographic line — never a placeholder'],
-                ['Years of experience', 'Derived from CV work history (totalYearsExperience)', 'No work history → "Fresher · under 1 yr"'],
-                ['Latest company block', 'The most recent Work-experience entry (isCurrent first, else latest endDate)', '"No work experience yet"'],
-                ['Latest education block', 'The most recent Education entry', 'The block is omitted; the CV loses completeness score and drops in ranking'],
-                ['Skills', 'CvSkill[] resolved to the Skill taxonomy', 'The row still renders; unresolved free-text skills are NOT shown, because they are not searchable'],
-              ],
-            },
-          },
-          {
-            heading: 'Research scope — what to investigate',
-            items: [
-              'A. DATA & STRUCTURE — what fields make up a CV; which are structured (searchable/filterable) vs. free text; how each CV is stored so search is fast; how we "featurize" a CV (which attributes we extract and index).',
-              'B. SEARCH & FILTER CRITERIA — the realistic criteria employers search by: keyword, job title, skills, years of experience, location, industry, education level, salary expectation, availability, last-active/updated date. Which are hard filters vs. soft/optional, and which matter most.',
-              'C. MATCHING & RANKING — how results are ordered (relevance scoring, field weighting, recency, profile completeness); how to handle "no exact match" (fuzzy / related results).',
-              'D. REFERENCE STUDY — how existing products organise and expose CV search, what to copy / avoid / do better (see Reference products below).',
-              'E. GATING & PRIVACY — how results stay LOCKED until a package is bought; candidate visibility consent (a seeker must be discoverable); what an unlock consumes (credits) and reveals.',
-            ],
-          },
-          {
-            heading: 'Living document — maintain as you go (not just a final answer)',
-            items: [
-              'Findings — data structure, criteria, ranking approach.',
-              'Reference notes — screenshots + notes from VietnamWorks and others.',
-              'Proposed data model & search logic — recommended fields, filters, index, ranking.',
-              'Open questions / decisions needed — anything blocking, for us to decide or provide.',
-              'Assumptions — what was assumed where information was missing.',
-              'Keep it updated continuously and flag blockers early so we can support you.',
-            ],
-          },
-          {
-            heading: 'Reference products to study',
-            items: [
-              'VietnamWorks — primary reference. We provide a login/account ID and buy the credits needed to test search, filters, result presentation and the unlock/credit model.',
-              'Our own Admin "Resume list" — how HQ already views CVs.',
-              'Secondary comparisons: TopCV, ITviec, LinkedIn Recruiter — filter sets and ranking cues.',
-            ],
-          },
-          {
-            heading: 'What we provide / how we support',
-            items: [
-              'Sample CV data — a small set (~2–3 CVs) to validate the model against, provided later.',
-              'VietnamWorks access — account ID + purchased test credits.',
-              'Fast product decisions — raise questions in the living document or directly.',
-            ],
-          },
-          {
-            heading: 'Suggested phases',
-            items: [
-              '1. Study references (VietnamWorks + our Admin resume list) → notes.',
-              '2. Draft data model + criteria list → review with BA / product.',
-              '3. Validate against real sample CVs once provided → refine.',
-              '4. Propose search + ranking logic → review before any build.',
-            ],
-          },
-        ],
-
-        backend: {
-          notes:
-            'STARTING SKETCH ONLY — to be confirmed by the research. The point of the discovery task is to decide the real shape of this. Search likely needs a dedicated index (e.g. full-text / faceted) separate from the primary CV store.',
-          dataModel: [
-            { name: 'cvId', type: 'uuid', notes: 'the searchable CV — one per seeker (up to 3 held)' },
-            { name: 'seekerId', type: 'uuid' },
-            { name: 'title / desiredPosition', type: 'string', notes: 'primary keyword field' },
-            { name: 'skills', type: 'skillId[]', notes: 'the indexed facet, denormalised from CvSkill — taxonomy ids, never strings' },
-            { name: 'experienceYears', type: 'enum/number', notes: 'derived from work history?' },
-            { name: 'currentLocation', type: 'enum (province/city)', notes: 'where the candidate LIVES — from Basic information. Its own facet ("Currently living in")' },
-            { name: 'desiredLocation', type: 'enum (province/city)[]', notes: 'where they WANT TO WORK — a candidate ask, optional, possibly several. Its own facet ("Wants to work in"). Never conflate the two: see the location split in the filter-rail section' },
-            { name: 'industry / category', type: 'enum' },
-            { name: 'educationLevel', type: 'enum' },
-            { name: 'expectedSalary', type: '{ kind, currency, min, max? }', notes: 'EXISTING FIELD from Job preferences — kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE, currency: VND · USD. ONE figure today: the candidate form writes `min` and leaves `max` null; the employer filters by a BAND and the figure is tested against it. Index a derived MONTHLY value PER CURRENCY for that test, and keep the written value for display. Never converted between currencies' },
-            { name: 'desiredEmploymentTypes / desiredWorkTypes', type: 'enum[] / enum[]', notes: 'EXISTING fields from Job preferences — employment type (FULL_TIME · CONTRACT · FREELANCE · INTERN · DISPATCH · ENTRUSTED · PART_TIME) and work type (in-office · remote · hybrid · oversea, the shared `job_type` master). Indexed as facets; nothing new to collect' },
-            { name: 'desiredJobCategories', type: 'string[]', notes: 'Job preferences — the "Desired role" facet, resolving to the same category master the job form writes' },
-            { name: 'languages', type: '{ language, proficiency }[]', notes: 'INDEXED AS A PAIR, not as two independent lists — "English · Professional" must match the same entry, never English from one row and Professional from another' },
-            { name: 'certifications', type: 'embedded[]', notes: 'already on CandidateProfile — now indexed as a facet' },
-            { name: 'unlockedByCompany', type: 'derived per query', notes: 'joins the unlock log for the SEARCHING company — powers "exclude already unlocked". Scoped to companyId, never to the individual user, because the quota is pooled' },
-            { name: 'inPipelineForCompany', type: 'derived per query', notes: 'joins this company’s applications — powers "exclude already in one of our pipelines"' },
-            { name: 'gender', type: 'enum? (nam|nu|khac)', notes: 'ROW + FACET. Denormalised from Basic information; nullable because the field is optional. A null must be excluded from a gender facet query, not bucketed into "other"' },
-            { name: 'dateOfBirth', type: 'date?', notes: 'INDEXED, but age is computed at query time — storing an integer age silently rots. Age buckets are the only exposed form (see the UI fields)' },
-            { name: 'latestExperience', type: 'embedded object', notes: 'ROW BLOCK — { companyName, title, titleId, startDate, endDate, isCurrent, description }. Denormalised onto the search document at index time: the row must never fan out a second query per result' },
-            { name: 'latestEducation', type: 'embedded object', notes: 'ROW BLOCK — { school, degree, major, level, graduationStatus, graduationDate }' },
-            { name: 'graduationStatus', type: 'enum', notes: 'FACET — graduated · expected · attending · left. Derived from the latest education entry’s dates when the candidate did not state it explicitly' },
-            { name: 'visibility', type: 'enum', notes: 'discoverable · hidden — candidate consent gate' },
-            { name: 'lastUpdatedAt / lastActiveAt', type: 'timestamp', notes: 'recency signal for ranking' },
-            { name: 'completenessScore', type: 'number', notes: 'ranking signal — how filled-in the CV is' },
-            { name: 'FacetAudit', type: 'entity', notes: 'companyUserId, filters used, resultCount, timestamp — a query log kept because gender/age filtering has to be answerable after the fact. Retention to be set with legal' },
+      },
+      {
+        label: 'RECOMMENDED JOBS — one scorer, four completeness tiers, and WHICH CV feeds it',
+        text: 'There is no separate recommender per user type. Every account runs through the SAME match score; what differs is which signals exist to read. The missing-candidate-data rule already covers it — constraint signals score NEUTRAL when silent, evidence signals score LOW — so an emptier profile does not break the computation, it flattens the ranking. The product decision is therefore not “which algorithm”, it is WHAT TO CALL THE LIST at each tier, because labelling a barely-personalised feed “dành cho bạn” is a promise the data cannot keep.',
+        table: {
+          cols: ['Tier — what the user has filled', 'Signals available (of 100)', 'What the list really is', 'Heading + nudge'],
+          rows: [
+            ['1 · Basic information only', '≤ 21 — years + education. NO direction: desired role, category and location are all empty, and current location is deliberately not held.', 'Not personalised. Popular / newest jobs, at most eligibility-ranked by years and education.', '“Việc làm nổi bật” — NEVER “dành cho bạn”. Nudge into onboarding: “Cho biết bạn muốn làm gì để nhận việc phù hợp”.'],
+            ['2 · Basic + Work preference', '≤ 60 — adds location+type 17 · category 10 · salary 7 · industry 5. Direction exists; no evidence.', 'Genuinely personalised by DIRECTION — right city, category and salary band — but blind to ability: it cannot tell a junior from a senior inside that category.', '“Việc làm phù hợp”. Most sit below the 60 floor so cards carry no %. Nudge: “Thêm kỹ năng / tạo CV để thấy độ phù hợp”.'],
+            ['3 · Basic + CV, no Work preference', '≤ 61 — skills 38 + language 2 + years/education. Evidence exists; DIRECTION is missing and must be inferred.', 'Skills-driven: jobs overlapping what the CV proves. Direction falls back to the latest job title — a proxy, and one that recommends MORE OF THE SAME career, which is exactly wrong for someone trying to switch.', '“Việc làm giống hồ sơ của bạn” — honest about what it is. Nudge: the 4 onboarding questions, +39 points.'],
+            ['4 · Basic + Work preference + CV', 'Up to 100.', 'The full model: preference sets direction, the CV sets level.', '“Việc làm phù hợp với bạn”, with the match % on cards at or above the floor.'],
           ],
-          endpoints: [
-            'GET /company/resumes/search — faceted search; returns LOCKED previews + result count + FACET AGGREGATIONS (per-option counts, and the derived option lists for skills/industry/location) in ONE response. Each facet is aggregated with the other active filters applied but not its own — see the filter-rail counting rule',
-            'POST /company/resumes/:id/unlock — consume a credit/package to reveal full CV + contact',
-            'GET /company/resumes/:id — full CV (only after unlock)',
-          ],
-          integrations: ['Package / credit balance (Products & packages)', 'Candidate visibility consent'],
         },
-
-        openQuestions: [
-          'ANSWERED (2026-08-10, client direction) — what a locked row shows: masked name, gender · age, years of experience, latest company (name, title, period, description), latest education (school, degree, graduated / expected) and skills. See the locked/unlocked table above. What remains open is only the four items below.',
-          '[LEGAL — blocker for the facets, not for the display] Gender and age as FILTERS. Showing them on a row is one thing; letting an employer exclude a pool by them is another, and it is the shape a discrimination claim takes. Does the client accept the facets, and does their legal side sign them off? If not, we keep the fields on the row and drop the two facets — a one-line change.',
-          'Does the locked row show the latest company by NAME, or by industry + size? Name is what the reference products do and what makes the field worth reading; it is also, combined with gender + age + title, usually enough to identify the candidate before any credit is spent. Client decision.',
-          'Should a candidate be able to hide their current employer from search while staying discoverable (the LinkedIn / Saramin-KR control)? Costs one field on the CV visibility screen and closes most of the re-identification objection.',
-          'Is desired salary shown on the LOCKED row, or only after unlock? It is one of the strongest screening signals, so showing it lifts unlock rates — and it is also the field candidates are least comfortable broadcasting.',
-          'CLOSED — "desired job type" needs no new field. It is `desiredEmploymentTypes`, already an enum on Job preferences, and `desiredWorkTypes` covers remote/hybrid. Both are now facets.',
-          'RESOLVED by removing it — the ambiguous free "Location" box beside the keyword field is gone. Location is two dropdowns inside the panel ("Currently living in", "Wants to work in"), so nothing has to guess which one the recruiter meant.',
-          'CLOSED — the two-currency salary filter needs no new field. `expectedSalary` already carries `currency: VND · USD` and `kind: ANNUAL · MONTHLY · INTERVIEW · INTERNAL_RULE`; the full behaviour is specified in the salary case table.',
-          '[CLIENT] Salary — the one decision left: we never convert between currencies, so a VND-bounded search sets USD asks aside and reports them as a count ("12 candidates ask in USD — switch the currency to see them"). The alternative is an admin-maintained exchange rate used for COMPARISON ONLY, never displayed, so one search spans both currencies. That is more convenient and strictly less honest: the rate goes stale, and a candidate can be included or excluded by a number nobody agreed to. Recommend shipping the count-and-switch behaviour and revisiting only if USD asks turn out to be more than a few percent of the pool — which the count line will tell us.',
-          '[CLIENT] Should a salary bound be allowed to EXCLUDE the pass-through cases (thỏa thuận, theo quy định công ty, and blank)? Today all three are always included, because excluding blanks alone would delete most of the pool. If a recruiter genuinely wants "only candidates who stated a number in this band", that needs its own labelled checkbox — confirm whether it is wanted before we add one.',
-          'Does the client want language and proficiency filtered as a PAIR (English at professional level) or independently (speaks English · has some professional-level language)? The pair is what the reference screenshot implies and what recruiters mean, but it is the more expensive index.',
-          'Does an unlock consume credits per-CV, and does re-viewing an already-unlocked CV cost again?',
-          'Is "one seeker = one CV" firm for Phase-1, or can a seeker have multiple CVs to search over?',
-          'What is the default candidate visibility — opt-in (discoverable only if the seeker allows) or opt-out?',
-          'Which criteria are the priority filters for launch, and what drives default result ranking?',
-          'Do we need our own search index (full-text/faceted), or is DB querying enough for Phase-1 volume?',
+        items: [
+          'AN INCOMPLETE CV IS NOT A TIER — it is tier 3 or 4 with fewer CvSkill rows and thinner work history, and the evidence-scores-LOW rule already prices that in. No special handling; the completeness nudges are the fix.',
+          'THE FEED READS EVERY CV — not the flagged one; corrected 2026-08-13. The searchable flag is a PUBLIC decision (“which CV may employers find me by”, tied to exposure); recommendations are a PRIVATE one (“what jobs do I want to see”). Reading the flag for both means a candidate who exposes their Sales CV while quietly exploring Dev roles gets Sales recommendations forever, with nothing on screen to explain why.',
+          'BEST CV PER JOB — score each open job against EVERY CV the candidate holds and keep the HIGHEST score for that job. Never average, and never merge the CVs into one profile first: merging is what produces a Dev/Sales midpoint that fits neither, while taking the max means each job is judged by the CV that actually argues for it. At a cap of 3 CVs the extra compute is nothing.',
+          'SHOW WHICH CV MATCHED — a mixed feed is confusing without it and obvious with it: “Phù hợp với CV Business Developer của bạn” on the card. It also turns the feed into a quiet argument for keeping each CV current.',
+          'A SECOND FLAG IS THE WRONG FIX — a “default CV for recommendations” adds a decision to a screen being trimmed, is one most users would never touch, and creates two flags that are usually identical and can silently drift. Reading all CVs needs no control at all.',
+          'DIRECTION IS ALREADY SHARED — the CVs diverge less than they appear to. Work preference is ONE record per account, not per CV: desired role, category, location and salary apply to every CV alike. The CVs differ only on EVIDENCE — skills, titles, years — which is precisely the part the best-CV-per-job rule handles.',
+          '“NONE MARKED” IS MOOT FOR THE FEED — since recommendations read every CV, a candidate with zero flagged CVs still gets a fully CV-driven feed. The flag only ever gated the EMPLOYER index, and that path is protected by the radio behaviour in the next block. One less state to get wrong, which is the second reason to separate the two concepts rather than add a flag.',
+          'HIDDEN STILL GETS RECOMMENDATIONS — visibility gates the employer index, not the candidate’s own feed. Anything else punishes a privacy choice with a worse product, which teaches people to stay discoverable for the wrong reason.',
+          'THE TIERS ARE A FUNNEL, NOT SEGMENTS — every heading change and nudge above exists to move the user one tier up, and the “+points” framing is honest because the score genuinely improves. Do NOT gate the list (“complete your profile to see jobs”): an empty screen at tier 1 teaches a new user on day one that the product has nothing for them.',
+        ],
+      },
         ],
       },
     },
