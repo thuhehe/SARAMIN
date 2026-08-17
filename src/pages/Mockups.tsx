@@ -2048,7 +2048,7 @@ function AddCvScreen() {
 
 function MyCvsScreen() {
   const go = useNav()
-  const [searchable, setSearchable] = useState(0)
+  const [searchable, setSearchable] = useState(1)
   const [menu, setMenu] = useState<number | null>(null)
   const [editing, setEditing] = useState<null | 'basic' | 'prefs'>(null)
   /* An uploaded PDF is parsed in the background — the file is never converted, but
@@ -2073,8 +2073,19 @@ function MyCvsScreen() {
      shelf, so the candidate learns it before the apply modal greys the row.
      It does not touch the searchable flag — an incomplete CV can still be
      the one employers find. */
-  const cvs: { name: string; kind: string; meta: string; icon: string; skills?: string[]; missing?: string }[] = [
-    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '' },
+  /* `indexStatus` — the CV-SEARCH half, and a different object from an
+     application's status: it decides whether this CV enters the EMPLOYER INDEX.
+     Flagging an uploaded CV runs the same "is this a CV?" signals an application
+     runs, so it sits at `pending` until a human clears it. Decided: there is NO
+     auto-pass here — nothing is waiting on it, so the index fails CLOSED while
+     applications fail OPEN. That is exactly why the candidate must be able to
+     SEE the pending state instead of assuming they are already findable. */
+  const cvs: { name: string; kind: string; meta: string; icon: string; skills?: string[]; missing?: string; indexStatus?: 'pending' | 'rejected' }[] = [
+    /* Just toggled on for search → sitting at indexStatus = pending. The
+       Business Developer CV below keeps "Đang hiển thị" meanwhile, which is the
+       rule: the flag does not move until the new CV passes, so the candidate is
+       never discoverable with nothing indexed. */
+    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '', indexStatus: 'pending' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '', skills: ['Business Development', 'B2B Sales', 'Account Management', 'Excel'] },
     { name: 'UX Designer CV', kind: 'Saramin', meta: 'Generated 14/08/2026', icon: '', skills: ['Figma'], missing: 'kinh nghiệm làm việc · thêm 2 kỹ năng' },
   ]
@@ -2112,9 +2123,18 @@ function MyCvsScreen() {
                   <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink">
                     {c.name}
                     <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
-                    {searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
+                    {/* index (CV SEARCH) vs apply — two different gates, two chips */}
+                    {c.indexStatus === 'pending' && <Chip tone="amber">Đang kiểm tra</Chip>}
+                    {!c.indexStatus && searchable === i && <Chip tone="green">Đang hiển thị</Chip>}
                     {c.missing && <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>}
                   </p>
+                  {/* No auto-pass on the index queue, so the candidate must be able
+                      to SEE the hold rather than assume they are already findable. */}
+                  {c.indexStatus === 'pending' && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      Đang kiểm tra CV trước khi hiển thị với nhà tuyển dụng — CV <b className="font-semibold">Business Developer CV</b> vẫn đang hiển thị.
+                    </p>
+                  )}
                   <p className="text-[11px] text-faint">{c.meta}</p>
 
                   {/* The skills line — on EVERY CV from the first render, in ONE state.
@@ -2183,17 +2203,25 @@ function MyCvsScreen() {
                           consented, believes they are findable, and gets nothing.
                           It used to render as an on/off toggle that could not
                           actually be switched off, which promised the opposite. */}
+                      {/* A CV already at indexStatus = pending has been chosen; the
+                          radio is spent until the check clears, and because there is
+                          NO auto-pass the menu says what it is waiting for. */}
                       <div className="mt-1 border-t border-line-soft px-3 py-2.5">
-                        <label onClick={() => { setSearchable(i); setMenu(null) }} className="flex cursor-pointer items-center justify-between gap-2">
+                        <label
+                          onClick={() => { if (!c.indexStatus) { setSearchable(i); setMenu(null) } }}
+                          className={cn('flex items-center justify-between gap-2', c.indexStatus ? 'cursor-default opacity-60' : 'cursor-pointer')}
+                        >
                           <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy CV này</span>
-                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
-                            {searchable === i && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', c.indexStatus === 'pending' ? 'border-amber-400 bg-amber-400' : searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
+                            {(searchable === i || c.indexStatus === 'pending') && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                           </span>
                         </label>
                         <p className="mt-1 text-[10.5px] leading-snug text-faint">
-                          {searchable === i
-                            ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế — luôn có đúng 1 CV được tìm thấy.'
-                            : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
+                          {c.indexStatus === 'pending'
+                            ? 'Đã chọn — đang kiểm tra trước khi hiển thị. Không có thời hạn tự động: CV chỉ hiển thị sau khi được duyệt.'
+                            : searchable === i
+                              ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế — luôn có đúng 1 CV được tìm thấy.'
+                              : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
                         </p>
                       </div>
                     </div>
@@ -2403,7 +2431,7 @@ function CvCompareScreen() {
 }
 
 /* ── Onboarding — a short GUIDED wizard (the Saramin-KR pattern): a few
-   RELEVANT questions (job wanted · region · experience · education · get-seen),
+   RELEVANT questions about WORK PREFERENCE (job wanted · region · pay),
    each step framed with a live job-count carrot, ending on a screen of matched
    jobs — from which we lead the candidate into creating their CV. No upload /
    build fork here; that lives on the My CVs page. */
@@ -2417,7 +2445,7 @@ const WORK_TYPES = ['In office', 'Remote', 'Hybrid', 'Oversea']
 
 function OnboardingScreen() {
   const go = useNav()
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 'results'>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 'results'>(1)
   /* Every taxonomy field is a DROPDOWN, not a chip grid. The real master data is
      far longer than any mockup list — 34 provincial units, ~30 industries, hundreds of
      roles — so a chip grid would either lie about the choice or scroll forever.
@@ -2496,14 +2524,14 @@ function OnboardingScreen() {
       </div>
     )
   }
-  const counts: Record<number, string> = { 1: '', 2: '61,341', 3: '12,231', 4: '8,400' }
+  const counts: Record<number, string> = { 1: '', 2: '61,341', 3: '12,231' }
   const Bar = ({ n }: { n: number }) => (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between text-[11px] text-muted">
-        <span>Step {n} of 4</span>
+        <span>Step {n} of 3</span>
         {counts[n] && <span className="font-medium text-brand">{counts[n]} jobs match so far</span>}
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${n * 25}%` }} /></div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${(n / 3) * 100}%` }} /></div>
     </div>
   )
   const Fld = ({ label, ph }: { label: string; ph?: string }) => (
@@ -2627,23 +2655,12 @@ function OnboardingScreen() {
                 <Nav back={() => setStep(1)} next={() => setStep(3)} />
               </>
             )}
-            {/* 3 · ABOUT YOU — the two Basic-information facts, together: one field
-                   per screen is a wasted step. */}
+            {/* 3 · THE ASK — salary gets its own moment; buried in a list it goes
+                   unanswered, and it is the filter employers use most.
+                   Years of experience + highest education used to be a step here.
+                   They are BASIC INFORMATION, so they moved to sign-up: this wizard
+                   asks Work preference and nothing else. */}
             {step === 3 && (
-              <>
-                <p className="text-[15px] font-bold text-ink">Tell us about your background</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">Recruiters filter on both of these.</p>
-                <div className="mt-3 space-y-3">
-                  <Fld label="Years of work experience" ph="e.g. 4 years" />
-                  <Fld label="Highest education" ph="e.g. Bachelor’s degree" />
-                </div>
-                <p className="mt-2 text-[10.5px] text-faint">Just the totals — your work history and school go on your CV, where we can read them from an upload.</p>
-                <Nav back={() => setStep(2)} next={() => setStep(4)} />
-              </>
-            )}
-            {/* 4 · THE ASK — salary gets its own moment; buried in a list it goes
-                   unanswered, and it is the filter employers use most. */}
-            {step === 4 && (
               <>
                 <p className="text-[15px] font-bold text-ink">What salary are you expecting?</p>
                 <p className="mt-0.5 text-[11.5px] text-muted">One of the filters recruiters use most — and no CV ever states it.</p>
@@ -2661,7 +2678,7 @@ function OnboardingScreen() {
                   </div>
                 </div>
                 <p className="mt-2 text-[10.5px] text-faint">Only shown to employers as a range. You can change it any time.</p>
-                <Nav back={() => setStep(3)} next={() => setStep('results')} nextLabel="See my matches →" />
+                <Nav back={() => setStep(2)} next={() => setStep('results')} nextLabel="See my matches →" />
               </>
             )}
           </div>
@@ -2898,6 +2915,21 @@ function PersonalDetails({ bg = 'bg-surface' }: { bg?: string }) {
         ))}
       </div>
       <p className="mt-1 text-[10px] text-faint">Shown on your CV. Employers can never search or filter by these.</p>
+
+      {/* The last two Basic-information fields. They sit at SIGN-UP, not in
+          onboarding: sign-up collects Basic information, onboarding asks Work
+          preference. Kept as their own group because — unlike the four above —
+          employers DO filter on both, so they cannot carry the same footnote. */}
+      <p className="mb-1.5 mt-4 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Background</p>
+      <div className="grid grid-cols-2 gap-2">
+        {([['Highest education', 'Select…'], ['Years of work experience', 'Select…']] as [string, string][]).map(([label, ph]) => (
+          <div key={label}>
+            <p className="mb-1 text-[11px] font-medium text-ink/80">{label}<Req /></p>
+            <div className={cn('flex h-9 items-center justify-between rounded-md border border-line px-2.5 text-[11.5px] text-faint', bg)}>{ph}<span className="text-faint">▾</span></div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] text-faint">Just the totals — recruiters filter on both. Your work history and school go on your CV.</p>
     </div>
   )
 }

@@ -947,35 +947,69 @@ function AdminResumes() {
   const [creating, setCreating] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
   if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
-  const raw: [string, string, string, number, boolean, string][] = [
-    // candidate, searchable-CV title/yrs, location, cv count, discoverable, updated
-    ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', 2, true, '2 days ago'],
-    ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', 1, true, '1 week ago'],
-    ['Lê Hoàng Cường', 'Product Manager · 8 yrs', 'Hồ Chí Minh', 3, false, '3 weeks ago'],
-    ['Phạm Thu Dung', 'Kế toán · 3 yrs', 'Đà Nẵng', 1, true, '1 month ago'],
-    ['Vũ Minh Đức', 'Backend Engineer · 5 yrs', 'Hồ Chí Minh', 2, true, '2 months ago'],
+  /* `index` — does this candidate's searchable CV actually reach the employer
+     index? Flagging an uploaded CV runs the same "is this a CV?" signals an
+     application runs (Application management → 4a–4d) and holds it at Pending.
+     DECIDED: no auto-pass here, so this queue must be WORKED — a held CV is
+     invisible forever and nothing complains. That is why the age is on the row. */
+  type Idx = { s: 'Indexed' } | { s: 'Pending'; why: string; age: string } | { s: 'Rejected'; why: string }
+  const raw: [string, string, string, number, boolean, string, Idx][] = [
+    // candidate, searchable-CV title/yrs, location, cv count, discoverable, updated, index state
+    ['Nguyễn Văn An', 'Frontend Engineer · 4 yrs', 'Hồ Chí Minh', 2, true, '2 days ago', { s: 'Indexed' }],
+    ['Trương Văn Bình', '— (scan_0816.pdf)', 'Hà Nội', 1, true, '10m ago', { s: 'Pending', why: '1/6 CV signals — no contact, no dates', age: 'held 10m' }],
+    ['Trần Thị Bích', 'Digital Marketing · 6 yrs', 'Hà Nội', 1, true, '1 week ago', { s: 'Indexed' }],
+    ['Đỗ Thanh Hà', '— (portfolio-2026.pdf)', 'Hồ Chí Minh', 2, true, '6 days ago', { s: 'Pending', why: 'unreadable — image scan, OCR returned nothing', age: 'held 6d' }],
+    ['Lê Hoàng Cường', 'Product Manager · 8 yrs', 'Hồ Chí Minh', 3, false, '3 weeks ago', { s: 'Indexed' }],
+    ['Phạm Thu Dung', 'Kế toán · 3 yrs', 'Đà Nẵng', 1, true, '1 month ago', { s: 'Indexed' }],
+    ['Ngô Bảo Khánh', '— (menu_final.pdf)', 'Cần Thơ', 1, true, '2 months ago', { s: 'Rejected', why: '0/6 CV signals — not a CV' }],
+    ['Vũ Minh Đức', 'Backend Engineer · 5 yrs', 'Hồ Chí Minh', 2, true, '2 months ago', { s: 'Indexed' }],
   ]
-  const rows = raw.map(([name, title, loc, count, disc, updated]) => [
+  const rows = raw.map(([name, title, loc, count, disc, updated, idx]) => [
     <span onClick={() => setSel(name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{name}</span>,
-    <span className="truncate text-ink/80">{title}</span>,
+    /* The WHY (and, on a hold, the AGE) sits under the CV it describes — leaving
+       the Index cell as the pill alone, which is what the Status filter matches
+       against. With no timer releasing these, an ageing row is the only thing
+       that says "work me". */
+    <div className="min-w-0">
+      <p className="truncate text-ink/80">{title}</p>
+      {idx.s !== 'Indexed' && (
+        <p className={cn('truncate text-[10.5px]', idx.s === 'Pending' ? 'text-amber-700' : 'text-rose-600')} title={idx.why}>
+          {idx.s === 'Pending' ? `${idx.age} · ${idx.why}` : idx.why}
+        </p>
+      )}
+    </div>,
     loc,
     <span className="text-muted">{count} of 3</span>,
     disc ? <Pill tone="active">Discoverable</Pill> : <Pill tone="draft">Hidden</Pill>,
+    <Pill tone={idx.s === 'Indexed' ? 'active' : idx.s === 'Pending' ? 'pending' : 'rejected'}>{idx.s}</Pill>,
     <Pill tone="active">Normal</Pill>,
     <span className="text-muted">{updated}</span>,
   ])
   return (
     <div>
       <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">ONE row per candidate — the row shows their SEARCHABLE CV (what employer CV search reads). Open a candidate to see all their CVs (max 3). Resumes contain PII — every open is audited.</div>
+      {/* The index queue has NO auto-pass by decision, so it has to be worked by
+          hand — this line is what tells an operator that, and the Pending tab is
+          where they work it. */}
+      <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+        <b className="font-semibold text-ink/80">Index</b> is whether the candidate’s searchable CV actually reaches employer CV search. Flagging an uploaded CV
+        runs the same “is this a CV?” check an application runs and holds it at <b className="font-semibold text-ink/80">Pending</b>.{' '}
+        <b className="font-semibold text-ink/80">There is no auto-pass</b> — unlike an application, nothing is waiting on it, so a held CV stays invisible until
+        someone clears it. Filter Status → <b className="font-semibold text-ink/80">Pending</b> to work the queue; the age on each row is the only thing that complains.
+      </p>
+      {/* `tabs` doubles as the Status filter and is matched against the rendered
+          cell text, so each label must equal a pill exactly. */}
       <ListPage
+        minW={1500}
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
-        tabs={[{ label: 'All candidates', count: 8420, active: true }, { label: 'Discoverable', count: 6100 }, { label: 'Hidden', count: 2320 }, { label: 'Flagged', count: 14 }, { label: 'Removed from pool', count: 9 }]}
+        tabs={[{ label: 'All candidates', count: 8420, active: true }, { label: 'Indexed', count: 6087 }, { label: 'Pending', count: 13 }, { label: 'Rejected', count: 9 }, { label: 'Discoverable', count: 6100 }, { label: 'Hidden', count: 2320 }]}
         cols={[
           { label: 'Candidate', w: '1.2fr' },
-          { label: 'Searchable CV — title / exp', w: '1.6fr' },
+          { label: 'Searchable CV — title / exp', w: '2fr' },
           { label: 'Location', w: '0.9fr' },
           { label: 'CVs', w: '0.6fr' },
           { label: 'Visibility (candidate)', w: '1fr' },
+          { label: 'Index · CV search', w: '0.9fr' },
           { label: 'Moderation (HQ)', w: '0.9fr' },
           { label: 'Updated', w: '0.9fr', align: 'r' },
         ]}

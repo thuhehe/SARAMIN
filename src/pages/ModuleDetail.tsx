@@ -4,6 +4,7 @@ import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
+import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { cn } from '@/lib/utils'
 
 /* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
@@ -116,11 +117,24 @@ function ReqBullets({ items, dense }: { items: string[]; dense?: boolean }) {
    instead of running the full window width. */
 function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolean }) {
   const measure = 'max-w-[80ch]'
+  /* Addressable on its own: the id comes from the label so a shared link keeps
+     pointing at the right block when the list is reordered. scroll-mt keeps the
+     card clear of the top edge when a link lands on it. */
+  const id = slugify(r.label)
   return (
-    <div className={cn('rounded-xl border border-line bg-surface', dense ? 'px-3 py-2.5' : 'px-4 py-3.5')}>
-      <p className={cn('font-semibold leading-snug text-ink', dense ? 'text-[12px]' : 'text-[13.5px]')}>
-        <Rich t={r.label} />
-      </p>
+    <div
+      id={id}
+      className={cn(
+        'group/req scroll-mt-6 rounded-xl border border-line bg-surface transition-shadow',
+        dense ? 'px-3 py-2.5' : 'px-4 py-3.5',
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className={cn('font-semibold leading-snug text-ink', dense ? 'text-[12px]' : 'text-[13.5px]')}>
+          <Rich t={r.label} />
+        </p>
+        <CopySectionLink hash={id} className={dense ? 'mt-px' : 'mt-0.5'} />
+      </div>
       {r.text && (
         <p className={cn('mt-1.5 leading-relaxed', measure, dense ? 'text-[12px] text-muted' : 'text-[13px] text-ink/75')}>
           <Rich t={r.text} />
@@ -506,6 +520,8 @@ function FeatureDetailBlocks({ d, screenBlock }: { d: FeatureDetail; screenBlock
 /* ── Module view: goal / requirements + feature flow ──────────────────────── */
 export function ModuleDetail() {
   const { moduleId } = useParams<{ moduleId: string }>()
+  // before the early return below — a hook cannot sit after a conditional exit
+  useHashTarget()
   const m = BUILD_MODULES.find((x) => x.id === moduleId)
   if (!m) return <Navigate to="/" replace />
 
@@ -573,6 +589,8 @@ export function ModuleDetail() {
 /* ── Feature view: detail + related UI mockup ─────────────────────────────── */
 export function FeatureDetail() {
   const { moduleId, featureIndex } = useParams<{ moduleId: string; featureIndex: string }>()
+  // before the early returns below — a hook cannot sit after a conditional exit
+  useHashTarget()
   const m = BUILD_MODULES.find((x) => x.id === moduleId)
   const idx = Number(featureIndex)
   const f = m && Number.isInteger(idx) ? m.features[idx] : undefined

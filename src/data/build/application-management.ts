@@ -4,11 +4,15 @@ import type { BuildModule } from './types'
  * Application management — the apply flow and the three screens that watch an
  * application move.
  *
- * ⚠️ STATUS MODEL IS UNDER REVIEW (Aug 2026). Requirement blocks 1–5 below are
+ * ⚠️ STATUS MODEL IS UNDER REVIEW (Aug 2026). Requirement blocks 1–3 below are
  * the decision doc, in reading order: (1) the client's own "AMS status model"
- * document from Huyền, (2) what they then asked for — drop Layer 1, (3) our
- * suggestion, (4) the resulting model, (5) what they must decide. Keep them
- * short — a PM reads them to make a call, not to build from.
+ * document from Huyền, (2) the resulting model, (3) what they must decide. Keep
+ * them short — a PM reads them to make a call, not to build from.
+ *
+ * The two intermediate blocks — what the client asked for after reading their own
+ * document, and our counter-suggestion — were REMOVED on request. They recorded
+ * how we got here; block 2 already states where we landed. Recover them from git
+ * history if the reasoning is ever challenged.
  *
  * The pre-review model (screeningStatus Pending → Forwarded / Rejected-by-HQ,
  * the derived candidate label) was REMOVED from these requirements on request —
@@ -58,36 +62,7 @@ export const applicationManagement: BuildModule = {
       ],
     },
     {
-      label: '2 · What the client then asked for',
-      text: 'After reviewing the document above, they asked to remove Layer 1 entirely — “this platform has no spam and no missing information”.',
-      items: [
-        'Delete Waiting, NEI, Pending and Spam — the whole filter layer.',
-        'No risk scoring, no admin review queue.',
-        'Apply = sent to the employer straight away. Layers 2 and 3 stay exactly as they are.',
-      ],
-    },
-    {
-      label: '3 · Our suggestion',
-      text: 'We agree with the scope — build no screening. We disagree on one thing only: do not delete the column from the database.',
-      table: {
-        cols: ['They asked', 'We suggest'],
-        rows: [
-          ['Delete Waiting', 'Agree — delete it'],
-          ['Delete NEI', 'Merge into Pending — a CV the system cannot read still has to stop somewhere'],
-          ['Delete Pending', 'Keep ONE Pending, for technical failures only: scan failed, upload broken, required information missing'],
-          ['Delete Spam', 'Agree — no automatic detection. But keep a manual “Block user” button'],
-          ['No admin review before sending', 'Agree for normal applications — they go straight out. Only Pending ones reach an admin'],
-        ],
-      },
-      items: [
-        'Why keep one Pending: a CV that fails to scan cannot be sent to the employer, and it is not the candidate’s fault — it needs a human, not a rejection.',
-        'Why keep Block user: one abusive account with no off switch is a support fire on day one.',
-        'Everything else the client asked to delete, we delete. No risk scoring, no spam detection, no review queue for normal applications.',
-      ],
-      warn: 'Their own document lists spam cases (§7) and warns that promotions attract mass AI-generated applications (§7.2). Worth confirming with Huyền whether those cases happened on THIS platform or on TopDev — it changes how safe “no spam” is as an assumption.',
-    },
-    {
-      label: '4 · BB suggested model',
+      label: '2 · BB suggested model',
       text: 'Same 3 layers as the client’s document, but Layer 1 keeps only ONE status — Pending — and it is a technical hold, not a judgement on the candidate.',
       table: {
         cols: ['Layer', 'Status', 'When it happens', 'Action admin can do'],
@@ -126,67 +101,115 @@ export const applicationManagement: BuildModule = {
         'Spam is gone as an automatic status. What is left is a manual Block user, which recalls everything that user has sent.',
         'Admin actions drop from 7 to 6: Mark as ready · Recall · Block/Unblock user · Fix information · Edit · Note.',
       ],
-      warn: 'Keeping Pending means the CV scan can fail or be slow, so apply is no longer instant for every application. That is fine — but it is exactly why the status column has to exist in the database, and it is the one thing section 3 said we should not delete.',
+      warn: 'Keeping Pending means the CV scan can fail or be slow, so apply is no longer instant for every application. That is fine — but it is exactly why the status column has to exist in the database. Everything else in Layer 1 goes; this one value stays.',
     },
     {
-      label: '5 · What we need you to decide',
+      label: '3 · What we need you to decide',
       items: [
         'Does blocking a user also pull back the applications already sent? We recommend YES.',
         'Can a candidate apply to the same job twice? We recommend one live application per job, re-apply only after a recall.',
         'When do we build screening if spam does show up? We recommend agreeing a trigger now — first abuse case, or the first promotion campaign.',
-        'The Pending SLA: what happens to a held application nobody reviews within 24h? We recommend AUTO-SEND — the doubt was ours and unproven, and a false hold hurts a real candidate more than one odd file hurts an employer.',
+        'The Pending SLA for APPLICATIONS: what happens to a held application nobody reviews within 24h? We recommend AUTO-SEND — the doubt was ours and unproven, an employer and a deadline are waiting, and a false hold hurts a real candidate more than one odd file hurts an employer. The CV-search half of this is already DECIDED and deliberately opposite: an index-Pending CV never auto-passes, because nothing is waiting on it (Resume management → STORED vs SEARCHABLE vs INDEXED).',
       ],
     },
     {
-      label: 'The “is this a CV?” check — what holds an application as Pending (decided)',
-      text: 'DECIDED: the jobseeker site never blocks an upload or an apply. The check runs in OUR system after submit: a doubtful file holds the application as Pending for a human, and every human decision is logged against the signals that fired — the review queue doubles as the training set that teaches the check. Only UPLOADED files are ever checked: a Saramin CV meets the apply gate by construction (see Resume management → APPLY-ELIGIBLE) and skips this entirely.',
+      label: '4 · The “is this a CV?” check — the principle (decided)',
+      text: 'DECIDED: the jobseeker site NEVER blocks an upload or an apply. Whatever the candidate uploads, the apply succeeds from their side. The check runs in OUR system AFTER submit — a doubtful file holds the APPLICATION (never the account) as Pending, a human looks at it, and every human decision is recorded against the signals that fired. That recording is the point: the review queue doubles as the training set that teaches the check.',
       table: {
-        cols: ['Group', 'Signals', 'Held when'],
+        cols: ['Group', 'What it detects', 'Held when'],
         rows: [
-          [
-            'A · Technical — always hold',
-            'A1 corrupt / cannot be opened · A2 password-protected · A3 < ~200 chars of extracted text even after OCR · A4 malware scan failed or flagged',
-            'ANY A-signal fires. Not a judgement — the file physically cannot be read or safely served.',
-          ],
-          [
-            'B · Content — “CV-ness”, 6 signals',
-            'B1 an email or VN phone pattern · B2 a date range (2020 – 2023, 03/2021 – nay, Present, Hiện tại) · B3 a section heading from the VI+EN list (Kinh nghiệm / Experience, Học vấn / Education, Kỹ năng / Skills, Mục tiêu / Objective …) · B4 ≥ 1 term resolving to the Skill taxonomy · B5 ≥ 1 term resolving to the Job Role taxonomy · B6 a 2–4-word capitalised name-like line in the first text block',
-            'FEWER THAN 2 of the 6 fire. A real CV — even a designer’s strange one — almost always has contact + dates; a menu, an invoice or a homework essay almost never has two of these.',
-          ],
-          [
-            'C · Abuse patterns',
-            'C1 the same file hash uploaded by many different accounts · C2 extracted text near-identical to the job description being applied to · C3 one account applying with N different files inside an hour',
-            'C1 or C2 fires → hold. C3 is a RATE LIMIT at the front door, not a hold — throttling is cheap and self-service; a review backlog is neither.',
-          ],
+          ['A · Technical', 'The file cannot be read or safely served.', 'ANY A-signal fires — not a judgement, a fact about the file.'],
+          ['B · Content', '“CV-ness” — 6 independent signals.', 'FEWER THAN 2 of the 6 fire.'],
+          ['C · Abuse', 'Bot / farm / copy-paste patterns.', 'C1 or C2 fires. C3 is a rate limit, not a hold.'],
         ],
       },
       items: [
-        'The admin sees WHICH signals fired on every held row — “held: 1/6 CV signals — no contact, no dates” — and resolves it with exactly two verbs: Real CV → send · Not a CV → reject.',
-        'Each decision is logged against the fired signals. That labelled data is how the check learns: tune the B-threshold, extend the heading list, and (Phase-2) train a classifier on our own labels. No log, no learning.',
-        'QUALITY NEVER HOLDS — low match score, few skills, “looks unqualified”, no cover letter: none of these is a signal. The moment we hold on quality, Saramin owns the filtering decision and the queue becomes a silent black hole.',
-        'The candidate is told AT HOLD TIME — “We’re checking your CV — we’ll send it shortly” — never upfront, and never left believing a held application was delivered.',
-        'appliedAt is the SUBMIT time: a job deadline passing while a valid application sits in Pending does not invalidate it.',
+        'ONLY UPLOADED FILES are ever checked. A Saramin CV meets the apply gate by construction (see Resume management → APPLY-ELIGIBLE) — structured content cannot be “not a CV” — so it skips this entirely.',
+        'THE SAME CHECK SERVES BOTH DOORS — a CV reaches an employer either by being SENT (an application) or by being FOUND (CV search). Flagging an uploaded CV as searchable runs these identical signals and holds it at indexStatus = Pending until it passes; see Resume management → STORED vs SEARCHABLE vs INDEXED. One quality bar, one pipeline, two entry points.',
+        'The hold is on the APPLICATION, not the candidate: nothing about their account, their other applications or their other CVs changes.',
+        'The three groups are detailed in blocks 4a–4d below; the admin loop and the guard-rails are in 4e.',
       ],
     },
     {
-      label: 'Apply flow (Jobseeker)',
-      text: 'Quick apply with a selected CV — the jobseeker picks one of their existing CVs. No re-typing of profile data.',
-      items: [
-        'One application = one jobseeker + one job. Applying twice to the same job is blocked; the jobseeker is shown their existing application instead.',
-        'No “screened by Saramin” promise at apply time — an application normally goes straight to the employer. Only the Pending case (unreadable file, a file that fails the “is this a CV?” check, or required information missing) is held, and the candidate is told then, not upfront.',
-      ],
-    },
-    {
-      label: 'Who sees what',
+      label: '4a · GROUP A — technical signals (always hold)',
+      text: 'No judgement is involved in any of these: the file physically cannot be read, or cannot be safely served to an employer.',
       table: {
-        cols: ['Surface', 'Sees', 'Can do'],
+        cols: ['Signal', 'Example', 'Why it cannot be sent'],
         rows: [
-          ['Admin (HQ)', 'Applications across ALL companies — candidate · job · company · status · stage', 'Works the Pending list · Recall · Block user. READ-ONLY on the employer pipeline'],
-          ['Company', 'Only its own applications, filterable by job and stage', 'Owns the stage pipeline, and can customise the stages themselves'],
-          ['Jobseeker — My application', 'Each application with its current stage + date applied', 'View only'],
+          ['A1 · Corrupt / cannot be opened', 'A 0-byte CV.pdf; a .zip renamed to .pdf', 'The employer clicks and gets an error — on our platform, that reads as OUR bug, not the candidate’s.'],
+          ['A2 · Password-protected', 'An encrypted PDF exported from banking or HR software', 'The employer cannot open it either.'],
+          ['A3 · < ~200 chars of extracted text, even after OCR', 'A photo of a CV shot at an angle in bad light; a scan where OCR returns garbage', 'Nothing to extract → the candidate is invisible to CV search, and the file may be unreadable to a human too.'],
+          ['A4 · Malware scan failed or flagged', 'A .docx carrying an embedded macro', 'Never serve it — full stop.'],
         ],
       },
-      warn: 'HQ never moves a company’s candidates through their pipeline. Opening a candidate’s CV is a PII action and is always written to the audit log.',
+    },
+    {
+      label: '4b · GROUP B — content “CV-ness”, 6 signals (hold below 2)',
+      text: 'After extraction, count how many of these six fire. Fewer than two → Pending. Each signal is independent and cheap to compute; none of them requires a model.',
+      table: {
+        cols: ['#', 'Signal', 'Example that fires it'],
+        rows: [
+          ['B1', 'An email or VN phone pattern anywhere in the text', 'thu.nguyen@gmail.com · 0382 233 670 · +84-38…'],
+          ['B2', 'A date range', '2020 – 2023 · 03/2021 – nay · Jun 2019 – Present · 2018 – Hiện tại'],
+          ['B3', 'A section heading from the VI + EN list', 'KINH NGHIỆM LÀM VIỆC · Work Experience · Học vấn · Education · Kỹ năng · Skills · Mục tiêu nghề nghiệp'],
+          ['B4', '≥ 1 term resolving to the SKILL taxonomy', '“Excel”, “Kế toán”, “React” — resolved through the same alias index CV import uses'],
+          ['B5', '≥ 1 term resolving to the JOB ROLE taxonomy', '“Business Analyst”, “Nhân viên kinh doanh”'],
+          ['B6', 'A name-like line in the first text block', 'A short 2–4-word capitalised line: NGUYỄN MINH THU'],
+        ],
+      },
+      items: [
+        'B4 and B5 reuse the taxonomy resolution already built for CV import (see Resume management → SKILLS) — this check adds no new matching logic of its own.',
+      ],
+    },
+    {
+      label: '4c · GROUP B — worked examples, and why the threshold is 2',
+      text: 'The threshold is deliberately LOW. We hold only what almost certainly is not a CV; everything ambiguous goes through.',
+      table: {
+        cols: ['File uploaded', 'Signals fired', 'Result'],
+        rows: [
+          ['A real but ugly one-page CV — no headings, just paragraphs', 'B1 (email) + B2 (dates) = 2', '✅ Sent'],
+          ['A designer’s infographic CV (text still extractable)', 'B1 + B6, often B4 = 2–3', '✅ Sent — exactly the CV a stricter rule would wrongly kill'],
+          ['A restaurant menu PDF', '0 of 6 — no contact, no dates, no headings', '🔒 Pending — “0/6 CV signals”'],
+          ['A university homework essay', 'B6 (a name) at most = 1', '🔒 Pending — “1/6 signals — no contact, no dates”'],
+          ['An invoice', 'B1 may fire on a company email = 1', '🔒 Pending'],
+        ],
+      },
+      items: [
+        'WHY 2 AND NOT 3 — the costs are asymmetric. Wrongly holding a real CV delays a real candidate and needs a human to undo. Wrongly sending a menu wastes an employer five seconds. Tune toward the cheaper error.',
+        'A scanned CV usually fails A3 before it ever reaches Group B — the two groups catch different failures and do not overlap.',
+      ],
+    },
+    {
+      label: '4d · GROUP C — abuse patterns',
+      table: {
+        cols: ['Signal', 'Example', 'Action'],
+        rows: [
+          ['C1 · Same file hash across many accounts', '40 “different” candidates upload a byte-identical CV_2026.pdf', 'HOLD — bot / farm behaviour'],
+          ['C2 · Extracted text ≈ the job description being applied to', 'Someone downloads the JD and uploads it back as their CV (more common than it sounds)', 'HOLD'],
+          ['C3 · One account, N different files in an hour', '12 applies with 12 different PDFs in 30 minutes during a promotion', 'RATE-LIMIT at the front door — throttling is cheap and self-service; a review backlog is neither'],
+        ],
+      },
+      items: [
+        'C3 deliberately does NOT create review work. Anything that can be solved by a limit should never become a queue an operator has to work.',
+      ],
+    },
+    {
+      label: '4e · The review queue IS the training set',
+      text: 'Every held row shows WHICH signals fired — “held: 1/6 CV signals — no contact, no dates” — and the reviewer resolves it with exactly two verbs. Both are logged against those signals, and that log is the labelled data that improves the check.',
+      table: {
+        cols: ['Verb', 'What happens', 'What the log records'],
+        rows: [
+          ['Real CV — send now', 'The employer receives it; the application becomes Sent and enters their funnel at New.', '“signals said no, human said yes” — a false positive'],
+          ['Not a CV — reject', 'The candidate is notified to upload a proper CV; the employer never sees it.', '“signals were right” — a true positive'],
+        ],
+      },
+      items: [
+        'AFTER A MONTH the log answers the question we cannot answer today: “files at 1/6 signals were real CVs 40% of the time, files at 0/6 never were.” That is how the threshold gets tuned, how the B3 heading list grows, and how Phase-2 gets a classifier trained on OUR OWN labels rather than a generic model.',
+        'QUALITY NEVER HOLDS — low match score, few skills, “looks unqualified”, no cover letter: none of these is a signal, and none may ever become one. The moment we hold on quality, Saramin owns the filtering decision and the queue becomes a silent black hole between candidate and employer.',
+        'THE CANDIDATE IS TOLD AT HOLD TIME — “Chúng tôi đang kiểm tra CV của bạn — sẽ gửi tới nhà tuyển dụng sớm.” Never warned upfront (it would discourage every normal applicant), and never left believing a held application was delivered.',
+        'appliedAt IS THE SUBMIT TIME — a job deadline passing while a valid application sits in Pending does not invalidate it. The delay was ours.',
+        'A held application shows no employer STAGE at all — the employer’s funnel has not started, so an em-dash is honest where a “New” badge would be a lie.',
+      ],
     },
   ],
   features: [
@@ -226,8 +249,8 @@ export const applicationManagement: BuildModule = {
             group: '② Application information',
             items: [
               { name: 'location (province/city)', type: 'enum', required: true, notes: 'the one location field — a CV-search facet. NO district, NO street address (data-minimisation decision, see Resume management)' },
-              { name: 'yearsOfExperience', type: 'number', required: true, notes: 'pre-filled from the profile (onboarding), overridable' },
-              { name: 'highestDegree', type: 'enum', required: true, notes: 'pre-filled from the profile (onboarding)' },
+              { name: 'yearsOfExperience', type: 'number', required: true, notes: 'pre-filled from the profile — Basic information, collected at SIGN UP. Overridable here, and an edit writes back to the profile' },
+              { name: 'highestDegree', type: 'enum', required: true, notes: 'pre-filled from the profile — Basic information, collected at SIGN UP' },
               { name: 'current title / level / industry', type: 'derived (never asked)', notes: 'DERIVED from the CV work history — never a form field. The demographic set (DOB, gender, nationality, marital status, current salary) is CUT platform-wide; see Resume management → field tiers' },
             ],
           },
@@ -250,7 +273,7 @@ export const applicationManagement: BuildModule = {
               '2. "Apply now" → the apply modal opens over the job.',
               '3. ① Your CV — pick one of your CVs (radio list, name + kind). No CV yet, or want a different one? "Add a new CV" opens the SAME Add-a-new-CV flow as My CVs.',
               '4. ② Application information — pre-filled from your profile: full name · email (locked when from a social provider) · PHONE (the one field a social sign-up must add) · location · years of experience · highest education.',
-              '5. ③ Desired job — desired location · level · industry · field · expected salary · availability, pre-filled from onboarding.',
+              '5. ③ Desired job — desired location · work type · industry · field · expected salary, pre-filled from ONBOARDING (Work preference).',
               '6. ④ Cover message (optional) → tick the consent to share your profile & CV with this employer → "Submit application".',
               '7. The application is created and the candidate lands on MY APPLICATIONS, where its status is tracked.',
               '→ Next: HQ screening (Admin) → forwarded to the employer (Company) → status flows back to My applications.',
@@ -258,7 +281,7 @@ export const applicationManagement: BuildModule = {
           },
           {
             heading: 'Profile confirmation — asked here, and only here',
-            text: 'The apply modal confirms the SLIM profile (the decided field set — NOT VietnamWorks’ demographic form), grouped into four numbered sections: ① Your CV (Hồ sơ của bạn) · ② Application information (contact + location + experience/education — pre-filled from onboarding) · ③ Desired job (Công việc mong muốn) · ④ Cover message. Apply time is where PHONE is asked: it is the moment of highest motivation AND the moment the data is actually needed, because the application is what delivers it. Demographics (DOB, gender, nationality, marital status), street address and current salary are CUT platform-wide — see Resume management → field tiers.',
+            text: 'The apply modal CONFIRMS what the candidate already gave us; it collects nothing new. Four numbered sections: ① Your CV (Hồ sơ của bạn) · ② Application information — contact, location, experience and education, all Basic information from SIGN UP · ③ Desired job (Công việc mong muốn) — Work preference, from ONBOARDING · ④ Cover message. Phone is captured at sign-up (a social account supplies it on the completion step), so by apply time it is a confirm rather than a first ask — this screen stays the last net that stops an application reaching an employer with no way to reply. Street address and current salary are not collected anywhere; the demographic four (DOB, gender, nationality, marital status) WERE cut on 2026-08-05 and REINSTATED on 2026-08-09, so they are part of Basic information again and appear on this read-back — see Resume management → the order: sign up → onboarding → create CV.',
             table: {
               cols: ['Field', 'Editable?', 'Why'],
               rows: [
@@ -355,13 +378,13 @@ export const applicationManagement: BuildModule = {
             'PATCH /jobseeker/contact { fullName, contactEmail, phone } — the same write, from the profile screen',
           ],
           notes:
-            'Creating an application emits an event the HQ screening queue listens to. The unique (jobseekerId, jobId) index is the real duplicate guard. Contact details are written to the jobseeker in the SAME transaction as the application, so a submitted application can never reference contact data that failed to save. The apply-eligibility response tells the client whether to expand the contact block or render the read-back, so the "ask once" rule is decided server-side rather than by client state that a new device would get wrong.',
+            'Creating an application runs the CV check inline and writes Sent, or Pending when the check fails. The unique (jobseekerId, jobId) index is the real duplicate guard. Contact details are written to the jobseeker in the SAME transaction as the application, so a submitted application can never reference contact data that failed to save. The apply-eligibility response tells the client whether to expand the contact block or render the read-back, so the "ask once" rule is decided server-side rather than by client state that a new device would get wrong.',
         },
         acceptance: [
           'A candidate with an existing CV can apply in one screen without typing profile data.',
           'Applying twice to the same job never creates a second application — the UI shows the existing one.',
-          'A submitted application appears in the HQ screening queue as Pending and is NOT visible to the company.',
-          'The screening gate is disclosed before submit, not only after — PLACEMENT UNRESOLVED: the notice was removed from the modal body in the current wireframe and has not been re-placed. See open questions.',
+          'A submitted application is visible to the company immediately — there is no screening queue and no “screened by Saramin” promise on the apply screen.',
+          'An application whose CV cannot be read, fails the “is this a CV?” check, or is missing required information lands in Pending instead, and the candidate is told at that moment — not warned upfront.',
           'A social-login candidate applying for the first time is asked for a phone number, because no provider supplied one.',
           'A candidate can correct a name that came from their social provider, and the employer receives the corrected name.',
           'The login email cannot be edited from the apply screen; the contact email can.',

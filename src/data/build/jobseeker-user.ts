@@ -172,11 +172,11 @@ export const jobseekerUser: BuildModule = {
             heading: 'FLOW — create an account with email',
             items: [
               '1. Jobseeker opens Sign up (header "Sign up" button, or from a job when they try to apply).',
-              '2. Fills the form: Full name (ONE field) · Email · Password (live rule checklist) · Phone · optional Personal details (date of birth, nationality, gender, marital status) · accept Terms & Privacy.',
+              '2. Fills the form — this is where the WHOLE of Basic information is collected: Full name (ONE field) · Email · Password (live rule checklist) · Phone · Personal details (date of birth, nationality, gender, marital status) · Background (highest education, years of work experience) · accept Terms & Privacy. The four personal details are optional; nothing else on the form is.',
               '3. "Create account" → the account is created with status Pending verification, and a verification email is sent.',
               '4. The jobseeker continues straight into ONBOARDING — verification does not block them from browsing or finishing their profile.',
               '5. Clicking the emailed link sets the account Active. Applying is blocked until it is.',
-              '→ Next: Onboarding (this module) → Create CV (Resume management) → Apply (Application management).',
+              '→ Next: ONBOARDING — Work preference (this module) → CREATE CV (Resume management) → Apply (Application management). One group per step: sign up takes Basic information, onboarding takes Work preference, the CV carries the career content.',
             ],
           },
           {
@@ -357,10 +357,10 @@ export const jobseekerUser: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
       mockup: 'js-onboarding',
-      notes: 'The 4-step wizard that collects Basic information + Work preference.',
+      notes: 'The 3-step wizard that collects WORK PREFERENCE. Basic information is already collected at sign-up.',
       detail: {
         description:
-          'Straight after an account is created, a short guided wizard collects the profile — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. Four topic-grouped steps, each framed with a live job-count carrot, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Profile field (see Resume management → Candidate data): nothing is asked that the CV already contains.',
+          'Straight after an account is created, a short guided wizard collects WORK PREFERENCE — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. THREE topic-grouped steps, each framed with a live job-count carrot, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Work-preference field (group 2 — see Resume management → Candidate data). Basic information was already taken at sign-up, and CV content comes from the CV: the wizard asks nothing from either.',
         userStory:
           'As a new jobseeker, I want to answer a few quick questions and immediately see jobs that match, so that I know the site is worth my time before I invest in a CV.',
         uiFields: [
@@ -372,27 +372,25 @@ export const jobseekerUser: BuildModule = {
               { name: 'desiredIndustry', type: 'multi-select (≤3)', notes: 'the COMPANY’s sector — a different axis from category (a designer can work in Banking or FMCG)' },
             ],
           },
-          { group: 'Step 2 · Where would you like to work?', items: [{ name: 'desiredWorkLocation', type: 'multi-select (≤3)', notes: 'province / city level' }] },
           {
-            group: 'Step 3 · Tell us about your background',
+            group: 'Step 2 · Where and how would you like to work?',
             items: [
-              { name: 'yearsOfWorkExperience', type: 'number', notes: 'the total only — the work history itself lives on the CV' },
-              { name: 'highestEducation', type: 'select', notes: 'the level only — school and major live on the CV' },
+              { name: 'desiredWorkLocation', type: 'multi-select (≤3)', notes: 'province / city level' },
+              { name: 'desiredWorkType', type: 'multi-select', notes: 'in office · remote · hybrid · oversea — the same `job_type` master the job side uses. A SEPARATE axis from location: it is what lets someone say "I live in HCMC and want remote". Leaving all off rules nothing out' },
             ],
           },
-          { group: 'Step 4 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'ONE number + currency (VND · USD)', notes: 'CANONICAL RULES: Resume management → CV data & matching architecture → "★ SALARY — the one contract". CORRECTED 2026-08-13 — this step asks for a SINGLE expected figure, not a range: an earlier draft here said "number range", which never matched the form. The candidate gives one number, the employer searches by a BAND, and a CV matches when the figure falls inside the band (see Resume management → the salary case table). Stored as { kind, currency, min, max } with max null, so the shape still works if a range is ever wanted. Also offers "Thỏa thuận". The most-requested employer filter, and the one thing no CV ever supplies' }] },
+          { group: 'Step 3 · What salary are you expecting?', items: [{ name: 'expectedSalary', type: 'ONE number + currency (VND · USD)', notes: 'CANONICAL RULES: Resume management → CV data & matching architecture → "★ SALARY — the one contract". CORRECTED 2026-08-13 — this step asks for a SINGLE expected figure, not a range: an earlier draft here said "number range", which never matched the form. The candidate gives one number, the employer searches by a BAND, and a CV matches when the figure falls inside the band (see Resume management → the salary case table). Stored as { kind, currency, min, max } with max null, so the shape still works if a range is ever wanted. Also offers "Thỏa thuận". The most-requested employer filter, and the one thing no CV ever supplies' }] },
         ],
         sections: [
           {
             heading: 'FLOW — onboarding',
             items: [
-              '1. Account created (email or social) → the wizard opens automatically at step 1 of 4.',
+              '1. Account created (email or social), with Basic information already captured on the registration form → the wizard opens automatically at step 1 of 3.',
               '2. Step 1 · what work — desired job category → desired job role → desired industry.',
-              '3. Step 2 · where — desired work location (up to 3).',
-              '4. Step 3 · background — years of work experience + highest education.',
-              '5. Step 4 · the ask — expected salary.',
-              '6. RESULTS — a full page of matched jobs ("We found the best job postings based on the information you entered"), each saveable.',
-              '7. "Complete your CV and go apply →" leads to My CVs, where the candidate uploads a PDF or builds a Saramin CV.',
+              '3. Step 2 · where and how — desired work location (up to 3) + desired work type.',
+              '4. Step 3 · the ask — expected salary.',
+              '5. RESULTS — a full page of matched jobs ("We found the best job postings based on the information you entered"), each saveable.',
+              '6. "Complete your CV and go apply →" leads to My CVs, where the candidate uploads a PDF or builds a Saramin CV.',
               '→ Next: Create CV (Resume management).',
             ],
           },
@@ -401,22 +399,22 @@ export const jobseekerUser: BuildModule = {
             items: [
               'Motivate with carrots, not required-asterisks: every step shows the payoff ("✨ 12,231 jobs match so far"), the Saramin-KR pattern.',
               'Topic-grouped, never one field per screen: category/role/industry answer ONE question, so they share a screen.',
-              'Nothing here is asked twice: work history, education detail and skills come from the CV, never from this wizard.',
+              'Nothing here is asked twice — and the rule that keeps it that way is ONE GROUP PER STEP: sign up takes Basic information, this wizard takes Work preference, the CV carries work history, education detail and skills. Years of experience and highest education are NOT asked here; they are Basic information and were taken at registration.',
               'Skippable — nothing in onboarding blocks browsing or applying; an incomplete profile is a normal state.',
             ],
           },
         ],
         rules: [
-          'Onboarding collects PROFILE fields only (Basic information + Work preference). CV content is never asked here.',
-          'Every profile field is collected at sign-up or in this wizard — there is no separate "fill in your profile later" form.',
+          'Onboarding collects WORK PREFERENCE only (group 2). Basic information belongs to the sign-up form and CV content to the CV — neither is ever asked here.',
+          'Every profile field is collected at sign-up (Basic information) or in this wizard (Work preference) — there is no separate "fill in your profile later" form.',
           'The wizard is skippable at any step; the profile is simply less complete, which lowers search ranking but blocks nothing.',
           'The final step must show matched jobs before asking for a CV — proving value precedes asking for effort.',
         ],
-        states: ['Step 1–4', 'Skipped step', 'Results — matched jobs', 'Results — no matches yet (broaden suggestions)'],
+        states: ['Step 1–3', 'Skipped step', 'Results — matched jobs', 'Results — no matches yet (broaden suggestions)'],
         backend: {
           dataModel: [
-            { name: 'Profile (Work preference)', type: 'entity', notes: 'desiredJobCategory · desiredJobRole · desiredIndustry[] · desiredWorkLocation[] · expectedSalary' },
-            { name: 'Profile (Basic information)', type: 'entity', notes: 'this wizard writes highestEducation + yearsOfWorkExperience; the rest comes from sign-up' },
+            { name: 'Profile (Work preference)', type: 'entity', notes: 'desiredJobCategory · desiredJobRole · desiredIndustry[] · desiredWorkLocation[] · desiredWorkType[] · expectedSalary — the six fields this wizard writes, and the whole of what it writes' },
+            { name: 'Profile (Basic information)', type: 'entity', notes: 'READ-ONLY to this wizard — all nine fields are written by the sign-up form. Nothing here updates them' },
             { name: 'onboardingCompletedAt', type: 'timestamp?', notes: 'null while skipped — drives the "finish your profile" nudge' },
           ],
           endpoints: ['PATCH /jobseeker/profile — one call per step (autosave, so a drop-off keeps what was answered)', 'GET /jobs/match-count?… — the live carrot count', 'GET /jobs/matches — the results page'],
@@ -424,7 +422,7 @@ export const jobseekerUser: BuildModule = {
         },
         acceptance: [
           'A new account lands in the wizard automatically after sign-up.',
-          'All seven onboarding fields are collected across the four steps.',
+          'All six Work-preference fields are collected across the three steps, and the wizard asks for no Basic-information field.',
           'The job-count carrot updates between steps.',
           'The last step shows matched jobs and routes to My CVs.',
           'Skipping any step still creates a usable account and profile.',
