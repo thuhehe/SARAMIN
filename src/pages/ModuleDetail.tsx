@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
@@ -6,6 +7,7 @@ import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
+import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { cn } from '@/lib/utils'
 
 /* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
@@ -81,40 +83,71 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
    and gives the body a clean left edge to read down. A hairline separates the
    rows, the number gives position, and long lists keep the tail one click
    away. Points with no such lead-in simply render as one line of text. */
-const LEAD_IN = /^([^—:]{2,44}?)(\s*—\s+|:\s+)([\s\S]+)$/
+const LEAD_IN = /^([^—:]{2,60}?)(\s*—\s+|:\s+)([\s\S]+)$/
+/* Not every author delimits the lead-in. Plenty are written as a run of CAPITALS
+   running straight into the sentence — "NOTHING IS STORED for a file that…" — and
+   those fell back to full width, which is what made a list of them read as a
+   wall. This catches the undelimited form: a run of non-lowercase tokens, ending
+   at the first ordinary word. Deliberately narrow — a sentence that merely
+   CONTAINS a shouted word does not match, because the run has to start at
+   character one. */
+const CAPS_TOKEN = "(?:[^\\sa-zà-þ]*[A-ZÀ-Þ0-9][^\\sa-zà-þ]*|\\d+[a-zà-þ]+)"
+const CAPS_LEAD = new RegExp(`^((?:${CAPS_TOKEN}\\s+){0,11}${CAPS_TOKEN})(?:\\.)?\\s+(?=[a-zà-þ]|[A-ZÀ-Þ][a-zà-þ])`, 'u')
+
+/** Split a bullet into (lead-in, body), or null when it has neither form.
+    A split is refused when it would cut a **bold** span in half — checked by
+    counting the markers on each side rather than by skipping every bullet that
+    contains bold, which used to drop a whole row back to full width for a pair
+    of asterisks sitting safely in the body. */
+function splitLead(t: string): [string, string] | null {
+  const balanced = (a: string, b: string) =>
+    (a.split('**').length - 1) % 2 === 0 && (b.split('**').length - 1) % 2 === 0
+  const m = t.match(LEAD_IN)
+  if (m && balanced(m[1], m[3])) return [m[1], m[3]]
+  const c = t.match(CAPS_LEAD)
+  if (c && c[1].trim().length >= 4) {
+    const lead = c[1].trim().replace(/\.$/, '')
+    const body = t.slice(c[0].length)
+    if (balanced(lead, body)) return [lead, body]
+  }
+  return null
+}
 
 /* Sub-points render as a TABLE, same shell as ReqTableView so a requirement
    reads as one document rather than a table plus a loose list. The lead-in
    becomes the left column — that column is the index you skim; the right column
    is the detail you read only when the left one is relevant. Points with no
    lead-in span the full width. Everything is shown: no truncation. */
-function ReqBullets({ items, dense }: { items: string[]; dense?: boolean }) {
+function ReqBullets({ items, dense, header = true }: { items: string[]; dense?: boolean; header?: boolean }) {
   const tmpl = 'minmax(150px, 0.85fr) 1fr'
   return (
     <div className="mt-2.5 overflow-hidden rounded-lg border border-line">
-      <div
-        style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
-        className={cn('grid gap-x-4 bg-canvas/60 px-3 py-1.5 font-semibold uppercase tracking-wide text-muted', dense ? 'text-[10px]' : 'text-[10.5px]')}
-      >
-        <span>Rule</span>
-        <span>What it means</span>
-      </div>
+      {header && (
+        <div
+          style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+          className={cn('grid gap-x-4 bg-canvas/60 px-3 py-1.5 font-semibold uppercase tracking-wide text-muted', dense ? 'text-[10px]' : 'text-[10.5px]')}
+        >
+          <span>Rule</span>
+          <span>What it means</span>
+        </div>
+      )}
       {items.map((t, j) => {
-        const m = t.includes('**') ? null : t.match(LEAD_IN)
+        const m = splitLead(t)
         return (
           <div
             key={j}
             style={m ? { gridTemplateColumns: tmpl, minWidth: 480 } : undefined}
             className={cn(
-              'gap-x-4 border-t border-line-soft px-3 py-2 leading-relaxed',
+              'gap-x-4 px-3 py-2 leading-relaxed',
+              (header || j > 0) && 'border-t border-line-soft',
               m ? 'grid' : 'block',
               dense ? 'text-[11.5px]' : 'text-[12.5px]',
             )}
           >
             {m ? (
               <>
-                <span className="font-medium text-ink"><Rich t={m[1]} /></span>
-                <span className="min-w-0 text-ink/75"><Rich t={m[3]} /></span>
+                <span className="font-medium text-ink"><Rich t={m[0]} /></span>
+                <span className="min-w-0 text-ink/75"><Rich t={m[1]} /></span>
               </>
             ) : (
               <span className="text-ink/75"><Rich t={t} /></span>
@@ -211,17 +244,21 @@ function SpecBlock({ title, children, note }: { title: string; children: React.R
 }
 
 /** The leaf list — plain bullets, used on its own or inside a group. */
-function BulletList({ items }: { items: string[] }) {
-  return (
-    <ul className="space-y-1.5">
-      {items.map((t, i) => (
-        <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-ink/80">
-          <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-brand" />
-          <Rich t={t} />
-        </li>
-      ))}
-    </ul>
-  )
+/* Section bullets carry the same shape as requirement sub-points — a short
+   LEAD-IN before an em-dash or colon, then two or three sentences of body. Run
+   together on one line they read as a grey wall, which is the real "too long"
+   problem rather than the word count. So the lead-in is lifted onto its own
+   line: the list becomes skimmable on those alone, and the body gets a clean
+   left edge to read down. Items with no lead-in render as a single line. */
+/* Section bullets are the same shape as requirement sub-points — a short LEAD-IN
+   before an em-dash or colon, then two or three dense sentences. As a <ul> they
+   read as a grey wall however the lead-in is styled, because the eye has no
+   column to run down. So they render in the SAME two-column shell as the
+   requirement cards: the left column is the index you skim, the right is the
+   detail you read only when the left one is relevant. One list shape across the
+   whole document, and nothing is truncated. */
+function BulletList({ items, header }: { items: string[]; header?: boolean }) {
+  return <ReqBullets items={items} header={header} />
 }
 
 /** Bullets that may be grouped under headings. A flat list stays flat. */
@@ -235,7 +272,7 @@ function Bullets({ items }: { items: BulletItem[] }) {
       {groups.map((g, i) => (
         <div key={i}>
           <p className="mb-1.5 border-b border-line-soft pb-1 text-[12px] font-bold uppercase tracking-wide text-ink/60">{g.group}</p>
-          <BulletList items={g.items} />
+          <BulletList items={g.items} header={false} />
         </div>
       ))}
     </div>
@@ -380,6 +417,7 @@ function SectionBlock({ s }: { s: NonNullable<FeatureDetail['sections']>[number]
           ))}
         </div>
       )}
+      {s.diagram === 'cv-status' && <CvStatusFlow />}
       {s.table && <ReqTableView t={s.table} />}
       {s.items && <div className={cn(s.table && 'mt-3')}><Bullets items={s.items} /></div>}
       {s.warn && (
@@ -429,6 +467,61 @@ function KeyPoints({ items }: { items: KeyPoint[] }) {
         ))}
       </ol>
     </section>
+  )
+}
+
+/* Several screens of one feature render as TABS, not as a stack.
+ *
+ * Stacked, three screens meant three 640px-tall previews to scroll past before
+ * reaching the next rule — and the reader lost which screen they were looking at
+ * halfway down each one. Tabbed, the three sit at one height, the labels say what
+ * the set IS ("CV check · Talent pool · Applicants"), and comparing two screens
+ * is one click instead of a scroll. A single screen renders with no tab strip at
+ * all, so nothing changes for the features that have one. */
+function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolveScreen>>[] }) {
+  const [active, setActive] = useState(0)
+  const s = screens[active] ?? screens[0]
+  if (!s) return null
+  const href = mockupHref(s)
+  const site = s.src === 'admin' ? 'Admin' : s.src === 'co' ? 'Company' : 'Jobseeker'
+  return (
+    <SpecBlock
+      title={screens.length > 1 ? 'Screen UI' : `Screen UI · ${s.title ?? 'Screen'}`}
+      note={
+        <span className="flex items-center gap-3">
+          {s.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{s.url}</span>}
+          {href && (
+            <Link to={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
+              Open in {site} mockups
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
+        </span>
+      }
+    >
+      {screens.length > 1 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1 border-b border-line">
+          {screens.map((sc, i) => (
+            <button
+              key={sc.screenId}
+              type="button"
+              onClick={() => setActive(i)}
+              className={cn(
+                '-mb-px border-b-2 px-3 py-1.5 text-[12.5px] transition-colors',
+                i === active
+                  ? 'border-brand font-semibold text-brand'
+                  : 'border-transparent text-muted hover:text-ink',
+              )}
+            >
+              {sc.title ?? sc.screenId}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="max-h-[640px] overflow-y-auto scroll-thin">
+        <s.Comp />
+      </div>
+    </SpecBlock>
   )
 }
 
@@ -618,11 +711,9 @@ export function FeatureDetail() {
   const prev = idx > 0 ? { f: m.features[idx - 1] } : undefined
   const next = idx < m.features.length - 1 ? { f: m.features[idx + 1] } : undefined
   const screen = resolveScreen(f.mockup)
-  const href = screen ? mockupHref(screen) : null
-  /* Extra screens of the same feature (f.mockups) render as their own blocks under
-     the primary one, each labelled with the screen's own title — a two-screen flow
-     is one requirement, and splitting it in two just to fit one preview is how the
-     second screen ends up under-specified. */
+  /* Extra screens of the same feature (f.mockups) become the other TABS — a
+     multi-screen flow is one requirement, and splitting it across blocks just to
+     fit one preview is how the second screen ends up under-specified. */
   const extraScreens = (f.mockups ?? []).map((id) => resolveScreen(id)).filter((s): s is NonNullable<typeof s> => !!s)
 
   /* The screen sits BELOW Overview (and below Key points), not above them: a reader
@@ -630,66 +721,11 @@ export function FeatureDetail() {
      the key rules before either. This is NOT a second copy of the screen —
      resolveScreen returns the very component the mockup gallery renders, so a screen
      is only ever built in one place. The link opens it in that gallery. */
-  const screenBlock = (
-    <>
-    {/* A feature with no wired mockup shows NOTHING here. The old empty-state
-        card announced an absence on every logic-only feature — a placeholder
-        that only ever says "there is nothing to see" is noise, not a to-do. */}
-    {screen && (
-    <SpecBlock
-      title={extraScreens.length ? `Screen UI · ${screen?.title ?? 'Screen'}` : 'Screen UI'}
-      note={
-        screen ? (
-          <span className="flex items-center gap-3">
-            {/* the route, as plain text — it was the only real information the
-                fake browser chrome carried */}
-            {screen.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{screen.url}</span>}
-            {href && (
-              <Link to={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
-                Open in {screen.src === 'admin' ? 'Admin' : screen.src === 'co' ? 'Company' : 'Jobseeker'} mockups
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            )}
-          </span>
-        ) : (
-          'not wired yet'
-        )
-      }
-    >
-      {screen ? (
-        /* No <Browser> frame here. The SpecBlock card is already a frame, so the
-           chrome was a second border around the first plus a fake URL bar; the
-           URL now sits in the block header. The gallery keeps its chrome, where
-           it is the only frame. */
-        <div className="max-h-[640px] overflow-y-auto scroll-thin">
-          <screen.Comp />
-        </div>
-      ) : null}
-    </SpecBlock>
-    )}
-    {extraScreens.map((s) => (
-      <SpecBlock
-        key={s.screenId}
-        title={`Screen UI · ${s.title ?? s.screenId}`}
-        note={
-          <span className="flex items-center gap-3">
-            {s.url && <span className="hidden font-mono text-[11px] text-faint sm:inline">{s.url}</span>}
-            {mockupHref(s) && (
-              <Link to={mockupHref(s)!} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline">
-                Open in {s.src === 'admin' ? 'Admin' : s.src === 'co' ? 'Company' : 'Jobseeker'} mockups
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            )}
-          </span>
-        }
-      >
-        <div className="max-h-[640px] overflow-y-auto scroll-thin">
-          <s.Comp />
-        </div>
-      </SpecBlock>
-    ))}
-    </>
-  )
+  /* One block, tabbed. `f.mockup` is the first tab and `f.mockups` the rest, in
+     the order the data lists them — so the spec controls which screen a reader
+     lands on. */
+  const allScreens = [screen, ...extraScreens].filter((x): x is NonNullable<typeof screen> => !!x)
+  const screenBlock = allScreens.length ? <ScreenTabs screens={allScreens} /> : null
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 pb-16 sm:px-8">

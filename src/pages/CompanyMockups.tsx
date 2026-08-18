@@ -1062,11 +1062,54 @@ function FilterGroupBlock({ g, children }: { g: FacetGroup; children?: React.Rea
  *   NOT — exclude any CV containing these
  * The three combine as: (a OR b) AND c AND d AND NOT (e OR f).
  */
-const KEYWORD_BOXES: { op: string; value?: string; hint: string }[] = [
-  { op: 'OR', value: 'điều dưỡng, y tá', hint: 'any of these words' },
-  { op: 'AND', hint: 'must contain every one' },
-  { op: 'NOT', hint: 'exclude these words' },
+/* ── The parsed query ──────────────────────────────────────────────────────
+ * Replaces the Saramin-KR OR / AND / NOT boxes. The recruiter types a sentence;
+ * we show the PARSE as chips they can correct. Operators become PRIORITY:
+ *
+ *   Bắt buộc  — must match. The only state that removes rows (changes the count).
+ *   Ưu tiên   — preferred. Re-orders only; it can never empty the screen.
+ *   Loại trừ  — exclude.
+ *
+ * Role defaults to Bắt buộc, everything else to Ưu tiên, because a recruiter
+ * means "an accountant, ideally from banking" — never "anyone from banking".
+ */
+type ChipState = 'must' | 'pref' | 'not'
+const CHIP_STATE: Record<ChipState, { label: string; cls: string }> = {
+  must: { label: 'Bắt buộc', cls: 'border-brand bg-brand-soft text-brand' },
+  pref: { label: 'Ưu tiên', cls: 'border-line bg-surface text-ink/75' },
+  not: { label: 'Loại trừ', cls: 'border-rose-200 bg-rose-50 text-rose-600' },
+}
+const SEARCH_QUERY = 'điều dưỡng trưởng bệnh viện quốc tế'
+const SEARCH_CHIPS: { type: string; value: string; state: ChipState }[] = [
+  { type: 'Vai trò', value: 'Điều dưỡng trưởng', state: 'must' },
+  { type: 'Nơi làm việc', value: 'Bệnh viện quốc tế', state: 'pref' },
 ]
+
+/** One parsed term. The state selector is the whole boolean model, per chip. */
+function QueryChip({ c }: { c: { type: string; value: string; state: ChipState } }) {
+  const s = CHIP_STATE[c.state]
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11.5px]', s.cls)}>
+      <span className="opacity-60">{c.type}:</span>
+      <b className="font-semibold">{c.value}</b>
+      <span className="ml-0.5 cursor-pointer rounded bg-black/5 px-1.5 py-px text-[10px] font-medium">{s.label} ▾</span>
+      <span className="cursor-pointer opacity-40 hover:opacity-100">✕</span>
+    </span>
+  )
+}
+
+/* ── Advanced mode: the old Saramin-KR boolean bar ─────────────────────────
+ * Kept, not deleted. It is Saramin KR parity, some recruiters genuinely think
+ * in operators, and it is the escape hatch for the query a chip cannot express
+ * ("either of these two job titles, but never this third word"). It is simply
+ * no longer the thing a first-time recruiter has to understand.
+ */
+const ADV_BOXES: { op: string; value?: string; hint: string; note: string }[] = [
+  { op: 'OR', value: 'điều dưỡng trưởng, y tá trưởng', hint: 'bất kỳ từ nào', note: 'Câu truy vấn chính — khớp nếu CV chứa ÍT NHẤT MỘT từ' },
+  { op: 'AND', value: 'quản lý', hint: 'phải có tất cả', note: 'Thu hẹp — mọi từ ở đây đều phải xuất hiện' },
+  { op: 'NOT', value: 'thực tập', hint: 'loại trừ các từ này', note: 'Loại bỏ — CV chứa bất kỳ từ nào ở đây sẽ bị bỏ' },
+]
+const ADV_SCOPES = ['Tất cả các trường', 'Chỉ chức danh', 'Chỉ kỹ năng', 'Chỉ công ty']
 
 /* ── CV detail page ────────────────────────────────────────────────────────
  * Opened by Unlock / View CV. A PAGE, not a modal — a CV is a document a
@@ -1220,6 +1263,7 @@ function CvDetailPage({ onBack }: { onBack: () => void }) {
 function ResumeSearchScreen() {
   const [viewing, setViewing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState('Any')
+  const [advanced, setAdvanced] = useState(false)
   /* Each row carries the full locked-preview field set: DESIRED ROLE, demographic
      line (gender · age), years of experience, the LATEST company (name, role,
      period, one-line description), the LATEST education (school, degree,
@@ -1240,63 +1284,142 @@ function ResumeSearchScreen() {
    *   · anything beyond the chips that fit as a "+N" count.
    * `prior` is that chip list; `morePrior` is the overflow count.
    */
-  const cvs = [
+  /* Results are GROUPED, never one flat run ordered by an invisible score. A band
+     says which chips matched and how strongly, so a recruiter can stop reading
+     when the tier stops being worth their time — and every row carries its own
+     reason line, which is what turns ranking from something to trust into
+     something to check before spending an unlock.
+
+     The last band is the client's "nhà cung ứng cho Starbucks" case: the ENTITY
+     matched but the ROLE did not. That person is genuinely interesting and is
+     genuinely not a nurse, so they are shown, labelled, and kept OUT of the role
+     tiers — blending them in is what makes the top of a list stop being trusted. */
+  type CvRow = {
+    reason: [string, string][]
+    unlocked: boolean
+    id: string
+    name: string
+    desiredRole: string
+    gender: string
+    age: number
+    years: string
+    company: { name: string; masked: string; title: string; period: string; desc: string }
+    prior: { name: string; masked: string; title: string; dur: string }[]
+    morePrior?: number
+    education: { school: string; masked: string; degree: string; status: string; expected: boolean }
+    skills: string[]
+    more?: number
+    loc: string
+    salary: string
+    updated: string
+  }
+  const BANDS: {
+    label: string
+    count: number
+    tone: string
+    note: string
+    rows: CvRow[]
+  }[] = [
     {
-      unlocked: true,
-      id: 'E1D77',
-      name: 'Nguyễn Thị Hoa',
-      desiredRole: 'Điều dưỡng viên',
-      gender: 'Nữ', age: 28, years: '4 yrs experience',
-      company: { name: 'BV Nhân dân Gia Định', masked: 'Bệnh viện công lập · TP.HCM', title: 'Điều dưỡng viên', period: '03/2023 – nay', desc: 'Chăm sóc người bệnh khoa Nội (40 giường); tiêm truyền, theo dõi dấu hiệu sinh tồn, bàn giao ca và hướng dẫn người nhà.' },
-      prior: [{ name: 'PK Đa khoa Vạn Hạnh', masked: 'Phòng khám đa khoa', title: 'Điều dưỡng viên', dur: '1 năm 8 tháng' }],
-      education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 06/2021', expected: false },
-      skills: ['Chăm sóc nội khoa', 'Tiêm truyền', 'Hồ sơ bệnh án'], more: 2,
-      loc: 'Hồ Chí Minh', salary: 'Từ 15 triệu', updated: '2 days ago',
-    },
-    {
-      unlocked: false,
-      id: 'A2F91',
-      name: 'Trần ○○',
-      desiredRole: 'Điều dưỡng trưởng',
-      gender: 'Nữ', age: 34, years: '7 yrs experience',
-      company: { name: 'BV Quốc tế Mỹ (AIH)', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – nay', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ và kiểm tra tuân thủ hằng tháng.' },
-      prior: [
-        { name: 'BV Hoàn Mỹ Sài Gòn', masked: 'Bệnh viện tư nhân', title: 'Điều dưỡng viên', dur: '2 năm 3 tháng' },
-        { name: 'PK Quốc tế Columbia', masked: 'Phòng khám quốc tế', title: 'Điều dưỡng viên', dur: '1 năm' },
+      label: 'KHỚP NHẤT',
+      count: 18,
+      tone: 'text-emerald-600',
+      note: 'Đúng vai trò · đã làm ở bệnh viện quốc tế',
+      rows: [
+        {
+          reason: [['✓', 'Điều dưỡng trưởng'], ['✓', 'Bệnh viện quốc tế — 5 năm kinh nghiệm']],
+          unlocked: false,
+          id: 'A2F91',
+          name: 'Trần ○○',
+          desiredRole: 'Điều dưỡng trưởng',
+          gender: 'Nữ', age: 34, years: '7 yrs experience',
+          company: { name: 'BV Quốc tế Mỹ (AIH)', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Ngoại', period: '01/2021 – nay', desc: 'Quản lý 18 điều dưỡng; xây dựng quy trình chăm sóc theo chuẩn JCI, đào tạo nội bộ và kiểm tra tuân thủ hằng tháng.' },
+          prior: [
+            { name: 'BV Hoàn Mỹ Sài Gòn', masked: 'Bệnh viện tư nhân', title: 'Điều dưỡng viên', dur: '2 năm 3 tháng' },
+            { name: 'PK Quốc tế Columbia', masked: 'Phòng khám quốc tế', title: 'Điều dưỡng viên', dur: '1 năm' },
+          ],
+          morePrior: 2,
+          education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', masked: 'Đại học y khoa · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
+          skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], more: 3,
+          loc: 'Hồ Chí Minh', salary: 'Từ 25 triệu', updated: '1 week ago',
+        },
+        {
+          reason: [['✓', 'Điều dưỡng trưởng'], ['✓', 'Bệnh viện quốc tế — 6 năm kinh nghiệm']],
+          unlocked: false,
+          id: 'D9E13',
+          name: 'Đỗ ○○',
+          desiredRole: 'Điều dưỡng trưởng',
+          gender: 'Nữ', age: 36, years: '9 yrs experience',
+          company: { name: 'BV FV', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Sản', period: '05/2019 – nay', desc: 'Phụ trách 24 điều dưỡng khoa Sản; triển khai bộ tiêu chuẩn an toàn người bệnh và đào tạo điều dưỡng mới.' },
+          prior: [{ name: 'BV Từ Dũ', masked: 'Bệnh viện công lập', title: 'Điều dưỡng viên', dur: '3 năm 4 tháng' }],
+          education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2012', expected: false },
+          skills: ['Quản lý điều dưỡng', 'An toàn người bệnh', 'Sản khoa'], more: 2,
+          loc: 'Hồ Chí Minh', salary: 'Từ 28 triệu', updated: '3 days ago',
+        },
       ],
-      morePrior: 2,
-      education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', masked: 'Đại học y khoa · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2014', expected: false },
-      skills: ['Quản lý điều dưỡng', 'JCI', 'Đào tạo'], more: 3,
-      loc: 'Hồ Chí Minh', salary: 'Từ 25 triệu', updated: '1 week ago',
     },
     {
-      unlocked: false,
-      id: 'C7B04',
-      name: 'Lê ○○',
-      // 'KTV xét nghiệm', not 'Kỹ thuật viên xét nghiệm' — the value has to be the
-      // master-data term the Desired job role facet lists, or the card shows a
-      // role the filter cannot match.
-      desiredRole: 'KTV xét nghiệm',
-      gender: 'Nam', age: 26, years: '3 yrs experience',
-      company: { name: 'PK Đa khoa Medic Bình Dương', masked: 'Phòng khám đa khoa · Bình Dương', title: 'KTV xét nghiệm', period: '08/2022 – nay', desc: 'Xét nghiệm huyết học & sinh hóa; vận hành Sysmex XN-550, kiểm chuẩn nội bộ hằng ngày.' },
-      prior: [],
-      education: { school: 'CĐ Y tế Bình Dương', masked: 'Cao đẳng y tế · Bình Dương', degree: 'Cao đẳng Xét nghiệm y học', status: 'Graduated 2022', expected: false },
-      skills: ['Xét nghiệm huyết học', 'Sinh hóa', 'ISO 15189'],
-      loc: 'Bình Dương', salary: 'Từ 12 triệu', updated: '3 weeks ago',
+      label: 'LIÊN QUAN',
+      count: 43,
+      tone: 'text-amber-600',
+      note: 'Đúng vai trò · “quốc tế” chỉ có ở đào tạo / chứng chỉ, chưa đi làm',
+      rows: [
+        {
+          reason: [['✓', 'Điều dưỡng trưởng'], ['◐', 'Bệnh viện quốc tế — chứng chỉ JCI, chưa làm thực tế']],
+          unlocked: true,
+          id: 'E1D77',
+          name: 'Nguyễn Thị Hoa',
+          desiredRole: 'Điều dưỡng trưởng',
+          gender: 'Nữ', age: 31, years: '6 yrs experience',
+          company: { name: 'BV Nhân dân Gia Định', masked: 'Bệnh viện công lập · TP.HCM', title: 'Điều dưỡng trưởng khoa Nội', period: '03/2022 – nay', desc: 'Điều phối 12 điều dưỡng khoa Nội (40 giường); phân ca, giám sát hồ sơ bệnh án và hướng dẫn người nhà.' },
+          prior: [{ name: 'PK Đa khoa Vạn Hạnh', masked: 'Phòng khám đa khoa', title: 'Điều dưỡng viên', dur: '1 năm 8 tháng' }],
+          education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng · chứng chỉ JCI 2023', status: 'Graduated 06/2019', expected: false },
+          skills: ['Chăm sóc nội khoa', 'JCI', 'Quản lý ca trực'], more: 2,
+          loc: 'Hồ Chí Minh', salary: 'Từ 20 triệu', updated: '2 days ago',
+        },
+      ],
     },
     {
-      unlocked: false,
-      id: 'B4C22',
-      name: 'Phạm ○○',
-      // The fresher qualifier moved out of the value: "mới tốt nghiệp" is not a
-      // role in the master list, and `years` below already says Fresher.
-      desiredRole: 'Điều dưỡng viên',
-      gender: 'Nam', age: 23, years: 'Fresher · under 1 yr',
-      company: { name: 'BV Đại học Y Dược TP.HCM', masked: 'Bệnh viện đại học · TP.HCM', title: 'Điều dưỡng thực tập', period: '06/2025 – 12/2025', desc: 'Thực tập lâm sàng khoa Nội tổng hợp; hỗ trợ chăm sóc cơ bản và ghi chép hồ sơ.' },
-      prior: [],
-      education: { school: 'ĐH Nguyễn Tất Thành', masked: 'Đại học tư thục · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Expected 06/2026', expected: true },
-      skills: ['Chăm sóc cơ bản', 'Tiếng Anh giao tiếp'],
-      loc: 'Hồ Chí Minh', salary: 'Thỏa thuận', updated: '4 days ago',
+      label: 'ÍT LIÊN QUAN HƠN',
+      count: 187,
+      tone: 'text-muted',
+      note: 'Đúng vai trò · chưa có yếu tố quốc tế',
+      rows: [
+        {
+          reason: [['✓', 'Điều dưỡng trưởng'], ['○', 'Chưa có bệnh viện quốc tế']],
+          unlocked: false,
+          id: 'B4C22',
+          name: 'Phạm ○○',
+          desiredRole: 'Điều dưỡng trưởng',
+          gender: 'Nam', age: 33, years: '8 yrs experience',
+          company: { name: 'BV Đại học Y Dược TP.HCM', masked: 'Bệnh viện đại học · TP.HCM', title: 'Điều dưỡng trưởng khoa Nội tổng hợp', period: '02/2020 – nay', desc: 'Quản lý 15 điều dưỡng; lập lịch trực, kiểm tra tuân thủ quy trình chăm sóc cơ bản.' },
+          prior: [],
+          education: { school: 'ĐH Nguyễn Tất Thành', masked: 'Đại học tư thục · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2016', expected: false },
+          skills: ['Chăm sóc nội khoa', 'Quản lý ca trực'],
+          loc: 'Hồ Chí Minh', salary: 'Thỏa thuận', updated: '4 days ago',
+        },
+      ],
+    },
+    {
+      label: 'CÓ NHẮC ĐẾN “BỆNH VIỆN QUỐC TẾ”',
+      count: 9,
+      tone: 'text-violet-600',
+      note: 'Từ khoá khớp nhưng KHÁC vai trò — ví dụ nhà cung ứng, đối tác đào tạo',
+      rows: [
+        {
+          reason: [['○', 'Không phải điều dưỡng trưởng'], ['✓', 'Bệnh viện quốc tế — khách hàng / đối tác']],
+          unlocked: false,
+          id: 'F3A88',
+          name: 'Lê ○○',
+          desiredRole: 'Chuyên viên thiết bị y tế',
+          gender: 'Nam', age: 35, years: '10 yrs experience',
+          company: { name: 'Công ty TBYT Đông Á', masked: 'Nhà phân phối thiết bị y tế · TP.HCM', title: 'Quản lý kinh doanh khu vực', period: '04/2018 – nay', desc: 'Phụ trách cung ứng vật tư tiêu hao cho BV Quốc tế Mỹ (AIH), BV FV và Vinmec; đào tạo sử dụng thiết bị cho điều dưỡng.' },
+          prior: [{ name: 'Công ty Dược Hậu Giang', masked: 'Công ty dược', title: 'Trình dược viên', dur: '3 năm' }],
+          education: { school: 'ĐH Bách khoa TP.HCM', masked: 'Đại học kỹ thuật · TP.HCM', degree: 'Kỹ sư Điện tử y sinh', status: 'Graduated 2013', expected: false },
+          skills: ['Thiết bị y tế', 'Đào tạo sử dụng', 'Quản lý khách hàng'], more: 4,
+          loc: 'Hồ Chí Minh', salary: 'Từ 30 triệu', updated: '5 days ago',
+        },
+      ],
     },
   ]
 
@@ -1311,27 +1434,82 @@ function ResumeSearchScreen() {
   return (
     <div className="relative">
       <PageBar title="Resume search" sub="Find and unlock candidate CVs from Saramin's talent pool." action={<Chip tone="blue">62 / 100 unlocks left</Chip>} />
-      {/* ── keyword bar, Saramin-KR model: three boxes, not one ──────────────
-          A recruiter states the boolean query as three plain lists instead of
-          learning an operator syntax. Saved search conditions sit on the same
-          band, because "run last week's search again" is the action that makes a
-          6-month package get used in month 5. */}
+      {/* ── search bar: ONE box, then the parse ───────────────────────────────
+          Replaces the Saramin-KR OR / AND / NOT boxes. Operators asked the
+          recruiter to resolve their intent into set logic BEFORE we had shown we
+          understood them — "kế toán trưởng ngành ngân hàng" has no correct
+          operator, because banking is PREFERRED and three boxes cannot say that.
+          So: the recruiter writes a sentence, we show the parse as chips, and
+          each chip carries the priority instead. Boolean survives behind
+          "Tìm kiếm nâng cao" for the queries chips cannot express. */}
       <div className="mb-3">
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[12.5px] font-semibold text-ink">Find the right people for the role</p>
           <div className="flex items-center gap-3 text-[10.5px] text-muted">
             <span className="cursor-pointer">↺ Reset</span>
+            <span className="cursor-pointer">Saved searches</span>
           </div>
         </div>
-        <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
-          {KEYWORD_BOXES.map((b) => (
-            <div key={b.op} className="flex min-w-0 flex-1 items-center gap-2 border-r border-line px-3 py-2">
-              <span className="shrink-0 text-[10px] font-bold tracking-wide text-brand">{b.op}</span>
-              <span className={cn('min-w-0 flex-1 truncate text-[12px]', b.value ? 'text-ink' : 'text-faint')}>{b.value ?? b.hint}</span>
+
+        {advanced ? (
+          <>
+            {/* Three plain lists, the Saramin-KR model. The recruiter still never
+                types AND, OR or a bracket — the SCREEN states the logic and the
+                recruiter states the words. */}
+            <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
+              {ADV_BOXES.map((b) => (
+                <div key={b.op} className="flex min-w-0 flex-1 items-center gap-2 border-r border-line px-3 py-2">
+                  <span className="shrink-0 rounded bg-brand-soft px-1.5 py-px text-[10px] font-bold tracking-wide text-brand">{b.op}</span>
+                  <span className={cn('min-w-0 flex-1 truncate text-[12px]', b.value ? 'text-ink' : 'text-faint')}>{b.value ?? b.hint}</span>
+                </div>
+              ))}
+              <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Tìm</span>
             </div>
-          ))}
-          <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Search</span>
-        </div>
+            {/* What each box does, under the box it describes — the operator names
+                are only learnable if their meaning is on screen beside them. */}
+            <div className="mt-1 grid grid-cols-3 gap-0">
+              {ADV_BOXES.map((b) => (
+                <p key={b.op} className="px-3 text-[10px] leading-snug text-faint">{b.note}</p>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {/* Scope is ORTHOGONAL to the operators: the boxes say WHICH words,
+                  this says WHERE to look. It exists only in advanced mode — in the
+                  default mode the chip TYPE already answers "where", and two
+                  answers to one question is how a search starts lying. */}
+              <span className="text-[10.5px] text-faint">Tìm trong:</span>
+              <span className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-ink">
+                {ADV_SCOPES[0]} <ChevronDown className="h-3 w-3 text-faint" />
+              </span>
+              <span className="rounded-md border border-line bg-canvas/60 px-2 py-1 font-mono text-[10.5px] text-muted">
+                (điều dưỡng trưởng OR y tá trưởng) AND quản lý NOT thực tập
+              </span>
+              <span onClick={() => setAdvanced(false)} className="ml-auto cursor-pointer text-[10.5px] font-medium text-brand">
+                ← Quay lại tìm kiếm thường
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
+              <span className="grid shrink-0 place-items-center pl-3 text-faint">
+                <Search className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1 truncate px-2.5 py-2 text-[12.5px] text-ink">{SEARCH_QUERY}</span>
+              <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Tìm</span>
+            </div>
+            {/* The parse, shown and editable. A wrong reading is visible and fixable
+                in one click instead of silently returning the wrong people. */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10.5px] text-faint">Đang hiểu là:</span>
+              {SEARCH_CHIPS.map((c) => <QueryChip key={c.type} c={c} />)}
+              <span className="cursor-pointer rounded-lg border border-dashed border-line px-2 py-1 text-[11.5px] text-muted">＋ Thêm điều kiện</span>
+              <span onClick={() => setAdvanced(true)} className="ml-auto cursor-pointer text-[10.5px] text-brand">
+                Tìm kiếm nâng cao (OR / AND / NOT) →
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -1358,12 +1536,38 @@ function ResumeSearchScreen() {
         </div>
 
         <div>
-          <div className="mb-3">
-            <p className="text-[12px] text-muted"><b className="text-ink">248</b> candidates match</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[12px] text-muted">
+              <b className="text-ink">257</b> candidates match · xếp theo mức độ phù hợp
+            </p>
+            <span className="text-[10.5px] text-faint">✓ khớp · ◐ khớp yếu · ○ chưa có</span>
           </div>
-          <div className="space-y-2.5">
-            {cvs.map((cv, i) => (
+          <div className="space-y-4">
+            {BANDS.map((band) => (
+              <div key={band.label}>
+                {/* The band header is the whole point of the grouping: it names
+                    WHY these rows are together, so a recruiter can stop reading
+                    when the tier stops being worth their time. */}
+                <div className="mb-1.5 flex items-center gap-2 border-b border-line-soft pb-1">
+                  <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-wide', band.tone)}>{band.label}</span>
+                  <span className="shrink-0 rounded-full bg-canvas px-1.5 text-[10px] font-medium text-muted">{band.count}</span>
+                  <span className="min-w-0 flex-1 truncate text-[10.5px] text-faint">{band.note}</span>
+                  <span className="shrink-0 cursor-pointer text-[10.5px] text-brand">Thu gọn</span>
+                </div>
+                <div className="space-y-2.5">
+                  {band.rows.map((cv, i) => (
               <div key={i} className="rounded-lg border border-line p-3">
+                {/* WHY this row is in this band — one mark per chip. The highest-value
+                    element on the card: it turns ranking from something to trust into
+                    something to CHECK before spending an unlock. */}
+                <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-line-soft pb-1.5">
+                  {cv.reason.map(([mark, text]) => (
+                    <span key={text} className="inline-flex items-center gap-1 text-[10.5px] text-muted">
+                      <span className={cn('font-bold', mark === '✓' ? 'text-emerald-600' : mark === '◐' ? 'text-amber-600' : 'text-faint')}>{mark}</span>
+                      {text}
+                    </span>
+                  ))}
+                </div>
                 {/* identity line — masked until unlocked, but the demographic +
                     seniority summary a recruiter screens on is always readable */}
                 <div className="flex items-start gap-3">
@@ -1472,6 +1676,9 @@ function ResumeSearchScreen() {
                   <Chip tone="blue">Desired location: {cv.loc}</Chip>
                   <Chip tone="amber">{cv.salary}</Chip>
                   <span className="ml-auto text-[10.5px] text-faint">Updated {cv.updated}</span>
+                </div>
+              </div>
+                  ))}
                 </div>
               </div>
             ))}

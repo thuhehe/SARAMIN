@@ -14,27 +14,31 @@ import type { BuildModule } from './types'
  * how we got here; block 2 already states where we landed. Recover them from git
  * history if the reasoning is ever challenged.
  *
- * The pre-review model (screeningStatus Pending → Forwarded / Rejected-by-HQ,
- * the derived candidate label) was REMOVED from these requirements on request —
- * recover it from git history if the client rejects the change. The buildable
- * detail for the new model lives on the Admin "Application list" feature.
+ * The pre-review model (a stored screeningStatus of Pending → Forwarded /
+ * Rejected-by-HQ) is GONE, column and all. Nothing stores a per-application
+ * screening verdict any more: the CV carries the verdict, and this module's
+ * `status` is computed from it. Recover the old model from git history if the
+ * client rejects the change. The buildable detail lives on the Admin
+ * "Application list" feature, and cv.status itself is defined in
+ * Resume management → "CV qualification — apply & CV search".
  *
  * ONE application = one jobseeker + one job, and it carries TWO status
  * dimensions that must never be confused:
  *
- *   1. status  — Saramin's. Pending → Sent → Recalled. Blocked is user-level and
- *                recalls everything. Pending is written ONLY when the applied-with
- *                CV has an unresolved verdict from upload (see block 4); it always
- *                auto-sends within 24h, so it can never strand a candidate.
+ *   1. status  — Saramin's, DERIVED from the CV's status. Sent · Pending (the CV
+ *                is in doubt; auto-sends at 24h) · Not sent (the CV was Rejected
+ *                by an admin — never delivered, no timer) · Recalled. Blocked is
+ *                user-level and recalls everything.
  *   2. stage   — the employer's hiring pipeline, defaulting to New → Reviewing
  *                → Shortlisted → Interview → Hired / Rejected. Owned by the
  *                company, which can RENAME/ADD/REMOVE stages, so these six are
  *                a default set and never a hard-coded enum. HQ is read-only.
  *
- *   Jobseeker applies ──┬─ CV cleared ─▶ Sent ──▶ stage = New (employer's queue)
- *                       └─ CV unresolved ─▶ Pending ──┬─ reviewer clears the CV ─▶ Sent
- *                                                     ├─ reviewer rejects it ────▶ dropped
- *                                                     └─ 24h with no review ─────▶ Sent
+ *   Jobseeker applies ──┬─ CV Qualified ─▶ Sent ──▶ stage = New (employer's queue)
+ *                       ├─ CV in doubt ──▶ Pending ──┬─ admin approves the CV ─▶ Sent
+ *                       │                            ├─ admin rejects the CV ──▶ Not sent
+ *                       │                            └─ 24h with no review ────▶ Sent (timer)
+ *                       └─ CV Rejected ──▶ refused with the reason (fix or approve first)
  *
  *   The CV carries its verdict in from upload; applying re-checks nothing. The hold
  *   belongs to the CV, and ONE decision resolves every application waiting on it.
@@ -123,17 +127,20 @@ export const applicationManagement: BuildModule = {
       label: '4 · CV quality is evaluated at UPLOAD — what reaches this module is the verdict',
       text: 'DECIDED — an uploaded PDF is parsed into the Saramin CV fields and evaluated ONCE, at upload. Applying re-checks nothing; it READS the verdict the CV already carries. A CV that failed the rule does not refuse the apply — it holds DELIVERY while a human looks at the CV, and the application auto-sends within 24h regardless. One review covers every application on that CV. The rule itself lives on one page: Resume management → “CV qualification — apply & CV search”.',
       table: {
-        cols: ['A CV that fails the rule', 'What happens to the apply', 'Can it be found in CV search?'],
+        cols: ['CV status at apply time', 'Application status', 'CV search'],
         rows: [
-          ['Uploaded PDF — extraction produced too little', 'The apply SUCCEEDS; delivery waits for the CV verdict and AUTO-SENDS at 24h. Refusing it would punish the candidate for OUR parser.', 'No, until a reviewer clears it.'],
-          ['Saramin CV — the candidate has not written the section', 'Refused before submit — greyed and unselectable, missing fields named.', 'No.'],
+          ['Qualified (scan passed, or admin approved)', 'SENT immediately', 'Showing'],
+          ['Doubt — Not enough information · Can’t read (interim)', 'PENDING — auto-sends at 24h. The apply itself always succeeds; refusing it would punish the candidate for OUR parser.', 'Hidden – pending review'],
+          ['Rejected (an admin decided — the scan never writes this)', 'NOT SENT — never delivered, no timer. New applies with this CV are refused with the reason.', 'Hidden'],
+          ['Saramin CV below the rule', 'Refused BEFORE submit — greyed and unselectable, missing fields named.', 'No — toggle disabled.'],
         ],
       },
       items: [
         'THE HOLD IS ON THE CV, NOT THE APPLICATION — an application waits only because the CV it references is unresolved. The review queue is a CV queue (Admin → CV check); the Applicants list shows the consequence and links to it.',
         'ONE EVALUATION PER CV, and ONE DECISION — a candidate applying to thirty jobs with the same file is evaluated once at upload and reviewed once. The verdict releases or recalls all thirty in the same transaction.',
         'THE 24h TIMER IS A CEILING ON OUR OWN FAILURE, not a review target. A held application auto-sends whether or not anyone looked, so an unworked queue can never cost a candidate a deadline. Releases are stamped review or timer, and a rising share of `timer` means the queue is not being staffed.',
-        'THE ONLY APPLY-TIME GATE is the Saramin CV one, and it is deterministic: ≥1 experience (or education) and ≥3 skills. It is enforced server-side at POST /applications, not merely greyed in the UI.',
+        'A REJECTION PROPAGATES BOTH WAYS — rejecting a CV drops its Pending applications, recalls any already sent, and blocks new applies with that CV until it is fixed or approved. The candidate is told, with the fix one tap away.',
+        'THE ONLY APPLY-TIME GATE besides a Rejected CV is the Saramin one, and it is deterministic: ≥1 experience (or education) and ≥3 skills. It is enforced server-side at POST /applications, not merely greyed in the UI.',
         'QUALITY IS NEVER A SIGNAL — match score, skill count above the minimum, or a missing cover letter may not affect anything here.',
       ],
     },
@@ -292,7 +299,7 @@ export const applicationManagement: BuildModule = {
             { name: 'companyId', type: 'uuid', required: true, notes: 'denormalised from the job — every list filters by it' },
             { name: 'cvId / cvSnapshot', type: 'uuid / file ref', notes: 'snapshot so the employer keeps what was actually sent' },
             { name: 'coverMessage', type: 'text?' },
-            { name: 'screeningStatus', type: 'enum', required: true, notes: 'pending|forwarded|rejected — pending ONLY when the applied-with CV has an unresolved verdict; otherwise forwarded at apply' },
+            { name: 'status', type: 'derived, NOT stored', required: true, notes: 'sent | pending | not_sent — COMPUTED from the applied-with CV’s cv.status (Qualified → sent · doubt → pending · Rejected → not_sent). There is no screeningStatus column any more: storing it would be a second copy of a fact the CV already holds, and the two would eventually disagree. See Resume management → CV qualification' },
             { name: 'holdReleasedBy', type: 'enum?', notes: 'review | timer — how a held application left Pending. A rising share of `timer` means the CV queue is not being staffed' },
             { name: 'stage', type: 'enum?', notes: 'null until forwarded, then new|reviewing|shortlisted|interview|hired|rejected' },
             { name: 'matchScore', type: 'number?', notes: 'snapshotted at apply time' },
@@ -383,7 +390,7 @@ export const applicationManagement: BuildModule = {
             heading: 'FLOW — application management on ADMIN (HQ)',
             items: [
               '1. Recruitment → Applicants. Every application across all companies lands here first.',
-              '2. Tabs split the queue: All · New — to screen · Forwarded · Interview · Hired · Rejected at screening. Filters: search · stage · company · location · CV kind.',
+              '2. Tabs split the list: All · Pending (CV in doubt) · Sent · Recalled · Interview · Hired · Rejected. Filters: search · stage · company · location · CV kind. There is no "to screen" tab — screening happens on the CV, in Resume management → CV qualification, not on an application.',
               '3. Each row shows candidate · snapshot (role · years · location · education) · applied-to job · company · the CV (name + Saramin CV / Uploaded tag) · stage · applied.',
               '4. Click a candidate → the SCREENING DETAIL: the CV under review, a quality checklist, and the match-to-job score.',
               '5. Decide — "✓ Approve & forward to employer" (the company pipeline starts) or "✕ Reject…" with a mandatory, audited reason.',
@@ -397,7 +404,7 @@ export const applicationManagement: BuildModule = {
               'Sent — written at apply, after two synchronous hard checks: the user is not blocked, and has no live application to this job. The employer sees it immediately.',
               'Recalled — HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again.',
               'Blocked — the user was blocked; every application of theirs was bulk-recalled. User-level, not application-level.',
-              'screeningStatus (Layer 1) is NOT shown: it is always `passed` in v2, so a column of identical badges would be noise.',
+              'THERE IS NO SCREENING COLUMN, because there is no per-application screening fact. What holds an application is the CV’s status, and the row surfaces that as "Pending — CV đang kiểm tra" with a link to the CV, not as a status the admin can edit here.',
             ],
           },
           {
@@ -434,7 +441,7 @@ export const applicationManagement: BuildModule = {
           'Export the filtered list (CSV) — itself an audited action, since the export carries PII.',
         ],
         rules: [
-          'HQ can write `status` only. HQ can never write `stage` — that column belongs to the company — and never writes `screeningStatus`, which the system sets to `passed` at apply.',
+          'HQ writes NOTHING on this screen except Recall. `status` is derived from the CV and is changed by acting on the CV (Resume management → CV qualification); `stage` belongs to the company. An editable status control on this list would be a second source of truth for a fact the CV already owns.',
           'A reason code is mandatory on Block (free-text note optional). Recall captures an optional note.',
           'Recalled is terminal: there is no Recalled → Sent transition.',
           'Candidate contact details are masked in the list; unmasking is per-row, deliberate and logged.',
@@ -451,7 +458,7 @@ export const applicationManagement: BuildModule = {
         ],
         backend: {
           dataModel: [
-            { name: 'screeningStatus', type: 'enum', required: true, notes: 'v2: passed|blocked, written `passed` at apply. RESERVED values pending|spam exist in the enum from day one so Phase-2 screening needs no migration' },
+            { name: 'status', type: 'derived, NOT stored', required: true, notes: 'sent | pending | not_sent | recalled. The first three are computed from cv.status on read; only `recalled` is a stored fact of its own, because it is the one thing that happens to an APPLICATION rather than to a CV' },
             { name: 'status (delivery)', type: 'enum', required: true, notes: 'sent|recalled — the only status HQ writes' },
             { name: 'recalledBy / recalledAt / recallNote', type: 'uuid / timestamp / text?', notes: 'who pulled it back' },
             { name: 'Jobseeker.blockedAt / blockedBy / blockReasonCode', type: 'timestamp? / uuid? / enum?', notes: 'on the JOBSEEKER, not the application — Block is user-level' },
@@ -565,7 +572,7 @@ export const applicationManagement: BuildModule = {
         ],
         rules: [
           'A company sees only its own applications. Company and job scope are enforced server-side, not by hiding UI.',
-          'Only forwarded applications appear here; Pending and HQ-Rejected ones never do.',
+          'Only applications whose CV is Qualified appear here. One held by a CV in doubt, or dropped by a Rejected CV, never reaches the company — and an approval on the CV can make several appear at once.',
           'Hired and Rejected are terminal; re-opening to an earlier stage is allowed but logged as a re-open.',
           'Only company users with the recruiting permission can change a stage; viewers can read (see Company user management → roles).',
           'The employer’s rejection reason is private to the company unless the client decides otherwise.',
@@ -649,22 +656,23 @@ export const applicationManagement: BuildModule = {
             items: [
               '1. My account → My applications.',
               '2. The list shows every application: job · company · date applied · WHICH CV was sent · a status chip · and a one-line note ("Interview scheduled — 08/08, 10:00"). Filter tabs: All · In progress · Offer · Closed.',
-              '3. Click one → the detail: the CV SNAPSHOT that was sent ("later edits don’t change it") and a PROGRESS TIMELINE — Submitted → Saramin screening → Forwarded to employer → Viewed → Interview → Result.',
+              '3. Click one → the detail: the CV SNAPSHOT that was sent ("later edits don’t change it") and a PROGRESS TIMELINE — Submitted → Đang kiểm tra CV (only if the CV was in doubt) → Sent to employer → Viewed → Interview → Result.',
               '4. "Withdraw application" is available from the detail.',
-              '→ The status shown here is DERIVED from HQ screening + the employer stage — never a third source of truth.',
+              '→ The status shown here is DERIVED from the CV’s status + the employer stage — never a third source of truth.',
             ],
           },
           {
             heading: 'Status options — the candidate-facing label and where each one comes from',
+            text: 'DERIVED from (cv.status, stage). There is no stored application status and no third source of truth — see Resume management → CV qualification, which is where cv.status is defined and where every admin action writes.',
             items: [
-              'Screening — screeningStatus = Pending. Copy: "Saramin is reviewing your application." Keeps the promise the apply screen made.',
-              'Sent to employer — screeningStatus = Forwarded, stage = New. The employer has it and has not opened it yet.',
+              'Đang kiểm tra CV — cv.status is a DOUBT state (Not enough information · Can’t read). Copy: "Đang kiểm tra CV — sẽ gửi trong 24 giờ." Shown only when it is true; a Qualified CV never passes through this label.',
+              'Sent to employer — cv.status = Qualified, stage = New. The employer has it and has not opened it yet.',
               'Reviewing — stage = Reviewing. The employer is reading it.',
               'Shortlisted — stage = Shortlisted. Safe to show: it is good news and unambiguous.',
               'Interview — stage = Interview. The employer makes contact directly; the platform does not schedule in Phase-1.',
               'Hired — stage = Hired. Terminal.',
               'Not selected — stage = Rejected. Terminal; no reason is exposed unless the employer opts in.',
-              'An HQ rejection (screeningStatus = Rejected) is the one case with NO distinct label — pending a client decision it also renders as "Not selected", so a candidate is never told "Saramin blocked you". Flagged in open questions.',
+              'CV rejected — cv.status = Rejected. UNLIKE the old HQ-rejection case this IS told, because it is actionable and the fix belongs to the candidate: the reason is named and "Tải lên CV khác / Chỉnh sửa CV" sits beside it. Rejecting a CV also drops its pending applications and recalls any already sent, so several rows can change at once.',
             ],
           },
         ],
@@ -693,7 +701,7 @@ export const applicationManagement: BuildModule = {
             'GET /jobseeker/applications?filter=&page=',
             'GET /jobseeker/applications/:id',
           ],
-          notes: 'A read-only projection over Application. The mapping from (screeningStatus, stage) → displayStatus lives in ONE place server-side, shared by the list, the detail and any notification copy.',
+          notes: 'A read-only projection over Application JOIN Cv. The mapping from (cv.status, stage) → displayStatus lives in ONE place server-side, shared by the list, the detail and any notification copy — so a CV approval changes every affected row with no write to the applications themselves.',
         },
         acceptance: [
           'Every application the candidate submitted appears with the correct applied date.',

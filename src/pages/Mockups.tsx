@@ -2798,13 +2798,23 @@ function MyApplicationsScreen() {
     { job: 'Product Designer', co: 'Lantern Digital', applied: '30/07/2026', cv: 'My Saramin CV', status: 'Đã gửi', tone: 'blue' as const, note: 'Đã gửi tới nhà tuyển dụng' },
     { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'productdesign.pdf', status: 'Đang kiểm tra CV', tone: 'amber' as const, note: 'Sẽ gửi tới nhà tuyển dụng trong 24 giờ' },
     { job: 'UX Researcher', co: 'Tiki', applied: '20/07/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Offer', tone: 'green' as const, note: 'Offer received' },
+    /* The applied-with CV was Rejected by review — the application was never
+       delivered, and the candidate is told WHY and what to do, never left
+       assuming the employer ignored them. */
+    { job: 'Visual Designer', co: 'Base.vn', applied: '18/07/2026', cv: 'old_scan.pdf', status: 'Không được gửi', tone: 'muted' as const, note: 'CV không đủ điều kiện — cập nhật CV và ứng tuyển lại' },
     { job: 'Design Lead', co: 'MWG', applied: '12/07/2026', cv: 'My Saramin CV', status: 'Not selected', tone: 'muted' as const, note: 'Closed by employer' },
   ]
   /* Two shapes, and the difference is the point: a normal application has NO
      Saramin step at all, while one waiting on its CV shows exactly what it is
      waiting for and that it leaves anyway. */
   const timelineFor = (app: (typeof APPS)[number]): [string, string, boolean][] =>
-    app.status === 'Đang kiểm tra CV'
+    app.status === 'Không được gửi'
+      ? [
+          ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
+          ['Kiểm tra CV — không đạt', 'Hồ sơ này chưa đủ điều kiện, cần được cập nhật thêm', true],
+          ['Không gửi tới nhà tuyển dụng', 'Cập nhật CV hoặc chọn CV khác, rồi ứng tuyển lại', false],
+        ]
+      : app.status === 'Đang kiểm tra CV'
       ? [
           ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
           ['Đang kiểm tra CV', 'Chúng tôi đang kiểm tra file CV của bạn — tự động gửi sau 24 giờ dù chưa kiểm tra xong', false],
@@ -2830,7 +2840,7 @@ function MyApplicationsScreen() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[15px] font-bold text-ink">My applications</p>
             <div className="flex gap-1.5">
-              {['All (5)', 'In progress (3)', 'Offer (1)', 'Closed (1)'].map((f, i) => (
+              {['All (6)', 'In progress (3)', 'Offer (1)', 'Closed (2)'].map((f, i) => (
                 <span key={f} className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-medium', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}>{f}</span>
               ))}
             </div>

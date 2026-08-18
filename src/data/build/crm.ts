@@ -2280,6 +2280,211 @@ export const crm: BuildModule = {
         ],
       },
     },
+    // 6 · Danh bạ doanh nghiệp (free company data) ────────────────────────────
+    {
+      name: 'Danh bạ doanh nghiệp (free company data)',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'A large, dirty, unowned reference list of companies — OUTSIDE the CRM. A rep cannot take one by clicking: they must supply a contact phone number and evidence the company is hiring, and an admin approves. Approval is what creates the CRM company.',
+      mockup: 'crm-company-directory',
+      // Two screens, because the claim and the approval are one flow split across two
+      // people — specifying only the list would leave the admin half undocumented.
+      mockups: ['crm-claim-queue'],
+      detail: {
+        requirements: [
+          {
+            label: 'Two stores, not one flag — why the pool sits outside the CRM',
+            text: 'Saramin holds tens of thousands of company names collected from public directories, trade fairs and job boards. That list is **not** a customer list: most rows have a name and nothing else, the tax code is often missing and sometimes **wrong**, and nobody owns any of them.\n\nIt is a **separate store**, not an `isLead` flag on the company table. Three things break the moment unowned, unverified rows share one table with customers.',
+            table: {
+              cols: ['What breaks', 'Why'],
+              rows: [
+                ['Every CRM count', '"My customers: 84", pipeline totals, the tier register, revenue per rep — all of them count rows in the company table. Adding 40,000 unowned rows makes every number a different number, and no filter fixes a number that is already on a dashboard.'],
+                ['Document trust', 'A CRM company feeds a quotation → PO → **VAT e-invoice**, where legal name and MST must be exact. A store whose MST is optional and sometimes wrong cannot be the same store as the one an invoice reads from.'],
+                ['Ownership + the clock', 'A CRM company always has a sales owner and a last-contact date. A pool row has neither, and giving it a null owner means every ownership report needs an exception.'],
+              ],
+            },
+          },
+          {
+            label: 'Pool record — one required field, and an MST that is never trusted',
+            text: 'The pool is deliberately cheap to load. **Tên công ty is the only required field.** Everything else is optional, because a row with just a name still has value: it is a name a rep can search before creating a duplicate.',
+            table: {
+              cols: ['Field', 'Required', 'Notes'],
+              rows: [
+                ['Tên công ty', 'YES', 'The only required field. Free text, as collected.'],
+                ['Số điện thoại', 'no', 'A number from the source, if there was one. Not the claim proof — the rep supplies that themselves.'],
+                ['Website / Địa chỉ / Tỉnh-TP / Ngành', 'no', 'Whatever the source had.'],
+                ['Mã số thuế (MST)', 'no', '**Stored as unverified.** Displayed with a ⚠ and the column header says "chưa xác minh". Never uniqueness-checked, and **never copied into a CRM company** — see the promotion rule.'],
+                ['Nguồn + Ngày nhập', 'YES (system)', 'Where the row came from and when. A source that produces only dead numbers can then be measured and stopped.'],
+                ['Trạng thái', 'YES (system)', 'Chưa nhận · Đang chờ duyệt · Đã nhận. Links to the CRM company once promoted.'],
+                ['Sales phụ trách', '—', 'Does NOT exist on a pool row. Nobody owns free data. Assigning an owner is exactly what approval does.'],
+              ],
+            },
+          },
+          {
+            label: 'Pool state — three states, and nothing is ever deleted',
+            text: 'A pool row moves through three states and only three. There is no "expired" state: **a claim does not expire** — once approved, the row stays Đã nhận for good and the company lives in the CRM under the normal ownership and transfer rules.',
+            table: {
+              cols: ['State', 'Means', 'What a rep can do'],
+              rows: [
+                ['Chưa nhận', 'Free. Nobody has asked for it.', '**Xin nhận** — opens the claim form.'],
+                ['Đang chờ duyệt', 'One rep has asked; admin has not decided. The requesting rep is named on the row.', 'Nothing. A second rep cannot queue a competing request on the same row — first request wins the queue slot.'],
+                ['Đã nhận', 'Approved. A CRM company exists and the row links to it.', 'Open the CRM company (subject to the normal read-only rule if it is someone else’s).'],
+              ],
+            },
+          },
+          {
+            label: 'Claim = two proofs the rep supplies, then an ADMIN approves',
+            text: 'A rep cannot take a company by clicking. They must supply **two proofs**, and both are put to work rather than merely satisfied — otherwise the form is a formality and every rep passes it.',
+            table: {
+              cols: ['Proof', 'Required', 'What it is used for afterwards'],
+              rows: [
+                ['Số điện thoại liên hệ + tên người liên hệ', 'YES', 'Becomes **contact #1** on the promoted CRM company. This is why the field is not busywork: the rep is filling in the record they are about to receive.'],
+                ['Bằng chứng công ty đang tuyển', 'YES', 'Preferably a **link to a job posting** the approver can open. A free-text note is accepted but is shown differently in the queue (📝 · "không có link"), because a note has to be believed while a link can be checked.'],
+              ],
+            },
+          },
+          {
+            label: 'Duplicate check runs BEFORE the request, not at approval',
+            text: 'The commonest outcome of a claim attempt is "that company is already in the CRM, under another rep". Discovering that after an approval round wastes the rep’s day and the admin’s. So the check runs the moment the rep opens the claim form.',
+            table: {
+              cols: ['Situation', 'Behaviour'],
+              rows: [
+                ['Pool row matches an existing CRM company (normalised name, or same website domain)', 'The form shows the match — **Company ID, legal name, and the sales owner** — and the submit button is **disabled**. No request is created. The rep is pointed at "Yêu cầu chuyển giao" on that company instead.'],
+                ['No match', 'Submit is enabled once both proofs are filled.'],
+                ['Match is only on MST', 'Ignored for this check — the pool MST is untrusted, so matching on it would block real claims and let wrong ones through.'],
+              ],
+            },
+          },
+          {
+            label: 'Approval — one admin action that writes four things',
+            text: 'The client’s decision: **admin approves**, not a sales manager. Approving is a single action with four effects, so a half-promoted company cannot exist.',
+            table: {
+              cols: ['Action', 'Effect'],
+              rows: [
+                ['Duyệt → tạo hồ sơ', '(1) creates the CRM company · (2) sets the requesting rep as **sales owner** · (3) files the submitted phone + name as **contact #1** · (4) marks the pool row **Đã nhận** and links it to the new Company ID.'],
+                ['Từ chối', 'Reason is **required**. The pool row returns to **Chưa nhận**. The reason is shown to the rep — a rep refused twice for the same reason should be able to read it.'],
+                ['MST on promotion', 'The pool MST is **never copied**. The rep re-enters it on the new company form, where the normal MST rules run (10-digit duplicate check, the three lookup outcomes, the affiliate prompt). This is the single point where an unverified tax code becomes a verified one.'],
+              ],
+            },
+          },
+          {
+            label: 'The pool answers the same search — or "does not exist" becomes a lie',
+            text: 'Both company search surfaces must reach the pool, because the sentence they print when nothing matches is the whole reason they exist. A rep told "it does not exist yet" about a company sitting unclaimed in the pool will create it by hand.',
+            table: {
+              cols: ['Surface', 'Behaviour'],
+              rows: [
+                ['Global search (shell top bar)', 'Results come back in **two labelled sections**: `Companies` then `Danh bạ · chưa ai nhận`. Never mixed or ranked together — one is a customer with an owner, the other is reference data nobody holds. A pool hit offers **Xin nhận →**.'],
+                ['Companies list — out-of-book dropdown', 'Same two sections, same rule, plus the existing `Ngoài sổ của bạn` section.'],
+                ['Empty state', 'Reads "checked every CRM company **and** the free Danh bạ" — and only then offers **+ Tạo công ty mới**. Create is the last resort, and is hidden while the pool has a hit.'],
+                ['Which pool rows are searchable', 'Only **Chưa nhận** rows. A row already claimed or pending would be an offer the rep cannot act on.'],
+              ],
+            },
+          },
+          {
+            label: 'Pool rows are READ-ONLY for sales',
+            text: 'Sales cannot edit the pool. Letting twenty people edit one shared dirty dataset is how it gets dirtier, and there is nothing to gain: the moment a row matters to a rep, they claim it and edit the CRM company instead.',
+            table: {
+              cols: ['Who', 'Can'],
+              rows: [
+                ['Sales', 'Search · read · **Xin nhận**. Nothing else — no edit, no delete, no note, no activity, no quotation, no PO, no invoice.'],
+                ['Admin', 'Import rows (source is recorded) · approve/reject claims · correct or hide a bad row. Never a hard delete: an approved row is the audit trail of how a customer entered the CRM.'],
+              ],
+            },
+          },
+          {
+            label: 'Provenance survives the promotion — "Từ danh bạ" on the CRM record',
+            text: 'A company promoted from the pool carries a small **Từ danh bạ** mark in its header, with the claim date and the approving admin on hover. It is not a status — it is a warning to the person raising the first invoice that the identity fields started as free data a rep re-typed, so legal name and MST deserve a second look before the VAT invoice is issued.',
+          },
+          {
+            label: 'The consequence of "a claim never expires" — stated, not hidden',
+            text: 'Because a claim does not expire and nothing returns a claimed company to the pool, the pool provides **no protection against hoarding**. A rep can claim steadily and work none of them.',
+            table: {
+              cols: ['Question', 'Answer / gap'],
+              rows: [
+                ['What stops a rep hoarding claims?', 'Only the existing CRM rule: `claimed → first quotation within 30 days`. That is now the **only** check, since the pool never takes a company back.'],
+                ['Cheap addition if hoarding shows up', 'Cap the number of **unworked** claims a rep may hold at once (approved, no activity logged). Blocks at claim time — no new state, no expiry, no reversal.'],
+                ['Decided', 'No expiry (client decision). Admin approves (client decision).'],
+              ],
+            },
+          },
+        ],
+        keyPoints: [
+          { vi: 'Danh bạ là một KHO RIÊNG, không phải một cờ trên bảng công ty CRM — nếu chung bảng thì mọi con số của CRM đều sai.', en: 'The pool is a SEPARATE STORE, not a flag on the CRM company table — sharing one table breaks every CRM count.' },
+          { vi: 'Chỉ Tên công ty là bắt buộc. MST là dữ liệu KHÔNG ĐƯỢC TIN và không bao giờ được copy sang hồ sơ CRM — sales nhập lại khi được duyệt.', en: 'Only the name is required. MST is UNTRUSTED and never copied into the CRM company — the rep re-enters it on promotion.' },
+          { vi: 'Xin nhận cần 2 bằng chứng: SĐT liên hệ (thành người liên hệ đầu tiên) + bằng chứng đang tuyển (ưu tiên link). Admin duyệt.', en: 'A claim needs two proofs: a contact phone (which becomes contact #1) and hiring evidence (a link, ideally). Admin approves.' },
+          { vi: 'Kiểm tra trùng chạy TRƯỚC khi gửi yêu cầu — trùng với công ty CRM thì không tạo được yêu cầu, không tiêu một lượt duyệt.', en: 'The duplicate check runs BEFORE submit — an existing CRM company blocks the request instead of spending an approval cycle.' },
+          { vi: 'Cả 2 thanh tìm kiếm phải tìm ra được danh bạ, thành 2 mục riêng — nếu không, câu "công ty này chưa tồn tại" là sai và sales sẽ tạo trùng.', en: 'Both search surfaces must reach the pool as a second labelled section — otherwise "does not exist yet" is false and a duplicate gets created.' },
+          { vi: 'Sales chỉ đọc danh bạ. Không xóa hàng nào bao giờ — hàng đã nhận chính là dấu vết công ty vào CRM bằng đường nào.', en: 'Sales read the pool, never edit it. Nothing is ever deleted — a claimed row is the audit trail of how a customer entered the CRM.' },
+        ],
+        rules: [
+          'The pool is a separate table from CRM companies. No pool row is counted in any CRM figure, appears on the pipeline, or can carry a quotation, PO or invoice.',
+          'Tên công ty is the only required field on a pool row. MST is optional and stored unverified — it is never uniqueness-checked and never copied on promotion.',
+          'A pool row has no sales owner and no last-contact clock. Assigning an owner is what approval does.',
+          'Xin nhận requires a contact phone, a contact name, and hiring evidence. All three are mandatory; the phone becomes contact #1 on the promoted company.',
+          'The CRM-duplicate check runs when the claim form opens, not at approval. A match disables submit and names the Company ID + current owner.',
+          'A row already Đang chờ duyệt accepts no second request — first request holds the slot until the admin decides.',
+          'Only an ADMIN approves. Approval creates the company, sets the requester as owner, files contact #1, and links the pool row — one atomic action.',
+          'Rejection requires a reason, returns the row to Chưa nhận, and shows the reason to the requesting rep.',
+          'Claims never expire and nothing returns a claimed company to the pool. `claimed → first quotation within 30 days` is therefore the only hoarding check.',
+          'Both search surfaces return pool hits (Chưa nhận only) in a separate labelled section, and "+ Tạo công ty mới" is hidden while a pool hit exists.',
+          'Sales have read + claim only. Admin may import, correct or hide a row; nobody hard-deletes.',
+          'A promoted company carries a Từ danh bạ provenance mark with the claim date and approving admin.',
+        ],
+        states: ['Chưa nhận', 'Đang chờ duyệt', 'Đã nhận (linked to a CRM company)'],
+        backend: {
+          dataModel: [
+            { name: 'poolCompanyId', type: 'uuid', required: true, notes: 'separate table from `company` — never a company row' },
+            { name: 'name', type: 'string', required: true, notes: 'the ONLY required field' },
+            { name: 'phone / website / address / province / industry', type: 'string?' },
+            { name: 'taxCodeRaw', type: 'string?', notes: 'UNVERIFIED. No uniqueness constraint. Never written to company.taxCode' },
+            { name: 'source', type: 'string', required: true, notes: 'import batch / fair / job board — lets a bad source be measured' },
+            { name: 'importedAt', type: 'date', required: true },
+            { name: 'state', type: 'enum', required: true, notes: 'free | pending | claimed' },
+            { name: 'claimedCompanyId', type: 'uuid?', notes: 'the CRM company created on approval' },
+            { name: 'claimId', type: 'uuid?', notes: 'the open request while pending' },
+            { name: '— claim request —', type: '', notes: '' },
+            { name: 'claimId', type: 'uuid', required: true },
+            { name: 'poolCompanyId / requestedBy / requestedAt', type: '', required: true },
+            { name: 'contactPhone / contactName', type: 'string', required: true, notes: 'promoted to contact #1' },
+            { name: 'hiringEvidence', type: 'string', required: true },
+            { name: 'evidenceIsUrl', type: 'bool (derived)', notes: 'drives how the queue renders it' },
+            { name: 'status', type: 'enum', required: true, notes: 'pending | approved | rejected' },
+            { name: 'decidedBy / decidedAt / rejectReason', type: '', notes: 'reason required when rejected' },
+          ],
+          endpoints: [
+            'GET /admin/crm/company-pool?q=&state= — searchable by sales, read-only',
+            'GET /admin/crm/company-pool/:id/crm-match — the pre-submit duplicate check (normalised name + domain; MST deliberately excluded)',
+            'POST /admin/crm/company-pool/:id/claim { contactPhone, contactName, hiringEvidence } — 409 if a CRM match exists or the row is not free',
+            'GET /admin/crm/company-claims?status=pending',
+            'POST /admin/crm/company-claims/:id/approve — creates the company, sets salesOwner = requestedBy, creates contact #1, sets pool state = claimed + claimedCompanyId',
+            'POST /admin/crm/company-claims/:id/reject { reason } — reason required; pool state returns to free',
+            'POST /admin/crm/company-pool/import — admin only; records `source` on every row',
+          ],
+          integrations: ['CRM Companies (the promotion target + the duplicate check)', 'Global company search (second result section)', 'Contacts (contact #1 written on approval)', 'Notifications (claim submitted · approved · rejected with reason)', 'Audit log (every claim decision)'],
+          notes: 'Approve is one transaction: company + owner + contact + pool link, or nothing. The pool table is never joined into CRM aggregate queries — keeping it a separate table is what makes that a structural guarantee rather than a filter everyone must remember.',
+        },
+        acceptance: [
+          'A pool row can be created with a name and nothing else.',
+          'A pool MST is displayed as unverified and is absent from the created company after approval — the rep must type it on the company form.',
+          'Xin nhận cannot be submitted with any of the three fields empty.',
+          'Opening Xin nhận on a row that matches an existing CRM company shows that company’s ID and owner and blocks submit — no request is created.',
+          'A second rep cannot request a row that is already Đang chờ duyệt.',
+          'Approving creates the CRM company with the requesting rep as sales owner and the submitted phone/name as contact #1, and the pool row shows Đã nhận with a link to the new Company ID.',
+          'Rejecting without a reason is refused; rejecting with one returns the row to Chưa nhận and shows the reason to the rep.',
+          'Searching a free pool company in the shell search returns it under Danh bạ · chưa ai nhận, and "+ Tạo công ty mới" is not offered.',
+          'No pool row appears in any CRM count, on the pipeline, or as a quotation/PO/invoice target.',
+          'A promoted company shows the Từ danh bạ mark with claim date and approving admin.',
+        ],
+        openQuestions: [
+          'Is hiring evidence allowed to be a free-text note at all, or must it be a URL? A note cannot be checked, and if most claims arrive as notes the approval becomes a rubber stamp.',
+          'Does the admin approving claims need to be a specific role (e.g. CRM admin), or is any HQ operator with company-write permission enough?',
+          'Import ownership: who loads batches into the pool, how often, and is there a de-duplication pass against existing CRM companies at import time (which would shrink the queue)?',
+          'Should a rejected row be re-requestable by the same rep immediately, or after a cooling-off period?',
+          'Cap on unworked claims per rep — worth adding at launch, or wait until hoarding actually shows up in the data?',
+        ],
+      },
+    },
     // 5 · Sign-ups ────────────────────────────────────────────────────────────
     {
       name: 'Sign-ups',

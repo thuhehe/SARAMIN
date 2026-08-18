@@ -11,6 +11,7 @@
 import { SCREENS } from './Mockups'
 import { CO_SCREENS } from './CompanyMockups'
 import { ADMIN_PROTOTYPES } from './adminPrototypes'
+import { ADMIN_SCREEN_LABELS } from './AdminWireframe'
 
 export type ScreenSource = 'js' | 'co' | 'admin'
 export type ResolvedScreen = {
@@ -39,6 +40,11 @@ const NAV_OWNER: Record<string, string> = {
 const ADMIN_NAV_PAGES = new Set([
   'admin-job-list', 'admin-job-applicants', 'admin-resumes', 'admin-cv-check',
   'admin-company-list', 'admin-company-pipeline', 'admin-quotes', 'admin-purchase-orders', 'admin-signups', 'admin-invoices',
+  // The free company pool and its approval queue. Directory is load-bearing today
+  // — a CRM feature renders it via the crm-company-directory alias, so leaving it
+  // out suppressed that page's console link. Claim queue has no feature pointing at
+  // it yet and is listed for the same reason as any other built nav page.
+  'admin-company-directory', 'admin-claim-queue',
   'admin-jobseekers', 'admin-company-users',
   // The whole Products group is back in the console nav — Packages, Placements and
   // Discount programmes alongside Products — so all four get a link again. Omitting
@@ -74,6 +80,11 @@ const CO = new Map<string, ResolvedScreen>(
   CO_SCREENS.map((s) => [s.id, { title: s.label, url: 'company.saramin.vn', Comp: s.Comp, src: 'co' as const, screenId: s.id }]),
 )
 
+/* Admin screens carry no title of their own — the console's own nav is where a
+   screen is NAMED, so the label is read from there. Without this a spec page
+   shows the raw id ("admin-cv-check"), which is a slug, not a name. */
+const ADMIN_TITLES = ADMIN_SCREEN_LABELS
+
 /** authored `mockup` id → actual screen (source + id). */
 const ALIAS: Record<string, { src: 'js' | 'co' | 'admin'; id: string }> = {
   // Company site — data ids differ from the CompanyMockups screen ids
@@ -88,13 +99,16 @@ const ALIAS: Record<string, { src: 'js' | 'co' | 'admin'; id: string }> = {
   'crm-pipeline': { src: 'admin', id: 'admin-company-pipeline' },
   'crm-customer': { src: 'admin', id: 'admin-company-list' }, // the one shared company/customer list
   'crm-signups': { src: 'admin', id: 'admin-signups' },
+  // The free company pool and its approval queue. Two screens, one spec feature.
+  'crm-company-directory': { src: 'admin', id: 'admin-company-directory' },
+  'crm-claim-queue': { src: 'admin', id: 'admin-claim-queue' },
   // No screen built yet: crm-products (entitlements), crm-activate (activation is a flow)
 }
 
 function fromSource(src: ScreenSource, id: string): ResolvedScreen | null {
   if (src === 'js') return JS.get(id) ?? null
   if (src === 'co') return CO.get(id) ?? null
-  return id in ADMIN_PROTOTYPES ? { url: 'admin.saramin.vn', Comp: ADMIN_PROTOTYPES[id], src: 'admin', screenId: id } : null
+  return id in ADMIN_PROTOTYPES ? { title: ADMIN_TITLES[id], url: 'admin.saramin.vn', Comp: ADMIN_PROTOTYPES[id], src: 'admin', screenId: id } : null
 }
 
 export function resolveScreen(mockupId?: string): ResolvedScreen | null {
@@ -108,6 +122,6 @@ export function resolveScreen(mockupId?: string): ResolvedScreen | null {
   if (a) return fromSource(a.src, a.id)
   if (JS.has(mockupId)) return JS.get(mockupId)!
   if (CO.has(mockupId)) return CO.get(mockupId)!
-  if (mockupId in ADMIN_PROTOTYPES) return { url: 'admin.saramin.vn', Comp: ADMIN_PROTOTYPES[mockupId], src: 'admin', screenId: mockupId }
+  if (mockupId in ADMIN_PROTOTYPES) return { title: ADMIN_TITLES[mockupId], url: 'admin.saramin.vn', Comp: ADMIN_PROTOTYPES[mockupId], src: 'admin', screenId: mockupId }
   return null
 }

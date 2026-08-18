@@ -63,6 +63,10 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-company-list': { module: 'crm', feature: 'Companies' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
   'admin-signups': { module: 'crm', feature: 'Sign-ups' },
+  // Both pool screens are specified as ONE feature — the claim flow is the spec, and
+  // the queue is the second half of it. They sit on the System nav but belong to CRM.
+  'admin-company-directory': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
+  'admin-claim-queue': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
   'admin-invoices': { module: 'crm', feature: 'Invoice (VAT e-invoice)' },
@@ -261,6 +265,11 @@ const NAV_GROUPS: NavGroup[] = [
       // Static site copy — configuration, not a sold service.
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Master data', specId: 'admin-master-data' },
+      // The free company pool. Under System, NOT under CRM: these are not customers
+      // and not owned by anyone — a reference dataset a rep can request FROM. Putting
+      // it in CRM would put unowned, unverified rows inside every CRM count.
+      { label: 'Danh bạ doanh nghiệp', specId: 'admin-company-directory' },
+      { label: 'Yêu cầu nhận công ty', specId: 'admin-claim-queue' },
       // The taxonomy's maintenance queue, and the answer to "who keeps the skill
       // list from rotting". Fed from BOTH sides — employer searches that matched
       // nothing and CV imports that resolved nothing — because one alias fixes both.
@@ -271,6 +280,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
+
+/* The console's nav is where an admin screen is NAMED, so it is also the source
+   for any other surface that needs to show a screen's name — the spec pages'
+   Screen-UI tabs, for one. Without this they fall back to the raw id, and
+   "admin-cv-check" is a slug, not a name. */
+export const ADMIN_SCREEN_LABELS: Record<string, string> = Object.fromEntries(
+  NAV_GROUPS.flatMap((g) => g.items.map((it) => [it.specId, it.label] as const)),
+)
+
 
 /* Primary create action per page, rendered on the page title row — the
    conventional spot for it, so the page's main verb is visible before the
