@@ -37,7 +37,7 @@ const NAV_OWNER: Record<string, string> = {
     not here has no home in the console, and we render no link rather than a link
     that quietly lands on the default page. */
 const ADMIN_NAV_PAGES = new Set([
-  'admin-job-list', 'admin-job-applicants', 'admin-resumes',
+  'admin-job-list', 'admin-job-applicants', 'admin-resumes', 'admin-cv-check',
   'admin-company-list', 'admin-company-pipeline', 'admin-quotes', 'admin-purchase-orders', 'admin-signups', 'admin-invoices',
   'admin-jobseekers', 'admin-company-users',
   // The whole Products group is back in the console nav — Packages, Placements and

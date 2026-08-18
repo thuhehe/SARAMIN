@@ -1747,18 +1747,18 @@ export const resumeManagement: BuildModule = {
                   'We read the file fine, but it is under the rule.',
                   'Applied ✅, delivery WAITS, auto-sends at 24h',
                   '❌',
-                  'HQ: “Đúng là CV” → Qualified (releases the waiting applications) · “Không phải CV” → Not a CV. Candidate: add the missing skills → Qualified.',
+                  'HQ: Approve → Qualified (releases the waiting applications) · Reject → Rejected. Candidate: add the missing skills → Qualified.',
                 ],
                 [
                   'Can’t read',
                   'The file has no text layer — an image-only scan. A human reads it fine; we extract nothing.',
                   'Sent immediately, no wait',
                   '❌ — no fields to index',
-                  'HQ: Nudge the candidate (status UNCHANGED — there is nothing to approve). Candidate: upload a text-based PDF → re-evaluated.',
+                  'HQ: Approve → Qualified · Reject → Rejected · Nhắc tải lại (status unchanged). Candidate: upload a text-based PDF → re-evaluated.',
                 ],
                 [
-                  'Not a CV',
-                  'HQ reviewed it and it is not a CV.',
+                  'Rejected',
+                  'HQ reviewed it and it does not belong in the pool — not a CV, or nowhere near usable.',
                   'Waiting ones dropped; already-sent ones recalled',
                   '❌',
                   'HQ: Restore → Not enough information (back in the queue). Candidate: upload a different file → re-evaluated.',
@@ -1773,8 +1773,9 @@ export const resumeManagement: BuildModule = {
               ],
             },
             items: [
-              'THERE IS NO SEPARATE “MODERATION” STATUS — it was a second column saying the same kind of thing, which is how two statuses start disagreeing. HQ’s moderation outcome IS a CV status: “Removed”. That is the only value HQ writes directly; the rest are consequences of the rule or of a review verdict.',
-              'ONLY “NOT ENOUGH INFORMATION” CARRIES A VERDICT — Qualified needs no decision, Can’t read has nothing to decide, and Not a CV / Removed are already decided. That is why the queue is small.',
+              'THERE IS NO SEPARATE “MODERATION” STATUS — it was a second column saying the same kind of thing, which is how two statuses start disagreeing. HQ’s moderation outcome IS a CV status: “Removed”, kept apart from “Rejected” because the reasons differ: Rejected is about the DOCUMENT, Removed is about the PERSON (fraud, abuse, duplicate accounts).',
+              'APPROVE AND REJECT ARE THE SAME PAIR on both failure states — “Can’t read” is not a separate verdict, it simply usually resolves by the candidate re-uploading rather than by us deciding. Qualified needs no decision and Rejected / Removed are already decided, which is why the queue stays small.',
+              'REJECTED IS TOLD, NEVER SILENT — the jobseeker sees “Hồ sơ này chưa đủ điều kiện, cần được cập nhật thêm” on the CV, with the fix one tap away. A CV that quietly stopped being searchable with no explanation is the failure this whole model exists to avoid.',
               'THE CANDIDATE CAN MOVE THE STATUS TOO, without asking anyone: adding a third skill, or replacing the file, re-runs the rule. Most exits from “not enough information” should be theirs, not ours.',
               'BEING LIVE IN EMPLOYER SEARCH needs THREE things, and only the first is status: the CV is Qualified · the candidate is Discoverable (their own switch) · nothing has been Removed (ours). A Hidden candidate with a Qualified CV is simply not indexed, and no status changes to say so.',
               'NOTHING IS STORED for a file that cannot be opened, is password-protected, or fails the malware scan — those fail at the picker with no status at all.',
@@ -1890,7 +1891,7 @@ export const resumeManagement: BuildModule = {
         ],
         backend: {
           dataModel: [
-            { name: 'cv.qualifyStatus', type: 'enum', required: true, notes: 'qualified | not_enough_info | unreadable | not_a_cv | removed | incomplete — ONE column serving both sources. `not_enough_info`, `unreadable` and `not_a_cv` occur only on uploads; `removed` is HQ moderation and replaces the old separate moderation column; `incomplete` only on Saramin CVs. `unreadable` does NOT hold delivery; `not_enough_info` does' },
+            { name: 'cv.qualifyStatus', type: 'enum', required: true, notes: 'qualified | not_enough_info | unreadable | rejected | removed | incomplete — ONE column serving both sources. `not_enough_info`, `unreadable` and `rejected` occur only on uploads; `removed` is HQ moderation and replaces the old separate moderation column; `incomplete` only on Saramin CVs. `unreadable` does NOT hold delivery; `not_enough_info` does' },
             { name: 'cv.qualifyReason', type: 'jsonb', notes: 'which half of the rule failed and by how much — e.g. { experience: 0, skills: 1 } — or the read failure (no_text_layer | extraction_failed). Drives the candidate-facing copy and the admin row' },
             { name: 'cv.evaluatedAt', type: 'timestamp', notes: 'set at upload / save. Apply time never writes it — that is what “evaluate once” means in the schema' },
             { name: 'application.holdReleasedBy', type: 'enum?', notes: 'review | timer — records whether a held application was released by a human or by the 24h net. A rising share of `timer` means the queue is not being worked' },

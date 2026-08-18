@@ -893,63 +893,85 @@ function AdminApplicants() {
    their Profile summary + ALL their CVs (≤3, exactly one searchable) and the
    HQ moderation actions. HQ moderates; it never edits content or flips the
    candidate's own visibility consent. */
+/* The candidate drill-in, in the SAME three groups the jobseeker sees on their own
+   profile — Basic information · Work preference · CV content. Reading HQ's view in
+   a different shape from the candidate's is how support ends up describing a screen
+   the caller is not looking at.
+
+   HQ is read-only on all three. The only thing it owns is the CV's status, and that
+   lives on the row's ⋯ menu, not here. */
 function ResumeCandidateDetail({ name, onClose }: { name: string; onClose: () => void }) {
   const cvs = [
-    { label: 'Frontend Engineer CV', kind: 'Saramin CV · generated', searchable: true, updated: '2 days ago', complete: '92%' },
-    { label: 'Fullstack CV (EN)', kind: 'Uploaded · CV_An_EN.pdf', searchable: false, updated: '1 week ago', complete: '81%' },
+    { label: 'Frontend Engineer CV', kind: 'Saramin CV', searchable: true, updated: '2 days ago', st: 'Qualified', content: '3 kinh nghiệm · 8 kỹ năng' },
+    { label: 'CV_An_EN.pdf', kind: 'Upload', searchable: false, updated: '1 week ago', st: 'Qualified', content: '2 kinh nghiệm · 6 kỹ năng' },
   ]
+  const Group = ({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) => (
+    <div>
+      <p className="mb-1.5 flex flex-wrap items-baseline gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+        {title}{note && <span className="font-normal normal-case tracking-normal text-faint/80">{note}</span>}
+      </p>
+      {children}
+    </div>
+  )
+  const Row = ({ k, v }: { k: string; v: React.ReactNode }) => (
+    <p className="flex items-baseline justify-between gap-3 text-[11.5px]"><span className="shrink-0 text-muted">{k}</span><span className="text-right font-medium text-ink">{v}</span></p>
+  )
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
       <div className="flex max-h-[600px] w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <p className="text-[14px] font-bold text-ink">{name}</p>
-            <p className="text-[11px] text-muted">Frontend Engineer · Hồ Chí Minh · 4 yrs · <span className="text-emerald-600">Discoverable (candidate-set)</span></p>
+            <p className="text-[11px] text-muted">Cùng ba nhóm dữ liệu ứng viên nhìn thấy trên hồ sơ của họ · HQ chỉ đọc</p>
           </div>
           <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
         </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {/* profile summary — the searchable identity + preferences */}
-          <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Profile (onboarding data — feeds search)</p>
-            <div className="grid gap-x-4 gap-y-1 rounded-lg border border-line p-3 text-[11.5px] sm:grid-cols-2">
-              <p className="text-muted">Desired role: <b className="text-ink">Senior Frontend Engineer</b></p>
-              <p className="text-muted">Locations: <b className="text-ink">HCMC · Hà Nội</b></p>
-              <p className="text-muted">Experience: <b className="text-ink">4 yrs</b></p>
-              <p className="text-muted">Expected salary: <b className="text-ink">25–35 tr</b></p>
-              <p className="text-muted">Availability: <b className="text-ink">1 month</b></p>
-              <p className="text-muted">Contact: <b className="text-ink">masked</b> <span className="cursor-pointer text-brand">reveal (audited)</span></p>
+          <Group title="1 · Thông tin cơ bản" note="đăng ký · 9 trường">
+            <div className="grid gap-x-6 gap-y-1 rounded-lg border border-line p-3 sm:grid-cols-2">
+              <Row k="Họ tên" v={name} />
+              <Row k="Email" v={<span className="text-muted">đã ẩn · <span className="cursor-pointer text-brand">hiện (ghi log)</span></span>} />
+              <Row k="Điện thoại" v={<span className="text-muted">đã ẩn · <span className="cursor-pointer text-brand">hiện (ghi log)</span></span>} />
+              <Row k="Quốc tịch" v="Việt Nam" />
+              <Row k="Giới tính" v="Nam" />
+              <Row k="Tình trạng hôn nhân" v="Độc thân" />
+              <Row k="Ngày sinh" v="12/04/1996" />
+              <Row k="Học vấn cao nhất" v="Cử nhân" />
+              <Row k="Số năm kinh nghiệm" v="4 năm" />
             </div>
-          </div>
-          {/* the candidate's CVs — max 3, exactly one searchable */}
-          <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">CVs ({cvs.length} of 3) — exactly one is searchable</p>
+          </Group>
+          <Group title="2 · Công việc mong muốn" note="onboarding · 6 trường">
+            <div className="grid gap-x-6 gap-y-1 rounded-lg border border-line p-3 sm:grid-cols-2">
+              <Row k="Vị trí mong muốn" v="Senior Frontend Engineer" />
+              <Row k="Ngành nghề" v="Công nghệ thông tin" />
+              <Row k="Lĩnh vực" v="IT / Phần mềm" />
+              <Row k="Nơi muốn làm việc" v="Hồ Chí Minh · Hà Nội" />
+              <Row k="Mức lương mong muốn" v="25 – 35 tr" />
+              <Row k="Hình thức làm việc" v="In office" />
+            </div>
+          </Group>
+          <Group title="3 · Nội dung CV" note={`${cvs.length} / 3 · đúng 1 CV được hiển thị`}>
             <div className="space-y-2">
               {cvs.map((cv) => (
                 <div key={cv.label} className={cn('flex items-center gap-3 rounded-lg border p-3', cv.searchable ? 'border-brand/40 bg-brand-soft/30' : 'border-line')}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]"></span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[13px]">📄</span>
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-ink">{cv.label} {cv.searchable && <Pill tone="active">Searchable</Pill>}</p>
-                    <p className="text-[10.5px] text-faint">{cv.kind} · {cv.complete} complete · updated {cv.updated}</p>
+                    <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-ink">
+                      {cv.label}
+                      <Pill tone={cv.kind === 'Saramin CV' ? 'neutral' : 'draft'}>{cv.kind}</Pill>
+                      <Pill tone="active">{cv.st}</Pill>
+                      {cv.searchable && <Pill tone="active">Đang hiển thị</Pill>}
+                    </p>
+                    <p className="text-[10.5px] text-faint">{cv.content} · cập nhật {cv.updated}</p>
                   </div>
-                  <span className="cursor-pointer text-[11px] font-medium text-brand">Open (audited)</span>
+                  <span className="cursor-pointer text-[11px] font-medium text-brand">Mở (ghi log)</span>
                 </div>
               ))}
             </div>
-            <p className="mt-1.5 text-[10.5px] text-faint">Which CV is searchable is the candidate’s choice — HQ cannot change it.</p>
-          </div>
-          {/* moderation — the only thing HQ owns here */}
-          <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Moderation (HQ-owned)</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="active">Normal</Pill>
-              <button className="rounded-md border border-amber-300 px-2.5 py-1 text-[11px] font-medium text-amber-600">⚑ Flag for review…</button>
-              <button className="rounded-md border border-rose-300 px-2.5 py-1 text-[11px] font-medium text-rose-600">Remove from pool…</button>
-              <span className="text-[10.5px] text-faint">reason required · audited · never blocks the candidate from applying</span>
-            </div>
-          </div>
+            <p className="mt-1.5 text-[10.5px] text-faint">CV nào được hiển thị là lựa chọn của ứng viên — HQ không đổi được. HQ chỉ đổi được TRẠNG THÁI CV, và thao tác đó nằm ở menu ⋯ trên danh sách.</p>
+          </Group>
         </div>
-        <div className="flex justify-end border-t border-line px-4 py-3"><button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink/70">Close</button></div>
+        <div className="flex justify-end border-t border-line px-4 py-3"><button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink/70">Đóng</button></div>
       </div>
     </div>
   )
@@ -960,65 +982,64 @@ function AdminResumes() {
   const [sel, setSel] = useState<string | null>(null)
   const [menu, setMenu] = useState<number | null>(null)
   if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
-  /* THE TALENT POOL — only candidates who are actually in the employer index.
-     Deliberately NOT a work queue: failures live on their own list (CV check),
-     because browsing what we can sell and deciding on broken files are two
-     different jobs and one list was bad at both. So there is no Index column
-     here — every row in this list is, by definition, indexed. */
-  /* ONE status per CV, and every action an operator has lives on it — there is no
-     second "moderation" column, because HQ's outcome IS a status value (Removed).
-     Two columns that both describe a CV's standing are two columns that eventually
-     disagree.
+  /* THE TALENT POOL. Columns are built from the REAL field sheets, not invented:
+     BASIC INFORMATION is table 1 of the candidate-data model (9 fields, sign-up)
+     and WORK PREFERENCE is table 2 (6 fields, onboarding). Each gets ONE column,
+     because an operator scans a pool by "who is this" and "what do they want".
+     From CV CONTENT we show only what is countable and already stored — how many
+     work-experience entries and how many skills — which is also exactly what the
+     rule reads.
 
-     Columns follow the decided candidate-data vocabulary: BASIC INFORMATION and
-     WORK PREFERENCE are what an operator scans a pool by, so each gets its own
-     column. "Location" is explicitly the DESIRED one — current location is not a
-     field we hold, and the old bare label invited the wrong reading. */
-  type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Not a CV' | 'Removed'
+     Visibility is NOT a column: a Hidden candidate is not searchable, so listing
+     them in the searchable pool was noise. Support answers "why am I not found?"
+     from the jobseeker user record, not from here.
+
+     ONE status per CV, and every action lives on it — HQ moderation is not a
+     second axis, it is the `Removed` value. */
+  type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected' | 'Removed'
   const CV_ST_TONE: Record<CvSt, StatusTone> = {
     Qualified: 'active',
     'Not enough information': 'pending',
     "Can't read": 'draft',
-    'Not a CV': 'rejected',
+    Rejected: 'rejected',
     Removed: 'rejected',
   }
-  /* Which actions a status allows, and what each produces. Mirrors the spec table
-     one-for-one, so a reader can check them against each other. */
+  /* Actions a status allows, and the status each produces. Approve and Reject are
+     the SAME pair for both failure states — "Can't read" is not a special verdict,
+     it just usually resolves by the candidate re-uploading. Rejected tells the
+     jobseeker their CV needs updating; it never silently disappears. */
   const ACTIONS: Record<CvSt, [string, string][]> = {
     Qualified: [['Gỡ khỏi pool', 'Removed']],
-    'Not enough information': [['Đúng là CV', 'Qualified'], ['Không phải CV', 'Not a CV']],
-    "Can't read": [['Nhắc ứng viên tải lại', 'không đổi']],
-    'Not a CV': [['Phục hồi để xem lại', 'Not enough information']],
+    'Not enough information': [['Approve', 'Qualified'], ['Reject', 'Rejected']],
+    "Can't read": [['Approve', 'Qualified'], ['Reject', 'Rejected'], ['Nhắc tải lại', 'không đổi']],
+    Rejected: [['Phục hồi để xem lại', 'Not enough information']],
     Removed: [['Phục hồi', 'Qualified']],
   }
-  type PoolRow = { name: string; basic: string; pref: string; cv: string; st: CvSt; extracted: string; disc: boolean; updated: string }
+  type PoolRow = { name: string; basic: string; pref: string; kind: 'Saramin' | 'Upload'; st: CvSt; content: string; updated: string }
   const raw: PoolRow[] = [
-    { name: 'Nguyễn Văn An', basic: '4 năm KN · Cử nhân CNTT', pref: 'Frontend Engineer · Hồ Chí Minh · 25–35 tr', cv: 'Frontend Engineer CV', st: 'Qualified', extracted: '3 kinh nghiệm · 8 kỹ năng', disc: true, updated: '2 days ago' },
-    { name: 'Trần Thị Bích', basic: '6 năm KN · Cử nhân Marketing', pref: 'Digital Marketing Lead · Hà Nội · 30–40 tr', cv: 'bich-portfolio.pdf', st: 'Qualified', extracted: '2 kinh nghiệm · 11 kỹ năng', disc: true, updated: '1 week ago' },
-    { name: 'Lê Hoàng Cường', basic: '8 năm KN · Thạc sĩ MBA', pref: 'Product Manager · Hồ Chí Minh · 50–70 tr', cv: 'Product Manager CV', st: 'Qualified', extracted: '4 kinh nghiệm · 9 kỹ năng', disc: false, updated: '3 weeks ago' },
-    { name: 'Phạm Thu Dung', basic: '3 năm KN · Cử nhân Kế toán', pref: 'Kế toán tổng hợp · Đà Nẵng · 12–18 tr', cv: 'thu-dung-cv.pdf', st: 'Qualified', extracted: '1 kinh nghiệm · 3 kỹ năng', disc: true, updated: '1 month ago' },
-    { name: 'Vũ Minh Đức', basic: '5 năm KN · Cử nhân KTPM', pref: 'Backend Engineer · Hồ Chí Minh · 35–45 tr', cv: 'Backend Engineer CV', st: 'Qualified', extracted: '3 kinh nghiệm · 12 kỹ năng', disc: true, updated: '2 months ago' },
-    { name: 'Lâm Thị Kiều', basic: '2 năm KN · Cử nhân Thiết kế', pref: 'UI Designer · Hồ Chí Minh · 15–20 tr', cv: 'CV_2026_final.docx', st: 'Not enough information', extracted: '2 kinh nghiệm · 1 kỹ năng', disc: true, updated: '5 hours ago' },
-    { name: 'Trương Văn Bình', basic: '3 năm KN · Cao đẳng QTKD', pref: 'Sales Executive · Hà Nội · 12–18 tr', cv: 'scan_0816.pdf', st: "Can't read", extracted: 'Không đọc được nội dung', disc: true, updated: '10 min ago' },
-    { name: 'Đỗ Thanh Hà', basic: '4 năm KN · Cử nhân Mỹ thuật', pref: 'Product Designer · Hồ Chí Minh · 20–30 tr', cv: 'portfolio-2026.pdf', st: 'Not enough information', extracted: '0 kinh nghiệm · 0 kỹ năng', disc: true, updated: '6 days ago' },
-    { name: 'Ngô Bảo Khánh', basic: '1 năm KN · Cao đẳng', pref: 'Nhân viên kinh doanh · Cần Thơ · 8–12 tr', cv: 'menu_final.pdf', st: 'Not a CV', extracted: '0 kinh nghiệm · 0 kỹ năng', disc: true, updated: '2 months ago' },
-    { name: 'Hoàng Văn Nam', basic: '6 năm KN · Cử nhân CNTT', pref: 'DevOps Engineer · Đà Nẵng · 35–50 tr', cv: 'DevOps Engineer CV', st: 'Removed', extracted: '3 kinh nghiệm · 9 kỹ năng', disc: true, updated: '2 weeks ago' },
-    { name: 'Ngô Thị Lan', basic: '7 năm KN · Cử nhân QTNS', pref: 'HR Business Partner · Hồ Chí Minh · 30–40 tr', cv: 'lan-cv.docx', st: 'Qualified', extracted: '4 kinh nghiệm · 10 kỹ năng', disc: true, updated: '1 day ago' },
-    { name: 'Trịnh Mỹ Linh', basic: '3 năm KN · Cử nhân Báo chí', pref: 'Content Writer · Hà Nội · 12–16 tr', cv: 'my-linh.pdf', st: 'Qualified', extracted: '1 kinh nghiệm · 3 kỹ năng', disc: true, updated: '3 days ago' },
+    { name: 'Nguyễn Văn An', basic: 'Nam · 1996 · Cử nhân · 4 năm KN', pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35 tr · In office', kind: 'Saramin', st: 'Qualified', content: '3 kinh nghiệm · 8 kỹ năng', updated: '2 days ago' },
+    { name: 'Trần Thị Bích', basic: 'Nữ · 1994 · Cử nhân · 6 năm KN', pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40 tr · Hybrid', kind: 'Upload', st: 'Qualified', content: '2 kinh nghiệm · 11 kỹ năng', updated: '1 week ago' },
+    { name: 'Lê Hoàng Cường', basic: 'Nam · 1990 · Thạc sĩ · 8 năm KN', pref: 'Product Manager · IT · Hồ Chí Minh · 50–70 tr · Hybrid', kind: 'Saramin', st: 'Qualified', content: '4 kinh nghiệm · 9 kỹ năng', updated: '3 weeks ago' },
+    { name: 'Phạm Thu Dung', basic: 'Nữ · 1997 · Cử nhân · 3 năm KN', pref: 'Kế toán tổng hợp · Kế toán · Đà Nẵng · 12–18 tr · In office', kind: 'Upload', st: 'Qualified', content: '1 kinh nghiệm · 3 kỹ năng', updated: '1 month ago' },
+    { name: 'Vũ Minh Đức', basic: 'Nam · 1995 · Cử nhân · 5 năm KN', pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45 tr · Remote', kind: 'Saramin', st: 'Qualified', content: '3 kinh nghiệm · 12 kỹ năng', updated: '2 months ago' },
+    { name: 'Lâm Thị Kiều', basic: 'Nữ · 1999 · Cử nhân · 2 năm KN', pref: 'UI Designer · Thiết kế · Hồ Chí Minh · 15–20 tr · In office', kind: 'Upload', st: 'Not enough information', content: '2 kinh nghiệm · 1 kỹ năng', updated: '5 hours ago' },
+    { name: 'Trương Văn Bình', basic: 'Nam · 1998 · Cao đẳng · 3 năm KN', pref: 'Sales Executive · Bán hàng · Hà Nội · 12–18 tr · In office', kind: 'Upload', st: "Can't read", content: 'Không đọc được nội dung', updated: '10 min ago' },
+    { name: 'Đỗ Thanh Hà', basic: 'Nữ · 1996 · Cử nhân · 4 năm KN', pref: 'Product Designer · Thiết kế · Hồ Chí Minh · 20–30 tr · Hybrid', kind: 'Upload', st: 'Not enough information', content: '0 kinh nghiệm · 0 kỹ năng', updated: '6 days ago' },
+    { name: 'Ngô Bảo Khánh', basic: 'Nam · 2001 · Cao đẳng · 1 năm KN', pref: 'Nhân viên kinh doanh · Bán hàng · Cần Thơ · 8–12 tr · In office', kind: 'Upload', st: 'Rejected', content: '0 kinh nghiệm · 0 kỹ năng', updated: '2 months ago' },
+    { name: 'Hoàng Văn Nam', basic: 'Nam · 1993 · Cử nhân · 6 năm KN', pref: 'DevOps Engineer · IT · Đà Nẵng · 35–50 tr · Remote', kind: 'Saramin', st: 'Removed', content: '3 kinh nghiệm · 9 kỹ năng', updated: '2 weeks ago' },
+    { name: 'Ngô Thị Lan', basic: 'Nữ · 1992 · Cử nhân · 7 năm KN', pref: 'HR Business Partner · Nhân sự · Hồ Chí Minh · 30–40 tr · In office', kind: 'Upload', st: 'Qualified', content: '4 kinh nghiệm · 10 kỹ năng', updated: '1 day ago' },
+    { name: 'Trịnh Mỹ Linh', basic: 'Nữ · 1998 · Cử nhân · 3 năm KN', pref: 'Content Writer · Marketing · Hà Nội · 12–16 tr · Hybrid', kind: 'Saramin', st: 'Qualified', content: '1 kinh nghiệm · 3 kỹ năng', updated: '3 days ago' },
   ]
   const rows = raw.map((r, i) => [
     <span onClick={() => setSel(r.name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
     <span className="truncate text-ink/80">{r.basic}</span>,
     <span className="truncate text-ink/80">{r.pref}</span>,
-    <span className="truncate text-muted">{r.cv}</span>,
+    <Pill tone={r.kind === 'Saramin' ? 'neutral' : 'draft'}>{r.kind === 'Saramin' ? 'Saramin CV' : 'Upload'}</Pill>,
     <Pill tone={CV_ST_TONE[r.st]}>{r.st}</Pill>,
     /* At the bare minimum is worth noticing — it ranks last and is the first thing
        to nudge, so it is toned rather than left to read as healthy. */
-    <span className={cn('truncate', r.st !== 'Qualified' ? 'text-amber-700' : /^1 kinh nghiệm · [123] /.test(r.extracted) ? 'text-amber-700' : 'text-muted')}>{r.extracted}</span>,
-    r.disc ? <Pill tone="active">Discoverable</Pill> : <Pill tone="draft">Hidden</Pill>,
+    <span className={cn('truncate', r.st !== 'Qualified' || /^1 kinh nghiệm · [123] /.test(r.content) ? 'text-amber-700' : 'text-muted')}>{r.content}</span>,
     <span className="text-muted">{r.updated}</span>,
-    /* Every action the status allows, and nothing it does not — behind a ⋯ so a
-       consequential verb is never one stray click from a read-only one. */
     <div className="relative flex items-center justify-end">
       <button
         onClick={() => setMenu(menu === i ? null : i)}
@@ -1027,7 +1048,7 @@ function AdminResumes() {
       {menu === i && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
-          <div className="absolute right-0 top-8 z-30 w-[264px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
+          <div className="absolute right-0 top-8 z-30 w-[268px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
             <button onClick={() => { setMenu(null); setSel(r.name) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] text-ink hover:bg-canvas">
               <span className="w-3.5 text-center text-faint">👁</span>Xem hồ sơ
               <span className="ml-auto text-[10px] text-faint">PII · log</span>
@@ -1039,6 +1060,9 @@ function AdminResumes() {
                 <span className="shrink-0 text-[10px] text-faint">→ {next}</span>
               </button>
             ))}
+            {(r.st === 'Not enough information' || r.st === "Can't read") && (
+              <p className="border-t border-line-soft px-3 py-1.5 text-[10px] leading-snug text-faint">Reject → ứng viên thấy “Hồ sơ này chưa đủ điều kiện, cần cập nhật thêm”.</p>
+            )}
           </div>
         </>
       )}
@@ -1046,29 +1070,29 @@ function AdminResumes() {
   ])
   return (
     <div>
-      {/* ONE note, and it has to be honest about what this list contains: after the
-          status model was unified, failures are listed here too — they are simply
-          not indexed. CV check is the ACTIONABLE SUBSET, not a separate population. */}
+      {/* ONE note. It has to be honest about the population: after the status model
+          was unified, failures are listed here too — they are simply not indexed.
+          CV check is the ACTIONABLE SUBSET, not a separate population. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
-        Every candidate and the CV they chose for employers to find, whatever its status. Only <b className="font-semibold text-ink/80">Qualified</b> CVs are actually
-        in employer search — and being live also needs the candidate <b className="font-semibold text-ink/80">Discoverable</b> (their switch) and not{' '}
-        <b className="font-semibold text-ink/80">Removed</b> (ours). The other statuses are listed rather than hidden, so nobody has to wonder where a candidate went.{' '}
-        <b className="font-semibold text-ink/80">CV check</b> is the same data filtered to the rows that owe someone an action — a queue to work, not a separate pool.
-        Every action a status allows is on its <b className="font-semibold text-ink/80">⋯</b> menu.{' '}
-        <b className="font-semibold text-amber-700">Resumes contain PII — every open is audited.</b>
+        Every candidate who has switched CV search ON, and the CV they chose for employers to find. Columns come straight from the field sheets —{' '}
+        <b className="font-semibold text-ink/80">Thông tin cơ bản</b> (table 1, asked at sign-up) and <b className="font-semibold text-ink/80">Công việc mong muốn</b>{' '}
+        (table 2, asked at onboarding); from the CV itself we show only what is countable and already stored, which is what the rule reads.
+        Only <b className="font-semibold text-ink/80">Qualified</b> CVs are actually in employer search; the rest are listed rather than hidden so nobody has to wonder
+        where a candidate went. <b className="font-semibold text-ink/80">CV check</b> is this same data filtered to the rows that owe someone an action.
+        Every action a status allows is on its <b className="font-semibold text-ink/80">⋯</b> menu, labelled with the status it produces.{' '}
+        <b className="font-semibold text-amber-700">Hồ sơ chứa PII — mỗi lần mở đều được ghi log.</b>
       </p>
       <ListPage
         minW={1820}
         action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
-        tabs={[{ label: 'Tất cả', count: 8420, active: true }, { label: 'Qualified', count: 6087 }, { label: 'Not enough information', count: 13 }, { label: "Can't read", count: 7 }, { label: 'Not a CV', count: 9 }, { label: 'Removed', count: 4 }]}
+        tabs={[{ label: 'Tất cả', count: 8420, active: true }, { label: 'Qualified', count: 6087 }, { label: 'Not enough information', count: 13 }, { label: "Can't read", count: 7 }, { label: 'Rejected', count: 9 }, { label: 'Removed', count: 4 }]}
         cols={[
-          { label: 'Ứng viên', w: '1.1fr' },
-          { label: 'Thông tin cơ bản', w: '1.3fr' },
-          { label: 'Công việc mong muốn', w: '1.9fr' },
-          { label: 'CV đang hiển thị', w: '1.2fr' },
+          { label: 'Ứng viên', w: '1fr' },
+          { label: 'Thông tin cơ bản', w: '1.5fr' },
+          { label: 'Công việc mong muốn', w: '2.2fr' },
+          { label: 'Loại CV', w: '0.8fr' },
           { label: 'Trạng thái CV', w: '1.2fr' },
-          { label: 'Trích xuất được', w: '1.2fr' },
-          { label: 'Ứng viên cho hiển thị', w: '1fr' },
+          { label: 'Nội dung CV', w: '1.2fr' },
           { label: 'Cập nhật', w: '0.8fr' },
           { label: '', w: '0.35fr', align: 'r' },
         ]}
@@ -1103,7 +1127,7 @@ function AdminCvCheck() {
   const [open, setOpen] = useState<CvCheckRow | null>(null)
   /* Actions behind a ⋯ menu rather than three peer buttons: the two verdicts are
      consequential (they release or recall real applications), and peer buttons put
-     "Không phải CV" one stray click from "Xem CV". A menu costs one click and
+     "Reject" one stray click from "Xem CV". A menu costs one click and
      removes that. It also lets each row offer only the actions that apply — an
      unreadable file has no verdict to give. */
   const [menu, setMenu] = useState<number | null>(null)
@@ -1155,10 +1179,10 @@ function AdminCvCheck() {
               <>
                 <div className="my-1 border-t border-line-soft" />
                 <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-medium text-emerald-700 hover:bg-canvas">
-                  <span className="w-3.5 text-center">✓</span>Đúng là CV — cho hiển thị
+                  <span className="w-3.5 text-center">✓</span>Approve — cho hiển thị
                 </button>
                 <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-medium text-rose-600 hover:bg-canvas">
-                  <span className="w-3.5 text-center">✕</span>Không phải CV
+                  <span className="w-3.5 text-center">✕</span>Reject
                 </button>
                 {r.apps > 0 && (
                   <p className="border-t border-line-soft px-3 py-1.5 text-[10px] leading-snug text-faint">Quyết định này ảnh hưởng tới {r.apps} đơn ứng tuyển.</p>
@@ -1261,8 +1285,8 @@ function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void 
               <button onClick={onClose} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Nhắc ứng viên tải lại</button>
             ) : (
               <>
-                <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Không phải CV</button>
-                <button onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-semibold text-white">Đúng là CV — cho hiển thị</button>
+                <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Reject</button>
+                <button onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-semibold text-white">Approve — cho hiển thị</button>
               </>
             )}
           </div>

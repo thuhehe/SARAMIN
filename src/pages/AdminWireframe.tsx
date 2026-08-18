@@ -163,7 +163,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Jobs', specId: 'admin-job-list' },
       { label: 'Applicants', specId: 'admin-job-applicants' },
-      { label: 'Resumes', specId: 'admin-resumes' },
+      { label: 'Talent pool', specId: 'admin-resumes' },
       { label: 'CV check', specId: 'admin-cv-check' },
     ],
   },
