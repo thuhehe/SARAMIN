@@ -82,6 +82,10 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // configures is displayed by CRM → Companies, which cross-references back to here.
   'admin-membership': { module: 'admin-access', feature: 'Membership tiers' },
   'admin-master-data': { module: 'admin-access', feature: 'Master data' },
+  // Both point at the Resume-management feature that specifies them — the weights
+  // and the log belong to the matching logic, not to the admin shell.
+  'admin-matching-settings': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
+  'admin-matching-report': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
   'admin-audit-log': { module: 'admin-access', feature: 'Audit log' },
   'admin-environment': { module: 'admin-access', feature: 'Environment' },
   'admin-departments': { module: 'admin-access', feature: 'Departments' },
@@ -159,6 +163,9 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Sales report', specId: 'admin-sales-report' },
       { label: 'Recruit report', specId: 'admin-recruit-report' },
       { label: 'Revenue report', specId: 'admin-revenue-report' },
+      // Does a higher match score actually produce applications? The only screen
+      // that can answer it, and the reason the recommendation log exists.
+      { label: 'Matching report', specId: 'admin-matching-report' },
     ],
   },
   {
@@ -265,6 +272,9 @@ const NAV_GROUPS: NavGroup[] = [
       // Static site copy — configuration, not a sold service.
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Master data', specId: 'admin-master-data' },
+      // The 8 score weights + the salary exchange rate. HQ-only configuration that
+      // changes how another module behaves — same reason Products sits here.
+      { label: 'Matching settings', specId: 'admin-matching-settings' },
       // The free company pool. Under System, NOT under CRM: these are not customers
       // and not owned by anyone — a reference dataset a rep can request FROM. Putting
       // it in CRM would put unowned, unverified rows inside every CRM count.

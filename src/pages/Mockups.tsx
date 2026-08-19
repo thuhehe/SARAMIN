@@ -2482,6 +2482,7 @@ function OnboardingScreen() {
      "what did I pick" answer without pretending the whole set fits on screen. */
   const [locOpen, setLocOpen] = useState(false)
   const [locs, setLocs] = useState<string[]>(['Hồ Chí Minh', 'Hà Nội'])
+  const [relocate, setRelocate] = useState(true)
   const [workTypes, setWorkTypes] = useState<string[]>(['In office', 'Hybrid'])
   const toggleLoc = (c: string) =>
     setLocs((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
@@ -2665,6 +2666,29 @@ function OnboardingScreen() {
                     </div>
                   )}
                   <p className="mt-1 text-[10px] text-faint">{locs.length} of 3 selected · Vietnam has 34 provincial units, so this searches rather than lists.</p>
+
+                  {/* RELOCATE — a widener, not a fourth city. The cap is 3 provinces, so
+                      a candidate open to moving anywhere had no way to say so without
+                      spending picks on guesses. One flag says "these three are the
+                      preference, not the limit", which is what lets a match outside them
+                      still surface instead of being filtered away. */}
+                  <label
+                    onClick={() => setRelocate((v) => !v)}
+                    className="mt-2.5 flex cursor-pointer items-start gap-2 text-[11.5px] leading-relaxed text-ink/75"
+                  >
+                    <span
+                      className={cn(
+                        'mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-sm border text-[10px] font-bold',
+                        relocate ? 'border-brand bg-brand text-white' : 'border-line text-transparent',
+                      )}
+                    >
+                      ✓
+                    </span>
+                    <span>
+                      Tôi có thể thay đổi nơi làm việc
+                      <span className="text-faint"> · I'm willing to relocate</span>
+                    </span>
+                  </label>
 
                   {/* WORK TYPE — the other half of "where", and the half that used to
                       hide inside the province list. Chips, not a search: four values,

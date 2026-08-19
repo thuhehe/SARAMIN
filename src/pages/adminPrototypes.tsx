@@ -14563,6 +14563,149 @@ function AdminAuditLog() {
     />
   )
 }
+/* ── Matching settings — the 8 score weights + the exchange rate ──────────────
+   The recommendation and applicant-ranking score is ONE calculation with eight
+   weighted signals. The weights are our estimate, not research, so this screen
+   exists for one reason: they can be corrected without a code deploy.
+
+   Two things make it safe to hand to an operator. The total must be exactly 100
+   before Save is enabled — a set of weights that sums to 93 silently rescales
+   every score in the product. And Save creates a new VERSION rather than editing
+   the current one, so a score computed last month can still be explained. */
+function AdminMatchingSettings() {
+  const [w, setW] = useState<Record<string, number>>({
+    skills: 38, years: 18, location: 17, category: 10, salary: 7, industry: 5, education: 3, language: 2,
+  })
+  const SIGNALS: { key: string; label: string; reads: string }[] = [
+    { key: 'skills', label: 'Skills', reads: 'CV skills ↔ job skills (same master list)' },
+    { key: 'years', label: 'Years of experience + level', reads: 'Years + seniority derived from job titles' },
+    { key: 'location', label: 'Location + work type', reads: 'Desired location & work type ↔ job location' },
+    { key: 'category', label: 'Desired job category', reads: 'Work preference ↔ job category' },
+    { key: 'salary', label: 'Expected salary', reads: 'Expected salary ↔ job salary range' },
+    { key: 'industry', label: 'Industry', reads: 'Desired industry ↔ company industry' },
+    { key: 'education', label: 'Education level', reads: 'Highest education ↔ job minimum' },
+    { key: 'language', label: 'Foreign language', reads: 'CV language + level ↔ job requirement' },
+  ]
+  const total = Object.values(w).reduce((a, b) => a + b, 0)
+  const ok = total === 100
+  const bump = (k: string, d: number) => setW((x) => ({ ...x, [k]: Math.max(0, Math.min(100, x[k] + d)) }))
+
+  return (
+    <div className="space-y-4">
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+        These weights decide the order of <b className="font-semibold">recommended jobs</b> for every jobseeker AND the order of <b className="font-semibold">applicants</b> on every job.
+        They are a starting estimate — tune them against the Matching report, not by opinion. Saving creates a new version; scores already computed keep the version that produced them.
+      </p>
+
+      <div className="overflow-hidden rounded-xl border border-line">
+        <div className="grid grid-cols-[1.3fr_1.7fr_auto] gap-3 border-b border-line bg-canvas/60 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+          <span>Signal</span><span>What it compares</span><span className="text-right">Points</span>
+        </div>
+        {SIGNALS.map((sig) => (
+          <div key={sig.key} className="grid grid-cols-[1.3fr_1.7fr_auto] items-center gap-3 border-b border-line-soft px-4 py-2 last:border-b-0">
+            <span className="text-[12.5px] font-medium text-ink">{sig.label}</span>
+            <span className="text-[11.5px] text-muted">{sig.reads}</span>
+            <span className="flex items-center gap-1.5">
+              <button onClick={() => bump(sig.key, -1)} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[13px] leading-none text-muted hover:bg-canvas">−</button>
+              <span className="w-9 text-center text-[13px] font-semibold tabular-nums text-ink">{w[sig.key]}</span>
+              <button onClick={() => bump(sig.key, 1)} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[13px] leading-none text-muted hover:bg-canvas">+</button>
+            </span>
+          </div>
+        ))}
+        {/* The guard: Save is impossible unless the weights sum to exactly 100. */}
+        <div className={cn('grid grid-cols-[1.3fr_1.7fr_auto] items-center gap-3 border-t px-4 py-2.5', ok ? 'border-line bg-canvas/40' : 'border-rose-200 bg-rose-50')}>
+          <span className={cn('text-[12.5px] font-semibold', ok ? 'text-ink' : 'text-rose-700')}>Total</span>
+          <span className={cn('text-[11.5px]', ok ? 'text-faint' : 'font-medium text-rose-700')}>
+            {ok ? 'Must always be exactly 100.' : `Must be exactly 100 — currently ${total}. Save is disabled.`}
+          </span>
+          <span className={cn('w-full text-right text-[13px] font-bold tabular-nums', ok ? 'text-emerald-700' : 'text-rose-700')}>{total}</span>
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+/* ── Matching report — does a higher score actually produce applications? ──────
+   The one screen that tells us whether the weights above are any good. It reads
+   the recommendation log: one row per job SHOWN, with position, score, and what
+   the jobseeker did next.
+
+   POSITION IS THE CONTROL. Jobs at the top of a list get clicked more whatever
+   they score, so every rate here is read within a position band — otherwise the
+   report just measures where a card sat. */
+function AdminMatchingReport() {
+  return (
+    <div className="space-y-4">
+      <StatCards cards={[
+        { label: 'Recommendations shown', value: '1.84M', delta: '30 ngày', up: true },
+        { label: 'Click rate', value: '11.2%', delta: '0.8pt', up: true },
+        { label: 'Apply rate', value: '3.4%', delta: '0.2pt', up: true },
+        { label: 'Weight version', value: 'v3' },
+      ]} />
+
+      <div>
+        <p className="text-[12px] font-semibold text-ink/70">Apply rate by score band — position 1–4 only</p>
+        <Bars unit="%" data={[
+          { label: '90–100', value: 7.1 },
+          { label: '80–89', value: 5.2 },
+          { label: '70–79', value: 3.3 },
+          { label: '60–69', value: 2.1 },
+          { label: 'under 60', value: 1.4 },
+        ]} />
+        <p className="mt-1 text-[11px] leading-relaxed text-faint">
+          Rising left to right is what a working score looks like: a higher score really does lead to more applications. A flat chart here means a weight is wrong — that is the whole reason this screen exists.
+        </p>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Which signal earns its weight</p>
+        <ListPage
+          cols={[
+            { label: 'Signal', w: '1.4fr' },
+            { label: 'Points', w: '0.6fr', align: 'r' },
+            { label: 'Apply rate when it scored FULL', w: '1.2fr', align: 'r' },
+            { label: 'when it scored ZERO', w: '1.2fr', align: 'r' },
+            { label: 'Gap', w: '0.8fr', align: 'r' },
+            { label: 'Reading', w: '1.8fr' },
+          ]}
+          rows={[
+            ['Skills', '38', '6.8%', '1.1%', '+5.7pt', 'Earns its weight — the strongest single signal.'],
+            ['Years of experience + level', '18', '4.4%', '2.0%', '+2.4pt', 'Working as expected.'],
+            ['Location + work type', '17', '4.9%', '1.6%', '+3.3pt', 'Stronger than its weight suggests — a candidate for an increase.'],
+            ['Desired job category', '10', '3.9%', '2.4%', '+1.5pt', 'Working.'],
+            ['Expected salary', '7', '3.6%', '2.9%', '+0.7pt', 'Weak. Many jobseekers leave salary blank, so it scores neutral often.'],
+            ['Industry', '5', '3.5%', '3.1%', '+0.4pt', 'Barely moves anything — reduce it and give the points to Location.'],
+            ['Education level', '3', '3.4%', '3.2%', '+0.2pt', 'No measurable effect.'],
+            ['Foreign language', '2', '5.1%', '3.3%', '+1.8pt', 'Small weight, real effect — only fires on the few jobs that ask.'],
+          ]}
+        />
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">By page</p>
+        <ListPage
+          cols={[{ label: 'Page', w: '1.4fr' }, { label: 'Shown', w: '1fr', align: 'r' }, { label: 'Click rate', w: '1fr', align: 'r' }, { label: 'Apply rate', w: '1fr', align: 'r' }]}
+          rows={[
+            ['Homepage section', '1.21M', '9.8%', '2.6%'],
+            ['Job detail — similar jobs', '402K', '14.1%', '4.8%'],
+            ['After applying', '186K', '17.6%', '6.2%'],
+            ['After onboarding', '51K', '12.4%', '5.1%'],
+          ]}
+        />
+        <p className="mt-1 text-[11px] leading-relaxed text-faint">
+          The two job-anchored pages convert about twice as well as the homepage, because they know what the jobseeker is looking at right now. After onboarding is the highest-intent moment a new account ever has.
+        </p>
+      </div>
+
+      <p className="rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
+        Reads the recommendation log — one row per job shown: candidate · job · score · weight version · rate version · page · position · shown at · clicked · applied.
+        It is personal data, kept about 12 months, and never exposed to employers.
+      </p>
+    </div>
+  )
+}
+
 function AdminEnvironment() {
   const flags = [
     { name: 'store.jobs.realData', desc: 'Store job search reads real backend', on: true },
@@ -14612,8 +14755,34 @@ const DIR_STATE: Record<DirState, { vi: string; tone: StatusTone }> = {
   pending: { vi: 'Đang chờ duyệt', tone: 'pending' },
   claimed: { vi: 'Đã nhận', tone: 'active' },
 }
+
+/* "Phân loại khách hàng trong Free Data" — the rep says WHY this company is worth
+   taking, from a fixed list. It is not decoration: it is the only thing that makes
+   the queue reviewable at a glance, and it is what lets HQ measure which pool
+   segments actually convert instead of guessing which import batch to buy again.
+
+   Two of these are traps, and the form treats them as such (see KIND_IS_CUSTOMER):
+   a company that HAS or HAD a Saramin package is not free data at all — it is a
+   customer or a churned customer, and it already has an owner in the CRM. */
+const FREE_DATA_KIND = [
+  'Đang/Đã đăng tuyển tại Saramin, hết gói dịch vụ',
+  'Còn gói dịch vụ chưa sử dụng tại Saramin',
+  'Đang đăng tuyển trên thị trường',
+  'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển',
+  'KH tôi từng liên hệ / bán hàng trước đây',
+  'Từng đăng tuyển trong quá khứ',
+  'Có nhu cầu tuyển dụng trong tương lai',
+  'Công ty thuộc ngành / khu vực tôi phụ trách',
+]
+/** the two classifications that describe an EXISTING customer, not free data */
+const KIND_IS_CUSTOMER = new Set([FREE_DATA_KIND[0], FREE_DATA_KIND[1]])
+
 type DirRow = {
   name: string
+  /** the contact the source came with — columns, not a stack, so they can be scanned
+      and so an empty one is visibly empty rather than silently missing */
+  person?: string
+  email?: string
   phone?: string
   web?: string
   addr?: string
@@ -14627,19 +14796,23 @@ type DirRow = {
       Company ID shown is the real one and never a second copy of it) */
   by?: string
   crm?: string
+  /** how many reps have asked for this row. More than one is normal and is the
+      admin's problem to resolve, not something the pool should silently block. */
+  reqs?: number
 }
 const DIRECTORY: DirRow[] = [
-  { name: 'Công ty TNHH Cơ điện Tân Tiến', phone: '028 3822 xxxx', web: 'tantien-me.vn', addr: 'Quận 12, HCMC', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
-  { name: 'Công ty CP Thực phẩm Vạn An', phone: '0909 118 xxx', addr: 'Long An', industry: 'Thực phẩm', tax: '0311xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
+  { name: 'Công ty TNHH Cơ điện Tân Tiến', person: 'Ms. Trần Thu Hà · HR', email: 'hr@tantien-me.vn', phone: '028 3822 xxxx', web: 'tantien-me.vn', addr: 'Quận 12, HCMC', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
+  { name: 'Công ty CP Thực phẩm Vạn An', person: 'Phòng nhân sự', email: 'tuyendung@vanan.com.vn', phone: '0909 118 xxx', addr: 'Long An', industry: 'Thực phẩm', tax: '0311xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
+  // Name only. Still worth keeping: it is a name a rep can find before creating it.
   { name: 'Nhà máy Dệt Phú Cường', addr: 'Bình Dương', industry: 'Dệt may', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'free' },
-  { name: 'Công ty TNHH Logistics Đại Hưng', phone: '0283 776 xxxx', web: 'daihung-log.vn', industry: 'Logistics', tax: '0999xxxxxx', source: 'Nhập từ web tuyển dụng', added: '25/06/2026', state: 'free' },
-  { name: 'Công ty CP Xây dựng Minh Khang', phone: '0918 442 xxx', addr: 'Hà Nội', industry: 'Xây dựng', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: 'Nguyễn Thị Lan' },
-  { name: 'Công ty TNHH Nội thất An Bình', phone: '0274 356 xxxx', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'pending', by: 'Trần Quốc Trung' },
-  { name: 'Công ty CP Bao bì Tiến Phát', phone: '0251 388 xxxx', addr: 'Đồng Nai', industry: 'Sản xuất', tax: '0362xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'claimed', by: 'Phạm Quang Huy', crm: 'Công ty CP Bình Minh' },
+  { name: 'Công ty TNHH Logistics Đại Hưng', email: 'info@daihung-log.vn', phone: '0283 776 xxxx', web: 'daihung-log.vn', industry: 'Logistics', tax: '0999xxxxxx', source: 'Nhập từ web tuyển dụng', added: '25/06/2026', state: 'free' },
+  { name: 'Công ty CP Xây dựng Minh Khang', person: 'Mr. Lê Đình Trung', email: 'tuyendung@minhkhang.vn', phone: '0918 442 xxx', addr: 'Hà Nội', industry: 'Xây dựng', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: 'Nguyễn Thị Lan', reqs: 2 },
+  { name: 'Công ty TNHH Nội thất An Bình', person: 'Ms. Phạm Thuỳ Dương', email: 'hr@anbinh-furniture.vn', phone: '0274 356 xxxx', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'pending', by: 'Trần Quốc Trung', reqs: 1 },
+  { name: 'Công ty CP Bao bì Tiến Phát', person: 'Mr. Vũ Đức Thắng', email: 'hcns@tienphat-pack.vn', phone: '0251 388 xxxx', addr: 'Đồng Nai', industry: 'Sản xuất', tax: '0362xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'claimed', by: 'Phạm Quang Huy', crm: 'Công ty CP Bình Minh' },
   // Dirty data on purpose: this row is ALREADY a CRM company under another rep.
   // It stays Chưa nhận because the pool cannot know that — the check runs when the
   // rep clicks Xin nhận, and blocks the request there instead of at approval.
-  { name: 'Công ty TNHH Sao Mai', phone: '0274 221 xxxx', web: 'saomai.vn', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
+  { name: 'Công ty TNHH Sao Mai', person: 'Mr. Trần Đức Anh', email: 'hr@saomai.vn', phone: '0274 221 xxxx', web: 'saomai.vn', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
 ]
 
 /** Does this pool row already exist in the CRM? Name-normalised, plus phone/domain.
@@ -14655,25 +14828,48 @@ function dirCrmMatch(r: DirRow): Company | undefined {
 /** the CRM record a claimed pool row became */
 const dirCrm = (r: DirRow) => (r.crm ? COMPANIES.find((c) => c.name === r.crm) : undefined)
 
+/* ── Tạo yêu cầu nhận công ty ─────────────────────────────────────────────────
+   The request form. Four things the rep supplies, and every one of them is used by
+   somebody downstream rather than merely collected:
+
+     Lý do          → what the approver reads first
+     Phân loại      → what makes the queue reviewable, and what measures the source
+     Contact point  → becomes contact #1 on the company the rep is about to receive
+     Bằng chứng     → a link or a file the approver can OPEN
+
+   Contact point is structured fields, not a line inside the description. A template
+   in a placeholder ("2. Contact Point: …") is a request, and a request is what
+   produces the one-word reasons — "test", "đang tuyển" — that make an approval
+   queue unreviewable. A required field is not a request. */
 function ClaimModal({ row, onClose }: { row: DirRow; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  const [kind, setKind] = useState('')
+  const [person, setPerson] = useState(row.person ?? '')
   const [phone, setPhone] = useState(row.phone ?? '')
-  const [contact, setContact] = useState('')
-  const [proof, setProof] = useState('')
+  const [email, setEmail] = useState(row.email ?? '')
+  const [link, setLink] = useState('')
+  const [file, setFile] = useState('')
   const dup = dirCrmMatch(row)
-  const ok = Boolean(phone.trim()) && Boolean(contact.trim()) && Boolean(proof.trim()) && !dup
+  const kindIsCustomer = KIND_IS_CUSTOMER.has(kind)
+  // Evidence: a link OR a file. One of the two, never neither — that is the whole
+  // second condition the request exists to prove.
+  const hasProof = Boolean(link.trim()) || Boolean(file.trim())
+  const ok = Boolean(reason.trim()) && Boolean(kind) && Boolean(person.trim()) && Boolean(phone.trim()) && hasProof && !dup && !kindIsCustomer
+
+  const inp = 'w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand'
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-4 w-full max-w-[560px] rounded-2xl border border-line bg-surface shadow-2xl">
+      <div className="my-4 w-full max-w-[720px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
           <div>
-            <p className="text-[15px] font-bold">Xin nhận công ty</p>
-            <p className="text-[11.5px] text-muted">{row.name}</p>
+            <p className="text-[15px] font-bold">Tạo yêu cầu nhận công ty</p>
+            <p className="text-[11.5px] text-muted">{row.name}{row.addr && <span className="text-faint"> · {row.addr}</span>}</p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
         </div>
 
-        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+        <div className="max-h-[70vh] space-y-3.5 overflow-y-auto p-5">
           {/* The duplicate check runs here, not at approval. If it is already a CRM
               company the request is never created — the rep is told who holds it. */}
           {dup && (
@@ -14684,33 +14880,103 @@ function ClaimModal({ row, onClose }: { row: DirRow; onClose: () => void }) {
             </div>
           )}
 
-          {/* The two proofs the client asked for. Both are REQUIRED and both are put
-              to work rather than just satisfied: the phone becomes the first contact
-              record on the promoted company, and the hiring evidence is a link an
-              approver can open. */}
+          {/* A row already asked for is NOT blocked — see the requirement. The rep is
+              told, so they can spend the effort on a free row instead if they want. */}
+          {row.state === 'pending' && (
+            <div className="rounded-lg border border-line bg-canvas/70 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+              <b className="text-ink">{row.reqs ?? 1} sales đã xin công ty này</b> (đầu tiên: {row.by}). Bạn vẫn gửi được — admin chọn một người và nêu lý do cho những người còn lại.
+            </div>
+          )}
+
           <div>
-            <FLabel req>Số điện thoại liên hệ</FLabel>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="028 xxxx xxxx / 09xx xxx xxx" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
-            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Sẽ trở thành <b className="text-ink/70">người liên hệ đầu tiên</b> trên hồ sơ công ty sau khi được duyệt — không chỉ là điều kiện để xin.</p>
+            <FLabel req>Lý do tạo yêu cầu · mô tả thông tin chi tiết</FLabel>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={5}
+              placeholder={'Mô tả lý do bạn muốn nhận chăm sóc khách hàng này từ danh bạ, để admin duyệt được nhanh.\nVD: KH đang tuyển 8 vị trí kỹ thuật trên thị trường, đã liên hệ HR và được hẹn gọi lại tuần sau.'}
+              className={cn(inp, 'resize-y leading-relaxed')}
+            />
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+              Lý do là <b className="text-ink/70">phần duy nhất admin đọc trước</b>. “test”, “đang tuyển” không đủ để duyệt và sẽ bị trả lại.
+            </p>
           </div>
+
           <div>
-            <FLabel req>Tên người liên hệ</FLabel>
-            <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="VD: Ms. Trần Thu Hà · HR Manager" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
+            <FLabel req>Phân loại khách hàng trong Free Data</FLabel>
+            <select value={kind} onChange={(e) => setKind(e.target.value)} className={inp}>
+              <option value="">— Chọn phân loại —</option>
+              {FREE_DATA_KIND.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+            {/* The two customer classifications are a contradiction, not a category:
+                a company with a Saramin package is not free data. Saying so here is
+                cheaper than an approval round that ends in "này là KH của bạn khác". */}
+            {kindIsCustomer ? (
+              <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                ⚠ Phân loại này nói khách <b>đã / đang có gói dịch vụ Saramin</b> — tức là <b>đã là khách hàng</b>, không phải free data. Khách hàng luôn có sales phụ trách trong CRM.
+                <span className="mt-1 block text-amber-800/85">Tìm công ty trong CRM và dùng <b>Yêu cầu chuyển giao</b>, không xin từ danh bạ.</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Dùng để admin duyệt nhanh, và để đo <b className="text-ink/70">nguồn danh bạ nào thật sự ra khách</b> — không phải để trang trí.</p>
+            )}
           </div>
-          <div>
-            <FLabel req>Bằng chứng công ty đang tuyển</FLabel>
-            <input value={proof} onChange={(e) => setProof(e.target.value)} placeholder="Link tin tuyển dụng, hoặc ghi rõ nguồn tin" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
-            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Ưu tiên <b className="text-ink/70">link tin tuyển dụng</b> để admin mở kiểm tra được. Ghi chú suông thì admin phải tin, không kiểm tra được.</p>
+
+          {/* Contact point — REQUIRED, and reused rather than just checked. */}
+          <div className="rounded-lg border border-line bg-canvas/40 p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Contact point · người liên hệ tại KH</p>
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              <div>
+                <FLabel req>Tên người liên hệ</FLabel>
+                <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="VD: Ms. Trần Thu Hà · HR" className={inp} />
+              </div>
+              <div>
+                <FLabel req>Số điện thoại</FLabel>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="028 xxxx xxxx" className={inp} />
+              </div>
+              <div>
+                <FLabel>Email</FLabel>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hr@congty.vn" className={inp} />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+              Ba trường này trở thành <b className="text-ink/70">người liên hệ đầu tiên</b> trên hồ sơ công ty sau khi duyệt — không chỉ là điều kiện để xin.
+            </p>
+          </div>
+
+          {/* Evidence: a link or a file, not "optional". */}
+          <div className="rounded-lg border border-line bg-canvas/40 p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">
+              Bằng chứng công ty đang tuyển <span className="font-normal normal-case tracking-normal text-rose-500">— bắt buộc có link hoặc tệp</span>
+            </p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <div>
+                <FLabel>Link tin tuyển dụng</FLabel>
+                <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="vietnamworks.com/…" className={inp} />
+              </div>
+              <div>
+                <FLabel>Tệp đính kèm</FLabel>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setFile(file ? '' : 'tin-tuyen-dung.png')} className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-2 text-[11.5px] font-medium text-muted hover:border-brand hover:text-brand">Chọn tệp</button>
+                  <span className="min-w-0 truncate text-[11.5px] text-faint">{file || 'Chưa chọn tệp nào'}</span>
+                </div>
+              </div>
+            </div>
+            <p className={cn('mt-1.5 text-[10.5px] leading-relaxed', hasProof ? 'text-faint' : 'text-amber-700')}>
+              {hasProof
+                ? <>Ưu tiên <b className="text-ink/70">link</b> — admin mở kiểm tra được ngay. Ảnh chụp thì phải đọc và tin.</>
+                : <>Chưa có bằng chứng nào. Một trong hai điều kiện để nhận công ty là <b>công ty đang tuyển</b> — ghi chú suông thì admin phải tin, không kiểm tra được.</>}
+            </p>
           </div>
 
           <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-            Yêu cầu này <b className="text-ink/70">không tạo hồ sơ công ty</b>. Admin duyệt thì hệ thống mới tạo hồ sơ trong CRM, gán bạn làm sales phụ trách và ghi số điện thoại trên thành người liên hệ đầu tiên.
+            Yêu cầu này <b className="text-ink/70">không tạo hồ sơ công ty</b>. Admin duyệt thì hệ thống mới tạo hồ sơ trong CRM, gán bạn làm sales phụ trách và ghi contact point trên thành người liên hệ đầu tiên.
             <span className="block text-faint">MST trong danh bạ <b className="text-ink/60">không được tin</b> — bạn sẽ nhập lại MST trên hồ sơ, và lúc đó hệ thống mới kiểm tra trùng.</span>
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Hủy</button>
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3.5">
+          {!ok && !dup && !kindIsCustomer && <span className="mr-auto text-[11px] text-faint">Còn thiếu: lý do, phân loại, contact point và bằng chứng.</span>}
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Đóng</button>
           <button onClick={onClose} disabled={!ok} className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', ok ? 'bg-brand hover:opacity-90' : 'cursor-not-allowed bg-line')}>
             Gửi yêu cầu cho admin →
           </button>
@@ -14728,45 +14994,65 @@ function AdminCompanyDirectory() {
   return (
     <div>
       <ListPage
-        minW={1320}
+        minW={1720}
         total={DIRECTORY.length}
-        searchHint="Tìm tên công ty, SĐT, website…"
-        searchExtra={rows.map((r) => [r.phone ?? '', r.web ?? '', r.addr ?? '', r.tax ?? '', r.source].join(' '))}
+        searchHint="Tìm tên công ty, người liên hệ, email, SĐT, MST…"
+        searchExtra={rows.map((r) => [r.web ?? '', r.source].join(' '))}
         filters={
           <FilterBar count={fState ? 1 : 0} onClear={() => setFState('')}>
             <FilterRow label="Trạng thái" value={fState} onChange={setFState} options={Object.values(DIR_STATE).map((x) => x.vi)} />
           </FilterBar>
         }
         cols={[
-          { label: 'Tên công ty', w: '2fr' },
+          { label: 'Tên công ty', w: '1.8fr' },
+          { label: 'Người liên hệ', w: '1.1fr' },
+          { label: 'Email', w: '1.3fr' },
           { label: 'SĐT', w: '1fr' },
-          { label: 'Website', w: '1fr' },
-          { label: 'Tỉnh / TP', w: '1fr' },
-          { label: 'MST (chưa xác minh)', w: '1.1fr' },
-          { label: 'Nguồn', w: '1.3fr' },
-          { label: 'Trạng thái', w: '1.3fr' },
-          { label: '', w: '0.9fr' },
+          { label: 'MST (chưa xác minh)', w: '1.05fr' },
+          { label: 'Tỉnh / TP', w: '0.85fr' },
+          { label: 'Ngành', w: '0.8fr' },
+          { label: 'Nguồn', w: '1.2fr' },
+          { label: 'Trạng thái', w: '1.15fr' },
+          // Every row ends in the one thing a rep can do here.
+          { label: '', w: '1fr' },
         ]}
         rows={rows.map((r) => [
-          <span className="min-w-0 truncate font-medium text-ink">{r.name}</span>,
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-ink">{r.name}</span>
+            {r.web && <span className="block truncate font-mono text-[10.5px] text-faint">{r.web}</span>}
+          </span>,
+          <span className="truncate text-muted">{r.person ?? <span className="text-faint">—</span>}</span>,
+          <span className="truncate text-[11.5px] text-muted">{r.email ?? <span className="text-faint">—</span>}</span>,
           <span className="truncate tabular-nums text-muted">{r.phone ?? <span className="text-faint">—</span>}</span>,
-          <span className="truncate font-mono text-[11px] text-muted">{r.web ?? <span className="font-sans text-faint">—</span>}</span>,
-          <span className="truncate text-muted">{r.addr ?? <span className="text-faint">—</span>}</span>,
           /* Shown but visibly untrusted — the column header says so and a wrong one
              is worse than a blank, because a blank gets typed in. */
           r.tax
             ? <span className="truncate font-mono text-[11px] text-amber-700" title="Chưa xác minh — sẽ nhập lại khi tạo hồ sơ CRM">{r.tax} ⚠</span>
             : <span className="text-[10.5px] text-faint">—</span>,
+          <span className="truncate text-muted">{r.addr ?? <span className="text-faint">—</span>}</span>,
+          <span className="truncate text-muted">{r.industry ?? <span className="text-faint">—</span>}</span>,
           <span className="truncate text-[11px] text-faint">{r.source}</span>,
-          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <Pill tone={DIR_STATE[r.state].tone}>{DIR_STATE[r.state].vi}</Pill>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex items-center gap-1.5">
+              <Pill tone={DIR_STATE[r.state].tone}>{DIR_STATE[r.state].vi}</Pill>
+              {/* Competing requests are normal. The count is the admin's tie-break
+                  signal, so it belongs on the row and not only in the queue. */}
+              {r.state === 'pending' && (r.reqs ?? 1) > 1 && <span className="text-[10.5px] font-medium text-amber-700">{r.reqs} yêu cầu</span>}
+            </span>
             {r.by && <span className="truncate text-[10.5px] text-faint">{r.by}</span>}
           </span>,
-          r.state === 'free'
-            ? <button onClick={() => setClaim(r)} className="rounded-md border border-brand/40 bg-brand-soft px-2 py-1 text-[11px] font-semibold text-brand hover:border-brand">Xin nhận</button>
-            : r.state === 'claimed' && dirCrm(r)
-              ? <span className="truncate font-mono text-[10.5px] text-brand" title={`Đã thành hồ sơ CRM · ${coLabel(dirCrm(r)!)}`}>{companyId(coKey(dirCrm(r)!))} →</span>
-              : <span className="text-[10.5px] text-faint">—</span>,
+          /* The action, on EVERY row — a row a rep cannot act on has to say why, or
+             they click through to find out and learn nothing. */
+          r.state === 'claimed'
+            ? (dirCrm(r)
+                ? <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-mono text-[10.5px] text-brand" title={`Đã thành hồ sơ CRM · ${coLabel(dirCrm(r)!)}`}>{companyId(coKey(dirCrm(r)!))} →</span>
+                    <span className="text-[10px] text-faint">đã có sales phụ trách</span>
+                  </span>
+                : <span className="text-[10.5px] text-faint">—</span>)
+            : <button onClick={() => setClaim(r)} className={cn('rounded-md px-2 py-1 text-[11px] font-semibold', r.state === 'pending' ? 'border border-line text-muted hover:border-brand hover:text-brand' : 'border border-brand/40 bg-brand-soft text-brand hover:border-brand')}>
+                {r.state === 'pending' ? 'Xin nhận (đã có người xin)' : 'Xin nhận'}
+              </button>,
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
@@ -14781,54 +15067,125 @@ function AdminCompanyDirectory() {
 /* ── Yêu cầu nhận công ty — the admin approval queue ──────────────────────────
    Admin approves, per the client's decision. Approving is one write: it promotes
    the pool row into a CRM company, sets the requester as sales owner, and files the
-   phone number as contact #1. Rejecting returns the row to Chưa nhận with a reason,
-   because a rep who is refused twice for the same reason should be able to read it. */
-type ClaimReq = { co: string; by: string; when: string; phone: string; contact: string; proof: string; proofIsLink: boolean }
+   contact point as contact #1. Rejecting returns the row to Chưa nhận with a reason,
+   because a rep refused twice for the same reason should be able to read it.
+
+   Resolved requests STAY in this list. The queue is also the record of how every
+   company entered the CRM — filtering them out would leave the only copy of that
+   history in an audit log nobody opens. */
+type ClaimStatus = 'pending' | 'approved' | 'rejected'
+const CLAIM_STATUS: Record<ClaimStatus, { vi: string; tone: StatusTone }> = {
+  pending: { vi: 'Đang chờ', tone: 'pending' },
+  approved: { vi: 'Được duyệt', tone: 'active' },
+  rejected: { vi: 'Từ chối', tone: 'expired' },
+}
+type ClaimReq = {
+  id: number
+  co: string
+  by: string
+  when: string
+  person: string
+  phone: string
+  email?: string
+  reason: string
+  kind: string
+  /** a link the approver can OPEN, or a file they have to open and believe */
+  link?: string
+  file?: string
+  /** how many requests exist on this company, this one included */
+  reqs: number
+  status: ClaimStatus
+  /** the approver's note — required on a rejection */
+  note?: string
+}
 const CLAIM_REQS: ClaimReq[] = [
-  { co: 'Công ty CP Xây dựng Minh Khang', by: 'Nguyễn Thị Lan', when: '11/08/2026', phone: '0918 442 xxx', contact: 'Mr. Lê Đình Trung · Trưởng phòng HC-NS', proof: 'vietnamworks.com/minhkhang-ky-thuat-cong-truong', proofIsLink: true },
-  { co: 'Công ty TNHH Nội thất An Bình', by: 'Trần Quốc Trung', when: '12/08/2026', phone: '0274 356 xxxx', contact: 'Ms. Phạm Thuỳ Dương · HR', proof: 'Gặp tại hội chợ nội thất 06/2026, đang cần 8 thợ mộc', proofIsLink: false },
+  { id: 23941, co: 'Công ty CP Xây dựng Minh Khang', by: 'Nguyễn Thị Lan', when: '11/08/2026 10:09', person: 'Mr. Lê Đình Trung · Trưởng phòng HC-NS', phone: '0918 442 xxx', email: 'tuyendung@minhkhang.vn', reason: 'KH đang tuyển 8 vị trí kỹ thuật công trường trên thị trường, đã gọi HR và được hẹn gửi báo giá tuần sau.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/minhkhang-ky-thuat-cong-truong', reqs: 2, status: 'pending' },
+  // The competing request on the same company. This is what the count means, and it
+  // is the decision the admin actually has to make.
+  { id: 23944, co: 'Công ty CP Xây dựng Minh Khang', by: 'Trần Quốc Trung', when: '12/08/2026 08:41', person: 'Ms. Đỗ Kim Ngân · HR', phone: '0918 442 xxx', reason: 'đang tuyển', kind: 'Có nhu cầu tuyển dụng trong tương lai', file: 'anh-tin-tuyen-dung.png', reqs: 2, status: 'pending' },
+  { id: 23902, co: 'Công ty TNHH Nội thất An Bình', by: 'Trần Quốc Trung', when: '12/08/2026 09:48', person: 'Ms. Phạm Thuỳ Dương · HR', phone: '0274 356 xxxx', email: 'hr@anbinh-furniture.vn', reason: 'Gặp tại hội chợ nội thất 06/2026, đang cần 8 thợ mộc, HR xin gửi thông tin gói tin đăng.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', file: 'namecard-hoi-cho.jpg', reqs: 1, status: 'pending' },
+  { id: 23810, co: 'Công ty CP Bao bì Tiến Phát', by: 'Phạm Quang Huy', when: '20/07/2026 10:12', person: 'Mr. Vũ Đức Thắng · HCNS', phone: '0251 388 xxxx', email: 'hcns@tienphat-pack.vn', reason: 'KH tôi từng liên hệ năm 2024, nay mở nhà máy 2 và tuyển 20 công nhân.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'topcv.vn/tien-phat-cong-nhan-bao-bi', reqs: 1, status: 'approved', note: 'Đúng thông tin, đang tuyển thật. Đã tạo hồ sơ.' },
+  // Rejected for the reason the form now tries to prevent.
+  { id: 23788, co: 'Công ty TNHH Amazon Web Services Việt Nam', by: 'Nguyễn Thị Lan', when: '30/06/2026 15:32', person: 'Mr Hiếu', phone: '—', reason: 'test', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', note: 'Thiếu thông tin liên hệ và không có bằng chứng đang tuyển.' },
 ]
 
 function AdminClaimQueue() {
+  const [fStatus, setFStatus] = useState('')
+  const rows = CLAIM_REQS.filter((r) => !fStatus || CLAIM_STATUS[r.status].vi === fStatus)
+
   return (
     <div>
       <ListPage
-        minW={1400}
+        minW={1860}
         total={CLAIM_REQS.length}
-        searchHint="Tìm công ty, sales…"
+        searchHint="Tìm ID, công ty, sales, người liên hệ…"
+        searchExtra={rows.map((r) => [r.link ?? '', r.file ?? '', r.note ?? ''].join(' '))}
+        filters={
+          <FilterBar count={fStatus ? 1 : 0} onClear={() => setFStatus('')}>
+            <FilterRow label="Trạng thái" value={fStatus} onChange={setFStatus} options={Object.values(CLAIM_STATUS).map((x) => x.vi)} />
+          </FilterBar>
+        }
         cols={[
-          { label: 'Công ty (danh bạ)', w: '1.8fr' },
-          { label: 'Sales xin', w: '1.1fr' },
-          { label: 'Ngày xin', w: '0.8fr' },
-          { label: 'SĐT liên hệ', w: '1fr' },
-          { label: 'Người liên hệ', w: '1.6fr' },
-          { label: 'Bằng chứng đang tuyển', w: '1.9fr' },
-          { label: '', w: '1.5fr' },
+          { label: 'ID', w: '0.5fr' },
+          { label: 'Công ty (danh bạ)', w: '1.7fr' },
+          { label: 'Sales xin', w: '1fr' },
+          { label: 'Ngày tạo yêu cầu', w: '0.95fr' },
+          { label: 'Lý do tạo yêu cầu', w: '2.1fr' },
+          { label: 'Phân loại khách hàng', w: '1.5fr' },
+          { label: 'Ghi chú duyệt', w: '1.4fr' },
+          { label: 'Số YC', w: '0.55fr' },
+          { label: 'Trạng thái', w: '0.8fr' },
+          { label: '', w: '1.4fr' },
         ]}
-        rows={CLAIM_REQS.map((r) => [
-          <span className="min-w-0 truncate font-medium text-ink">{r.co}</span>,
-          <span className="truncate">{r.by}</span>,
-          <span className="tabular-nums text-muted">{r.when}</span>,
-          <span className="truncate tabular-nums text-muted">{r.phone}</span>,
-          <span className="truncate text-muted">{r.contact}</span>,
-          /* A link an approver can OPEN outranks a note they have to believe, so the
-             two are visibly different rather than both rendered as text. */
-          r.proofIsLink
-            ? <span className="min-w-0 truncate font-mono text-[11px] text-brand underline" title={r.proof}>{r.proof}</span>
-            : <span className="min-w-0 truncate text-[11.5px] text-muted" title={r.proof}>📝 {r.proof} <span className="text-amber-700">· không có link</span></span>,
-          <span className="flex flex-wrap items-center justify-end gap-1.5">
-            <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-rose-300 hover:text-rose-700">Từ chối</button>
-            <button className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Duyệt → tạo hồ sơ</button>
+        rows={rows.map((r) => [
+          <span className="font-mono text-[11px] text-faint">{r.id}</span>,
+          /* Company + the contact point the rep supplied, stacked: the approver is
+             checking whether this rep actually has a way in, so the phone belongs
+             next to the name rather than three columns away. */
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-ink">{r.co}</span>
+            <span className="block truncate text-[10.5px] text-faint">{r.person}</span>
+            <span className="block truncate text-[10.5px] text-faint">{r.phone}{r.email && ` · ${r.email}`}</span>
           </span>,
+          <span className="truncate">{r.by}</span>,
+          <span className="truncate tabular-nums text-[11.5px] text-muted">{r.when}</span>,
+          /* Reason + evidence in one cell, because they are read together. A link is
+             visibly different from a file: one can be opened, the other believed. */
+          <span className="min-w-0">
+            <span className={cn('block text-[11.5px] leading-snug', r.reason.length < 20 ? 'text-amber-700' : 'text-muted')} title={r.reason}>{r.reason}</span>
+            {r.link
+              ? <span className="mt-0.5 block truncate font-mono text-[10.5px] text-brand underline" title={r.link}>{r.link}</span>
+              : r.file
+                ? <span className="mt-0.5 block truncate text-[10.5px] text-muted">📎 {r.file}</span>
+                : <span className="mt-0.5 block text-[10.5px] font-medium text-amber-700">⚠ không có bằng chứng</span>}
+          </span>,
+          <span className="min-w-0 truncate text-[11.5px] text-muted" title={r.kind}>{r.kind}</span>,
+          r.note
+            ? <span className="min-w-0 text-[11px] leading-snug text-muted" title={r.note}>{r.note}</span>
+            : <span className="text-[10.5px] text-faint">—</span>,
+          /* The tie-break signal: 2 means another rep asked for the same company and
+             the admin is choosing between people, not just approving a request. */
+          (r.reqs ?? 1) > 1
+            ? <span className="font-semibold tabular-nums text-amber-700" title="Có sales khác cũng xin công ty này">{r.reqs} ⚠</span>
+            : <span className="tabular-nums text-muted">{r.reqs}</span>,
+          <Pill tone={CLAIM_STATUS[r.status].tone}>{CLAIM_STATUS[r.status].vi}</Pill>,
+          r.status === 'pending'
+            ? <span className="flex flex-wrap items-center justify-end gap-1.5">
+                <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:border-rose-300 hover:text-rose-700">Từ chối</button>
+                <button className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">Duyệt → tạo hồ sơ</button>
+              </span>
+            : <span className="block text-right text-[10.5px] text-faint">đã xử lý</span>,
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Duyệt là <b className="text-muted">một thao tác</b>: tạo hồ sơ công ty trong CRM, gán sales xin làm người phụ trách, ghi SĐT + tên trên thành người liên hệ đầu tiên, và đánh dấu hàng trong danh bạ là Đã nhận kèm liên kết.
-        Từ chối phải có lý do và hàng đó trở lại <b className="text-muted">Chưa nhận</b>. Trùng với công ty đã có trong CRM đã bị chặn ngay lúc sales gửi — không tiêu một lượt duyệt.
+        Duyệt là <b className="text-muted">một thao tác</b>: tạo hồ sơ công ty trong CRM, gán sales xin làm người phụ trách, ghi contact point thành người liên hệ đầu tiên, và đánh dấu hàng trong danh bạ là Đã nhận kèm liên kết.
+        Từ chối <b className="text-muted">bắt buộc có ghi chú</b> và hàng đó trở lại Chưa nhận. Trùng với công ty đã có trong CRM đã bị chặn ngay lúc sales gửi — không tiêu một lượt duyệt.
+        Yêu cầu đã xử lý <b className="text-muted">vẫn nằm ở đây</b>: đây cũng là hồ sơ ghi lại mỗi công ty vào CRM bằng đường nào.
       </p>
     </div>
   )
 }
+
 
 function AdminDepartments() {
   const rows = [
@@ -15933,6 +16290,8 @@ export const ADMIN_PROTOTYPES: Record<string, () => JSX.Element> = {
   'admin-membership': AdminMembership,
   'admin-master-data': AdminMasterData,
   'admin-audit-log': AdminAuditLog,
+  'admin-matching-settings': AdminMatchingSettings,
+  'admin-matching-report': AdminMatchingReport,
   'admin-environment': AdminEnvironment,
   'admin-departments': AdminDepartments,
   'admin-company-directory': AdminCompanyDirectory,

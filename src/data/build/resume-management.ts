@@ -53,7 +53,7 @@ export const resumeManagement: BuildModule = {
         cols: ['Group', 'Stored in', 'Cardinality', 'Holds', 'Collected'],
         rows: [
           ['1 · Basic information', 'Profile', '1 per jobseeker', 'Full name · email · phone · date of birth · nationality · gender · marital status · highest education · years of work experience. The demographic four were reinstated 2026-08-09 (reversing the 05-08 cut) — none is read by search or matching; see the open question on Application management. CURRENT location is NOT held: matching reads DESIRED location, which sits in Work preference.', 'SIGN UP — all nine. A social sign-up supplies the phone on the completion step; everything else is on the registration form itself.'],
-          ['2 · Desired work condition', 'Profile', '1 per jobseeker', 'Desired job role · desired job category · desired industry · desired work location · desired work type · expected salary — all SIX, per the client field sheet', 'ONBOARDING — the wizard that runs straight after sign-up, and editable afterwards'],
+          ['2 · Desired work condition', 'Profile', '1 per jobseeker', 'Desired job role · desired job category · desired industry · desired work location · desired work type · expected salary — all SIX, per the client field sheet. PLUS a willing-to-relocate flag, which is NOT one of the client’s six: it is a widener on desired work location, added because the cap is 3 provinces and a candidate open to moving had no way to say so without spending picks on guesses. The flag already exists in the profile model — Admin → Create resume scores it as a readiness key — so onboarding is where the jobseeker finally supplies it rather than a new field being invented here.', 'ONBOARDING — the wizard that runs straight after sign-up, and editable afterwards'],
           ['3 · CV content', 'CV', 'up to 3 per jobseeker', 'About · work experience[] · education[] · skills[] · certificates[] · languages[] · projects[] — plus the document (uploaded file or generated Saramin PDF)', 'Created in the CV editor, or uploaded PDF → converted to the CV template with missing fields flagged'],
         ],
       },
@@ -283,7 +283,7 @@ export const resumeManagement: BuildModule = {
     },
     {
       label: 'MATCH SCORE — the recommended model: one hard gate, then a weighted 0–100',
-      text: 'RECOMMENDATION, for sign-off. Two stages, and keeping them separate is the whole design. Stage 1 GATES on eligibility only, and the gate DIFFERS BY DIRECTION because each side gates the other side’s rows. ① EMPLOYER SEARCH gates CANDIDATES: a flagged searchable CV, visibility not Hidden, moderation approved, account active. ② JOBSEEKER FEED gates JOBS: open, not expired, moderation approved, exposure on — it does NOT read the candidate’s own visibility or searchable flag at all, which is why a Hidden candidate still gets recommendations. Nothing about the work itself may exclude anybody in either direction, because every domain filter can empty the result set and none of them can explain why. Stage 2 SCORES the survivors on nine signals summing to 100. The score orders results; it never removes them.',
+      text: 'RECOMMENDATION, for sign-off. Two stages, and keeping them separate is the whole design. Stage 1 GATES on eligibility only, and the gate DIFFERS BY DIRECTION because each side gates the other side’s rows. ① EMPLOYER SEARCH gates CANDIDATES: a flagged searchable CV, visibility not Hidden, moderation approved, account active. ② JOBSEEKER FEED gates JOBS: open, not expired, moderation approved, exposure on — it does NOT read the candidate’s own visibility or searchable flag at all, which is why a Hidden candidate still gets recommendations. Nothing about the work itself may exclude anybody in either direction, because every domain filter can empty the result set and none of them can explain why. Stage 2 SCORES the survivors on EIGHT signals summing to 100. The score orders results; it never removes them.',
       table: {
         cols: ['Signal', 'Weight', 'Full credit', 'Partial credit', 'Zero'],
         rows: [
@@ -294,7 +294,7 @@ export const resumeManagement: BuildModule = {
           ['Expected salary', '7', 'The candidate’s ONE expected figure falls inside the job’s salary band, SAME CURRENCY — or the candidate’s salary is INTERVIEW / unset — or the two sides are in DIFFERENT currencies (scored neutral, see below). The candidate states a single number, the job states a band; there is no second candidate number, so this is a point-in-range test.', '3 when the candidate’s figure is within 20% above the job’s maximum, same currency.', 'Candidate’s figure exceeds the job maximum by more than 20%, same currency.'],
           ['Industry', '5', 'The company’s industry is one the candidate asked for.', '2 for the same industry group.', 'Unrelated industry.'],
           ['Education level', '3', 'At or above the job’s stated minimum.', '1.5 for exactly one level below.', 'More than one level below.'],
-          ['Language certification', '2', 'Holds the required certification at or above the stated score.', '1 for holding the language with no certification.', 'Does not hold it.'],
+          ['Foreign language', '2', 'Holds the language the job requires, at or above the level it states.', '1 for holding the language at a lower level, or with no level recorded.', 'Does not hold the language.'],
         ],
       },
       items: [
@@ -303,8 +303,8 @@ export const resumeManagement: BuildModule = {
         'WHERE THE INTENT LIVES INSTEAD — a SEARCH FILTER on the job list. Someone hunting an internship filters for it in that session, which is where the intent actually is: situational, not a standing preference. The job side keeps `contract_type` in full, so the filter has real data to work on.',
         'WORK TYPE STAYED BECAUSE IT COST NOTHING NEW — it was already being collected, mislabelled as a location. “Remote” and “Overseas” sat inside the province picker, where they could not express “I live in HCMC and want remote” and could not join to the job’s `job_type` at all. Splitting them out is the same question asked on the right axis, not an extra question.',
         'THE RULE THIS ILLUSTRATES, worth applying to any future signal: a scoring signal may only read a field the candidate ACTUALLY FILLS on the self-serve path, and it must score NEUTRAL when they leave it blank. A signal that reads an Admin-only field, or that punishes silence, compresses every score toward the middle and makes the ranking look broken.',
-        'CROSS-CURRENCY SALARY SCORES NEUTRAL — never a raw numeric comparison, and this is a correctness rule rather than a nicety. Salary may be stated in VND or USD on BOTH sides. Compare the two raw numbers and “$3,000/mo asked” against “30,000,000 ₫ maximum” evaluates as 3000 ≤ 30000000 → ranges overlap → FULL marks, when the candidate is really asking ≈2.5× the job’s maximum. That is a false positive, which is worse than a miss because nobody sees it. When the currencies differ, score the signal NEUTRAL exactly as an INTERVIEW / unset salary is scored — no exchange rate needed, and it matches the constraint-signal rule above.',
-        'WE DO NOT HOLD AN EXCHANGE RATE, on purpose. Any stored rate is stale within weeks, a live lookup makes the score non-deterministic and blocks scoring during an outage, and a converted figure shown to anyone is a number neither side stated. Neutral scoring costs 7 points of precision on a minority of pairs; a rate costs correctness on all of them.',
+        'CROSS-CURRENCY SALARY IS CONVERTED — superseded 2026-08-13, see below. The rule it replaces (score neutral) still holds as the FALLBACK when no rate is configured. What has never been allowed is a raw numeric comparison, and that part is a correctness rule rather than a nicety. Salary may be stated in VND or USD on BOTH sides. Compare the two raw numbers and “$3,000/mo asked” against “30,000,000 ₫ maximum” evaluates as 3000 ≤ 30000000 → ranges overlap → FULL marks, when the candidate is really asking ≈2.5× the job’s maximum. That is a false positive, which is worse than a miss because nobody sees it. When the currencies differ, score the signal NEUTRAL exactly as an INTERVIEW / unset salary is scored — no exchange rate needed, and it matches the constraint-signal rule above.',
+        'WE DO HOLD AN EXCHANGE RATE — reversed 2026-08-13 on client feedback, and their argument was better than ours. One number in master data, admin-maintained, stamped on each score as `rateVersion` beside `scoreVersion`. That keeps the score deterministic, keeps it working when an external service is down, and keeps “why did this change” answerable — all three of which a LIVE lookup would break, which is what our original objection was really about. Staleness does not matter at this resolution: salary scores a band, so a rate 3–5% out cannot move a 7-point signal. Review quarterly. Convert for COMPARISON only — never show a converted figure to either side.',
                                 'THE RENORMALISE RULE, and it is the load-bearing one: any signal the JOB does not specify is DROPPED and its weight redistributed proportionally across the rest, so the total is always exactly 100. A job that states no language requirement does not score language — it does not score it as zero either. Without this, every under-specified job posting quietly compresses its own scores into the 60s and the number stops meaning anything.',
         'MISSING CANDIDATE DATA — and the distinction matters, because getting it wrong turns the score into a measure of form-filling. CONSTRAINT signals (salary, employment type, education, mobility) score NEUTRAL when the candidate is silent: silence means "no constraint", and punishing it would rank the fussy above the flexible. EVIDENCE signals (skills, years) score LOW when absent: silence means "no evidence", and ranking below someone who provided it is correct, not unfair.',
         'A CONSEQUENCE WORTH STATING OUT LOUD — a candidate whose CV yields no CvSkill rows forfeits the 38-point skills block and caps at 62. That is honest: we genuinely do not know their skills. NOTE this is now RARE, not the norm for uploads: since the upload-only decision every PDF is parsed at write, so an uploaded CV normally does have skills. It applies to CVs the parser could not read at all — image scans, heavily designed layouts — which is exactly the case the “we couldn’t read this PDF” prompt exists to surface. Say the cost plainly there rather than hiding it.',
@@ -338,7 +338,7 @@ export const resumeManagement: BuildModule = {
       items: [
         'Round to whole numbers and never show decimals. “87.4% match” claims a precision that nine weighted signals cannot support.',
         'The two reasons shown are the two highest-CONTRIBUTING signals (weight × credit earned), not the two highest-weighted ones. Showing “Skills” on a candidate who matched 1 of 10 is worse than showing nothing.',
-        'Never show a candidate a score built on something they cannot see or change. Every one of the nine signals maps to a field in their own Profile or CV, and that is deliberate — it is what makes “complete your CV” an honest suggestion rather than a growth tactic.',
+        'Never show a candidate a score built on something they cannot see or change. Every one of the eight signals maps to a field in their own Profile or CV, and that is deliberate — it is what makes “complete your CV” an honest suggestion rather than a growth tactic.',
       ],
     },
     {
@@ -1993,7 +1993,7 @@ export const resumeManagement: BuildModule = {
             text: 'Not part of the rule, but the rule decides what the flag may point at.',
             items: [
               'A RADIO, NOT A CHECKBOX — exactly one CV is flagged. Flagging CV B unflags CV A. The first qualifying CV is flagged automatically.',
-              'THE TOGGLE IS ALLOWED ON ANY CV EXCEPT A REJECTED ONE (revised). A candidate may switch CV search on for a CV that is in doubt — it simply stays HIDDEN until the CV qualifies. Only Rejected refuses the toggle outright. This reverses an earlier rule that let only a qualifying CV carry the flag.',
+              'THE TOGGLE IS ALLOWED ON ANY CV EXCEPT A REJECTED ONE. A candidate may switch CV search on for a CV that is in doubt — it simply stays HIDDEN until the CV qualifies. Only a Rejected CV refuses the toggle outright.',
               'WHY THE REVERSAL — the toggle is a statement of INTENT (“this is the CV that represents me”), and intent is not something to refuse because a parser is still deciding. Refusing it made the candidate come back and set it again once the CV qualified, which is a second job we created for them; allowing it means the CV enters the index by itself the moment it passes.',
               'WHICH MEANS FLAGGED-BUT-HIDDEN IS A NORMAL STATE, not an edge case, and the UI has to say so plainly: “Đang kiểm tra CV — chưa hiển thị với NTD” with what is missing. Never render it as a plain Active, and never as a rejection.',
               'THE FLAG CAN STILL END UP EMPTY, when the only CV a candidate holds is Rejected. That state is disclosed the same way (“Chưa đủ điều kiện hiển thị”).',
@@ -2183,6 +2183,9 @@ export const resumeManagement: BuildModule = {
                 ['3', 'Score each job against the jobseeker. Higher score = better fit.'],
                 ['4', 'Remove jobs they already applied to, already dismissed, or that have expired.'],
                 ['5', 'Sort by score. If two jobs score the same, show the newer one first.'],
+                ['6', 'Remove duplicates — the same job posted twice by the same company (same title, same location) appears once.'],
+                ['7', 'Take at most 2 jobs per company: walk down the list and skip a job if that company already has 2. See section 1b.'],
+                ['8', 'Rotate: on a repeat visit the same day, show the same list. On a new day, rotate it so the jobseeker sees something new.'],
               ],
             },
             items: [
@@ -2192,27 +2195,71 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            label: '1b · One extra rule: at most 2 jobs from the same company',
+            text: 'Sorting by score alone has one problem. If FPT Software has five matching jobs, the first five cards are all FPT and the page looks like one company’s advertisement.\n\nTHE RULE: go down the list from the highest score. Take a job only if that company has fewer than 2 jobs taken already. Otherwise skip it and keep going. Stop when the row is full.\n\nVN — Đi từ trên xuống theo điểm. Mỗi công ty chỉ lấy tối đa 2 việc. Việc thứ 3 trở đi của công ty đó thì bỏ qua, đi tiếp xuống dưới.',
+            table: {
+              cols: ['Rule', 'What it means'],
+              rows: [
+                ['Remove duplicate postings first', 'Same company + same job title + same location = one job. Keep the newest. Do this BEFORE counting, or one job posted twice uses up both of a company’s slots.'],
+                ['At most 2 jobs per company', 'The 3rd job from that company is skipped. Nothing is reordered and no score changes.'],
+                ['A skipped job is not deleted', 'It still appears in search and on the company’s page, and it can appear on the row tomorrow.'],
+                ['Change the order a little each day', 'Only among jobs with close scores (within about 5 points). A 92 never moves below an 80.'],
+                ['Push down jobs they ignore', 'If we showed a job 3 times and they never clicked it, move it down the list.'],
+              ],
+            },
+            items: [
+              'WHY NOT JUST LOWER THE SCORE of a company’s later jobs? Because the card shows the real score. The row would read 92% → 84% → 90%, and a jobseeker who sees 90 below 84 decides the number is fake. Skipping keeps the order clean.',
+              'THE ORDER TO DO IT IN: remove duplicates → sort by score → go down and apply the limit of 2 → stop when the row is full.',
+              '2 IS A SETTING, not a fixed rule. On a row of 4 cards it means at most half from one company. On a row of 8 cards, 3 may look better.',
+              'DO NOT SHUFFLE RANDOMLY. If the order is random, the jobseeker cannot find the job they saw this morning, and we cannot check what they were shown when they complain. Changing the order by DATE gives something new each day and is still reproducible.',
+            ],
+          },
+          {
+            label: '1c · Worked example — the 2-per-company limit',
+            text: 'The jobseeker’s six highest-scoring jobs after duplicate postings were removed. The row shows 4 cards. Four of the six jobs are at FPT Software.',
+            table: {
+              cols: ['Job', 'Company', 'Score', 'Taken?'],
+              rows: [
+                ['Senior Frontend Engineer', 'FPT Software', '92', '✅ Card 1 — FPT count 1'],
+                ['React Developer', 'FPT Software', '90', '✅ Card 2 — FPT count 2'],
+                ['Frontend Lead', 'FPT Software', '88', '⤫ Skipped — FPT already has 2'],
+                ['Web Developer', 'FPT Software', '86', '⤫ Skipped — same reason'],
+                ['Frontend Engineer', 'Tiki', '84', '✅ Card 3'],
+                ['UI Engineer', 'VNG', '80', '✅ Card 4'],
+              ],
+            },
+            items: [
+              'THE ROW SHOWS: FPT 92% · FPT 90% · Tiki 84% · VNG 80%. Three companies, scores still running high to low, and no extra UI.',
+              'WITHOUT THE LIMIT: FPT 92 · FPT 90 · FPT 88 · FPT 86 — every card is the same company, which is the problem this rule exists to prevent.',
+              'THE TWO SKIPPED JOBS ARE FINE. They keep their 88 and 86, they still appear in search and on FPT’s company page, and tomorrow they can appear on the row.',
+            ],
+          },
+          {
             label: '2 · How the score is calculated',
-            text: 'Nine things are compared between the jobseeker and the job. Each one is worth a fixed number of points, adding up to 100. Add up the points the jobseeker earns — that is their score for that job.',
+            text: 'Eight things are compared between the jobseeker and the job. Each is worth a fixed number of points, adding up to 100. Add up what the jobseeker earns — that is their score for that job.',
             table: {
               cols: ['What we compare', 'Points', 'Full points when…', 'Fewer points when…'],
               rows: [
                 ['Skills', '38', 'The CV has every skill the job asks for.', 'Part of them: 3 skills out of 5 → 3/5 × 38 = 22.8 points.'],
-                ['Years of experience + level', '18', 'Their years are inside the range the job asks for.', 'Below the minimum: points drop in proportion. Above the maximum: small deduction per extra year, never below 10.'],
-                ['Location + work type', '17', 'The job is in a city they want (or it is remote and they accept remote).', '12 for a neighbouring province · 10 if they said they would relocate · 6 if the city is right but the work type is wrong.'],
+                ['Years of experience + level', '18', 'Their years are inside the range the job asks for.', 'Below the minimum: points drop in proportion. Above the maximum: a small deduction per extra year, never below 10.'],
+                ['Location + work type', '17', 'The job is in a city they want (or it is remote and they accept remote).', '12 for a neighbouring province · 10 if they will relocate · 6 if the city is right but the work type is wrong.'],
                 ['Desired job category', '10', 'The job’s category is one they asked for.', '4 for a related category.'],
-                ['Expected salary', '7', 'Their expected salary is inside the job’s range.', '3 if their expectation is up to 20% above the job’s maximum. 0 if more than 20% above.'],
+                ['Expected salary', '7', 'Their expected salary is inside the job’s range.', '3 if up to 20% above the job’s maximum. 0 if more than 20% above.'],
                 ['Industry', '5', 'The company’s industry is one they asked for.', '2 for a related industry.'],
                 ['Education level', '3', 'Equal to or higher than the job asks for.', '1.5 for one level below.'],
-                ['Language certificate', '2', 'They hold the certificate at the level required.', '1 if they speak the language but have no certificate.'],
+                ['Foreign language', '2', 'They have the language the job asks for, at the level it asks for.', '1 if they have the language but at a lower level, or no level recorded.'],
               ],
             },
             items: [
-              'IF THE JOB DOES NOT SAY — we skip that item and share its points among the others, so the total is always 100. Example: a job that states no language requirement is scored out of the remaining 98 points, then converted back to 100. Without this, jobs written with less detail would always score lower, which is not the jobseeker’s fault.',
-              'IF THE JOBSEEKER DID NOT FILL IT IN — two different rules. For salary, education and location, GIVE FULL POINTS: saying nothing means they have no requirement, so we should not punish them. For skills and years of experience, GIVE LOW POINTS: saying nothing means we have no proof, and ranking them below someone who did provide it is correct.',
-              'SALARY IN DIFFERENT CURRENCIES — if one side wrote VND and the other wrote USD, give full points and move on. Never compare the two numbers directly: $3,000 looks smaller than 30,000,000₫, so the system would think it is a great match when the person is actually asking 2.5 times more.',
-              'NEVER USE gender, age or marital status in the score. Not directly, and not indirectly (for example, do not calculate age from date of birth and use it as “experience”).',
-              'SAME INPUT, SAME SCORE. No randomness. If we later change the weights, save which version of the weights produced each score — the first question we will get is “why did my match drop from 92 to 84”.',
+              'LANGUAGE AND CERTIFICATES ARE TWO DIFFERENT SECTIONS on the CV, and only the first is scored. **Foreign language** holds a language plus a level, both from master data — that is what the 2 points read. **Certificates** is a separate list and adds NO points, because there is no reliable way to check that a certificate matches what a job needs. Certificates are still shown on the CV for a recruiter to read.',
+              'IF THE JOB DOES NOT SAY — skip that item and share its points among the others, so the total is always 100. A job that asks for no language is scored out of the remaining 98 points, then converted back to 100. Otherwise a job written with less detail would always give lower scores, which is not the jobseeker’s fault.\n\nVN — Nếu tin tuyển dụng KHÔNG yêu cầu mục nào thì bỏ mục đó ra, chia lại điểm cho các mục còn lại, tổng luôn là 100.',
+              'IF THE JOBSEEKER LEFT IT BLANK — two different rules, and mixing them up turns the score into a test of who filled in the most fields. Salary, education, location → GIVE FULL POINTS: saying nothing means they have no requirement, so do not punish them. Skills and years → GIVE LOW POINTS: saying nothing means we have no proof.\n\nVN — Ứng viên bỏ trống mục “mong muốn” (lương, nơi làm việc, học vấn) thì CHO ĐỦ ĐIỂM, vì không nói nghĩa là không kén. Bỏ trống mục “năng lực” (kỹ năng, số năm) thì CHO ĐIỂM THẤP, vì không có gì chứng minh.',
+              'SALARY IN TWO CURRENCIES — convert first, then compare, using one exchange rate stored in master data (an admin types it in and reviews it every few months; it is a setting, not a live service). Never compare the raw numbers. Never show a converted number to anyone — both sides keep seeing the figure they wrote. If no rate is set, give full points. See the worked example below.',
+              'NEVER USE gender, age or marital status. Not directly, and not indirectly — for example, do not calculate age from date of birth and use it as “experience”.',
+              'SAME INPUT, SAME SCORE — no randomness. Save the weight version and the exchange-rate version with every score, so “why did my match drop from 92 to 84” has an answer.',
+              'WHERE THE WEIGHTS COME FROM — our own estimate. NOT research, and NOT from Saramin KR: their public API has no skill list at all and matches on free text, so there was nothing to copy. Do not present these numbers to the client as researched figures. What is defensible is the ORDER — skills first because they are the only thing both sides state on purpose, then experience and location because those are what recruiters actually filter on.',
+              'THE WEIGHTS MUST BE CHANGEABLE without a code deploy, and every score must record which version produced it. See section 6.',
+              'LOG EVERY RECOMMENDATION SHOWN, together with what the jobseeker did next. It is the only way to check whether a higher score really leads to more applications. See section 6.',
             ],
           },
           {
@@ -2228,7 +2275,7 @@ export const resumeManagement: BuildModule = {
                 ['Expected salary', '7', '7', '35 triệu is inside 30–45'],
                 ['Industry', '5', '5', 'Wants Software, company is Software'],
                 ['Education level', '3', '3', 'Bachelor = Bachelor'],
-                ['Language certificate', '~~2~~', '—', 'The job does not ask for one, so we skip it'],
+                ['Foreign language', '~~2~~', '—', 'The job asks for no language, so we skip this row'],
                 ['**TOTAL**', '**98**', '**82.8**', 'Out of 98, because language was skipped'],
                 ['**FINAL SCORE**', '**100**', '**85%**', '82.8 ÷ 98 × 100 = 84.5, rounded to 85'],
               ],
@@ -2236,6 +2283,47 @@ export const resumeManagement: BuildModule = {
             items: [
               'Show whole numbers only. “84.5% match” suggests a precision that nine estimates cannot support.',
               'Show the two reasons that earned the most points next to the number — here “3/5 skills · Hồ Chí Minh”. A percentage on its own tells the jobseeker nothing they can act on.',
+            ],
+          },
+          {
+            label: '2bb · Worked example — salary in two currencies',
+            text: 'Job: 1,200–1,800 USD / month. Jobseeker: expects 35,000,000 VND / month. Do they fit? The salary signal is worth 7 points, and there are three possible behaviours. Exchange rate held in master data: 1 USD = 25,000 VND.',
+            table: {
+              cols: ['Approach', 'What the system does', 'Result', 'Verdict'],
+              rows: [
+                ['① Compare the raw numbers', 'Reads “35,000,000” against “1,200–1,800” and sees a number far above the maximum.', '0 points — “asking far too much”', '❌ WRONG, and the reverse is worse: a jobseeker asking 3,000 USD against a job paying up to 30,000,000 ₫ reads as 3,000 ≤ 30,000,000 → FULL points, when they are really asking 2.5× the maximum.'],
+                ['② Skip it (our earlier rule)', 'Sees two different currencies and gives full points — “we cannot tell”.', '7 points', '⚠️ Safe but blind. It gives the same 7 points to someone asking 35 triệu (a good fit) and someone asking 60 triệu (far too expensive).'],
+                ['③ Convert, then compare (agreed)', 'Converts the JOB’s range: 1,200–1,800 USD × 25,000 = 30,000,000–45,000,000 ₫. Then checks 35,000,000 against that.', '7 points — genuinely inside the range', '✅ Correct, and it stays correct in the case ② cannot see: a jobseeker asking 60,000,000 ₫ is 33% above the 45,000,000 ₫ maximum → more than 20% over → 0 points.'],
+              ],
+            },
+            items: [
+              'THIS IS WHAT THE CLIENT WAS ASKING FOR — not a live currency service, just one number an admin types in and reviews every few months. That is why it is safe: it behaves like a setting, not like an external dependency.',
+              'THE JOBSEEKER AND THE EMPLOYER NEVER SEE A CONVERTED NUMBER. The job still shows “1,200–1,800 USD”, the profile still shows “35,000,000 ₫”. The conversion happens only inside the comparison, so nobody is ever shown a figure they did not write.',
+              'STORE THE RATE VERSION on every score, next to the weight version. When a score changes after the rate is updated, that is the record which explains it.',
+              'IF NO RATE IS CONFIGURED, fall back to approach ② — full points. Never fall back to ①.',
+            ],
+          },
+          {
+            label: '2c · How skills are matched (the part that decides the score)',
+            text: 'Skills are 38 of the 100 points, so this is where the score is won or lost. The short version: skills are NOT free text on either side. Both the CV and the job store a link to the same row in one master list, and matching compares those links — not words.',
+            table: {
+              cols: ['Question', 'Answer'],
+              rows: [
+                ['Where do a CV’s skills come from?', 'BOTH. The parser reads them from the uploaded file, then the jobseeker confirms or removes them. Nothing is saved as a skill until a person accepts it — see “Upload-only CVs” in this module.'],
+                ['Are “JS”, “JavaScript”, “ReactJS”, “React” the same skill?', 'Partly automatic. Lower-casing, removing accents and stripping punctuation already make “reactjs” and “React JS” find “React”, with nothing to maintain. Genuinely different words — “CSKH” ↔ “Chăm sóc khách hàng”, “PTS” ↔ “Photoshop” — need an ALIAS written by hand.'],
+                ['Who maintains the dictionary?', 'The client. It is `skill` + `skill_alias` in their own backend. ⚠ TODAY: 731 skill rows and ZERO aliases, and the skill list still contains job titles (Product Manager), languages (Japanese - N2) and typos. This needs an owner and a date before launch.'],
+                ['How do we guarantee a job’s skill matches the CV’s skill?', 'By never comparing text. The employer picks from the same master list, the CV resolves to the same master list, and the match is `cv_skill.skill_id = job_skill.skill_id`. If either side could type free text, matching would silently return nothing.'],
+                ['Is missing “React” penalised the same as missing “Docker”?', 'No — a skill flagged ESSENTIAL for the job’s occupation counts DOUBLE. But see the gap below: that flag is per OCCUPATION, not per job.'],
+              ],
+            },
+            items: [
+              'WHAT IS STILL MISSING — the employer cannot mark which skills are must-have on THEIR job. The double weighting comes from `occupation_skill`, which says “React is essential for a Software Developer” in general, not for this particular posting. RECOMMENDATION: add a must-have checkbox beside each skill on the job form. One click per skill, the employer already knows the answer, and it is the only way “missing React” can cost more than “missing Docker” on a specific job.',
+              'MUST-HAVE MUST WEIGHT, NOT FILTER — even brought forward. A required skill that EXCLUDES candidates empties the result set four picks in, and the employer never learns why their shortlist is empty. Double or triple the points instead.',
+              'EMERGING AND RELATED SKILLS — a real weakness, and the client’s example is the right one. A growth candidate with Python and n8n scores low against a job asking for SQL and A/B testing, because exact matching cannot see that they are neighbours. Three things soften it, and all three should be said out loud rather than implied.',
+              '① THEY ARE NOT FILTERED OUT. Skills rank, they never exclude. That candidate still scores on desired role, category, years, location and salary — 62 of the 100 points do not involve skills at all. They rank lower; they do not disappear.',
+              '② `skill_relation` ALREADY EXISTS in the client’s database — skill↔skill edges, currently 0 rows. A few dozen hand-written edges (Python → Data Analysis, n8n → Automation) give partial credit for a neighbouring skill immediately, with no new table and no model.',
+              '③ THE UNMATCHED-TERM QUEUE IS THE DISCOVERY MECHANISM. When 200 candidates type “n8n” and it is not in the list, that queue is what tells the taxonomy owner to add it. An emerging skill is invisible until someone tries to type it — which is exactly why the queue has to be staffed.',
+              'PHASE 2, no UI change: replace exact skill matching with embedding nearness, so React ↔ Next.js and Python ↔ Pandas score partial credit automatically instead of waiting for someone to write the edge. The screen consumes one number and a reason list either way.',
             ],
           },
           {
@@ -2270,7 +2358,8 @@ export const resumeManagement: BuildModule = {
               ],
             },
             items: [
-              'For each job, we score it against each CV and keep the BEST result. Example: a jobseeker has a Developer CV and a Sales CV. A React job scores high with the Developer CV and low with the Sales CV, so it gets the high score. A Sales job gets the opposite. They see good jobs from both directions.',
+              'THE ARITHMETIC, since it is easy to picture wrongly: 3 CVs × 100 jobs = 300 score calculations. Then we COLLAPSE them — for each job keep only its best score — which leaves 100 jobs with one score each. We rank those 100. The list the jobseeker sees has at most 100 rows, never 300: a job appears ONCE, carrying the score of whichever CV suited it best. (3 CVs is the cap, so 300 is the worst case.)',
+              'WORKED EXAMPLE: a jobseeker has a Developer CV and a Sales CV. A React job scores 88 against the Developer CV and 31 against the Sales CV → the job is listed once, at 88. An Account Manager job scores 24 and 79 → listed once, at 79. Both appear high in the same list, each judged by the CV that argues for it.',
               'Do NOT merge the CVs into one before scoring. Mixing a Developer CV and a Sales CV creates a profile that is neither, and the jobs recommended would fit neither.',
               'Show which CV matched, on the card: “Phù hợp với CV Business Developer của bạn”. Otherwise a mixed list looks random.',
               'We do NOT add a second setting like “choose a CV for recommendations”. It is one more thing to explain, most people would never touch it, and using all CVs is better anyway.',
@@ -2292,6 +2381,28 @@ export const resumeManagement: BuildModule = {
             items: [
               'On the job detail page and the after-apply page, “similar jobs” must also look at the job on the screen — same category, similar skills, similar level — not only at the jobseeker. Otherwise someone browsing outside their usual field gets a list that ignores what they are reading.',
               'The after-apply page is the most useful one for a brand-new user. We may know nothing about them, but the job they just applied to tells us a lot.',
+            ],
+          },
+          {
+            label: '6 · Two things we must BUILD so the score can be tuned later',
+            text: 'The weights on this page are our estimate, not research. We expect some of them to be wrong. These two pieces are what let us find out which ones and fix them — without either, the numbers stay a guess for the life of the product.',
+            table: {
+              cols: ['#', 'What to build', 'Where it lives', 'Why'],
+              rows: [
+                ['① Matching settings', 'One screen listing the 8 signals with their point values, plus the VND/USD exchange rate. HQ edits and saves; saving creates a new VERSION rather than overwriting.', 'Admin → **System**, beside Master data and Chất lượng tìm kiếm. It is HQ-only configuration that changes how another module behaves — the same reason Products and Membership tiers sit there.', 'Tuning must not need a code deploy. A deploy means a developer, a release window and a rollback plan, for what is a number change.'],
+                ['② Matching report', 'A report over the recommendation log: score band vs application rate, per signal, per page.', 'Admin → **Analytics**, beside Recruit report. NOT a browsable list — the log itself is millions of rows and no operator reads it row by row.', 'It is the only way to answer “do higher scores actually lead to more applications”.'],
+                ['— the log table itself', 'One row every time a job is SHOWN to a jobseeker, plus what they did next.', 'No screen. It is a backend table that only the report above reads.', 'Recording it is Phase 1 work even though nobody looks at it until the report exists.'],
+              ],
+            },
+            items: [
+              'THE WEIGHTS CONFIG — signal · points · active from · who changed it. Points must total 100 before it can be saved. Old versions are kept, never edited, so any score can still be explained months later.',
+              'STAMP THE VERSION ON EVERY SCORE — `weightVersion` and `rateVersion` stored beside the score itself. Without this, changing a weight silently rewrites history and “why did my match drop from 92 to 84” has no answer.',
+              'THE LOG ROW — candidateId · jobId · score · weightVersion · rateVersion · which page (homepage / job detail / after apply / onboarding) · position in the list · shown at · clicked (yes/no) · applied (yes/no).',
+              'THE THREE QUESTIONS IT ANSWERS — and they are the reason to build it. (1) DOES THE SCORE WORK — if jobs scored 90+ get applied to no more often than jobs scored 70, a weight is wrong. (2) WHICH SIGNAL EARNS ITS POINTS — compare applications on jobs that matched mainly on skills against those that matched mainly on location. (3) IS A CHANGE AN IMPROVEMENT — change one weight, then compare the next period against the last.',
+              'POSITION IN THE LIST IS NOT OPTIONAL. Jobs at the top get clicked more no matter what they score, so without position you cannot tell a good score from a good slot. Every conclusion drawn from the log depends on it.',
+              'IT IS PERSONAL DATA — it records what a named person was shown and what they did. Keep roughly 12 months, then delete. Never expose it to employers, and never join it into anything employer-facing.',
+              'PERMISSIONS: Matching settings is a **System** resource (same level as Master data — very few operators), the Matching report is an **Analytics** resource (read-only for most roles). Neither should be writable by Sales or Content roles.',
+              'BUILD BOTH IN PHASE 1 — even though neither is visible to a user. Adding the log later means throwing away every month of data before it existed, which is exactly the data needed to justify the first tuning round.',
             ],
           },
         ],
