@@ -136,7 +136,7 @@ export const applicationManagement: BuildModule = {
         ],
       },
       items: [
-        'THE HOLD IS ON THE CV, NOT THE APPLICATION — an application waits only because the CV it references is unresolved. The review queue is a CV queue (Admin → CV check); the Applicants list shows the consequence and links to it.',
+        'THE HOLD IS ON THE CV, NOT THE APPLICATION — an application waits only because the CV it references is unresolved. The review queue is a CV queue (Admin → CV review); the Applicants list shows the consequence and links to it.',
         'ONE EVALUATION PER CV, and ONE DECISION — a candidate applying to thirty jobs with the same file is evaluated once at upload and reviewed once. The verdict releases or recalls all thirty in the same transaction.',
         'THE 24h TIMER IS A CEILING ON OUR OWN FAILURE, not a review target. A held application auto-sends whether or not anyone looked, so an unworked queue can never cost a candidate a deadline. Releases are stamped review or timer, and a rising share of `timer` means the queue is not being staffed.',
         'A REJECTION PROPAGATES BOTH WAYS — rejecting a CV drops its Pending applications, recalls any already sent, and blocks new applies with that CV until it is fixed or approved. The candidate is told, with the fix one tap away.',

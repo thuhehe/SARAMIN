@@ -797,7 +797,7 @@ export const resumeManagement: BuildModule = {
         ],
         openQuestions: [
           'Does a Flagged CV stay searchable while under review, or is it suspended pending a decision?',
-          'Fixed moderation reason codes, or free text?',
+          'Fixed moderation reason codes, or free text? ANSWERED for CV rejections — both: a fixed code plus a mandatory note (see “Reject reason codes”). Still open for the other moderation actions.',
           'Is the candidate told their CV was removed from the employer pool, and in what words?',
           'Who may moderate CVs — is this a dedicated trust & safety role rather than general ops?',
           'Do we need a duplicate-CV detector (the same CV uploaded under several accounts) for pool quality?',
@@ -1889,15 +1889,15 @@ export const resumeManagement: BuildModule = {
           },
           {
             early: true,
-            heading: 'WHAT AN ADMIN CAN DO, BY SCREEN — CV Check · Talent pool · Applicants',
+            heading: 'WHAT AN ADMIN CAN DO, BY SCREEN — CV review · Talent pool · Applicants',
             text: 'Three screens touch this model, and the commonest mistake is assuming each one edits the thing it is named after. They do not. Two of them write CV status; the third is the only place anything happens to an APPLICATION rather than to a CV.',
             table: {
               cols: ['Screen', 'What it lists', 'Actions', 'What the action writes'],
               rows: [
                 [
-                  '**CV Check**',
-                  'A QUEUE to work down: uploaded CVs sitting in doubt (Not enough information · Can’t read). A Saramin CV never appears — the fix is the candidate’s.',
-                  'Approve · Reject · Note',
+                  '**CV review**',
+                  'Every CV a HUMAN has touched, in three views: **Cần duyệt** (the open queue — Not enough information · Can’t read), **Đã duyệt** and **Đã từ chối**. A CV the scan qualified never appears; nor does a Saramin CV, whose fix belongs to the candidate.',
+                  'Approve · Reject (with a reason CODE) · Note',
                   '**CV status** → Qualified or Rejected. Resolves every application on that CV at once.',
                 ],
                 [
@@ -1915,10 +1915,52 @@ export const resumeManagement: BuildModule = {
               ],
             },
             items: [
-              'WHY CV CHECK AND TALENT POOL ARE SEPARATE SCREENS despite writing the same field: one is a queue with an SLA and an ageing count, the other is a pool with no work in it. Merging them makes the queue impossible to work, because the 40 rows that need a decision drown in the 40,000 that do not.',
+              'WHY CV REVIEW AND TALENT POOL ARE SEPARATE SCREENS despite writing the same field: one is a queue with an SLA and an ageing count, the other is a pool with no work in it. Merging them makes the queue impossible to work, because the 40 rows that need a decision drown in the 40,000 that do not.',
               'THE APPLICANTS SCREEN HAS NO STATUS CONTROL — its status column is derived and read-only. If a Pending row needs releasing, the operator follows the link to the CV; the decision belongs there, where it resolves the other 29 applications too.',
               'RECALL IS THE ONE EXCEPTION IN THE WHOLE MODEL — the only admin action that is genuinely about one application. It is about an employer’s dashboard, not about whether the CV is any good, which is exactly why it does not touch CV status.',
               'BLOCK USER SITS ABOVE ALL THREE — it is a property of the ACCOUNT, recalls everything that user has sent, and is not a judgement on any individual CV. Do not model it as a CV status.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'CV REVIEW holds the DECISIONS, not just the queue — and where a rejected CV lives',
+            text: 'A resolved CV does not disappear. CV review keeps three views over one list, because rejection is the only verdict in this model a machine is never allowed to write — every one of them is a human judgement, and the two ways those go wrong are only visible in aggregate: we rejected real CVs because our parser failed on a layout, or two operators disagreed about the same kind of file.',
+            table: {
+              cols: ['View', 'Holds', 'What it is for'],
+              rows: [
+                ['**Cần duyệt** (default)', 'Can’t read · Not enough information', 'The work. The ONLY count that is a backlog, the only one in the nav badge, and the number that should reach zero.'],
+                ['**Đã duyệt**', 'CVs an admin approved out of doubt', 'Recheck: were we too lenient? Approve is not visible here — the useful action on an approved CV is Reject.'],
+                ['**Đã từ chối**', 'CVs an admin rejected, with the reason code and who decided', 'Recheck and LEARN. Approve appears as “undo the rejection”, because undoing is the only useful verb on a decided row.'],
+              ],
+            },
+            items: [
+              'MEMBERSHIP RULE — a CV appears here if it ever entered manual review. A CV the SCAN qualified never appears; it goes straight to Talent pool. That is what keeps the list finite and makes every row a decision worth auditing, instead of a register of the whole pool.',
+              'QUALIFIED HERE MEANS ADMIN-APPROVED, not scan-qualified. Read it the other way and the Đã duyệt view becomes tens of thousands of rows and the screen stops being about review at all.',
+              'FULL HISTORY, NOT A RECENT WINDOW. An earlier draft scoped the rejected view to 30 days to keep the badge tidy; that optimises a number at the cost of the only thing the view is for. The badge is scoped to Cần duyệt instead, so history can be complete without inflating the backlog.',
+              'THE TIMER ROWS ARE THE SIGNAL TO WATCH — a CV whose application auto-sent at 24h is STILL in doubt, because the timer releases the application and never the CV. Those rows stay in Cần duyệt and keep ageing, so this view fills up with CVs that already reached employers unreviewed. That is the honest measure of an under-staffed queue, and it is invisible anywhere else.',
+              'WHERE A REJECTED CV LIVES, in full: here for the SET (recheck, calibrate, count), and on the JOBSEEKER USER RECORD for the PERSON. Both are needed because the two questions arrive differently — “what have we been rejecting?” is a list, “why was my application not sent?” is a name. It is NOT in Talent pool: that screen shows one row per candidate and only the flagged CV, so a rejected CV has no row to sit on and putting it there would stop the pool being the pool.',
+            ],
+            warn: 'The Jobseeker user record does NOT yet list a person’s CVs — see the open question below. Until it does, a support agent holding a candidate’s name has nowhere to look, and this screen is the only place a rejection is visible at all.',
+          },
+          {
+            early: true,
+            heading: 'REJECT REASON CODES — fixed, because free text cannot be counted',
+            text: 'Every rejection records a CODE as well as the internal note. The note explains one call; only a code lets thirty of them be grouped, so that a pattern — eleven rejections this month all on the same two-column layout — becomes visible instead of staying eleven separate anecdotes. This closes the long-standing open question “fixed moderation reason codes, or free text?”: for rejections, both.',
+            table: {
+              cols: ['Code', 'Means', 'What it tells us in aggregate'],
+              rows: [
+                ['Not a CV', 'A price list, a menu, a homework file.', 'Expected volume. A rising share suggests the upload copy is unclear about what to attach.'],
+                ['Duplicate', 'The same document already handled.', 'Usually harmless; a spike suggests a re-upload loop in the UI.'],
+                ['Fake / misleading', 'Fabricated or impersonating.', 'The abuse signal. Feeds any future automated screening.'],
+                ['**Parser failed (it IS a real CV)**', 'A genuine CV our scan could not read.', '**The most valuable code.** It is a bug report against the scan, and its share is the honest measure of how much work the automation creates for people.'],
+                ['Abusive content', 'Offensive material.', 'Rare; routes to whatever account action the case needs.'],
+                ['Other', 'Anything else — note mandatory.', 'A rising “Other” means the code list is wrong and needs revisiting.'],
+              ],
+            },
+            items: [
+              'PARSER FAILED IS NOT A REJECTION OF THE CANDIDATE, and the copy they see must not read as one. It is a rejection of the FILE we could not process, so the candidate is asked for a text-based PDF rather than told their CV was refused.',
+              'THE CODE IS INTERNAL. The candidate is told a plain reason with the fix beside it; the code exists for us, not for them.',
+              'A NOTE IS STILL REQUIRED on every action, code or not — the code groups the call, the note explains it months later.',
             ],
           },
           {
@@ -2023,7 +2065,9 @@ export const resumeManagement: BuildModule = {
           'A held CV is never released without a human decision, and the previously searchable CV keeps showing throughout.',
         ],
         openQuestions: [
+          'BLOCKER for support — the Jobseeker user record does not list a person’s CVs at all, so there is no screen where a support agent holding a candidate’s NAME can see their CV statuses. A rejection reaches us as a person complaining (“my application wasn’t sent”), never as a queue position, and CV review is organised by open work rather than by person. Spec the CV list onto the user record: the up-to-3 CVs, each with status, reason, who decided, when, and Approve to undo.',
           'Who works the review queue, and at what daily volume? With no auto-pass this is a standing staffing commitment, not a background job.',
+          'Is the share of “Parser failed” rejections reported anywhere, or only visible by filtering the list? It is the measure of how much work the scan creates for people, which argues for a number on a dashboard rather than a filter someone has to think to apply.',
           'Do we keep an abuse check for the same file hash uploaded by many accounts? The rule cannot see it. Small, separate, and arguably Phase-2.',
           'Does a rejected CV block re-uploading the identical file, or is a silent re-hold acceptable?',
           'A SCANNED document that is not a CV reaches the employer, because an unreadable file is sent without review. Accepted for now — holding it would delay every scanned real CV. Revisit if it actually happens.',

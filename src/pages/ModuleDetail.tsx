@@ -475,7 +475,7 @@ function KeyPoints({ items }: { items: KeyPoint[] }) {
  * Stacked, three screens meant three 640px-tall previews to scroll past before
  * reaching the next rule — and the reader lost which screen they were looking at
  * halfway down each one. Tabbed, the three sit at one height, the labels say what
- * the set IS ("CV check · Talent pool · Applicants"), and comparing two screens
+ * the set IS ("CV review · Talent pool · Applicants"), and comparing two screens
  * is one click instead of a scroll. A single screen renders with no tab strip at
  * all, so nothing changes for the features that have one. */
 function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolveScreen>>[] }) {
