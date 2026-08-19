@@ -128,7 +128,7 @@ export const resumeManagement: BuildModule = {
       items: [
         'NO ACCEPTANCE GATE ON CONTENT — superseded. An earlier draft refused a file whose parse found no work experience and no education; that rule is GONE. The site never blocks an upload or an apply: whatever the candidate uploads is saved as a CV and is usable immediately. A blank page, an image-only scan or an unrelated document is caught at UPLOAD by the qualification rule, which writes a DOUBT status on the CV: the file is still saved, the apply still succeeds, but DELIVERY waits (auto-sends at 24h) and the CV stays out of CV search until an admin approves it — see “CV qualification — apply & CV search”. Only TYPE and SIZE are still checked at the picker, because those are facts about the file rather than a judgement of its contents.',
         'Saving an uploaded PDF as the CV document also SAVES the filled-in missing fields to the CV record — the structured layer is captured either way; “keep my PDF” never means “skip the data”.',
-        'Two tiers of missing fields in Review, and NEITHER stops the candidate saving: the RED tier is the two fields the qualification rule reads (≥ 1 work experience — or ≥ 1 education entry for a fresher — and ≥ 3 skills), which decide the CV’s STATUS and therefore both whether it can be applied with and whether it can enter CV search; the RECOMMENDED tier is the ranking boosters (more skills, languages, desired salary) shown with an impact hint. Desired title and visibility consent are NOT review fields — the first is Work preference on the Profile, the second is one account-level switch.',
+        'Two tiers of missing fields in Review, and NEITHER stops the candidate saving: the RED tier is what the qualification rule reads — ≥ 1 work experience, or (for a fresher) education AND at least one project, plus ≥ 3 skills, which decide the CV’s STATUS and therefore both whether it can be applied with and whether it can enter CV search; the RECOMMENDED tier is the ranking boosters (more skills, languages, desired salary) shown with an impact hint. Desired title and visibility consent are NOT review fields — the first is Work preference on the Profile, the second is one account-level switch.',
         'One profile, many documents: the Standard Resume (the searchable / matchable layer) is SINGULAR and authoritative; a candidate may hold several CV DOCUMENTS (their original PDF + a Saramin version) and pick which to attach per application. This is the answer to “why not save two files?” — yes to two documents, no to two profiles.',
       ],
     },
@@ -1815,11 +1815,12 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['', 'Saramin CV (typed)', 'Uploaded PDF (parsed into the same fields)'],
               rows: [
-                ['What the scan checks', '≥ 1 work experience (or an education entry) AND ≥ 3 skills', 'The same rule, on the fields extracted from the file'],
+                ['What the scan checks', '`AND [ OR [ Work experience, AND [ Education, Projects ] ], 3 skills ]`', 'The same rule, on the fields extracted from the file'],
                 ['If it meets the rule', 'CV status = **Qualified**', 'CV status = **Qualified**'],
                 ['If it does NOT meet the rule', 'CV status = **Not enough information**', 'CV status = **Not enough information** — or **Can’t read**, when the file has no text layer to check at all'],
-                ['A Qualified CV can…', 'be applied with (Sent) · appear in CV search (Showing)', 'be applied with (Sent) · appear in CV search (Showing)'],
-                ['A CV that is not Qualified…', 'cannot be attached to an application at all, and the search toggle is disabled', 'can still be applied with, but DELIVERY waits (Pending, auto-sends at 24h), and it stays out of CV search'],
+                ['A Qualified CV can…', 'be applied with → **Sent** · be toggled on → **Showing**', 'be applied with → **Sent** · be toggled on → **Showing**'],
+                ['A CV in DOUBT…', 'cannot be attached to an application at all, and cannot be toggled on', 'CAN still be applied with, but the CV is **Not sent** until it passes (or until the 24h timer flips it). CAN be toggled on, but stays **Hidden**'],
+                ['A REJECTED CV…', 'cannot be attached, cannot be toggled on', 'cannot be attached, cannot be toggled on — the only status that refuses both doors outright'],
                 ['Who gets it to Qualified', 'The candidate, in the editor — no admin, no queue', 'An admin approving it, OR the candidate fixing it'],
               ],
             },
@@ -1827,7 +1828,8 @@ export const resumeManagement: BuildModule = {
               'THE CANDIDATE SIDE IS A CONSTRAINT, NOT THE GOAL — worth stating because it was once written as the purpose. We are not qualifying CVs to help jobseekers write better ones. We are protecting the employer surfaces, and the constraint we hold ourselves to while doing it is that no candidate is ever blocked by OUR mistake: a parser failure holds delivery for at most 24h, and every rejection names its reason with the fix one tap away.',
               'THERE IS NO “PASS / FAIL” STATE — those are outcomes of the scan, not things we store. What is stored is one of the four CV statuses, and “Pass” is simply Qualified while “Fail” is one of the two doubt states. Any screen or table still saying Pass/Fail is describing the scan, not the record.',
               'ADMIN APPROVES THE CV, NEVER THE APPLICATION. One approval sends every application waiting on that CV and makes the CV searchable, because both were only ever reading the CV.',
-              'THE ASYMMETRY IS DELIBERATE and is the one thing to remember from this table: a failing SARAMIN CV cannot be applied with at all (the candidate can fix it in seconds), while a failing UPLOAD can — because the failure may be our parser, not their document.',
+              'THE ASYMMETRY IS DELIBERATE and is the one thing to remember from this table: a SARAMIN CV in doubt cannot be applied with at all (the candidate can fix it in seconds), while an UPLOAD in doubt can — because the failure may be our parser, not their document. Same rule, same statuses, different consequence.',
+              'REJECTED IS THE ONLY STATUS THAT BEHAVES THE SAME ON BOTH ROUTES. Doubt is a question about the file; rejection is a verdict about the CV, and a verdict does not care how the CV was made.',
             ],
           },
           {
@@ -1848,7 +1850,7 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['Must have', 'Why'],
               rows: [
-                ['≥ 1 work experience — or ≥ 1 education entry for a fresher', 'It is the body of the document. Zero entries means a name and white space.'],
+                ['≥ 1 work experience — OR, for a fresher, ≥ 1 education entry **AND** ≥ 1 project', 'It is the body of the document. Zero entries means a name and white space. The fresher path now needs BOTH halves: an education row alone is a school name and a date, which tells an employer nothing about what the person can do. A project is the evidence a fresher has instead of a job.'],
                 ['≥ 3 skills, from the taxonomy', 'What CV search and matching join on. Free-typed strings do not count.'],
               ],
             },
@@ -1866,10 +1868,10 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['CV status', 'Kind', 'Application', 'CV search', 'Actions'],
               rows: [
-                ['Qualified', 'FINAL — written by the scan, or by an admin Approve', 'SENT to the employer', 'Showing', 'Reject → Rejected'],
-                ['Not enough information', 'DOUBT — interim. Read fine, below the rule (≥1 experience / ≥3 skills)', 'PENDING — auto-sends at 24h', 'Hidden – pending review', 'Approve → Qualified · Reject → Rejected'],
-                ['Can’t read', 'DOUBT — interim. No text layer (image-only scan); a human can still read it', 'PENDING — auto-sends at 24h', 'Hidden – pending review', 'Approve → Qualified · Reject → Rejected'],
-                ['Rejected', 'FINAL — written only by an admin, never by the scan', 'NOT SENT — never delivered, no timer', 'Hidden', 'Approve → Qualified'],
+                ['Qualified', 'FINAL — written by the scan, or by an admin Approve', '**Sent**', '**Showing**', 'Reject → Rejected'],
+                ['Not enough information', 'DOUBT — interim. Read fine, below the rule', '**Not sent** — flips to Sent at 24h', '**Hidden**', 'Approve → Qualified · Reject → Rejected'],
+                ['Can’t read', 'DOUBT — interim. No text layer (image-only scan); a human can still read it', '**Not sent** — flips to Sent at 24h', '**Hidden**', 'Approve → Qualified · Reject → Rejected'],
+                ['Rejected', 'FINAL — written only by an admin, never by the scan', '**Not sent** — permanently, no timer', '**Hidden**', 'Approve → Qualified'],
               ],
             },
             items: [
@@ -1877,7 +1879,9 @@ export const resumeManagement: BuildModule = {
               'APPLICATION STATUS IS PER-APPLICATION, PLURAL — one CV can sit behind thirty applications, and all thirty derive from the same CV status. That is why one Approve/Reject resolves all of them at once, and why the admin decides on the CV, never on an application.',
               'CV-SEARCH STATUS ONLY MEANS ANYTHING FOR THE CV TOGGLED ON — the other CVs on the shelf carry a CV status too (they still need it for applying), but no search status worth showing: they are not candidates for the index at all.',
               'THE SCAN CAN DOUBT; ONLY A HUMAN CAN REJECT. The system never writes Rejected — an automatic scan is allowed to hold a question open, not to end a candidate’s delivery.',
-              'THE 24h NET APPLIES TO DOUBT ONLY — a Pending application auto-sends after 24h whether or not anyone reviewed, stamped `timer` rather than `review`, and the CV stays in doubt and hidden. A Rejected CV is NOT SENT permanently: no timer, nothing to release.',
+              'BOTH DERIVED COLUMNS ARE BINARY — Sent / Not sent, and Showing / Hidden. There is no third value. “Pending” was never a delivery state: it was the CV’s doubt written a SECOND time in a column that already reads from the CV, and two copies of one fact are how they start to disagree. A doubt CV simply reads Not sent and Hidden.',
+              'THE 24h NET IS METADATA, NOT A STATUS — a Not-sent application on a DOUBT CV flips to Sent after 24h whether or not anyone reviewed, stamped `timer` rather than `review`, while the CV stays in doubt and stays Hidden. The countdown renders as a sub-line on the row (“auto-sends in 19h”), the same shape as “waiting 5h” under Hidden. A Rejected CV is Not sent permanently: no timer, nothing to release.',
+              'WHY THE DISTINCTION IS NOT LOST by collapsing to two values: “waiting on me” versus “finished” is answered by the CV STATUS column, one cell to the left, which is exactly where the model says the truth lives. Reading it off the derived column was the duplication.',
               'DOUBT NOW HOLDS ON BOTH SURFACES — this deliberately reverses the earlier “Can’t read sends normally” rule. Doubt behaves like doubt everywhere, and the 24h net is what keeps the hold from ever costing a candidate a deadline.',
               'QUALIFIED → REJECTED exists for the case the scan cannot see: a CV that parses perfectly but is spam, a fake, or reported by an employer. REJECTED → QUALIFIED undoes a bad call. Both require an internal note.',
               'APPROVING A “CAN’T READ” CV makes it Showing, but we still extracted nothing — it is findable on profile facets and INVISIBLE to skill search, the most-used facet. Mark it thin in the pool and nudge the candidate to upload a text-based PDF; it must never silently sit there looking fine.',
@@ -1980,7 +1984,7 @@ export const resumeManagement: BuildModule = {
             },
             items: [
               'ROW 4 IS THE ONE TO ARGUE ABOUT — after 24h a CV can be DELIVERED to an employer while still hidden from CV search, because the timer releases the application but nothing releases the index. Intended, not a bug, but a reviewer should be shown it deliberately rather than discovering it.',
-              'ROW 6 IS THE ONLY WAY to reach a flagged-but-unqualified CV. It cannot be reached by choosing one, because the toggle refuses an unqualified CV outright.',
+              'ROW 6 IS NOT THE ONLY WAY to reach a flagged-but-hidden CV — the toggle accepts a CV in doubt as well, so a candidate can also arrive there deliberately. What is unique about row 6 is that it happens with NO action from anyone: an edit silently drops the CV out of the index.',
             ],
           },
           {
@@ -1989,12 +1993,15 @@ export const resumeManagement: BuildModule = {
             text: 'Not part of the rule, but the rule decides what the flag may point at.',
             items: [
               'A RADIO, NOT A CHECKBOX — exactly one CV is flagged. Flagging CV B unflags CV A. The first qualifying CV is flagged automatically.',
-              'ONLY A QUALIFYING CV CAN CARRY IT — so the flag CAN end up empty, when nothing the candidate holds qualifies. That state must be DISCLOSED (“Chưa đủ điều kiện hiển thị” + what is missing), never shown as a plain Active.',
+              'THE TOGGLE IS ALLOWED ON ANY CV EXCEPT A REJECTED ONE (revised). A candidate may switch CV search on for a CV that is in doubt — it simply stays HIDDEN until the CV qualifies. Only Rejected refuses the toggle outright. This reverses an earlier rule that let only a qualifying CV carry the flag.',
+              'WHY THE REVERSAL — the toggle is a statement of INTENT (“this is the CV that represents me”), and intent is not something to refuse because a parser is still deciding. Refusing it made the candidate come back and set it again once the CV qualified, which is a second job we created for them; allowing it means the CV enters the index by itself the moment it passes.',
+              'WHICH MEANS FLAGGED-BUT-HIDDEN IS A NORMAL STATE, not an edge case, and the UI has to say so plainly: “Đang kiểm tra CV — chưa hiển thị với NTD” with what is missing. Never render it as a plain Active, and never as a rejection.',
+              'THE FLAG CAN STILL END UP EMPTY, when the only CV a candidate holds is Rejected. That state is disclosed the same way (“Chưa đủ điều kiện hiển thị”).',
               'PARSE ON WRITE, INDEX ON FLAG — every CV is parsed when it is saved, so flipping the flag later is instant and cannot fail.',
               'HIDDEN DOES NOT CLEAR THE FLAG — the account switch stops the index reading it; switching back is instant and asks nothing.',
               'DELETING the flagged CV moves the flag to the most recently updated qualifying survivor.',
               'IF A FLAGGED CV DROPS BELOW THE RULE AFTER AN EDIT (decided) — the flag STAYS on it and the CV simply leaves the index until it qualifies again. We do NOT auto-move the flag. A CV goes below the rule almost always because the candidate is MID-EDIT, and flags do not auto-revert, so auto-moving would make a permanent change out of a two-minute state. Saving the missing field re-qualifies it with no action from anyone.',
-              'THIS IS THE ONLY PATH to a flagged-but-unqualified CV — it cannot be reached by choosing one, because the toggle refuses an unqualified CV outright.',
+              'THIS IS NO LONGER THE ONLY PATH to a flagged-but-hidden CV — since the toggle now accepts a CV in doubt, a candidate can reach the same state deliberately. Both paths end in the same place and need the same disclosure.',
             ],
           },
         ],

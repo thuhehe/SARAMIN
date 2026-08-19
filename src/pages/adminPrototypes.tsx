@@ -643,10 +643,16 @@ function ExtLink({ children }: { children: React.ReactNode }) {
  * application auto-sends at 24h regardless, so an unworked queue can never cost
  * a candidate a deadline.
  */
-type Delivery = 'Pending' | 'Sent' | 'Not sent' | 'Recalled' | 'Blocked'
+type Delivery = 'Sent' | 'Not sent' | 'Recalled' | 'Blocked'
+
+/* BINARY on purpose. “Pending” used to sit here and was removed: it was the CV’s
+   doubt written a second time in a column that already reads from the CV, and two
+   copies of one fact are how they start to disagree. A held application simply
+   reads NOT SENT; whether a timer is running is a property of the row, carried in
+   `hold`, not a third status. */
+const isHeld = (hold?: string) => !!hold?.includes('auto-sends')
 
 const DELIVERY_TONE: Record<Delivery, StatusTone> = {
-  Pending: 'pending',
   Sent: 'neutral',
   'Not sent': 'rejected',
   Recalled: 'draft',
@@ -664,10 +670,10 @@ const STAGE_TONE: Record<string, StatusTone> = {
   Rejected: 'rejected',
 }
 
-/* `hold` — Pending only: why delivery is waiting, and how long is left on the
+/* `hold` — held rows only: why delivery is waiting, and how long is left on the
    24h net. The decision itself is made on the CV, not here. */
 /* `cvStatus` — the verdict the CV carried in from upload, and the reason a row is
-   Pending at all. Without it the delivery status looks arbitrary. */
+   not sent at all. Without it a binary Not sent looks arbitrary. */
 type CvStatus = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
 /* `basic` and `pref` are the SAME field-sheet strings the Talent pool renders —
    Basic information (table 1) and Work preference (table 2). Work preference comes
@@ -718,7 +724,7 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
           </div>
           {/* labels + the two oversight actions */}
           <div className="space-y-3">
-            {/* Pending only. Deliberately NOT a verdict UI: the decision lives on
+            {/* Held rows only. Deliberately NOT a verdict UI: the decision lives on
                 the CV, because one CV can hold many applications. */}
             {hold && (
               <div>
@@ -763,7 +769,7 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
           <span className="text-[10.5px] text-faint">
-            {status === 'Pending'
+            {isHeld(hold)
               ? 'Waiting on the CV verdict — resolved in CV review, or automatically at 24h. Nothing to decide here.'
               : 'No approve / reject — the employer already has this CV. Every action is audited.'}
           </span>
@@ -775,7 +781,7 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
                 <button onClick={() => setDecision('block')} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Block user…</button>
                 {/* Recall pulls something back from the employer — meaningless while
                     delivery has not happened yet. */}
-                {status !== 'Pending' && (
+                {!isHeld(hold) && (
                   <button onClick={() => setDecision('recall')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-[12.5px] font-semibold text-white">Recall…</button>
                 )}
               </>
@@ -807,13 +813,13 @@ function AdminApplicants() {
     /* Applied with a CV whose verdict is unresolved → delivery waits. Role reads
        "—" because extraction found nothing; years and education survive because
        they are PROFILE fields, stated at onboarding. */
-    { name: 'Trương Văn Bình', basic: 'Male · 09/09/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hà Nội · 12–18M · In office', contact: ['binh.truong@gmail.com', '0915 785 565'], role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], cvStatus: 'Not enough information', status: 'Pending', hold: 'CV in doubt · auto-sends in 23h', stage: 'New', when: '10m ago' },
+    { name: 'Trương Văn Bình', basic: 'Male · 09/09/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hà Nội · 12–18M · In office', contact: ['binh.truong@gmail.com', '0915 785 565'], role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], cvStatus: 'Not enough information', status: 'Not sent', hold: 'CV in doubt · auto-sends in 23h', stage: 'New', when: '10m ago' },
     { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', contact: ['an.nguyen@gmail.com', '0922 798 582'], role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Reviewing', when: '2h ago' },
     { name: 'Trần Thị Bích', basic: 'Female · 03/09/1994 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40M · Hybrid', contact: ['bich.tran@gmail.com', '0929 811 599'], role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '5h ago' },
     { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', contact: ['cuong.le@gmail.com', '0936 824 616'], role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Hired', when: '1d ago' },
     { name: 'Phạm Thu Dung', basic: 'Female · 07/02/1997 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'General Accountant · Accounting · Đà Nẵng · 12–18M · In office', contact: ['dung.pham@gmail.com', '0943 837 633'], role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1d ago' },
     { name: 'Vũ Minh Đức', basic: 'Male · 30/06/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45M · Remote', contact: ['duc.vu@gmail.com', '0950 850 650'], role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Backend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Rejected', when: '3d ago' },
-    { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Pending', hold: 'CV in doubt · auto-sends in 18h', stage: 'New', when: '3d ago' },
+    { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Not sent', hold: 'CV in doubt · auto-sends in 18h', stage: 'New', when: '3d ago' },
     /* Applied with a CV an admin had already Rejected — never delivered, no timer. */
     { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', contact: ['khanh.ngo@gmail.com', '0964 876 684'], role: '—', years: '1 yr', loc: 'Cần Thơ', edu: 'College · Business', job: 'Sales Staff', company: 'Thế Giới Di Động', cv: ['menu_final.pdf', 'upload'], cvStatus: 'Rejected', status: 'Not sent', hold: 'CV Rejected — never delivered, no timer', stage: 'New', when: '1d ago' },
     { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Qualified', status: 'Recalled', stage: 'Reviewing', when: '4d ago' },
@@ -852,19 +858,19 @@ function AdminApplicants() {
     <ExtLink>{a.job}</ExtLink>,
     <ExtLink>{a.company}</ExtLink>,
     <Pill tone={CV_STATUS_TONE[a.cvStatus]}>{a.cvStatus}</Pill>,
-    /* Pending carries WHY and the time left — the row explains itself, but the
+    /* A held row carries WHY and the time left — the row explains itself, but the
        ACTION is on the CV, so it links there instead of offering a verdict. */
     a.hold
       ? <div className="min-w-0">
           <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>
-          <p className={cn('mt-0.5 text-[10.5px] leading-snug', a.status === 'Not sent' ? 'text-rose-600' : 'text-amber-700')}>{a.hold}</p>
+          <p className={cn('mt-0.5 text-[10.5px] leading-snug', isHeld(a.hold) ? 'text-amber-700' : 'text-rose-600')}>{a.hold}</p>
         </div>
       : <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
     /* Recalled and Blocked CVs are off the employer's dashboard, so their funnel
        stops moving — an em-dash says that better than a frozen badge would. */
     a.status === 'Sent'
       ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
-      : <span className="text-faint" title={a.status === 'Pending' ? 'Not delivered yet — the employer funnel has not started' : 'Off the employer dashboard — the funnel no longer applies'}>—</span>,
+      : <span className="text-faint" title={isHeld(a.hold) ? 'Not delivered yet — the employer funnel has not started' : 'Off the employer dashboard — the funnel no longer applies'}>—</span>,
     <span className="text-muted">{a.when}</span>,
     /* The SAME ⋯ menu as the CV lists, because the verbs ARE CV verbs: an admin
        never approves or rejects an application — they decide on the CV, and that
@@ -910,7 +916,7 @@ function AdminApplicants() {
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
         <b className="font-semibold text-ink/80">Status</b> is Saramin’s — Sent on apply, then Recalled or Blocked by HQ.{' '}
         <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. Delivery is DERIVED from the CV’s status:
-        Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Pending</b>, which{' '}
+        Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Not sent</b>, which{' '}
         <b className="font-semibold text-ink/80">auto-sends within 24h regardless</b> · Rejected by an admin → <b className="font-semibold text-ink/80">Not sent</b>,
         never delivered and no timer. There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
         <b className="font-semibold text-ink/80">CV review</b> and one verdict resolves every application waiting on that CV.
@@ -1027,7 +1033,7 @@ function ResumeCandidateDetail({ name, onClose }: { name: string; onClose: () =>
                       {cv.label}
                       <Pill tone={cv.kind === 'Saramin CV' ? 'neutral' : 'draft'}>{cv.kind}</Pill>
                       <Pill tone={cv.st === 'Qualified' ? 'active' : 'draft'}>{cv.st}</Pill>
-                      {cv.searchable && <Pill tone="active">{cv.st === 'Qualified' ? 'Showing' : 'Hidden – pending review'}</Pill>}
+                      {cv.searchable && <Pill tone={cv.st === 'Qualified' ? 'active' : 'pending'}>{cv.st === 'Qualified' ? 'Showing' : 'Hidden'}</Pill>}
                     </p>
                     <p className="text-[10.5px] text-faint">{cv.content} · updated {cv.updated}</p>
                   </div>
@@ -1061,14 +1067,16 @@ function AdminResumes() {
        Rejected                  FINAL — written only by an admin, never the scan
 
      Application delivery and CV-search visibility are DERIVED from it, never
-     stored: Qualified → Sent · Showing; doubt → Pending (auto-send 24h) ·
-     Hidden – pending review; Rejected → Not sent · Hidden. */
+     stored, and BOTH ARE BINARY: Qualified → Sent · Showing; doubt → Not sent
+     (a 24h timer flips it) · Hidden; Rejected → Not sent · Hidden. Why a CV is
+     hidden is the CV STATUS column's job — repeating it inside the visibility
+     cell was one fact written twice. */
   type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
   const ST_TONE: Record<CvSt, StatusTone> = { Qualified: 'active', 'Not enough information': 'pending', "Can't read": 'draft', Rejected: 'rejected' }
   const SEARCH_OF: Record<CvSt, [string, StatusTone]> = {
     Qualified: ['Showing', 'active'],
-    'Not enough information': ['Hidden – pending review', 'pending'],
-    "Can't read": ['Hidden – pending review', 'pending'],
+    'Not enough information': ['Hidden', 'pending'],
+    "Can't read": ['Hidden', 'pending'],
     Rejected: ['Hidden', 'rejected'],
   }
   /* The verbs a status allows: doubt offers both, finals offer only the reversal. */
@@ -1150,7 +1158,7 @@ function AdminResumes() {
         onboarding). The scan at upload writes ONE CV status: <b className="font-semibold text-ink/80">Qualified</b> (final), or a DOUBT —{' '}
         <b className="font-semibold text-ink/80">Not enough information</b> · <b className="font-semibold text-ink/80">Can’t read</b> — which is a question, not a
         verdict. Only an admin writes <b className="font-semibold text-ink/80">Rejected</b>. Everything else is derived: Qualified → application Sent · CV search
-        Showing; doubt → Pending (auto-sends at 24h) · Hidden – pending review; Rejected → Not sent · Hidden.{' '}
+        Showing; doubt → Not sent (a 24h timer flips it) · Hidden; Rejected → Not sent · Hidden. Both derived columns are BINARY — why a CV is hidden is the CV status column’s job.{' '}
         <b className="font-semibold text-ink/80">CV review</b> is this list filtered to the two doubt states. Approve / Reject are the only verbs, every use needs an
         internal note, and a re-upload never launders a rejection.{' '}
         <b className="font-semibold text-amber-700">These records contain PII — every open is logged.</b>
@@ -1283,11 +1291,11 @@ function AdminCvCheck() {
       ),
     r.apps === 0
       ? <span className="text-faint" title="No applications made with this CV">—</span>
-      : <TwoLine top={`Pending · ${r.apps} apps`} bottom={r.left.startsWith('sent') || r.left.startsWith('auto') ? r.left : `auto-sends in ${r.left}`} />,
+      : <TwoLine top={`Not sent · ${r.apps} apps`} bottom={r.left.startsWith('sent') || r.left.startsWith('auto') ? r.left : `auto-sends in ${r.left}`} />,
     stateOf(r) === 'doubt'
       ? (
         <div className="min-w-0">
-          <Pill tone="pending">Hidden – pending review</Pill>
+          <Pill tone="pending">Hidden</Pill>
           <p className="mt-0.5 truncate text-[10.5px] text-faint">waiting {r.age}</p>
         </div>
       )
@@ -1350,7 +1358,7 @@ function AdminCvCheck() {
         Uploaded PDFs only; a Saramin CV is arithmetic over typed fields and never lands here. The call is almost always{' '}
         <b className="font-semibold text-ink/80">“not a CV” vs “our parser failed on this layout”</b>, which is why{' '}
         <b className="font-semibold text-ink/80">Parser failed</b> is a reject reason: its share is the honest measure of how much work the scan creates for people.
-        Approve resolves the CV <b className="font-semibold text-ink/80">and every application waiting on it</b>; applications on a doubt CV sit at Pending and
+        Approve resolves the CV <b className="font-semibold text-ink/80">and every application waiting on it</b>; applications on a doubt CV read <b className="font-semibold text-ink/80">Not sent</b> and
         auto-send at 24h regardless — the timer releases the APPLICATION, never the CV, so those rows keep ageing here until someone looks.
       </p>
       <ListPage
@@ -1391,7 +1399,7 @@ function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void 
       <div className="flex max-h-[600px] w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div className="min-w-0">
-            <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{row.name}<Pill tone="pending">Pending review</Pill></p>
+            <p className="flex items-center gap-2 text-[14px] font-bold text-ink">{row.name}<Pill tone="pending">Awaiting review</Pill></p>
             <p className="truncate text-[11px] text-muted">{row.file} · waiting {row.age} · {row.apps} application(s) waiting</p>
           </div>
           <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
