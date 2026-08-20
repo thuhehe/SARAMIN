@@ -884,7 +884,7 @@ function AdminApplicants() {
       {menuA === i && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setMenuA(null)} />
-          <div className="absolute right-0 top-8 z-30 w-[300px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
+          <div className="absolute right-0 top-8 z-30 w-[360px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
             {/* Opening lives on the row — candidate name → application detail,
                 CV name → the file. The menu is only the decision. */}
             {(a.cvStatus === 'Not enough information' || a.cvStatus === "Can't read" || a.cvStatus === 'Rejected') && (
@@ -894,10 +894,20 @@ function AdminApplicants() {
               </button>
             )}
             {a.cvStatus !== 'Rejected' && (
-              <button onClick={() => setMenuA(null)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
-                <span className="w-3.5 text-center">✕</span><span className="flex-1">Reject CV…</span>
-                <span className="shrink-0 text-[10px] text-faint">→ Rejected · Not sent · Hidden</span>
-              </button>
+              <>
+                {/* A REASON, not a bare Reject: the code picks which message the
+                    candidate gets, and it is what makes thirty rejections countable. */}
+                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-rose-500">Reject CV — chọn lý do</p>
+                {REJECT_REASONS.map((rr) => (
+                  <button key={rr} onClick={() => setMenuA(null)} className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11.5px] text-ink hover:bg-canvas">
+                    <span className="w-3.5 shrink-0 pt-0.5 text-center text-rose-500">✕</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{rr}</span>
+                      <span className="block text-[10px] leading-snug text-faint">Ứng viên thấy: {REASON_SENDS[rr]}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
             )}
             <div className="border-t border-line-soft px-3 py-2">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Internal note <span className="font-normal text-rose-500">*required</span></p>
@@ -1202,6 +1212,20 @@ function AdminResumes() {
    scan, and its share is the honest measure of how much work the automation is
    creating for humans. */
 const REJECT_REASONS = ['Not a CV', 'Duplicate', 'Fake / misleading', 'Parser failed (it IS a real CV)', 'Abusive content', 'Other'] as const
+
+/* What each code SENDS. A reviewer picking a code without seeing the message is
+   picking blind, and the wrong code is a message the candidate cannot act on —
+   so the picker shows it inline. Note “Parser failed” never reaches the candidate
+   as written: it is an internal bug-report label, and blaming someone for our own
+   extraction failure would be both wrong and unfixable by them. */
+const REASON_SENDS: Record<string, string> = {
+  'Not a CV': 'Không hợp lệ — “File này không phải một CV.” → Tải lên CV khác',
+  Duplicate: 'Không hợp lệ — “Hồ sơ trùng với một hồ sơ khác của bạn.” → Tải lên CV khác',
+  'Fake / misleading': 'Không hợp lệ — “Hồ sơ vi phạm quy định.” → Liên hệ hỗ trợ',
+  'Parser failed (it IS a real CV)': 'Không đọc được — “CV hợp lệ, nhưng là bản scan nên hệ thống chưa đọc được.” → Tải lên PDF dạng văn bản',
+  'Abusive content': 'Không hợp lệ — “Hồ sơ vi phạm quy định.” → Liên hệ hỗ trợ (không nêu chi tiết)',
+  Other: 'Không hợp lệ — “Hồ sơ chưa được duyệt.” → Liên hệ hỗ trợ. Ghi chú phải an toàn để hiển thị.',
+}
 type RejectReason = (typeof REJECT_REASONS)[number]
 
 type CvCheckRow = {
@@ -1310,7 +1334,7 @@ function AdminCvCheck() {
       {menu === i && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
-          <div className="absolute right-0 top-8 z-30 w-[280px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
+          <div className="absolute right-0 top-8 z-30 w-[360px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
             {/* Doubt offers BOTH verbs — the admin's whole job is ending the question.
                 A RESOLVED row offers only the opposite one, because the useful action
                 on a decided CV is undoing it, and re-applying the verdict it already
@@ -1323,10 +1347,18 @@ function AdminCvCheck() {
               </button>
             )}
             {stateOf(r) !== 'rejected' && (
-              <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
-                <span className="w-3.5 text-center">✕</span><span className="flex-1">Reject CV…</span>
-                <span className="shrink-0 text-[10px] text-faint">→ Rejected · Not sent · Hidden</span>
-              </button>
+              <>
+                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-rose-500">Reject CV — chọn lý do</p>
+                {REJECT_REASONS.map((rr) => (
+                  <button key={rr} onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11.5px] text-ink hover:bg-canvas">
+                    <span className="w-3.5 shrink-0 pt-0.5 text-center text-rose-500">✕</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{rr}</span>
+                      <span className="block text-[10px] leading-snug text-faint">Ứng viên thấy: {REASON_SENDS[rr]}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
             )}
             <div className="border-t border-line-soft px-3 py-2">
               {/* A REASON CODE, not just a note. The note explains one call; only a
@@ -3110,6 +3142,44 @@ function QuotaBar({ left, total }: { left: number; total: number }) {
    company's sales owner — because whoever does the work is who the KPI counts. */
 const ME = 'Nguyễn Thị Lan'
 
+/* ── Sales org — drives record scope on the Company list ───────────────────────
+ * Saramin Sales department:
+ *   • A SALES MANAGER heads the department and sees every team's book.
+ *   • Under the manager are (up to) 2 TEAMS, each run by a SALES LEAD.
+ *   • A salesperson belongs to exactly ONE team; a lead may run up to 2 teams.
+ *     Nothing nests below the team.
+ * Visibility follows this tree:
+ *   rep      → only companies they own.
+ *   lead     → their own book (Sales view) + every company owned by a member of
+ *              the team(s) they lead (Sales-lead view).
+ *   manager  → their own book + the whole department (Department view).
+ * (Who may EDIT vs only LOG ACTIVITY on a record is a separate, record-level
+ *  rule — see the CompanyDetail owner gate — not a list-scope rule.) */
+type SalesTeam = { name: string; lead: string; members: string[] }
+const SALES_TEAMS: SalesTeam[] = [
+  // A lead is also a member of their home team; Nguyễn Thị Lan leads BOTH teams.
+  { name: 'Team A', lead: 'Nguyễn Thị Lan', members: ['Nguyễn Thị Lan', 'Phạm Quang Huy'] },
+  { name: 'Team B', lead: 'Nguyễn Thị Lan', members: ['Trần Quốc Trung'] },
+]
+const SALES_MANAGER = 'Đỗ Xuân Trường'
+type SalesRole = 'rep' | 'lead' | 'manager'
+const SALES_ROLE_LABEL: Record<SalesRole, string> = { rep: 'Salesperson', lead: 'Sales lead', manager: 'Sales manager' }
+type SalesPersona = { name: string; role: SalesRole }
+/* The identities you can "log in as" on the Company list to see how scope changes. */
+const SALES_PERSONAS: SalesPersona[] = [
+  { name: 'Phạm Quang Huy', role: 'rep' },       // plain rep, Team A → own book only
+  { name: 'Nguyễn Thị Lan', role: 'lead' },      // leads Team A + Team B → own + team view
+  { name: SALES_MANAGER, role: 'manager' },      // department head → own + department view
+]
+/* Every distinct member of the team(s) a person leads (the lead included). */
+const teamBookOf = (leadName: string): Set<string> => {
+  const set = new Set<string>()
+  for (const t of SALES_TEAMS) if (t.lead === leadName) t.members.forEach((m) => set.add(m))
+  return set
+}
+/* All salespeople in the department — every team member, plus the manager. */
+const SALES_DEPT = new Set<string>([...SALES_TEAMS.flatMap((t) => t.members), SALES_MANAGER])
+
 /* ── Global company search ───────────────────────────────────────────────────
    One search box in the shell, reachable from every page. The Companies list has
    its own search, but that one narrows a LIST the rep is already looking at; this
@@ -3312,7 +3382,11 @@ function AdminCompanyList() {
      long enough to need the whole viewport. Same pattern as job create. */
   const [creating, setCreating] = useState(false)
   useEffect(() => { if (createSignal) setCreating(true) }, [createSignal])
-  const [view, setView] = useState<'me' | 'team'>('me')
+  /* Who is logged in. In the real product this comes from the session; here it is a
+     switcher so a reviewer can see how scope changes per role. */
+  const [persona, setPersona] = useState<SalesPersona>(SALES_PERSONAS[1]) // default: the sales lead
+  /* 'me' = own book · 'team' = teams I lead (lead only) · 'dept' = whole department (manager only). */
+  const [view, setView] = useState<'me' | 'team' | 'dept'>('me')
   // Group filter — the whole tree under one root. Deliberately NOT an owner filter:
   // a group can span several reps, so filtering by group has to ignore the view
   // switcher, otherwise a rep can never see the parts of the group they don't own.
@@ -3332,18 +3406,27 @@ function AdminCompanyList() {
   const handed = useContext(OpenRecordCtx)
   const linked = handed ? COMPANIES.find((c) => companyId(coKey(c)) === handed || c.name === handed) ?? null : null
   const showing = open ?? linked
-  if (showing) return <CompanyDetail c={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-company-list') }} onOpen={setOpen} />
+  if (showing) return <CompanyDetail c={showing} viewer={persona.name} onBack={() => { setOpen(null); if (handed) goTo('admin-company-list') }} onOpen={setOpen} />
 
   /* A Sales rep only ever LISTS their own book — there is no "whole system" scope to
      browse everyone's customers. What they still get is a search that can REACH any
      single customer by name / MST / ID and open its record — the list's own
      `outOfScope` dropdown, and the shell-wide GlobalCompanySearch — so a rep who
-     knows a company exists never has to re-create it. The Sales-lead view is the
-     role that legitimately sees the whole team. */
-  const mine = view === 'me'
-  const base = group ? groupOf(group) : mine ? COMPANIES.filter((c) => c.owner === ME) : COMPANIES
-  // once the list can show other reps' companies (team, or a cross-rep group), the owner column has to be there
-  const showOwner = view === 'team' || Boolean(group)
+     knows a company exists never has to re-create it. Wider scope is a role: a lead
+     also gets their team's book, a manager the whole department. */
+  const me = persona.name
+  /* Views this persona is allowed to switch between (rep has just their own). */
+  const views: ('me' | 'team' | 'dept')[] = persona.role === 'lead' ? ['me', 'team'] : persona.role === 'manager' ? ['me', 'dept'] : ['me']
+  const effView = views.includes(view) ? view : 'me'
+  const mine = effView === 'me'
+  const teamBook = teamBookOf(me) // members of the team(s) this person leads
+  const scope =
+    effView === 'dept' ? COMPANIES.filter((c) => SALES_DEPT.has(c.owner))
+    : effView === 'team' ? COMPANIES.filter((c) => teamBook.has(c.owner))
+    : COMPANIES.filter((c) => c.owner === me)
+  const base = group ? groupOf(group) : scope
+  // once the list can show other reps' companies (team / dept, or a cross-rep group), the owner column has to be there
+  const showOwner = effView !== 'me' || Boolean(group)
   const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
   const rows = base
     .filter((c) =>
@@ -3371,16 +3454,41 @@ function AdminCompanyList() {
         </div>
       )}
 
+      {/* Prototype affordance: switch the signed-in identity to see how record scope
+          changes by role. In production this is the session, never a control. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-2 text-[12px]">
+        <span className="font-medium text-faint">Đang xem với vai trò</span>
+        <select
+          value={persona.name}
+          onChange={(e) => { const p = SALES_PERSONAS.find((x) => x.name === e.target.value)!; setPersona(p); setView('me') }}
+          className="cursor-pointer rounded-md border border-line bg-surface px-2 py-1 text-[12px] font-medium text-ink outline-none"
+        >
+          {SALES_PERSONAS.map((p) => <option key={p.name} value={p.name}>{p.name} — {SALES_ROLE_LABEL[p.role]}</option>)}
+        </select>
+        <span className="text-faint">
+          {persona.role === 'rep' && 'Chỉ thấy công ty do mình phụ trách.'}
+          {persona.role === 'lead' && 'Sales view = sổ của mình · Sales lead view = công ty của mọi thành viên trong (các) nhóm mình quản lý.'}
+          {persona.role === 'manager' && 'Sales view = sổ của mình · Department view = toàn bộ phòng Sales.'}
+        </span>
+      </div>
 
       {/* The view switcher decides WHICH list this is, so it reads first — before the
-          controls that narrow it — and shares the header row with them. */}
+          controls that narrow it — and shares the header row with them. A plain rep
+          has no switcher (own book only); a lead / manager gets the wider tab. */}
       <ListPage
         minW={showOwner ? 1640 : 1500}
         leading={
-          <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
-            <button onClick={() => setView('me')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'me' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales view</button>
-            <button onClick={() => setView('team')} className={cn('rounded-md px-3 py-1 transition-colors', view === 'team' ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>Sales lead view</button>
-          </span>
+          views.length > 1 ? (
+            <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
+              {views.map((v) => (
+                <button key={v} onClick={() => setView(v)} className={cn('rounded-md px-3 py-1 transition-colors', effView === v ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>
+                  {v === 'me' ? 'Sales view' : v === 'team' ? 'Sales lead view' : 'Department view'}
+                </button>
+              ))}
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-lg border border-line bg-surface px-3 py-1 text-[12px] font-medium text-muted">Công ty của tôi</span>
+          )
         }
         sort={
           <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
@@ -3426,7 +3534,7 @@ function AdminCompanyList() {
             )
           }
           const hay = (c: Company) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' '))
-          const all = COMPANIES.filter((c) => c.owner !== ME && hay(c).includes(ql))
+          const all = COMPANIES.filter((c) => c.owner !== me && hay(c).includes(ql))
           const hits = all.slice(0, 5)
           /* Third section: the free pool. Same reason as "ngoài sổ" — a rep who does
              not find a company here creates a duplicate. The pool is where the name
@@ -4389,7 +4497,6 @@ function AttachRow({ atts, onAdd, onDrop, allow = ['image', 'email'] }: { atts: 
 }
 
 function CompanyActivities({ c }: { c: Company }) {
-  const ro = useReadOnly()
   const [kind, setKind] = useState<null | 'chat' | 'call' | 'meeting'>(null)
   const [channel, setChannel] = useState('Zalo')
   const [note, setNote] = useState('')
@@ -4427,21 +4534,16 @@ function CompanyActivities({ c }: { c: Company }) {
     // min-w-0 so the trail's table scrolls inside this column instead of forcing
     // the whole Overview grid wider than the page.
     <div className="min-w-0 space-y-4">
-      {/* composer — withdrawn on a colleague's record. Logging an activity is the
-          one write that would corrupt someone else's numbers: it stamps THEIR
-          company with MY contact and resets THEIR idle clock. The trail below
-          stays fully readable. */}
-      {ro ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 px-3.5 py-2.5">
-          <span className="text-[13px]"></span>
-          <span className="text-[11.5px] leading-relaxed text-muted">
-            Không ghi nhận hoạt động trên công ty của sales khác — việc này sẽ reset <b className="text-ink/70">Idle</b> của họ và ghi tên bạn vào sổ của họ.
-          </span>
-        </div>
-      ) : (
+      {/* composer — OPEN to anyone who can see the company (owner, teammates, lead,
+          manager). Logging is append-only and is credited to the SIGNED-IN user,
+          not the sales owner — whoever does the work gets the KPI. Editing the
+          company's own fields stays owner-only, but that gate lives on the Overview
+          card, not here. */}
+      {(
       <div className="rounded-xl border border-line bg-surface">
-        <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
           <p className="text-[12.5px] font-bold">Log an activity</p>
+          <span className="ml-auto text-[10.5px] text-faint">Ghi cho <b className="text-ink/70">bạn</b> (người đăng nhập), không phải chủ sở hữu</span>
         </div>
         <div className="p-3.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -6048,7 +6150,7 @@ function PipelineStatusPicker({ c }: { c: Company }) {
   )
 }
 
-function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void }) {
+function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string }) {
   const [tab, setTab] = useState<CoTab>('Overview')
   const [inviting, setInviting] = useState(false)
   const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
@@ -6066,7 +6168,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
   /* Reached from search rather than owned. Read everything, write nothing — see
      ReadOnlyCtx. Editing state is force-closed so a rep cannot leave the card in
      edit mode and come back to it on someone else's record. */
-  const ro = c.owner !== ME
+  /* Read-only when you are NOT the sales owner: you can view everything and LOG
+     ACTIVITY (that stays open — see CompanyActivities), but you cannot EDIT the
+     record's own fields. Owner is resolved against the signed-in viewer. */
+  const ro = c.owner !== viewer
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
@@ -6096,10 +6201,10 @@ function CompanyDetail({ c, onBack, onOpen }: { c: Company; onBack: () => void; 
           is allowed and useful — it is what stops a duplicate being created. ACTING
           on it is not, and saying so here is what makes the read-only rule legible
           instead of a mystery when a button does nothing. */}
-      {c.owner !== ME && (
+      {ro && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
           <span className="text-[13px]"></span>
-          <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn đang xem ở chế độ <b className="font-medium text-ink">chỉ đọc</b>.</span>
+          <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn <b className="font-medium text-ink">không sửa được thông tin</b>, nhưng vẫn <b className="font-medium text-ink">ghi nhận hoạt động</b> được.</span>
           <button className="ml-auto shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">Yêu cầu chuyển giao</button>
         </div>
       )}
@@ -9728,11 +9833,9 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [skuManual, setSkuManual] = useState('')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
-  const [entitlement, setEntitlement] = useState<Entitlement>('purchase')
   // T&C clause 4 default. Stored per product, not read from a global setting.
   const [activate, setActivate] = useState(String(ACTIVATE_WITHIN_DEFAULT))
   // Only job-posting products can be the always-available (Admin-only) free tier.
-  const isFree = type === 'job' && entitlement === 'free'
 
   const autoSku = nameVi.trim()
     ? `${type.toUpperCase()}-${nameVi.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12)}`
@@ -9749,7 +9852,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   // price — the one rule the spec keeps, checked on Save rather than by a button.
   // The free tier is the deliberate exception: it is never sold, so it has no price
   // to require, and demanding one would make it impossible to activate at all.
-  const valid = nameVi.trim().length > 0 && (status === 'Inactive' || isFree || priceNum > 0)
+  const valid = nameVi.trim().length > 0 && (status === 'Inactive' || priceNum > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -9869,7 +9972,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
-            {status === 'Active' && !priceNum && !isFree && (
+            {status === 'Active' && !priceNum && (
               <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700">An Active product needs a price — Save is blocked until one is set.</p>
             )}
           </div>
@@ -9901,8 +10004,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           {/* Applies to EVERY type, so it comes before the branches. Three clocks
               get confused with each other constantly, so the hint below names all
               three and says which one this field is. */}
-          {!isFree ? (
-            <div>
+          <div>
               <FLabel req>
                 Thời gian phải kích hoạt — kể từ ngày xuất hóa đơn
                 <span className="ml-1 font-normal text-faint">T&amp;C điều 4</span>
@@ -9923,11 +10025,6 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 <br />③ <b className="text-ink/75">Sau khi kích hoạt</b>, mỗi slot chạy theo thời gian hiển thị / hiệu lực riêng bên dưới.
               </p>
             </div>
-          ) : (
-            <p className="rounded-md bg-brand-soft px-2.5 py-1.5 text-[10.5px] leading-relaxed text-brand">
-              🆓 Không có thời hạn kích hoạt — tier này không bao giờ được bán nên không có hóa đơn để đếm từ đó.
-            </p>
-          )}
           {/* There is no separate "tier config" screen: THIS product IS the tier
               definition. Display duration, refresh cadence and the placements it
               feeds are editable here, and because there is exactly one Top Job
@@ -10067,36 +10164,6 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               a promo line can be 0 ₫ and still be consumed from a PO, so deriving
               "postable anytime" from price == 0 would turn every freebie into an
               unlimited loophole. Job-posting products only. */}
-          {type === 'job' && (
-            <div>
-              <FLabel req>Entitlement source</FLabel>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {([
-                  ['purchase', 'Requires purchase', 'Must draw from an active PO line — the normal paid path'],
-                  ['free', 'Always available — Admin only', 'No PO, no limit. HQ posts it any time; never offered on the Company site'],
-                ] as const).map(([id, label, hint]) => (
-                  <button
-                    key={id}
-                    onClick={() => setEntitlement(id)}
-                    className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', entitlement === id ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
-                  >
-                    <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', entitlement === id ? 'border-brand' : 'border-line')}>
-                      {entitlement === id && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn('block text-[12px] font-semibold', entitlement === id ? 'text-brand' : 'text-ink')}>{label}</span>
-                      <span className="block text-[10px] leading-relaxed text-faint">{hint}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {isFree && (
-                <p className="mt-1 rounded-md bg-brand-soft px-2.5 py-1.5 text-[10.5px] leading-relaxed text-brand">
-                  🆓 No price required — this tier is never sold. Employers can’t choose it; it can’t be upgraded to a paid tier, and it gets no premium placement slots.
-                </p>
-              )}
-            </div>
-          )}
           {/* One product, a price PER SEGMENT — this is what replaces the CRM's
               separate "… SMEs / … Enterprise / … New 2024" records, so what a
               product grants is defined once. The record shows the same three rows. */}
@@ -10104,7 +10171,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               here but is out of scope for now — see the note in the record. An Add-on
               is never quoted, so its figure is labelled internal rather than list. */}
           <div>
-            <FLabel req={role !== 'addon' && !isFree}>
+            <FLabel req={role !== 'addon'}>
               {role === 'addon' ? 'Giá trị nội bộ (₫)' : 'Price (₫)'}
               {role === 'addon' && <span className="ml-1 font-normal text-faint">internal value — not quotable</span>}
             </FLabel>
@@ -10160,6 +10227,7 @@ export function NewPackageModal({ onClose }: { onClose: () => void }) {
   const [custom, setCustom] = useState(false)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Inactive')
+  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
 
   const picked = Object.entries(qty).filter(([, n]) => n > 0)
   const priceNum = Number(pkgPrice.replace(/\D/g, ''))
@@ -10188,6 +10256,30 @@ export function NewPackageModal({ onClose }: { onClose: () => void }) {
           <div className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
             <b className="text-ink/70">Package ID:</b>{' '}
             <span className="font-mono">{name.trim() ? `PKG-${name.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12)}` : 'auto-generated from the name'}</span>
+          </div>
+
+          {/* Same field the product form has: this is what prints on the quotation
+              and the PO, so a package needs it as much as a product does. */}
+          <div>
+            <div className="mb-1 flex items-end justify-between gap-2">
+              <FLabel req={lang === 'VI'}>Package description</FLabel>
+              <div className="mb-1 inline-flex shrink-0 overflow-hidden rounded-md border border-line">
+                {(['VI', 'EN'] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={cn('px-2 py-0.5 text-[10.5px] font-medium transition-colors', lang === l ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}
+                  >
+                    {l === 'VI' ? 'Tiếng Việt' : 'English'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-faint" style={{ minHeight: 60 }}>
+              {lang === 'VI'
+                ? 'In trên báo giá và PO — danh sách quyền lợi của cả gói mà khách đọc.'
+                : 'Printed on the quotation and the PO — the benefit list for the whole package.'}
+            </div>
           </div>
 
           <Section title="2 · Components" />
@@ -10558,7 +10650,7 @@ function ProgrammeDetail({ p, onBack }: { p: Programme; onBack: () => void }) {
           <KV label="Chạy cùng chương trình khác" value={p.stackable ? 'Có' : 'Không — loại trừ mọi chương trình khác'} />
           <KV
             label="Duyệt chiết khấu"
-            value={`Mức do chương trình cấp không cần duyệt dù vượt ${DISCOUNT_APPROVAL}%. Chỉ khi sales tắt áp dụng tự động và tự nhập thì mới trình duyệt.`}
+            value="Không cần duyệt. Mức chiết khấu do chương trình cấp và sales không nhập tay được trên báo giá, nên không có bước trình duyệt nào."
           />
           {p.giftActivationFollowsPaid && (
             <KV label="Hạn kích hoạt tin tặng" value="Giống tin mua — dùng đúng activation window của sản phẩm đã mua (xem Products management)" />
@@ -10933,7 +11025,6 @@ function daysLeft(created: string, today: string) {
   const n = Math.round((exp.getTime() - p(today).getTime()) / 86_400_000)
   return n
 }
-const DISCOUNT_APPROVAL = 20 // % above which a sales lead must approve before Send
 
 const VN_D = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
 function vnRead3(n: number, full: boolean) {
@@ -10980,6 +11071,11 @@ function enWords(n: number) {
   const s = parts.join(' ')
   return s.charAt(0).toUpperCase() + s.slice(1) + ' VND'
 }
+
+/* Special-discount approval bands. 1–10% is a sales leader's call; anything above
+   is the sales manager's. Kept as constants because they are a sales policy that
+   will be renegotiated, not a fact about the software. */
+const SPECIAL_LEADER_MAX = 10
 
 type QLine = { cat: number; qty: number; price: number; disc: number; gift: boolean }
 type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number }
@@ -11148,63 +11244,86 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
 
   const co = COMPANIES.find((c) => c.name === company)
 
-  /* ── Promotion, applied automatically ──────────────────────────────────────
-     The programme follows from the customer's STATUS, so it is decided the moment
-     a company is picked — the rep never chooses it. While auto is on the discount
-     cells are read-only and show what the programme grants; turning it off is an
-     explicit, visible act, because a hand-typed discount is a concession somebody
-     has to answer for. */
-  const [autoPromo, setAutoPromo] = useState(true)
+  /* ── Two mutually exclusive ways a quotation can be discounted ──────────────
+
+     1 · THE PROGRAMME (default). Follows from the customer's status, applies by
+         itself, lands per line, is read-only and needs nobody's approval.
+
+     2 · SPECIAL DISCOUNT (opt-in). The rep switches the programme OFF and types
+         ONE percentage against the option subtotal — the "chiết khấu tổng hóa
+         đơn". Per-line editing stays impossible either way: a discount spread
+         across lines cannot be reviewed at a glance, and the approver is
+         approving one number, not an arithmetic exercise.
+
+     They are exclusive on purpose. Letting a special rate stack on top of a
+     programme rate produces a total nobody planned and an approver signing off
+     on half of it. */
+  const [special, setSpecial] = useState(false)
   const promo = programmeFor(co?.account)
-  /* Recompute when the company changes or any quantity moves — those are the only
-     two inputs the programmes read. Keyed on a signature rather than on `options`
-     so writing the result back cannot re-trigger the effect. */
+  const promoOn = !!promo && !special
+
+  /* Recompute when the company changes, any quantity moves, or the rep switches
+     modes. Keyed on a signature rather than on `options` so writing the result
+     back cannot re-trigger the effect. */
   const qtySig = options.map((o) => o.lines.map((l) => `${l.gift ? 'g' : 'p'}${l.qty}`).join(',')).join('|')
   useEffect(() => {
-    if (!autoPromo || !promo) return
     setOptions((os) => {
       let changed = false
       const next = os.map((o) => {
+        /* Special mode: every LINE discount is cleared and stays cleared. The
+           option-level figure is the rep's and is left alone. */
+        if (!promoOn) {
+          const lines = o.lines.map((l) => (l.disc === 0 ? l : ((changed = true), { ...l, disc: 0 })))
+          return changed ? { ...o, lines } : o
+        }
         // Gifts are 0 ₫, so a discount on them is meaningless — and they must not
         // count against the quantity cap either, or a "+ Gift" would silently
         // destroy the 50%.
-        const withinCap = o.lines.every((l) => l.gift || l.qty <= (promo.maxQtyPerLine ?? Infinity))
+        const withinCap = o.lines.every((l) => l.gift || l.qty <= (promo!.maxQtyPerLine ?? Infinity))
         // "Cùng loại": the tier is looked up on the TOTAL of that product across the
         // option, so two lines of the same product earn one shared rate. Splitting
         // 7 into 3 + 4 must not turn 30% into 25%.
         const totals = qtyByProduct(o.lines)
         const lines = o.lines.map((l) => {
-          const d = l.gift || promo.kind !== 'volume-per-product' ? 0 : tierPct(promo, totals.get(l.cat) ?? 0)
+          const d = l.gift || promo!.kind !== 'volume-per-product' ? 0 : tierPct(promo!, totals.get(l.cat) ?? 0)
           if (d !== l.disc) changed = true
           return d === l.disc ? l : { ...l, disc: d }
         })
-        const od = promo.kind === 'flat-order' && withinCap ? promo.pct ?? 0 : 0
+        const od = promo!.kind === 'flat-order' && withinCap ? promo!.pct ?? 0 : 0
         if (od !== o.optDisc) changed = true
         return changed ? { ...o, lines, optDisc: od } : o
       })
       return changed ? next : os
     })
-  }, [autoPromo, promo, qtySig])
+  }, [promoOn, promo, qtySig])
+
+  /* Switching INTO special mode zeroes the option figure too, so the rep starts
+     from nothing rather than editing the programme's number — which would make
+     "what did we actually decide to give away" unanswerable. */
+  const toggleSpecial = (on: boolean) => {
+    setSpecial(on)
+    if (on) setOptions((os) => os.map((o) => ({ ...o, optDisc: 0 })))
+  }
 
   /** Options where a flat programme is being blocked, and the line that blocks it. */
-  const capBreaches = promo?.maxQtyPerLine
+  const capBreaches = promoOn && promo?.maxQtyPerLine
     ? options.flatMap((o, oi) => o.lines
         .map((l, li) => ({ oi, li, l }))
         .filter((x) => !x.l.gift && x.l.qty > promo.maxQtyPerLine!))
     : []
 
-  // Approval looks at BOTH discount levels — a 30% option-level cut is no less
-  // of a concession than a 30% line-level one.
-  const maxDisc = Math.max(0, ...options.flatMap((o) => [o.optDisc, ...o.lines.map((l) => l.disc)]))
-  /* A rate the PROGRAMME granted is not a concession — management already approved
-     it when they set the programme up, and every tier from 25% upward is above the
-     threshold. Routing all of them would fill the approval queue with quotations
-     nobody would ever reject, and an approval step that is never refused stops
-     being read. So the gate fires on what a HUMAN chose: the moment auto-apply is
-     switched off, the numbers become the rep's and the normal rule returns. */
-  const programmeDriven = autoPromo && !!promo
-  const needsApproval = maxDisc > DISCOUNT_APPROVAL && !programmeDriven
-  const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
+  /* ── Who has to approve a special discount ──────────────────────────────────
+     Routed on the HIGHEST rate in the document, not on each option separately:
+     options are alternatives, the customer picks one, and the approver has to be
+     able to sign off on the worst case rather than on an average.
+
+     Escalation is by AMOUNT, not by chain — above 10% it goes straight to the
+     sales manager and does not queue behind the leader first. Two signatures on
+     one discount slows the deal without adding a second real decision. */
+  const specialPct = special ? Math.max(0, ...options.map((o) => o.optDisc)) : 0
+  const approver = specialPct === 0 ? null : specialPct <= SPECIAL_LEADER_MAX ? 'Sales leader' : 'Sales manager'
+
+    const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
   const valid = !!co && everyOptionPaid
 
   const patch = (oid: number, li: number, d: Partial<QLine>) =>
@@ -11261,56 +11380,41 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
             ? <QuoteCompanyCard c={co} />
             : <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] text-faint">Pick a company to confirm its details, contact and billing data.</p>}
 
-          {/* The programme, stated before the lines rather than discovered in the
-              totals. A rep who cannot see WHY a line says 30% will type over it. */}
+          {/* The one discount decision on this screen. It is a switch, not a field:
+              either the customer gets the programme their status earns, or the rep
+              takes responsibility for a number and sends it to be approved. */}
           {co && (
-            promo ? (
-              <div className={cn('rounded-xl border px-3.5 py-2.5', autoPromo ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className={cn('text-[12.5px] font-semibold', autoPromo ? 'text-emerald-900' : 'text-amber-900')}>
-                      {autoPromo ? '🎁 ' : '✎ '}{promo.vi}
-                      <span className="ml-1.5 font-normal">· khách hàng <b>{co.account}</b></span>
-                    </p>
-                    <p className={cn('mt-0.5 text-[11px] leading-relaxed', autoPromo ? 'text-emerald-800' : 'text-amber-800')}>
-                      {!autoPromo
-                        ? 'Đang nhập chiết khấu thủ công — chương trình không còn được áp dụng tự động.'
-                        : promo.kind === 'volume-per-product'
-                          ? `Cộng dồn số lượng theo từng loại sản phẩm trong option, rồi lấy bậc tương ứng: ${promo.tiers!.map((t) => `${t.minQty}+ → ${t.pct}%`).join(' · ')}. Số lượng 1 không có chiết khấu.`
-                          : `${promo.pct}% trên tổng đơn, với điều kiện mọi dòng ≤ ${promo.maxQtyPerLine} số lượng. Chỉ áp dụng cho PO đầu tiên kể từ khi khách ở trạng thái ${co.account} và không chạy cùng chương trình khác.`}
-                    </p>
-                  </div>
-                  <label className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-ink/70">
-                    <input type="checkbox" checked={autoPromo} onChange={(e) => setAutoPromo(e.target.checked)} className="h-3.5 w-3.5" />
-                    Áp dụng tự động
-                  </label>
-                </div>
-                {/* Why a 50% went through without an approval step — otherwise the
-                    rep assumes the control is broken. */}
-                <div className="mt-1.5 text-[10.5px] leading-relaxed">
-                  {autoPromo
-                    ? <span className="text-emerald-800">Mức này do chương trình cấp nên <b>không cần duyệt</b>, dù vượt {DISCOUNT_APPROVAL}%. Tắt “Áp dụng tự động” là chiết khấu thành do sales tự quyết và phải trình duyệt.</span>
-                    : <span className="text-amber-800">Chiết khấu thủ công — vượt {DISCOUNT_APPROVAL}% sẽ phải trình sales lead duyệt trước khi gửi.</span>}
-                </div>
+            <div className={cn('rounded-xl border px-3.5 py-2.5', special ? 'border-amber-300 bg-amber-50' : 'border-line bg-canvas/40')}>
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input type="checkbox" checked={special} onChange={(e) => toggleSpecial(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className={cn('block text-[12.5px] font-semibold', special ? 'text-amber-900' : 'text-ink')}>Chiết khấu đặc biệt / Special discount</span>
+                  <span className={cn('mt-0.5 block text-[11px] leading-relaxed', special ? 'text-amber-800' : 'text-muted')}>
+                    {special
+                      ? <>Chương trình <b>{promo?.vi ?? '—'}</b> đã <b>ngưng áp dụng</b> cho báo giá này. Nhập <b>một</b> mức chiết khấu trên tổng từng option bên dưới — không sửa được chiết khấu từng dòng. Báo giá phải được duyệt trước khi gửi khách.</>
+                      : <>Đang áp dụng <b>{promo?.vi ?? 'không có chương trình'}</b> theo trạng thái khách hàng <b>{co.account}</b>, chiết khấu tự động và không cần duyệt. Bật ô này nếu cần một mức riêng.</>}
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
 
-                {/* The cliff, named. "One line over and the whole 50% is gone" is
-                    the rule reps get wrong, so it points at the exact line and
-                    repeats the sheet's own two ways out. */}
-                {autoPromo && capBreaches.length > 0 && (
-                  <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
-                    <b>Mất toàn bộ {promo.pct}%.</b>{' '}
-                    {capBreaches.map((x) => `Option ${x.oi + 1} · dòng ${x.li + 1} (${QUOTE_CATALOG[x.l.cat].vi}) có số lượng ${x.l.qty}`).join(' · ')} — vượt giới hạn {promo.maxQtyPerLine}.
-                    Chỉ cần một dòng vượt là cả đơn mất chiết khấu, không phải riêng dòng đó.
-                    <br />
-                    <span className="text-rose-800">Hai cách xử lý theo quy định: giảm số lượng về {promo.maxQtyPerLine}, hoặc <b>tách 2 báo giá / 2 hóa đơn</b> để khách hưởng cả hai chương trình. Cả hai đều do sales quyết định — hệ thống không tự tách.</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="rounded-xl border border-line bg-canvas/50 px-3.5 py-2.5 text-[11.5px] text-muted">
-                Không có chương trình khuyến mãi nào áp dụng cho khách hàng <b className="text-ink/75">{co.account}</b>. Chiết khấu nhập tay và cần duyệt nếu vượt {DISCOUNT_APPROVAL}%.
-              </p>
-            )
+          {/* No promotion banner. The programme is decided by the customer's status,
+              applies by itself and is never approved by anyone, so a permanent box
+              restating it every time is chrome describing something that never
+              varies. The rates land on the lines, read-only, and that is the whole
+              interaction.
+
+              What survives is the ALERT below — it is not an explanation, it is
+              money disappearing, and it only renders when it actually happens. */}
+          {co && promo && capBreaches.length > 0 && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-rose-900">
+              <b>Mất toàn bộ {promo.pct}% — {promo.vi}.</b>{' '}
+              {capBreaches.map((x) => `Option ${x.oi + 1} · dòng ${x.li + 1} (${QUOTE_CATALOG[x.l.cat].vi}) có số lượng ${x.l.qty}`).join(' · ')} — vượt giới hạn {promo.maxQtyPerLine}.
+              Chỉ cần một dòng vượt là cả đơn mất chiết khấu, không phải riêng dòng đó.
+              <br />
+              <span className="text-rose-800">Hai cách xử lý theo quy định: giảm số lượng về {promo.maxQtyPerLine}, hoặc <b>tách 2 báo giá / 2 hóa đơn</b> để khách hưởng cả hai chương trình. Cả hai đều do sales quyết định — hệ thống không tự tách.</span>
+            </div>
           )}
 
           {/* 3 · options — the heart of it */}
@@ -11358,10 +11462,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                       <input type="number" min={1} value={l.qty} onChange={(e) => patch(o.id, li, { qty: Math.max(1, Number(e.target.value) || 1) })} className="w-full rounded border border-line bg-surface px-1 py-1 text-right text-[11.5px] tabular-nums" />
                       <input disabled={l.gift} value={l.gift ? '0' : l.price.toLocaleString('en-US')} onChange={(e) => patch(o.id, li, { price: Number(e.target.value.replace(/\D/g, '')) || 0 })} className={cn('w-full rounded border border-line px-1 py-1 text-right text-[11.5px] tabular-nums', l.gift ? 'bg-canvas text-faint' : 'bg-surface')} />
                       <span className="flex items-center justify-end gap-0.5">
-                        {/* Read-only while the programme is driving it: the number
-                            is a consequence of the quantity, and an editable box
-                            invites overwriting the rule the customer was promised. */}
-                        <input disabled={l.gift || (autoPromo && !!promo)} type="number" min={0} max={100} value={l.disc} onChange={(e) => patch(o.id, li, { disc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', l.disc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : autoPromo && promo && l.disc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-surface', l.gift && 'bg-canvas text-faint')} />
+                        {/* Read-only, always: the number is a consequence of the
+                            quantity, and an editable box invites overwriting the
+                            rule the customer was promised. */}
+                        <input disabled type="number" value={l.disc} readOnly className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', !l.gift && l.disc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-canvas text-faint')} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
                       <span className="text-right tabular-nums">{lineTotal(l).toLocaleString('en-US')}</span>
@@ -11383,9 +11487,15 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-muted">
                         Chiết khấu
-                        <input type="number" min={0} max={100} value={o.optDisc} disabled={autoPromo && !!promo}
+                        {/* The ONLY number a rep can type on this screen, and only
+                            with Special discount on. */}
+                        <input
+                          type="number" min={0} max={100} value={o.optDisc} disabled={!special} readOnly={!special}
                           onChange={(e) => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, optDisc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) } : x)))}
-                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', o.optDisc > DISCOUNT_APPROVAL ? 'border-amber-400 bg-amber-50 text-amber-900' : autoPromo && promo && o.optDisc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-surface')} />
+                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums',
+                            special ? 'border-amber-400 bg-surface font-semibold text-amber-900'
+                              : o.optDisc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800'
+                                : 'border-line bg-canvas text-faint')} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
                       <span className={cn('tabular-nums', optCut > 0 && 'text-rose-600')}>{optCut > 0 ? '−' : ''}{optCut.toLocaleString('en-US')} ₫</span>
@@ -11415,20 +11525,24 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
 
         {/* footer */}
         <div className="space-y-2 border-t border-line px-5 py-3">
-          {needsApproval && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">
-              A {maxDisc}% discount exceeds the {DISCOUNT_APPROVAL}% threshold — Send is blocked until a sales lead approves. Save as draft and request approval.
+          {/* One line, and it names the PERSON — "needs approval" leaves the rep
+              guessing who to chase, which is how a quotation sits for three days. */}
+          {approver && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+              Chiết khấu đặc biệt <b>{specialPct}%</b> → cần <b>{approver === 'Sales leader' ? 'Sales leader' : 'Sales manager'}</b> duyệt trước khi gửi khách.
+              <span className="text-amber-800"> Mức 1–{SPECIAL_LEADER_MAX}% do Sales leader duyệt, trên {SPECIAL_LEADER_MAX}% do Sales manager duyệt. Sửa lại % sau khi đã duyệt sẽ <b>hủy phê duyệt</b> và phải trình lại.</span>
             </div>
+          )}
+          {special && specialPct === 0 && (
+            <p className="text-[11.5px] text-amber-700">Nhập mức chiết khấu ở ô <b>Chiết khấu</b> của từng option — đang là 0%, khách sẽ trả nguyên giá.</p>
           )}
           {!everyOptionPaid && <p className="text-[11.5px] text-rose-600">Every option needs at least one paid line — an option cannot be gifts only.</p>}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Cancel</button>
             <button disabled={!co} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', co ? 'border-line text-ink hover:border-ink/40' : 'border-line text-faint')}>Save draft</button>
             <button disabled={!valid} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', valid ? 'border-brand/40 text-brand hover:bg-brand-soft' : 'border-line text-faint')}>Preview PDF</button>
-            {/* Over-threshold discount blocks SEND, but must not block the action that
-                unblocks it — the rep needs to be able to request the approval. */}
-            <button disabled={!valid} className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', !valid ? 'bg-line' : needsApproval ? 'bg-amber-600 hover:opacity-90' : 'bg-brand hover:opacity-90')}>
-              {needsApproval ? 'Request approval →' : 'Export'}
+            <button disabled={!valid} className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', !valid ? 'bg-line' : approver ? 'bg-amber-600 hover:opacity-90' : 'bg-brand hover:opacity-90')}>
+              {approver ? `Gửi ${approver} duyệt →` : 'Export'}
             </button>
           </div>
         </div>
@@ -11907,8 +12021,27 @@ function dmy(d: string): number {
 type Quote = {
   code: string; customer: string; co?: string; products: number[]; options: number
   value: number; status: QuoteStatus; created: string; expires: string
-  acceptedOpt?: number; lapsed?: boolean; awaitingApproval?: boolean; note?: string
+  acceptedOpt?: number; lapsed?: boolean; note?: string
+  /* ── Special discount + its approval ───────────────────────────────────────
+     `special` is the one percentage a rep may type (the option-subtotal rate).
+     Everything else here is the approval trail, and `apprPct` exists so that
+     editing the rate after a decision can VOID it — an approval that does not
+     record WHAT was approved cannot be enforced. */
+  special?: number
+  appr?: 'pending' | 'approved' | 'rejected'
+  reqBy?: string; reqAt?: string
+  apprBy?: string; apprAt?: string; apprPct?: number; apprReason?: string
 }
+/* Which ROLE a special discount routes to — by amount, not by chain, so above the
+   band the lead is skipped entirely. Reuses the sales org already defined for the
+   Companies list rather than inventing a second hierarchy. */
+const apprRole = (pct: number): SalesRole => (pct <= SPECIAL_LEADER_MAX ? 'lead' : 'manager')
+/** The person that role resolves to for a given rep. A lead approves their own
+    team's requests; there is one department manager. */
+const apprPerson = (pct: number, rep?: string) =>
+  apprRole(pct) === 'manager'
+    ? SALES_MANAGER
+    : SALES_TEAMS.find((t) => rep && t.members.includes(rep))?.lead ?? SALES_TEAMS[0].lead
 const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
 const QUOTES: Quote[] = [
   /* Three options — Basic Plus (the one we RECOMMEND), Basic as the cheaper
@@ -11924,7 +12057,14 @@ const QUOTES: Quote[] = [
   { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '30/06/2026', acceptedOpt: 1 },
   { code: 'QUO-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
   { code: 'QUO-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — QUO-009905-06-2026.' },
-  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '31/07/2026', awaitingApproval: true, note: '25% discount — needs sales-lead approval before it can be sent.' },
+  // 8% → routes to the Sales leader, still waiting
+  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '31/07/2026', special: 8, appr: 'pending', reqBy: 'Nguyễn Thị Lan', reqAt: '06/08/2026 09:12', note: 'Khách so sánh với đối thủ, xin thêm 8% trên tổng đơn.' },
+  // 18% → skips the leader and goes straight to the Sales manager
+  { code: 'QUO-009913-08-2026', customer: 'Công ty CP Bình Minh', co: 'Công ty CP Bình Minh', products: [2], options: 1, value: 148_000_000, status: 'Draft', created: '07/08/2026', expires: '31/08/2026', special: 18, appr: 'pending', reqBy: 'Trần Quốc Trung', reqAt: '07/08/2026 16:40', note: 'Đơn lớn, khách chốt trong tuần nếu có 18%.' },
+  // approved, and therefore sendable
+  { code: 'QUO-009914-08-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', products: [1], options: 2, value: 92_400_000, status: 'Sent', created: '05/08/2026', expires: '31/08/2026', special: 10, appr: 'approved', reqBy: 'Trần Quốc Trung', reqAt: '05/08/2026 11:02', apprBy: 'Nguyễn Thị Lan', apprAt: '05/08/2026 14:20', apprPct: 10 },
+  // refused, with the reason the rep has to act on
+  { code: 'QUO-009915-08-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', products: [2], options: 1, value: 64_800_000, status: 'Draft', created: '06/08/2026', expires: '31/08/2026', special: 22, appr: 'rejected', reqBy: 'Phạm Quang Huy', reqAt: '06/08/2026 08:30', apprBy: 'Đỗ Xuân Trường', apprAt: '06/08/2026 10:05', apprPct: 22, apprReason: 'Trên 20% thì âm biên. Tối đa 12%, hoặc đổi sang gói Basic Plus.' },
 ]
 /** Products, compactly: first name + "+N" when there are more. Full list on hover. */
 function ProductCell({ ids }: { ids: number[] }) {
@@ -12334,7 +12474,7 @@ function QuotationPdfModal({ q, co, onClose }: { q: Quote; co?: Company; onClose
    approval gate, a lapsed offer, a superseded version, and which option the
    customer actually accepted. Read-only — changes go through Edit, which reopens
    the builder, because a Sent quotation is immutable and revising it makes a v2. */
-function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onBack: () => void; onCreatePO: (c: Company) => void; onDuplicate?: (companyName: string) => void }) {
+function QuotationDetail({ q, persona, onBack, onCreatePO, onDuplicate }: { q: Quote; persona?: SalesPersona; onBack: () => void; onCreatePO: (c: Company) => void; onDuplicate?: (companyName: string) => void }) {
   useDetailCrumb(q.code, onBack)
   /* Resolve the quotation's company against the real records. `co` on a quotation
      is written as the legal name, and older rows carry only `customer` — so match
@@ -12346,6 +12486,15 @@ function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onB
      can follow. It is disabled on a lapsed offer: the discounts and gifts expired
      with the validity date (T&C clause 2), so extend or re-issue as v2 first. */
   const canPO = q.status === 'Sent' && !q.lapsed
+  /* A special discount gates SEND. Until it is approved the quotation is a Draft
+     that cannot leave the building — which is the whole point of the request. */
+  const pending = q.appr === 'pending' && q.special != null
+  const rejected = q.appr === 'rejected'
+  /** True when the signed-in persona is the one this request routed to. */
+  const iAmApprover = !!(pending && persona && apprRole(q.special!) === persona.role
+    && (persona.role === 'manager' || teamBookOf(persona.name).has(q.reqBy ?? '')))
+  const [decision, setDecision] = useState<'approve' | 'reject' | null>(null)
+  const [reason, setReason] = useState('')
   // One option per product listed, priced off the catalog so the arithmetic is real.
   /* Which option the customer bought is decided HERE, when the PO is raised —
      the quotation itself carries no per-option status. With one option there is
@@ -12380,6 +12529,71 @@ function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onB
   return (
     <div>
 
+      {/* ── Special-discount approval ────────────────────────────────────────
+          Shown on the QUOTATION, because approving a percentage without the lines,
+          the options and the customer in front of you is signing a number blind.
+          The same bar serves both sides: the approver gets buttons, everyone else
+          gets the status and who it is sitting with. */}
+      {q.special != null && q.appr && (
+        <div className={cn('mb-4 rounded-xl border px-3.5 py-3',
+          q.appr === 'approved' ? 'border-emerald-200 bg-emerald-50'
+            : q.appr === 'rejected' ? 'border-rose-200 bg-rose-50'
+              : 'border-amber-300 bg-amber-50')}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className={cn('text-[12.5px] font-semibold',
+                q.appr === 'approved' ? 'text-emerald-900' : q.appr === 'rejected' ? 'text-rose-900' : 'text-amber-900')}>
+                {q.appr === 'approved' ? '✓ ' : q.appr === 'rejected' ? '✕ ' : '⏳ '}
+                Chiết khấu đặc biệt <b>{q.special}%</b> trên tổng đơn
+                {q.appr === 'pending' && <> — chờ <b>{SALES_ROLE_LABEL[apprRole(q.special)]}</b> ({apprPerson(q.special, q.reqBy)}) duyệt</>}
+                {q.appr === 'approved' && <> — đã duyệt</>}
+                {q.appr === 'rejected' && <> — bị từ chối</>}
+              </p>
+              <p className={cn('mt-0.5 text-[11px] leading-relaxed',
+                q.appr === 'approved' ? 'text-emerald-800' : q.appr === 'rejected' ? 'text-rose-800' : 'text-amber-800')}>
+                {q.reqBy} đề nghị lúc {q.reqAt}.
+                {q.appr !== 'pending' && q.apprBy && <> {q.apprBy} quyết định lúc {q.apprAt}, ở mức <b>{q.apprPct}%</b>.</>}
+                {q.note && <> · “{q.note}”</>}
+              </p>
+              {q.apprReason && <p className="mt-1 rounded-md bg-white/70 px-2 py-1 text-[11px] leading-relaxed text-rose-900"><b>Lý do từ chối:</b> {q.apprReason}</p>}
+              {/* The rule that makes an approval mean something. */}
+              {q.appr === 'approved' && <p className="mt-1 text-[10.5px] text-emerald-800">Sửa lại % sẽ hủy phê duyệt này và phải trình lại — nếu vượt {SPECIAL_LEADER_MAX}% thì trình Sales manager.</p>}
+            </div>
+
+            {iAmApprover ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <button onClick={() => setDecision('reject')} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:border-rose-400">Từ chối</button>
+                <button onClick={() => setDecision('approve')} className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Duyệt {q.special}%</button>
+              </div>
+            ) : q.appr === 'pending' ? (
+              <span className="shrink-0 text-[11px] text-amber-800">Bạn không phải người duyệt mức này.</span>
+            ) : null}
+          </div>
+
+          {/* A rejection needs a reason; an approval does not. The rep can only act
+              on "no" if they are told what would be a yes. */}
+          {decision === 'reject' && (
+            <div className="mt-2.5 rounded-lg border border-rose-200 bg-white px-2.5 py-2">
+              <label className="mb-1 block text-[11px] font-medium text-rose-900">Lý do từ chối <span className="text-rose-500">*</span></label>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Mức nào thì duyệt được? Rep cần biết để chỉnh lại." className="w-full rounded-md border border-line px-2.5 py-1.5 text-[12px] outline-none focus:border-rose-400" />
+              <div className="mt-1.5 flex justify-end gap-2">
+                <button onClick={() => { setDecision(null); setReason('') }} className="rounded-md border border-line px-2.5 py-1 text-[11.5px] font-medium text-muted hover:border-ink/40">Hủy</button>
+                <button disabled={!reason.trim()} className={cn('rounded-md px-3 py-1 text-[11.5px] font-semibold text-white', reason.trim() ? 'bg-rose-600 hover:opacity-90' : 'bg-line')}>Gửi từ chối</button>
+              </div>
+            </div>
+          )}
+          {decision === 'approve' && (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-white px-2.5 py-2 text-[11.5px] text-emerald-900">
+              <span>Duyệt <b>{q.special}%</b> cho {q.customer}. Ghi lại người duyệt, thời điểm và mức đã duyệt — sau đó rep gửi được báo giá.</span>
+              <span className="flex shrink-0 gap-2">
+                <button onClick={() => setDecision(null)} className="rounded-md border border-line px-2.5 py-1 font-medium text-muted hover:border-ink/40">Hủy</button>
+                <button className="rounded-md bg-emerald-600 px-3 py-1 font-semibold text-white hover:opacity-90">Xác nhận duyệt</button>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Báo giá / Quotation</p>
@@ -12401,7 +12615,13 @@ function QuotationDetail({ q, onBack, onCreatePO, onDuplicate }: { q: Quote; onB
           {/* Sales declares "sent" — reps routinely deliver the PDF by Zalo or from
               their own mail client, so it cannot depend on our mailer firing. */}
           {q.status === 'Draft' && (
-            <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Mark as sent</button>
+            <button
+              disabled={pending || rejected}
+              title={pending ? 'Chờ duyệt chiết khấu đặc biệt' : rejected ? 'Chiết khấu bị từ chối — chỉnh lại % rồi trình lại' : undefined}
+              className={cn('rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white', pending || rejected ? 'cursor-not-allowed bg-line' : 'bg-brand hover:opacity-90')}
+            >
+              Mark as sent
+            </button>
           )}
           {q.status === 'Sent' && (
             <button
@@ -12564,6 +12784,21 @@ function AdminQuotes() {
   const [dupFor, setDupFor] = useState<string | null>(null)
   const [fStatus, setFStatus] = useState('')
   const [qSort, setQSort] = useState<QuoteSort>('expires')
+  /* Approval happens HERE, not on a screen of its own. An approver has to see the
+     lines, the options and the customer before signing off on a percentage, and
+     all of that already lives on the quotation — a separate "Approvals" page
+     would be a second, thinner copy of this list plus a link back to it.
+     What the approver needs is a way to FIND their requests, which is a filter.
+
+     Same persona switcher as the Companies list, so "who am I" is answered once
+     and the same way everywhere. */
+  const [persona, setPersona] = useState<SalesPersona>(SALES_PERSONAS[1])
+  const [queue, setQueue] = useState(false)
+  /** Requests routed to THIS persona: matched on the role the rate escalates to. */
+  const mine = (q: Quote) =>
+    q.appr === 'pending' && q.special != null && apprRole(q.special) === persona.role &&
+    (persona.role === 'manager' || teamBookOf(persona.name).has(q.reqBy ?? ''))
+  const inbox = QUOTES.filter(mine)
   const goTo = useContext(ScreenNavCtx)
   /* Arrived via a cross-page link (e.g. from a PO row): open that quotation. Falls
      back to a stub so a PO can always link to its source even if the quotation is
@@ -12579,7 +12814,7 @@ function AdminQuotes() {
   const showing = open ?? linked
   if (showing) return (
     <>
-      <QuotationDetail q={showing} onBack={() => { setOpen(null); if (handed) goTo('admin-quotes') }} onCreatePO={setPoFor} onDuplicate={setDupFor} />
+      <QuotationDetail q={showing} persona={persona} onBack={() => { setOpen(null); if (handed) goTo('admin-quotes') }} onCreatePO={setPoFor} onDuplicate={setDupFor} />
       {dupFor && <NewQuotationModal company={dupFor} onClose={() => setDupFor(null)} />}
       {poFor && <CreatePOModal c={poFor} onClose={() => setPoFor(null)} />}
     </>
@@ -12589,6 +12824,7 @@ function AdminQuotes() {
      Search · Filter · Sort toolbar as Companies. Tabs made status the ONE dimension
      worth narrowing by and spent a whole row saying so. */
   const shown = QUOTES
+    .filter((q) => (queue ? mine(q) : true))
     .filter((q) => !fStatus || q.status === fStatus)
     .slice()
     .sort(QUOTE_SORTS[qSort].cmp)
@@ -12599,7 +12835,16 @@ function AdminQuotes() {
       <ProductCell ids={q.products} />,
       <span className="tabular-nums text-muted">{q.options}</span>,
       <span className="tabular-nums">{q.value.toLocaleString('en-US')} ₫</span>,
-      <Pill tone={QUOTE_TONE[q.status]}>{q.status}</Pill>,
+      /* Status AND the approval flag, because a pending request is not a status —
+         the quotation is still a Draft, it simply cannot be sent yet. */
+      <span className="flex min-w-0 flex-wrap items-center gap-1">
+        <Pill tone={QUOTE_TONE[q.status]}>{q.status}</Pill>
+        {q.appr === 'pending' && q.special != null && (
+          <Pill tone="schedule">⏳ {q.special}% · chờ {SALES_ROLE_LABEL[apprRole(q.special)]}</Pill>
+        )}
+        {q.appr === 'approved' && q.special != null && <Pill tone="active">✓ {q.special}% đã duyệt</Pill>}
+        {q.appr === 'rejected' && <Pill tone="rejected">✕ từ chối</Pill>}
+      </span>,
       <span className="tabular-nums text-muted">{q.created}</span>,
       <span className="tabular-nums text-muted">{q.expires}</span>,
     ]
@@ -12609,8 +12854,35 @@ function AdminQuotes() {
     <div>
       {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
       <ListPage
-        total={QUOTES.length}
+        total={shown.length}
         searchHint="Tìm số báo giá, khách hàng…"
+        leading={
+          <span className="flex flex-wrap items-center gap-2">
+            {/* Same control as the Companies list — one answer to "who am I". */}
+            <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
+              <span className="text-faint">Đang xem với tư cách</span>
+              <select
+                value={persona.name}
+                onChange={(e) => { setPersona(SALES_PERSONAS.find((x) => x.name === e.target.value)!); setQueue(false) }}
+                className="max-w-[210px] cursor-pointer bg-transparent text-[11.5px] font-medium text-ink outline-none"
+              >
+                {SALES_PERSONAS.map((x) => <option key={x.name} value={x.name}>{x.name} — {SALES_ROLE_LABEL[x.role]}</option>)}
+              </select>
+            </label>
+            {/* Only a lead or a manager can have an inbox, so the control is absent
+                for a plain rep rather than present and permanently empty. */}
+            {persona.role !== 'rep' && (
+              <button
+                onClick={() => setQueue((v) => !v)}
+                className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
+                  queue ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-line bg-surface text-muted hover:border-ink/30')}
+              >
+                ⏳ Chờ tôi duyệt
+                <span className={cn('rounded-full px-1.5 text-[10px] font-semibold', queue ? 'bg-amber-600 text-white' : inbox.length ? 'bg-amber-100 text-amber-800' : 'bg-canvas text-faint')}>{inbox.length}</span>
+              </button>
+            )}
+          </span>
+        }
         filters={
           <FilterBar count={fStatus ? 1 : 0} onClear={() => setFStatus('')}>
             <FilterRow label="Status" value={fStatus} onChange={setFStatus} options={['Draft', 'Sent', 'Issued to PO', 'Expired']} />
@@ -12630,7 +12902,7 @@ function AdminQuotes() {
         }
         cols={[
           { label: 'Quotation', w: '1.4fr' }, { label: 'Customer', w: '1.3fr' }, { label: 'Products', w: '1.2fr' },
-          { label: 'Options', w: '0.6fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1fr' },
+          { label: 'Options', w: '0.6fr' }, { label: 'Value', w: '1.1fr', align: 'r' }, { label: 'Status', w: '2.3fr' },
           { label: 'Created', w: '0.8fr' }, { label: 'Expires', w: '0.8fr' },
         ]}
         rows={rows}

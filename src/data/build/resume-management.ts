@@ -1834,6 +1834,79 @@ export const resumeManagement: BuildModule = {
           },
           {
             early: true,
+            heading: 'Every reject reason → exactly what the candidate sees',
+            text: 'The reviewer picks a reason code; the code picks the message. Two places show it: a ONE-LINE summary on My CVs, and the full explanation on CV detail — the page a candidate opens precisely to find out what is wrong. The two must never disagree, so they are written here together.',
+            table: {
+              cols: ['Reject reason (admin picks)', 'CV status', 'My CVs — one line + one button', 'CV detail — heading + body'],
+              rows: [
+                [
+                  'Not a CV',
+                  'Không hợp lệ',
+                  '“File này không phải một CV.” → Tải lên CV khác',
+                  '“Hồ sơ không hợp lệ” — “File bạn tải lên không phải một CV (giấy tờ, bảng giá, ảnh không liên quan). Hãy tải lên CV của bạn, hoặc tạo Saramin CV.”',
+                ],
+                [
+                  'Parser failed (it IS a real CV)',
+                  'Không đọc được',
+                  '“File dạng ảnh scan nên hệ thống không đọc được nội dung.” → Tải lên CV khác',
+                  '“Hệ thống chưa đọc được hồ sơ của bạn” — “CV của bạn hợp lệ, nhưng file là bản scan/ảnh nên chúng tôi không trích xuất được nội dung. Hãy tải lên bản PDF dạng văn bản để hồ sơ xuất hiện trong tìm kiếm.” NEVER blame the candidate here: the failure is ours.',
+                ],
+                [
+                  'Duplicate',
+                  'Không hợp lệ',
+                  '“Hồ sơ này trùng với một hồ sơ khác của bạn.” → Tải lên CV khác',
+                  '“Hồ sơ trùng lặp” — “Hồ sơ này trùng với một hồ sơ khác trong tài khoản của bạn. Hãy giữ lại một bản và xoá bản còn lại.”',
+                ],
+                [
+                  'Fake / misleading · Abusive content',
+                  'Không hợp lệ',
+                  '“Hồ sơ vi phạm quy định của Saramin.” → Liên hệ hỗ trợ',
+                  '“Hồ sơ vi phạm quy định” — no detail, and no self-service fix: the only route is support. Spelling out what tripped the rule teaches whoever is abusing it how to pass next time.',
+                ],
+                [
+                  'Other',
+                  'Không hợp lệ',
+                  '“Hồ sơ chưa được duyệt.” → Liên hệ hỗ trợ',
+                  'The reviewer’s note is REQUIRED to be candidate-safe here, because there is no template to fall back on. If it cannot be shown, use one of the codes above instead.',
+                ],
+                [
+                  '— (no rejection; the scan alone)',
+                  'Chưa đủ thông tin',
+                  '“Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.” → Cập nhật hồ sơ',
+                  '“Hồ sơ chưa đủ điều kiện hiển thị và ứng tuyển” + the missing fields as a checklist, each with its own hint (“Chưa có kinh nghiệm? Điền Học vấn + Dự án thay thế”).',
+                ],
+              ],
+            },
+            items: [
+              'THE LIST SUMMARISES, THE DETAIL EXPLAINS — one line and one button on My CVs, because that screen is for recognising your CVs; the full reason, the checklist and the fix on CV detail, because that is where a candidate goes to find out what to do.',
+              'THE REASON CODE IS NOT SHOWN VERBATIM — “Parser failed” is an internal bug-report label. Shown to the candidate it reads as blame for something they did not do, so it maps to a message that says plainly the failure is ours.',
+              'TWO REASONS HAVE NO SELF-SERVICE FIX — abuse and “other”. They route to support rather than to the editor, and abuse deliberately gives no detail: naming what tripped the rule teaches the next attempt how to pass.',
+              'THE ADMIN SEES THE CANDIDATE MESSAGE while picking, on the reason itself. A reviewer choosing a code without knowing what it sends is choosing blind, and the wrong code is a message the candidate cannot act on.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'THREE failures, three names — and the admin picks which',
+            text: 'One “rejected” cannot carry three different problems. A CV that is finishable, a file we cannot read, and a document that is not a CV at all need different words and different fixes — and only the third requires a human, which is why the reviewer must choose rather than press one Reject.',
+            table: {
+              cols: ['Candidate sees', 'What happened', 'Who decides', 'The fix — and the only button we show'],
+              rows: [
+                ['Chưa đủ thông tin', 'Readable, is a CV, but under the rule (≥1 experience or education+projects, AND ≥3 skills).', 'Automatic', 'Finishable by the candidate → Cập nhật hồ sơ'],
+                ['Không đọc được', 'No text layer — an image-only scan. A human reads it fine; we extract nothing.', 'Automatic', 'Needs a different FILE → Tải lên CV khác'],
+                ['Không hợp lệ', 'Readable, but not a CV: an ID card, a price list, unrelated paperwork.', 'ADMIN ONLY — a machine cannot judge this', 'Needs a different FILE → Tải lên CV khác'],
+              ],
+            },
+            items: [
+              'ONE LINE AND ONE BUTTON per failing CV on My CVs. The list is for recognising your CVs, not for working a checklist — WHICH fields are missing belongs in the editor, behind “Cập nhật hồ sơ”.',
+              'THE BUTTON DIFFERS BY CASE, and that is the whole reason for three names: telling someone whose upload was a price list to “add work experience” is advice they cannot act on, and telling someone with a thin CV to re-upload throws away work they have already done.',
+              'ONLY “KHÔNG HỢP LỆ” NEEDS A HUMAN — the other two are the scan’s own output. That is what keeps the review queue small, and it is why the admin action is Reject WITH A REASON rather than a bare Reject: the reason code is what selects the candidate’s message.',
+              'THE CHIP SAYS THE STATE, A SECOND CHIP SAYS SEARCH — “Hiển thị trong tìm kiếm CV” (not the older bare “Đang hiển thị”, which never said WHERE it was showing). A flagged CV that stops qualifying keeps its flag and shows “Tạm không hiển thị”, so the choice is not lost.',
+              'REMOVED, and worth recording so it is not rebuilt: an “Đang kiểm tra” chip that told the candidate their CV was under review but still usable for applying. It belonged to the earlier model where doubt held only search; under the current one doubt stops both doors, so the chip was describing behaviour the product no longer has.',
+              'NO SKILLS LINE ON THE CV ROW — it was a second place to edit skills, competing with the editor, on a screen whose job is recognition. Skills live in the CV editor only.',
+            ],
+          },
+          {
+            early: true,
             heading: 'How CV status drives Application status and CV search status',
             text: 'The direction is the thing readers get wrong, so it is drawn rather than described: everything on the right is COMPUTED from the box on the left. No arrow ever points back the other way, because there is nothing on the right to write to.',
             diagram: 'cv-status',
@@ -1945,6 +2018,45 @@ export const resumeManagement: BuildModule = {
               'WHERE A REJECTED CV LIVES, in full: here for the SET (recheck, calibrate, count), and on the JOBSEEKER USER RECORD for the PERSON. Both are needed because the two questions arrive differently — “what have we been rejecting?” is a list, “why was my application not sent?” is a name. It is NOT in Talent pool: that screen shows one row per candidate and only the flagged CV, so a rejected CV has no row to sit on and putting it there would stop the pool being the pool.',
             ],
             warn: 'The Jobseeker user record does NOT yet list a person’s CVs — see the open question below. Until it does, a support agent holding a candidate’s name has nowhere to look, and this screen is the only place a rejection is visible at all.',
+          },
+          {
+            early: true,
+            heading: 'REJECTED AFTER THE 24h TIMER ALREADY SENT IT — recall, and tell the employer it was us',
+            text: 'The case the timer creates: a CV sits in doubt, nobody reviews it, the 24h net releases the application, the employer receives it — and only THEN does an admin reject the CV. The rule is unchanged (a rejection recalls already-sent applications) but this instance is not a normal rejection, because the CV only reached the employer through OUR unstaffed queue. Neither the candidate nor the employer did anything wrong, and both pay for it.',
+            table: {
+              cols: ['Reject reason', 'How urgent the recall is', 'Why'],
+              rows: [
+                ['Fake / misleading · Abusive content', '**Urgent**', 'The employer may act on it — contact, interview, even hire. Every hour it stays is exposure.'],
+                ['Not a CV · Duplicate', 'Tidy-up', 'They have already seen it is junk. The recall protects our credibility more than their time.'],
+                ['Parser failed (it IS a real CV)', 'n/a', 'This one ends in Approve, not Reject — the CV was fine and our scan was not.'],
+              ],
+            },
+            items: [
+              'STILL RECALL, in every case. The alternative is knowingly leaving a CV we have judged fake or not-a-CV sitting in a paying customer’s dashboard, which is worse than the awkwardness of pulling it back.',
+              'THE CONFIRM MUST SHOW WHAT IT UNDOES — not just “12 applications dropped, 3 recalled” but “2 of these were auto-sent 3 days ago because nobody reviewed; 1 employer has moved this candidate to Interview”. An operator must not discover afterwards that they pulled someone out of a live hiring process.',
+              'LOG IT AS ITS OWN EVENT: `rejected_after_timer_release`, not a variant of reject. It is the one number that proves the queue is under-staffed — every instance is a bad CV that reached a paying employer ONLY because nobody looked in time. Agree a threshold with the client; above it, the answer is not better recall handling, it is that 24h is too long for the staffing we actually have.',
+              'THE EMPLOYER NOTICE NAMES SARAMIN. “Saramin đã thu hồi CV này”, never “ứng viên đã rút hồ sơ”. Hiding that we sent something we had not finished checking is the kind of thing that costs trust exactly once.',
+              'IT DOES NOT CARRY THE REASON CODE. The employer reads “hồ sơ không đạt yêu cầu”; they never read “hồ sơ giả”. The code is an accusation about a real person and exists for us to COUNT, not for a third party to act on.',
+              'THE UNLOCK CREDIT IS REFUNDED AUTOMATICALLY (recommended, needs client sign-off) — the employer paid to see a CV that we ourselves sent in error. Making them ask for it back is the wrong side of that mistake.',
+            ],
+            warn: 'This is where the 24h bet loses. The timer exists because a held application costs a CANDIDATE a job — a good rule — but it means unreviewed CVs reach employers, and this is the bill. Acceptable only while the rate is near zero, which is why the event above has to be counted rather than assumed.',
+          },
+          {
+            early: true,
+            heading: 'What the EMPLOYER sees when a CV is recalled — three surfaces',
+            text: 'Specced against the company Applicants screen. The governing decision is that the row is never silently deleted: the recruiter may already have read the CV or phoned the candidate, and a row that vanishes is harder to explain than one that explains itself.',
+            table: {
+              cols: ['Surface', 'What it shows'],
+              rows: [
+                ['Applicant list row', 'Stays in its pipeline stage, greyed with the name struck through, stage chip replaced by a rose **Đã thu hồi**. The match score is replaced by an em-dash — a recalled candidate is not one to compare any more, and leaving the number invites comparison.'],
+                ['Applicant detail', 'A rose banner ABOVE the CV, before the recruiter reads another line: who removed it (Saramin), the plain reason, the date, “bạn không cần xử lý ứng viên này”, and the credit refund. The CV body renders blurred and **Download CV disappears** — leaving it would let them keep a copy of a document we just told them to ignore, which makes the recall decorative.'],
+                ['Notification', 'Bell + email: “Saramin đã thu hồi 1 CV trong tin {job}”. A recall that only exists inside a screen nobody reopens is a recall that did not happen.'],
+              ],
+            },
+            items: [
+              'THE BANNER TELLS THEM WHAT TO DO, not just what happened: bỏ qua. The employer has no decision to make here, and a notice that leaves them wondering whether to act has failed.',
+              'IF THEY ALREADY CONTACTED THE CANDIDATE the banner says so is fine — “nếu bạn đã liên hệ ứng viên, có thể bỏ qua”. We cannot know what happened off-platform, so we give them the fact and let them handle it.',
+            ],
           },
           {
             early: true,
@@ -2073,6 +2185,8 @@ export const resumeManagement: BuildModule = {
         ],
         openQuestions: [
           'BLOCKER for support — the Jobseeker user record does not list a person’s CVs at all, so there is no screen where a support agent holding a candidate’s NAME can see their CV statuses. A rejection reaches us as a person complaining (“my application wasn’t sent”), never as a queue position, and CV review is organised by open work rather than by person. Spec the CV list onto the user record: the up-to-3 CVs, each with status, reason, who decided, when, and Approve to undo.',
+          'Is the unlock credit refunded automatically when a CV is recalled after being sent? We recommend YES — the employer paid to see a CV we ourselves sent in error, and making them ask for it back is the wrong side of that mistake. Needs client sign-off because it touches billing.',
+          'What rate of `rejected_after_timer_release` is acceptable before we shorten the 24h net or add reviewers? Agree the threshold NOW, while it is a number nobody is defending.',
           'Who works the review queue, and at what daily volume? With no auto-pass this is a standing staffing commitment, not a background job.',
           'Is the share of “Parser failed” rejections reported anywhere, or only visible by filtering the list? It is the measure of how much work the scan creates for people, which argues for a number on a dashboard rather than a filter someone has to think to apply.',
           'Do we keep an abuse check for the same file hash uploaded by many accounts? The rule cannot see it. Small, separate, and arguably Phase-2.',

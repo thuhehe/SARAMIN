@@ -39,12 +39,15 @@ export function Btn({
   )
 }
 
-export function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'green' | 'blue' | 'amber' }) {
+export function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'green' | 'blue' | 'amber' | 'rose' }) {
   const tones = {
     muted: 'bg-canvas text-muted border-line',
     green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     blue: 'bg-sky-50 text-sky-700 border-sky-200',
     amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    /* removed / withdrawn / blocked — the kit had no colour for a state that means
+       "stop, this is no longer yours to act on". */
+    rose: 'bg-rose-50 text-rose-700 border-rose-200',
   }
   return <span className={cn('inline-block rounded border px-1.5 py-0.5 text-[10.5px] font-medium', tones[tone])}>{children}</span>
 }

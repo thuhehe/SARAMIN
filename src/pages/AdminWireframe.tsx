@@ -77,18 +77,18 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
   'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
-  'admin-issuer': { module: 'admin-access', feature: 'Company information' },
+  'admin-issuer': { module: 'admin-system', feature: 'Company information' },
   // Configuration page → System module, like every other System nav item. The tier it
   // configures is displayed by CRM → Companies, which cross-references back to here.
-  'admin-membership': { module: 'admin-access', feature: 'Membership tiers' },
-  'admin-master-data': { module: 'admin-access', feature: 'Master data' },
+  'admin-membership': { module: 'admin-system', feature: 'Membership tiers' },
+  'admin-master-data': { module: 'admin-system', feature: 'Master data' },
   // Both point at the Resume-management feature that specifies them — the weights
   // and the log belong to the matching logic, not to the admin shell.
   'admin-matching-settings': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
   'admin-matching-report': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
-  'admin-audit-log': { module: 'admin-access', feature: 'Audit log' },
-  'admin-environment': { module: 'admin-access', feature: 'Environment' },
-  'admin-departments': { module: 'admin-access', feature: 'Departments' },
+  'admin-audit-log': { module: 'admin-system', feature: 'Audit log' },
+  'admin-environment': { module: 'admin-system', feature: 'Environment' },
+  'admin-departments': { module: 'admin-system', feature: 'Departments' },
 }
 
 /* ── Sidebar state, remembered per reader ────────────────────────────────────
@@ -256,13 +256,21 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'System',
-    icon: <Settings className="h-4 w-4" />,
+    // Identity & access — its own group, split out of System because it is a
+    // feature in its own right (see the Roles & permissions build module).
+    label: 'Roles & access',
+    icon: <Users className="h-4 w-4" />,
     items: [
       // People first: the staff directory is the source Users & CRM ownership pick from.
       { label: 'Staff directory', specId: 'admin-staff' },
       { label: 'Users', specId: 'admin-users' },
       { label: 'Roles & permissions', specId: 'admin-roles' },
+    ],
+  },
+  {
+    label: 'System',
+    icon: <Settings className="h-4 w-4" />,
+    items: [
       // The issuer identity that prints on every quotation / order / invoice.
       { label: 'Company information', specId: 'admin-issuer' },
       // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.

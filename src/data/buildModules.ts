@@ -21,6 +21,7 @@ import type { BuildModule } from './build/types'
 import { crm } from './build/crm'
 import { jobseekerUser } from './build/jobseeker-user'
 import { adminAccess } from './build/admin-access'
+import { adminSystem } from './build/admin-system'
 import { productsPackages } from './build/products-packages'
 import { jobManagement } from './build/job-management'
 import { applicationManagement } from './build/application-management'
@@ -40,7 +41,8 @@ import { tools } from './build/tools'
  *   Job seeker user      the other side of the marketplace: who applies
  *   Resume management    the CV they build — the input to an application
  *   Application          the CV meeting the job — so it reads after both halves
- *   System               HQ configuration behind all of the above
+ *   Roles & permissions  identity & access behind all of the above
+ *   System               the rest of HQ configuration
  *   Banners & Popups     content laid over the site
  *   Tools                supporting utilities
  */
@@ -52,6 +54,7 @@ export const BUILD_MODULES: BuildModule[] = [
   resumeManagement,
   applicationManagement,
   adminAccess,
+  adminSystem,
   bannersPopups,
   tools,
 ]

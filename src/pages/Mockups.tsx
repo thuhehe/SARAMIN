@@ -342,16 +342,34 @@ function ApplyScreen() {
                     unselectable, missing fields NAMED, one link into the editor. */}
                 <div className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas/40 p-2.5">
                   <span className="grid h-3.5 w-3.5 shrink-0 rounded-full border-2 border-line bg-canvas" />
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50"></span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50">📄</span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="truncate text-[12.5px] font-semibold text-muted">UX Designer CV</span>
                       <Chip tone="blue">Saramin</Chip>
-                      <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>
+                      <Chip tone="amber">⚠ Chưa đủ thông tin</Chip>
                     </span>
                     <span className="block text-[11px] text-faint">
-                      Thiếu: kinh nghiệm làm việc · thêm 2 kỹ năng{' '}
-                      <span onClick={() => go('js-create-cv')} className="cursor-pointer font-medium text-brand">Cập nhật →</span>
+                      Chưa đủ thông tin — cần bổ sung kinh nghiệm hoặc kỹ năng{' '}
+                      <span onClick={() => go('js-my-cvs')} className="cursor-pointer font-medium text-brand">Cập nhật hồ sơ →</span>
+                    </span>
+                  </span>
+                </div>
+                {/* REJECTED — refused here too, but for a different reason and with a
+                    different fix: there is no field to complete, so the row offers a
+                    replacement rather than a link into the editor. */}
+                <div className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas/40 p-2.5">
+                  <span className="grid h-3.5 w-3.5 shrink-0 rounded-full border-2 border-line bg-canvas" />
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50">📄</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-[12.5px] font-semibold text-muted">scan_cu.pdf</span>
+                      <Chip tone="muted">Uploaded</Chip>
+                      <Chip tone="amber">⚠ Không hợp lệ</Chip>
+                    </span>
+                    <span className="block text-[11px] text-faint">
+                      File này không phải một CV{' '}
+                      <span onClick={() => go('js-add-cv')} className="cursor-pointer font-medium text-brand">Tải lên CV khác →</span>
                     </span>
                   </span>
                 </div>
@@ -2067,11 +2085,9 @@ function MyCvsScreen() {
      extracted list is shown here to be corrected, not hidden in the database.
      Skills ONLY: a strip that asked about years, title and education too would be
      the compare screen again, which is the thing this route exists to avoid. */
-  const [cvSkills] = useState(['Figma', 'UI Design', 'Sketch', 'Adobe CC'])
   /* Which CV's skills are open for editing. An uploaded PDF has no skills section
      of its own to send the candidate to, so it edits here in a popup — the same
      shape as every other Edit on this page. */
-  const [editSkills, setEditSkills] = useState<number | null>(null)
   /* Uploaded CVs keep their FILE NAME — that is what the candidate recognises and
      what they will see again when they pick a CV to apply with. Generated ones get
      a readable title instead, since there is no file the user named. */
@@ -2092,14 +2108,26 @@ function MyCvsScreen() {
      candidate must be able to SEE the wait rather than assume they are already
      findable. A Saramin CV below the same rule is the stricter case: it cannot
      apply either, because we generate that document ourselves (`missing`). */
-  const cvs: { name: string; kind: string; meta: string; icon: string; skills?: string[]; missing?: string; indexStatus?: 'pending' | 'rejected' }[] = [
-    /* Parsed at upload to too little to qualify → indexStatus = pending, so it
-       waits outside CV search. It still applies normally. The Business Developer
-       CV keeps "Đang hiển thị" meanwhile: the flag never moves to a CV that has
-       not qualified, so the candidate is never indexed on nothing. */
-    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '', indexStatus: 'pending' },
-    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Generated 26/07/2026', icon: '', skills: ['Business Development', 'B2B Sales', 'Account Management', 'Excel'] },
-    { name: 'UX Designer CV', kind: 'Saramin', meta: 'Generated 14/08/2026', icon: '', skills: ['Figma'], missing: 'kinh nghiệm làm việc · thêm 2 kỹ năng' },
+  /* ONE state per CV, four values — the same set the admin sees, in the words the
+     candidate reads. Three of them are failures and they are NOT interchangeable:
+     “chưa đủ thông tin” is finishable, “không đọc được” needs a different FILE, and
+     “không hợp lệ” means the upload was not a CV at all. Each therefore gets its own
+     one-line reason and its own single action.
+
+     The detail of WHAT is missing lives in the editor, not here: this list is for
+     recognising your CVs, so a failing row gets one line and one button. */
+  type CvState = 'qualified' | 'not_enough' | 'unreadable' | 'invalid'
+  const STATE: Record<CvState, { chip: string; why: string; action: string; to: string }> = {
+    not_enough: { chip: '⚠ Chưa đủ thông tin', why: 'Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
+    unreadable: { chip: '⚠ Không đọc được', why: 'File dạng ảnh scan nên hệ thống không đọc được nội dung. Hãy tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+    invalid: { chip: '⚠ Không hợp lệ', why: 'File này không phải một CV.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+    qualified: { chip: '', why: '', action: '', to: '' },
+  }
+  const cvs: { name: string; kind: string; meta: string; icon: string; state: CvState }[] = [
+    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄', state: 'unreadable' },
+    { name: 'Business Developer CV', kind: 'Saramin', meta: 'Created 26/07/2026', icon: '📄', state: 'qualified' },
+    { name: 'UX Designer CV', kind: 'Saramin', meta: 'Created 14/08/2026', icon: '📄', state: 'not_enough' },
+    { name: 'scan_cu.pdf', kind: 'Uploaded', meta: 'Uploaded 02/08/2026', icon: '📄', state: 'invalid' },
   ]
 
   return (
@@ -2117,7 +2145,7 @@ function MyCvsScreen() {
             <div>
               <p className="text-[15px] font-bold text-ink">My CVs <span className="text-[11px] font-normal text-faint">· {cvs.length} of 3</span></p>
             </div>
-            {cvs.length >= 3
+            {cvs.length >= 4
               ? <span className="rounded-md border border-line px-3 py-1.5 text-[11.5px] text-faint">Đã đủ 3 CV — xoá một CV để thêm mới</span>
               : <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>}
           </div>
@@ -2129,60 +2157,39 @@ function MyCvsScreen() {
               for the sentence that makes it truthful. */}
           <div className="space-y-2.5">
             {cvs.map((c, i) => (
-              <div key={c.name} className={cn('relative flex items-start gap-3 rounded-xl border bg-surface p-4', searchable === i ? 'border-brand/40 bg-brand-soft/25' : 'border-line')}>
+              <div key={c.name} onClick={() => go('js-cv-detail')} className={cn('relative flex cursor-pointer items-start gap-3 rounded-xl border bg-surface p-4 hover:border-brand/40', searchable === i ? 'border-brand/40 bg-brand-soft/25' : 'border-line')}>
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-rose-50 text-[16px]">{c.icon}</span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink">
                     {c.name}
                     <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
-                    {/* index (CV SEARCH) vs apply — two different gates, two chips.
-                        A CV that is FLAGGED but no longer qualifies (case: the
-                        candidate edited a qualifying CV and removed a required
-                        field) keeps its flag and leaves the index, so it shows
-                        neither "Đang hiển thị" nor a plain Active — it says it is
-                        not being shown, and why. The flag is deliberately NOT
-                        auto-moved: the edit is usually transient, and flags do not
-                        auto-revert. */}
-                    {c.indexStatus === 'pending' && <Chip tone="amber">Đang kiểm tra</Chip>}
-                    {!c.indexStatus && searchable === i && !c.missing && <Chip tone="green">Đang hiển thị</Chip>}
-                    {!c.indexStatus && searchable === i && c.missing && <Chip tone="amber">Tạm không hiển thị</Chip>}
-                    {c.missing && <Chip tone="amber">Chưa đủ để ứng tuyển</Chip>}
+                    {/* Two different chips, because they answer two different
+                        questions: the STATE of the CV, and whether this is the one
+                        employers search. A CV that is flagged but no longer
+                        qualifies keeps its flag and says so, rather than showing a
+                        plain “đang hiển thị” it cannot honour. */}
+                    {c.state !== 'qualified' && <Chip tone="amber">{STATE[c.state].chip}</Chip>}
+                    {searchable === i && c.state === 'qualified' && <Chip tone="green">Hiển thị trong tìm kiếm CV</Chip>}
+                    {searchable === i && c.state !== 'qualified' && <Chip tone="amber">Tạm không hiển thị</Chip>}
                   </p>
-                  {/* No auto-pass on the index queue, so the candidate must be able
-                      to SEE the hold rather than assume they are already findable. */}
-                  {c.indexStatus === 'pending' && (
-                    <p className="mt-1 text-[11px] text-amber-700">
-                      Vẫn dùng để ứng tuyển bình thường. Đang kiểm tra trước khi hiển thị trong tìm kiếm CV — <b className="font-semibold">Business Developer CV</b> vẫn đang hiển thị.
-                    </p>
-                  )}
                   <p className="text-[11px] text-faint">{c.meta}</p>
 
-                  {/* The skills line — on EVERY CV from the first render, in ONE state.
-                      There is no confirm / "not now" ceremony: extracted skills are
-                      simply the CV's skills, shown as such, and Edit edits them. A
-                      confirmation step would have asked the candidate to approve
-                      something we had already saved — a decision with no alternative
-                      is not a decision, it is a dialog. Same display either way;
-                      only the edit destination differs, because a Saramin CV owns a
-                      real skills section and an uploaded PDF does not.
-                      Labelled just "Skills" — "employers find you by" read as if
-                      skills were the ONLY searchable facet, which they are not. */}
-                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className="text-[10.5px] font-medium uppercase tracking-wide text-faint">Skills</span>
-                    <span className="text-[11.5px] text-ink/75">{(c.skills ?? cvSkills).join(' · ')}</span>
-                    <span
-                      onClick={() => (c.kind === 'Saramin' ? go('js-create-cv') : setEditSkills(i))}
-                      className="cursor-pointer text-[11px] font-medium text-brand"
-                    >✎ Edit</span>
-                  </div>
-
-                  {/* The gate, spelled out — named fields, never a % (see spec) */}
-                  {c.missing && (
-                    <p className="mt-1 text-[11px] text-amber-700">
-                      Thiếu: {c.missing}
-                      {searchable === i && ' — CV vẫn được chọn hiển thị, nhưng tạm rời khỏi tìm kiếm CV cho tới khi đủ điều kiện'} —{' '}
-                      <span onClick={() => go('js-create-cv')} className="cursor-pointer font-medium text-brand">Hoàn thiện →</span>
-                    </p>
+                  {/* A failing row gets ONE line and ONE button. The detail of what
+                      is missing belongs in the editor — this list is for recognising
+                      your CVs, not for working through a checklist. */}
+                  {c.state !== 'qualified' && (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-700">
+                        {STATE[c.state].why}
+                        {searchable === i && ' Vẫn là CV bạn chọn — sẽ hiển thị lại ngay khi đủ điều kiện.'}
+                      </p>
+                      <span
+                        onClick={(e) => { e.stopPropagation(); go(STATE[c.state].to) }}
+                        className="shrink-0 cursor-pointer rounded-md border border-amber-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-amber-700"
+                      >
+                        {STATE[c.state].action} →
+                      </span>
+                    </div>
                   )}
 
                   {/* The one named action, LAST — it sends the candidate away from
@@ -2192,15 +2199,15 @@ function MyCvsScreen() {
                 </div>
 
                 <button
-                  onClick={() => setMenu(menu === i ? null : i)}
+                  onClick={(e) => { e.stopPropagation(); setMenu(menu === i ? null : i) }}
                   className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border text-[15px] leading-none text-muted', menu === i ? 'border-line bg-canvas' : 'border-transparent hover:border-line hover:bg-canvas')}
                 >⋯</button>
 
                 {menu === i && (
                   <>
                     {/* click-away */}
-                    <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
-                    <div className="absolute right-3 top-12 z-30 w-[248px] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">
+                    <div className="fixed inset-0 z-20" onClick={(e) => { e.stopPropagation(); setMenu(null) }} />
+                    <div onClick={(e) => e.stopPropagation()} className="absolute right-3 top-12 z-30 w-[248px] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">
                       {[
                         { icon: '⤓', label: 'Tải xuống' },
                         { icon: '✎', label: 'Đổi tên' },
@@ -2224,33 +2231,30 @@ function MyCvsScreen() {
                           consented, believes they are findable, and gets nothing.
                           It used to render as an on/off toggle that could not
                           actually be switched off, which promised the opposite. */}
-                      {/* THREE states on one control, and the split is fact vs doubt:
-                          · `missing` (Saramin CV below the rule) — DISABLED. It is a
-                            fact the candidate can fix in a minute, so we say so
-                            rather than let them switch it on and wait for nothing.
-                          · `indexStatus = pending` (thin extraction) — chosen, but
-                            waiting on a human. Our doubt, so the choice stayed theirs.
-                          · otherwise — a normal radio. */}
+                      {/* Only a QUALIFIED CV can be chosen — everything else would
+                          promise a visibility we cannot deliver. The disabled state
+                          says which of the three reasons is in the way. */}
                       <div className="mt-1 border-t border-line-soft px-3 py-2.5">
                         <label
-                          onClick={() => { if (!c.indexStatus && !c.missing) { setSearchable(i); setMenu(null) } }}
-                          className={cn('flex items-center justify-between gap-2', c.indexStatus || c.missing ? 'cursor-default opacity-60' : 'cursor-pointer')}
+                          onClick={() => { if (c.state === 'qualified') { setSearchable(i); setMenu(null) } }}
+                          className={cn('flex items-center justify-between gap-2', c.state === 'qualified' ? 'cursor-pointer' : 'cursor-default opacity-60')}
                         >
                           <span className="text-[12px] text-ink">Cho nhà tuyển dụng tìm thấy CV này</span>
-                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors', c.missing && searchable !== i ? 'border-line bg-canvas' : c.indexStatus === 'pending' || (c.missing && searchable === i) ? 'border-amber-400 bg-amber-400' : searchable === i ? 'border-emerald-500 bg-emerald-500' : 'border-line')}>
-                            {(searchable === i || c.indexStatus === 'pending') && !(c.missing && searchable !== i) && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          {/* A TOGGLE, not a radio — “turn CV search on for this CV”
+                              reads as a switch, and a disabled switch shows plainly
+                              that the control exists but is not available yet. */}
+                          <span className={cn('relative h-4 w-7 shrink-0 rounded-full transition-colors', searchable === i ? (c.state === 'qualified' ? 'bg-emerald-500' : 'bg-amber-400') : 'bg-line')}>
+                            <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
                           </span>
                         </label>
-                        <p className={cn('mt-1 text-[10.5px] leading-snug', c.missing ? 'text-amber-700' : 'text-faint')}>
-                          {c.missing
+                        <p className={cn('mt-1 text-[10.5px] leading-snug', c.state === 'qualified' ? 'text-faint' : 'text-amber-700')}>
+                          {c.state !== 'qualified'
                             ? searchable === i
-                              ? 'Vẫn là CV bạn đã chọn, nhưng đang thiếu điều kiện nên tạm không hiển thị với nhà tuyển dụng. Hoàn thiện là hiển thị lại ngay — không cần chọn lại.'
-                              : 'Chưa đủ điều kiện hiển thị — cần kinh nghiệm làm việc và ≥3 kỹ năng. CV này cũng chưa dùng để ứng tuyển được.'
-                            : c.indexStatus === 'pending'
-                              ? 'Đã chọn — đang kiểm tra trước khi hiển thị; không có thời hạn tự động. Vẫn ứng tuyển bình thường.'
-                              : searchable === i
-                                ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế.'
-                                : 'Chọn CV này thay cho CV đang hiển thị. Các CV khác vẫn ứng tuyển được như thường.'}
+                              ? 'Vẫn là CV bạn đã chọn, nhưng chưa đủ điều kiện nên tạm không hiển thị. Xử lý xong là hiển thị lại ngay — không cần chọn lại.'
+                              : `${STATE[c.state].chip.replace('⚠ ', '')} — chưa thể hiển thị với nhà tuyển dụng.`
+                            : searchable === i
+                              ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế.'
+                              : 'Chọn CV này thay cho CV đang hiển thị.'}
                         </p>
                       </div>
                     </div>
@@ -2266,31 +2270,125 @@ function MyCvsScreen() {
       {/* ── Edit Basic information — the 9 fields, and only those ── */}
       {editing && <ProfileEditPopup section={editing} onClose={() => setEditing(null)} />}
 
-      {/* ── Edit skills — the same combobox the Saramin CV editor uses, so there is
-             one skills control in the product and not two. ── */}
-      {editSkills !== null && <CvSkillsPopup cvName={cvs[editSkills].name} onClose={() => setEditSkills(null)} />}
     </div>
   )
 }
 
-/* Skills editor for an UPLOADED CV. It edits the CV's skill list, never the PDF —
-   the file stays exactly as uploaded, and the line under the field says so, because
-   "editing my CV" reasonably sounds like we are rewriting their document. */
-function CvSkillsPopup({ cvName, onClose }: { cvName: string; onClose: () => void }) {
+
+/* ── CV detail — one CV, read the way an employer reads it, in the SAME three
+   groups the candidate already knows from their profile: Basic information ·
+   Work preference · CV content.
+   Two jobs on one screen: (1) show the document, (2) explain its STATE. A failing
+   CV gets the DETAILED version of the message here — the list only had room for
+   one line, and “what exactly is wrong and what do I do” is the thing a candidate
+   opens this page to find out. ── */
+function CvDetailScreen() {
+  const go = useNav()
+  /* The state this screen is demonstrating. Every failure reason lands here with
+     its own heading, body and action — the list is the summary, this is the full
+     explanation, and the two must never disagree. */
+  const st = {
+    chip: '⚠ Chưa đủ thông tin',
+    heading: 'Hồ sơ chưa đủ điều kiện hiển thị và ứng tuyển',
+    body: 'Để bật cho phép tìm kiếm và dùng để ứng tuyển, hồ sơ cần có ít nhất 1 kinh nghiệm làm việc (hoặc học vấn + dự án nếu bạn chưa đi làm) và 3 kỹ năng.',
+    todo: [
+      { label: 'Kinh nghiệm làm việc', hint: 'Chưa có kinh nghiệm? Điền Học vấn + Dự án thay thế' },
+      { label: 'Kỹ năng — đang có 1/3', hint: 'Thêm 2 kỹ năng nữa' },
+    ],
+    action: 'Cập nhật hồ sơ',
+  }
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="mb-2.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">{title}</p>
+      {children}
+    </div>
+  )
+  const Row = ({ k, v }: { k: string; v: string }) => (
+    <p className="flex items-baseline justify-between gap-3 border-t border-line-soft py-1.5 text-[12px] first:border-t-0 first:pt-0">
+      <span className="shrink-0 text-muted">{k}</span><span className="text-right font-medium text-ink">{v}</span>
+    </p>
+  )
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/30 px-4 pt-8">
-      <div className="flex max-h-[560px] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <p className="text-[14px] font-bold text-ink">Edit skills <span className="font-normal text-faint">· {cvName}</span></p>
-          <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-4">
-          <CvSkillsField />
-          <p className="mt-2 text-[10.5px] leading-snug text-faint">Your PDF isn’t changed — these skills are what employers search on. Up to 20 per CV.</p>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-          <Btn onClick={onClose}>Cancel</Btn>
-          <Btn primary onClick={onClose}>Save</Btn>
+    <div className="relative">
+      <JsHeader active="CV & Profile" />
+      <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
+        <MyPageRail active="js-my-cvs" />
+
+        <div className="space-y-3">
+          <p onClick={() => go('js-my-cvs')} className="cursor-pointer text-[11.5px] font-medium text-brand">← My CVs</p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[15px] font-bold text-ink">UX Designer CV</p>
+            <Chip tone="blue">Saramin</Chip>
+            <Chip tone="amber">{st.chip}</Chip>
+          </div>
+
+          {/* The DETAILED state — the reason the candidate opened this page. Same
+              wording family as the list, but with the “what exactly” the list had
+              no room for, and one action. */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+            <p className="text-[12.5px] font-bold text-amber-800">{st.heading}</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-amber-800/90">{st.body}</p>
+            <div className="mt-2.5 space-y-1.5">
+              {st.todo.map((t) => (
+                <div key={t.label} className="flex items-start gap-2">
+                  <span className="mt-[3px] h-3 w-3 shrink-0 rounded-full border-[1.5px] border-amber-400" />
+                  <div className="min-w-0">
+                    <p className="text-[11.5px] font-medium text-ink/85">{t.label}</p>
+                    <p className="text-[10.5px] text-amber-700">{t.hint}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3">
+              <Btn primary onClick={() => go('js-create-cv')}>{st.action}</Btn>
+            </div>
+          </div>
+
+          <Section title="1 · Thông tin cơ bản">
+            <div className="grid gap-x-6 sm:grid-cols-2">
+              <Row k="Họ tên" v="Trần Minh Anh" />
+              <Row k="Email" v="minhanh@email.com" />
+              <Row k="Điện thoại" v="0901 234 567" />
+              <Row k="Ngày sinh" v="12/04/1996" />
+              <Row k="Giới tính" v="Nữ" />
+              <Row k="Quốc tịch" v="Việt Nam" />
+              <Row k="Tình trạng hôn nhân" v="Độc thân" />
+              <Row k="Học vấn cao nhất" v="Cử nhân" />
+              <Row k="Số năm kinh nghiệm" v="4 năm" />
+            </div>
+          </Section>
+
+          <Section title="2 · Công việc mong muốn">
+            <div className="grid gap-x-6 sm:grid-cols-2">
+              <Row k="Vị trí mong muốn" v="Senior Product Designer" />
+              <Row k="Ngành nghề" v="Thiết kế" />
+              <Row k="Lĩnh vực" v="IT / Phần mềm" />
+              <Row k="Nơi muốn làm việc" v="Hồ Chí Minh · Hà Nội" />
+              <Row k="Mức lương mong muốn" v="20 – 30 tr" />
+              <Row k="Hình thức làm việc" v="In office" />
+            </div>
+          </Section>
+
+          {/* CV CONTENT — the document itself, shown the way an employer sees it,
+              with the file link underneath. This is what “Xem như nhà tuyển dụng”
+              means in practice, so it does not need a separate screen. */}
+          <Section title="3 · Nội dung CV">
+            <div className="rounded-lg border border-line bg-canvas/40 p-4">
+              <p className="text-[13px] font-bold text-ink">Trần Minh Anh</p>
+              <p className="text-[11px] text-muted">Product Designer · Hồ Chí Minh</p>
+              <p className="mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Kinh nghiệm làm việc</p>
+              <p className="rounded-md border border-dashed border-amber-300 bg-amber-50/60 px-2 py-1.5 text-[11px] text-amber-700">Chưa có — cần bổ sung</p>
+              <p className="mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Kỹ năng</p>
+              <p className="text-[11.5px] text-ink">Figma</p>
+              <p className="mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Học vấn</p>
+              <p className="text-[11.5px] text-ink">ĐH Kinh tế TP.HCM · Cử nhân</p>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <span className="cursor-pointer text-[11.5px] font-medium text-brand">🔗 Tải xuống PDF</span>
+              <span className="cursor-pointer text-[11.5px] font-medium text-brand">Xem như nhà tuyển dụng</span>
+            </div>
+          </Section>
         </div>
       </div>
     </div>
@@ -2694,17 +2792,32 @@ function OnboardingScreen() {
                       hide inside the province list. Chips, not a search: four values,
                       all visible. This is what the job's `job_type` matches against. */}
                   <div className="mt-3">
-                    <p className="mb-1 text-[11.5px] font-medium text-ink">How do you want to work? <span className="font-normal text-faint">(pick any)</span></p>
+                    <p className="mb-1 text-[11.5px] font-medium text-ink">How do you want to work? <span className="font-normal text-faint">(up to 3)</span></p>
                     <div className="flex flex-wrap gap-1.5">
-                      {WORK_TYPES.map((w) => (
-                        <span
-                          key={w}
-                          onClick={() => setWorkTypes((a) => (a.includes(w) ? a.filter((x) => x !== w) : [...a, w]))}
-                          className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[11.5px]', workTypes.includes(w) ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink/70')}
-                        >{w}</span>
-                      ))}
+                      {WORK_TYPES.map((w) => {
+                        const on = workTypes.includes(w)
+                        /* Capped at 3 of the 4 deliberately: selecting all four matches
+                           exactly the same jobs as selecting none, so the redundant
+                           "anything goes" answer is pushed to the control that already
+                           states it — leaving them all off. */
+                        const full = !on && workTypes.length >= 3
+                        return (
+                          <span
+                            key={w}
+                            onClick={() => !full && setWorkTypes((a) => (on ? a.filter((x) => x !== w) : [...a, w]))}
+                            className={cn(
+                              'rounded-full border px-2.5 py-1 text-[11.5px]',
+                              on
+                                ? 'cursor-pointer border-brand bg-brand-soft text-brand'
+                                : full
+                                  ? 'cursor-not-allowed border-line text-faint'
+                                  : 'cursor-pointer border-line text-ink/70',
+                            )}
+                          >{w}</span>
+                        )
+                      })}
                     </div>
-                    <p className="mt-1 text-[10px] text-faint">Leave all off and we will not rule anything out.</p>
+                    <p className="mt-1 text-[10px] text-faint">{workTypes.length} of 3 selected · happy with any arrangement? Leave all off and we will not rule anything out.</p>
                   </div>
                 </div>
                 <Nav back={() => setStep(1)} next={() => setStep(3)} />
@@ -3166,6 +3279,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-apply', site: 'Jobseeker', title: 'Apply flow', url: 'saramin.vn/job/…/apply', Comp: ApplyScreen },
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },
   { id: 'js-my-cvs', site: 'Jobseeker', title: 'My CVs', url: 'saramin.vn/my-page/cvs', Comp: MyCvsScreen },
+  { id: 'js-cv-detail', site: 'Jobseeker', title: 'CV detail', url: 'saramin.vn/my-page/cvs/ux-designer-cv', Comp: CvDetailScreen },
   { id: 'js-add-cv', site: 'Jobseeker', title: 'Add a new CV', url: 'saramin.vn/cv/new', Comp: AddCvScreen },
   { id: 'js-cv-compare', site: 'Jobseeker', title: 'CV compare (after upload)', url: 'saramin.vn/cv/review', Comp: CvCompareScreen },
   { id: 'js-profile-cv', site: 'Jobseeker', title: 'My Profile', url: 'saramin.vn/my-page/profile', Comp: ProfileCvScreen },

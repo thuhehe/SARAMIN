@@ -294,6 +294,9 @@ type CoCandidate = {
   cv: string
   /** days since the last stage move — the "who is waiting on me" pressure signal */
   waiting: string
+  /** set when SARAMIN pulled the CV back after sending it — the date it happened.
+      The row stays in the pipeline; see the recall banner in the detail panel. */
+  recalled?: string
 }
 
 /** Toolbar button in the Saramin KR shape: white, hairline border, icon + label. */
@@ -419,6 +422,12 @@ function ApplicantsScreen() {
       people: [
         { n: 'Nguyễn Thị Hoa', role: 'Điều dưỡng viên', exp: '3 năm KN', loc: 'Hồ Chí Minh', match: 88, why: '9/10 kỹ năng · 3 năm hợp 2–5', applied: '2 ngày trước', salary: '12–15 tr', cv: 'Saramin CV', waiting: '2 days' },
         { n: 'Phạm Thu Trang', role: 'Điều dưỡng viên', exp: '1 năm KN', loc: 'Bình Dương', match: 64, why: '5/10 kỹ năng · lương hợp', applied: '3 ngày trước', salary: '9–11 tr', cv: 'PDF tải lên', waiting: '3 days' },
+        /* RECALLED BY SARAMIN. The row deliberately stays in the pipeline: the
+           recruiter may already have read this CV or phoned the candidate, and a
+           row that vanishes silently is worse than one that explains itself. It
+           is greyed and chipped instead, and the detail panel says who removed it
+           and what to do. */
+        { n: 'Ngô Bảo Khánh', role: 'Sales Staff', exp: '1 năm KN', loc: 'Cần Thơ', match: 38, why: '2/10 kỹ năng', applied: '4 ngày trước', salary: '8–12 tr', cv: 'PDF tải lên', waiting: '4 days', recalled: '20/08/2026' },
       ],
     },
     { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, why: '8/10 kỹ năng · Hồ Chí Minh', applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
@@ -566,14 +575,16 @@ function ApplicantsScreen() {
                   <div onClick={() => open(p.n)} className="flex min-w-0 cursor-pointer items-center gap-2">
                     <Avatar name={p.n} />
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-ink">{p.n}</p>
+                      <p className={cn('truncate font-medium', p.recalled ? 'text-muted line-through' : 'text-ink')}>{p.n}</p>
                       <p className="truncate text-[10.5px] text-faint">{p.role} · {p.loc}</p>
                     </div>
                   </div>
                   <span className="text-muted">{p.exp}</span>
                   <span className="text-muted">{p.salary}</span>
-                  <span><Match score={p.match} why={p.why} /></span>
-                  <span><Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip></span>
+                  {/* A recalled row shows no match score: it is not a candidate to
+                      compare any more, and leaving the number invites comparison. */}
+                  <span>{p.recalled ? <span className="text-[11px] text-faint">—</span> : <Match score={p.match} why={p.why} />}</span>
+                  <span>{p.recalled ? <Chip tone="rose">Đã thu hồi</Chip> : <Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip>}</span>
                   <span className="text-right tabular-nums text-muted">{p.waiting}</span>
                 </div>
               ))}
@@ -621,6 +632,27 @@ function ApplicantsScreen() {
               </div>
               <span className="cursor-pointer text-faint" onClick={() => open(null)}>✕</span>
             </div>
+            {/* RECALL NOTICE — first thing in the panel, above the CV, because the
+                recruiter must know before they read another line. It names SARAMIN
+                as the actor: "the candidate withdrew" would be a lie, and hiding
+                that we sent something we had not finished checking costs trust
+                exactly once. It does NOT carry the internal reason code — "hồ sơ
+                giả" is an accusation about a real person, and that code exists for
+                us to count, not for an employer to read. */}
+            {picked.recalled && (
+              <div className="border-b border-rose-200 bg-rose-50 px-4 py-3">
+                <p className="flex items-center gap-2 text-[12.5px] font-bold text-rose-700">
+                  <span></span> Saramin đã thu hồi CV này
+                </p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-rose-900/80">
+                  Chúng tôi kiểm tra lại hồ sơ sau khi gửi và xác định hồ sơ không đạt yêu cầu.{' '}
+                  <b className="font-semibold">Bạn không cần xử lý ứng viên này.</b>
+                </p>
+                <p className="mt-1 text-[10.5px] text-rose-900/60">
+                  Thu hồi ngày {picked.recalled} · Nếu bạn đã liên hệ ứng viên, có thể bỏ qua · Lượt xem CV đã được hoàn lại
+                </p>
+              </div>
+            )}
             <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_244px]">
               {/* left: the FULL CV, rendered in place — no extra click, no separate
                   viewer. A recruiter decides from the document, so the document is
@@ -628,9 +660,12 @@ function ApplicantsScreen() {
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">CV — {picked.cv} (full document)</p>
-                  <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">Download CV</span>
+                  {/* Download disappears on a recalled CV. Leaving it would let the
+                      recruiter keep a copy of a document we have just told them to
+                      ignore, which makes the recall decorative. */}
+                  {!picked.recalled && <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">Download CV</span>}
                 </div>
-                <div className="space-y-3 rounded-lg border border-line bg-canvas/30 p-4">
+                <div className={cn('space-y-3 rounded-lg border border-line bg-canvas/30 p-4', picked.recalled && 'pointer-events-none select-none opacity-40 blur-[2px]')}>
                   {/* CV header */}
                   <div className="border-b border-line-soft pb-2">
                     <p className="text-[14px] font-bold text-ink">{picked.n}</p>
