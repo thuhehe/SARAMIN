@@ -11008,7 +11008,18 @@ const QUOTE_CATALOG = [
   { vi: 'Dịch vụ tìm kiếm hồ sơ (30 ngày)', short: 'CV Search 30d', unitVi: 'hồ sơ', unitEn: 'CV', price: 5_500_000, feats: ['Mở tối đa 50 hồ sơ trong 30 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
   { vi: 'Dịch vụ tìm kiếm hồ sơ (90 ngày)', short: 'CV Search 90d', unitVi: 'hồ sơ', unitEn: 'CV', price: 13_900_000, feats: ['Mở tối đa 200 hồ sơ trong 90 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
   { vi: 'Employer Branding Page', short: 'EB Page', unitVi: 'gói', unitEn: 'package', price: 15_000_000, feats: ['Trang thương hiệu tuyển dụng riêng', 'Banner + video giới thiệu'] },
+  /* ── Trial products ─────────────────────────────────────────────────────
+     The trial "discount" is not a discount at all — it is a small set of real
+     products priced low, carrying `trial`. Modelling it as products rather than
+     as a percentage is what makes it auditable: the invoice shows what was
+     actually sold at what price, instead of a 95% write-down nobody can explain
+     a year later, and revenue reporting sees a cheap SKU rather than a discount.
+     They are offered ONLY inside a trial quotation. */
+  { vi: 'Tin đăng dùng thử (Basic Job)', short: 'Trial Basic', unitVi: 'tin', unitEn: 'post', price: 500_000, trial: true, feats: ['Đăng tuyển 15 ngày', 'Không có vị trí nổi bật', 'Giới hạn 01 lần trên mỗi MST'] },
+  { vi: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', short: 'Trial CV 7d', unitVi: 'hồ sơ', unitEn: 'CV', price: 300_000, trial: true, feats: ['Mở tối đa 05 hồ sơ trong 07 ngày', 'Giới hạn 01 lần trên mỗi MST'] },
 ]
+/** Trial SKUs never appear in a normal quotation, and normal SKUs never in a trial. */
+const catForMode = (m: DiscountMode) => QUOTE_CATALOG.map((c, i) => ({ c, i })).filter((x) => !!x.c.trial === (m === 'trial'))
 /* A quotation ALWAYS expires on the last day of the month it was created in —
    not after a fixed number of days. So validity shrinks through the month, and
    every quote raised in a month lapses together. Derived, never typed. */
@@ -11072,13 +11083,82 @@ function enWords(n: number) {
   return s.charAt(0).toUpperCase() + s.slice(1) + ' VND'
 }
 
-/* Special-discount approval bands. 1–10% is a sales leader's call; anything above
-   is the sales manager's. Kept as constants because they are a sales policy that
-   will be renegotiated, not a fact about the software. */
+/* ── The four ways a quotation can be discounted ──────────────────────────────
+   A rep picks exactly ONE mode. Which modes are offered depends on the customer's
+   status, and each mode decides — independently — what happens to the THREE
+   discount inputs the client's live system has:
+
+     line %    "Discount" on each product row
+     order %   "Addition Discount" on the whole order
+     fixed ₫   "Voucher", a flat amount off
+
+   Three inputs and four modes is twelve rules, which is exactly why they are a
+   table here rather than conditionals scattered through the form. */
+type DiscountMode = 'newchurn' | 'existing' | 'trial' | 'special'
+type FieldRule = 'off' | 'auto' | 'free'   // locked at 0 · written by a rule · the rep's
+const DISCOUNT_MODES: Record<DiscountMode, {
+  vi: string; en: string; hint: string
+  line: FieldRule; order: FieldRule; fixed: FieldRule
+  /** order-% approval bands apply only where this is true */
+  approves?: boolean
+  audience: Account[]
+}> = {
+  newchurn: {
+    vi: 'Ưu đãi khách mới / quay lại', en: 'New & Churn discount',
+    hint: 'Giảm 50% trên tổng đơn, với điều kiện mọi dòng ≤ 5 số lượng. Chỉ áp dụng cho PO đầu tiên kể từ khi khách ở trạng thái hiện tại, và không chạy cùng chương trình khác.',
+    line: 'off', order: 'auto', fixed: 'free', audience: ['New', 'Churn'],
+  },
+  existing: {
+    vi: 'Chiết khấu theo số lượng', en: 'Existing discount',
+    hint: 'Cộng dồn số lượng theo từng loại sản phẩm rồi lấy bậc tương ứng (2+ → 25% … 100+ → 60%). Có thể cộng thêm chiết khấu trên tổng đơn — mức này phải được duyệt.',
+    line: 'auto', order: 'free', fixed: 'free', approves: true, audience: ['New', 'Churn', 'Existing'],
+  },
+  trial: {
+    vi: 'Gói dùng thử', en: 'Trial',
+    hint: 'Không phải chiết khấu: đây là các sản phẩm dùng thử có giá riêng, chỉ xuất hiện trong báo giá. Mọi ô chiết khấu đều khoá ở 0.',
+    line: 'off', order: 'off', fixed: 'off', audience: ['New', 'Churn'],
+  },
+  special: {
+    vi: 'Ưu đãi đặc biệt', en: 'Special offer',
+    hint: 'Sales tự quyết cả ba mức — từng dòng, tổng đơn và số tiền cố định. Không có bước duyệt, nên mọi con số ở đây là trách nhiệm của người lập báo giá.',
+    line: 'free', order: 'free', fixed: 'free', audience: ['New', 'Churn', 'Existing'],
+  },
+}
+const modesFor = (a?: Account) =>
+  (Object.keys(DISCOUNT_MODES) as DiscountMode[]).filter((m) => a && DISCOUNT_MODES[m].audience.includes(a))
+/** What a customer status starts on. Existing has no welcome offer to default to. */
+const defaultMode = (a?: Account): DiscountMode => (a === 'Existing' ? 'existing' : 'newchurn')
+
+/* Approval bands for the ORDER-level percentage, and only under the Existing
+   programme. 10% and below is a sales lead's call; above it is the manager's.
+   Constants because they are a sales policy that will be renegotiated, not a fact
+   about the software. */
 const SPECIAL_LEADER_MAX = 10
+/* The New & Churn offer, in numbers. All-or-nothing on the cap: one line over and
+   the whole 50% is lost, not just that line's share. */
+const NEWCHURN_PCT = 50
+const NEWCHURN_MAX_QTY = 5
+/** How a discount cell looks: locked at 0, written by a rule, or the rep's own. */
+const fieldCls = (r: FieldRule, filled: boolean) =>
+  r === 'free' ? 'border-amber-400 bg-surface font-semibold text-amber-900'
+    : r === 'auto' && filled ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800'
+      : 'border-line bg-canvas text-faint'
 
 type QLine = { cat: number; qty: number; price: number; disc: number; gift: boolean }
-type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number }
+type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number; fixed: number }
+/* The three discounts stack in ONE order and it is not interchangeable: line %
+   first (it changes the subtotal), then the order % on what is left, then the
+   fixed amount off that, and VAT only on the remainder. Applying the voucher
+   before the percentage would quietly make it worth more, and charging VAT on
+   the pre-discount figure would overcharge the customer on a filed invoice. */
+const optionTotals = (o: QOption) => {
+  const sub = o.lines.reduce((s, l) => s + lineTotal(l), 0)
+  const pctCut = Math.round(sub * o.optDisc / 100)
+  const fixedCut = Math.min(Math.max(0, o.fixed), sub - pctCut)   // never below zero
+  const net = sub - pctCut - fixedCut
+  const vat = Math.round(net * VAT_RATE / 100)
+  return { sub, pctCut, fixedCut, net, vat, total: net + vat }
+}
 const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
 const VAT_RATE = 8
 
@@ -11238,92 +11318,95 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   const [company, setCompany] = useState(initialCompany)
   const [seq, setSeq] = useState(0)
   const [options, setOptions] = useState<QOption[]>([
-    { id: 1, lines: [{ cat: 1, qty: 1, price: QUOTE_CATALOG[1].price, disc: 0, gift: false }, { cat: 1, qty: 1, price: 0, disc: 0, gift: true }], recommended: true, optDisc: 0 },
-    { id: 2, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }, { cat: 0, qty: 1, price: 0, disc: 0, gift: true }], recommended: false, optDisc: 0 },
+    { id: 1, lines: [{ cat: 1, qty: 1, price: QUOTE_CATALOG[1].price, disc: 0, gift: false }, { cat: 1, qty: 1, price: 0, disc: 0, gift: true }], recommended: true, optDisc: 0, fixed: 0 },
+    { id: 2, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }, { cat: 0, qty: 1, price: 0, disc: 0, gift: true }], recommended: false, optDisc: 0, fixed: 0 },
   ])
 
   const co = COMPANIES.find((c) => c.name === company)
 
-  /* ── Two mutually exclusive ways a quotation can be discounted ──────────────
+  /* ── One discount MODE per quotation ────────────────────────────────────────
+     Four modes, and the customer's status decides which are on offer. They are
+     exclusive: two programmes layered on one quotation produce a total nobody
+     planned and an approver signing off on half of it.
 
-     1 · THE PROGRAMME (default). Follows from the customer's status, applies by
-         itself, lands per line, is read-only and needs nobody's approval.
-
-     2 · SPECIAL DISCOUNT (opt-in). The rep switches the programme OFF and types
-         ONE percentage against the option subtotal — the "chiết khấu tổng hóa
-         đơn". Per-line editing stays impossible either way: a discount spread
-         across lines cannot be reviewed at a glance, and the approver is
-         approving one number, not an arithmetic exercise.
-
-     They are exclusive on purpose. Letting a special rate stack on top of a
-     programme rate produces a total nobody planned and an approver signing off
-     on half of it. */
-  const [special, setSpecial] = useState(false)
+     What each mode does to the three inputs is declared in DISCOUNT_MODES, not
+     re-derived here — twelve rules spread through a form is how they drift. */
+  const [mode, setMode] = useState<DiscountMode>('newchurn')
+  const allowed = modesFor(co?.account)
+  /* Picking a company resets the mode to that status's default, and re-picking a
+     mode wipes every figure the previous one left behind. Carrying 50% over into
+     a Special offer would mean the rep approves a number they never typed. */
+  useEffect(() => {
+    if (!co) return
+    setMode(defaultMode(co.account))
+    setOptions((os) => os.map((o) => ({ ...o, optDisc: 0, fixed: 0, lines: o.lines.map((l) => ({ ...l, disc: 0 })) })))
+  }, [co?.name, co?.account])
+  const pickMode = (m: DiscountMode) => {
+    setMode(m)
+    /* Products reset too when trial is involved: a trial quotation cannot hold a
+       full-price SKU and a normal one cannot hold a trial SKU, so leaving the
+       previous selection would produce a line the mode does not permit. */
+    const swapCat = (m === 'trial') !== (mode === 'trial')
+    const firstOf = catForMode(m)[0].i
+    setOptions((os) => os.map((o) => ({
+      ...o, optDisc: 0, fixed: 0,
+      lines: o.lines.map((l) => ({
+        ...l, disc: 0,
+        cat: swapCat ? firstOf : l.cat,
+        price: l.gift ? 0 : QUOTE_CATALOG[swapCat ? firstOf : l.cat].price,
+      })),
+    })))
+  }
+  const rule = DISCOUNT_MODES[mode]
   const promo = programmeFor(co?.account)
-  const promoOn = !!promo && !special
 
-  /* Recompute when the company changes, any quantity moves, or the rep switches
-     modes. Keyed on a signature rather than on `options` so writing the result
-     back cannot re-trigger the effect. */
+  /* Rule-driven fields are recomputed whenever the company, the mode or any
+     quantity moves — those are the only inputs the rules read. Keyed on a
+     signature so writing the result back cannot re-trigger the effect. */
   const qtySig = options.map((o) => o.lines.map((l) => `${l.gift ? 'g' : 'p'}${l.qty}`).join(',')).join('|')
   useEffect(() => {
     setOptions((os) => {
       let changed = false
       const next = os.map((o) => {
-        /* Special mode: every LINE discount is cleared and stays cleared. The
-           option-level figure is the rep's and is left alone. */
-        if (!promoOn) {
-          const lines = o.lines.map((l) => (l.disc === 0 ? l : ((changed = true), { ...l, disc: 0 })))
-          return changed ? { ...o, lines } : o
-        }
-        // Gifts are 0 ₫, so a discount on them is meaningless — and they must not
-        // count against the quantity cap either, or a "+ Gift" would silently
-        // destroy the 50%.
-        const withinCap = o.lines.every((l) => l.gift || l.qty <= (promo!.maxQtyPerLine ?? Infinity))
-        // "Cùng loại": the tier is looked up on the TOTAL of that product across the
-        // option, so two lines of the same product earn one shared rate. Splitting
-        // 7 into 3 + 4 must not turn 30% into 25%.
+        // Line %: the volume tiers under Existing, otherwise locked at 0.
         const totals = qtyByProduct(o.lines)
         const lines = o.lines.map((l) => {
-          const d = l.gift || promo!.kind !== 'volume-per-product' ? 0 : tierPct(promo!, totals.get(l.cat) ?? 0)
-          if (d !== l.disc) changed = true
-          return d === l.disc ? l : { ...l, disc: d }
+          const d = rule.line === 'auto' && !l.gift && promo?.tiers ? tierPct(promo, totals.get(l.cat) ?? 0) : 0
+          if (rule.line === 'free' || d === l.disc) return l
+          changed = true
+          return { ...l, disc: d }
         })
-        const od = promo!.kind === 'flat-order' && withinCap ? promo!.pct ?? 0 : 0
+        // Order %: the 50%-with-a-cap rule under New & Churn, otherwise untouched
+        // when free, otherwise 0.
+        let od = o.optDisc
+        if (rule.order === 'auto') {
+          const withinCap = o.lines.every((l) => l.gift || l.qty <= NEWCHURN_MAX_QTY)
+          od = withinCap ? NEWCHURN_PCT : 0
+        } else if (rule.order === 'off') od = 0
         if (od !== o.optDisc) changed = true
-        return changed ? { ...o, lines, optDisc: od } : o
+        const fx = rule.fixed === 'off' ? 0 : o.fixed
+        if (fx !== o.fixed) changed = true
+        return changed ? { ...o, lines, optDisc: od, fixed: fx } : o
       })
       return changed ? next : os
     })
-  }, [promoOn, promo, qtySig])
+  }, [mode, promo, qtySig])
 
-  /* Switching INTO special mode zeroes the option figure too, so the rep starts
-     from nothing rather than editing the programme's number — which would make
-     "what did we actually decide to give away" unanswerable. */
-  const toggleSpecial = (on: boolean) => {
-    setSpecial(on)
-    if (on) setOptions((os) => os.map((o) => ({ ...o, optDisc: 0 })))
-  }
-
-  /** Options where a flat programme is being blocked, and the line that blocks it. */
-  const capBreaches = promoOn && promo?.maxQtyPerLine
-    ? options.flatMap((o, oi) => o.lines
-        .map((l, li) => ({ oi, li, l }))
-        .filter((x) => !x.l.gift && x.l.qty > promo.maxQtyPerLine!))
+  /** The line that costs the customer the 50%, when there is one. */
+  const capBreaches = rule.order === 'auto'
+    ? options.flatMap((o, oi) => o.lines.map((l, li) => ({ oi, li, l })).filter((x) => !x.l.gift && x.l.qty > NEWCHURN_MAX_QTY))
     : []
 
-  /* ── Who has to approve a special discount ──────────────────────────────────
-     Routed on the HIGHEST rate in the document, not on each option separately:
-     options are alternatives, the customer picks one, and the approver has to be
-     able to sign off on the worst case rather than on an average.
+  /* ── Approval ───────────────────────────────────────────────────────────────
+     ONLY the order-level % under the Existing programme routes for approval, and
+     it routes on the highest rate in the document. A Special offer does not: the
+     rep is trusted to set it and owns it, which is the difference between the two
+     modes. A fixed amount never routes either — it is a voucher, agreed
+     elsewhere, not a rate the rep invented. */
+  const orderPct = rule.approves ? Math.max(0, ...options.map((o) => o.optDisc)) : 0
+  const approver = orderPct === 0 ? null : apprRole(orderPct)
 
-     Escalation is by AMOUNT, not by chain — above 10% it goes straight to the
-     sales manager and does not queue behind the leader first. Two signatures on
-     one discount slows the deal without adding a second real decision. */
-  const specialPct = special ? Math.max(0, ...options.map((o) => o.optDisc)) : 0
-  const approver = specialPct === 0 ? null : specialPct <= SPECIAL_LEADER_MAX ? 'Sales leader' : 'Sales manager'
-
-    const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
+  const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
   const valid = !!co && everyOptionPaid
 
   const patch = (oid: number, li: number, d: Partial<QLine>) =>
@@ -11333,7 +11416,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   const delLine = (oid: number, li: number) =>
     setOptions((os) => os.map((o) => (o.id === oid ? { ...o, lines: o.lines.filter((_, i) => i !== li) } : o)))
   const addOption = () =>
-    setOptions((os) => (os.length >= 3 ? os : [...os, { id: Math.max(...os.map((o) => o.id)) + 1, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }], recommended: false, optDisc: 0 }]))
+    setOptions((os) => (os.length >= 3 ? os : [...os, { id: Math.max(...os.map((o) => o.id)) + 1, lines: [{ cat: 0, qty: 1, price: QUOTE_CATALOG[0].price, disc: 0, gift: false }], recommended: false, optDisc: 0, fixed: 0 }]))
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -11380,53 +11463,77 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
             ? <QuoteCompanyCard c={co} />
             : <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] text-faint">Pick a company to confirm its details, contact and billing data.</p>}
 
-          {/* The one discount decision on this screen. It is a switch, not a field:
-              either the customer gets the programme their status earns, or the rep
-              takes responsibility for a number and sends it to be approved. */}
+          {/* The one discount decision on this screen, taken BEFORE the lines,
+              because it decides which of the three discount cells the rep may even
+              touch. Only the modes this customer's status qualifies for are shown —
+              a New-customer offer greyed out on an Existing quotation would invite
+              the question of how to unlock it. */}
           {co && (
-            <div className={cn('rounded-xl border px-3.5 py-2.5', special ? 'border-amber-300 bg-amber-50' : 'border-line bg-canvas/40')}>
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input type="checkbox" checked={special} onChange={(e) => toggleSpecial(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0">
-                  <span className={cn('block text-[12.5px] font-semibold', special ? 'text-amber-900' : 'text-ink')}>Chiết khấu đặc biệt / Special discount</span>
-                  <span className={cn('mt-0.5 block text-[11px] leading-relaxed', special ? 'text-amber-800' : 'text-muted')}>
-                    {special
-                      ? <>Chương trình <b>{promo?.vi ?? '—'}</b> đã <b>ngưng áp dụng</b> cho báo giá này. Nhập <b>một</b> mức chiết khấu trên tổng từng option bên dưới — không sửa được chiết khấu từng dòng. Báo giá phải được duyệt trước khi gửi khách.</>
-                      : <>Đang áp dụng <b>{promo?.vi ?? 'không có chương trình'}</b> theo trạng thái khách hàng <b>{co.account}</b>, chiết khấu tự động và không cần duyệt. Bật ô này nếu cần một mức riêng.</>}
-                  </span>
-                </span>
-              </label>
-            </div>
-          )}
+            <div className="rounded-xl border border-line bg-canvas/40 px-3.5 py-3">
+              <p className="mb-2 text-[11.5px] font-semibold text-ink">
+                Chương trình chiết khấu
+                <span className="ml-1.5 font-normal text-muted">— chọn một, áp dụng cho cả báo giá · khách hàng <b className="text-ink/75">{co.account}</b></span>
+              </p>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {allowed.map((m) => {
+                  const d = DISCOUNT_MODES[m]
+                  const on = mode === m
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => pickMode(m)}
+                      className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', on ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-ink/30')}
+                    >
+                      <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                        {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className={cn('block text-[12px] font-semibold', on ? 'text-brand' : 'text-ink')}>{d.vi} <span className="font-normal text-faint">/ {d.en}</span></span>
+                        <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted">{d.hint}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
 
-          {/* No promotion banner. The programme is decided by the customer's status,
-              applies by itself and is never approved by anyone, so a permanent box
-              restating it every time is chrome describing something that never
-              varies. The rates land on the lines, read-only, and that is the whole
-              interaction.
+              {/* What the chosen mode does to the three cells, stated once here so the
+                  disabled inputs below do not have to be guessed at. */}
+              <div className="mt-2 grid gap-px overflow-hidden rounded-lg border border-line bg-line text-[10.5px] sm:grid-cols-3">
+                {([['Chiết khấu từng dòng', rule.line], ['Chiết khấu tổng đơn', rule.order], ['Giảm số tiền', rule.fixed]] as const).map(([label, r]) => (
+                  <div key={label} className="bg-surface px-2.5 py-1.5">
+                    <p className="text-faint">{label}</p>
+                    <p className={cn('font-semibold', r === 'free' ? 'text-amber-800' : r === 'auto' ? 'text-emerald-800' : 'text-muted')}>
+                      {r === 'free' ? 'Sales tự nhập' : r === 'auto' ? 'Theo quy tắc' : 'Khoá ở 0'}
+                    </p>
+                  </div>
+                ))}
+              </div>
 
-              What survives is the ALERT below — it is not an explanation, it is
-              money disappearing, and it only renders when it actually happens. */}
-          {co && promo && capBreaches.length > 0 && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-rose-900">
-              <b>Mất toàn bộ {promo.pct}% — {promo.vi}.</b>{' '}
-              {capBreaches.map((x) => `Option ${x.oi + 1} · dòng ${x.li + 1} (${QUOTE_CATALOG[x.l.cat].vi}) có số lượng ${x.l.qty}`).join(' · ')} — vượt giới hạn {promo.maxQtyPerLine}.
-              Chỉ cần một dòng vượt là cả đơn mất chiết khấu, không phải riêng dòng đó.
-              <br />
-              <span className="text-rose-800">Hai cách xử lý theo quy định: giảm số lượng về {promo.maxQtyPerLine}, hoặc <b>tách 2 báo giá / 2 hóa đơn</b> để khách hưởng cả hai chương trình. Cả hai đều do sales quyết định — hệ thống không tự tách.</span>
+              {/* The cliff, named. "One line over and the whole 50% is gone" is the
+                  rule reps get wrong, so it points at the exact line. */}
+              {capBreaches.length > 0 && (
+                <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
+                  <b>Mất toàn bộ {NEWCHURN_PCT}%.</b>{' '}
+                  {capBreaches.map((x) => `Option ${x.oi + 1} · dòng ${x.li + 1} (${QUOTE_CATALOG[x.l.cat].vi}) có số lượng ${x.l.qty}`).join(' · ')} — vượt giới hạn {NEWCHURN_MAX_QTY}.
+                  Chỉ cần một dòng vượt là cả đơn mất chiết khấu, không phải riêng dòng đó.
+                  <br />
+                  <span className="text-rose-800">Hai cách xử lý: giảm số lượng về {NEWCHURN_MAX_QTY}, hoặc chuyển sang <b>Chiết khấu theo số lượng</b> — chương trình dành cho đơn lớn.</span>
+                </div>
+              )}
+              {mode === 'trial' && (
+                <p className="mt-2 rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-2 text-[11px] leading-relaxed text-brand">
+                  Báo giá dùng thử chỉ chọn được <b>sản phẩm dùng thử</b> — đây là các SKU có giá riêng, không phải chiết khấu, nên hóa đơn ghi đúng thứ đã bán với đúng giá đã bán. Mọi ô chiết khấu khoá ở 0.
+                </p>
+              )}
             </div>
           )}
 
           {/* 3 · options — the heart of it */}
           <Section title="3 · Options — alternatives, not add-ons" />
           {options.map((o, oi) => {
-            /* Two discount levels, applied in order: per-line first, then a single
-               option-level discount on the subtotal. VAT is charged on what is left,
-               so the option discount must land BEFORE the VAT line, not after. */
-            const sub = o.lines.reduce((s, l) => s + lineTotal(l), 0)
-            const optCut = Math.round(sub * o.optDisc / 100)
-            const net = sub - optCut
-            const vat = Math.round(net * VAT_RATE / 100)
+            /* Three discount levels — see optionTotals for the order they stack in.
+               Which of them the rep may touch is decided by the MODE, not here. */
+            const { sub, pctCut, fixedCut, net, vat } = optionTotals(o)
             return (
               <div key={o.id} className={cn('rounded-xl border p-3', o.recommended ? 'border-brand/40 bg-brand-soft/30' : 'border-line')}>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -11453,8 +11560,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <div key={li} className="grid min-w-[720px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: '20px 2.2fr 0.7fr 0.5fr 1fr 0.6fr 1fr 24px' }}>
                       <span className="text-faint">{li + 1}</span>
                       <span className="flex min-w-0 items-center gap-1.5">
+                        {/* Trial SKUs and normal SKUs never appear in the same list —
+                            a trial quotation offers only trial products, and vice versa. */}
                         <select value={l.cat} onChange={(e) => { const c = Number(e.target.value); patch(o.id, li, { cat: c, price: l.gift ? 0 : QUOTE_CATALOG[c].price }) }} className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-1.5 py-1 text-[11.5px]">
-                          {QUOTE_CATALOG.map((p, i) => <option key={i} value={i}>{p.vi}</option>)}
+                          {catForMode(mode).map(({ c, i }) => <option key={i} value={i}>{c.vi}</option>)}
                         </select>
                         {l.gift && <Pill tone="active">Tặng</Pill>}
                       </span>
@@ -11465,7 +11574,11 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                         {/* Read-only, always: the number is a consequence of the
                             quantity, and an editable box invites overwriting the
                             rule the customer was promised. */}
-                        <input disabled type="number" value={l.disc} readOnly className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', !l.gift && l.disc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800' : 'border-line bg-canvas text-faint')} />
+                        <input
+                          type="number" min={0} max={100} value={l.disc}
+                          disabled={l.gift || rule.line !== 'free'} readOnly={l.gift || rule.line !== 'free'}
+                          onChange={(e) => patch(o.id, li, { disc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
+                          className={cn('w-11 rounded border px-1 py-1 text-right text-[11.5px] tabular-nums', l.gift ? 'border-line bg-canvas text-faint' : fieldCls(rule.line, l.disc > 0))} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
                       <span className="text-right tabular-nums">{lineTotal(l).toLocaleString('en-US')}</span>
@@ -11483,24 +11596,35 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                   </div>
                   <div className="min-w-[300px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
                     <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
-                    {/* Applies to the whole option — on the subtotal, before VAT */}
+                    {/* Order-level %, on the subtotal and before VAT. Free, rule-driven
+                        or locked at 0 depending on the mode — never a plain input. */}
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-muted">
-                        Chiết khấu
-                        {/* The ONLY number a rep can type on this screen, and only
-                            with Special discount on. */}
+                        Chiết khấu tổng đơn
                         <input
-                          type="number" min={0} max={100} value={o.optDisc} disabled={!special} readOnly={!special}
+                          type="number" min={0} max={100} value={o.optDisc}
+                          disabled={rule.order !== 'free'} readOnly={rule.order !== 'free'}
                           onChange={(e) => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, optDisc: Math.min(100, Math.max(0, Number(e.target.value) || 0)) } : x)))}
-                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums',
-                            special ? 'border-amber-400 bg-surface font-semibold text-amber-900'
-                              : o.optDisc > 0 ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800'
-                                : 'border-line bg-canvas text-faint')} />
+                          className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', fieldCls(rule.order, o.optDisc > 0))} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
-                      <span className={cn('tabular-nums', optCut > 0 && 'text-rose-600')}>{optCut > 0 ? '−' : ''}{optCut.toLocaleString('en-US')} ₫</span>
+                      <span className={cn('tabular-nums', pctCut > 0 && 'text-rose-600')}>{pctCut > 0 ? '−' : ''}{pctCut.toLocaleString('en-US')} ₫</span>
                     </div>
-                    {o.optDisc > 0 && <div className="flex justify-between"><span className="text-muted">Sau chiết khấu</span><span className="tabular-nums">{net.toLocaleString('en-US')} ₫</span></div>}
+                    {/* The client's "Voucher": a flat amount, not a percentage. It comes
+                        off AFTER the percentage, so the two cannot be read as one. */}
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-muted">
+                        Giảm số tiền
+                        <input
+                          type="text" inputMode="numeric" value={o.fixed ? o.fixed.toLocaleString('en-US') : '0'}
+                          disabled={rule.fixed !== 'free'} readOnly={rule.fixed !== 'free'}
+                          onChange={(e) => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, fixed: Number(e.target.value.replace(/\D/g, '')) || 0 } : x)))}
+                          className={cn('w-24 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', fieldCls(rule.fixed, o.fixed > 0))} />
+                        <span className="text-[10.5px] text-faint">₫</span>
+                      </span>
+                      <span className={cn('tabular-nums', fixedCut > 0 && 'text-rose-600')}>{fixedCut > 0 ? '−' : ''}{fixedCut.toLocaleString('en-US')} ₫</span>
+                    </div>
+                    {(pctCut > 0 || fixedCut > 0) && <div className="flex justify-between"><span className="text-muted">Sau chiết khấu</span><span className="tabular-nums">{net.toLocaleString('en-US')} ₫</span></div>}
                     <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
                     <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{(net + vat).toLocaleString('en-US')} ₫</span></div>
                     <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(net + vat)}.</p>
@@ -11529,12 +11653,14 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
               guessing who to chase, which is how a quotation sits for three days. */}
           {approver && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
-              Chiết khấu đặc biệt <b>{specialPct}%</b> → cần <b>{approver === 'Sales leader' ? 'Sales leader' : 'Sales manager'}</b> duyệt trước khi gửi khách.
-              <span className="text-amber-800"> Mức 1–{SPECIAL_LEADER_MAX}% do Sales leader duyệt, trên {SPECIAL_LEADER_MAX}% do Sales manager duyệt. Sửa lại % sau khi đã duyệt sẽ <b>hủy phê duyệt</b> và phải trình lại.</span>
+              Chiết khấu tổng đơn <b>{orderPct}%</b> → cần <b>{SALES_ROLE_LABEL[approver]}</b> duyệt trước khi gửi khách.
+              <span className="text-amber-800"> Mức ≤ {SPECIAL_LEADER_MAX}% do Sales lead duyệt, trên {SPECIAL_LEADER_MAX}% do Sales manager duyệt. Chiết khấu theo bậc trên từng dòng và số tiền giảm cố định <b>không cần duyệt</b>. Sửa lại % sau khi đã duyệt sẽ <b>hủy phê duyệt</b> và phải trình lại.</span>
             </div>
           )}
-          {special && specialPct === 0 && (
-            <p className="text-[11.5px] text-amber-700">Nhập mức chiết khấu ở ô <b>Chiết khấu</b> của từng option — đang là 0%, khách sẽ trả nguyên giá.</p>
+          {mode === 'special' && (
+            <p className="text-[11.5px] leading-relaxed text-amber-700">
+              <b>Ưu đãi đặc biệt — không có bước duyệt.</b> Cả ba mức đều do sales tự quyết, nên con số ở đây là trách nhiệm của người lập báo giá.
+            </p>
           )}
           {!everyOptionPaid && <p className="text-[11.5px] text-rose-600">Every option needs at least one paid line — an option cannot be gifts only.</p>}
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -11542,7 +11668,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
             <button disabled={!co} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', co ? 'border-line text-ink hover:border-ink/40' : 'border-line text-faint')}>Save draft</button>
             <button disabled={!valid} className={cn('rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', valid ? 'border-brand/40 text-brand hover:bg-brand-soft' : 'border-line text-faint')}>Preview PDF</button>
             <button disabled={!valid} className={cn('rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold text-white', !valid ? 'bg-line' : approver ? 'bg-amber-600 hover:opacity-90' : 'bg-brand hover:opacity-90')}>
-              {approver ? `Gửi ${approver} duyệt →` : 'Export'}
+              {approver ? `Gửi ${SALES_ROLE_LABEL[approver]} duyệt →` : 'Export'}
             </button>
           </div>
         </div>

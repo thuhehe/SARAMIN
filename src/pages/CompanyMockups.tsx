@@ -649,7 +649,7 @@ function ApplicantsScreen() {
                   <b className="font-semibold">Bạn không cần xử lý ứng viên này.</b>
                 </p>
                 <p className="mt-1 text-[10.5px] text-rose-900/60">
-                  Thu hồi ngày {picked.recalled} · Nếu bạn đã liên hệ ứng viên, có thể bỏ qua · Lượt xem CV đã được hoàn lại
+                  Thu hồi ngày {picked.recalled} · Nếu bạn đã liên hệ ứng viên, có thể bỏ qua
                 </p>
               </div>
             )}
@@ -1332,6 +1332,11 @@ function ResumeSearchScreen() {
   type CvRow = {
     reason: [string, string][]
     unlocked: boolean
+    /* SARAMIN pulled this CV back AFTER the employer had already unlocked it.
+       It drops out of NEW searches (it is Hidden), but it stays reachable from
+       what the employer already paid for — hiding something they bought would be
+       worse than telling them it is withdrawn. The credit is refunded. */
+    recalled?: string
     id: string
     name: string
     desiredRole: string
@@ -1402,6 +1407,7 @@ function ResumeSearchScreen() {
         {
           reason: [['✓', 'Điều dưỡng trưởng'], ['◐', 'Bệnh viện quốc tế — chứng chỉ JCI, chưa làm thực tế']],
           unlocked: true,
+          recalled: '20/08/2026',
           id: 'E1D77',
           name: 'Nguyễn Thị Hoa',
           desiredRole: 'Điều dưỡng trưởng',
@@ -1623,14 +1629,15 @@ function ResumeSearchScreen() {
                         and an age is one LinkedIn search from a free unlock. */}
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                       {cv.unlocked ? (
-                        <p className="truncate text-[12.5px] font-semibold text-ink">{cv.name}</p>
+                        <p className={cn('truncate text-[12.5px] font-semibold', cv.recalled ? 'text-muted line-through' : 'text-ink')}>{cv.name}</p>
                       ) : (
                         <p className="truncate text-[12.5px] font-semibold tracking-wide text-ink/60">Ứng viên #{cv.id}</p>
                       )}
                       <span className="text-[11px] text-muted">{cv.gender} · {cv.age} tuổi</span>
                       <span className="text-faint">·</span>
                       <span className="text-[11px] font-medium text-ink/80">{cv.years}</span>
-                      {cv.unlocked && <Chip tone="green">Unlocked</Chip>}
+                      {cv.unlocked && !cv.recalled && <Chip tone="green">Unlocked</Chip>}
+                      {cv.recalled && <Chip tone="rose">Đã thu hồi · hoàn 1 lượt unlock</Chip>}
                     </div>
                     {/* DESIRED ROLE, labelled — not a free-text headline. Unlabelled
                         it read as a second job title and duplicated the current
@@ -1645,9 +1652,14 @@ function ResumeSearchScreen() {
                     </p>
                   </div>
                   <div className="shrink-0">
-                    {cv.unlocked
-                      ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
-                      : <Btn primary onClick={() => setViewing(true)}>Unlock</Btn>}
+                    {/* No View on a recalled CV, and no Unlock either: the document
+                        is withdrawn, and offering to spend a credit on it again
+                        would be selling something we have just taken back. */}
+                    {cv.recalled
+                      ? <span className="text-[11px] text-faint">Không còn khả dụng</span>
+                      : cv.unlocked
+                        ? <Btn onClick={() => setViewing(true)}>View CV</Btn>
+                        : <Btn primary onClick={() => setViewing(true)}>Unlock</Btn>}
                   </div>
                 </div>
 

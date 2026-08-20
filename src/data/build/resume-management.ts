@@ -2043,13 +2043,40 @@ export const resumeManagement: BuildModule = {
           },
           {
             early: true,
+            heading: 'TWO WAYS A CV REACHED THE EMPLOYER — and only one of them refunds (decided)',
+            text: 'A Qualified CV can arrive at an employer by two different doors, and when it is later rejected the recall differs on exactly one point: whether money changed hands. Applications are free to receive; a CV-search unlock is paid for. So the refund follows the door, not the rejection.',
+            table: {
+              cols: ['How it reached them', 'What the employer paid', 'On recall'],
+              rows: [
+                [
+                  'By APPLICATION — the candidate applied and the CV was Sent',
+                  'Nothing. Receiving applications is not metered.',
+                  'Pull it from the pipeline, banner, notify. **No refund**, because there is no charge to reverse.',
+                ],
+                [
+                  'By CV SEARCH — the employer found and **unlocked** it',
+                  'One unlock credit.',
+                  'Pull it back **and refund the credit automatically**. They paid to see a CV we then withdrew; making them ask for it back is the wrong side of our own mistake.',
+                ],
+              ],
+            },
+            items: [
+              'THE SAME CV CAN BE BOTH, and then both apply: one pipeline row is pulled AND one credit comes back. They are independent events on independent objects, not two views of one thing.',
+              'A RECALLED CV LEAVES THE INDEX, so it never returns in a NEW search. But it stays reachable from what the employer already unlocked — hiding something they paid for is worse than telling them it is withdrawn, and the row is where the refund is explained.',
+              'NEITHER VIEW NOR UNLOCK IS OFFERED AGAIN on a recalled CV. Re-offering Unlock would be selling something we have just taken back; the row reads “Không còn khả dụng”.',
+              'THE REFUND IS AUTOMATIC AND VISIBLE — the row itself says “hoàn 1 lượt unlock”. A refund the employer has to notice on a statement later is a refund that still costs us the complaint.',
+            ],
+          },
+          {
+            early: true,
             heading: 'What the EMPLOYER sees when a CV is recalled — three surfaces',
             text: 'Specced against the company Applicants screen. The governing decision is that the row is never silently deleted: the recruiter may already have read the CV or phoned the candidate, and a row that vanishes is harder to explain than one that explains itself.',
             table: {
               cols: ['Surface', 'What it shows'],
               rows: [
                 ['Applicant list row', 'Stays in its pipeline stage, greyed with the name struck through, stage chip replaced by a rose **Đã thu hồi**. The match score is replaced by an em-dash — a recalled candidate is not one to compare any more, and leaving the number invites comparison.'],
-                ['Applicant detail', 'A rose banner ABOVE the CV, before the recruiter reads another line: who removed it (Saramin), the plain reason, the date, “bạn không cần xử lý ứng viên này”, and the credit refund. The CV body renders blurred and **Download CV disappears** — leaving it would let them keep a copy of a document we just told them to ignore, which makes the recall decorative.'],
+                ['Applicant detail', 'A rose banner ABOVE the CV, before the recruiter reads another line: who removed it (Saramin), the plain reason, the date, “bạn không cần xử lý ứng viên này”. **No refund is mentioned here** — an application costs nothing to receive, so a refund line on this banner promises money back that was never taken. The CV body renders blurred and **Download CV disappears** — leaving it would let them keep a copy of a document we just told them to ignore, which makes the recall decorative.'],
+                ['CV search — an unlocked row', 'Name struck through, a rose **Đã thu hồi · hoàn 1 lượt unlock** chip in place of the green Unlocked one, and the action replaced by “Không còn khả dụng”. The refund is stated on the row rather than left to a statement.'],
                 ['Notification', 'Bell + email: “Saramin đã thu hồi 1 CV trong tin {job}”. A recall that only exists inside a screen nobody reopens is a recall that did not happen.'],
               ],
             },
@@ -2185,7 +2212,7 @@ export const resumeManagement: BuildModule = {
         ],
         openQuestions: [
           'BLOCKER for support — the Jobseeker user record does not list a person’s CVs at all, so there is no screen where a support agent holding a candidate’s NAME can see their CV statuses. A rejection reaches us as a person complaining (“my application wasn’t sent”), never as a queue position, and CV review is organised by open work rather than by person. Spec the CV list onto the user record: the up-to-3 CVs, each with status, reason, who decided, when, and Approve to undo.',
-          'Is the unlock credit refunded automatically when a CV is recalled after being sent? We recommend YES — the employer paid to see a CV we ourselves sent in error, and making them ask for it back is the wrong side of that mistake. Needs client sign-off because it touches billing.',
+          'DECIDED — the unlock credit IS refunded automatically, and ONLY on the CV-search door. An application costs the employer nothing to receive, so there is nothing to refund there. See “Two ways a CV reached the employer”. Still needs a billing owner to confirm the mechanics of an auto-refund.',
           'What rate of `rejected_after_timer_release` is acceptable before we shorten the 24h net or add reviewers? Agree the threshold NOW, while it is a number nobody is defending.',
           'Who works the review queue, and at what daily volume? With no auto-pass this is a standing staffing commitment, not a background job.',
           'Is the share of “Parser failed” rejections reported anywhere, or only visible by filtering the list? It is the measure of how much work the scan creates for people, which argues for a number on a dashboard rather than a filter someone has to think to apply.',
