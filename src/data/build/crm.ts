@@ -11,27 +11,43 @@ import type { BuildModule } from './types'
  * page). One company record is born here as New — a company that has never bought
  * anything from us yet — and grows up.
  *
- * Also here: the sales back office (Quotations → Sales order/PO → Payments →
- * VAT e-invoice, plus Contracts). One document chain, each step created from the
- * one before it and never retyped:
+ * Also here: the sales back office (Quotations → PO → VAT e-invoice, plus
+ * Payments and Contracts). One document chain, each step created from the one
+ * before it and never retyped:
  *
  *   Quotation (Báo giá, 1–3 options)   Sales, QUO-xxxxxx-MM-YYYY
- *        │ customer picks one option
+ *        │ expires at the END OF ITS MONTH · customer picks one option
  *        ▼
- *   Sales order / PO  ── sent to the customer ──▶ deal = PO (won)
- *        │ Accounting: awaiting payment
+ *   PO  ── issued to the customer ──▶ deal = PO (won). Provisions NOTHING.
+ *        │ PO-xxxxxx-MM-YYYY · also expires at the end of its month
+ *        │
+ *        ├─ (optional) Sales issues a DRAFT invoice — hóa đơn nháp.
+ *        │             No legal number, grants the customer nothing.
  *        ▼
- *   Payment  ── Accounting confirms against the bank ──▶ unlocks invoicing
+ *   Sales requests the official invoice ──▶ it sits in Kế toán's queue
  *        │
  *        ▼
- *   VAT e-invoice issued ──▶ deal = Invoice (closed) · customer status New→Existing
- *                            · 12-month activation window starts
- *                            · Account management provisions products + gifts
+ *   OFFICIAL VAT e-invoice — hóa đơn chính, 1C26TTD-nnn, filed by Kế toán
+ *        ──▶ deal = Invoice (closed) · customer status New→Existing
+ *        ──▶ Account management provisions products + gifts IMMEDIATELY
+ *        ──▶ the product's activation window starts (12 months by default)
  *
- * The order is payment-before-invoice on purpose: the client's own terms say
- * "the service will be activated after the customer completes the payment & the
- * invoice is issued" (T&C clause 3 of the client’s source PDF EST-009909-07-2026). Field names and the
- * document layout in ./crm.ts Quotations are modelled on that live PDF.
+ * Two rules shape the whole chain:
+ *
+ *   ONLY THE OFFICIAL INVOICE RELEASES THE PRODUCT. A PO grants nothing and a
+ *   draft invoice grants nothing, however long either has existed.
+ *
+ *   EXPIRY BEATS EVERYTHING. A PO still short of an official invoice at the end
+ *   of its issue month lapses — Active, Draft invoice or Invoice requested, no
+ *   matter what — and its draft invoice is archived with it.
+ *
+ * Payment is deliberately NOT a gate. Many customers cannot release money until
+ * they hold the invoice, so the official invoice may be issued before or after
+ * the transfer; payment is tracked as its own axis on both lists. That is a
+ * conscious deviation from the client's T&C clause 3 ("the service will be
+ * activated after the customer completes the payment & the invoice is issued",
+ * source PDF EST-009909-07-2026) — flagged for confirmation on the PO page.
+ * Field names and the document layout are modelled on that live PDF.
  *
  * Depth mirrors ./job-management.ts. UI mockups link per feature via `mockup`.
  */
@@ -64,7 +80,7 @@ export const crm: BuildModule = {
         rows: [
           ['Company (record)', 'CO- + 6 encoded chars + 1 check char', 'CO-P9FCEPD', 'NO — deliberately scrambled'],
           ['Quotation', 'QUO-{seq6}-{MM}-{YYYY}', 'QUO-009909-07-2026', 'Yes'],
-          ['Sales order / PO', 'PO-{seq6}-{MM}-{YYYY}', 'PO-005864-08-2026', 'Yes'],
+          ['PO', 'PO-{seq6}-{MM}-{YYYY}', 'PO-005864-08-2026', 'Yes'],
           ['Invoice', 'The e-invoice provider’s own series', '1C26TTD-173', 'Yes — gapless, required by law'],
           ['Customer’s own PO no.', 'Free text, recorded exactly as they give it', 'PO-VP/2026/044', 'Theirs, not ours'],
         ],
@@ -75,7 +91,7 @@ export const crm: BuildModule = {
         'Sequential numbers DO leak volume: a customer holding QUO-009909 can infer roughly how many quotations we have issued, and two documents dated a month apart reveal the rate. That is accepted for documents and unavoidable for the legal series.',
         'The quotation number leaks the most, because quotations go to every prospect — including ones comparing us with a competitor — while invoices only go to customers. It is also the one number with **no** legal constraint, so it is the only one we could scramble if the client wants to.',
       ],
-      warn: 'Resolved — the two documents WE number share one shape, {PREFIX}-{seq6}-{MM}-{YYYY}: QUO- quotation, PO- sales order. The invoice is the exception and always was — its number comes from the licensed e-invoice provider (1C26TTD-173) and the law requires that series to be the one on record, so a second internal INV- code would only give support two numbers to ask about. The client’s live system numbered the sales order INV-…, which collided with the tax invoice; migrating existing PO records to PO- is a data task to plan, not a format question.',
+      warn: 'Resolved — the two documents WE number share one shape, {PREFIX}-{seq6}-{MM}-{YYYY}: QUO- quotation, PO- purchase order. The invoice is the exception and always was — its number comes from the licensed e-invoice provider (1C26TTD-173) and the law requires that series to be the one on record, so a second internal INV- code would only give support two numbers to ask about. The client’s live system numbered the sales order INV-…, which collided with the tax invoice; migrating existing PO records to PO- is a data task to plan, not a format question.',
     },
     {
       label: 'A company has two statuses — they answer different questions',
@@ -134,7 +150,7 @@ export const crm: BuildModule = {
         cols: ['Setting', 'Prints on', 'Why it must be central'],
         rows: [
           ['Logo + VN/EN legal name + VN/EN address + website', 'Letterhead of quotation, sales order, invoice', 'The block the customer reads first. Both languages always print, exactly as on the client’s source PDF EST-009909-07-2026.'],
-          ['Issuer tax code (MST)', 'Sales order, VAT e-invoice', 'Ours, not the customer’s — the two are adjacent on the page and easy to confuse.'],
+          ['Issuer tax code (MST)', 'PO, VAT e-invoice', 'Ours, not the customer’s — the two are adjacent on the page and easy to confuse.'],
           ['VAT rate (currently 8%)', 'Every option total, every invoice', 'A State rate change (T&C clause 6) is then one edit, not a code release.'],
           ['Quotation validity (end OF month)', 'Expiry date', 'Sales policy, so it belongs to sales ops rather than to engineering.'],
           ['Numbering formats — QUO-{seq}-{MM}-{YYYY}, SO-…', 'Document numbers', 'The sequence must stay gapless and concurrency-safe; the format is configurable, the counter is not.'],
@@ -219,7 +235,7 @@ export const crm: BuildModule = {
       ],
     },
     {
-      label: 'Provisioning — what actually happens when the invoice is issued',
+      label: 'Provisioning — what happens when the OFFICIAL invoice is issued',
       text: 'Provisioning is the moment a line item becomes usable balance on the customer’s account. It is the only step where a document turns into product, it runs on the **official** invoice being issued — **immediately**, with no queue and no second click — and it lives in Account management; CRM never writes quota directly.\n\nA **draft** invoice provisions nothing. That is enforced in the listener, which subscribes to the official issue event only, not merely in the UI.\n\nWhat the customer sees the instant it runs: the products appear on their company detail page, and they can post a job and open CVs. Nothing else in the chain grants any of that.',
       table: {
         cols: ['Line item on the PO', 'What provisioning grants'],
@@ -232,14 +248,14 @@ export const crm: BuildModule = {
         ],
       },
       items: [
-        '**Provisioning ≠ activation** — two events, two clocks, and T&C separates them. Provisioning (clause 3): quota lands in the account when the invoice is issued; nothing is running yet. Activation (clause 4): the customer uses a slot, which must happen within the window declared on that PRODUCT — 12 months by default, 3 on the trial posting — counted from the invoice date, or the unused quota expires. Usage (clause 5): once activated, that posting runs 30 days.',
+        '**Provisioning ≠ activation** — two events, two clocks, and T&C separates them. Provisioning: quota lands in the account when the OFFICIAL invoice is issued — a draft grants nothing; nothing is running yet. Activation (clause 4): the customer uses a slot, which must happen within the window declared on that PRODUCT — 12 months by default, 3 on the trial posting — counted from the invoice date, or the unused quota expires. Usage (clause 5): once activated, that posting runs 30 days.',
         'So a customer can buy 10 slots today, use one next week and one in eight months. Provisioning granted all ten at once; each activates separately and burns its own 30-day window. The Invoice list’s “Activate by” column is invoice date + the product’s own activation window — see Products & Packages → Products management.',
-        '**Idempotency** (the most likely production bug in the whole chain): invoice.issued can fire twice — an e-invoice provider timeout followed by a retry is normal. Provisioning must be keyed on the invoice ID, or the customer silently receives double quota.',
+        '**Idempotency** (the most likely production bug in the whole chain): the official invoice.issued event can fire twice — an e-invoice provider timeout followed by a retry is normal. Provisioning must be keyed on the invoice ID, or the customer silently receives double quota.',
         '**Reversal** — now a designed path, not a corner case, and still unanswered: cancelling an invoice withdraws quota it has already provisioned. What happens to quota partly consumed? Options: claw back the unused portion · leave it and reconcile on the credit note · block cancellation once any quota is consumed. **This blocks build** — the invoice cancel exists precisely for the invoice-before-payment case, so the claw-back rule will be exercised.',
       ],
     },
     'One company record throughout: created in the CRM with customer status New. It has no login and is invisible to jobseekers until it is activated. No duplicate company records.',
-    'On invoice issued (not on PO), hand off to Account management: create account → provision products/quota → company page for Job Posting. It runs immediately and it is the only trigger. Activation of an individual slot then follows the customer’s own use, inside the Account management module.',
+    'On the OFFICIAL invoice being issued (not on the PO, and not on a draft invoice), hand off to Account management: create account → provision products/quota → company page for Job Posting. It runs immediately and it is the only trigger. Activation of an individual slot then follows the customer’s own use, inside the Account management module.',
   ],
   features: [
     // 0 · Companies ───────────────────────────────────────────────────
@@ -582,7 +598,7 @@ export const crm: BuildModule = {
             cols: ['Status', 'Means', 'Moves in when', 'Rule'],
             rows: [
               ['New', 'Has never bought from us — no VAT e-invoice has ever been issued', 'Created in the CRM', '**System** sets this at creation — **Sales** never picks it, and there is no field to. Leaves only when **Kế toán** issues the first VAT e-invoice; never on a sent quotation or a confirmed order alone. → Next action: **Sales** quotes them.'],
-              ['Existing', 'Has paid at least once — active paid service or a past order', 'First VAT e-invoice issued', '**System** flips it on invoice.issued. One-way: a win-back after Churn returns here, never to New. **Sales** may override only with a reason, and **System** logs the override. → Next action: **Sales** works the renewal before the 12-month clock runs out.'],
+              ['Existing', 'Has bought at least once — active paid service or a past order', 'First OFFICIAL VAT e-invoice issued', '**System** flips it on invoice.issued. One-way: a win-back after Churn returns here, never to New. **Sales** may override only with a reason, and **System** logs the override. → Next action: **Sales** works the renewal before the 12-month clock runs out.'],
               ['Churn', 'Lapsed — win-back candidate', 'No new order for 12 months since the last invoice', '**System** sets this 12 months past lastInvoicedAt with no new order — nobody clicks it. The same record looping back; a won win-back returns it to Existing, never a new record. → Next action: **Sales** runs the win-back on the quarterly churn cadence.'],
             ],
           },
@@ -767,7 +783,7 @@ export const crm: BuildModule = {
           ['Người bán hàng', '“chưa ký số” placeholder', 'Digital signature block: Signature Valid · bởi <issuer> · Ký ngày'],
           ['Mã của cơ quan thuế', 'Absent', 'Present — the tax authority’s own code'],
           ['Trang tra cứu + Mã tra cứu', 'Absent', 'The provider’s lookup URL and code, so anyone can verify it'],
-          ['Legal force', 'NONE. Filed nowhere, grants the customer nothing.', 'This is what releases the product and starts the 12-month activation clock.'],
+          ['Legal force', 'NONE. Filed nowhere, grants the customer nothing.', 'This is what releases the product and starts the activation clock (length comes from the product, 12 months by default).'],
         ],
       },
       items: [
@@ -1077,7 +1093,7 @@ export const crm: BuildModule = {
           'Each affiliate row carries ONE label — “Công ty con”. There is no Chi nhánh / Công ty con split in the UI: it was derived from the tax codes and changed nothing a rep could act on. The affiliated-companies card also carries no explainer block about what a link does or does not inherit — that rule lives here, not on the record.',
           'The directory can filter by corporate group — every company under a chosen root — so a rep can pull up a whole group at once. Grouping is a view; ownership stays per company.',
           'On PO, "Convert / Activate" provisions the account. Renewal loop: when no new PO is issued within a year of the last PO, customer status flips to Churn and the company re-enters the pipeline for a win-back (no new record).',
-          'Customer status is recomputed by the system, not set by hand: a company is created New; the first invoice.issued flips it to Existing; 12 months past lastInvoicedAt with no new order → Churn; a win-back invoice returns it to Existing. Sales can only override with a reason, and the override is logged.',
+          'Customer status is recomputed by the system, not set by hand: a company is created New; the first OFFICIAL invoice.issued flips it to Existing; 12 months past lastInvoicedAt with no new order → Churn; a win-back invoice returns it to Existing. Sales can only override with a reason, and the override is logged.',
         ],
         rules: [
           'A company is always created here first — the CRM is the single front door, even for a company that arrives already large.',
@@ -1162,8 +1178,8 @@ export const crm: BuildModule = {
                 ['Proposal', 'SALES', 'Picked from the badge. Also set by SYSTEM when the first quotation is created.'],
                 ['Qualified', 'SALES', 'Picked from the badge, when the customer engages with the quotation.'],
                 ['Negotiation', 'SALES', 'Picked from the badge, when the customer asks for changes or starts internal approval.'],
-                ['PO', 'SYSTEM ONLY', 'Written when SALES issues the Sales order from the accepted option. NOT in the menu.'],
-                ['Invoice', 'SYSTEM ONLY', 'Written when KẾ TOÁN issues the VAT e-invoice after confirming payment. NOT in the menu.'],
+                ['PO', 'SYSTEM ONLY', 'Written when **Sales** issues the PO from the accepted option. NOT in the menu.'],
+                ['Invoice', 'SYSTEM ONLY', 'Written when **Kế toán** issues the OFFICIAL VAT e-invoice. A draft invoice does not move the stage. NOT in the menu.'],
                 ['Lost', 'SALES', 'Picked from the badge, from ANY stage, and only with a reason.'],
               ],
             },
@@ -1188,9 +1204,9 @@ export const crm: BuildModule = {
             rows: [
               ['Proposal', 'A quotation exists for this company — being written or already out', 'Quotation created (Draft)', '**System** puts the card here the moment **Sales** creates the quotation, while it is still Draft — the stage is a consequence, never a manual drag. Working on a quote **is** the proposal activity, so the deal is visible on the board from the first keystroke rather than appearing only once it is sent. → Next action: **Sales** finishes it and clicks “Mark as sent”, then chases a reply.'],
               ['Qualified', 'HR manager is willing to discuss that quotation', 'Customer engages / replies', '**Sales** moves the card when the customer engages. May be skipped entirely — Proposal → Negotiation is legal. → Next action: **Sales** agrees the option and the price.'],
-              ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', '**Sales** moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: **Sales** creates the Sales order from the option the customer accepted.'],
-              ['PO', 'The Sales order has been sent to the customer — this is “won”.', 'PO sent', '**Sales** reaches this by sending the Sales order (with bank details). The “won” moment — but it provisions nothing yet, and the customer has neither agreed nor paid. → Next action: **Kế toán only** confirms the payment against the bank statement.'],
-              ['Invoice', 'Customer paid and Accounting issued the VAT e-invoice — closed', 'Payment confirmed + invoice issued', '**Kế toán only** reaches this, by issuing the VAT e-invoice after confirming payment. **System** then closes the deal won, flips customer status to Existing, starts the 12-month clock and releases provisioning. Terminal — no further action on the deal.'],
+              ['Negotiation', 'HR manager is running it through internal approval', 'Customer asks for changes or approval starts', '**Sales** moves the card; a revision to v2 / v3 happens here without leaving the stage. → Next action: **Sales** creates the PO from the option the customer accepted.'],
+              ['PO', 'A PO has been issued to the customer — this is “won”.', 'PO issued', '**Sales** reaches this by issuing the PO (with bank details) off the accepted option. The “won” moment — but it provisions **nothing**, and the customer has neither paid nor received anything. The PO expires at the end of its month unless an OFFICIAL invoice follows. → Next action: **Sales** requests the official invoice; **Kế toán** issues it.'],
+              ['Invoice', 'The OFFICIAL VAT e-invoice is filed — closed won', 'Official invoice issued', '**Kế toán only** reaches this, by filing the official invoice (hóa đơn chính). A draft invoice does **not** move the card. **System** then closes the deal won, flips the customer to Existing and provisions the products immediately. Payment may still be outstanding — that is a receivables matter, not a stage.'],
               ['Lost', 'Ended without a PO — declined / competitor / budget cut / went silent', 'A human closes it and picks a reason', '**Sales** only, by hand, with a reason — **System** never auto-closes a deal however long it sits (a stale deal is flagged rotting, not lost). → To re-open: **Sales** moves it back to an earlier stage; a win-back is a new deal on the same company.'],
             ],
           },
@@ -1334,7 +1350,7 @@ export const crm: BuildModule = {
               'Axis 1 · Pipeline status (derived from the open deal): Not in pipeline · Proposal · Qualified · Negotiation · PO · Invoice.',
               'Axis 2 · Customer status (stored on the company): New · Existing · Churn. Exactly three.',
               'Only invoice.issued and the nightly 12-month churn clock ever write axis 2. Nothing a rep does on the board writes it.',
-              'Legal combinations that must all work: New + Not in pipeline (cold lead / nurture) · New + Proposal (first-time quote out) · New + PO (order confirmed but not yet invoiced — they still have not paid) · Existing + Not in pipeline (bought, nothing live) · Existing + Negotiation (renewal in flight — very common) · Churn + Proposal (win-back attempt underway).',
+              'Legal combinations that must all work: New + Not in pipeline (cold lead / nurture) · New + Proposal (first-time quote out) · New + PO (PO issued but not yet invoiced — they still have not paid) · Existing + Not in pipeline (bought, nothing live) · Existing + Negotiation (renewal in flight — very common) · Churn + Proposal (win-back attempt underway).',
               'Illegal by construction: any company showing "Lost" as a pipeline status; any rule that changes customer status because a deal was lost; and any transition back into New — it is the one status a company can never return to.',
               'Naming: "New" means "has never bought from us", not "recently signed up" and not "newly paying". A company can sit at New for years while being quoted repeatedly. If the sales team reads it the other way, relabel it in the UI ("Chưa từng mua") rather than redefining it.',
             ],
@@ -1342,8 +1358,8 @@ export const crm: BuildModule = {
           {
             heading: 'Board display — Won and Lost are closed, not columns companies live in',
             items: [
-              'The board shows open deals that already have a quotation out. A closed-won or closed-lost deal is history on the company record, not a card that sits on the board forever — and a deal still at the drafting stage has not entered yet.',
-              'Draft and Pending-approval quotations are deliberately absent from the board. The forecast may only contain numbers a customer has actually seen; a rep’s unsent working draft is not a commitment to anybody. Drafts live on the Quotations list instead, where the rep can find them.',
+              'The board shows open deals from the moment a quotation exists for them — **including a Draft one**, which is what puts the card at Proposal. A closed-won or closed-lost deal is history on the company record, not a card that sits on the board forever.',
+              'CORRECTED — an earlier draft of this requirement kept Draft quotations off the board. It does not: a Draft quotation is exactly what enters the company at Proposal (see the stage table above), and a quotation awaiting special-discount approval is still a Draft on the board. What the FORECAST may exclude is a different question — column totals can be filtered to quotations the customer has actually seen, without hiding the card.',
               'Keep PO and Invoice as visible columns so reps see recent wins, but auto-archive cards off the board 30 days after they close (configurable). Otherwise the right-hand columns grow without limit and the board stops being a work list.',
               'Lost is best rendered as a filter / drawer rather than a permanent column, for the same reason.',
               'Column totals must count only open deals, or the pipeline value is meaningless for forecasting — and each deal contributes exactly one option (accepted, else highest), never the sum of the options it offered.',
@@ -1593,7 +1609,7 @@ export const crm: BuildModule = {
             group: 'After it goes out',
             items: [
               'Customer replies picking an option → the rep records which option was accepted and how it was agreed (email / Zalo / call); the others are marked Not chosen.',
-              'Acceptance is recorded ON the quotation but is not a status of its own — the status moves to Issued to PO the moment the Sales order is created from that option, which is the very next click.',
+              'Acceptance is recorded ON the quotation but is not a status of its own — the status moves to Issued to PO the moment the PO is created from that option, which is the very next click.',
               'Accepting an option is the single entry point to Create Sales Order / PO — the accepted option’s lines are copied into it.',
               'Negotiation → Revise clones the quotation as v2 with a revision reason. v1 stays in history marked by its version, not by a separate status — the list shows v1 greyed with “replaced by v2”.',
             ],
@@ -1604,7 +1620,7 @@ export const crm: BuildModule = {
               'Expiry is derived, never typed: every quotation not yet Issued to PO expires at the end of the calendar month, whatever day it was created or sent.',
               'A month-end job sets those quotations Expired and takes their companies off the pipeline board — the quotation was the reason the card existed.',
               'Leaving the board this way is not Lost: no reason is recorded, no human decided, and the customer status does not change. The company is a live prospect with no live offer.',
-              'An expired quotation cannot be converted to a Sales order. Revise to v2 (or extend) first; the convert action is disabled with that reason shown.',
+              'An expired quotation cannot be issued to a PO. Revise to v2 (or extend) first; the action is disabled with that reason shown.',
               'A v2 — or any new quotation — puts the company straight back on the board at Proposal.',
             ],
           },
@@ -1647,7 +1663,7 @@ export const crm: BuildModule = {
               'Tax code, billing name and billing address are mandatory before Send — they flow verbatim to the VAT e-invoice and cannot be fixed later without re-issuing it.',
               'Per T&C clause 2 the discounts, incentives and gifts hold only until the expiry date — which is why an expired quote can never be converted: it would issue an order on pricing we no longer stand behind.',
               'VAT rate comes from settings so a State rate change (T&C clause 6) does not require a code change; a sent quotation keeps the rate it was sent with.',
-              'The quotation states the terms the whole chain inherits: service is released on the invoice (a deliberate deviation from clause 3, which says payment + invoice), must be activated within 12 months of the invoice date (clause 4), and runs 30 days once activated (clause 5).',
+              'The quotation states the terms the whole chain inherits: service is released on the OFFICIAL invoice (a deliberate deviation from clause 3, which says payment + invoice), must be activated within 12 months of the invoice date (clause 4), and runs 30 days once activated (clause 5).',
             ],
           },
         ],
@@ -1655,7 +1671,7 @@ export const crm: BuildModule = {
           'Draft (editable · already on the board at Proposal · may carry a pending special-discount approval)',
           'Sent (immutable, awaiting the customer — via platform Send or "Mark as sent"; this is what puts the deal on the board at Proposal)',
           'Sent + offer lapsed (past the expiry date — the flag that forces a human decision)',
-          'Issued to PO (an option was accepted and the Sales order was created from it — terminal success)',
+          'Issued to PO (an option was accepted and the PO was created from it — terminal success)',
           'Expired (lapsed and closed out with no PO — terminal until extended or revised)',
         ],        requirements: [
           {
@@ -1762,13 +1778,13 @@ export const crm: BuildModule = {
         },
         {
           label: 'Quotation status — exactly four',
-          text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the Sales order is created from the accepted option.',
+          text: 'The four statuses on the Quotations list. Acceptance is recorded ON the quotation but is not a status of its own — it moves straight to Issued to PO the moment the PO is created from the accepted option.',
           table: {
             cols: ['Status', 'Means', 'Rule'],
             rows: [
               ['Draft', 'Being written — editable, not yet out', '**Sales** builds and edits it; the only editable status. Creating it puts the deal on the board at proposal immediately, so a draft already counts in the pipeline — abandoning one therefore needs the deal closing as Lost, it does not just evaporate. → Next action: **Sales** clicks “Mark as sent”.'],
               ['Sent', 'Delivered to the customer, awaiting their pick', '**Sales** declares this by clicking “Mark as sent” — reps routinely deliver the PDF by Zalo or from their own mailbox, so the status cannot depend on our mailer firing. Immutable from here. The deal is already on the board (it went there at Draft); sending does not move it. → Next action: **Sales** clicks “Issue PO” and picks the option the customer chose.'],
-              ['Issued to PO', 'An option was accepted and the Sales order was created from it', 'Reached automatically the moment **Sales** creates the Sales order. Terminal success — no further action on the quotation.'],
+              ['Issued to PO', 'An option was accepted and the PO was created from it', 'Reached automatically the moment **Sales** issues the PO. Terminal success — no further action on the quotation.'],
               ['Expired', 'Month-end passed with no PO issued', '**System** sets this at the end of the month — nobody clicks it. It also removes the company from the pipeline: the quotation was the reason the deal was on the board, so when it lapses the deal leaves with it. → To re-open: **Sales** revises to v2, which is a new quotation and puts the company back at Proposal.'],
             ],
           },
@@ -1882,15 +1898,25 @@ export const crm: BuildModule = {
             { name: 'acceptedOptionId', type: 'uuid?', notes: 'null until the customer picks' },
             { name: 'termsVersion', type: 'string', required: true },
             { name: 'vatRate', type: 'decimal', required: true, notes: 'snapshot, e.g. 0.08' },
-            { name: 'sentAt / acceptedAt', type: 'timestamp?', notes: 'sentAt null ⇔ the quotation has never gone out ⇔ it is invisible to the pipeline. Set by both /send and /mark-sent; back-datable, never future.' },
+            { name: 'sentAt / acceptedAt', type: 'timestamp?', notes: 'sentAt null ⇔ the quotation has never gone out. It is still ON the pipeline at Proposal — a Draft is what puts it there — but a forecast may choose to exclude unsent value. Set by both /send and /mark-sent; back-datable, never future.' },
             { name: 'sentVia', type: 'enum?', required: false, notes: 'platform_email|own_email|zalo|messenger|printed|other — how it actually reached the customer. Non-platform values are the common case, not the exception.' },
             { name: 'sentBy / sentTo', type: 'uuid? / string?', notes: 'who declared it sent, and the address or handle it went to — the audit trail for an off-platform send' },
             { name: 'valueSnapshot', type: 'money', notes: 'derived and cached: acceptedOption.totalAfterVat ?? max(options.totalAfterVat). Never sum. One column so the board, the list and every report read the identical number.' },
+            { name: '— Special discount + approval —', type: 'group' },
+            { name: 'specialDiscount', type: 'bool', required: true, notes: 'default false. True = the customer-status programme is NOT applied to this quotation and the rep has typed an option-subtotal rate instead. The two are mutually exclusive' },
+            { name: 'appliedProgrammeId', type: 'uuid?', notes: 'which programme priced this quotation, null when specialDiscount is on. Stored so a later change to the programme cannot reprice a quotation already sent' },
+            { name: 'approvalState', type: 'enum?', notes: 'pending | approved | rejected — only when specialDiscount is on and the rate is > 0' },
+            { name: 'approvalRole', type: 'enum?', notes: 'sales_lead (1–10%) | sales_manager (>10%). Routed by AMOUNT, not by chain: above the band the lead is skipped entirely' },
+            { name: 'requestedBy / requestedAt', type: 'uuid? / timestamp?' },
+            { name: 'approvedBy / approvedAt', type: 'uuid? / timestamp?' },
+            { name: 'approvedPct', type: 'decimal?', required: false, notes: 'WHAT was approved. Editing the rate away from this value voids the approval and re-routes — without this field that rule cannot be enforced' },
+            { name: 'rejectReason', type: 'string?', notes: 'mandatory on a rejection; the rep can only act on “no” if told what would be a yes' },
             { name: '— QuotationOption —', type: 'child table' },
             { name: 'optionId / quotationId', type: 'uuid', required: true },
             { name: 'sortOrder', type: 'int', required: true, notes: '1..3 → Option 1/2/3' },
             { name: 'title', type: 'string', notes: 'composed from its packages' },
             { name: 'isRecommended', type: 'bool' },
+            { name: 'optionDiscountPct', type: 'decimal', notes: 'the “chiết khấu tổng hóa đơn”. Set by the PROGRAMME on a flat-order programme, or typed by the rep when specialDiscount is on — the ONLY number a rep may type on this screen. Applied to the subtotal, before VAT' },
             { name: 'subtotal / vatAmount / totalAfterVat', type: 'money', notes: 'persisted, not recomputed on read — prices change' },
             { name: 'amountInWordsVi / amountInWordsEn', type: 'string' },
             { name: '— QuotationLine —', type: 'child table' },
@@ -1899,7 +1925,7 @@ export const crm: BuildModule = {
             { name: 'nameVi / nameEn / unitVi / unitEn', type: 'string', notes: 'snapshot for the PDF' },
             { name: 'quantity', type: 'int', required: true },
             { name: 'unitPrice', type: 'money', required: true },
-            { name: 'discountPct', type: 'decimal' },
+            { name: 'discountPct', type: 'decimal', notes: 'written by the PROGRAMME, never by a rep. 0 on every line whenever specialDiscount is on' },
             { name: 'lineTotal', type: 'money', required: true },
             { name: 'isGift', type: 'bool', required: true },
             { name: 'featuresSnapshot', type: 'json', notes: 'the numbered benefit list as printed' },
@@ -1920,7 +1946,7 @@ export const crm: BuildModule = {
             'POST /admin/crm/quotations/:id/accept { optionId, agreedVia, agreedBy, note }',
             'POST /admin/crm/quotations/:id/reject { reason }',
             'POST /admin/crm/quotations/:id/revise → returns v+1 draft',
-            'POST /admin/crm/quotations/:id/convert { optionId } → Sales Order / PO',
+            'POST /admin/crm/quotations/:id/issue-po { optionId } → creates the PO from that ONE accepted option',
           ],
           integrations: [
             'Products & packages — line items, units, list prices, benefit lists',
@@ -1936,13 +1962,17 @@ export const crm: BuildModule = {
           'A quotation with 2 options renders a PDF identical in structure and content to the client’s EST-009909-07-2026, including per-option VAT, total-after-VAT, bilingual amount-in-words, per-package benefit lists, the 6 T&C clauses and the signature block.',
           'Options total independently and no grand total appears anywhere in the document or the pipeline value.',
           'A gift line prints as 0₫ / 0% and is excluded from revenue, but appears as provisionable quota after activation.',
-          'Accepting exactly one option locks the quotation and reveals "Create Sales Order / PO" prefilled with that option’s lines.',
+          'Accepting exactly one option locks the quotation and reveals "Issue PO" prefilled with that option’s lines.',
           'Editing a Sent quotation is impossible; "Revise" produces v2 and marks v1 Superseded, both visible in history.',
           'A quotation past its expiry date shows as Expired without anyone touching it, and its deal’s stage and rot colour are unaffected by the flip.',
-          'Convert to Sales order is disabled on an Expired quotation, with the reason shown; extending validity or revising to v2 re-enables it.',
-          'A discount over the threshold cannot be sent until a sales lead approves — through "Mark as sent" as well as through Send.',
+          'Issue PO is disabled on an Expired quotation, with the reason shown; extending validity or revising to v2 re-enables it.',
+          'A programme discount — any rate, up to 60% — sends with no approval step and no banner.',
+          'With Chiết khấu đặc biệt on, the programme is not applied, every line discount is 0 and locked, and only the option-subtotal field accepts a number.',
+          'A special discount of 8% routes to the Sales lead and 18% to the Sales manager; "Mark as sent" is disabled until it is approved, and disabled after a rejection.',
+          'The Sales lead sees only their own team’s ≤10% requests in "Chờ tôi duyệt", the manager only the >10% ones; a plain rep has no such control at all.',
+          'A rejection cannot be submitted without a reason, and the reason is shown on the quotation afterwards.',
           'A quotation the rep emailed from their own mailbox and then recorded with "Mark as sent" moves its deal onto the board at Proposal, with the same value, timeline entry and rot clock as a platform-sent one.',
-          'A company whose only quotation is a Draft appears nowhere on the pipeline board and reads "Not in pipeline"; sending that draft makes the card appear, and no forecast number changed before that.',
+          'A company whose only quotation is a Draft appears on the pipeline board at Proposal — the Draft is what puts it there; sending it does not move the card, and no forecast number changed before that.',
           'A quotation with options at ₫6,588,000 and ₫2,926,800 reads ₫6,588,000 on the quotation list, the deal card and the stage column total; accepting the ₫2,926,800 option changes all three to ₫2,926,800. 9,514,800 is not produced by any screen or export.',
           'A "Mark as sent" back-dated to three days ago makes the Proposal rot clock read 3 days, not 0.',
         ],
@@ -1950,7 +1980,7 @@ export const crm: BuildModule = {
           'Max options per quotation — is 3 the cap, or should it be unlimited?',
           'Pending value = the highest option is the rule written here. If Sales would rather forecast the most-likely option, the existing "recommended" flag could drive it instead — confirm with the sales lead before reporting is built, since the two give different pipeline totals.',
           'Channel list for "Mark as sent" — is Platform email · Own email · Zalo · Messenger · Printed enough, and do we want optional proof (a forwarded copy / screenshot) attached on the off-platform ones?',
-          'Should an unsent Draft older than N days nag its owner, given it is invisible to the pipeline and so cannot rot?',
+          'Should an unsent Draft older than N days nag its owner? It IS on the board at Proposal, so the rot clock already covers it — the question is whether an unsent draft deserves a louder signal than a sent one that went quiet.',
           'Who exactly is “Sales leader” and “Sales manager” — is the leader the rep’s own team lead, and is there one manager or one per region? The approval routes to a ROLE today; it needs to resolve to a person.',
           'Does the customer accept by replying (rep marks it), or do we want a signed accept link in the PDF/email so the customer picks the option themselves?',
           'Is e-signature required on the quotation, or is the current authorized-signature image enough?',
@@ -2157,7 +2187,7 @@ export const crm: BuildModule = {
             'JOB expire-orders — nightly; sets every PO past expiresAt that has no OFFICIAL invoice to expired, and expires its draft invoice with it',
             '(no /cancel on orders — cancellation is POST /admin/crm/invoices/:id/cancel, and only on an issued invoice)',
           ],
-          integrations: ['Quotations (source)', 'Invoices + Payments (downstream)', 'Account management (provisioning target, after payment)'],
+          integrations: ['Quotations (source)', 'Invoices (the PO\u2019s fiscal half) + Payments (an independent axis)', 'Account management (provisioning target, on the OFFICIAL invoice)'],
           notes: 'Confirm launch scope — real svn-be build if yes. Emits order.issued (pipeline → PO / won), order.draft_invoiced, order.invoice_requested and order.expired. Provisioning listens to invoice.issued — the OFFICIAL one — and the claw-back to invoice.cancelled. Never to an order event, and never to a draft.',
         },
         acceptance: [

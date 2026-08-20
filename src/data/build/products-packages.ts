@@ -235,7 +235,7 @@ export const productsPackages: BuildModule = {
             table: {
               cols: ['#', 'Clock', 'Starts at', 'Set by', 'What happens at the end'],
               rows: [
-                ['①', 'Provisioning', 'The VAT invoice is issued', '— immediate, no field', 'Quota is on the account. The customer can post a job / open a CV at once'],
+                ['①', 'Provisioning', 'The OFFICIAL VAT invoice is issued — a draft grants nothing', '— immediate, no field', 'Quota is on the account. The customer can post a job / open a CV at once'],
                 ['②', '**Activation window** — this field', 'The invoice date', '**activationWindowMonths** on the product', 'Quota still unused **expires**. It is not refunded and not extended by default'],
                 ['③', 'Usage / display', 'The customer activates one slot or pack', 'validityDays on the product (30-day posting, 30/90-day CV pack)', 'That one slot finishes. Other unused slots are unaffected and keep running clock ②'],
               ],
