@@ -1695,6 +1695,32 @@ export const crm: BuildModule = {
             ],
           },
           {
+            label: 'Công thức tính tiền — the order the three discounts stack in',
+            text: 'The formula, stated so the client can confirm it rather than infer it from a column of totals. Every figure on the quotation, the PO and the invoice comes from this, and the part genuinely open to disagreement is the **order** — not the arithmetic.\n\nEach option computes independently. Options are alternatives, so nothing is ever summed across them. The panel below is the actual screen, with the step numbers on the rows they produce.',
+            figure: 'quotation-totals',
+            table: {
+              cols: ['#', 'Step', 'Formula', 'Note'],
+              rows: [
+                ['1', 'Line total', '`SL × đơn giá × (1 − CK dòng %)`', 'Per line. A gift line is 0 ₫ at 0% and contributes nothing.'],
+                ['2', '**Tạm tính** (subtotal)', '`Σ line totals`', 'Before any order-level discount.'],
+                ['3', 'CK tổng đơn', '`tạm tính × CK tổng đơn %`', 'The client’s “Addition Discount”. A percentage of the SUBTOTAL, not of the list price.'],
+                ['4', 'Giảm số tiền', '`min(voucher, tạm tính − CK tổng đơn)`', 'The client’s “Voucher”. A flat amount, taken **after** the percentage, and capped at what is left.'],
+                ['5', '**Sau chiết khấu**', '`tạm tính − CK tổng đơn − giảm số tiền`', 'This is the taxable base.'],
+                ['6', 'Thuế GTGT', '`sau chiết khấu × VAT %`', 'VAT is charged on what is LEFT, never on the pre-discount figure.'],
+                ['7', '**Tổng sau VAT**', '`sau chiết khấu + thuế GTGT`', 'The figure that prints, and the figure the deal is valued at.'],
+              ],
+            },
+            items: [
+              'The order of steps 3 and 4 is not interchangeable. Taking the voucher off **before** the percentage would quietly make the voucher worth more — on a 100.000.000 ₫ subtotal with 10% and a 5.000.000 ₫ voucher, the two orders differ by 500.000 ₫.',
+              'Step 6 is the one that must not be got wrong: VAT on the **discounted** base. Charging it on the subtotal overcharges the customer on a document that has been filed with the tax authority, and the only fix is cancel + biên bản + re-issue.',
+              'The voucher can take an option to **0 ₫** but never below it. There is no negative line and no credit carried forward.',
+              'Rounding is to the đồng at each step, not once at the end, so the printed lines add up to the printed total. A reader who checks the arithmetic by hand must reach the same figure.',
+              'Amount-in-words is generated from step 7 and is never typed.',
+              'The same formula runs on the PO and on the invoice. Those documents copy the accepted option’s figures rather than recomputing them from the catalogue — prices change, and a filed invoice must not move when they do.',
+            ],
+            warn: 'For the client to confirm: the ORDER above (percentage first, then the fixed amount, then VAT on the remainder) and the rounding rule (per step, to the đồng). Both are visible on the quotation builder’s totals panel, which shows the working for every line.',
+          },
+          {
             label: 'Gói dùng thử — products, not a discount',
             text: 'The trial is **not** a percentage. It is a small set of real products priced low — Tin đăng dùng thử at 500.000 ₫, Tìm kiếm hồ sơ dùng thử at 300.000 ₫ — carrying a trial flag and offered **only** inside a trial quotation.',
             items: [

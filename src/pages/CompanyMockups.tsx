@@ -297,6 +297,11 @@ type CoCandidate = {
   /** set when SARAMIN pulled the CV back after sending it — the date it happened.
       The row stays in the pipeline; see the recall banner in the detail panel. */
   recalled?: string
+  /** Why it was withdrawn, in the employer's words. Safe to show now that the
+      three reject reasons describe the DOCUMENT (unreadable · not a CV · too
+      thin) rather than the person — the account-level judgements moved to Block
+      user, and those are still never surfaced here. */
+  recallReason?: string
 }
 
 /** Toolbar button in the Saramin KR shape: white, hairline border, icon + label. */
@@ -427,7 +432,7 @@ function ApplicantsScreen() {
            row that vanishes silently is worse than one that explains itself. It
            is greyed and chipped instead, and the detail panel says who removed it
            and what to do. */
-        { n: 'Ngô Bảo Khánh', role: 'Sales Staff', exp: '1 năm KN', loc: 'Cần Thơ', match: 38, why: '2/10 kỹ năng', applied: '4 ngày trước', salary: '8–12 tr', cv: 'PDF tải lên', waiting: '4 days', recalled: '20/08/2026' },
+        { n: 'Ngô Bảo Khánh', role: 'Sales Staff', exp: '1 năm KN', loc: 'Cần Thơ', match: 38, why: '2/10 kỹ năng', applied: '4 ngày trước', salary: '8–12 tr', cv: 'PDF tải lên', waiting: '4 days', recalled: '20/08/2026', recallReason: 'File này không phải một CV.' },
       ],
     },
     { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, why: '8/10 kỹ năng · Hồ Chí Minh', applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
@@ -645,7 +650,7 @@ function ApplicantsScreen() {
                   <span></span> Saramin đã thu hồi CV này
                 </p>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-rose-900/80">
-                  Chúng tôi kiểm tra lại hồ sơ sau khi gửi và xác định hồ sơ không đạt yêu cầu.{' '}
+                  Lý do: <b className="font-semibold">{picked.recallReason}</b>{' '}
                   <b className="font-semibold">Bạn không cần xử lý ứng viên này.</b>
                 </p>
                 <p className="mt-1 text-[10.5px] text-rose-900/60">

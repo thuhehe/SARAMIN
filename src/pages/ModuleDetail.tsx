@@ -187,6 +187,7 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
           <Rich t={r.text} />
         </p>
       )}
+      {r.figure && FIGURES[r.figure] && <div className={measure}>{FIGURES[r.figure]()}</div>}
       {r.table && <ReqTableView t={r.table} dense={dense} />}
       {r.items && <ReqBullets items={r.items} dense={dense} />}
       {r.warn && (
@@ -197,6 +198,96 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
     </div>
   )
 }
+
+/* ── Named figures ────────────────────────────────────────────────────────────
+   A requirement can ask for a diagram by NAME. Drawn here rather than embedded in
+   the spec file, so the data stays data — and drawn rather than screenshotted, so
+   it cannot go stale silently the way a pasted image does.
+
+   This one is a faithful replica of the quotation builder's option card: the same
+   grid template, the same column headers, the same cells, the same figures. A
+   client reading "step 3" has to be able to point at it on the screen they will
+   actually use, which a simplified sketch cannot support — so the only thing that
+   differs from the real thing is the numbered badges and that nothing is
+   interactive. Values match the worked example in the table below. */
+const FIG_COLS = '20px 2.2fr 0.7fr 0.5fr 1fr 0.6fr 1fr'
+function StepNo({ n }: { n: number }) {
+  return <span className="mr-1 inline-grid h-4 w-4 shrink-0 translate-y-[1px] place-items-center rounded-full bg-brand text-[9px] font-bold text-white">{n}</span>
+}
+/** A read-only stand-in for one of the builder's input cells. */
+function FigCell({ v, w, tone }: { v: string; w: string; tone?: 'rule' | 'free' }) {
+  return (
+    <span className={cn('inline-block rounded border px-1 py-0.5 text-right text-[11px] tabular-nums', w,
+      tone === 'rule' ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800'
+        : tone === 'free' ? 'border-amber-400 bg-white font-semibold text-amber-900'
+          : 'border-slate-300 bg-slate-50 text-slate-400')}>{v}</span>
+  )
+}
+function QuotationTotalsFigure() {
+  const Sum = ({ n, label, hint, value, strong, rule, cell }: {
+    n?: number; label: string; hint?: string; value: string; strong?: boolean; rule?: boolean; cell?: React.ReactNode
+  }) => (
+    <div className={cn('flex items-baseline justify-between gap-2', rule && 'mt-1 border-t border-line pt-1')}>
+      <span className="flex min-w-0 items-baseline gap-1.5">
+        {n ? <StepNo n={n} /> : null}
+        <span className={strong ? 'font-semibold text-ink' : 'text-muted'}>{label}</span>
+        {cell}
+        {hint && <span className="text-[10px] text-faint">{hint}</span>}
+      </span>
+      <span className={cn('shrink-0 tabular-nums', strong && 'font-semibold')}>{value}</span>
+    </div>
+  )
+  return (
+    <figure className="mt-3">
+      {/* the builder's option card, field for field */}
+      <div className="overflow-x-auto rounded-xl border border-brand/40 bg-brand-soft/30 p-3">
+        <div className="min-w-[660px]">
+          <p className="mb-2 text-[12.5px] font-semibold">
+            Option 1
+            <span className="ml-1.5 font-normal text-muted">Dịch vụ tin đăng (Basic Plus Job)</span>
+          </p>
+
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            <div className="grid gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: FIG_COLS }}>
+              <span>#</span><span>Dịch vụ / Service</span><span>Đơn vị</span><span>SL</span>
+              <span className="text-right">Đơn giá</span><span className="text-right">Giảm</span><span className="text-right">Tổng giá</span>
+            </div>
+            <div className="grid items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: FIG_COLS }}>
+              <span className="text-faint">1</span>
+              <span className="truncate">Dịch vụ tin đăng (Basic Plus Job)</span>
+              <span className="text-[11px] text-muted">tin / post</span>
+              <FigCell v="7" w="w-full" />
+              <FigCell v="6,100,000" w="w-full" />
+              <span className="flex items-center justify-end gap-0.5"><FigCell v="30" w="w-11" tone="rule" /><span className="text-[10.5px] text-faint">%</span></span>
+              <span className="text-right tabular-nums"><StepNo n={1} />29,890,000</span>
+            </div>
+          </div>
+
+          <div className="mt-2 flex justify-end">
+            <div className="min-w-[360px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+              <Sum n={2} label="Tạm tính" hint="Σ (SL × đơn giá × (1 − CK dòng))" value="29,890,000 ₫" />
+              <div className="mt-1">
+                <Sum n={3} label="Chiết khấu tổng đơn" cell={<span className="flex items-center gap-0.5"><FigCell v="12" w="w-12" tone="free" /><span className="text-[10.5px] text-faint">%</span></span>} value="−3,586,800 ₫" />
+              </div>
+              <div className="mt-1">
+                <Sum n={4} label="Giảm số tiền" cell={<span className="flex items-center gap-0.5"><FigCell v="3,000,000" w="w-24" tone="free" /><span className="text-[10.5px] text-faint">₫</span></span>} value="−3,000,000 ₫" />
+              </div>
+              <Sum n={5} label="Sau chiết khấu" hint="tạm tính − CK tổng đơn − giảm tiền" value="23,303,200 ₫" strong rule />
+              <Sum n={6} label={`Thuế GTGT (8%)`} hint="23,303,200 × 8%" value="1,864,256 ₫" />
+              <Sum n={7} label="Tổng sau VAT" value="25,167,456 ₫" strong rule />
+              <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: Hai mươi lăm triệu một trăm sáu mươi bảy nghìn bốn trăm năm mươi sáu đồng.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption className="mt-1.5 text-[11px] leading-relaxed text-faint">
+        The quotation builder’s Option card, unchanged apart from the step numbers. The same panel is reproduced on the PO and on the invoice.
+        Green = written by the programme · amber = typed by the rep · grey = locked.
+      </figcaption>
+    </figure>
+  )
+}
+const FIGURES: Record<string, () => JSX.Element> = { 'quotation-totals': QuotationTotalsFigure }
 
 function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean }) {
   return (

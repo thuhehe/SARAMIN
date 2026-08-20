@@ -357,7 +357,9 @@ function ApplyScreen() {
                 </div>
                 {/* REJECTED — refused here too, but for a different reason and with a
                     different fix: there is no field to complete, so the row offers a
-                    replacement rather than a link into the editor. */}
+                    replacement rather than a link into the editor. The chip is the
+                    VERDICT chip from My CVs (rose, admin reason), not a fourth
+                    auto-status — “not a CV” is a rejection reason, judged by a human. */}
                 <div className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas/40 p-2.5">
                   <span className="grid h-3.5 w-3.5 shrink-0 rounded-full border-2 border-line bg-canvas" />
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-[14px] opacity-50">📄</span>
@@ -365,10 +367,10 @@ function ApplyScreen() {
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="truncate text-[12.5px] font-semibold text-muted">scan_cu.pdf</span>
                       <Chip tone="muted">Uploaded</Chip>
-                      <Chip tone="amber">⚠ Không hợp lệ</Chip>
+                      <Chip tone="rose">✕ Bị từ chối — Không phải CV</Chip>
                     </span>
                     <span className="block text-[11px] text-faint">
-                      File này không phải một CV{' '}
+                      File bạn tải lên không phải một CV{' '}
                       <span onClick={() => go('js-add-cv')} className="cursor-pointer font-medium text-brand">Tải lên CV khác →</span>
                     </span>
                   </span>
@@ -378,7 +380,7 @@ function ApplyScreen() {
                     catch a rare unreadable file. The apply still succeeds. */}
                 {cv === 'portfolio' && (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-                    CV này đang được kiểm tra. Đơn của bạn vẫn được nộp, và sẽ gửi tới nhà tuyển dụng <b className="font-semibold">trong vòng 24 giờ</b>.
+                    CV này đang được kiểm tra. Đơn của bạn vẫn được nộp, và sẽ gửi tới nhà tuyển dụng <b className="font-semibold">ngay sau khi kiểm tra xong</b>.
                   </p>
                 )}
                 <button
@@ -2108,27 +2110,78 @@ function MyCvsScreen() {
      candidate must be able to SEE the wait rather than assume they are already
      findable. A Saramin CV below the same rule is the stricter case: it cannot
      apply either, because we generate that document ourselves (`missing`). */
-  /* ONE state per CV, four values — the same set the admin sees, in the words the
-     candidate reads. Three of them are failures and they are NOT interchangeable:
-     “chưa đủ thông tin” is finishable, “không đọc được” needs a different FILE, and
-     “không hợp lệ” means the upload was not a CV at all. Each therefore gets its own
-     one-line reason and its own single action.
+  /* ONE state per CV, FOUR values — Qualified · Can’t read · Not enough
+     information · Rejected — the same set the admin sees, in the words the
+     candidate reads.
 
-     The detail of WHAT is missing lives in the editor, not here: this list is for
-     recognising your CVs, so a failing row gets one line and one button. */
-  type CvState = 'qualified' | 'not_enough' | 'unreadable' | 'invalid'
-  const STATE: Record<CvState, { chip: string; why: string; action: string; to: string }> = {
-    not_enough: { chip: '⚠ Chưa đủ thông tin', why: 'Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
-    unreadable: { chip: '⚠ Không đọc được', why: 'File dạng ảnh scan nên hệ thống không đọc được nội dung. Hãy tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
-    invalid: { chip: '⚠ Không hợp lệ', why: 'File này không phải một CV.', action: 'Tải lên CV khác', to: 'js-add-cv' },
-    qualified: { chip: '', why: '', action: '', to: '' },
+     The two DOUBT states (Can’t read · Not enough information) are interim on an
+     UPLOAD: the CV sits in the review queue and an admin will move it to
+     Qualified or Rejected. Their chip therefore says “Chờ duyệt” — the candidate
+     must see the wait, not assume they are already findable — and their line
+     offers the self-service exit too (fix the fields / replace the file re-runs
+     the scan, no admin needed).
+
+     REJECTED is a verdict, not a doubt: an admin chose one of THREE reasons
+     (Không phải CV · Chưa đủ thông tin · Không đọc được) and that reason picks
+     the one line and the one button. “Không hợp lệ” as a state of its own is
+     GONE — “not a CV” is now a rejection reason, because only a human can judge
+     it. The detail of WHAT is missing lives in the editor, not here: this list
+     is for recognising your CVs, so a failing row gets one line and one button. */
+  /* WHICH STATES EXIST DEPENDS ON THE ROUTE, and the types say so rather than
+     leaving it to a comment nobody reads:
+
+       Uploaded PDF  — all four. There is a FILE, so it can fail to parse, and a
+                       human can judge it not a CV at all.
+       Saramin CV    — two: Qualified · Not enough information. Typed into our own
+                       form, so there is no file to fail on, nothing for an admin
+                       to review, and it can never be Rejected — the fix is always
+                       the candidate's own.
+
+     Getting this wrong in either direction is a real bug — offering "Tải lên CV
+     khác" to someone who never uploaded anything, or hiding "Không đọc được" from
+     a scan that genuinely failed. */
+  type UploadState = 'qualified' | 'not_enough' | 'unreadable' | 'rejected'
+  type SaraminState = 'qualified' | 'not_enough'
+  type RejectReason = 'not_a_cv' | 'not_enough' | 'unreadable'
+  /* Doubt chips carry “Chờ duyệt” ONLY on the uploaded route — a Saramin CV in
+     the same state is not waiting on anyone, so promising a review would be a
+     wait that never ends. */
+  const DOUBT: Record<'not_enough' | 'unreadable', Record<'Uploaded' | 'Saramin', { chip: string; why: string; action: string; to: string }>> = {
+    not_enough: {
+      Uploaded: { chip: '⚠ Chưa đủ thông tin · Chờ duyệt', why: 'CV chưa đủ kinh nghiệm hoặc kỹ năng — Saramin đang kiểm tra lại. Bổ sung thông tin để đạt ngay, không cần chờ.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
+      Saramin: { chip: '⚠ Chưa đủ thông tin', why: 'Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
+    },
+    unreadable: {
+      Uploaded: { chip: '⚠ Không đọc được · Chờ duyệt', why: 'File dạng ảnh scan nên hệ thống chưa đọc được — Saramin đang kiểm tra. Bạn có thể chờ, hoặc tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+      Saramin: { chip: '', why: '', action: '', to: '' }, // unreachable — no file on this route
+    },
   }
-  const cvs: { name: string; kind: string; meta: string; icon: string; state: CvState }[] = [
+  /* One entry per REJECT REASON — the admin's code picks the candidate's words.
+     Same one-line + one-button shape as doubt, but the chip is a verdict (rose,
+     not amber) and never says “Chờ duyệt”: nothing is coming. */
+  const REJECTED: Record<RejectReason, { chip: string; why: string; action: string; to: string }> = {
+    not_a_cv: { chip: '✕ Bị từ chối — Không phải CV', why: 'File bạn tải lên không phải một CV.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+    not_enough: { chip: '✕ Bị từ chối — Chưa đủ thông tin', why: 'Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
+    unreadable: { chip: '✕ Bị từ chối — Không đọc được', why: 'File dạng ảnh scan nên hệ thống không đọc được nội dung. Hãy tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+  }
+  /* The union is what enforces the route rule: a row typed as Saramin cannot be
+     given `unreadable` or `rejected` — TypeScript refuses it. And `reason` exists
+     ONLY with `state: 'rejected'`, so a rejection can never be reasonless. */
+  type CvRow =
+    | { name: string; kind: 'Uploaded'; meta: string; icon: string; state: Exclude<UploadState, 'rejected'> }
+    | { name: string; kind: 'Uploaded'; meta: string; icon: string; state: 'rejected'; reason: RejectReason }
+    | { name: string; kind: 'Saramin'; meta: string; icon: string; state: SaraminState }
+  const cvs: CvRow[] = [
     { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄', state: 'unreadable' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Created 26/07/2026', icon: '📄', state: 'qualified' },
     { name: 'UX Designer CV', kind: 'Saramin', meta: 'Created 14/08/2026', icon: '📄', state: 'not_enough' },
-    { name: 'scan_cu.pdf', kind: 'Uploaded', meta: 'Uploaded 02/08/2026', icon: '📄', state: 'invalid' },
+    { name: 'scan_cu.pdf', kind: 'Uploaded', meta: 'Uploaded 02/08/2026', icon: '📄', state: 'rejected', reason: 'not_a_cv' },
   ]
+  /* One accessor instead of two lookups at every call site — the row's state and
+     kind pick the message, and `qualified` returns null so the render can gate on
+     it directly. */
+  const stateOf = (c: CvRow) =>
+    c.state === 'qualified' ? null : c.state === 'rejected' ? REJECTED[c.reason] : DOUBT[c.state][c.kind]
 
   return (
     <div className="relative">
@@ -2143,12 +2196,31 @@ function MyCvsScreen() {
 
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[15px] font-bold text-ink">My CVs <span className="text-[11px] font-normal text-faint">· {cvs.length} of 3</span></p>
+              <div>
+                {/* A REJECTED CV does not consume a slot. The cap exists to keep the
+                    shelf small enough to choose from; a file we have refused is not
+                    a choice, and making it eat one of three would punish the
+                    candidate for our rejection. */}
+                <p className="text-[15px] font-bold text-ink">My CVs <span className="text-[11px] font-normal text-faint">· {cvs.filter((c) => c.state !== 'rejected').length} of 3</span></p>
+                {/* The cap is stated where the count is, not on the button — a
+                    disabled button that explains itself is a button nobody can use;
+                    a live button that tells you what it will ask for is one you can. */}
+                {cvs.filter((c) => c.state !== 'rejected').length >= 3 && (
+                  <p className="text-[11px] text-faint">Đã đủ 3 CV — tạo mới sẽ cần chọn 1 CV để thay thế. CV bị từ chối không tính vào giới hạn.</p>
+                )}
+              </div>
             </div>
-            {cvs.length >= 4
-              ? <span className="rounded-md border border-line px-3 py-1.5 text-[11.5px] text-faint">Đã đủ 3 CV — xoá một CV để thêm mới</span>
-              : <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>}
+            {/* ALWAYS available, even at the cap. The cap is a real constraint, but a
+                dead button is a dead end — the flow can ask which CV to replace,
+                which the candidate can act on. */}
+            <Btn primary onClick={() => go('js-add-cv')}>+ Add new CV</Btn>
           </div>
+
+          {/* The which-statuses-by-route explainer box that used to sit here was
+              REMOVED (2026-08-20 review): a status legend is spec material, and it
+              lives as a table in Resume management → CV qualification. The screen
+              teaches through the rows themselves — each failing CV carries its own
+              chip, reason and action. */}
 
           {/* CV list — ONE named action per row (View as employer, the only thing a
               candidate does often) and everything else behind ⋯. Four peer links put
@@ -2165,12 +2237,16 @@ function MyCvsScreen() {
                     <Chip tone={c.kind === 'Saramin' ? 'blue' : 'muted'}>{c.kind}</Chip>
                     {/* Two different chips, because they answer two different
                         questions: the STATE of the CV, and whether this is the one
-                        employers search. A CV that is flagged but no longer
-                        qualifies keeps its flag and says so, rather than showing a
-                        plain “đang hiển thị” it cannot honour. */}
-                    {c.state !== 'qualified' && <Chip tone="amber">{STATE[c.state].chip}</Chip>}
+                        employers search. Doubt is AMBER (a wait), a rejection is
+                        ROSE (a verdict) — the colour alone must say whether
+                        anything is still coming. A doubt CV that is flagged keeps
+                        its flag and says “Tạm không hiển thị” rather than showing a
+                        plain “đang hiển thị” it cannot honour; a REJECTED one gets
+                        no search chip at all — it left the index for good, and a
+                        “tạm” would promise a return that needs a new file. */}
+                    {c.state !== 'qualified' && <Chip tone={c.state === 'rejected' ? 'rose' : 'amber'}>{stateOf(c)!.chip}</Chip>}
                     {searchable === i && c.state === 'qualified' && <Chip tone="green">Hiển thị trong tìm kiếm CV</Chip>}
-                    {searchable === i && c.state !== 'qualified' && <Chip tone="amber">Tạm không hiển thị</Chip>}
+                    {searchable === i && c.state !== 'qualified' && c.state !== 'rejected' && <Chip tone="amber">Tạm không hiển thị</Chip>}
                   </p>
                   <p className="text-[11px] text-faint">{c.meta}</p>
 
@@ -2179,15 +2255,15 @@ function MyCvsScreen() {
                       your CVs, not for working through a checklist. */}
                   {c.state !== 'qualified' && (
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                      <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-700">
-                        {STATE[c.state].why}
-                        {searchable === i && ' Vẫn là CV bạn chọn — sẽ hiển thị lại ngay khi đủ điều kiện.'}
+                      <p className={cn('min-w-0 flex-1 text-[11px] leading-snug', c.state === 'rejected' ? 'text-rose-700' : 'text-amber-700')}>
+                        {stateOf(c)!.why}
+                        {searchable === i && c.state !== 'rejected' && ' Vẫn là CV bạn chọn — sẽ hiển thị lại ngay khi đủ điều kiện.'}
                       </p>
                       <span
-                        onClick={(e) => { e.stopPropagation(); go(STATE[c.state].to) }}
-                        className="shrink-0 cursor-pointer rounded-md border border-amber-300 bg-surface px-2.5 py-1 text-[11px] font-medium text-amber-700"
+                        onClick={(e) => { e.stopPropagation(); go(stateOf(c)!.to) }}
+                        className={cn('shrink-0 cursor-pointer rounded-md border bg-surface px-2.5 py-1 text-[11px] font-medium', c.state === 'rejected' ? 'border-rose-300 text-rose-700' : 'border-amber-300 text-amber-700')}
                       >
-                        {STATE[c.state].action} →
+                        {stateOf(c)!.action} →
                       </span>
                     </div>
                   )}
@@ -2247,11 +2323,16 @@ function MyCvsScreen() {
                             <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
                           </span>
                         </label>
-                        <p className={cn('mt-1 text-[10.5px] leading-snug', c.state === 'qualified' ? 'text-faint' : 'text-amber-700')}>
-                          {c.state !== 'qualified'
+                        {/* A REJECTED CV gets no “tạm” and no promise of returning on
+                            its own — a verdict needs a new file or real edits, not a
+                            wait. Doubt keeps the “back the moment it qualifies” line. */}
+                        <p className={cn('mt-1 text-[10.5px] leading-snug', c.state === 'qualified' ? 'text-faint' : c.state === 'rejected' ? 'text-rose-700' : 'text-amber-700')}>
+                          {c.state === 'rejected'
+                            ? `${stateOf(c)!.chip.replace('✕ ', '')} — không thể hiển thị với nhà tuyển dụng.`
+                            : c.state !== 'qualified'
                             ? searchable === i
                               ? 'Vẫn là CV bạn đã chọn, nhưng chưa đủ điều kiện nên tạm không hiển thị. Xử lý xong là hiển thị lại ngay — không cần chọn lại.'
-                              : `${STATE[c.state].chip.replace('⚠ ', '')} — chưa thể hiển thị với nhà tuyển dụng.`
+                              : `${stateOf(c)!.chip.replace('⚠ ', '')} — chưa thể hiển thị với nhà tuyển dụng.`
                             : searchable === i
                               ? 'Đây là CV nhà tuyển dụng tìm thấy. Chọn CV khác để thay thế.'
                               : 'Chọn CV này thay cho CV đang hiển thị.'}
@@ -2926,19 +3007,38 @@ function OnboardingScreen() {
    honestly), which CV was sent, and what happened when. List + detail. */
 function MyApplicationsScreen() {
   const [sel, setSel] = useState<number | null>(null)
-  /* Applications are SENT on submit. The one exception is an application whose
+  /* THREE application statuses underneath these rows — Sent · Not sent · Recall —
+     all derived from the applied-with CV, and each surfaces here as a label:
+
+       Sent      → 'Đã gửi' (and then the employer's own stages: Interview, Offer…)
+       Not sent  → 'Đang kiểm tra CV'  while the CV waits for review (doubt), or
+                   'Không được gửi'    once the CV was Rejected before delivery
+       Recall    → 'Đã thu hồi'        the CV was Sent, then an admin rejected it —
+                                       Saramin pulled it back from the employer
+
+     Applications are SENT on submit. The one exception is an application whose
      uploaded CV still has an unresolved verdict from upload — it waits on the CV,
-     not on itself, and auto-sends within 24h either way. So there is no blanket
-     "screened by Saramin" step here, and never was under this model. */
+     not on itself, and NOTHING releases it but a reviewer. So there is no blanket
+     "screened by Saramin" step here, and never was under this model.
+
+     TONES: the waiting row is AMBER (something is coming), both rejection outcomes
+     are ROSE (a verdict — act, don't wait). Muted would file them with 'Not
+     selected', which is the one thing they must not read as: the employer never
+     turned these candidates down, WE stopped the CV, and the fix is theirs. */
   const APPS = [
     { job: 'Senior Frontend Engineer', co: 'FPT Software', applied: '02/08/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Interview', tone: 'amber' as const, note: 'Interview scheduled — 08/08, 10:00' },
     { job: 'Product Designer', co: 'Lantern Digital', applied: '30/07/2026', cv: 'My Saramin CV', status: 'Đã gửi', tone: 'blue' as const, note: 'Đã gửi tới nhà tuyển dụng' },
-    { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'productdesign.pdf', status: 'Đang kiểm tra CV', tone: 'amber' as const, note: 'Sẽ gửi tới nhà tuyển dụng trong 24 giờ' },
+    { job: 'UI Designer', co: 'Zenpay', applied: '28/07/2026', cv: 'productdesign.pdf', status: 'Đang kiểm tra CV', tone: 'amber' as const, note: 'Sẽ gửi tới nhà tuyển dụng ngay sau khi kiểm tra xong' },
     { job: 'UX Researcher', co: 'Tiki', applied: '20/07/2026', cv: 'CV_TranMinhAnh.pdf', status: 'Offer', tone: 'green' as const, note: 'Offer received' },
     /* The applied-with CV was Rejected by review — the application was never
        delivered, and the candidate is told WHY and what to do, never left
        assuming the employer ignored them. */
-    { job: 'Visual Designer', co: 'Base.vn', applied: '18/07/2026', cv: 'old_scan.pdf', status: 'Không được gửi', tone: 'muted' as const, note: 'CV không đủ điều kiện — cập nhật CV và ứng tuyển lại' },
+    { job: 'Visual Designer', co: 'Base.vn', applied: '18/07/2026', cv: 'old_scan.pdf', status: 'Không được gửi', tone: 'rose' as const, note: 'File này không phải một CV — tải lên CV khác rồi ứng tuyển lại', reason: 'Not a CV' },
+    /* SENT, then RECALLED — the CV qualified, reached the employer, and was later
+       rejected on review. The candidate must be told it was WITHDRAWN BY US rather
+       than turned down by the employer: "Not selected" here would be a lie that
+       costs them the chance to fix the real problem. */
+    { job: 'Motion Designer', co: 'Momo', applied: '15/07/2026', cv: 'old_scan.pdf', status: 'Đã thu hồi', tone: 'rose' as const, note: 'Saramin đã thu hồi CV này — file là bản scan nên hệ thống không đọc được', reason: 'Can’t read' },
     { job: 'Design Lead', co: 'MWG', applied: '12/07/2026', cv: 'My Saramin CV', status: 'Not selected', tone: 'muted' as const, note: 'Closed by employer' },
   ]
   /* Two shapes, and the difference is the point: a normal application has NO
@@ -2948,13 +3048,26 @@ function MyApplicationsScreen() {
     app.status === 'Không được gửi'
       ? [
           ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
-          ['Kiểm tra CV — không đạt', 'Hồ sơ này chưa đủ điều kiện, cần được cập nhật thêm', true],
-          ['Không gửi tới nhà tuyển dụng', 'Cập nhật CV hoặc chọn CV khác, rồi ứng tuyển lại', false],
+          /* The REASON, in the candidate's words, is the whole value of this step:
+             "không đạt" alone sends them guessing, and the three reasons have three
+             different fixes. */
+          ['Kiểm tra CV — không đạt', 'File này không phải một CV (giấy tờ, bảng giá, ảnh không liên quan)', true],
+          ['Không gửi tới nhà tuyển dụng', 'Tải lên CV khác hoặc tạo Saramin CV, rồi ứng tuyển lại', false],
+        ]
+      : app.status === 'Đã thu hồi'
+      ? [
+          ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
+          ['Đã gửi tới nhà tuyển dụng', `Đơn của bạn đã tới ${app.co}`, true],
+          /* Names SARAMIN as the actor. The candidate must not read this as the
+             employer turning them down — that would send them off fixing the
+             wrong thing, and it would be untrue. */
+          ['Saramin thu hồi CV', 'File là bản scan/ảnh nên hệ thống không đọc được nội dung', true],
+          ['Cần làm gì', 'Tải lên bản PDF dạng văn bản, rồi ứng tuyển lại', false],
         ]
       : app.status === 'Đang kiểm tra CV'
       ? [
           ['Đã gửi đơn', `Bạn ứng tuyển bằng ${app.cv}`, true],
-          ['Đang kiểm tra CV', 'Chúng tôi đang kiểm tra file CV của bạn — tự động gửi sau 24 giờ dù chưa kiểm tra xong', false],
+          ['Đang kiểm tra CV', 'Chúng tôi đang kiểm tra file CV của bạn — đơn sẽ được gửi ngay khi kiểm tra xong', false],
           ['Gửi tới nhà tuyển dụng', 'Chưa gửi', false],
           ['Kết quả', 'Đang chờ', false],
         ]
@@ -2977,7 +3090,7 @@ function MyApplicationsScreen() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[15px] font-bold text-ink">My applications</p>
             <div className="flex gap-1.5">
-              {['All (6)', 'In progress (3)', 'Offer (1)', 'Closed (2)'].map((f, i) => (
+              {['All (7)', 'In progress (3)', 'Offer (1)', 'Closed (3)'].map((f, i) => (
                 <span key={f} className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-medium', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}>{f}</span>
               ))}
             </div>
@@ -2999,7 +3112,7 @@ function MyApplicationsScreen() {
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-faint">Đơn ứng tuyển được gửi ngay khi bạn nộp. Chỉ khi file CV cần kiểm tra thì đơn mới chờ — và vẫn tự động gửi trong 24 giờ.</p>
+          <p className="text-[11px] text-faint">Đơn ứng tuyển được gửi ngay khi bạn nộp. Chỉ khi file CV cần kiểm tra thì đơn mới chờ, cho tới khi Saramin kiểm tra xong.</p>
         </div>
       </div>
 

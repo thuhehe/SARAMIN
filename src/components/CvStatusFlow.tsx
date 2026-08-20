@@ -13,7 +13,7 @@
  *
  *     What the derived cells do NOT show, because they hold one value each and a
  *     value cannot be conditional: an uploaded CV in doubt is HELD rather than
- *     refused — the apply succeeds and delivery leaves on the 24h timer. That is in
+ *     refused — the apply succeeds, and delivery waits for a reviewer. That is in
  *     the panel note, and in the status table on the same page.
  *  3. ONE RULE FEEDS BOTH — so the rule sits at the fork, touched by both
  *     branches, instead of being repeated inside each panel.
@@ -36,10 +36,14 @@ const C = {
 type Tone = keyof typeof C
 
 /* The derived cells hold the real status VALUES, not a sentence about them — the
-   same three-value sets the admin lists render, so the picture and the tables can
-   be read against each other without translation. Binary would be simpler and
-   wrong: a CV in doubt is not "not sent", it is PENDING, and it leaves on the 24h
-   timer whether or not anyone reviews it. */
+   same sets the admin lists render, so the picture and the tables can be read
+   against each other without translation. A CV in doubt reads Not sent, and it
+   stays that way until a reviewer decides. Nothing releases it automatically.
+
+   Application status has a THIRD value the cells cannot carry: RECALL, written
+   when an admin rejects a CV that was already Sent. It is a transition, not an
+   apply-time outcome — no row produces it, so it is drawn as the annotation under
+   the uploaded panel instead of squeezed into a cell it would misdescribe. */
 type AppStatus = 'Sent' | 'Not sent'
 type SearchStatus = 'Showing' | 'Hidden'
 
@@ -307,11 +311,21 @@ export function CvStatusFlow() {
           title="Uploaded CV — parsed into the same fields"
           note={[
             'A failure may be OUR parser, not the document — so the apply is never refused:',
-            'delivery is held, and leaves within 24h even if nobody reviews.',
+            'delivery is held until a reviewer decides — nothing releases it automatically.',
           ]}
           rows={UPLOADED}
           pitch={88}
         />
+        {/* The one move the rows can't show, because it is a TRANSITION rather than
+            an apply-time outcome: a Qualified CV that already reached employers is
+            later Rejected by an admin. Sat under the uploaded panel because only
+            that route has an admin to overturn anything. */}
+        <text x={826} y={498} fontSize={11} fill={C.bad.text}>
+          ↩ Rejected AFTER Qualified — an admin overturns a CV that employers already have: every application
+        </text>
+        <text x={826} y={514} fontSize={11} fill={C.bad.text}>
+          already Sent flips to <tspan fontWeight={700}>Recall</tspan> (pulled back; the employer is told Saramin withdrew it). Held ones stay Not sent.
+        </text>
         <Panel
           x={816}
           y={556}

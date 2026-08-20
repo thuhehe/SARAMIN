@@ -163,6 +163,13 @@ export interface RequirementBlock {
   items?: string[]
   /** rendered as a warning-toned callout — for "must never" rules. */
   warn?: string
+  /**
+   * A named diagram drawn by the renderer, placed between the text and the table.
+   * NAMED rather than inline markup on purpose: a spec file that carries its own
+   * JSX stops being data, and a screenshot goes stale the day the screen changes.
+   * Add the name here and draw it in ModuleDetail's FIGURES map.
+   */
+  figure?: 'quotation-totals'
 }
 
 export type Requirement = string | RequirementBlock

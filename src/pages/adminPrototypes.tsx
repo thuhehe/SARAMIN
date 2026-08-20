@@ -628,34 +628,36 @@ function ExtLink({ children }: { children: React.ReactNode }) {
  * Status model v2 — an application carries TWO status dimensions and the admin
  * list must show both, because they are owned by different people:
  *
- *   status (Layer 2, HQ-owned)   Sent · Recalled · Blocked
+ *   status (Layer 2, HQ-owned)   Sent · Not sent · Recall (+ Blocked, user-level)
  *   stage  (Layer 3, company-owned, read-only here)
  *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
  *
  * CV QUALITY IS NOT CHECKED HERE — an uploaded CV is parsed and evaluated once,
  * at UPLOAD (Resume management → "CV qualification — apply & CV search"), so it
  * arrives carrying its own verdict. When that verdict is unresolved the
- * application is PENDING: the apply succeeded, delivery is waiting on the CV.
+ * application is NOT SENT: the apply succeeded, delivery is waiting on the CV.
  *
  * The hold belongs to the CV, not to the application, which is why there is no
  * decision to make on this screen — the reviewer works Admin → CV review, and ONE
  * verdict releases (or drops) every application waiting on that CV. A held
- * application auto-sends at 24h regardless, so an unworked queue can never cost
+ * application now waits for a human — nothing auto-sends — so an unworked queue
  * a candidate a deadline.
  */
-type Delivery = 'Sent' | 'Not sent' | 'Recalled' | 'Blocked'
+type Delivery = 'Sent' | 'Not sent' | 'Recall' | 'Blocked'
 
-/* BINARY on purpose. “Pending” used to sit here and was removed: it was the CV’s
-   doubt written a second time in a column that already reads from the CV, and two
-   copies of one fact are how they start to disagree. A held application simply
-   reads NOT SENT; whether a timer is running is a property of the row, carried in
-   `hold`, not a third status. */
-const isHeld = (hold?: string) => !!hold?.includes('auto-sends')
+/* THREE values, no more. “Pending” used to sit here and was removed: it was the
+   CV’s doubt written a second time in a column that already reads from the CV,
+   and two copies of one fact are how they start to disagree. A held application
+   simply reads NOT SENT; whether it is still WAITING or finally refused is
+   carried in `hold`, not a fourth status. RECALL is the one legitimate addition —
+   it records history (this one WAS delivered, then its CV was Rejected) that the
+   CV status alone cannot reproduce. */
+const isHeld = (hold?: string) => !!hold?.includes('chờ duyệt')
 
 const DELIVERY_TONE: Record<Delivery, StatusTone> = {
   Sent: 'neutral',
   'Not sent': 'rejected',
-  Recalled: 'draft',
+  Recall: 'draft',
   Blocked: 'rejected',
 }
 
@@ -671,7 +673,7 @@ const STAGE_TONE: Record<string, StatusTone> = {
 }
 
 /* `hold` — held rows only: why delivery is waiting, and how long is left on the
-   24h net. The decision itself is made on the CV, not here. */
+   how long it has waited. The decision itself is made on the CV, not here. */
 /* `cvStatus` — the verdict the CV carried in from upload, and the reason a row is
    not sent at all. Without it a binary Not sent looks arbitrary. */
 type CvStatus = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
@@ -730,7 +732,7 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
               <div>
                 <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-600">Delivery is waiting</p>
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800">
-                  {hold}. The employer has not received this yet. Decide on the <b className="font-semibold">CV</b> — that verdict resolves every application using it. If nobody does, it sends automatically at 24h.
+                  {hold}. The employer has not received this yet, and nothing will send it automatically. Decide on the <b className="font-semibold">CV</b> — that verdict resolves every application using it.
                 </p>
                 <button className="mt-1.5 w-full rounded-md border border-amber-300 px-2 py-1.5 text-[11px] font-semibold text-amber-700">Open in CV review ↗</button>
               </div>
@@ -770,7 +772,7 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
           <span className="text-[10.5px] text-faint">
             {isHeld(hold)
-              ? 'Waiting on the CV verdict — resolved in CV review, or automatically at 24h. Nothing to decide here.'
+              ? 'Waiting on the CV verdict, which is made in CV review. Nothing releases this on its own, and there is nothing to decide here.'
               : 'No approve / reject — the employer already has this CV. Every action is audited.'}
           </span>
           <div className="flex shrink-0 gap-2 whitespace-nowrap">
@@ -813,16 +815,16 @@ function AdminApplicants() {
     /* Applied with a CV whose verdict is unresolved → delivery waits. Role reads
        "—" because extraction found nothing; years and education survive because
        they are PROFILE fields, stated at onboarding. */
-    { name: 'Trương Văn Bình', basic: 'Male · 09/09/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hà Nội · 12–18M · In office', contact: ['binh.truong@gmail.com', '0915 785 565'], role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], cvStatus: 'Not enough information', status: 'Not sent', hold: 'CV in doubt · auto-sends in 23h', stage: 'New', when: '10m ago' },
+    { name: 'Trương Văn Bình', basic: 'Male · 09/09/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hà Nội · 12–18M · In office', contact: ['binh.truong@gmail.com', '0915 785 565'], role: '—', years: '3 yrs', loc: 'Hà Nội', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['scan_0816.pdf', 'upload'], cvStatus: 'Not enough information', status: 'Not sent', hold: 'CV in doubt · chờ duyệt · đã đợi 23h', stage: 'New', when: '10m ago' },
     { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', contact: ['an.nguyen@gmail.com', '0922 798 582'], role: 'Frontend Engineer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: "Bachelor · CS", job: 'Senior Frontend Engineer', company: 'FPT Software', cv: ['Frontend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Reviewing', when: '2h ago' },
     { name: 'Trần Thị Bích', basic: 'Female · 03/09/1994 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40M · Hybrid', contact: ['bich.tran@gmail.com', '0929 811 599'], role: 'Digital Marketing Specialist', years: '6 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Digital Marketing Lead', company: 'Tiki', cv: ['bich-portfolio.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '5h ago' },
     { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', contact: ['cuong.le@gmail.com', '0936 824 616'], role: 'Senior Product Manager', years: '8 yrs', loc: 'Hồ Chí Minh', edu: 'Master · MBA', job: 'Product Manager', company: 'MoMo', cv: ['Product Manager CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Hired', when: '1d ago' },
     { name: 'Phạm Thu Dung', basic: 'Female · 07/02/1997 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'General Accountant · Accounting · Đà Nẵng · 12–18M · In office', contact: ['dung.pham@gmail.com', '0943 837 633'], role: 'General Accountant', years: '3 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · Accounting', job: 'Kế toán tổng hợp', company: 'VNG', cv: ['thu-dung-cv.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1d ago' },
     { name: 'Vũ Minh Đức', basic: 'Male · 30/06/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45M · Remote', contact: ['duc.vu@gmail.com', '0950 850 650'], role: 'Backend Engineer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Backend Engineer (Go)', company: 'Shopee', cv: ['Backend Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Rejected', when: '3d ago' },
-    { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Not sent', hold: 'CV in doubt · auto-sends in 18h', stage: 'New', when: '3d ago' },
-    /* Applied with a CV an admin had already Rejected — never delivered, no timer. */
-    { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', contact: ['khanh.ngo@gmail.com', '0964 876 684'], role: '—', years: '1 yr', loc: 'Cần Thơ', edu: 'College · Business', job: 'Sales Staff', company: 'Thế Giới Di Động', cv: ['menu_final.pdf', 'upload'], cvStatus: 'Rejected', status: 'Not sent', hold: 'CV Rejected — never delivered, no timer', stage: 'New', when: '1d ago' },
-    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Qualified', status: 'Recalled', stage: 'Reviewing', when: '4d ago' },
+    { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Not sent', hold: 'CV in doubt · chờ duyệt · đã đợi 18h', stage: 'New', when: '3d ago' },
+    /* Applied with a CV an admin had already Rejected — never delivered. */
+    { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', contact: ['khanh.ngo@gmail.com', '0964 876 684'], role: '—', years: '1 yr', loc: 'Cần Thơ', edu: 'College · Business', job: 'Sales Staff', company: 'Thế Giới Di Động', cv: ['menu_final.pdf', 'upload'], cvStatus: 'Rejected', status: 'Not sent', hold: 'CV Rejected — never delivered', stage: 'New', when: '1d ago' },
+    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Qualified', status: 'Recall', stage: 'Reviewing', when: '4d ago' },
     { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', contact: ['lan.ngo@gmail.com', '0978 902 718'], role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '4d ago' },
     { name: 'Hoàng Văn Nam', basic: 'Male · 02/03/1993 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'DevOps Engineer · IT · Hồ Chí Minh · 35–50M · Remote', contact: ['nam.hoang@gmail.com', '0985 915 735'], role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '5d ago' },
     { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Qualified', status: 'Blocked', stage: 'New', when: '5d ago' },
@@ -866,7 +868,7 @@ function AdminApplicants() {
           <p className={cn('mt-0.5 text-[10.5px] leading-snug', isHeld(a.hold) ? 'text-amber-700' : 'text-rose-600')}>{a.hold}</p>
         </div>
       : <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
-    /* Recalled and Blocked CVs are off the employer's dashboard, so their funnel
+    /* Recalled (status Recall) and Blocked CVs are off the employer's dashboard, so their funnel
        stops moving — an em-dash says that better than a frozen badge would. */
     a.status === 'Sent'
       ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
@@ -924,11 +926,12 @@ function AdminApplicants() {
       {/* The two dimensions are owned by different people, so the list names both
           owners once rather than leaving a reader to guess which badge is whose. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
-        <b className="font-semibold text-ink/80">Status</b> is Saramin’s — Sent on apply, then Recalled or Blocked by HQ.{' '}
-        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here. Delivery is DERIVED from the CV’s status:
+        <b className="font-semibold text-ink/80">Status</b> is Saramin’s — three values. Derived from the CV:
         Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Not sent</b>, which{' '}
-        <b className="font-semibold text-ink/80">auto-sends within 24h regardless</b> · Rejected by an admin → <b className="font-semibold text-ink/80">Not sent</b>,
-        never delivered and no timer. There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
+        <b className="font-semibold text-ink/80">waits for an admin — nothing auto-sends</b> · Rejected before delivery → <b className="font-semibold text-ink/80">Not sent</b>, now final ·
+        Rejected AFTER delivery (or user Blocked) → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer.{' '}
+        <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here.
+        There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
         <b className="font-semibold text-ink/80">CV review</b> and one verdict resolves every application waiting on that CV.
       </p>
       <ListPage
@@ -1077,8 +1080,10 @@ function AdminResumes() {
        Rejected                  FINAL — written only by an admin, never the scan
 
      Application delivery and CV-search visibility are DERIVED from it, never
-     stored, and BOTH ARE BINARY: Qualified → Sent · Showing; doubt → Not sent
-     (a 24h timer flips it) · Hidden; Rejected → Not sent · Hidden. Why a CV is
+     stored: Qualified → Sent · Showing; doubt → Not sent (until an admin
+     approves) · Hidden; Rejected → Not sent · Hidden — and any application
+     already DELIVERED when the rejection lands flips to Recall instead. Search
+     stays binary; application status has exactly those three values. Why a CV is
      hidden is the CV STATUS column's job — repeating it inside the visibility
      cell was one fact written twice. */
   type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
@@ -1168,7 +1173,8 @@ function AdminResumes() {
         onboarding). The scan at upload writes ONE CV status: <b className="font-semibold text-ink/80">Qualified</b> (final), or a DOUBT —{' '}
         <b className="font-semibold text-ink/80">Not enough information</b> · <b className="font-semibold text-ink/80">Can’t read</b> — which is a question, not a
         verdict. Only an admin writes <b className="font-semibold text-ink/80">Rejected</b>. Everything else is derived: Qualified → application Sent · CV search
-        Showing; doubt → Not sent (a 24h timer flips it) · Hidden; Rejected → Not sent · Hidden. Both derived columns are BINARY — why a CV is hidden is the CV status column’s job.{' '}
+        Showing; doubt → Not sent (until an admin approves) · Hidden; Rejected → Not sent · Hidden — and an application already DELIVERED flips to{' '}
+        <b className="font-semibold text-ink/80">Recall</b> instead. Search is binary; application status is exactly Sent · Not sent · Recall. Why a CV is hidden is the CV status column’s job.{' '}
         <b className="font-semibold text-ink/80">CV review</b> is this list filtered to the two doubt states. Approve / Reject are the only verbs, every use needs an
         internal note, and a re-upload never launders a rejection.{' '}
         <b className="font-semibold text-amber-700">These records contain PII — every open is logged.</b>
@@ -1193,8 +1199,8 @@ function AdminResumes() {
 
    The reviewer's real job is telling "not a CV" apart from "our parser failed on
    this layout", so the row shows WHAT WE EXTRACTED next to the file. One verdict
-   resolves the CV *and* every application waiting on it. Applications auto-send
-   at 24h regardless, which is why the applications-waiting count carries its own
+   resolves the CV *and* every application waiting on it. Nothing sends without
+   that verdict, which is why the applications-waiting count carries its own
    countdown — after that the CV is still held, but nobody is blocked. */
 /* CV CHECK — the same population as Talent pool, filtered to rows still awaiting
    review, so it carries the SAME columns in the SAME order and adds only the two
@@ -1211,20 +1217,25 @@ function AdminResumes() {
    valuable one: it turns an operator's rejection into a bug report against the
    scan, and its share is the honest measure of how much work the automation is
    creating for humans. */
-const REJECT_REASONS = ['Not a CV', 'Duplicate', 'Fake / misleading', 'Parser failed (it IS a real CV)', 'Abusive content', 'Other'] as const
+/* THREE reasons, reusing the scan's own vocabulary. A rejection records what the
+   reviewer CONFIRMED after opening the file, against what the scan suspected:
+   the scan's doubt is a question, this is the answer to it.
+
+   Deliberately NOT here: fake, abusive, duplicate. Those are judgements about the
+   ACCOUNT rather than the document, and they have their own lever — Block user.
+   Filing them as a CV reason would hide an account that needs blocking behind a
+   row that looks like a bad upload. */
+const REJECT_REASONS = ['Can’t read', 'Not a CV', 'CV but not enough information'] as const
 
 /* What each code SENDS. A reviewer picking a code without seeing the message is
    picking blind, and the wrong code is a message the candidate cannot act on —
-   so the picker shows it inline. Note “Parser failed” never reaches the candidate
-   as written: it is an internal bug-report label, and blaming someone for our own
-   extraction failure would be both wrong and unfixable by them. */
+   so the picker shows it inline. Note “Can’t read” never reaches the candidate as
+   written: it describes OUR extraction failing, and phrasing it as their fault
+   would be both wrong and unfixable by them. */
 const REASON_SENDS: Record<string, string> = {
+  'Can’t read': 'Không đọc được — “CV hợp lệ, nhưng là bản scan/ảnh nên hệ thống chưa đọc được.” → Tải lên PDF dạng văn bản',
   'Not a CV': 'Không hợp lệ — “File này không phải một CV.” → Tải lên CV khác',
-  Duplicate: 'Không hợp lệ — “Hồ sơ trùng với một hồ sơ khác của bạn.” → Tải lên CV khác',
-  'Fake / misleading': 'Không hợp lệ — “Hồ sơ vi phạm quy định.” → Liên hệ hỗ trợ',
-  'Parser failed (it IS a real CV)': 'Không đọc được — “CV hợp lệ, nhưng là bản scan nên hệ thống chưa đọc được.” → Tải lên PDF dạng văn bản',
-  'Abusive content': 'Không hợp lệ — “Hồ sơ vi phạm quy định.” → Liên hệ hỗ trợ (không nêu chi tiết)',
-  Other: 'Không hợp lệ — “Hồ sơ chưa được duyệt.” → Liên hệ hỗ trợ. Ghi chú phải an toàn để hiển thị.',
+  'CV but not enough information': 'Chưa đủ thông tin — “Hồ sơ chưa đủ để gửi tới NTD.” → Cập nhật hồ sơ (kèm checklist thiếu gì)',
 }
 type RejectReason = (typeof REJECT_REASONS)[number]
 
@@ -1271,8 +1282,8 @@ function AdminCvCheck() {
     /* ── resolved: rejected by a human, with the reason CODE that makes the set
          countable — “parser failed” is a bug report against the scan ─────────── */
     { name: 'Trịnh Quốc Anh', basic: 'Male · 20/06/1993 · Vietnamese · Single · Bachelor · 7 yrs exp', contact: ['anh.trinh@gmail.com', '0977 003 221'], pref: 'Project Manager · IT · Hồ Chí Minh · 40–55M · Hybrid', file: 'bao-gia-thang-8.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 days ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
-    { name: 'Nguyễn Hải Yến', basic: 'Female · 03/03/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['yen.nguyen@gmail.com', '0912 550 883'], pref: 'Content Lead · Marketing · Hà Nội · 25–32M · Remote', file: 'yen-cv-2col.pdf', kind: 'thin', extracted: '0 experience · 1 skill', apps: 3, left: 'recalled', age: '—', updated: '4 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'Parser failed (it IS a real CV)' },
-    { name: 'Đinh Công Danh', basic: 'Male · 15/02/1990 · Vietnamese · Married · College · 8 yrs exp', contact: ['danh.dinh@gmail.com', '0908 117 665'], pref: 'Driver · Logistics · Bình Dương · 10–14M · In office', file: 'cv-danh-copy.pdf', kind: 'thin', extracted: '1 experience · 0 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Duplicate' },
+    { name: 'Nguyễn Hải Yến', basic: 'Female · 03/03/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['yen.nguyen@gmail.com', '0912 550 883'], pref: 'Content Lead · Marketing · Hà Nội · 25–32M · Remote', file: 'yen-cv-2col.pdf', kind: 'thin', extracted: '0 experience · 1 skill', apps: 3, left: 'recalled', age: '—', updated: '4 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
+    { name: 'Đinh Công Danh', basic: 'Male · 15/02/1990 · Vietnamese · Married · College · 8 yrs exp', contact: ['danh.dinh@gmail.com', '0908 117 665'], pref: 'Driver · Logistics · Bình Dương · 10–14M · In office', file: 'cv-danh-copy.pdf', kind: 'thin', extracted: '1 experience · 0 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
     /* more APPROVED cases — the operator opened the file and found a real CV.
        The last one is the second source: a Qualified CV an employer reported,
        reviewed, and kept. */
@@ -1281,10 +1292,10 @@ function AdminCvCheck() {
     { name: 'Hoàng Anh Tuấn', basic: 'Male · 18/08/1992 · Vietnamese · Married · Master · 8 yrs exp', contact: ['tuan.hoang@gmail.com', '0912 003 887'], pref: 'Sales Director · Sales · Hà Nội · 50–70M · Hybrid', file: 'tuan-profile.pdf', kind: 'thin', extracted: '4 experience · 9 skills', apps: 2, left: 'sent', age: '—', updated: '6 days ago', hint: 'likely', state: 'approved', by: 'Hà (ops)', via: 'report' },
     /* more REJECTED cases — every reason code represented, so the view can be
        read as the training set it is meant to be. */
-    { name: 'Lương Bảo Ngọc', basic: 'Female · 04/09/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['ngoc.luong@gmail.com', '0908 774 003'], pref: 'Marketing Executive · Marketing · Hồ Chí Minh · 18–24M · Hybrid', file: 'ngoc-cv.pdf', kind: 'thin', extracted: '5 experience · 12 skills', apps: 2, left: 'recalled', age: '—', updated: '3 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'Fake / misleading', via: 'report' },
-    { name: 'Tô Minh Quân', basic: 'Male · 21/05/1991 · Vietnamese · Single · College · 5 yrs exp', contact: ['quan.to@gmail.com', '0933 118 442'], pref: 'Security Guard · Operations · Bình Dương · 9–12M · In office', file: 'quan-scan.pdf', kind: 'tech', extracted: 'No readable content — image scan', apps: 0, left: '—', age: '—', updated: '1 week ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Abusive content' },
-    { name: 'Hà Kiều Trang', basic: 'Female · 30/01/2000 · Vietnamese · Single · Bachelor · 1 yr exp', contact: ['trang.ha@gmail.com', '0966 220 771'], pref: 'Translator · Education · Hà Nội · 12–16M · Remote', file: 'trang-cv-1trang.pdf', kind: 'thin', extracted: '0 experience · 3 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'Parser failed (it IS a real CV)' },
-    { name: 'Phạm Gia Huy', basic: 'Male · 12/12/2001 · Vietnamese · Single · Student · 0 yrs exp', contact: ['huy.pham@gmail.com', '0388 117 550'], pref: 'Intern · IT · Hồ Chí Minh · Negotiable · In office', file: 'anh-the-3x4.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 weeks ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Other' },
+    { name: 'Lương Bảo Ngọc', basic: 'Female · 04/09/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['ngoc.luong@gmail.com', '0908 774 003'], pref: 'Marketing Executive · Marketing · Hồ Chí Minh · 18–24M · Hybrid', file: 'ngoc-cv.pdf', kind: 'thin', extracted: '5 experience · 12 skills', apps: 2, left: 'recalled', age: '—', updated: '3 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'Not a CV', via: 'report' },
+    { name: 'Tô Minh Quân', basic: 'Male · 21/05/1991 · Vietnamese · Single · College · 5 yrs exp', contact: ['quan.to@gmail.com', '0933 118 442'], pref: 'Security Guard · Operations · Bình Dương · 9–12M · In office', file: 'quan-scan.pdf', kind: 'tech', extracted: 'No readable content — image scan', apps: 0, left: '—', age: '—', updated: '1 week ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Can’t read' },
+    { name: 'Hà Kiều Trang', basic: 'Female · 30/01/2000 · Vietnamese · Single · Bachelor · 1 yr exp', contact: ['trang.ha@gmail.com', '0966 220 771'], pref: 'Translator · Education · Hà Nội · 12–16M · Remote', file: 'trang-cv-1trang.pdf', kind: 'thin', extracted: '0 experience · 3 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
+    { name: 'Phạm Gia Huy', basic: 'Male · 12/12/2001 · Vietnamese · Single · Student · 0 yrs exp', contact: ['huy.pham@gmail.com', '0388 117 550'], pref: 'Intern · IT · Hồ Chí Minh · Negotiable · In office', file: 'anh-the-3x4.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 weeks ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
   ]
   const stateOf = (r: CvCheckRow) => r.state ?? 'doubt'
   const shown = raw.filter((r) => stateOf(r) === view)
@@ -1315,7 +1326,7 @@ function AdminCvCheck() {
       ),
     r.apps === 0
       ? <span className="text-faint" title="No applications made with this CV">—</span>
-      : <TwoLine top={`Not sent · ${r.apps} apps`} bottom={r.left.startsWith('sent') || r.left.startsWith('auto') ? r.left : `auto-sends in ${r.left}`} />,
+      : <TwoLine top={`Not sent · ${r.apps} apps`} bottom={r.left.startsWith('sent') || r.left.startsWith('auto') ? r.left : `đã đợi ${r.left}`} />,
     stateOf(r) === 'doubt'
       ? (
         <div className="min-w-0">
@@ -1362,8 +1373,8 @@ function AdminCvCheck() {
             )}
             <div className="border-t border-line-soft px-3 py-2">
               {/* A REASON CODE, not just a note. The note explains one call; only a
-                  fixed code lets thirty rejections be counted, and “Parser failed”
-                  turns an operator's verdict into a bug report against the scan. */}
+                  fixed code lets thirty rejections be counted, and reading them
+                  against what the SCAN said is how a parser gap becomes visible. */}
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Reject reason <span className="font-normal text-rose-500">*required</span></p>
               <div className="mb-2 flex flex-wrap gap-1">
                 {REJECT_REASONS.map((x) => (
@@ -1389,9 +1400,9 @@ function AdminCvCheck() {
         rechecked in bulk and undone where it was made — rejection is the one verdict the scan is never allowed to write, so it is the one most worth auditing.
         Uploaded PDFs only; a Saramin CV is arithmetic over typed fields and never lands here. The call is almost always{' '}
         <b className="font-semibold text-ink/80">“not a CV” vs “our parser failed on this layout”</b>, which is why{' '}
-        <b className="font-semibold text-ink/80">Parser failed</b> is a reject reason: its share is the honest measure of how much work the scan creates for people.
+        the three reject reasons reuse the scan’s own words, so a rejection reads as the reviewer ANSWERING the scan rather than as a separate vocabulary.
         Approve resolves the CV <b className="font-semibold text-ink/80">and every application waiting on it</b>; applications on a doubt CV read <b className="font-semibold text-ink/80">Not sent</b> and
-        auto-send at 24h regardless — the timer releases the APPLICATION, never the CV, so those rows keep ageing here until someone looks.
+        wait for this decision — nothing releases them on its own, so every hour a row sits here is an hour a candidate’s applications are going nowhere.
       </p>
       <ListPage
         minW={2200}
@@ -1469,8 +1480,8 @@ function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void 
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
           <span className="text-[10.5px] text-faint">
             {row.kind === 'tech'
-              ? 'Applications wait at Pending and auto-send at 24h — opening the file is usually enough to decide.'
-              : 'Waiting applications auto-send after 24h whether or not anyone reviews — this decision is about the CV.'}
+              ? 'Applications stay Not sent until you decide — opening the file is usually enough.'
+              : 'Waiting applications go nowhere until this CV has a verdict — the decision is about the CV, and it releases all of them at once.'}
           </span>
           <div className="flex shrink-0 gap-2 whitespace-nowrap">
             <button onClick={onClose} className="rounded-lg border border-rose-300 px-3 py-1.5 text-[12.5px] font-semibold text-rose-600">Reject → Not sent</button>
@@ -11337,24 +11348,20 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
      mode wipes every figure the previous one left behind. Carrying 50% over into
      a Special offer would mean the rep approves a number they never typed. */
   useEffect(() => {
-    if (!co) return
-    setMode(defaultMode(co.account))
-    setOptions((os) => os.map((o) => ({ ...o, optDisc: 0, fixed: 0, lines: o.lines.map((l) => ({ ...l, disc: 0 })) })))
+    if (co) setMode(defaultMode(co.account))
   }, [co?.name, co?.account])
+  /* Products reset when trial is involved: a trial quotation cannot hold a
+     full-price SKU and a normal one cannot hold a trial SKU, so leaving the
+     previous selection would produce a line the mode does not permit. Clearing the
+     DISCOUNTS is not done here — see the effect below, which has to catch the
+     automatic mode change on picking a company as well as this manual one. */
   const pickMode = (m: DiscountMode) => {
     setMode(m)
-    /* Products reset too when trial is involved: a trial quotation cannot hold a
-       full-price SKU and a normal one cannot hold a trial SKU, so leaving the
-       previous selection would produce a line the mode does not permit. */
-    const swapCat = (m === 'trial') !== (mode === 'trial')
+    if ((m === 'trial') === (mode === 'trial')) return
     const firstOf = catForMode(m)[0].i
     setOptions((os) => os.map((o) => ({
-      ...o, optDisc: 0, fixed: 0,
-      lines: o.lines.map((l) => ({
-        ...l, disc: 0,
-        cat: swapCat ? firstOf : l.cat,
-        price: l.gift ? 0 : QUOTE_CATALOG[swapCat ? firstOf : l.cat].price,
-      })),
+      ...o,
+      lines: o.lines.map((l) => ({ ...l, cat: firstOf, price: l.gift ? 0 : QUOTE_CATALOG[firstOf].price })),
     })))
   }
   const rule = DISCOUNT_MODES[mode]
@@ -11364,10 +11371,21 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
      quantity moves — those are the only inputs the rules read. Keyed on a
      signature so writing the result back cannot re-trigger the effect. */
   const qtySig = options.map((o) => o.lines.map((l) => `${l.gift ? 'g' : 'p'}${l.qty}`).join(',')).join('|')
+  /* A mode change WIPES every discount figure before the new rules run. This has to
+     live here rather than in the click handler, because the mode also changes on
+     its own the moment a company is picked — and without the wipe a New & Churn
+     50% survived into an Existing quotation on any option the rep did not retype.
+     A rate the rep never chose, sitting under an approval band, is exactly the bug
+     the mode switch exists to prevent. */
+  const prevMode = useRef(mode)
   useEffect(() => {
+    const switched = prevMode.current !== mode
+    prevMode.current = mode
     setOptions((os) => {
       let changed = false
-      const next = os.map((o) => {
+      const next = os.map((o0) => {
+        const o = switched ? { ...o0, optDisc: 0, fixed: 0, lines: o0.lines.map((l) => ({ ...l, disc: 0 })) } : o0
+        if (switched) changed = true
         // Line %: the volume tiers under Existing, otherwise locked at 0.
         const totals = qtyByProduct(o.lines)
         const lines = o.lines.map((l) => {
@@ -11386,7 +11404,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
         if (od !== o.optDisc) changed = true
         const fx = rule.fixed === 'off' ? 0 : o.fixed
         if (fx !== o.fixed) changed = true
-        return changed ? { ...o, lines, optDisc: od, fixed: fx } : o
+        return changed ? { ...o, lines, optDisc: od, fixed: fx } : o0
       })
       return changed ? next : os
     })
@@ -11474,7 +11492,12 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                 Chương trình chiết khấu
                 <span className="ml-1.5 font-normal text-muted">— chọn một, áp dụng cho cả báo giá · khách hàng <b className="text-ink/75">{co.account}</b></span>
               </p>
-              <div className="grid gap-1.5 sm:grid-cols-2">
+              {/* Compact radio pills. The long explanation of each mode used to sit
+                  here and in the rule strip below it — but the mode is chosen once,
+                  and the three discount cells already show what they do by being
+                  editable, rule-coloured or locked. The rules live in the
+                  requirement; the form does not need to teach them every time. */}
+              <div className="flex flex-wrap gap-1.5">
                 {allowed.map((m) => {
                   const d = DISCOUNT_MODES[m]
                   const on = mode === m
@@ -11482,31 +11505,17 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <button
                       key={m}
                       onClick={() => pickMode(m)}
-                      className={cn('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors', on ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-ink/30')}
+                      title={d.hint}
+                      className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] transition-colors',
+                        on ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}
                     >
-                      <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                      <span className={cn('grid h-3 w-3 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
                         {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
                       </span>
-                      <span className="min-w-0">
-                        <span className={cn('block text-[12px] font-semibold', on ? 'text-brand' : 'text-ink')}>{d.vi} <span className="font-normal text-faint">/ {d.en}</span></span>
-                        <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted">{d.hint}</span>
-                      </span>
+                      {d.vi}
                     </button>
                   )
                 })}
-              </div>
-
-              {/* What the chosen mode does to the three cells, stated once here so the
-                  disabled inputs below do not have to be guessed at. */}
-              <div className="mt-2 grid gap-px overflow-hidden rounded-lg border border-line bg-line text-[10.5px] sm:grid-cols-3">
-                {([['Chiết khấu từng dòng', rule.line], ['Chiết khấu tổng đơn', rule.order], ['Giảm số tiền', rule.fixed]] as const).map(([label, r]) => (
-                  <div key={label} className="bg-surface px-2.5 py-1.5">
-                    <p className="text-faint">{label}</p>
-                    <p className={cn('font-semibold', r === 'free' ? 'text-amber-800' : r === 'auto' ? 'text-emerald-800' : 'text-muted')}>
-                      {r === 'free' ? 'Sales tự nhập' : r === 'auto' ? 'Theo quy tắc' : 'Khoá ở 0'}
-                    </p>
-                  </div>
-                ))}
               </div>
 
               {/* The cliff, named. "One line over and the whole 50% is gone" is the
@@ -11594,8 +11603,18 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                     <button onClick={() => addLine(o.id)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">+ Line item</button>
                     <button onClick={() => setOptions((os) => os.map((x) => (x.id === o.id ? { ...x, lines: [...x.lines, { cat: x.lines[0].cat, qty: 1, price: 0, disc: 0, gift: true }] } : x)))} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted hover:border-ink/40">+ Gift (Tặng)</button>
                   </div>
-                  <div className="min-w-[300px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
-                    <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span></div>
+                  <div className="min-w-[360px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+                    {/* Every figure shows the arithmetic that produced it. The client has
+                        to be able to confirm the ORDER the three discounts stack in —
+                        percentage before amount, VAT on what is left — and a column of
+                        bare totals cannot be checked against their own spreadsheet. */}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 text-muted">
+                        Tạm tính
+                        <span className="ml-1 text-[10px] text-faint">Σ (SL × đơn giá × (1 − CK dòng))</span>
+                      </span>
+                      <span className="tabular-nums">{sub.toLocaleString('en-US')} ₫</span>
+                    </div>
                     {/* Order-level %, on the subtotal and before VAT. Free, rule-driven
                         or locked at 0 depending on the mode — never a plain input. */}
                     <div className="mt-1 flex items-center justify-between gap-2">
@@ -11608,7 +11627,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                           className={cn('w-12 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', fieldCls(rule.order, o.optDisc > 0))} />
                         <span className="text-[10.5px] text-faint">%</span>
                       </span>
-                      <span className={cn('tabular-nums', pctCut > 0 && 'text-rose-600')}>{pctCut > 0 ? '−' : ''}{pctCut.toLocaleString('en-US')} ₫</span>
+                      <span className="shrink-0 text-right">
+                        {o.optDisc > 0 && <span className="block text-[10px] text-faint">{sub.toLocaleString('en-US')} × {o.optDisc}%</span>}
+                        <span className={cn('tabular-nums', pctCut > 0 && 'text-rose-600')}>{pctCut > 0 ? '−' : ''}{pctCut.toLocaleString('en-US')} ₫</span>
+                      </span>
                     </div>
                     {/* The client's "Voucher": a flat amount, not a percentage. It comes
                         off AFTER the percentage, so the two cannot be read as one. */}
@@ -11622,12 +11644,40 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
                           className={cn('w-24 rounded border px-1 py-0.5 text-right text-[11.5px] tabular-nums', fieldCls(rule.fixed, o.fixed > 0))} />
                         <span className="text-[10.5px] text-faint">₫</span>
                       </span>
-                      <span className={cn('tabular-nums', fixedCut > 0 && 'text-rose-600')}>{fixedCut > 0 ? '−' : ''}{fixedCut.toLocaleString('en-US')} ₫</span>
+                      <span className="shrink-0 text-right">
+                        {/* Only ever visible when the cap actually bit — otherwise it is
+                            noise on a line that already reads correctly. */}
+                        {o.fixed > fixedCut && <span className="block text-[10px] text-rose-500">tối đa {(sub - pctCut).toLocaleString('en-US')}</span>}
+                        <span className={cn('tabular-nums', fixedCut > 0 && 'text-rose-600')}>{fixedCut > 0 ? '−' : ''}{fixedCut.toLocaleString('en-US')} ₫</span>
+                      </span>
                     </div>
-                    {(pctCut > 0 || fixedCut > 0) && <div className="flex justify-between"><span className="text-muted">Sau chiết khấu</span><span className="tabular-nums">{net.toLocaleString('en-US')} ₫</span></div>}
-                    <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span></div>
+                    {(pctCut > 0 || fixedCut > 0) && (
+                      <div className="mt-1 flex items-baseline justify-between gap-2 border-t border-line-soft pt-1">
+                        <span className="min-w-0 text-muted">
+                          Sau chiết khấu
+                          <span className="ml-1 text-[10px] text-faint">tạm tính − CK tổng đơn − giảm tiền</span>
+                        </span>
+                        <span className="tabular-nums font-medium">{net.toLocaleString('en-US')} ₫</span>
+                      </div>
+                    )}
+                    {/* VAT is charged on what is LEFT, never on the pre-discount figure —
+                        the single most consequential line here, because getting it wrong
+                        overcharges the customer on a filed invoice. */}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 text-muted">
+                        Thuế GTGT ({VAT_RATE}%)
+                        <span className="ml-1 text-[10px] text-faint">{net.toLocaleString('en-US')} × {VAT_RATE}%</span>
+                      </span>
+                      <span className="tabular-nums">{vat.toLocaleString('en-US')} ₫</span>
+                    </div>
                     <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{(net + vat).toLocaleString('en-US')} ₫</span></div>
                     <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(net + vat)}.</p>
+                    {/* The formula in one line, for the client to sign off. It is stated
+                        rather than inferred from the numbers above, because the ORDER is
+                        the part that is genuinely open to disagreement. */}
+                    <p className="mt-2 rounded-md border border-line bg-surface px-2 py-1.5 text-[10px] leading-relaxed text-muted">
+                      <b className="text-ink/70">Công thức:</b> Tạm tính = Σ (SL × đơn giá × (1 − CK dòng)) → trừ <b>CK tổng đơn %</b> → trừ <b>giảm số tiền</b> (tối đa bằng phần còn lại) → <b>VAT tính trên số còn lại</b> → Tổng sau VAT. Làm tròn đến đồng ở từng bước.
+                    </p>
                   </div>
                 </div>
 
