@@ -2647,6 +2647,22 @@ const COMPANIES: Company[] = [
   // More Proposal cover — includes a quotation that has already lapsed past its 14-day validity
   { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
   { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
+  /* ── The deep end of the corporate tree ──────────────────────────────────────
+     Trường Sơn is deliberately the WORST CASE for the group chart: 6 direct
+     children on the root, five levels of nesting, branches (chi nhánh, MST with a
+     -00x suffix) mixed in among real subsidiaries at several depths, and one leaf
+     owned by a different rep from everything above it. If the chart is legible
+     here it is legible anywhere — and the indentation, the "Công ty con" pill and
+     the owner column all get tested at depth rather than at depth 1. */
+  { name: 'Công ty TNHH Sợi Phương Nam', shortName: 'Sợi Phương Nam', legalName: 'Công ty TNHH Sợi Phương Nam', country: 'Việt Nam', tax: '0351xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Củ Chi, HCMC', parent: 'Công ty CP Dệt may Phương Nam', contact: 'Mr. Lâm Quốc Bảo · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 9, note: 'Upstream of the dyeing plant — hires together with it.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'soiphuongnam.vn', since: '—' },
+  { name: 'CN Sợi Phương Nam — Long An', shortName: 'Sợi PN Long An', legalName: 'Chi nhánh Công ty TNHH Sợi Phương Nam tại Long An', country: 'Việt Nam', tax: '0351xxxxxx-001', industry: 'Sản xuất', size: '50–200', address: 'Bến Lức, Long An', parent: 'Công ty TNHH Sợi Phương Nam', contact: 'Ms. Đỗ Kim Yến · HC-NS', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '02/04/2026', renewal: '02/10/2026', nextStep: 'Quarterly review', idle: 30, note: 'Own PO and invoice — hires shift workers locally.', revenue: 18_000_000, jobPosting: true, resumeSearch: false, jobLeft: 2, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'soiphuongnam.vn', since: '02/04/2025' },
+  { name: 'Công ty TNHH Nhuộm Phương Nam', shortName: 'Nhuộm Phương Nam', legalName: 'Công ty TNHH Nhuộm và Hoàn tất Phương Nam', country: 'Việt Nam', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Quận 12, HCMC', parent: 'Công ty CP Dệt may Phương Nam', contact: 'Mr. Ngô Tấn Phát · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 14, note: 'Quotation sent with the parent’s.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'nhuomphuongnam.vn', since: '—' },
+  { name: 'CN Kim Long — Hải Phòng', shortName: 'Kim Long HP', legalName: 'Chi nhánh Công ty TNHH Thép Kim Long tại Hải Phòng', country: 'Việt Nam', tax: '0336xxxxxx-001', industry: 'Sản xuất', size: '50–200', address: 'Ngô Quyền, Hải Phòng', parent: 'Công ty TNHH Kim Long Steel', contact: 'Mr. Bùi Thế Vinh · HC-NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 41, note: 'Port-side warehouse — seasonal hiring.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
+  { name: 'Công ty TNHH Kim Long Logistics', shortName: 'Kim Long Logistics', legalName: 'Công ty TNHH Tiếp vận Kim Long', country: 'Việt Nam', tax: '0353xxxxxx', industry: 'Logistics', size: '200–500', address: 'Biên Hòa, Đồng Nai', parent: 'Công ty TNHH Kim Long Steel', contact: 'Ms. Trương Hải Yến · HR Manager', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '11/05/2026', renewal: '11/11/2026', nextStep: 'Collect payment on PO', idle: 6, note: 'Moves the parent’s steel — separate PO.', revenue: 71_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 15, cvLeft: 40, cvTotal: 60, hasPage: true, jobs: 6, domain: 'kimlonglogistics.vn', since: '11/05/2024' },
+  { name: 'Công ty TNHH Kim Long Vận tải biển', shortName: 'Kim Long Marine', legalName: 'Công ty TNHH Vận tải biển Kim Long', country: 'Việt Nam', tax: '0354xxxxxx', industry: 'Logistics', size: '50–200', address: 'Vũng Tàu', parent: 'Công ty TNHH Kim Long Logistics', contact: 'Mr. Hà Trọng Nghĩa · HR', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 18, note: 'Deepest node in the group — five levels below the root.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongmarine.vn', since: '—' },
+  { name: 'Công ty CP Bất động sản Trường Sơn', shortName: 'Trường Sơn Land', legalName: 'Công ty Cổ phần Bất động sản Trường Sơn', country: 'Việt Nam', tax: '0355xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Hải Châu, Đà Nẵng', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Phan Thùy Linh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 25, note: 'Different industry from the rest of the group.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongsonland.vn', since: '—' },
+  { name: 'Công ty TNHH Trường Sơn Energy', shortName: 'Trường Sơn Energy', legalName: 'Công ty TNHH Năng lượng Trường Sơn', country: 'Việt Nam', tax: '0356xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Quảng Nam', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Đinh Công Sơn · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/03/2026', renewal: '19/09/2026', nextStep: 'Upsell Resume Search', idle: 12, note: 'Solar + hydro — engineer hiring all year.', revenue: 96_000_000, jobPosting: true, resumeSearch: false, jobLeft: 9, jobTotal: 20, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 9, domain: 'truongsonenergy.vn', since: '19/03/2024' },
+  { name: 'Công ty CP Trường Sơn Digital', shortName: 'TS Digital', legalName: 'Công ty Cổ phần Trường Sơn Digital', country: 'Việt Nam', tax: '0357xxxxxx', industry: 'CNTT', size: '50–200', address: 'Hải Châu, Đà Nẵng', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Lý Thanh Trúc · TA Lead', owner: 'Phạm Quang Huy', status: 'Lost', account: 'Churn', lastPO: '05/02/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 88, note: 'Churned — in-housed their hiring.', revenue: 24_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tsdigital.vn', since: '05/02/2024' },
   { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 126, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
   // More Negotiation cover — long internal-approval cycles, so the reds run deep here
   { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
@@ -4787,7 +4803,7 @@ function MiniStat({ label, value, sub, tone }: { label: string; value: React.Rea
   )
 }
 
-type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Activity'
+type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Owner history' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -5585,6 +5601,12 @@ function CompanyPageEditor({ c }: { c: Company }) {
    parent. Deliberately NOT a revenue roll-up: the point of the chart is to show
    that the link is for lookup only, so every node carries its own MST, its own
    tier and its own sales owner. */
+/* One indent step. 18px looked fine on a two-level demo group and squeezed the name
+   to "Kim Lon…" the moment a real conglomerate went five deep: the indent, the two
+   pills and the name all compete for one column. 14px plus a wider modal buys back
+   enough room that depth 5 still reads. */
+const INDENT = 14
+
 function GroupChart({ root, current, onClose, onOpen }: { root: Company; current: Company; onClose: () => void; onOpen?: (x: Company) => void }) {
   const rows: { c: Company; depth: number }[] = []
   const walk = (n: Company, depth: number) => {
@@ -5594,7 +5616,7 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
   walk(root, 0)
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
+      <div className="my-4 w-full max-w-[940px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
           <div>
             <p className="text-[15px] font-bold">Sơ đồ tập đoàn — {coLabel(root)}</p>
@@ -5604,7 +5626,7 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
         </div>
 
         <div className="max-h-[64vh] overflow-y-auto p-3">
-          <div className="grid gap-x-3 border-b border-line px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: '2.4fr 1.1fr 1fr 1.1fr' }}>
+          <div className="grid gap-x-3 border-b border-line px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: 'minmax(0,3.2fr) 1fr 0.9fr 1.1fr' }}>
             <span>Công ty</span><span>MST</span><span>Hạng</span><span>Sales phụ trách</span>
           </div>
           {rows.map(({ c, depth }) => {
@@ -5615,9 +5637,9 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
                 key={c.name}
                 onClick={() => { onClose(); onOpen?.(c) }}
                 className={cn('grid w-full items-center gap-x-3 border-b border-line-soft px-2 py-2 text-left text-[12px] transition-colors hover:bg-canvas/70', isCurrent && 'bg-brand-soft/50')}
-                style={{ gridTemplateColumns: '2.4fr 1.1fr 1fr 1.1fr' }}
+                style={{ gridTemplateColumns: 'minmax(0,3.2fr) 1fr 0.9fr 1.1fr' }}
               >
-                <span className="flex min-w-0 items-center" style={{ paddingLeft: depth * 18 }}>
+                <span className="flex min-w-0 items-center" style={{ paddingLeft: depth * INDENT }}>
                   {depth > 0 && <span className="mr-1.5 shrink-0 text-faint">└</span>}
                   <span className={cn('min-w-0 truncate', isCurrent ? 'font-semibold text-brand' : 'text-ink/80')}>{coLabel(c)}</span>
                   {depth > 0 && <span className="ml-1.5 shrink-0"><Pill tone="neutral">Công ty con</Pill></span>}
@@ -6302,6 +6324,11 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
     // for Job-Posting customers; Resumes only for Resume-Search customers.
     ...(c.jobPosting ? [{ key: 'Applications' as CoTab, label: 'Applications', count: companyApplicants(c).length }] : []),
     ...(c.resumeSearch ? [{ key: 'Resumes' as CoTab, label: 'Resumes' }] : []),
+    // Its own tab, and LAST: the chain is an audit trail consulted on purpose
+    // ("who held this when, and who moved it"), not something read while working
+    // the account. In the Overview column it cost a card's height on every visit
+    // to answer a question asked a few times a year.
+    { key: 'Owner history', label: 'Owner history' },
   ]
 
 
@@ -6547,12 +6574,26 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
                   Duplicating the primary one here guarantees the two drift apart. */}
             </DetailCard>
             <CompanyDocs c={c} />
-            <OwnerHistory c={c} />
+            {/* Owner history moved to its own tab — see the tab strip above. */}
             <AffiliatedCompanies c={c} onOpen={onOpen} />
           </div>
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
           <CompanyActivities c={c} />
+        </div>
+      )}
+
+      {/* ── Owner history — who held the account when, and who moved it ───── */}
+      {/* Deliberately NARROW rather than stretched to the tab width: the chain is a
+          timeline of short rows, and at 1700px each entry becomes a name at the far
+          left with a date at the far right and nothing between them. */}
+      {tab === 'Owner history' && (
+        <div className="max-w-[620px]">
+          <div className="mb-2">
+            <p className="text-[13px] font-semibold text-ink">Owner history <span className="font-normal text-muted">— one current owner, and every handover before it</span></p>
+            <p className="text-[11px] text-faint">Append-only. Quotations, sales targets and commission all reference who owned the account at the time, so a past tenure is never edited to tidy it up.</p>
+          </div>
+          <OwnerHistory c={c} />
         </div>
       )}
 

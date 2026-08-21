@@ -636,7 +636,7 @@ export const crm: BuildModule = {
         },
         {
           label: 'Sales owner — one current owner, and a full reassignment history',
-          text: 'Every company has exactly one current sales owner (account manager), assigned by hand. But the owner changes over an account’s life — a rep leaves, territories are rebalanced, a growing account moves to a key-account rep. The record must keep the whole chain, never silently overwrite it: the company detail shows an Owner history, so anyone can see who held the account when and — the point of the request — who reassigned it and why.',
+          text: 'Every company has exactly one current sales owner (account manager), assigned by hand. But the owner changes over an account’s life — a rep leaves, territories are rebalanced, a growing account moves to a key-account rep. The record must keep the whole chain, never silently overwrite it: the company detail carries an **Owner history tab**, so anyone can see who held the account when and — the point of the request — who reassigned it and why.',
           table: {
             cols: ['What the history records', 'Meaning', 'Example'],
             rows: [
@@ -654,6 +654,7 @@ export const crm: BuildModule = {
             'Reassigning the owner touches nothing else — contacts, deals, quota, membership tier and the customer relationship all stay put. It changes who is responsible, not what the customer has.',
             'Parent and subsidiary owners are independent (see the edge case): moving the parent’s owner never moves the subsidiary’s.',
             'A brand-new lead shows a single entry — whoever created it still owns it. “Never reassigned” is a real state, not missing history.',
+            'IT IS ITS OWN TAB, and the LAST one, not a card in Overview. The chain answers a question asked on purpose a few times a year — “who held this when, and who moved it” — so on Overview it charged every visit a card’s height for an answer almost nobody was looking for. The tab is also kept NARROW: the entries are short rows, and stretched to a wide screen each one becomes a name at the far left and a date at the far right with nothing in between.',
           ],
           warn: 'The owner history is append-only. Never edit or delete a past tenure to “tidy up”: quotations, sales targets and commission all reference who owned the account at the time, so rewriting it breaks the trail.',
         },

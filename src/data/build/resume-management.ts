@@ -2125,6 +2125,28 @@ export const resumeManagement: BuildModule = {
             items: [
               'THE BANNER TELLS THEM WHAT TO DO, not just what happened: bỏ qua. The employer has no decision to make here, and a notice that leaves them wondering whether to act has failed.',
               'IF THEY ALREADY CONTACTED THE CANDIDATE the banner says so is fine — “nếu bạn đã liên hệ ứng viên, có thể bỏ qua”. We cannot know what happened off-platform, so we give them the fact and let them handle it.',
+              'A RECALL IS NOT AN ACCOUNT DELETION. The two look similar on the row and are opposites underneath — see the next section.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'A DELETED ACCOUNT is not a recall — the unlocked CV survives it',
+            text: 'Client decision. When a candidate deletes their Saramin account after an employer has unlocked their CV, the employer keeps everything they paid for: the row stays in the unlocked list, the name and the whole CV stay visible, and the contact details stay usable. Only a tag is added. The reasoning is the mirror image of a recall — a recall is OUR mistake, so we take the document back and refund it; a deletion is the candidate leaving, and the employer already received exactly what they bought.',
+            table: {
+              cols: ['', 'Saramin recall (Đã thu hồi)', 'Candidate deleted their account'],
+              rows: [
+                ['Whose act', 'Saramin withdraws a CV that should not have been sent', 'The candidate closes their own account'],
+                ['The row', 'Greyed, name struck through, rose chip', 'Unchanged, plus a plain **Tài khoản không còn tồn tại** tag'],
+                ['The CV', 'Blurred, View/Download removed — “Không còn khả dụng”', 'Fully readable, View CV and Download stay'],
+                ['Contact details', 'Not usable — we told them to drop this candidate', 'Usable — the employer may still call or email directly'],
+                ['The unlock credit', 'Auto-refunded, stated on the row', 'NOT refunded — nothing was taken back'],
+                ['Search index', 'Leaves the index, never returns in a new search', 'Leaves the index too — there is no live candidate to surface any more'],
+              ],
+            },
+            items: [
+              'The row footnote says both halves in one line: “Đã xoá tài khoản {date} · CV và liên hệ vẫn dùng được, không hoàn lượt unlock” — a recruiter who is about to dial should not have to guess.',
+              'What the deletion DOES remove is only what hangs off the account: no Saramin profile to open, and no reachability through Saramin messaging or notifications.',
+              'Because the unlocked CV survives, the candidate’s delete-confirm screen must say so plainly (see Job seeker user management → Delete account). A “delete” that quietly leaves CVs with employers would be the one promise we cannot afford to break.',
             ],
           },
           {

@@ -302,6 +302,12 @@ type CoCandidate = {
       thin) rather than the person — the account-level judgements moved to Block
       user, and those are still never surfaced here. */
   recallReason?: string
+  /* The candidate DELETED their Saramin account after applying — the date it
+     happened. Client decision: the application is not withdrawn by it. The row
+     stays in the pipeline, the CV stays readable and the contact details stay
+     usable; only a tag is added, because the employer received this application
+     legitimately and may already be mid-process on it. */
+  accountDeleted?: string
 }
 
 /** Toolbar button in the Saramin KR shape: white, hairline border, icon + label. */
@@ -436,7 +442,9 @@ function ApplicantsScreen() {
       ],
     },
     { stage: 'Screening', people: [{ n: 'Trần Văn Bình', role: 'Điều dưỡng viên', exp: '5 năm KN', loc: 'Hồ Chí Minh', match: 81, why: '8/10 kỹ năng · Hồ Chí Minh', applied: '5 ngày trước', salary: '15–18 tr', cv: 'Saramin CV', waiting: '4 days' }] },
-    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, why: '7/10 kỹ năng · Hồ Chí Minh', applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV', waiting: '6 days' }] },
+    /* Deleted her account WHILE at Interview — the hardest version of the case,
+       and the one that proves the rule: nothing about the application changes. */
+    { stage: 'Interview', people: [{ n: 'Lê Thị Cúc', role: 'Điều dưỡng viên', exp: '4 năm KN', loc: 'Hồ Chí Minh', match: 76, why: '7/10 kỹ năng · Hồ Chí Minh', applied: '1 tuần trước', salary: '13–16 tr', cv: 'Saramin CV', waiting: '6 days', accountDeleted: '18/08/2026' }] },
     { stage: 'Offer', people: [{ n: 'Võ Minh Anh', role: 'Điều dưỡng trưởng', exp: '6 năm KN', loc: 'Hồ Chí Minh', match: 92, why: '10/10 kỹ năng · 6 năm hợp 2–5', applied: '2 tuần trước', salary: '18–22 tr', cv: 'Saramin CV', waiting: '1 day' }] },
     { stage: 'Rejected', people: [{ n: 'Đỗ Văn Khoa', role: 'Kỹ thuật viên xét nghiệm', exp: '2 năm KN', loc: 'Đồng Nai', match: 41, why: '3/10 kỹ năng · Đồng Nai', applied: '2 tuần trước', salary: '10–12 tr', cv: 'PDF tải lên', waiting: '9 days' }] },
   ]
@@ -589,7 +597,10 @@ function ApplicantsScreen() {
                   {/* A recalled row shows no match score: it is not a candidate to
                       compare any more, and leaving the number invites comparison. */}
                   <span>{p.recalled ? <span className="text-[11px] text-faint">—</span> : <Match score={p.match} why={p.why} />}</span>
-                  <span>{p.recalled ? <Chip tone="rose">Đã thu hồi</Chip> : <Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip>}</span>
+                  <span className="flex flex-wrap items-center gap-1">
+                    {p.recalled ? <Chip tone="rose">Đã thu hồi</Chip> : <Chip tone={STAGE_TONE[p.stage]}>{p.stage}</Chip>}
+                    {p.accountDeleted && !p.recalled && <Chip>Tài khoản không còn tồn tại</Chip>}
+                  </span>
                   <span className="text-right tabular-nums text-muted">{p.waiting}</span>
                 </div>
               ))}
@@ -655,6 +666,23 @@ function ApplicantsScreen() {
                 </p>
                 <p className="mt-1 text-[10.5px] text-rose-900/60">
                   Thu hồi ngày {picked.recalled} · Nếu bạn đã liên hệ ứng viên, có thể bỏ qua
+                </p>
+              </div>
+            )}
+            {/* ACCOUNT-DELETED NOTICE — deliberately neutral, not the rose recall
+                banner. The candidate left Saramin; the application they already
+                sent is untouched, so the panel says what changed (no profile to
+                open, no reply through Saramin) and nothing else. */}
+            {picked.accountDeleted && !picked.recalled && (
+              <div className="border-b border-line bg-canvas/60 px-4 py-3">
+                <p className="flex items-center gap-2 text-[12.5px] font-bold text-ink/80">
+                  <span>ⓘ</span> Tài khoản không còn tồn tại
+                </p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                  Ứng viên đã xoá tài khoản Saramin ngày {picked.accountDeleted}. <b className="font-semibold text-ink/75">Đơn ứng tuyển này không thay đổi</b> — CV và thông tin liên hệ vẫn giữ nguyên, bạn vẫn xem và liên hệ trực tiếp như bình thường.
+                </p>
+                <p className="mt-1 text-[10.5px] text-faint">
+                  Không còn trang cá nhân trên Saramin để mở, và ứng viên không nhận được tin nhắn qua Saramin nữa — hãy gọi hoặc email trực tiếp.
                 </p>
               </div>
             )}
@@ -1342,6 +1370,14 @@ function ResumeSearchScreen() {
        what the employer already paid for — hiding something they bought would be
        worse than telling them it is withdrawn. The credit is refunded. */
     recalled?: string
+    /* The candidate DELETED their Saramin account AFTER this employer unlocked the
+       CV — the date it happened. Client decision: the unlock keeps its full value.
+       The row stays in the unlocked list, the name and the whole CV stay visible,
+       View CV and the contact details stay usable, and no credit is refunded —
+       the employer already bought and received this document. Only a tag is added,
+       so a recruiter phoning the candidate knows there is no Saramin account
+       behind them any more. */
+    accountDeleted?: string
     id: string
     name: string
     desiredRole: string
@@ -1400,6 +1436,22 @@ function ResumeSearchScreen() {
           education: { school: 'ĐH Y Dược TP.HCM', masked: 'Đại học y dược · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2012', expected: false },
           skills: ['Quản lý điều dưỡng', 'An toàn người bệnh', 'Sản khoa'], more: 2,
           loc: 'Hồ Chí Minh', salary: 'Từ 28 triệu', updated: '3 days ago',
+        },
+        {
+          /* UNLOCKED, then the candidate deleted their account. Everything the
+             employer paid for is still here — this is the case the tag exists for. */
+          reason: [['✓', 'Điều dưỡng trưởng'], ['✓', 'Bệnh viện quốc tế — 4 năm kinh nghiệm']],
+          unlocked: true,
+          accountDeleted: '18/08/2026',
+          id: 'C7B45',
+          name: 'Huỳnh Thị Mỹ Duyên',
+          desiredRole: 'Điều dưỡng trưởng',
+          gender: 'Nữ', age: 33, years: '8 yrs experience',
+          company: { name: 'BV Quốc tế Vinmec Central Park', masked: 'Bệnh viện tư nhân quốc tế · TP.HCM', title: 'Điều dưỡng trưởng khoa Nội trú', period: '06/2020 – nay', desc: 'Điều phối 16 điều dưỡng khoa Nội trú; chuẩn hoá bàn giao ca và theo dõi chỉ số an toàn người bệnh hằng tuần.' },
+          prior: [{ name: 'BV Chợ Rẫy', masked: 'Bệnh viện công lập', title: 'Điều dưỡng viên', dur: '2 năm 6 tháng' }],
+          education: { school: 'ĐH Y khoa Phạm Ngọc Thạch', masked: 'Đại học y khoa · TP.HCM', degree: 'Cử nhân Điều dưỡng', status: 'Graduated 2015', expected: false },
+          skills: ['Quản lý điều dưỡng', 'An toàn người bệnh', 'Bàn giao ca'], more: 2,
+          loc: 'Hồ Chí Minh', salary: 'Từ 26 triệu', updated: '2 weeks ago',
         },
       ],
     },
@@ -1643,6 +1695,10 @@ function ResumeSearchScreen() {
                       <span className="text-[11px] font-medium text-ink/80">{cv.years}</span>
                       {cv.unlocked && !cv.recalled && <Chip tone="green">Unlocked</Chip>}
                       {cv.recalled && <Chip tone="rose">Đã thu hồi · hoàn 1 lượt unlock</Chip>}
+                      {/* Deleted account: a plain tag, no strike-through and no
+                          refund chip. Nothing was taken back — the person simply
+                          left Saramin, and the CV stays exactly as bought. */}
+                      {cv.accountDeleted && !cv.recalled && <Chip>Tài khoản không còn tồn tại</Chip>}
                     </div>
                     {/* DESIRED ROLE, labelled — not a free-text headline. Unlabelled
                         it read as a second job title and duplicated the current
@@ -1727,6 +1783,9 @@ function ResumeSearchScreen() {
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2 pl-[52px]">
                   <Chip tone="blue">Desired location: {cv.loc}</Chip>
                   <Chip tone="amber">{cv.salary}</Chip>
+                  {cv.accountDeleted && !cv.recalled && (
+                    <span className="text-[10.5px] text-muted">Đã xoá tài khoản {cv.accountDeleted} · CV và liên hệ vẫn dùng được, không hoàn lượt unlock</span>
+                  )}
                   <span className="ml-auto text-[10.5px] text-faint">Updated {cv.updated}</span>
                 </div>
               </div>

@@ -578,6 +578,8 @@ export const applicationManagement: BuildModule = {
         ],
         rules: [
           'A company sees only its own applications. Company and job scope are enforced server-side, not by hiding UI.',
+          'DECIDED (client) — if the candidate DELETES their Saramin account, the application stays exactly as it is: same stage, CV readable, contact details usable, Download CV still available. The row simply gains a **Tài khoản không còn tồn tại** tag and the detail panel a neutral notice with the date. Nothing is withdrawn, greyed or struck through — that treatment belongs to a Saramin recall, which is a different event.',
+          'A deleted account removes only what depends on the account itself: there is no Saramin profile left to open, and messages/notifications sent through Saramin no longer reach the candidate — so the notice tells the recruiter to phone or email directly.',
           'Only applications whose CV is Qualified appear here. One held by a CV in doubt, or dropped by a Rejected CV, never reaches the company — and an approval on the CV can make several appear at once.',
           'Hired and Rejected are terminal; re-opening to an earlier stage is allowed but logged as a re-open.',
           'Only company users with the recruiting permission can change a stage; viewers can read (see Company user management → roles).',
@@ -588,6 +590,7 @@ export const applicationManagement: BuildModule = {
           'Empty (no applications yet)',
           'Empty for this job',
           'Filtered-empty',
+          'Candidate deleted their account (row tagged, application unchanged)',
           'Board view / list view',
           'Bulk selection active',
           'Stage-change confirm (Hired / Rejected)',

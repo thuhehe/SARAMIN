@@ -889,5 +889,119 @@ export const jobseekerUser: BuildModule = {
         ],
       },
     },
+
+    // 5 · Delete account — the one-way door ────────────────────────────────────
+    {
+      name: 'Delete account',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'js-mypage',
+      // The two employer-side consequences are drawn on the screens that show them:
+      // the company Applicants list and the company CV-search unlocked row.
+      mockups: ['co-application-list', 'co-resume-search'],
+      notes: 'Permanent, unlike Deactivate: the account is gone and the same email can never register again. Requested by the client because candidates were deleting and re-registering to qualify as new users for promotions.',
+      detail: {
+        keyPoints: [
+          {
+            vi: 'Đây là cửa một chiều, khác hoàn toàn với **Deactivate**: tài khoản không quay lại được, và **email đó không bao giờ đăng ký lại được**. Lý do nghiệp vụ: ứng viên đang xoá tài khoản rồi đăng ký lại để hưởng ưu đãi dành cho người mới.',
+            en: 'A one-way door, unlike **Deactivate**: the account never comes back, and **that email can never register again**. The business reason: candidates were deleting and re-registering to qualify for new-user promotions.',
+          },
+          {
+            vi: 'QUYẾT ĐỊNH CỦA KHÁCH HÀNG — những gì NTD đã có thì **giữ nguyên**. CV đã unlock vẫn nằm trong danh sách unlock; đơn ứng tuyển vẫn nằm trong applicant list. Chỉ thêm tag **“Tài khoản không còn tồn tại”**; NTD vẫn xem CV và liên hệ bình thường.',
+            en: 'CLIENT DECISION — whatever the employer already has **stays**. An unlocked CV stays in their unlocked list; an application stays in the applicant list. Only a **“Tài khoản không còn tồn tại”** tag is added; the employer still views the CV and makes contact as normal.',
+          },
+          {
+            vi: '**Không hoàn lượt unlock.** NTD đã nhận đúng thứ họ mua và vẫn dùng được — khác với trường hợp Saramin thu hồi CV (lỗi của mình, nên hoàn 1 lượt).',
+            en: '**No unlock refund.** The employer received exactly what they paid for and can still use it — unlike a Saramin recall, which is our mistake and does refund the credit.',
+          },
+          {
+            vi: 'Vì CV vẫn ở lại phía NTD, **màn hình xác nhận phải nói rõ điều đó** trước khi ứng viên bấm xoá. Một chữ “xoá” hàm ý nhiều hơn thực tế là rủi ro pháp lý, không chỉ là vấn đề trải nghiệm.',
+            en: 'Because those CVs stay with employers, **the confirm screen has to say so** before the candidate presses delete. A “delete” that implies more than it does is a legal risk, not just a UX one.',
+          },
+        ],
+        description:
+          'The permanent way out: the account is closed, the candidate is purged from the platform, and the email is barred from ever registering again — the point of the feature, since re-registering was how promotion terms were being farmed.',
+        userStory:
+          'As a jobseeker, I want to delete my account for good and know exactly what stays with employers who already have my CV, so that I am not surprised afterwards.',
+        sections: [
+          {
+            early: true,
+            heading: 'DECIDED — what happens to what the employer already holds',
+            text: 'Both cases resolve the same way, and the reason is the same in both: the employer obtained the CV legitimately and may already be acting on it. The candidate leaving Saramin does not undo that.',
+            table: {
+              cols: ['Case', 'What the employer sees', 'CV & contact', 'Refund'],
+              rows: [
+                ['NTD unlocked the CV, candidate then deletes', 'The row stays in the unlocked-CV list with a **Tài khoản không còn tồn tại** tag. Not greyed, name not struck through.', 'Views the CV and contacts the candidate as normal', 'None — nothing was taken back'],
+                ['Candidate applied, then deletes', 'The application stays in the applicant list, in the same stage, with the same tag. The detail panel adds a neutral notice and the date.', 'Views the CV and contacts the candidate as normal', 'None — receiving an application is free'],
+              ],
+            },
+            items: [
+              'The tag is deliberately plain, never the rose treatment used for a Saramin recall: nothing is wrong with these CVs, and a recruiter must be able to tell the two events apart at a glance (see Resume management → “A deleted account is not a recall”).',
+              'What deletion DOES remove is only what depends on the account: no Saramin profile left to open, and Saramin messages / notifications no longer reach the person — so both surfaces tell the recruiter to contact them directly.',
+              'The CV also leaves CV search, so it never appears in a NEW search. Only the employers who already have it keep it.',
+            ],
+          },
+          {
+            heading: 'What the candidate must be told before confirming',
+            items: [
+              'This is permanent — the account cannot be recovered and **this email can never be used to sign up again**.',
+              'Employers who already unlocked your CV, or already received your application, KEEP it and can still contact you.',
+              'Your CV is removed from CV search immediately, so no new employer can discover you.',
+              'Files an employer already downloaded are outside Saramin and cannot be recalled by us.',
+              'If you only want a break, use **Deactivate** instead — offered on this screen, before the delete control.',
+            ],
+            warn: 'The confirm step needs re-authentication and an explicit typed confirmation, exactly like Deactivate. A one-way door reached by one tap is a support queue.',
+          },
+        ],
+        rules: [
+          'Deletion is permanent: no reactivation path, and the email (normalised), the phone and every linked social identity are barred from registering again.',
+          'The bar is stored as a one-way HASH, not as readable contact data — the minimum needed to enforce it (see the backend contract).',
+          'Unlocked CVs and delivered applications are NOT withdrawn, and no unlock credit is refunded.',
+          'The candidate leaves the CV-search index synchronously at the moment of confirming, not on the next re-index.',
+          'All sessions are invalidated and a confirmation email is sent.',
+          'Historical counts (registrations, applications, unlocks) are never rewritten — only identity is removed.',
+          'Audit-log entries about the account are retained, including the deletion itself; the internal id stays, the name goes.',
+        ],
+        states: [
+          'Entry (Deactivate offered first)',
+          'Consequences shown',
+          'Re-authentication required',
+          'Typed confirmation',
+          'Deleted (confirmation email sent)',
+          'Blocked sign-up attempt with a deleted email',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'status', type: 'enum', required: true, notes: 'adds `deleted` — terminal, with no path back to any other status' },
+            { name: 'deletedAt', type: 'timestamp', required: true },
+            { name: 'BlockedIdentity', type: 'entity', required: true, notes: 'hash(normalisedEmail + server pepper), hash(phone), hash(provider + providerUserId), deletedAt — the only thing that outlives the purge, and the reason a re-signup can be refused at all' },
+            { name: 'purge job', type: 'process', notes: 'clears name, phone, DOB, avatar, alerts and the candidate-side CV records; leaves the shell row, the audit trail and what employers already hold' },
+          ],
+          endpoints: [
+            'POST /account/delete { reauth, typedConfirmation } → status=deleted, sessions revoked, index removal',
+            'GET  /auth/signup/precheck { email | phone } → 409 when it matches a BlockedIdentity',
+          ],
+          integrations: ['CV search index (immediate removal)', 'Transactional email (confirmation)', 'Session store (revoke all)', 'Audit log'],
+          notes:
+            'Normalise before hashing (lower-case, strip Gmail dots and +tags) or the bar is bypassed by writing the same address differently. Hash the phone and the social identities too — otherwise the same person returns with the same Google account on a new address. The sign-up check must run on the server, never only in the form.',
+        },
+        acceptance: [
+          'A deleted account cannot sign in, cannot be reactivated, and its email is refused at sign-up with a clear message.',
+          'An employer who had unlocked the CV still sees the row, still opens the CV, still has the contact details, and is NOT refunded.',
+          'An application from a deleted candidate stays in its stage with the tag, and the recruiter can still read the CV and make contact.',
+          'The candidate disappears from CV search immediately on confirming.',
+          'The confirm screen states, before the control, that already-unlocked CVs and delivered applications stay with employers.',
+          'Historical reports are unchanged by a deletion.',
+        ],
+        openQuestions: [
+          'Is there a grace window before the purge (e.g. 30 days recoverable), or is Delete instantaneous? A one-way door with no window means every mistaken click is a support case with no answer.',
+          'May a SUSPENDED account delete itself? If yes, deleting becomes a way to shed a ban — recommend blocking the path for suspended accounts.',
+          'Is an UNVERIFIED email barred too? Recommend no: otherwise anyone can sign up with someone else’s address, delete, and lock that person out of Saramin permanently.',
+          'How long do the CV and contact details stay readable on the employer surfaces — forever, or a fixed retention (e.g. 12 months)? Needs legal sign-off.',
+          'Does HQ get an audited break-glass unblock for genuine mistakes?',
+          'Legal: does retaining a hashed identifier to enforce a permanent bar sit correctly with the erasure right under Decree 13/2023 — and does the T&C say the address can never be reused?',
+        ],
+      },
+    },
   ],
 }
