@@ -257,7 +257,7 @@ const BLUE = '#2563eb'
 export function CvStatusFlow() {
   return (
     <div className="mt-2 overflow-x-auto">
-      <svg viewBox="0 0 1500 880" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
+      <svg viewBox="0 0 1500 906" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
         <defs>
           {[RED, BLUE].map((c) => (
             <marker key={c} id={`arrow-${c.slice(1)}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto-start-reverse">
@@ -310,8 +310,8 @@ export function CvStatusFlow() {
           accent={RED}
           title="Uploaded CV — parsed into the same fields"
           note={[
-            'A failure may be OUR parser, not the document — so the apply is never refused:',
-            'delivery is held until a reviewer decides — nothing releases it automatically.',
+            'A failure may be OUR parser, not the document — so the apply is never refused, the',
+            'candidate is never told, and delivery waits for a reviewer. Nothing auto-releases.',
           ]}
           rows={UPLOADED}
           pitch={88}
@@ -342,8 +342,17 @@ export function CvStatusFlow() {
         />
 
         {/* the one sentence the picture is making */}
-        <text x={40} y={860} fontSize={11} fill="var(--color-muted)">
+        <text x={40} y={856} fontSize={11} fill="var(--color-muted)">
           Every arrow points right: both statuses are READ from the CV. Nothing writes back.
+        </text>
+        {/* …and the one thing the picture CANNOT show, because it is about who is
+            looking rather than what the value is. Printed here so nobody reads a
+            “Not sent” cell as a label the candidate is shown. */}
+        <text x={40} y={880} fontSize={11} fill="var(--color-muted)">
+          These are INTERNAL values. A candidate never sees a doubt state: an uploaded CV in doubt renders like a healthy one,
+        </text>
+        <text x={40} y={896} fontSize={11} fill="var(--color-muted)">
+          and its application reads the ordinary “Đã nộp”. Only DECIDED states are ever spoken about — Qualified, or Rejected with its reason.
         </text>
       </svg>
     </div>

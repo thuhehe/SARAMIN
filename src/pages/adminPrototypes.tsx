@@ -1157,7 +1157,7 @@ function AdminResumes() {
             <div className="border-t border-line-soft px-3 py-2">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Internal note <span className="font-normal text-rose-500">*required</span></p>
               <div className="h-12 rounded-md border border-line bg-canvas/40" />
-              <p className="mt-1 text-[10px] leading-snug text-faint">Internal only. On a Reject the candidate sees “This CV does not meet the requirements yet — please add more information”, waiting applications are dropped and sent ones recalled.</p>
+              <p className="mt-1 text-[10px] leading-snug text-faint">Internal only. While a CV sits in this queue the candidate sees NOTHING — the CV row and its applications look ordinary, so an unworked queue is a silent failure. On a Reject they are told, with the reason: waiting applications become Không được gửi and sent ones are recalled.</p>
             </div>
           </div>
         </>
@@ -1227,15 +1227,21 @@ function AdminResumes() {
    row that looks like a bad upload. */
 const REJECT_REASONS = ['Can’t read', 'Not a CV', 'CV but not enough information'] as const
 
-/* What each code SENDS. A reviewer picking a code without seeing the message is
-   picking blind, and the wrong code is a message the candidate cannot act on —
-   so the picker shows it inline. Note “Can’t read” never reaches the candidate as
+/* What each code SENDS — the exact chip and line the candidate will get on My
+   CVs. A reviewer picking a code without seeing the message is picking blind,
+   and the wrong code is a message the candidate cannot act on, so the picker
+   shows it inline.
+
+   This is also the FIRST thing the candidate hears about any of it: while the CV
+   sat in this queue they saw nothing at all. Rejecting is therefore not "adding a
+   flag to a CV they were already worried about" — it is breaking news, and the
+   reason has to stand on its own. Note “Can’t read” never reaches them as
    written: it describes OUR extraction failing, and phrasing it as their fault
    would be both wrong and unfixable by them. */
 const REASON_SENDS: Record<string, string> = {
-  'Can’t read': 'Không đọc được — “CV hợp lệ, nhưng là bản scan/ảnh nên hệ thống chưa đọc được.” → Tải lên PDF dạng văn bản',
-  'Not a CV': 'Không hợp lệ — “File này không phải một CV.” → Tải lên CV khác',
-  'CV but not enough information': 'Chưa đủ thông tin — “Hồ sơ chưa đủ để gửi tới NTD.” → Cập nhật hồ sơ (kèm checklist thiếu gì)',
+  'Can’t read': 'Chip “Chưa được duyệt — Không đọc được” · “File dạng ảnh scan nên hệ thống không đọc được nội dung.” → Tải lên CV khác',
+  'Not a CV': 'Chip “Chưa được duyệt — Không phải CV” · “File bạn tải lên không phải một CV.” → Tải lên CV khác',
+  'CV but not enough information': 'Chip “Chưa được duyệt — Thiếu thông tin” · “Hồ sơ chưa đủ thông tin để gửi tới NTD.” → Cập nhật hồ sơ (kèm checklist thiếu gì)',
 }
 type RejectReason = (typeof REJECT_REASONS)[number]
 
@@ -5257,26 +5263,6 @@ const BUSINESS_FORMS = [
   'Non-profit / NGO',
 ]
 
-/** Tình trạng theo mã số thuế. The tax authority publishes EIGHT codes (00–07);
-    these are the five an account manager can act on, with the rest folded in —
-    "đã chuyển cơ quan thuế" is not a state of the business, and 00 vs 04 is an
-    internal registration distinction no salesperson should have to read. */
-const TAX_STATUS = [
-  'Đang hoạt động',
-  'Tạm ngừng kinh doanh có thời hạn',
-  'Không hoạt động tại địa chỉ đã đăng ký',
-  'Đang làm thủ tục giải thể / chờ đóng MST',
-  'Đã chấm dứt hiệu lực MST',
-]
-
-const BIZ_TYPES = [
-  'Công ty TNHH một thành viên', 'Công ty TNHH hai thành viên trở lên',
-  'Công ty cổ phần', 'Doanh nghiệp tư nhân', 'Công ty hợp danh',
-  'Chi nhánh / Văn phòng đại diện', 'Hợp tác xã', 'Khác',
-]
-
-const CO_SIZES = ['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']
-
 /** Chip row under the facts card. A fixed list, because the whole point of the
     chips is that they read the same on every company and can be filtered on. */
 const CP_TRAITS = [
@@ -5385,16 +5371,19 @@ function CompanyPageEditor({ c }: { c: Company }) {
       <div className="min-w-0 space-y-2">
 
       {/* ── 1. Identity — the sticky sidebar on the live page ───────────────── */}
-      <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, tên hiển thị" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
-        {/* Tên hiển thị is asked HERE, not on the create form: it is the brand name
-            the public page and every job card show, so it belongs with the logo it
-            sits beside. Creation only needs the legal name — the display name falls
-            back to it until someone sets one. */}
-        <PageField label="Tên hiển thị" req ro={ro} value={c.shortName || c.name} hint="Tên thương hiệu ứng viên biết — thường KHÁC tên pháp lý trên hoá đơn." />
+      <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, company tags" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
+        {/* Tên hiển thị is NOT edited here — it lives on the Overview tab, in Thông
+            tin cơ bản, with the rest of the company's identity. The page reads it. */}
         {/* One asset, two frames, plus the peer row that settles the size — see LogoSizer. */}
         <div>
           <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Logo <span className="text-rose-500">*</span></p>
           <LogoSizer company={c.name} />
+        </div>
+        {/* Company tags moved off the create form and land here, with the rest of how
+            the company presents itself. */}
+        <div>
+          <p className="mb-1 text-[11px] font-medium text-ink/80">Company tags</p>
+          <CompanyTagPicker initial={['Korean company']} />
         </div>
       </PageSec>
 
@@ -6018,13 +6007,23 @@ function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
    from the company so a record reads the same every render. Mirrors the CRM
    requirement "Sales owner — one current owner, and a full reassignment history". */
 type CoOwnerTenure = { owner: string; from: string; to: string; by: string; reason: string; created?: boolean }
-const OWNER_POOL = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
+/* Wider than the three reps who currently own companies: a history that goes back
+   years contains people who have since left, and a pool of three makes a six-step
+   chain visibly cycle A → B → A → B. */
+const OWNER_POOL = [
+  'Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung',
+  'Đặng Thu Hà', 'Vũ Minh Khoa', 'Hoàng Anh Tuấn', 'Bùi Ngọc Diệp',
+]
 const OWNER_LEAD = 'Lê Hữu Phong · Sales Lead'
 const REASSIGN_REASONS = [
   'Territory rebalance — moved to the rep for this region',
   'Previous rep left the company — handed over',
   'Upgraded to a key-account rep as the account grew',
   'Round-robin reallocation after a workload review',
+  'Rep moved to the enterprise team — account stayed in SMB',
+  'Customer asked for a different point of contact',
+  'Maternity cover — returned to the original rep afterwards',
+  'Merged territory after the Q3 reorg',
 ]
 const ownerSinceYear = (c: Company) => {
   const m = /\/(\d{4})$/.exec(c.since)
@@ -6035,28 +6034,59 @@ const pickPrevOwner = (owner: string, salt: number) => {
   const others = OWNER_POOL.filter((r) => r !== owner)
   return others[salt % others.length]
 }
+
+/* Month arithmetic on a fixed "now" (08/2026) so a record renders identically every
+   time — a history that shuffled between renders would be unreadable in review. */
+const NOW_M = 2026 * 12 + 7
+const mLabel = (m: number) => `${String((m % 12) + 1).padStart(2, '0')}/${Math.floor(m / 12)}`
+
 function companyOwnerHistory(c: Company): CoOwnerTenure[] {
   const yr = ownerSinceYear(c)
   // A brand-new lead (no purchase / no activation date): one entry — whoever
   // created it still owns it. "Never reassigned" is a real state, not a gap.
   if (yr === null) return [{ owner: c.owner, from: 'at creation', to: 'now', by: 'Tạo lead (hệ thống)', reason: `Lead created — ${coLeadSource(c)}`, created: true }]
-  const priors = yr <= 2023 ? 2 : yr <= 2024 ? 1 : 0
-  if (priors === 0) return [{ owner: c.owner, from: c.since, to: 'now', by: 'Tạo lead (hệ thống)', reason: 'Owner set at creation · never reassigned', created: true }]
+
   const salt = c.name.length + c.tax.length
-  const out: CoOwnerTenure[] = [
-    { owner: c.owner, from: priors === 2 ? '02/2025' : '03/2025', to: 'now', by: OWNER_LEAD, reason: REASSIGN_REASONS[salt % REASSIGN_REASONS.length] },
-  ]
-  if (priors === 2) out.push({ owner: pickPrevOwner(c.owner, salt), from: '05/2024', to: '02/2025', by: OWNER_LEAD, reason: REASSIGN_REASONS[(salt + 2) % REASSIGN_REASONS.length] })
-  out.push({ owner: pickPrevOwner(c.owner, salt + 1), from: c.since, to: priors === 2 ? '05/2024' : '03/2025', by: 'Tạo lead (hệ thống)', reason: 'Created from CRM · first owner', created: true })
+  /* How many times it changed hands. Older accounts have seen more reps, but a
+     FLOOR of three keeps the card showing a real chain even on a recently activated
+     company — the wireframe exists to be reviewed, and a two-row list never shows
+     whether the layout survives a long history. Capped at 8 so it stays a list. */
+  const age = Math.max(0, 2026 - yr)
+  const priors = Math.min(8, Math.max(4, age * 2 + (salt % 3)))
+  if (priors === 0) return [{ owner: c.owner, from: c.since, to: 'now', by: 'Tạo lead (hệ thống)', reason: 'Owner set at creation · never reassigned', created: true }]
+
+  /* Handover points, evenly spread across the account's life and walked BACKWARDS
+     from now — index 0 is when the current owner took over. */
+  const span = Math.max(priors, age * 12)
+  const at = (i: number) => mLabel(NOW_M - Math.round(((i + 1) / (priors + 1)) * span))
+
+  const out: CoOwnerTenure[] = []
+  for (let i = 0; i <= priors; i++) {
+    const last = i === priors
+    out.push({
+      owner: i === 0 ? c.owner : pickPrevOwner(c.owner, salt + i),
+      from: last ? c.since : at(i),
+      to: i === 0 ? 'now' : at(i - 1),
+      by: last ? 'Tạo lead (hệ thống)' : OWNER_LEAD,
+      reason: last ? 'Created from CRM · first owner' : REASSIGN_REASONS[(salt + i * 3) % REASSIGN_REASONS.length],
+      created: last,
+    })
+  }
   return out
 }
 
 function OwnerHistory({ c }: { c: Company }) {
   const hist = companyOwnerHistory(c)
-  // No count in the header: a company always has exactly ONE owner. The list is a
-  // tenure history, so "N owners" read as if it could hold several at once.
+  /* The header counts HANDOVERS, not owners — a company always has exactly one
+     owner, so "N owners" would read as if it could hold several at once. With a
+     long chain the number is the thing a lead actually wants ("this account has
+     moved five times"), which is why it is worth stating at all. */
+  const moves = hist.filter((t) => !t.created).length
   return (
-    <DetailCard title="Owner history">
+    <DetailCard
+      title="Owner history"
+      action={<span className="text-[11px] text-faint">{moves === 0 ? 'chưa chuyển giao lần nào' : `${moves} lần chuyển giao`}</span>}
+    >
       <ol className="space-y-2.5">
         {hist.map((t, i) => (
           <li key={i} className="relative pl-4">
@@ -6410,44 +6440,39 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
                   : ro ? undefined : <button onClick={() => setEditInfo(true)} className="text-[11px] text-brand hover:underline">Edit</button>
               }
             >
-              {/* Company ID is system-assigned, so it is never editable — everything
-                  below it is. Editing happens in place: one Edit toggle turns the whole
-                  card into fields, rather than 14 pencil icons. */}
+              {/* SAME GROUPS, SAME ORDER AS THE NEW-COMPANY FORM — Thông tin xuất hóa
+                  đơn → Thông tin cơ bản → Sales. (Company verification document and
+                  Primary contact are the form's other two groups; on this page they
+                  are the CompanyDocs card below and the Contacts tab.) A rep fills the
+                  form once and reads this card for years; the same headings in the
+                  same order is what makes "where did the thing I typed go" a question
+                  nobody has to ask. Editing is one toggle for the whole card, not a
+                  pencil per row — 20 inline editors is 20 chances to half-save one. */}
+
               <KV label="Company ID" value={companyId(coKey(c))} />
+              <CardGroup title="Thông tin xuất hóa đơn" first />
               {editInfo ? (
                 <>
-                  <EField label="Legal name" value={c.legalName} onChange={() => {}} />
-                  <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
                   <SelectRow label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} onChange={() => {}} options={(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => BUYER_TYPE[k].vi)} hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT." />
-                  <EField label="Tax code (MST)" value={c.tax} onChange={() => {}} />
+                  <EField label="Tên đơn vị / Legal name" value={c.legalName} onChange={() => {}} />
+                  <EField label="Mã số thuế (MST)" value={c.tax} onChange={() => {}} />
                   {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
                     <>
                       <EField label="Số CCCD" value={c.idCard ?? ''} onChange={() => {}} />
                       <EField label="Họ tên người mua hàng" value={c.buyerName ?? ''} onChange={() => {}} />
                     </>
                   )}
-                  <SelectRow label="Công ty mẹ" value={c.parent ?? ''} onChange={() => {}} options={COMPANIES.filter((x) => x.name !== c.name).map((x) => x.name)} placeholder="— không thuộc tập đoàn nào —" hint="Full legal names, because two companies can share a short name. Pick the DIRECT parent. Leave empty for a standalone company or a group root." />
-                  <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
-                  <SelectRow label="Company size" value={c.size} onChange={() => {}} options={CO_SIZES} />
-                  {/* Added for the public company page's facts card — the page must not
-                      hold its own copy of any of these. Loại hình and Tình trạng are
-                      enums, not free text: both are printed on the public page and both
-                      are things a jobseeker may act on. */}
-                  <SelectRow label="Loại hình doanh nghiệp" value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} onChange={() => {}} options={BIZ_TYPES} />
-                  <SelectRow label="Tình trạng (theo MST)" value="Đang hoạt động" onChange={() => {}} options={TAX_STATUS} hint="Theo đăng ký thuế. Chỉ “Đang hoạt động” mới nên xuất hoá đơn và cho đăng tin — xem spec." />
-                  <EField label="Năm thành lập" value="1993" onChange={() => {}} hint="Một con số, không phải “từ 1993”. Trang công ty tự tính số năm hoạt động." />
-                  <EField label="Người đại diện" value={c.contact.replace(/ · .*/, '')} onChange={() => {}} hint="Người đại diện pháp luật trên ĐKKD — khác người liên hệ ở tab Contacts." />
+                  <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                 </>
               ) : (
                 <>
-                  <KV label="Legal name" value={c.legalName} />
-                  <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
                   <KV label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} />
+                  <KV label="Tên đơn vị / Legal name" value={c.legalName} />
                   {/* The identifier that applies to THIS buyer type, and only that
                       one — MST for a company, CCCD for an individual. */}
                   {BUYER_TYPE[c.buyerType ?? 'dn-vn'].tax === 'req'
-                    ? <KV label="Tax code (MST)" value={c.tax} />
-                    : <KV label="Tax code (MST)" value={c.tax?.trim() || '— (không áp dụng)'} />}
+                    ? <KV label="Mã số thuế (MST)" value={c.tax} />
+                    : <KV label="Mã số thuế (MST)" value={c.tax?.trim() || '— (không áp dụng)'} />}
                   {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
                     <>
                       <KV label="Số CCCD" value={c.idCard || '—'} />
@@ -6457,43 +6482,41 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
                   {c.buyerType === 'ca-nhan' && (
                     <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
                   )}
-                  <KV label="Công ty mẹ" value={c.parent ? coLabel(coByName(c.parent)!) : '— (không thuộc tập đoàn nào)'} />
-                  {/* Split: industry and size are two different facts, filtered separately. */}
-                  <KV label="Industry" value={c.industry} />
-                  <KV label="Company size" value={`${c.size} staff`} />
-                  <KV label="Loại hình doanh nghiệp" value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} />
-                  <KV label="Tình trạng (theo MST)" value="Đang hoạt động" />
-                  <KV label="Năm thành lập" value="1993" />
-                  <KV label="Người đại diện" value={c.contact.replace(/ · .*/, '')} />
+                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
+                    ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
+                    : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                 </>
               )}
-              {/* Editorial labels sit with the other classification fields rather than in
-                  their own card — one company identity block, not two. */}
-              <div className="border-b border-line-soft py-2">
-                <p className="text-[10.5px] uppercase tracking-wide text-faint">Company tags</p>
-                <div className="mt-1"><CompanyTagPicker initial={['Korean company']} /></div>
-              </div>
-              {/* Same rule as the create form: country always, Vietnamese province
-                  only for a Vietnamese company, Address for everyone. */}
+
+              <CardGroup title="Thông tin cơ bản" />
+              {/* Country always, Vietnamese province only for a Vietnamese company —
+                  the same rule the form uses. */}
               {editInfo ? (
                 <>
+                  <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
                   <SelectRow label="Quốc gia đăng ký / Country of registration" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
                   {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.entries ?? []} />}
-                  <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                   <EField label="Website" value={c.domain} onChange={() => {}} mono />
+                </>
+              ) : (
+                <>
+                  <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
+                  <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />
+                  {isVNCompany(c)
+                    ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
+                    : <KV label="Tỉnh / Thành phố · City" value="— (không phải công ty Việt Nam · xem Địa chỉ xuất hóa đơn)" />}
+                  <KV label="Website" value={c.domain} link />
+                </>
+              )}
+
+              <CardGroup title="Sales" />
+              {editInfo ? (
+                <>
                   <SelectRow label="Lead source" value={coLeadSource(c)} onChange={() => {}} options={LEAD_SOURCES} />
                   <SelectRow label="Sales owner" value={c.owner} onChange={() => {}} options={[...new Set(COMPANIES.map((x) => x.owner))]} />
                 </>
               ) : (
                 <>
-                  <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />
-                  {isVNCompany(c)
-                    ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
-                    : <KV label="Tỉnh / Thành phố · City" value="— (không phải công ty Việt Nam · xem Address)" />}
-                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
-                    ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
-                    : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
-                  <KV label="Website" value={c.domain} link />
                   <KV label="Lead source" value={coLeadSource(c)} />
                   <KV label="Sales owner" value={c.owner} />
                 </>
@@ -6512,6 +6535,13 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
               {editInfo
                 ? <><EField label="Estimated deal value (₫)" value={String(coValue(c))} onChange={() => {}} /><EField label="Description" value={c.note} onChange={() => {}} /></>
                 : <><KV label="Estimated deal value" value={vnd(coValue(c))} /><KV label="Description" value={c.note} /></>}
+
+              {/* DETAIL MIRRORS CREATE, FIELD FOR FIELD. Anything the create form does
+                  not ask for is not shown here either — no "entered elsewhere" group.
+                  What used to sit in one: tên hiển thị, company tags, industry, số
+                  nhân viên and ngày thành lập are edited on the Company page tab and
+                  read there; loại hình, tình trạng MST, người đại diện and công ty mẹ
+                  are no longer surfaced on this card at all. */}
               {/* Contact person / email / phone deliberately NOT here — they live on the
                   Contacts tab, where a company can have several with their own statuses.
                   Duplicating the primary one here guarantees the two drift apart. */}
@@ -10984,7 +11014,7 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
         <div className="space-y-3">
           <DetailCard title="About (company)">
             <KV label="Legal name" value={deal.company} />
-            <KV label="Tax code (MST)" value="0312xxxxxx" />
+            <KV label="Mã số thuế (MST)" value="0312xxxxxx" />
             <KV label="Industry · Size" value="Logistics · 200–500 staff" />
             <KV label="Website" value="viettien.vn" link />
             <KV label="Notes" value="Multi-branch logistics firm, hiring drivers & ops across 3 cities." />
@@ -11060,6 +11090,28 @@ function LField({ label, req, value, select, hint }: { label: string; req?: bool
     </div>
   )
 }
+/**
+ * Group heading inside a detail card — the card counterpart of the create form's
+ * JobGroup heading (bold title over a 2px rule), so a record reads with the same
+ * landmarks as the form that filled it.
+ *
+ * Deliberately NOT the faint grey `Section` pill: that one is a step divider inside
+ * a wizard and reads as a label on the row beneath it. This is a heading someone
+ * SCANS for in a 20-row card, which is a different job and needs different weight.
+ *
+ * `hint` carries the "this group lives somewhere else" pointer, so the two form
+ * groups that are not fields on this card (verification documents, primary contact)
+ * still appear in sequence instead of silently vanishing.
+ */
+function CardGroup({ title, first, hint }: { title: string; first?: boolean; hint?: React.ReactNode }) {
+  return (
+    <div className={cn('border-b-2 border-line pb-1.5', first ? 'mb-1.5' : 'mb-1.5 mt-4')}>
+      <h4 className="text-[13px] font-bold tracking-tight text-ink">{title}</h4>
+      {hint && <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
+    </div>
+  )
+}
+
 function Section({ title, className }: { title: string; className?: string }) {
   return <p className={cn('mt-2 rounded-md bg-canvas/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted', className)}>{title}</p>
 }
@@ -11953,38 +12005,6 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
             this company to us" is how a rep finds and talks about them; "what must
             print on their invoice" is a fiscal contract. Mixing them is what had a
             rep filling in a tax code between a brand name and an industry. */}
-        <JobGroup title="Thông tin cơ bản">
-          {/* TÊN HIỂN THỊ, INDUSTRY AND COMPANY SIZE ARE NOT ASKED HERE — all three
-              moved to the Company page tab, where they are visible next to the thing
-              they describe (the display name beside the logo it sits with; industry
-              and scale inside "Company at a glance"). Creation needs only the legal
-              name + MST: every list and board falls back to the legal name until a
-              display name is set, so nothing is blocked by leaving it for later, and
-              a shorter create form is a create form reps actually finish. */}
-          <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
-            <CompanyTagPicker />
-          </div>
-          {/* Country of registration gates the province picker: a Vietnamese company
-              gets the 34 provincial units, a foreign one does not. A company has a
-              country of REGISTRATION, not a nationality. */}
-          <ComboField
-            label="Quốc gia đăng ký / Country of registration"
-            value={country}
-            onChange={setCountry}
-            placeholder="Select a country…"
-            options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? ['Việt Nam']}
-          />
-          {isVN ? (
-            <LField label="Tỉnh / Thành phố · City" value="Hồ Chí Minh" select hint="Tỉnh/thành của trụ sở — từ Master data → Locations." />
-          ) : (
-            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-              Không phải công ty Việt Nam nên <b className="text-ink">không chọn Tỉnh / Thành phố</b> — ghi thành phố vào <b className="text-ink">Địa chỉ xuất hóa đơn</b> ở nhóm dưới.
-            </p>
-          )}
-          <LField label="Website" value="company.vn" />
-        </JobGroup>
-
         <JobGroup title="Thông tin xuất hóa đơn">
           {/* FIRST in the group, because it decides which of the fields below even
               exist. Asking for a tax code and then removing the field is worse than
@@ -12118,6 +12138,36 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               </div>
             </div>
           )}
+        </JobGroup>
+
+        <JobGroup title="Thông tin cơ bản">
+          {/* Tên hiển thị leads this group, exactly as it leads Thông tin cơ bản on
+              the Basic info card — the two surfaces stay field-for-field identical.
+              Optional: every list, board and document falls back to the legal name
+              until a display name is set, so leaving it blank blocks nothing.
+
+              WHAT CREATION STILL DOES NOT ASK FOR, and where it is asked instead:
+              company tags · industry · headcount · ngày thành lập → the Company page
+              tab. Those are page content, entered where they are seen. */}
+          <LField label="Tên hiển thị" value="e.g. FPT, Tiki, NEC" hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
+          {/* Country of registration gates the province picker: a Vietnamese company
+              gets the 34 provincial units, a foreign one does not. A company has a
+              country of REGISTRATION, not a nationality. */}
+          <ComboField
+            label="Quốc gia đăng ký / Country of registration"
+            value={country}
+            onChange={setCountry}
+            placeholder="Select a country…"
+            options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? ['Việt Nam']}
+          />
+          {isVN ? (
+            <LField label="Tỉnh / Thành phố · City" value="Hồ Chí Minh" select hint="Tỉnh/thành của trụ sở — từ Master data → Locations." />
+          ) : (
+            <p className="rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+              Không phải công ty Việt Nam nên <b className="text-ink">không chọn Tỉnh / Thành phố</b> — ghi thành phố vào <b className="text-ink">Địa chỉ xuất hóa đơn</b> ở nhóm dưới.
+            </p>
+          )}
+          <LField label="Website" value="company.vn" />
         </JobGroup>
 
         {/* Uploaded at creation because it is what proves the MST belongs to them —

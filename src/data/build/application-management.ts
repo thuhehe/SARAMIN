@@ -143,7 +143,7 @@ export const applicationManagement: BuildModule = {
       items: [
         'THE HOLD IS ON THE CV, NOT THE APPLICATION — an application waits only because the CV it references is unresolved. The review queue is a CV queue (Admin → CV review); the Applicants list shows the consequence and links to it.',
         'ONE EVALUATION PER CV, and ONE DECISION — a candidate applying to thirty jobs with the same file is evaluated once at upload and reviewed once. The verdict releases or recalls all thirty in the same transaction.',
-        'THERE IS NO CEILING ON OUR OWN FAILURE ANY MORE — and that is the trade to be aware of. With the timer removed, an unworked queue does not leak bad CVs to employers; it stops candidates’ applications entirely. The row’s AGE is the only thing that complains, which is why the review SLA is now a blocker rather than an operational detail.',
+        'THERE IS NO CEILING ON OUR OWN FAILURE ANY MORE — and that is the trade to be aware of. With the timer removed, an unworked queue does not leak bad CVs to employers; it stops candidates’ applications entirely. And since doubt is invisible to the candidate (Resume management → the tag matrix), it stops them SILENTLY: nobody complains, because nobody is told. The row’s AGE is the only alarm in the system, which is why the review SLA is a blocker rather than an operational detail.',
         'A REJECTION PROPAGATES BOTH WAYS — rejecting a CV makes its held applications Not sent for good, flips any already Sent to **Recall**, and blocks new applies with that CV until it is fixed or approved. The candidate is told, with the fix one tap away.',
         'THE ONLY APPLY-TIME GATE besides a Rejected CV is the Saramin one, and it is deterministic: ≥1 experience (or education) and ≥3 skills. It is enforced server-side at POST /applications, not merely greyed in the UI.',
         'QUALITY IS NEVER A SIGNAL — match score, skill count above the minimum, or a missing cover letter may not affect anything here.',
@@ -410,7 +410,7 @@ export const applicationManagement: BuildModule = {
               'Not sent — the applied-with CV is in doubt (waiting for review) or was Rejected before delivery. Derived from the CV; the CV status column says which kind of Not sent this is.',
               'Recall — the CV was delivered, then Rejected (or its user Blocked): HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again.',
               'Blocked is user-level, not a fourth application status — blocking bulk-recalls every sent application the user has.',
-              'THERE IS NO SCREENING COLUMN, because there is no per-application screening fact. What holds an application is the CV’s status, and the row surfaces that as "Not sent — CV đang kiểm tra" with a link to the CV, not as a status the admin can edit here.',
+              'THERE IS NO SCREENING COLUMN, because there is no per-application screening fact. What holds an application is the CV’s status, and the row surfaces that as "Not sent — CV chờ duyệt" with a link to the CV, not as a status the admin can edit here. That wording is ADMIN-ONLY: the candidate on the other end of this row sees an ordinary "Đã nộp" and is told nothing about a review.',
             ],
           },
           {

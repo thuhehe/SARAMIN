@@ -2385,7 +2385,14 @@ function MyCvsScreen() {
    Two jobs on one screen: (1) show the document, (2) explain its STATE. A failing
    CV gets the DETAILED version of the message here — the list only had room for
    one line, and “what exactly is wrong and what do I do” is the thing a candidate
-   opens this page to find out. ── */
+   opens this page to find out.
+
+   WHICH STATES REACH THIS PANEL — the same two the list flags, and no others:
+   a SARAMIN CV below the rule (drawn below), and a REJECTED upload (the admin's
+   reason picks the heading, body and button, exactly as on the list). An upload
+   in DOUBT reaches this page with NO panel at all: it renders as a plain CV,
+   because our own uncertainty about our own parse is not something the candidate
+   is told about. See My CVs for the full rule. ── */
 function CvDetailScreen() {
   const go = useNav()
   /* The state this screen is demonstrating. Every failure reason lands here with
