@@ -19,7 +19,7 @@
  * Selection order is display order on the jobseeker page, so the reorder arrows are
  * the employer's only way to lead with their strongest benefit.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { BENEFIT_TYPES, benefitByKey } from '@/data/benefits'
 import { cn } from '@/lib/utils'
 
@@ -199,12 +199,12 @@ export function BenefitsField({
                     <button onClick={() => toggle(p.key)} title="Bỏ" className="rounded px-1 text-[11px] text-faint hover:text-rose-600">✕</button>
                   </span>
                 </div>
-                <textarea
+                {/* Rich text, not a plain box: a benefit description is naturally a
+                    LIST, and a bare textarea forces it into a run-on sentence. */}
+                <RichArea
                   value={p.text}
-                  onChange={(e) => setPicked((prev) => prev.map((x) => (x.key === p.key ? { ...x, text: e.target.value } : x)))}
-                  rows={2}
+                  onChange={(v) => setPicked((prev) => prev.map((x) => (x.key === p.key ? { ...x, text: v } : x)))}
                   placeholder={t.hint || 'Mô tả phúc lợi này…'}
-                  className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px] leading-relaxed text-ink outline-none placeholder:text-faint focus:border-brand"
                 />
               </div>
             )
@@ -222,6 +222,122 @@ export function BenefitsField({
   )
 }
 
+/**
+ * Minimal rich-text box — bold, italic, bullet and numbered list.
+ *
+ * A benefit description is naturally a LIST ("15 ngày phép · nghỉ sinh nhật ·
+ * company trip"), and a plain textarea forces it into a run-on sentence or into
+ * whatever bullet glyph the writer happens to type. Storing the marker means the
+ * jobseeker page renders a real list instead of a paragraph with dashes in it.
+ *
+ * The buttons edit the TEXT, not a hidden document model: bullets are inserted as
+ * markers at the start of each selected line, bold/italic wrap the selection in
+ * markdown. That is deliberate for a wireframe — the control is honest about what
+ * it stores, and the stored value stays greppable and diffable. Production can swap
+ * the editor without changing the field's shape as long as it keeps emitting the
+ * same markup.
+ */
+export function RichArea({
+  value, onChange, placeholder, rows = 2, readOnly,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
+  readOnly?: boolean
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  /** Wrap the selection (or the caret, giving an empty pair to type into).
+      Whitespace at either end is pushed OUTSIDE the marks — "**bold **" fails to
+      render as bold in most markdown parsers, and a user who double-clicks a word
+      usually catches the trailing space. */
+  const wrap = (mark: string) => {
+    const el = ref.current
+    if (!el) return
+    let { selectionStart: a, selectionEnd: b } = el
+    while (a < b && /\s/.test(value[a])) a++
+    while (b > a && /\s/.test(value[b - 1])) b--
+    onChange(value.slice(0, a) + mark + value.slice(a, b) + mark + value.slice(b))
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + mark.length, b + mark.length) })
+  }
+
+  /** Prefix every line the selection touches — toggling off if they all have it. */
+  const list = (kind: 'bullet' | 'number') => {
+    const el = ref.current
+    if (!el) return
+    const { selectionStart: a, selectionEnd: b } = el
+    const from = value.lastIndexOf('\n', a - 1) + 1
+    const toRaw = value.indexOf('\n', b)
+    const to = toRaw === -1 ? value.length : toRaw
+    const lines = value.slice(from, to).split('\n')
+    const marked = /^\s*([•]|\d+\.)\s/
+    const allMarked = lines.every((l) => marked.test(l))
+    const out = lines.map((l, i) =>
+      allMarked ? l.replace(marked, '') : `${kind === 'bullet' ? '• ' : `${i + 1}. `}${l}`,
+    )
+    onChange(value.slice(0, from) + out.join('\n') + value.slice(to))
+    requestAnimationFrame(() => el.focus())
+  }
+
+  const Btn = ({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) => (
+    <button
+      type="button" onClick={onClick} title={title} disabled={readOnly}
+      className="grid h-5 w-5 place-items-center rounded text-[11px] text-muted hover:bg-canvas hover:text-ink disabled:opacity-40"
+    >{children}</button>
+  )
+
+  return (
+    <div className={cn('overflow-hidden rounded-md border border-line bg-surface focus-within:border-brand', readOnly && 'opacity-60')}>
+      <div className="flex items-center gap-0.5 border-b border-line-soft bg-canvas/40 px-1 py-0.5">
+        <Btn onClick={() => wrap('**')} title="Đậm"><b>B</b></Btn>
+        <Btn onClick={() => wrap('*')} title="Nghiêng"><i>I</i></Btn>
+        <span className="mx-0.5 h-3 w-px bg-line" />
+        <Btn onClick={() => list('bullet')} title="Danh sách gạch đầu dòng">•</Btn>
+        <Btn onClick={() => list('number')} title="Danh sách đánh số">1.</Btn>
+      </div>
+      <textarea
+        ref={ref}
+        value={value} readOnly={readOnly} rows={rows}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full resize-y bg-transparent px-2.5 py-1.5 text-[11.5px] leading-relaxed text-ink outline-none placeholder:text-faint"
+      />
+    </div>
+  )
+}
+
+/** Inline markup from RichArea: **bold** and *italic*. */
+function inlineRich(t: string): React.ReactNode[] {
+  return t.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean).map((seg, i) => {
+    if (/^\*\*[^*]+\*\*$/.test(seg)) return <b key={i} className="font-semibold text-ink">{seg.slice(2, -2)}</b>
+    if (/^\*[^*]+\*$/.test(seg)) return <i key={i}>{seg.slice(1, -1)}</i>
+    return <span key={i}>{seg}</span>
+  })
+}
+
+/**
+ * Renders what RichArea stores. It has to exist: the moment the editor can emit
+ * bullets, a reader that prints the raw "• " and "**" is showing the markup rather
+ * than the formatting, and every description written as a list looks broken.
+ */
+export function RichText({ value, className }: { value: string; className?: string }) {
+  return (
+    <div className={className}>
+      {value.split('\n').map((line, i) => {
+        const m = line.match(/^\s*([•]|\d+\.)\s+(.*)$/)
+        if (m) return (
+          <p key={i} className="flex gap-1.5">
+            <span className="shrink-0 text-faint">{m[1]}</span>
+            <span className="min-w-0">{inlineRich(m[2])}</span>
+          </p>
+        )
+        return line.trim() ? <p key={i}>{inlineRich(line)}</p> : null
+      })}
+    </div>
+  )
+}
+
 /** Jobseeker-facing render — icon + title + description, one card each. */
 export function BenefitCards({ items }: { items: { key: string; text: string }[] }) {
   return (
@@ -234,7 +350,7 @@ export function BenefitCards({ items }: { items: { key: string; text: string }[]
             <t.Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
             <div className="min-w-0">
               <p className="text-[12.5px] font-semibold text-ink">{t.vi}</p>
-              <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{p.text}</p>
+              <RichText value={p.text} className="mt-0.5 space-y-0.5 text-[11.5px] leading-relaxed text-muted" />
             </div>
           </div>
         )

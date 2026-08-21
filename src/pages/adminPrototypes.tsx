@@ -3159,13 +3159,15 @@ const ME = 'Nguyễn Thị Lan'
  *   • Under the manager are (up to) 2 TEAMS, each run by a SALES LEAD.
  *   • A salesperson belongs to exactly ONE team; a lead may run up to 2 teams.
  *     Nothing nests below the team.
- * Visibility follows this tree:
- *   rep      → only companies they own.
- *   lead     → their own book (Sales view) + every company owned by a member of
- *              the team(s) they lead (Sales-lead view).
- *   manager  → their own book + the whole department (Department view).
- * (Who may EDIT vs only LOG ACTIVITY on a record is a separate, record-level
- *  rule — see the CompanyDetail owner gate — not a list-scope rule.) */
+ * The LIST follows this tree:
+ *   rep      → only companies they own (no tab).
+ *   lead     → own book (Sales view) + every company owned by a salesperson in
+ *              the team(s) they lead (Sales lead view).
+ *   manager  → own book (Sales view) + every salesperson's book (Sales manager view).
+ * SCOPE APPLIES TO THE LIST ONLY. Every salesperson can SEARCH, OPEN and LOG AN
+ * ACTIVITY on ANY company on the platform — otherwise "not in my list" reads as
+ * "does not exist" and the rep creates a duplicate. Only the sales OWNER may edit
+ * a company's own fields (see the CompanyDetail owner gate). */
 type SalesTeam = { name: string; lead: string; members: string[] }
 const SALES_TEAMS: SalesTeam[] = [
   // A lead is also a member of their home team; Nguyễn Thị Lan leads BOTH teams.
@@ -3465,22 +3467,44 @@ function AdminCompanyList() {
         </div>
       )}
 
-      {/* Prototype affordance: switch the signed-in identity to see how record scope
-          changes by role. In production this is the session, never a control. */}
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-2 text-[12px]">
-        <span className="font-medium text-faint">Đang xem với vai trò</span>
-        <select
-          value={persona.name}
-          onChange={(e) => { const p = SALES_PERSONAS.find((x) => x.name === e.target.value)!; setPersona(p); setView('me') }}
-          className="cursor-pointer rounded-md border border-line bg-surface px-2 py-1 text-[12px] font-medium text-ink outline-none"
-        >
-          {SALES_PERSONAS.map((p) => <option key={p.name} value={p.name}>{p.name} — {SALES_ROLE_LABEL[p.role]}</option>)}
-        </select>
-        <span className="text-faint">
-          {persona.role === 'rep' && 'Chỉ thấy công ty do mình phụ trách.'}
-          {persona.role === 'lead' && 'Sales view = sổ của mình · Sales lead view = công ty của mọi thành viên trong (các) nhóm mình quản lý.'}
-          {persona.role === 'manager' && 'Sales view = sổ của mình · Department view = toàn bộ phòng Sales.'}
-        </span>
+      {/* Prototype affordance: switch the signed-in identity to see how the LIST scope
+          changes by role. In production this is the session, never a control.
+          The permission summary beside it is what makes the invisible rules visible —
+          a permission is otherwise impossible to SEE on a mockup: the reader would
+          have to notice which buttons are missing. */}
+      <div className="mb-3 rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          <span className="font-medium text-faint">Đang xem với vai trò</span>
+          <select
+            value={persona.name}
+            onChange={(e) => { const p = SALES_PERSONAS.find((x) => x.name === e.target.value)!; setPersona(p); setView('me') }}
+            className="cursor-pointer rounded-md border border-line bg-surface px-2 py-1 text-[12px] font-medium text-ink outline-none"
+          >
+            {SALES_PERSONAS.map((p) => <option key={p.name} value={p.name}>{p.name} — {SALES_ROLE_LABEL[p.role]}</option>)}
+          </select>
+          <span className="text-[11px] text-faint">— đổi vai trò để xem quyền thay đổi thế nào</span>
+        </div>
+        {/* Four rules, always on screen: the one that is scoped, and the three that are not. */}
+        <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              k: 'Danh sách này',
+              v: persona.role === 'rep' ? 'Chỉ công ty của tôi' : persona.role === 'lead' ? 'Của tôi + cả nhóm tôi quản lý' : 'Của tôi + toàn bộ sales',
+              scoped: true,
+            },
+            { k: 'Tìm kiếm', v: 'MỌI công ty', scoped: false },
+            { k: 'Xem chi tiết', v: 'MỌI công ty', scoped: false },
+            { k: 'Ghi nhận hoạt động', v: 'MỌI công ty', scoped: false },
+          ].map((r) => (
+            <div key={r.k} className={cn('rounded-md border px-2.5 py-1.5', r.scoped ? 'border-brand/30 bg-brand-soft' : 'border-line bg-surface')}>
+              <p className={cn('text-[10px] font-semibold uppercase tracking-wide', r.scoped ? 'text-brand/70' : 'text-faint')}>{r.k}</p>
+              <p className={cn('text-[11.5px] font-medium', r.scoped ? 'text-brand' : 'text-ink/80')}>{r.v}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-faint">
+          Chỉ <b className="text-ink/70">danh sách</b> bị giới hạn theo vai trò. Tìm kiếm · xem · ghi nhận hoạt động thì <b className="text-ink/70">không</b> — nếu không tìm thấy, sales sẽ tạo trùng khách hàng. Sửa thông tin công ty: <b className="text-ink/70">chỉ sales phụ trách</b>.
+        </p>
       </div>
 
       {/* The view switcher decides WHICH list this is, so it reads first — before the
@@ -3493,7 +3517,7 @@ function AdminCompanyList() {
             <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
               {views.map((v) => (
                 <button key={v} onClick={() => setView(v)} className={cn('rounded-md px-3 py-1 transition-colors', effView === v ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>
-                  {v === 'me' ? 'Sales view' : v === 'team' ? 'Sales lead view' : 'Department view'}
+                  {v === 'me' ? 'Sales view' : v === 'team' ? 'Sales lead view' : 'Sales manager view'}
                 </button>
               ))}
             </span>
@@ -3533,19 +3557,24 @@ function AdminCompanyList() {
            neutral, not a warning: finding a colleague's customer is a success. It
            needs a real query, it is capped, and it dies with the query — three
            things that keep "reach" from quietly becoming "browse". */
+        /* Available in EVERY tab, not just the own-book one: search reaches ALL
+           companies for every salesperson (rep, lead and manager alike). What the
+           dropdown lists is simply whatever the current tab does not already show. */
         outOfScope={(q) => {
-          if (!mine) return null
           const ql = searchKey(q)
           const inBook = rows.filter((c) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' ')).includes(ql)).length
           if (ql.length < 2) {
             return (
               <div className="absolute left-0 top-full z-20 mt-1 w-[340px] rounded-lg border border-line bg-surface p-2.5 text-[11px] text-muted shadow-lg">
-                Gõ ít nhất <b className="text-ink">2 ký tự</b> để tìm ngoài sổ của bạn — tên, MST hoặc Company ID.
+                Gõ ít nhất <b className="text-ink">2 ký tự</b> để tìm trong <b className="text-ink">mọi công ty</b> — tên, MST hoặc Company ID.
               </div>
             )
           }
           const hay = (c: Company) => searchKey([coLabel(c), c.legalName, c.tax, companyId(coKey(c)), c.contact, c.domain].join(' '))
-          const all = COMPANIES.filter((c) => c.owner !== me && hay(c).includes(ql))
+          // everything the CURRENT tab does not already list — scope never hides a
+          // company from search, it only decides what the table itself shows
+          const listed = new Set(base.map((c) => c.name))
+          const all = COMPANIES.filter((c) => !listed.has(c.name) && hay(c).includes(ql))
           const hits = all.slice(0, 5)
           /* Third section: the free pool. Same reason as "ngoài sổ" — a rep who does
              not find a company here creates a duplicate. The pool is where the name
@@ -3554,7 +3583,7 @@ function AdminCompanyList() {
           return (
             <div className="absolute left-0 top-full z-20 mt-1 w-[420px] overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
               <div className="flex items-center gap-2 border-b border-line-soft bg-canvas/60 px-2.5 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Ngoài sổ của bạn</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Ngoài danh sách này — mọi sales đều tìm &amp; xem được</span>
                 <span className="ml-auto text-[10.5px] text-faint">{all.length ? `${hits.length}/${all.length}` : '0'} kết quả</span>
               </div>
               {hits.length > 0 ? (
@@ -3587,7 +3616,7 @@ function AdminCompanyList() {
                 /* Nothing anywhere is the moment a duplicate gets created, so the
                    create action lives right here rather than back up on the toolbar. */
                 <div className="p-2.5">
-                  <p className="text-[11px] text-muted">Không có công ty nào khớp “{q}” — kể cả ngoài sổ của bạn.</p>
+                  <p className="text-[11px] text-muted">Không có công ty nào khớp “{q}” — kể cả ngoài danh sách này.</p>
                   {/* Create is the last resort, and only when the pool has nothing
                       either — otherwise the rep types a company that already exists
                       as free data and it gets entered twice. */}
@@ -5144,26 +5173,47 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
 
    So the row is editable and carries a marker saying where the value actually
    lives. What is forbidden is a SECOND field, not a second editing surface. */
-const SYNC = '↔ Overview'
-
+/** A field on the company page. Plain input, select, date, number or a word-capped
+    textarea — no "↔ Overview" badge any more: after the registry fields (MST, tên
+    pháp lý, tình trạng, người đại diện) moved off this page, what is left is owned
+    BY the page, so there is nothing to cross-reference. */
 function PageField({
-  label, value, req, ro, hint, sync, options, wide,
+  label, value, req, ro, hint, options, wide, type, suffix, area, maxWords,
 }: {
   label: string; value: string; req?: boolean; ro?: boolean; hint?: string
-  /** the value is stored on the company record — editing here updates it there */
-  sync?: boolean
-  /** present → renders a select instead of a text input */
+  /** present → renders a select instead of an input */
   options?: string[]
   wide?: boolean
+  type?: 'text' | 'date' | 'number'
+  /** unit shown inside the right edge of the box — ₫, người… */
+  suffix?: string
+  /** a textarea instead of one line, with a live word counter */
+  area?: boolean
+  maxWords?: number
 }) {
   const [v, setV] = useState(value)
+  const words = v.trim() ? v.trim().split(/\s+/).length : 0
+  const over = maxWords !== undefined && words > maxWords
+  /* Money reads back formatted under the box. A raw 44184040000 is unreadable and
+     an operator cannot tell a typo'd extra zero from a correct one. */
+  const money = type === 'number' && suffix === '₫' && Number(v) > 0
   return (
     <div className={cn(wide && 'sm:col-span-2')}>
       <div className="mb-0.5 flex items-baseline gap-1.5">
         <label className="text-[11px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-        {sync && <span className="ml-auto shrink-0 rounded border border-line bg-canvas px-1 text-[9px] font-medium text-faint" title="Giá trị nằm ở hồ sơ công ty — sửa ở đây cũng cập nhật tab Overview">{SYNC}</span>}
+        {maxWords !== undefined && (
+          <span className={cn('ml-auto shrink-0 text-[9.5px]', over ? 'font-semibold text-rose-600' : 'text-faint')}>
+            {words}/{maxWords} từ
+          </span>
+        )}
       </div>
-      {options ? (
+      {area ? (
+        <textarea
+          value={v} readOnly={ro} rows={3} onChange={(e) => setV(e.target.value)}
+          className={cn('w-full rounded-md border bg-surface px-2.5 py-1.5 text-[12px] leading-relaxed text-ink outline-none placeholder:text-faint',
+            over ? 'border-rose-400' : 'border-line focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
+        />
+      ) : options ? (
         <select
           value={v} disabled={ro} onChange={(e) => setV(e.target.value)}
           className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
@@ -5173,16 +5223,39 @@ function PageField({
           {[...new Set([v, ...options])].map((o) => <option key={o}>{o}</option>)}
         </select>
       ) : (
-        <input
-          value={v} readOnly={ro} onChange={(e) => setV(e.target.value)}
-          placeholder="—"
-          className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none placeholder:text-faint focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
-        />
+        <div className="relative">
+          <input
+            type={type ?? 'text'}
+            value={v} readOnly={ro} onChange={(e) => setV(e.target.value)}
+            placeholder="—"
+            className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none placeholder:text-faint focus:border-brand',
+              suffix && 'pr-9', ro && 'cursor-not-allowed opacity-60')}
+          />
+          {suffix && <span className="pointer-events-none absolute inset-y-0 right-2.5 grid place-items-center text-[11px] text-faint">{suffix}</span>}
+        </div>
       )}
+      {money && <p className="mt-0.5 text-[10px] font-medium text-brand">{Number(v).toLocaleString('vi-VN')} ₫</p>}
       {hint && <p className="mt-0.5 text-[10px] leading-relaxed text-faint">{hint}</p>}
     </div>
   )
 }
+
+/** Hình thức doanh nghiệp — the "business form" a jobseeker filters companies by.
+    Modelled on Saramin KR's 기업형태 and adapted to the VN market, where FDI and
+    state-owned are the two distinctions candidates actually care about. NOT the
+    same as Loại hình doanh nghiệp (the legal form on the ĐKKD, which lives on the
+    company record): this is scale + ownership character, that one is company law. */
+const BUSINESS_FORMS = [
+  'Mid-sized company',
+  'Large enterprise / Corporation',
+  'Small & medium enterprise (SME)',
+  'Startup',
+  'Foreign-invested (FDI) company',
+  'Joint venture',
+  'State-owned enterprise',
+  'Branch / Representative office',
+  'Non-profit / NGO',
+]
 
 /** Tình trạng theo mã số thuế. The tax authority publishes EIGHT codes (00–07);
     these are the five an account manager can act on, with the rest folded in —
@@ -5277,7 +5350,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
     { label: 'Logo', ok: has },
     { label: 'Tên hiển thị', ok: true },
     { label: 'Ngành nghề', ok: true },
-    { label: 'Ít nhất 1 văn phòng', ok: true },
+    { label: 'Địa chỉ', ok: true },
     { label: 'Giới thiệu (VI)', ok: has },
   ]
   const missing = gates.filter((g) => !g.ok)
@@ -5288,15 +5361,14 @@ function CompanyPageEditor({ c }: { c: Company }) {
      which therefore must not inflate the score. */
   const secs = [
     { n: 1, title: 'Nhận diện', ok: has, req: true },
-    { n: 2, title: 'Thông tin doanh nghiệp', ok: true, auto: true },
+    { n: 2, title: 'Company at a glance', ok: true },
     { n: 3, title: 'Đặc điểm nổi bật', ok: traits.length > 0 },
-    { n: 4, title: 'Về công ty', ok: has, req: true },
+    { n: 4, title: 'Company vision', ok: has, req: true },
     { n: 5, title: 'Video giới thiệu', ok: has },
     { n: 6, title: 'Hình ảnh công ty', ok: has },
     { n: 7, title: 'Phúc lợi & Chế độ', ok: bens.length > 0 },
-    { n: 8, title: 'Văn phòng', ok: true, req: true },
   ]
-  const optional = secs.filter((s) => !s.req && !s.auto)
+  const optional = secs.filter((s) => !s.req)
   const done = gates.length - missing.length + optional.filter((s) => s.ok).length
   const pct = Math.round((done / (gates.length + optional.length)) * 100)
 
@@ -5313,12 +5385,12 @@ function CompanyPageEditor({ c }: { c: Company }) {
       <div className="min-w-0 space-y-2">
 
       {/* ── 1. Identity — the sticky sidebar on the live page ───────────────── */}
-      <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, tên, ngành, nút theo dõi" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
-        {/* Tên hiển thị is NOT a page field — it is the company's own display name,
-            edited on Overview. The page reads it, so there is nothing to type here. */}
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          <PageField label="Dòng mô tả ngắn" sync ro={ro} value={`${c.industry} · Dịch vụ tài chính`} hint="Ngành + lĩnh vực kinh doanh, lấy từ Overview. Hiện ngay dưới tên, tối đa 1 dòng." />
-        </div>
+      <PageSec n={1} title="Nhận diện" sub="Sidebar · logo, tên hiển thị" state={has ? 'Đã có' : 'Thiếu logo'} tone={has ? 'active' : 'pending'} open={open === 1} onToggle={() => toggle(1)}>
+        {/* Tên hiển thị is asked HERE, not on the create form: it is the brand name
+            the public page and every job card show, so it belongs with the logo it
+            sits beside. Creation only needs the legal name — the display name falls
+            back to it until someone sets one. */}
+        <PageField label="Tên hiển thị" req ro={ro} value={c.shortName || c.name} hint="Tên thương hiệu ứng viên biết — thường KHÁC tên pháp lý trên hoá đơn." />
         {/* One asset, two frames, plus the peer row that settles the size — see LogoSizer. */}
         <div>
           <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Logo <span className="text-rose-500">*</span></p>
@@ -5327,23 +5399,31 @@ function CompanyPageEditor({ c }: { c: Company }) {
       </PageSec>
 
       {/* ── 2. Registry facts — ONE stored value, editable from either tab ──── */}
-      <PageSec n={2} title="Thông tin doanh nghiệp" sub="Thẻ facts · cùng dữ liệu với hồ sơ công ty" state="Dùng chung" tone="neutral" open={open === 2} onToggle={() => toggle(2)}>
+      <PageSec n={2} title="Company at a glance" sub="Thành lập · hình thức · nhân sự · doanh thu · business detail · địa chỉ" state="Đã có" tone="active" open={open === 2} onToggle={() => toggle(2)}>
         <div className="grid gap-2.5 sm:grid-cols-2">
-          <PageField label="Năm thành lập" sync ro={ro} value="1993" />
-          <PageField label="Quy mô" sync ro={ro} value={c.size} options={CO_SIZES} />
-          <PageField label="Ngành" sync ro={ro} value={c.industry} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
-          <PageField label="Quốc gia" sync ro={ro} value={c.country} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
-          <PageField label="Mã số thuế" sync ro={ro} value={c.tax} />
-          <PageField label="Tên pháp lý" sync ro={ro} value={c.legalName} />
-          <PageField label="Loại hình" sync ro={ro} value={/CP|Cổ phần/.test(c.legalName) ? 'Công ty cổ phần' : 'Công ty TNHH một thành viên'} options={BIZ_TYPES} />
-          <PageField label="Tình trạng (theo MST)" sync ro={ro} value="Đang hoạt động" options={TAX_STATUS} />
-          <PageField label="Người đại diện" sync ro={ro} value={c.contact.replace(/ · .*/, '')} />
-          <PageField label="Địa chỉ đăng ký" sync ro={ro} value={c.address} />
+          {/* Founding date LEADS the card, matching Saramin KR's strip — the first
+              tile there is 업력 (years in business) over the founding date. It is
+              also the only field here that reads as a claim about the company
+              rather than a classification of it. */}
+          <PageField label="Ngày thành lập" type="date" ro={ro} value="1993-09-27" />
+          <PageField label="Business form" ro={ro} value="Mid-sized company" options={BUSINESS_FORMS} hint="Quy mô + tính chất sở hữu — KHÁC “Loại hình doanh nghiệp” (hình thức pháp lý trên ĐKKD, nằm ở tab Overview)." />
+          <PageField label="Number of employees" type="number" suffix="người" ro={ro} value="1240" hint="Một con số chính xác, không phải khoảng. Dải quy mô cho bộ lọc được suy ra từ số này." />
+          <PageField label="Revenues" type="number" suffix="₫" ro={ro} value="441840000000" hint="Doanh thu năm gần nhất, đơn vị đồng. Nhập số thuần — hệ thống tự tách hàng nghìn khi hiển thị." />
         </div>
-        <p className="text-[10.5px] leading-relaxed text-faint">
-          Các trường <b className="text-ink/70">{SYNC}</b> nằm ở hồ sơ công ty — <b className="text-ink/70">một giá trị duy nhất</b>, sửa ở đây hay ở tab Overview đều cùng ghi vào đó.
-          Giữ chúng hiện ở đây để thấy ngay thẻ facts còn thiếu gì mà không phải nhảy tab.
-        </p>
+        {/* Business detail sits BELOW the tile grid, not inside it: the strip is
+            exactly 4 tiles wide and a 5th breaks the row, and this is free text
+            rather than a fact tile. It lives here because it reads as the prose
+            companion to Business form directly above it. */}
+        <PageField
+          label="Business detail" area maxWords={80} ro={ro}
+          value={`${c.industry} · Dịch vụ ${c.industry.toLowerCase()} cho khách hàng doanh nghiệp và cá nhân trên toàn quốc.`}
+        />
+        {/* Address + its map link moved up from the old section 8. They belong with
+            the facts, exactly as Saramin KR has them: 주소 with a 지도보기 button
+            sitting in the same detail grid as 업종 and 사업내용, not in a section of
+            their own. A lone address is not worth a section header. */}
+        <PageField label="Địa chỉ" ro={ro} value={c.address} wide />
+        <PageField label="Google Maps link" ro={ro} value="https://maps.app.goo.gl/…" wide hint="Dán link chia sẻ từ Google Maps — nút “Xem bản đồ” trên trang công khai trỏ vào đây. Bỏ trống thì chỉ hiện dòng địa chỉ." />
       </PageSec>
 
       {/* ── 3. Trait chips ─────────────────────────────────────────────────── */}
@@ -5367,7 +5447,7 @@ function CompanyPageEditor({ c }: { c: Company }) {
       </PageSec>
 
       {/* ── 4. About ───────────────────────────────────────────────────────── */}
-      <PageSec n={4} title="Về công ty" sub="Đoạn giới thiệu · VI bắt buộc" state={has ? 'Đã có' : 'Bắt buộc — trống'} tone={has ? 'active' : 'pending'} open={open === 4} onToggle={() => toggle(4)}>
+      <PageSec n={4} title="Company vision" sub="Tầm nhìn · sứ mệnh · giới thiệu · VI bắt buộc" state={has ? 'Đã có' : 'Bắt buộc — trống'} tone={has ? 'active' : 'pending'} open={open === 4} onToggle={() => toggle(4)}>
         <div className="mb-1 flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
           {/* Two languages only — VI required, EN optional. No KO. */}
           {(['VI', 'EN'] as const).map((l) => (
@@ -5437,15 +5517,6 @@ function CompanyPageEditor({ c }: { c: Company }) {
       </PageSec>
 
       {/* ── 8. Offices — the same book the job form picks from ──────────────── */}
-      <PageSec n={8} title="Văn phòng" sub="Danh sách + bản đồ · dùng chung sổ địa điểm với tin tuyển dụng" state="3 địa điểm" tone="active" open={open === 8} onToggle={() => toggle(8)}>
-        <div className="rounded-md border border-line bg-canvas/30 p-2.5">
-          <WorkingLocationsField max={8} initial={['hq', 'hn', 'bd']} />
-        </div>
-        <p className="text-[10.5px] leading-relaxed text-faint">
-          Đây là <b className="text-ink/70">cùng một sổ địa điểm</b> mà form đăng tin chọn ra — sửa địa chỉ ở đây thì mọi tin đang chạy cập nhật theo. Địa điểm đầu tiên là trụ sở chính và là điểm bản đồ mặc định.
-        </p>
-      </PageSec>
-
       </div>
 
       {/* ═══ RIGHT — progress rail ════════════════════════════════════════════
@@ -5478,8 +5549,8 @@ function CompanyPageEditor({ c }: { c: Company }) {
               >
                 <span className={cn(
                   'grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border text-[8px] font-bold',
-                  s.auto ? 'border-line text-faint' : s.ok ? 'border-transparent bg-emerald-500 text-white' : 'border-dashed border-line text-transparent',
-                )}>{s.auto ? '·' : '✓'}</span>
+                  s.ok ? 'border-transparent bg-emerald-500 text-white' : 'border-dashed border-line text-transparent',
+                )}>✓</span>
                 <span className={cn('min-w-0 flex-1 truncate', open === s.n ? 'font-semibold text-brand' : s.ok ? 'text-ink/80' : 'text-faint')}>{s.title}</span>
                 {s.req && <span className="shrink-0 text-[9px] text-rose-500">*</span>}
               </button>
@@ -9388,7 +9459,13 @@ const activateWithinLabel = (p: { entitlement?: Entitlement; activateWithin?: nu
   return m === null ? '—' : `${m} tháng`
 }
 
-const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number }[] = [
+/* `trial` is a third VISIBILITY axis, alongside role. A trial product is a real
+   SKU with a real (low) price — not a discount — and it is offered ONLY inside a
+   quotation whose discount programme is Gói dùng thử. Keeping it a product is
+   what makes the sale auditable: the invoice states what was sold at what price,
+   and revenue reporting sees a cheap SKU rather than a 95% write-down nobody can
+   explain a year later. */
+const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean }[] = [
   // ── Job posting ───────────────────────────────────────────────────────────
   { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
   { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
@@ -9397,7 +9474,8 @@ const CATALOG: { sku: string; name: string; type: string; role: ProductRole; pri
   { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
   // Shorter window than the 12-month default on purpose: a giveaway that can be
   // banked for a year is a liability on the books, not an incentive to start.
-  { sku: 'JOB-TRIAL', name: 'Tin Basic — dùng thử (tặng KH mới)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3 },
+  { sku: 'JOB-TRIAL', name: 'Tin đăng dùng thử (Basic Job)', type: 'Job posting', role: 'Main', price: '500,000 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
+  { sku: 'CV-TRIAL', name: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', type: 'CV search', role: 'Main', price: '300,000 ₫', fulfilment: '5 lượt · 7 ngày · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
 
   // ── CV search ─────────────────────────────────────────────────────────────
   { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', role: 'Main', price: '2,400,000 ₫', fulfilment: '30 lượt · 30 ngày · ~80.000/CV', status: 'Active' },
@@ -9502,6 +9580,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
             {p.name} <Pill tone={p.status === 'Active' ? 'active' : 'expired'}>{p.status}</Pill>
             {isFreeTier && <Pill tone="neutral">🆓 Free — Admin only</Pill>}
+            {p.trial && <Pill tone="draft">Sản phẩm dùng thử</Pill>}
           </h2>
           <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted">
             <span className="font-mono">{p.sku}</span> · {p.type} ·
@@ -9522,6 +9601,16 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
         </p>
       )}
 
+      {p.trial && (
+        <p className="mb-3 flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
+          <span>🧪</span>
+          <span>
+            <b>Chỉ bán trong báo giá dùng thử.</b> Sản phẩm này chỉ xuất hiện khi báo giá chọn chương trình <b>Gói dùng thử</b>, và báo giá đó không chọn được sản phẩm thường.
+            Đây là <b>sản phẩm giá thấp</b>, không phải chiết khấu — hóa đơn ghi đúng thứ đã bán với đúng giá đã bán, và báo cáo doanh thu thấy một SKU rẻ chứ không phải một khoản giảm giá 95%.
+            Mọi ô chiết khấu trên báo giá đều khoá ở 0.
+          </span>
+        </p>
+      )}
       {isFreeTier && (
         <p className="mb-3 flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
           <span>🆓</span><span><b>Always available — no PO, no limit.</b> HQ can post this tier for any company at any time. It is <b>never offered on the Company site</b> (employers post only from what they bought), it is not upgradeable to a paid tier, and it gets no premium placement slots.</span>
@@ -9765,7 +9854,7 @@ function AdminCatalog() {
         // is the human name (sales says "Tin Top Job", never "JOB-TOPJOB"). Only
         // document lists — quotation, invoice, PO — lead with their number, because
         // for a document the number IS the name.
-        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1.1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Role', w: '0.8fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.6fr' }, { label: 'Activate within', w: '1fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
+        cols={[{ label: 'Product', w: '1.9fr' }, { label: 'SKU', w: '1.1fr' }, { label: 'Type', w: '1.2fr' }, { label: 'Role', w: '1.2fr' }, { label: 'Price', w: '1.1fr', align: 'r' }, { label: 'Fulfilment', w: '1.6fr' }, { label: 'Activate within', w: '1fr' }, { label: 'Status', w: '0.7fr', align: 'r' }]}
         rows={rows.map((p) => [
           // The name opens the product record — where the price, the entitlement it
           // grants and its change history live.
@@ -9774,9 +9863,10 @@ function AdminCatalog() {
           p.type,
           // Add-on can never be a quotation line, so it is called out rather than
           // printed as plain text like Main.
-          p.role === 'Main'
-            ? <span className="text-muted">Main</span>
-            : <Pill tone={p.role === 'Add-on' ? 'pending' : 'neutral'}>{p.role}</Pill>,
+          <span className="flex min-w-0 flex-wrap items-center gap-1">
+            {p.role === 'Main' ? <span className="text-muted">Main</span> : <Pill tone={p.role === 'Add-on' ? 'pending' : 'neutral'}>{p.role}</Pill>}
+            {p.trial && <Pill tone="draft">Dùng thử</Pill>}
+          </span>,
           <span className={cn(p.price.startsWith('—') && 'text-faint')}>{p.price}</span>,
           p.fulfilment,
           // Next to Fulfilment on purpose: "what you get" and "by when you must
@@ -9837,6 +9927,8 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState<ProductTypeId>('job')
   const [lang, setLang] = useState<'VI' | 'EN'>('VI')
   const [role, setRole] = useState<'main' | 'addon'>('main')
+  /* A trial SKU is quotable only inside a trial quotation — see the catalog note. */
+  const [trial, setTrial] = useState(false)
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Inactive')
   const [nameVi, setNameVi] = useState('')
   // Product ID auto-follows the name until someone types their own, then stops.
@@ -9957,6 +10049,13 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 {role === 'addon' && ' Never shown as a quotation line — it reaches a customer only inside a Main product.'}
               </p>
             )}
+            {/* Sits under Role because the two answer the same question — WHERE this
+                product may be quoted. A trial SKU is not a discount and not a gift:
+                it is a cheap product, offered only inside a trial quotation. */}
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-[12px]">
+              <input type="checkbox" checked={trial} onChange={(e) => setTrial(e.target.checked)} className="h-3.5 w-3.5 shrink-0" />
+              <span className={cn('font-medium', trial ? 'text-brand' : 'text-ink')}>Sản phẩm dùng thử / Trial product</span>
+            </label>
           </div>
 
           {/* Status is a plain field with one Save, not a set of transition buttons —
@@ -11342,6 +11441,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
 
      What each mode does to the three inputs is declared in DISCOUNT_MODES, not
      re-derived here — twelve rules spread through a form is how they drift. */
+  /* WHO is writing this quotation. In the product this is simply the signed-in
+     user; here it is a picker so the self-approval rules can be seen working —
+     the same personas the Companies and Quotations lists use. */
+  const [creator, setCreator] = useState<SalesPersona>(SALES_PERSONAS[0])
   const [mode, setMode] = useState<DiscountMode>('newchurn')
   const allowed = modesFor(co?.account)
   /* Picking a company resets the mode to that status's default, and re-picking a
@@ -11421,8 +11524,19 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
      rep is trusted to set it and owns it, which is the difference between the two
      modes. A fixed amount never routes either — it is a voucher, agreed
      elsewhere, not a rate the rep invented. */
+  /* Routed on the HIGHEST band across the options, not per option: the customer
+     picks one and the approver has to be able to sign off on the worst case. So a
+     document with one option at 8% and another at 18% goes to the manager, and the
+     lead never sees it — two approvals on one document that offers a choice would
+     mean approving a price the customer may never take. */
+  const perOption = rule.approves ? options.map((o) => (o.optDisc > 0 ? apprRole(o.optDisc) : null)) : []
   const orderPct = rule.approves ? Math.max(0, ...options.map((o) => o.optDisc)) : 0
-  const approver = orderPct === 0 ? null : apprRole(orderPct)
+  const required = orderPct === 0 ? null : apprRole(orderPct)
+  /* The creator's own seniority can waive it entirely — see selfApproves. */
+  const waived = !!required && selfApproves(creator.role, required)
+  const approver = waived ? null : required
+  /** True when the options disagree and the document escalated because of it. */
+  const escalated = required === 'manager' && perOption.some((r) => r === 'lead')
 
   const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
   const valid = !!co && everyOptionPaid
@@ -11455,7 +11569,20 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
             <InfoBit label="Số báo giá / Quotation no." value={`QUO-00991${seq}-07-2026`} mono hint="Gapless sequence" />
             <InfoBit label="Ngày báo giá / Proposal date" value={today} />
             <InfoBit label="Ngày hết hạn / Expiry date" value={endOfMonth(today)} hint={`cuối tháng · còn ${daysLeft(today, today)} ngày`} />
-            <InfoBit label="Báo giá bởi / Proposed by" value="Nguyễn Thị Lan" hint="Signed-in rep" />
+            {/* A field only in the mock: in the product this is the signed-in user
+                and is not choosable. It is here because the creator's role decides
+                whether the discount needs approving at all. */}
+            <label className="min-w-0">
+              <span className="block text-[10px] uppercase tracking-wide text-faint">Báo giá bởi / Proposed by</span>
+              <select
+                value={creator.name}
+                onChange={(e) => setCreator(SALES_PERSONAS.find((x) => x.name === e.target.value)!)}
+                className="w-full cursor-pointer truncate bg-transparent text-[12.5px] font-medium text-ink outline-none"
+              >
+                {SALES_PERSONAS.map((x) => <option key={x.name} value={x.name}>{x.name} — {SALES_ROLE_LABEL[x.role]}</option>)}
+              </select>
+              <span className="block text-[10px] text-faint">quyết định có cần duyệt hay không</span>
+            </label>
           </div>
 
           {/* 2 · client — pick the company, then confirm it from its own record.
@@ -11704,7 +11831,17 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
           {approver && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
               Chiết khấu tổng đơn <b>{orderPct}%</b> → cần <b>{SALES_ROLE_LABEL[approver]}</b> duyệt trước khi gửi khách.
+              {/* Why the lead was skipped, when the options disagreed. */}
+              {escalated && <span className="text-amber-800"> Có option chỉ cần Sales lead, nhưng option cao nhất vượt {SPECIAL_LEADER_MAX}% nên <b>cả báo giá</b> trình Sales manager.</span>}
               <span className="text-amber-800"> Mức ≤ {SPECIAL_LEADER_MAX}% do Sales lead duyệt, trên {SPECIAL_LEADER_MAX}% do Sales manager duyệt. Chiết khấu theo bậc trên từng dòng và số tiền giảm cố định <b>không cần duyệt</b>. Sửa lại % sau khi đã duyệt sẽ <b>hủy phê duyệt</b> và phải trình lại.</span>
+            </div>
+          )}
+          {/* The waiver, said out loud. A rep who sees no approval step needs to know
+              it is because of who they are, not because the rule stopped applying. */}
+          {waived && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] leading-relaxed text-emerald-900">
+              Chiết khấu tổng đơn <b>{orderPct}%</b> — <b>không cần trình duyệt</b>. {creator.name} là <b>{SALES_ROLE_LABEL[creator.role]}</b>, mức này thuộc thẩm quyền của chính người lập báo giá.
+              {creator.role === 'lead' && <span className="text-emerald-800"> Trên {SPECIAL_LEADER_MAX}% thì vẫn phải trình Sales manager.</span>}
             </div>
           )}
           {mode === 'special' && (
@@ -11817,18 +11954,13 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
             print on their invoice" is a fiscal contract. Mixing them is what had a
             rep filling in a tax code between a brand name and an industry. */}
         <JobGroup title="Thông tin cơ bản">
-          {/* Tên hiển thị first and REQUIRED: it is the name every list, board and
-              conversation uses. The legal name lives in the invoice group, where it
-              is needed verbatim — nobody says "Công ty TNHH Phần mềm FPT" out loud. */}
-          {/* ONE name here. "Tên công ty" duplicated Tên đơn vị in the invoice group —
-              two boxes for the same company, filled by the same rep, drifting apart
-              from the first typo onwards. The display name is what the system uses
-              everywhere; the legal name is asked once, where it is needed verbatim. */}
-          <LField label="Tên hiển thị / Short name" req value="e.g. FPT, Tiki, NEC" hint="Tên dùng khắp hệ thống: danh sách, pipeline, bảng pipeline, trang công ty. Tên pháp lý để in hóa đơn nằm ở nhóm Thông tin xuất hóa đơn." />
-          <div className="grid grid-cols-2 gap-3">
-            <LField label="Industry" value="IT / Software" select />
-            <LField label="Company size" value="100–499 staff" select />
-          </div>
+          {/* TÊN HIỂN THỊ, INDUSTRY AND COMPANY SIZE ARE NOT ASKED HERE — all three
+              moved to the Company page tab, where they are visible next to the thing
+              they describe (the display name beside the logo it sits with; industry
+              and scale inside "Company at a glance"). Creation needs only the legal
+              name + MST: every list and board falls back to the legal name until a
+              display name is set, so nothing is blocked by leaving it for later, and
+              a shorter create form is a create form reps actually finish. */}
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Company tags</label>
             <CompanyTagPicker />
@@ -12212,6 +12344,13 @@ type Quote = {
    band the lead is skipped entirely. Reuses the sales org already defined for the
    Companies list rather than inventing a second hierarchy. */
 const apprRole = (pct: number): SalesRole => (pct <= SPECIAL_LEADER_MAX ? 'lead' : 'manager')
+/* Seniority, so "can this person sign their own discount?" is one comparison
+   rather than a pile of special cases. Anyone whose own role is at or above the
+   role a rate routes to approves it by raising it — a lead's ≤10% needs nobody,
+   a lead's >10% still goes to the manager, and a manager's rate never routes at
+   all. Sending a request to yourself is not a control; it is a click. */
+const ROLE_RANK: Record<SalesRole, number> = { rep: 0, lead: 1, manager: 2 }
+const selfApproves = (creator: SalesRole, required: SalesRole) => ROLE_RANK[creator] >= ROLE_RANK[required]
 /** The person that role resolves to for a given rep. A lead approves their own
     team's requests; there is one department manager. */
 const apprPerson = (pct: number, rep?: string) =>

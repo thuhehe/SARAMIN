@@ -260,7 +260,7 @@ export const applicationManagement: BuildModule = {
           'Editing a contact field and submitting updates the profile in the same request — the candidate is never asked to go and update their profile separately.',
           'A guest who taps Apply is sent to sign-in / sign-up and returned here with the job kept.',
           'A candidate with no CV yet is routed to Create CV first, then back here with the new CV pre-selected.',
-          'Submitting creates the application as Sent with stage = New when the CV is cleared. When the CV still has an unresolved verdict from upload, it is created as NOT SENT — the apply itself never fails — and the candidate is told: “Đang kiểm tra CV — sẽ gửi tới nhà tuyển dụng ngay sau khi kiểm tra xong.” Nothing is evaluated here; the CV carries its verdict in, and no promised time is given for something we do not control.',
+          'Submitting creates the application as Sent with stage = New when the CV is cleared. When the CV still has an unresolved verdict from upload, it is created as NOT SENT — the apply itself never fails, and the candidate is told NOTHING about it: the confirmation is the ordinary one, and the row reads “Đã nộp”. The doubt is OUR uncertainty about OUR parse (see Resume management → the tag matrix, “doubt is invisible to the candidate”); warning them at the moment they apply would call their CV defective before any human has agreed. An admin approval flips it to Sent silently.',
           'On success the candidate lands on a confirmation that links to My application and explains the screening step.',
           'Re-opening the same job after applying replaces the Apply button with "Applied — view application", linking to the existing record.',
         ],
@@ -662,7 +662,7 @@ export const applicationManagement: BuildModule = {
             items: [
               '1. My account → My applications.',
               '2. The list shows every application: job · company · date applied · WHICH CV was sent · a status chip · and a one-line note ("Interview scheduled — 08/08, 10:00"). Filter tabs: All · In progress · Offer · Closed.',
-              '3. Click one → the detail: the CV SNAPSHOT that was sent ("later edits don’t change it") and a PROGRESS TIMELINE — Submitted → Đang kiểm tra CV (only if the CV was in doubt) → Sent to employer → Viewed → Interview → Result.',
+              '3. Click one → the detail: the CV SNAPSHOT that was sent ("later edits don’t change it") and a PROGRESS TIMELINE — Submitted → Sent to employer → Viewed → Interview → Result. While the CV is in doubt the "Sent to employer" step simply sits incomplete and reads "Đang xử lý": no extra step, no reason, no CV blame.',
               '4. "Withdraw application" is available from the detail.',
               '→ The status shown here is DERIVED from the CV’s status + the employer stage — never a third source of truth.',
             ],
@@ -671,7 +671,7 @@ export const applicationManagement: BuildModule = {
             heading: 'Status options — the candidate-facing label and where each one comes from',
             text: 'DERIVED from (cv.status, stage). There is no stored application status and no third source of truth — see Resume management → CV qualification, which is where cv.status is defined and where every admin action writes.',
             items: [
-              'Đang kiểm tra CV — cv.status is a DOUBT state (Not enough information · Can’t read). Copy: "Đang kiểm tra CV — sẽ gửi ngay sau khi kiểm tra xong." NEVER promise a time: with the 24h net removed, delivery depends on a reviewer, and a deadline we cannot keep is worse than none. Shown only when true; a Qualified CV never passes through this label.',
+              'Đã nộp — cv.status is a DOUBT state (Not enough information · Can’t read), so status = Not sent. Copy: "Đơn của bạn đã được nộp" — the ordinary in-progress state, blue, deliberately indistinguishable from any other application waiting on an employer. No reason, no CV warning, no review, no promised time: the hold is our uncertainty about our own parse, and the candidate is not told their CV is defective before a human confirms it. An admin approval turns the row into "Đã gửi" silently.',
               'Sent to employer — cv.status = Qualified, stage = New. The employer has it and has not opened it yet.',
               'Reviewing — stage = Reviewing. The employer is reading it.',
               'Shortlisted — stage = Shortlisted. Safe to show: it is good news and unambiguous.',
@@ -714,7 +714,7 @@ export const applicationManagement: BuildModule = {
           'Every application the candidate submitted appears with the correct applied date.',
           'The label matches the employer’s current stage for every forwarded application.',
           'No internal note or rejection reason is present anywhere in the jobseeker API response.',
-          'A held application reads as "Đang kiểm tra CV", never as an employer stage — and a recalled one reads as "Đã thu hồi" with Saramin named, never as "Not selected".',
+          'A held application reads as the plain "Đã nộp" — never as an employer stage, never as a review in progress, and never as a warning about the CV. A recalled one reads as "Đã thu hồi" with Saramin named, never as "Not selected".',
         ],
         openQuestions: [
           'How is an HQ screening rejection worded to the candidate — or is it shown at all?',

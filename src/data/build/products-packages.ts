@@ -230,6 +230,27 @@ export const productsPackages: BuildModule = {
       detail: {
         requirements: [
           {
+            label: 'Sản phẩm dùng thử — a checkbox, not a discount',
+            text: 'A product can be flagged **Sản phẩm dùng thử / Trial product** on the create form. It is a third visibility axis alongside role: role says whether a product can be quoted on its own, and this says **which quotations** may contain it at all.',
+            table: {
+              cols: ['', 'Normal product', 'Trial product'],
+              rows: [
+                ['Appears in', 'Every quotation **except** one using the Gói dùng thử programme', '**Only** a quotation using Gói dùng thử'],
+                ['Mixed with the other kind?', 'No', 'No — a trial quotation holds trial SKUs only'],
+                ['Price', 'List price', 'Its own, low, real price — 500.000 ₫ / 300.000 ₫ today'],
+                ['Discount cells on the quotation', 'Per the discount programme', 'All three locked at 0 — the price already is the concession'],
+                ['On the invoice', 'A normal line', 'A normal line. Nothing marks it as a giveaway'],
+              ],
+            },
+            items: [
+              'This is why the trial is modelled as **products** rather than as a 95% discount: the invoice states what was actually sold at what price, and revenue reporting sees a cheap SKU instead of a write-down nobody can explain a year later. It also means a trial can be priced, versioned and withdrawn like anything else in the catalogue.',
+              'Switching a quotation into or out of trial mode **resets the product on every line**, because a leftover full-price SKU inside a trial quotation would be a line the programme does not permit.',
+              'The per-customer limit (“01 lần trên mỗi MST”) belongs to the PRODUCT, not to the discount programme — it is the same kind of rule as a quota, and it has to survive the customer being quoted twice.',
+              'Trial SKUs carry an activation window like anything else, set to **3 months** rather than 12: a trial nobody starts within a quarter has stopped being a trial.',
+            ],
+            warn: 'Open — is the per-MST limit enforced at quotation time (block the line), at PO time, or only reported? Blocking earliest is cheapest to explain to the customer, but the check has to run across every company sharing a tax-code root, not just the one being quoted.',
+          },
+          {
             label: 'Thời gian phải kích hoạt — kể từ ngày xuất hóa đơn',
             text: 'Every sellable product declares how long the buyer has to **start using** it, counted from the **invoice date** — not from the PO, not from the payment, and not from the day they first log in.\n\nThis is the middle of three clocks that are constantly confused with one another, and it is the only one that can silently destroy quota the customer has already paid for.',
             table: {
@@ -285,6 +306,7 @@ export const productsPackages: BuildModule = {
               { name: 'description (vi / en)', type: 'i18n rich text', notes: 'the benefit list printed on quotations' },
               { name: 'status', type: 'enum', required: true, notes: 'Active · Inactive — only Active can be quoted or sold' },
               { name: 'entitlementSource', type: 'enum', required: true, notes: 'Requires purchase (default — must be drawn from an active PO line) · Always available (Admin-only free tier: no PO, no limit). Job-posting products only. STORED, never inferred from price: a promo line can be 0 ₫ and still be consumed from a PO' },
+              { name: 'isTrial', type: 'bool', required: true, notes: 'default false. A trial SKU is offered ONLY inside a quotation whose discount programme is Gói dùng thử, and such a quotation cannot hold a normal SKU. A third visibility axis alongside role — see the rule block above' },
             ],
           },
           {
