@@ -5279,6 +5279,10 @@ const BUSINESS_FORMS = [
   'Non-profit / NGO',
 ]
 
+/* Headcount bands. A DROPDOWN, not free text: it is a list column and a search
+   facet, so the values have to be identical across every company. */
+const CO_SIZES = ['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']
+
 /** Chip row under the facts card. A fixed list, because the whole point of the
     chips is that they read the same on every company and can be filtered on. */
 const CP_TRAITS = [
@@ -6521,6 +6525,10 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
               {editInfo ? (
                 <>
                   <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
+                  {/* Industry and size are two different facts, filtered separately —
+                      never joined into one "IT, 200–500" field. */}
+                  <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
+                  <SelectRow label="Company size" value={c.size} onChange={() => {}} options={CO_SIZES} />
                   <SelectRow label="Quốc gia đăng ký / Country of registration" value={c.country} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'country')?.entries ?? []} />
                   {isVNCompany(c) && <SelectRow label="Tỉnh / Thành phố · City" value={coCity(c)} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'locations')?.entries ?? []} />}
                   <EField label="Website" value={c.domain} onChange={() => {}} mono />
@@ -6528,6 +6536,8 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
               ) : (
                 <>
                   <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
+                  <KV label="Industry" value={c.industry} />
+                  <KV label="Company size" value={`${c.size} staff`} />
                   <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />
                   {isVNCompany(c)
                     ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
@@ -12188,9 +12198,17 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
               until a display name is set, so leaving it blank blocks nothing.
 
               WHAT CREATION STILL DOES NOT ASK FOR, and where it is asked instead:
-              company tags · industry · headcount · ngày thành lập → the Company page
-              tab. Those are page content, entered where they are seen. */}
+              company tags · the EXACT headcount · ngày thành lập → the Company page
+              tab. Those are page content, entered where they are seen. Industry and
+              the size BAND are asked here instead: both are list columns and search
+              facets, needed the day the record exists rather than when the page is
+              written. */}
           <LField label="Tên hiển thị" value="e.g. FPT, Tiki, NEC" hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
+          {/* Two separate facts, filtered separately — never one joined field. */}
+          <div className="grid grid-cols-2 gap-3">
+            <LField label="Industry" value="IT / Software" select hint="Từ Master data → Industry." />
+            <LField label="Company size" value="200–500" select hint="Khoảng nhân sự — cột danh sách và bộ lọc." />
+          </div>
           {/* Country of registration gates the province picker: a Vietnamese company
               gets the 34 provincial units, a foreign one does not. A company has a
               country of REGISTRATION, not a nationality. */}
