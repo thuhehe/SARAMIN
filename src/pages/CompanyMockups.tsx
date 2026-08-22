@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 import { Btn, Chip } from '@/components/wire'
 import { CopyLinkButton, initialScreenParam, useScreenParam } from '@/components/ShareLink'
-import { AdminJobCreate } from './adminPrototypes'
+import { AdminJobCreate } from './admin/screens/jobForm/create'
 import { cn } from '@/lib/utils'
 
 /** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
