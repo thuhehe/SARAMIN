@@ -6,12 +6,26 @@
  * Everything here is mock content laid out to VN-market recruitment standards —
  * structure & data shape only, not final visual design.
  */
-import { createContext, isValidElement, useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
-import { BenefitsField, BenefitCards } from '@/components/BenefitsField'
+import { BenefitCards, BenefitsField } from '@/components/BenefitsField'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { LogoSizer } from '@/components/LogoSizer'
+import { CreateSignalCtx, OpenRecordCtx, RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb, useReadOnly } from '@/pages/admin/ctx'
+import { MOCK_TODAY, dateBefore, daysLeft, dmy, enWords, endOfMonth, money, revFmt, vnWords, vnd } from '@/pages/admin/lib/fmt'
+import { BField, Bi, BiTArea, CardGroup, ChipField, ComboField, DetailCard, EField, FField, FLabel, InfoBit, KV, LField, LabelRow, PageField, RField, Radio, Section, SelectField, SelectRow, TArea } from '@/pages/admin/ui/fields'
+import { FilterBar, FilterRow, FilterSelect, ListPage, RowAction } from '@/pages/admin/ui/list'
+import { Bars, MiniStat, StatCards } from '@/pages/admin/ui/stats'
+import { Pill } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/ui/status'
+import { Table, TwoLine, searchKey, split2 } from '@/pages/admin/ui/table'
+import type { Col } from '@/pages/admin/ui/table'
+
+/* Back-compat barrel: these moved out of this file but other pages still
+   import them from here. Removed once those imports are repointed. */
+export { CreateSignalCtx, DetailCrumbCtx, OpenRecordCtx, ScreenNavCtx } from '@/pages/admin/ctx'
+export type { DetailCrumb } from '@/pages/admin/ctx'
 
 /* The benefit types declared on the COMPANY page. Every job of that company
    The benefit types declared on the COMPANY page — the DEFAULT SET a new job is
@@ -19,79 +33,6 @@ import { LogoSizer } from '@/components/LogoSizer'
    every type and there is no cap, so a job freely adds position-specific ones on
    top of these. */
 const COMPANY_BENEFITS = ['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training']
-
-/* ── Detail breadcrumb ───────────────────────────────────────────────────────
-   A detail view publishes its own crumb (and the way back) up to the admin shell,
-   so the breadcrumb reads "CRM / Companies / Đại Dương" and IS the way back. That
-   replaces the per-page "← Back to X" button: one navigation affordance, in the
-   place every admin console puts it, instead of two that can disagree. */
-export type DetailCrumb = { label: string; onBack: () => void }
-export const DetailCrumbCtx = createContext<(c: DetailCrumb | null) => void>(() => {})
-
-/** Publish this detail view's crumb for as long as it is mounted. */
-export function useDetailCrumb(label: string, onBack: () => void) {
-  const set = useContext(DetailCrumbCtx)
-  const cb = useRef(onBack)
-  cb.current = onBack
-  useEffect(() => {
-    set({ label, onBack: () => cb.current() })
-    return () => set(null)
-  }, [label, set])
-}
-
-/* Cross-page record links. A quotation opened from the Purchase-order list must
-   land on the QUOTATIONS page, not render inside Purchase order — otherwise the
-   breadcrumb reads "CRM / Purchase order / QUO-…", naming the wrong module for
-   the record you are looking at, and Back returns to the wrong list. So the link
-   asks the shell to switch pages and pass the record to open. */
-export const ScreenNavCtx = createContext<(specId: string, record?: string) => void>(() => {})
-/** The record the shell wants this page to open on arrival, if any. */
-export const OpenRecordCtx = createContext<string | null>(null)
-/* The page title row owns the primary create action, so the shell has to be able
-   to trigger a create that REPLACES the page (company, job) as well as one that
-   opens a modal. A bumped counter is the signal; the page decides what to do. */
-export const CreateSignalCtx = createContext(0)
-
-/* ── Read-only record ─────────────────────────────────────────────────────────
-   A rep can REACH a colleague's company through search (that is what stops
-   duplicates being created) but may not ACT on it. Carried as context rather than
-   a prop threaded through eight components: the detail page is deep, and a new
-   button added to a nested card would otherwise quietly stay writable.
-
-   Read stays fully open — every tab, every figure. Only WRITE is withdrawn, and
-   the way back is an explicit reassignment, not a silent edit. */
-const ReadOnlyCtx = createContext(false)
-const useReadOnly = () => useContext(ReadOnlyCtx)
-/** Uniform reason text, so every disabled control explains itself the same way. */
-const RO_HINT = 'Chỉ đọc — công ty này do sales khác phụ trách. Yêu cầu chuyển giao để chỉnh sửa.'
-
-/* ── shared bits ──────────────────────────────────────────────────────────── */
-type StatusTone = 'active' | 'pending' | 'expired' | 'rejected' | 'draft' | 'neutral' | 'open' | 'schedule' | 'closed'
-
-const STATUS_TONE: Record<StatusTone, string> = {
-  active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  expired: 'bg-slate-100 text-slate-500 border-slate-200',
-  rejected: 'bg-rose-50 text-rose-700 border-rose-200',
-  draft: 'bg-slate-100 text-slate-600 border-slate-200',
-  neutral: 'bg-sky-50 text-sky-700 border-sky-200',
-  // job status model: Draft → Schedule → Open → Closed
-  open: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  schedule: 'bg-violet-50 text-violet-700 border-violet-200',
-  closed: 'bg-slate-100 text-slate-500 border-slate-200',
-}
-
-/* A table cell carrying two short lines instead of one long truncating string.
-   Long "a · b · c · d · e" values are unreadable at any column width — they
-   truncate and the operator scrolls sideways to finish a sentence. Split at a
-   natural break and both halves fit. */
-/* Split a "a · b · c · d" value at the nth separator so both halves fit the column
-   instead of truncating mid-sentence. Shared by every list that renders a joined
-   field-sheet value. */
-function split2(v: string, n: number) {
-  const parts = v.split(' · ')
-  return [parts.slice(0, n).join(' · '), parts.slice(n).join(' · ')] as const
-}
 
 /* ONE column set, shared by Talent pool and CV review. CV review is the same list
    filtered to the two DOUBT statuses, so it must read identically — an operator
@@ -111,435 +52,6 @@ const CV_COLS: Col[] = [
   { label: 'Updated', w: '0.8fr' },
   { label: '', w: '0.35fr', align: 'r' },
 ]
-
-function TwoLine({ top, bottom }: { top: string; bottom: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="truncate text-ink/80">{top}</p>
-      {bottom && <p className="truncate text-[11px] text-muted">{bottom}</p>}
-    </div>
-  )
-}
-
-function Pill({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
-  return (
-    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium', STATUS_TONE[tone])}>
-      {children}
-    </span>
-  )
-}
-
-/* One search box per list, first control on the filter row. It matches against
-   EVERY column's rendered text (see `cellText`), which is what people expect from a
-   single box above a table — no field picker to learn, and no guessing which column
-   a value lives in. */
-function TableSearch({ q, onChange, placeholder, dropdown }: { q: string; onChange: (v: string) => void; placeholder?: string
-  /** Results the TABLE cannot show, hung under the input as a transient panel.
-      Anchored to the box on purpose: it is a property of the query, so it appears
-      and disappears with the query rather than becoming a second list on the page. */
-  dropdown?: React.ReactNode }) {
-  return (
-    <div className="relative shrink-0">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint"></span>
-      <input
-        value={q}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder ?? 'Tìm trong tất cả các cột…'}
-        className="w-[210px] rounded-lg border border-line bg-surface py-1 pl-7 pr-7 text-[11.5px] outline-none transition-[width,border-color] focus:w-[280px] focus:border-brand"
-      />
-      {q && (
-        <button
-          onClick={() => onChange('')}
-          aria-label="Clear search"
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-faint hover:text-ink"
-        >
-          ✕
-        </button>
-      )}
-      {dropdown}
-    </div>
-  )
-}
-
-function TabBar({
-  q,
-  onQ,
-  action,
-  leading,
-  filters,
-  searchHint,
-  searchScope,
-  sort,
-  outOfScope,
-}: {
-  q: string
-  onQ: (v: string) => void
-  /** the list's create button — on this row so a list never needs a header strip of its own */
-  action?: React.ReactNode
-  /** whatever the page wants in FRONT of the search box on the same row — the
-      Sales view / Sales lead view switcher, for instance. */
-  leading?: React.ReactNode
-  /** filter controls, rendered on their own line under the search */
-  filters?: React.ReactNode
-  /** tells the reader what the box actually matches on this list */
-  searchHint?: string
-  /** scope control, rendered immediately after the box so the two read as one thing */
-  searchScope?: React.ReactNode
-  /** sort control — sits at the end of the filter row, where "how is this ordered?"
-      is asked after "which rows?" */
-  sort?: React.ReactNode
-  /** panel hung under the search box when the query reaches records the table
-      itself may not list */
-  outOfScope?: React.ReactNode
-}) {
-  return (
-    <div className="mb-3">
-      {/* ONE row for the whole header: whatever the page puts in front (a view
-          switcher), then Search · Filter · Sort, then the create action pushed to
-          the right. Two rows for four controls spent a line of the page on
-          alignment. No tab strip — status is one filter among several, so it lives
-          in the Filter panel with the rest. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {leading}
-        <TableSearch q={q} onChange={onQ} placeholder={searchHint} dropdown={outOfScope} />
-        {searchScope}
-        {filters}
-        {/* Sort sits WITH the filters, not pushed to the far edge: narrowing a list
-            and ordering it are the same job, and a control alone on the right reads
-            as belonging to the table rather than to the toolbar. */}
-        {sort}
-        {action && <span className="ml-auto">{action}</span>}
-      </div>
-    </div>
-  )
-}
-
-/** One filter control. Native select on purpose: it is keyboard- and mobile-correct
-    for free, and a list page needs six of them without six popovers. */
-function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
-  const on = value !== ''
-  return (
-    <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', on ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
-      <span className={on ? 'text-brand/70' : 'text-faint'}>{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn('max-w-[130px] cursor-pointer bg-transparent text-[11.5px] outline-none', on ? 'font-medium text-brand' : 'text-ink')}
-      >
-        <option value="">All</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  )
-}
-
-/**
- * All the field filters behind ONE control, so the toolbar reads Search · Filter ·
- * Sort and nothing else. Five selects sitting open on the row cost a line of the
- * page permanently to serve a narrowing that happens occasionally — and the row
- * grew every time a filter was added. The button carries the active count, so the
- * fact that a list IS filtered stays visible with the panel closed.
- */
-function FilterBar({ count, onClear, children, disabled }: { count: number; onClear: () => void; children?: React.ReactNode
-  /** No column on this list is categorical — every value is unique, so there is
-      nothing to narrow by. The control still renders, greyed with a reason: a
-      toolbar that changes shape from page to page is harder to learn than one
-      control that is occasionally unavailable. */
-  disabled?: boolean }) {
-  const [open, setOpen] = useState(false)
-  if (disabled) {
-    return (
-      <span title="Danh sách này không có cột nào để lọc — mọi giá trị đều khác nhau." className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-line bg-canvas px-2.5 py-1 text-[11.5px] font-medium text-faint">
-        ▽ Filter <span>▾</span>
-      </span>
-    )
-  }
-  return (
-    <span className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium', count > 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}
-      >
-        ▽ Filter
-        {count > 0 && <span className="rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">{count}</span>}
-        <span className="text-faint">▾</span>
-      </button>
-      {open && (
-        <>
-          {/* click-away, so the panel behaves like a menu rather than a thing you
-              have to remember to close */}
-          <span className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <span className="absolute left-0 top-full z-20 mt-1 block w-[260px] overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
-            <span className="flex items-center justify-between border-b border-line-soft bg-canvas/60 px-2.5 py-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Lọc danh sách</span>
-              {count > 0 && <button onClick={onClear} className="text-[10.5px] font-medium text-brand hover:underline">Xoá tất cả</button>}
-            </span>
-            <span className="block space-y-2 p-2.5">{children}</span>
-          </span>
-        </>
-      )}
-    </span>
-  )
-}
-
-/** One row inside the Filter panel — label above, full-width select. */
-function FilterRow({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
-  return (
-    <span className="block">
-      <span className="mb-0.5 block text-[10.5px] text-faint">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn('w-full cursor-pointer rounded-md border bg-surface px-2 py-1 text-[11.5px] outline-none focus:border-brand', value ? 'border-brand font-medium text-brand' : 'border-line text-ink')}
-      >
-        <option value="">Tất cả</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </span>
-  )
-}
-
-function RowAction({ children, tone, title, onClick }: { children: React.ReactNode; tone?: 'brand' | 'rose' | 'amber' | 'muted'; title?: string; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={cn(
-        'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',
-        tone === 'brand'
-          ? 'border-brand/30 bg-brand-soft text-brand hover:bg-brand hover:text-white'
-          : tone === 'rose'
-            ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white'
-            : tone === 'amber'
-              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white'
-              : 'border-line text-muted hover:bg-canvas/70',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-type Col = { label: string; w: string; align?: 'r' | 'c' }
-
-function Table({ cols, rows, minW = 560, empty }: { cols: Col[]; rows: React.ReactNode[][]; minW?: number; empty?: string }) {
-  const tmpl = cols.map((c) => c.w).join(' ')
-  const alignCls = (a?: 'r' | 'c') => (a === 'r' ? 'text-right justify-end' : a === 'c' ? 'text-center justify-center' : '')
-  return (
-    <div className="overflow-x-auto rounded-xl border border-line">
-      <div style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {cols.map((c, i) => <span key={i} className={alignCls(c.align)}>{c.label}</span>)}
-      </div>
-      {rows.map((r, ri) => (
-        <div key={ri} style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">
-          {r.map((cell, ci) => (
-            <span key={ci} className={cn('flex min-w-0 items-center gap-1.5 text-ink/80', alignCls(cols[ci]?.align))}>{cell}</span>
-          ))}
-        </div>
-      ))}
-      {rows.length === 0 && (
-        <p className="border-t border-line-soft px-4 py-8 text-center text-[12px] text-muted">{empty ?? 'No rows.'}</p>
-      )}
-    </div>
-  )
-}
-
-const PAGE_SIZES = [10, 20, 50, 100]
-
-function Footer({ size, onSize }: { size: number; onSize: (n: number) => void }) {
-  return (
-    <div className="mt-3 flex items-center justify-between gap-3">
-      <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
-        Số dòng mỗi trang
-        <select
-          value={size}
-          onChange={(e) => onSize(Number(e.target.value))}
-          className="rounded-md border border-line bg-surface px-1.5 py-1 text-[11.5px] text-ink outline-none focus:border-brand"
-        >
-          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
-      <div className="flex gap-1">
-        {['1', '2', '3', '…', '12'].map((p) => (
-          <span key={p} className={cn('grid h-6 min-w-6 place-items-center rounded border px-1 text-[11px]', p === '1' ? 'border-brand bg-brand text-white' : 'border-line text-muted')}>{p}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* Rendered text of a cell, so one search box can cover every column without each
-   list having to hand over a parallel plain-text copy of its rows. */
-function cellText(n: React.ReactNode): string {
-  if (n === null || n === undefined || typeof n === 'boolean') return ''
-  if (typeof n === 'string' || typeof n === 'number') return String(n)
-  if (Array.isArray(n)) return n.map(cellText).join(' ')
-  if (isValidElement(n)) return cellText((n.props as { children?: React.ReactNode }).children)
-  return ''
-}
-/** lowercase + diacritics stripped, so "cong ty" finds "Công ty". */
-const searchKey = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
-
-function ListPage({ tabs, cols, rows, minW, action, leading, filters, searchHint, searchExtra, total, searchScope, sort, outOfScope }: { tabs?: { label: string; count?: number; active?: boolean }[]; cols: Col[]; rows: React.ReactNode[][]; minW?: number; action?: React.ReactNode; filters?: React.ReactNode; searchHint?: string
-  /** sort control, rendered at the end of the filter row */
-  sort?: React.ReactNode
-  /** rendered in FRONT of the search box, on the same row */
-  leading?: React.ReactNode
-  /** per-row text the search should match but the table does not print — e.g. the
-      company ID and MST. Without it a placeholder promising "search by ID" lies. */
-  searchExtra?: string[]
-  /** the unfiltered population, when `rows` has already been filtered by the page's
-      own controls — so "Total" means the whole list, not what survived the filters. */
-  total?: number
-  /** rendered to the right of the search box — the scope control, when the page has
-      more than one population to search. */
-  searchScope?: React.ReactNode
-  /** shown under the search when the CURRENT query has matches the current scope
-      cannot reach. Without it a rep searches their own list, sees nothing, and
-      creates a duplicate of a company that already exists under someone else. */
-  outOfScope?: (q: string) => React.ReactNode }) {
-  const [q, setQ] = useState('')
-  const [size, setSize] = useState(20)
-  /* Status filter + sort derived here rather than at 28 call sites. A list that
-     passes its own `filters` / `sort` keeps them; everything else gets the same
-     toolbar for free, which is the only way "every table looks the same" survives
-     the next screen someone adds. */
-  const [tabPick, setTabPick] = useState('')
-  /** column index → chosen value, for the filters derived from the columns */
-  const [colPick, setColPick] = useState<Record<number, string>>({})
-  const [ord, setOrd] = useState<'none' | 'asc' | 'desc'>('none')
-
-  const query = searchKey(q.trim())
-  let matched = query
-    ? rows.filter((r, i) => searchKey([r.map(cellText).join(' '), searchExtra?.[i] ?? ''].join(' ')).includes(query))
-    : rows
-
-  /* Tabs became a Status filter. The match runs on the row's RENDERED text — the
-     same text the search box already reads — so no list has to hand over a parallel
-     copy of its data just to be filterable. */
-  const tabOpts = (tabs ?? []).map((t) => t.label).filter((l) => l.toLowerCase() !== 'all')
-  if (tabPick) {
-    const key = searchKey(tabPick)
-    matched = matched.filter((r) => r.some((c) => searchKey(cellText(c)).trim() === key))
-  }
-  /* Options are read from the rows BEFORE the column filters apply — otherwise
-     picking a value collapses its own dropdown to that one option and there is no
-     way back. */
-  const matchedBase = matched
-  for (const [ci, v] of Object.entries(colPick)) {
-    if (!v) continue
-    matched = matched.filter((r) => cellText(r[Number(ci)]).trim() === v)
-  }
-
-  /* Generic ordering by the first column — the one a list is named by. "Mặc định"
-     keeps the order the page chose, which is usually meaningful (newest first,
-     most-idle first), so it stays the default and is always reachable again. */
-  if (ord !== 'none') {
-    const key = (r: React.ReactNode[]) => cellText(r[0]).trim().toLowerCase()
-    matched = matched.slice().sort((a, b) => (ord === 'asc' ? 1 : -1) * key(a).localeCompare(key(b), 'vi'))
-  }
-
-  /* Columns worth filtering by, discovered from the rendered rows: a column whose
-     values REPEAT and come from a small set is a category; one where every row
-     differs is an identity or a number, and a dropdown of 40 unique values is not a
-     filter. Column 0 is skipped — it is what the list is named by, which is what the
-     search box is for. */
-  /* Labels already spoken for — the tab-derived Status filter, most often. A second
-     row called "Status" listing slightly different values is worse than no row. */
-  const takenLabels = new Set(tabOpts.length > 0 ? ['status', 'trạng thái'] : [])
-  const autoCols = cols
-    .map((c, ci) => {
-      if (ci === 0) return null
-      const lower = c.label.trim().toLowerCase()
-      if (takenLabels.has(lower)) return null
-      takenLabels.add(lower)
-      const vals = matchedBase.map((r) => cellText(r[ci]).trim()).filter(Boolean)
-      const uniqVals = [...new Set(vals)]
-      const ok = uniqVals.length >= 2 && uniqVals.length <= 8 && vals.length > uniqVals.length
-        && uniqVals.every((v) => v.length <= 24 && !/^[\d.,\s₫%/-]+$/.test(v))
-      return ok ? { label: c.label, ci, options: uniqVals.sort((a, b) => a.localeCompare(b, 'vi')) } : null
-    })
-    .filter(Boolean)
-    .slice(0, 4) as { label: string; ci: number; options: string[] }[]
-
-  const activeAuto = Object.values(colPick).filter(Boolean).length
-  const derivedFilters = filters ?? ((tabOpts.length > 0 || autoCols.length > 0) ? (
-    <FilterBar count={(tabPick ? 1 : 0) + activeAuto} onClear={() => { setTabPick(''); setColPick({}) }}>
-      {tabOpts.length > 0 && <FilterRow label="Status" value={tabPick} onChange={setTabPick} options={tabOpts} />}
-      {autoCols.map((c) => (
-        <FilterRow
-          key={c.ci}
-          label={c.label}
-          value={colPick[c.ci] ?? ''}
-          onChange={(v) => setColPick((p) => ({ ...p, [c.ci]: v }))}
-          options={c.options}
-        />
-      ))}
-    </FilterBar>
-  ) : <FilterBar count={0} onClear={() => {}} disabled />)
-
-  const derivedSort = sort ?? (
-    <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
-      <span className="text-faint">Sắp xếp</span>
-      <select
-        value={ord}
-        onChange={(e) => setOrd(e.target.value as 'none' | 'asc' | 'desc')}
-        className="cursor-pointer bg-transparent text-[11.5px] font-medium text-ink outline-none"
-      >
-        <option value="none">Mặc định</option>
-        <option value="asc">{cols[0]?.label ?? 'A'} A → Z</option>
-        <option value="desc">{cols[0]?.label ?? 'A'} Z → A</option>
-      </select>
-    </label>
-  )
-
-  return (
-    <div>
-      <TabBar q={q} onQ={setQ} action={action} leading={leading} filters={derivedFilters} searchHint={searchHint} searchScope={searchScope} sort={derivedSort} outOfScope={q.trim() ? outOfScope?.(q.trim()) : null} />
-      {/* Result count sits directly on top of the table it describes — how many rows
-          the current search/filters left, against the whole list. */}
-      <p className="mb-1.5 text-[11px] text-faint">
-        Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{matched.length}</b>
-        {' / '}Tổng <b className="font-semibold text-ink/70 tabular-nums">{total ?? rows.length}</b>
-      </p>
-      <Table cols={cols} rows={matched.slice(0, size)} minW={minW} empty={`Không có dòng nào khớp “${q.trim()}”.`} />
-      <Footer size={size} onSize={setSize} />
-    </div>
-  )
-}
-
-function StatCards({ cards, row }: { cards: { label: string; value: string; delta?: string; up?: boolean }[]; row?: boolean }) {
-  return (
-    <div className={cn('grid gap-3', row ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'sm:grid-cols-2 lg:grid-cols-4')}>
-      {cards.map((c, i) => (
-        <div key={i} className="rounded-xl border border-line p-3.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-faint">{c.label}</p>
-          <p className="mt-1 text-[20px] font-bold tracking-tight tabular-nums">{c.value}</p>
-          {c.delta && <p className={cn('mt-0.5 text-[11.5px] font-medium', c.up ? 'text-emerald-600' : 'text-rose-600')}>{c.up ? '▲' : '▼'} {c.delta}</p>}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function Bars({ data, unit }: { data: { label: string; value: number }[]; unit?: string }) {
-  const max = Math.max(...data.map((d) => d.value))
-  return (
-    <div className="rounded-xl border border-line p-4">
-      <div className="flex items-end gap-3" style={{ height: 140 }}>
-        {data.map((d, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
-            <span className="text-[10px] font-medium text-muted tabular-nums">{d.value}{unit}</span>
-            <div className="w-full rounded-t bg-brand/80" style={{ height: `${(d.value / max) * 100}%` }} />
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 flex gap-3 border-t border-line-soft pt-2">
-        {data.map((d, i) => <span key={i} className="flex-1 text-center text-[10.5px] text-faint">{d.label}</span>)}
-      </div>
-    </div>
-  )
-}
 
 /* ── Recruitment ──────────────────────────────────────────────────────────── */
 type JobRow = { id: string; title: string; category: string; company: string; source: 'Company' | 'Admin'; product: string; status: StatusTone; statusLabel: string; exposure: 'On' | 'Off'; posted: string; deadline: string; views: number; saves: number; applicants: number }
@@ -1679,20 +1191,6 @@ function matchKeys(s: Std): { label: string; ready: boolean; preview: string }[]
   ]
 }
 
-/* ── small building blocks for the flow ──────────────────────────────────────── */
-
-/** A labelled boxed value — the prototype's stand-in for a text input. */
-function RField({ label, value, span }: { label: string; value?: string; span?: string }) {
-  return (
-    <div className={span}>
-      <label className="mb-1 block text-[10.5px] font-medium text-ink/70">{label}</label>
-      <div className={cn('min-h-[30px] rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px]', value ? 'text-ink/80' : 'text-faint')}>
-        {value || '—'}
-      </div>
-    </div>
-  )
-}
-
 /** One section of the standard resume on the review screen. */
 function StdSection({ title, count, repeatable, children }: { title: string; count?: number; repeatable?: boolean; children: React.ReactNode }) {
   return (
@@ -2159,21 +1657,6 @@ function BuilderRoute({ onContinue }: { onContinue: (f: BuilderForm) => void }) 
           <button onClick={() => onContinue(f)} className="rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Continue to review →</button>
         )}
       </div>
-    </div>
-  )
-}
-
-/** Editable wizard field. */
-function BField({ label, req, value, onChange, placeholder }: { label: string; req?: boolean; value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div>
-      <label className="mb-1 block text-[11px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-md border border-line bg-surface px-2.5 py-2 text-[12px] outline-none focus:border-brand"
-      />
     </div>
   )
 }
@@ -2753,8 +2236,6 @@ const daysSince = (dmy: string) => {
    lapses the card goes with it — but that is not Lost: no reason, no decision,
    customer status untouched, and a new quotation puts them straight back. */
 const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost' && !c.quoteLapsed
-const revFmt = (v: number) => (v === 0 ? '—' : (v / 1e6).toFixed(0) + 'M ₫')
-
 /* ── Create-PO gate ───────────────────────────────────────────────────────────
    A sales order / PO is only ever created from ONE ACCEPTED quotation option —
    never from scratch, and never from a quotation that has lapsed (T&C clause 2:
@@ -2829,18 +2310,6 @@ function fmtIdle(days: number): string {
   const d = days % 30
   return d ? `${m}m ${d}d` : `${m}m`
 }
-/* Fixed "today" for the mock so the dates it derives stay stable across reloads
-   and match the hand-written dates elsewhere in the data (lastPO, renewal…). */
-const MOCK_TODAY = new Date(2026, 7, 8)
-/** A gap in days, rendered as the DATE that gap points back to — dd/mm/yyyy.
-    `short` drops the year, for places where the column is one of several things
-    competing for a narrow card. The full date is always in the tooltip. */
-function dateBefore(days: number, short?: boolean): string {
-  const d = new Date(MOCK_TODAY)
-  d.setDate(d.getDate() - days)
-  const dm = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-  return short ? dm : `${dm}/${d.getFullYear()}`
-}
 const ROT_TEXT: Record<Rot, string> = {
   fresh: 'text-muted',
   amber: 'text-amber-600 font-medium',
@@ -2903,8 +2372,6 @@ const STAGE_NEXT: Record<CoStatus, string> = {
 }
 // A company is a customer once a PO is issued (PO or Invoice stage).
 const isCustomer = (c: Company) => c.status === 'PO' || c.status === 'Invoice'
-/** Full VND — e.g. 18,000,000 ₫ (pipeline values are read exactly, not rounded to M). */
-const vnd = (v: number) => v.toLocaleString('en-US') + ' ₫'
 const CO_VALUE: Record<string, number> = {
   'Công ty TNHH Đại Dương': 42_000_000, 'Công ty CP Bình Minh': 68_000_000, 'Công ty TNHH Sao Mai': 155_000_000,
   'Công ty TNHH Vạn Phát': 37_800_000, 'FPT Software': 420_000_000, 'Công ty CP Hoàng Gia': 20_000_000,
@@ -4013,44 +3480,6 @@ function companyContacts(c: Company): CoContact[] {
   return out
 }
 
-/* ── Contact detail (slide-over) ─────────────────────────────────────────────
-   A contact accumulates history a table row cannot hold — status changes, who
-   replaced whom, notes over time — so the row links here rather than trying to
-   show everything inline. Every ACTION on a contact lives in this panel, which is
-   why the list has no Actions column. */
-/** Editable SELECT row — for fields whose values come from Master data. */
-function SelectRow({ label, value, onChange, options, placeholder, hint }: { label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; hint?: string }) {
-  return (
-    <div className="border-b border-line-soft py-2 last:border-0">
-      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full cursor-pointer rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand"
-      >
-        <option value="">{placeholder ?? '— none —'}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
-    </div>
-  )
-}
-
-/** Editable text row — the edit-mode counterpart of KV. */
-function EField({ label, value, onChange, mono, hint }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean; hint?: string }) {
-  return (
-    <div className="border-b border-line-soft py-2 last:border-0">
-      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn('mt-1 w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand', mono && 'font-mono text-[11.5px]')}
-      />
-      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
-    </div>
-  )
-}
-
 function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: () => void }) {
   /* Edit is in-place rather than a second modal: the reader is already looking at
      the record, and a modal on top of a slide-over is one layer too many. Changes
@@ -4793,16 +4222,6 @@ function CompanyActivities({ c }: { c: Company }) {
   )
 }
 
-function MiniStat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: string; tone?: 'warn' }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{label}</p>
-      <p className={cn('mt-0.5 text-[15px] font-bold tabular-nums', tone === 'warn' ? 'text-amber-600' : 'text-ink')}>{value}</p>
-      {sub && <p className="mt-0.5 truncate text-[10.5px] text-faint">{sub}</p>}
-    </div>
-  )
-}
-
 type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Owner history' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
@@ -5162,102 +4581,6 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-/* ── The public company page, section by section ──────────────────────────────
-   The editor is laid out as the LIVE PAGE is laid out (Figma "Company detail",
-   node 78:20315) — same sections, same order, same names. HQ fills this in for a
-   customer who will not do it themselves, which is most of them at the start, so
-   the mapping between "what I typed" and "what appears" has to be obvious.
-
-   Two rules run through the whole thing and explain most of the UI:
-
-    · REQUIRED vs OPTIONAL is the spine. Five things gate publishing (logo,
-      display name, industry, ≥1 office, VI introduction). EVERY other section is
-      optional and its card simply does not render on the live page while empty —
-      which is why each one says so rather than sitting there looking broken.
-    · The registry facts are NOT typed here. MST, legal name, company type,
-      representative and registered address already live on the company record;
-      re-typing them on the page would give one company two tax codes that drift.
-      They are shown read-only with a pointer to where they are edited. */
-
-/* ── Fields that WRITE BACK to the company record ─────────────────────────────
-   The facts card on the public page (MST, tên pháp lý, quy mô, ngành, địa chỉ…)
-   shows the very same values the CRM record holds. Two rules follow, and they are
-   not in tension once stated in the right order:
-
-     1. There is ONE stored value per fact. The page never keeps its own copy.
-     2. It can be EDITED from here, and the edit lands on the company record —
-        the operator is on this tab because the page is missing something, and
-        sending them to another tab to fix it is how a page stays half-filled.
-
-   So the row is editable and carries a marker saying where the value actually
-   lives. What is forbidden is a SECOND field, not a second editing surface. */
-/** A field on the company page. Plain input, select, date, number or a word-capped
-    textarea — no "↔ Overview" badge any more: after the registry fields (MST, tên
-    pháp lý, tình trạng, người đại diện) moved off this page, what is left is owned
-    BY the page, so there is nothing to cross-reference. */
-function PageField({
-  label, value, req, ro, hint, options, wide, type, suffix, area, maxWords,
-}: {
-  label: string; value: string; req?: boolean; ro?: boolean; hint?: string
-  /** present → renders a select instead of an input */
-  options?: string[]
-  wide?: boolean
-  type?: 'text' | 'date' | 'number'
-  /** unit shown inside the right edge of the box — ₫, người… */
-  suffix?: string
-  /** a textarea instead of one line, with a live word counter */
-  area?: boolean
-  maxWords?: number
-}) {
-  const [v, setV] = useState(value)
-  const words = v.trim() ? v.trim().split(/\s+/).length : 0
-  const over = maxWords !== undefined && words > maxWords
-  /* Money reads back formatted under the box. A raw 44184040000 is unreadable and
-     an operator cannot tell a typo'd extra zero from a correct one. */
-  const money = type === 'number' && suffix === '₫' && Number(v) > 0
-  return (
-    <div className={cn(wide && 'sm:col-span-2')}>
-      <div className="mb-0.5 flex items-baseline gap-1.5">
-        <label className="text-[11px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-        {maxWords !== undefined && (
-          <span className={cn('ml-auto shrink-0 text-[9.5px]', over ? 'font-semibold text-rose-600' : 'text-faint')}>
-            {words}/{maxWords} từ
-          </span>
-        )}
-      </div>
-      {area ? (
-        <textarea
-          value={v} readOnly={ro} rows={3} onChange={(e) => setV(e.target.value)}
-          className={cn('w-full rounded-md border bg-surface px-2.5 py-1.5 text-[12px] leading-relaxed text-ink outline-none placeholder:text-faint',
-            over ? 'border-rose-400' : 'border-line focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
-        />
-      ) : options ? (
-        <select
-          value={v} disabled={ro} onChange={(e) => setV(e.target.value)}
-          className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand', ro && 'cursor-not-allowed opacity-60')}
-        >
-          {/* de-duped: the current value is prepended only when the list lacks it,
-              and the list itself may repeat — both would collide as React keys */}
-          {[...new Set([v, ...options])].map((o) => <option key={o}>{o}</option>)}
-        </select>
-      ) : (
-        <div className="relative">
-          <input
-            type={type ?? 'text'}
-            value={v} readOnly={ro} onChange={(e) => setV(e.target.value)}
-            placeholder="—"
-            className={cn('w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink outline-none placeholder:text-faint focus:border-brand',
-              suffix && 'pr-9', ro && 'cursor-not-allowed opacity-60')}
-          />
-          {suffix && <span className="pointer-events-none absolute inset-y-0 right-2.5 grid place-items-center text-[11px] text-faint">{suffix}</span>}
-        </div>
-      )}
-      {money && <p className="mt-0.5 text-[10px] font-medium text-brand">{Number(v).toLocaleString('vi-VN')} ₫</p>}
-      {hint && <p className="mt-0.5 text-[10px] leading-relaxed text-faint">{hint}</p>}
     </div>
   )
 }
@@ -10911,8 +10234,6 @@ const STAGES: { key: string; tone: StatusTone }[] = [
   { key: 'Negotiation', tone: 'pending' }, { key: 'Won', tone: 'active' }, { key: 'Lost', tone: 'rejected' },
 ]
 const isOpen = (s: string) => s !== 'Won' && s !== 'Lost'
-const money = (v: number) => (v / 1e6).toFixed(1) + 'M ₫'
-
 /** Same flat no-contact thresholds as the Companies list — see idleOf above. */
 function IdlePill({ days }: { days: number }) {
   const rot = idleOf(days)
@@ -10992,22 +10313,6 @@ const NEXT_BY_STAGE: Record<string, string> = {
 }
 
 
-function DetailCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface">
-      <div className="flex items-center justify-between border-b border-line-soft px-3.5 py-2.5"><p className="text-[12.5px] font-bold">{title}</p>{action}</div>
-      <div className="p-3.5">{children}</div>
-    </div>
-  )
-}
-function KV({ label, value, link }: { label: string; value: string; link?: boolean }) {
-  return (
-    <div className="border-b border-line-soft py-2 last:border-0">
-      <p className="text-[10.5px] uppercase tracking-wide text-faint">{label}</p>
-      <p className={cn('mt-0.5 text-[12.5px]', link ? 'text-brand' : 'text-ink/85')}>{value}</p>
-    </div>
-  )
-}
 function TL({ icon, title, time, sub, tone }: { icon: string; title: string; time: string; sub: string; tone: string }) {
   return (
     <div className="flex gap-2.5">
@@ -11131,83 +10436,6 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
   )
 }
 
-/* ── Create-lead modal (company-first, adapted from Salesforce) ────────────── */
-function LField({ label, req, value, select, hint }: { label: string; req?: boolean; value: string; select?: boolean; hint?: string }) {
-  return (
-    <div>
-      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-      <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{value}{select && <span className="ml-auto">▾</span>}</div>
-      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
-    </div>
-  )
-}
-/**
- * Group heading inside a detail card — the card counterpart of the create form's
- * JobGroup heading (bold title over a 2px rule), so a record reads with the same
- * landmarks as the form that filled it.
- *
- * Deliberately NOT the faint grey `Section` pill: that one is a step divider inside
- * a wizard and reads as a label on the row beneath it. This is a heading someone
- * SCANS for in a 20-row card, which is a different job and needs different weight.
- *
- * `hint` carries the "this group lives somewhere else" pointer, so the two form
- * groups that are not fields on this card (verification documents, primary contact)
- * still appear in sequence instead of silently vanishing.
- */
-function CardGroup({ title, first, hint }: { title: string; first?: boolean; hint?: React.ReactNode }) {
-  return (
-    <div className={cn('border-b-2 border-line pb-1.5', first ? 'mb-1.5' : 'mb-1.5 mt-4')}>
-      <h4 className="text-[13px] font-bold tracking-tight text-ink">{title}</h4>
-      {hint && <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
-    </div>
-  )
-}
-
-function Section({ title, className }: { title: string; className?: string }) {
-  return <p className={cn('mt-2 rounded-md bg-canvas/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted', className)}>{title}</p>
-}
-
-/** Interactive combobox — pick a suggested option or type a custom value. */
-function ComboField({ label, req, value: initial, options, placeholder, onChange }: { label: string; req?: boolean; value?: string; options: string[]; placeholder?: string
-  /** report the picked value up, for fields that gate another field (e.g. country → city) */
-  onChange?: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [val, setVal] = useState(initial ?? '')
-  const commit = (v: string) => { setVal(v); onChange?.(v) }
-  const isExact = options.some((o) => o.toLowerCase() === val.toLowerCase())
-  // exact selection (or empty) → show the whole list; mid-typing → filter
-  const matches = isExact || val.length === 0 ? options : options.filter((o) => o.toLowerCase().includes(val.toLowerCase()))
-  const isCustom = val.length > 0 && !isExact
-  return (
-    <div className="relative">
-      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-      <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 focus-within:border-brand">
-        <input
-          value={val}
-          onChange={(e) => { commit(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-[12.5px] text-ink outline-none placeholder:text-faint"
-        />
-        <button type="button" onClick={() => setOpen((o) => !o)} className="ml-2 shrink-0 text-muted">▾</button>
-      </div>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-line bg-surface py-1 shadow-lg">
-            {matches.map((o) => (
-              <button type="button" key={o} onClick={() => { commit(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === val ? 'font-medium text-brand' : 'text-ink')}>{o}</button>
-            ))}
-            {isCustom && (
-              <button type="button" onClick={() => setOpen(false)} className="block w-full border-t border-line px-3 py-1.5 text-left text-[12px] text-brand hover:bg-canvas">Use “{val}” (custom)</button>
-            )}
-            {matches.length === 0 && !isCustom && <p className="px-3 py-1.5 text-[11px] text-faint">Type to add a custom value…</p>}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
 /* ── New quotation (Báo giá) ───────────────────────────────────────────────────
    Modelled on the client's live PDF QUO-009909-07-2026. The load-bearing idea is
    that one quotation carries 1–3 priced OPTIONS which are ALTERNATIVES, not
@@ -11233,69 +10461,6 @@ const QUOTE_CATALOG = [
 ]
 /** Trial SKUs never appear in a normal quotation, and normal SKUs never in a trial. */
 const catForMode = (m: DiscountMode) => QUOTE_CATALOG.map((c, i) => ({ c, i })).filter((x) => !!x.c.trial === (m === 'trial'))
-/* A quotation ALWAYS expires on the last day of the month it was created in —
-   not after a fixed number of days. So validity shrinks through the month, and
-   every quote raised in a month lapses together. Derived, never typed. */
-function endOfMonth(ddmmyyyy: string) {
-  const [, mm, yyyy] = ddmmyyyy.split('/').map(Number)
-  if (!mm || !yyyy) return '—'
-  const last = new Date(yyyy, mm, 0).getDate()
-  return `${String(last).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yyyy}`
-}
-/** Days left on a quotation raised on `created`, as of `today`. */
-function daysLeft(created: string, today: string) {
-  const p = (d: string) => { const [dd, mm, yy] = d.split('/').map(Number); return new Date(yy, mm - 1, dd) }
-  const exp = p(endOfMonth(created))
-  const n = Math.round((exp.getTime() - p(today).getTime()) / 86_400_000)
-  return n
-}
-
-const VN_D = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
-function vnRead3(n: number, full: boolean) {
-  const tr = Math.floor(n / 100), ch = Math.floor((n % 100) / 10), dv = n % 10
-  let s = ''
-  if (full || tr > 0) s += VN_D[tr] + ' trăm'
-  if (ch === 0 && dv > 0) s += ((tr > 0 || full) ? ' lẻ ' : ' ') + VN_D[dv]
-  else if (ch === 1) s += ' mười' + (dv > 0 ? ' ' + (dv === 5 ? 'lăm' : VN_D[dv]) : '')
-  else if (ch > 1) s += ' ' + VN_D[ch] + ' mươi' + (dv === 1 ? ' một' : dv === 5 ? ' lăm' : dv > 0 ? ' ' + VN_D[dv] : '')
-  return s.trim()
-}
-/** Bằng chữ — the PDF's amount-in-words, generated. 6,588,000 → "Sáu triệu năm trăm tám mươi tám nghìn đồng." */
-function vnWords(n: number) {
-  if (n <= 0) return 'Không đồng'
-  const g: number[] = []
-  for (let x = n; x > 0; x = Math.floor(x / 1000)) g.unshift(x % 1000)
-  const scales = ['', 'nghìn', 'triệu', 'tỷ']
-  const parts = g.map((v, i) => (v === 0 ? '' : (vnRead3(v, i > 0) + ' ' + scales[g.length - 1 - i]).trim())).filter(Boolean)
-  const s = parts.join(' ')
-  return s.charAt(0).toUpperCase() + s.slice(1) + ' đồng'
-}
-
-/** The PDF's English "In words:" line. 6,588,000 → "Six million five hundred
-    eighty-eight thousand VND." Same generated-never-typed rule as vnWords. */
-const EN_ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
-const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
-function enRead3(n: number): string {
-  const h = Math.floor(n / 100), r = n % 100
-  const out: string[] = []
-  if (h) out.push(`${EN_ONES[h]} hundred`)
-  if (r < 20) { if (r) out.push(EN_ONES[r]) }
-  else {
-    const t = Math.floor(r / 10), u = r % 10
-    out.push(u ? `${EN_TENS[t]}-${EN_ONES[u]}` : EN_TENS[t])
-  }
-  return out.join(' ')
-}
-function enWords(n: number) {
-  if (n <= 0) return 'Zero VND'
-  const g: number[] = []
-  for (let x = n; x > 0; x = Math.floor(x / 1000)) g.unshift(x % 1000)
-  const scales = ['', 'thousand', 'million', 'billion']
-  const parts = g.map((v, i) => (v === 0 ? '' : `${enRead3(v)} ${scales[g.length - 1 - i]}`.trim())).filter(Boolean)
-  const s = parts.join(' ')
-  return s.charAt(0).toUpperCase() + s.slice(1) + ' VND'
-}
-
 /* ── The four ways a quotation can be discounted ──────────────────────────────
    A rep picks exactly ONE mode. Which modes are offered depends on the customer's
    status, and each mode decides — independently — what happens to the THREE
@@ -11483,16 +10648,6 @@ function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void }) {
 
 /** Company ID in the same format the Create-job picker uses: "Vạn Phát · CO-0312". */
 const coId = (c: Company) => 'CO-' + (c.tax.replace(/\D/g, '').slice(0, 4) || '0000').padEnd(4, '0')
-/** A derived value shown as information — deliberately not styled as an input. */
-function InfoBit({ label, value, hint, mono }: { label: string; value: string; hint?: string; mono?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <p className="truncate text-[10px] uppercase tracking-wide text-faint">{label}</p>
-      <p className={cn('truncate text-[12.5px] font-medium text-ink', mono && 'font-mono')}>{value}</p>
-      {hint && <p className="truncate text-[10px] text-faint">{hint}</p>}
-    </div>
-  )
-}
 /* Confirmation card — mirrors CompanyInfoCard on Create job. Its job is to let the
    rep verify they picked the right company, and it doubles as the VAT-billing
    read-out: legal name, MST and registered address all print on the invoice, and
@@ -12292,10 +11447,6 @@ function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; locke
   )
 }
 
-/* ── Convert-lead modal (adapted from Salesforce) ─────────────────────────── */
-function Radio({ on }: { on?: boolean }) {
-  return <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-full border-2', on ? 'border-brand' : 'border-line')}>{on && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
-}
 function ConvertLeadModal({ companyName, value, owner, onClose }: { companyName: string; value: number; owner: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -12429,12 +11580,6 @@ const QUOTE_SORTS: Record<QuoteSort, { label: string; cmp: (a: Quote, b: Quote) 
   created: { label: 'Mới tạo trước', cmp: (a, b) => dmy(b.created) - dmy(a.created) },
   value: { label: 'Giá trị cao nhất', cmp: (a, b) => b.value - a.value },
 }
-/** "20/07/2026" → a sortable number. A dash (no date) sorts last. */
-function dmy(d: string): number {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d.trim())
-  return m ? Number(m[3] + m[2] + m[1]) : Number.MAX_SAFE_INTEGER
-}
-
 type Quote = {
   code: string; customer: string; co?: string; products: number[]; options: number
   value: number; status: QuoteStatus; created: string; expires: string
@@ -12525,16 +11670,6 @@ const ISSUER = {
   web: 'https://topdev.vn',
   support: 'customercare@topdev.vn',
   brand: 'TopDev',
-}
-
-/** One bilingual label: Vietnamese leads, English sits under it, muted. */
-function Bi({ vi, en, className, enClass }: { vi: string; en: string; className?: string; enClass?: string }) {
-  return (
-    <span className={cn('block', className)}>
-      <span className="block">{vi}</span>
-      <span className={cn('block text-[0.85em] font-normal italic text-slate-500', enClass)}>{en}</span>
-    </span>
-  )
 }
 
 const pdfNum = (n: number) => n.toLocaleString('en-US')
@@ -16130,46 +15265,6 @@ function TaxoPane({ title, items, activeIndex, onSelect }: { title: string; item
   )
 }
 
-/* ── Create Job — draft field map ─────────────────────────────────────────────
- * A field inventory for the job-create form, NOT final visual design.
- * Structure adapted from the TopDev job dashboard (9-tab layout) and cross-checked
- * against a live Saramin post. Placeholder values are illustrative. Fields tagged
- * `confirm` need client sign-off (legal / VN-market / commercial specifics).
- * ------------------------------------------------------------------------------ */
-
-
-
-function FLabel({ children, req }: { children: React.ReactNode; req?: boolean }) {
-  return <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{children}{req && <span className="text-rose-500"> *</span>}</label>
-}
-
-/** free-text textarea placeholder */
-function TArea({ label, req, value, rows = 3, hint, extra }: { label: React.ReactNode; req?: boolean; value: string; rows?: number; hint?: string; extra?: React.ReactNode }) {
-  return (
-    <div>
-      <FLabel req={req}>{label}{extra}</FLabel>
-      <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-faint" style={{ minHeight: rows * 20 }}>{value}</div>
-      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
-    </div>
-  )
-}
-
-/** multi-value chip / token input placeholder */
-function ChipField({ label, req, chips, placeholder, hint, extra }: { label: React.ReactNode; req?: boolean; chips: string[]; placeholder: string; hint?: string; extra?: React.ReactNode }) {
-  return (
-    <div>
-      <FLabel req={req}>{label}{extra}</FLabel>
-      <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5">
-        {chips.map((c) => (
-          <span key={c} className="inline-flex items-center gap-1 rounded border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand">{c}<span className="text-brand/50">×</span></span>
-        ))}
-        <span className="px-1 text-[12px] text-faint">{placeholder}</span>
-      </div>
-      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
-    </div>
-  )
-}
-
 /* ── Job skills — ONE field ──────────────────────────────────────────────────
    A single list, drawn from the canonical Skill taxonomy (never free text — that
    is what lets a JD skill join to a CV skill).
@@ -16303,17 +15398,6 @@ function JobSkillsField({ roles = ['Software Developer'] }: { roles?: string[] }
       <p className="mt-1 text-[10.5px] text-faint">
         <b className="font-medium text-muted tabular-nums">≈ {count.toLocaleString()}</b> candidates have all of these · skills rank candidates, they never exclude anyone.
       </p>
-    </div>
-  )
-}
-
-/** inline single-value field with optional provenance/confirm markers + hint */
-function FField({ label, req, value, select, hint, extra }: { label: React.ReactNode; req?: boolean; value: string; select?: boolean; hint?: string; extra?: React.ReactNode }) {
-  return (
-    <div>
-      <FLabel req={req}>{label}{extra}</FLabel>
-      <div className="flex items-center rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-faint">{value}{select && <span className="ml-auto">▾</span>}</div>
-      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
     </div>
   )
 }
@@ -16559,16 +15643,6 @@ function Stepper({ value }: { value: string }) {
   )
 }
 
-/** Field label row with an optional right-aligned control (e.g. Show-to-jobseekers). */
-function LabelRow({ label, req, right }: { label: string; req?: boolean; right?: React.ReactNode }) {
-  return (
-    <div className="mb-1 flex items-center gap-2">
-      <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-      {right && <span className="ml-auto">{right}</span>}
-    </div>
-  )
-}
-
 /** Compact demographic row (VietnamWorks-style): label · radios · Show-toggle, kept close together. */
 function DemoRow({ label, options }: { label: string; options: string[] }) {
   return (
@@ -16576,67 +15650,6 @@ function DemoRow({ label, options }: { label: string; options: string[] }) {
       <label className="w-36 text-[11.5px] font-medium text-ink/80">{label}</label>
       <RadioOpts options={options} value="Any" />
       <ShowToggle on={false} />
-    </div>
-  )
-}
-
-/**
- * Interactive single-select dropdown (click to open, pick one).
- *
- * `createLabel` turns on the inline "＋ Create new…" affordance: master-data-backed
- * fields (category, level, industry, currency…) let an operator add a new option
- * without leaving the form — the new value is added to Master data and selected.
- */
-function SelectField({ label, req, value, options, extra, createLabel, onChange }: { label: string; req?: boolean; value: string; options: string[]; extra?: React.ReactNode; createLabel?: string; onChange?: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [sel, setSel] = useState(value)
-  const [opts, setOpts] = useState(options)
-  const [creating, setCreating] = useState(false)
-  const [draft, setDraft] = useState('')
-  const pick = (v: string) => { setSel(v); onChange?.(v) }
-  const commit = () => {
-    const v = draft.trim()
-    if (v) { setOpts((o) => (o.includes(v) ? o : [...o, v])); pick(v) }
-    setDraft(''); setCreating(false); setOpen(false)
-  }
-  return (
-    <div>
-      <FLabel req={req}>{label}{extra}</FLabel>
-      <div className="relative">
-        <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center rounded-md border border-line bg-surface px-3 py-2 text-left text-[12.5px] text-ink/80">
-          {sel}<span className="ml-auto text-faint">▾</span>
-        </button>
-        {open && (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-line bg-surface shadow-lg">
-            <div className="max-h-52 overflow-auto py-1">
-              {opts.map((o) => (
-                <button key={o} onClick={() => { pick(o); setOpen(false) }} className={cn('block w-full px-3 py-1.5 text-left text-[12px] hover:bg-canvas', o === sel ? 'bg-brand-soft font-medium text-brand' : 'text-ink/80')}>{o}</button>
-              ))}
-            </div>
-            {createLabel && (
-              <div className="border-t border-line-soft bg-canvas/50">
-                {creating ? (
-                  <div className="flex items-center gap-1.5 p-1.5">
-                    <input
-                      autoFocus
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setCreating(false); setDraft('') } }}
-                      placeholder={`New ${label.toLowerCase()}…`}
-                      className="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-[12px] outline-none focus:border-brand"
-                    />
-                    <button onClick={commit} className="shrink-0 rounded bg-brand px-2 py-1 text-[11px] font-semibold text-white hover:opacity-90">Add</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setCreating(true)} className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[12px] font-medium text-brand hover:bg-brand-soft">
-                    <span className="text-[14px] leading-none">＋</span> {createLabel}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
@@ -16672,24 +15685,6 @@ function CompanyInfoCard() {
 const TITLE_I18N: Record<'VI' | 'EN', string> = {
   VI: 'Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)',
   EN: 'Technical Leader / Technical Architect (.NET)',
-}
-
-/** Bilingual textarea — VI / EN tab on the label row. */
-function BiTArea({ label, req, vi, en, rows = 4 }: { label: string; req?: boolean; vi: string; en: string; rows?: number }) {
-  const [lang, setLang] = useState<'VI' | 'EN'>('VI')
-  return (
-    <div>
-      <div className="mb-1 flex items-center gap-2">
-        <label className="text-[11.5px] font-medium text-ink/80">{label}{req && <span className="text-rose-500"> *</span>}</label>
-        <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[10.5px] font-medium">
-          {(['VI', 'EN'] as const).map((l) => (
-            <button key={l} onClick={() => setLang(l)} className={cn('px-2 py-0.5', lang === l ? 'bg-brand text-white' : 'text-muted')}>{l}</button>
-          ))}
-        </div>
-      </div>
-      <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-faint" style={{ minHeight: rows * 20 }}>{lang === 'VI' ? vi : en}</div>
-    </div>
-  )
 }
 
 /* ONE create-job form for both surfaces. The Company site renders this same
