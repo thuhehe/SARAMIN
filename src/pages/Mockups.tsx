@@ -2182,7 +2182,15 @@ function MyCvsScreen() {
     { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄', state: 'unreadable' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Created 26/07/2026', icon: '📄', state: 'qualified' },
     { name: 'UX Designer CV', kind: 'Saramin', meta: 'Created 14/08/2026', icon: '📄', state: 'not_enough' },
+    /* ALL THREE reject reasons are present on purpose: each one has a different
+       chip, a different line and a DIFFERENT BUTTON, and that difference is the
+       whole argument for three names rather than one “rejected”. A screen that
+       demonstrates only one of them cannot be reviewed against the matrix.
+       Rejected CVs do not count towards the 3-CV cap, so showing all three does
+       not misrepresent the limit. */
     { name: 'scan_cu.pdf', kind: 'Uploaded', meta: 'Uploaded 02/08/2026', icon: '📄', state: 'rejected', reason: 'not_a_cv' },
+    { name: 'cv-ban-nhap.pdf', kind: 'Uploaded', meta: 'Uploaded 10/08/2026', icon: '📄', state: 'rejected', reason: 'not_enough' },
+    { name: 'anh-chup-cv.pdf', kind: 'Uploaded', meta: 'Uploaded 12/08/2026', icon: '📄', state: 'rejected', reason: 'unreadable' },
   ]
   /* WHAT THE ROW SHOWS — null means “render it like any healthy CV”, and THREE
      different situations map to null on purpose:
@@ -3068,6 +3076,9 @@ function MyApplicationsScreen() {
        delivered, and the candidate is told WHY and what to do, never left
        assuming the employer ignored them. */
     { job: 'Visual Designer', co: 'Base.vn', applied: '18/07/2026', cv: 'old_scan.pdf', status: 'Không được gửi', tone: 'rose' as const, note: 'File này không phải một CV — tải lên CV khác rồi ứng tuyển lại', reason: 'Not a CV' },
+    /* The third reject reason, so the list demonstrates all three fixes: this one
+       is the only rejection the candidate clears WITHOUT re-uploading anything. */
+    { job: 'Brand Designer', co: 'Highlands', applied: '17/07/2026', cv: 'cv-ban-nhap.pdf', status: 'Không được gửi', tone: 'rose' as const, note: 'Hồ sơ chưa đủ thông tin — cập nhật hồ sơ rồi ứng tuyển lại', reason: 'CV but not enough information' },
     /* SENT, then RECALLED — the CV qualified, reached the employer, and was later
        rejected on review. The candidate must be told it was WITHDRAWN BY US rather
        than turned down by the employer: "Not selected" here would be a lie that
@@ -3127,7 +3138,7 @@ function MyApplicationsScreen() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[15px] font-bold text-ink">My applications</p>
             <div className="flex gap-1.5">
-              {['All (7)', 'In progress (3)', 'Offer (1)', 'Closed (3)'].map((f, i) => (
+              {['All (8)', 'In progress (3)', 'Offer (1)', 'Closed (4)'].map((f, i) => (
                 <span key={f} className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-medium', i === 0 ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}>{f}</span>
               ))}
             </div>

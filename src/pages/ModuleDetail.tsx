@@ -45,10 +45,15 @@ function Rich({ t }: { t: string }) {
    more than three entries is far faster to read as rows than as a paragraph. */
 function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
   const tmpl = `minmax(120px, 0.9fr) ${t.cols.slice(1).map(() => '1fr').join(' ')}`
+  /* A wide matrix needs room, not squeezing. Four 1fr columns inside 480px gives
+     each about 90px, which turns every cell into a column of single words. Past
+     four columns the table scrolls horizontally instead — the container is
+     already overflow-x-auto, so nothing else has to change. */
+  const minW = t.cols.length >= 5 ? 1040 : 480
   return (
     <div className="mt-2 overflow-x-auto rounded-lg border border-line">
       <div
-        style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+        style={{ gridTemplateColumns: tmpl, minWidth: minW }}
         className={cn('grid gap-x-4 bg-canvas/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted', dense && 'text-[10px]')}
       >
         {t.cols.map((c, i) => <span key={i}>{c}</span>)}
@@ -56,7 +61,7 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
       {t.rows.map((r, ri) => (
         <div
           key={ri}
-          style={{ gridTemplateColumns: tmpl, minWidth: 480 }}
+          style={{ gridTemplateColumns: tmpl, minWidth: minW }}
           className={cn('grid gap-x-4 border-t border-line-soft px-3 py-1.5', dense ? 'text-[11.5px]' : 'text-[12.5px]')}
         >
           {r.map((cell, ci) => (
