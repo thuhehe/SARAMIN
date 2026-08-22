@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
@@ -610,7 +610,9 @@ function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolv
         </div>
       )}
       <div className="max-h-[640px] overflow-y-auto scroll-thin">
-        <s.Comp />
+        <Suspense fallback={<div className="flex min-h-[240px] items-center justify-center text-[12px] text-faint">Loading…</div>}>
+          <s.Comp />
+        </Suspense>
       </div>
     </SpecBlock>
   )

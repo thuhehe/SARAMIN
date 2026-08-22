@@ -17,7 +17,7 @@ export type ScreenSource = 'js' | 'co' | 'admin'
 export type ResolvedScreen = {
   title?: string
   url?: string
-  Comp: () => JSX.Element
+  Comp: React.ComponentType
   /** which gallery this screen actually lives in — powers the "open in mockups" link */
   src: ScreenSource
   /** the screen's id INSIDE that gallery (post-alias), for deep-linking */

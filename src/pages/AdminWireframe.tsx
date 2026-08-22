@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
@@ -319,6 +319,16 @@ const PRIMARY_ACTION: Record<string, string> = {
   'admin-quotes': '+ New quotation',
 }
 
+/* Shown while a screen's chunk is in flight. Deliberately quiet and the height of
+   a list page, so arriving at a screen doesn't jump the layout. */
+function ScreenLoading() {
+  return (
+    <div className="flex min-h-[420px] items-center justify-center">
+      <p className="text-[12px] text-faint">Loading…</p>
+    </div>
+  )
+}
+
 export function AdminWireframe() {
   const [walkthrough, setWalkthrough] = useState<null | 'activation' | 'flow'>(null)
   /** specId whose create modal is open — the title-row button opens it. */
@@ -596,7 +606,9 @@ export function AdminWireframe() {
                   <OpenRecordCtx.Provider value={openRecord}>
                     <DetailCrumbCtx.Provider value={setDetail}>
                       <CreateSignalCtx.Provider value={createSeq}>
-                        <Proto key={`${active.item.specId}-${navSeq}`} />
+                        <Suspense fallback={<ScreenLoading />}>
+                          <Proto key={`${active.item.specId}-${navSeq}`} />
+                        </Suspense>
                       </CreateSignalCtx.Provider>
                     </DetailCrumbCtx.Provider>
                   </OpenRecordCtx.Provider>
