@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
 import { BenefitCards } from '@/components/BenefitsField'
+import { SaraminCvDoc, CvComposer, CvRichText, normalizeCvText, type CvData } from '@/components/CvDoc'
 import { CopyLinkButton, initialScreenParam, useScreenParam } from '@/components/ShareLink'
 import { cn } from '@/lib/utils'
 
@@ -566,7 +567,11 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'From', kind: 'month', req: true, value: '2022-03', half: true },
       { label: 'To', kind: 'month', value: '', hint: 'Leave empty if this is your current role.', half: true },
       { label: 'I currently work here', kind: 'toggle', value: 'on' },
-      { label: 'What you did', kind: 'area', value: '• Led the design system rollout across 4 product teams\n• Ran user research for the checkout redesign' },
+      /* Seeded with all four marks rather than two bare bullets — this is the
+         field the vocabulary exists for, and a default that only ever shows
+         bullets teaches that bullets are all there is. Matches the sample on the
+         Saramin CV template screen so the two never disagree. */
+      { label: 'What you did', kind: 'area', hint: 'Hai nút: H = tiêu đề nhỏ (nhóm các gạch đầu dòng trong một vị trí) · • = gạch đầu dòng. Không bấm gì thì là đoạn văn. Không có in đậm, in nghiêng, gạch chân hay đánh số — bản CV tạo ra không hiển thị chúng.', value: 'Led product design for web & mobile, and owned the shared design system across 4 teams.\n## Design System\n• Built and maintained the shared design system, cutting new-screen build time by 40%.\n• Wrote the usage guide and ran 6 training sessions for design and front-end.\n## Checkout redesign\n• Interviewed 18 customers and found 3 blockers in the payment flow.\n• Redesigned checkout, lifting order completion 12% in two months.' },
     ],
   },
   Education: {
@@ -578,7 +583,11 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'From', kind: 'month', value: '2016-09', half: true },
       { label: 'To', kind: 'month', value: '2020-07', half: true },
       { label: 'Score', value: '3.4 / 4.0', half: true },
-      { label: 'Achievement', value: '' },
+      /* Was a single-line text input, which is why nobody filled it in: a degree's
+         achievements are a LIST (scholarships, thesis, competitions), and one
+         line asks for a run-on sentence. Same composer as every other free-text
+         CV field — one vocabulary across the whole builder. */
+      { label: 'Achievement', kind: 'area', value: '• Học bổng khuyến khích học tập 3 kỳ liên tiếp\n• Khoá luận đạt loại Giỏi — đề tài về hành vi người dùng thương mại điện tử' },
     ],
   },
   Skills: {
@@ -638,6 +647,13 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Issuing organisation', value: '', half: true },
       { label: 'Issue date', kind: 'month', value: '', half: true },
       { label: 'Credential ID or URL', value: '', half: true },
+      /* The certificate NAME is the searchable part; this line is what a
+         recruiter reads once the CV is open. Kept optional because a well-known
+         certificate explains itself — "AWS Solutions Architect" needs no gloss —
+         while a niche or in-house one is unreadable without it. The hint pushes
+         towards the second case rather than inviting everyone to write a
+         paragraph. */
+      { label: 'Description', kind: 'area', value: '', hint: 'Only worth writing for a certificate a recruiter may not know — what it covers, or what you had to pass.' },
     ],
   },
   Awards: {
@@ -673,9 +689,14 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
   },
 }
 
-/** One field row in the edit sheet. Values are static — this is a wireframe. */
+/** One field row in the edit sheet. Values are static — this is a wireframe —
+ *  with ONE exception: a free-text CV field is LIVE, because the whole question
+ *  it answers ("how do I actually add a sub-heading or a bullet?") cannot be
+ *  answered by a picture of a textarea. Type in it and the preview under it
+ *  re-renders through the same CvRichText the generated CV uses. */
 function EditRow({ f }: { f: EditField }) {
   const box = 'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px]'
+  const [rich, setRich] = useState(f.value ?? '')
   return (
     <div className={f.half ? '' : 'col-span-2'}>
       <label className="mb-1 block text-[10.5px] font-medium text-ink/70">
@@ -689,7 +710,10 @@ function EditRow({ f }: { f: EditField }) {
           <span className="text-[11px] text-muted">{f.value ? 'Yes' : 'No'}</span>
         </div>
       ) : f.kind === 'area' ? (
-        <div className={cn(box, 'min-h-[58px] whitespace-pre-wrap', f.value ? 'text-ink/80' : 'text-faint')}>{f.value || 'Not filled in yet'}</div>
+        /* The four marks, the three buttons, and what they produce — all in the
+           place a candidate actually writes. Anything richer than this is not
+           offered, because the generated CV has no way to render it. */
+        <CvComposer value={rich} onChange={setRich} />
       ) : f.kind === 'tags' ? (
         <div className="flex min-h-[30px] flex-wrap items-center gap-1 rounded-md border border-line bg-surface px-2 py-1.5">
           {f.value
@@ -2514,6 +2538,179 @@ function CvDetailScreen() {
   )
 }
 
+/* ── SARAMIN STANDARD — the one generated-CV template, shown next to the editor
+   that produces it. A CV can be laid out a thousand ways; this screen exists to
+   say we do not chase them. Left: the document. Right: the whole markup
+   vocabulary a candidate gets, and what an uploaded PDF is normalised into.
+   The rules themselves live in components/CvDoc.tsx. ── */
+const TEMPLATE_CV: CvData = {
+  name: 'Trần Minh Anh',
+  headline: 'Senior Product Designer',
+  email: 'minhanh@email.com',
+  phone: '0901 234 567',
+  location: 'Hồ Chí Minh',
+  photo: true,
+  summary: 'Product designer 4+ năm cho sản phẩm web & mobile, tập trung vào hệ thống thiết kế và nghiên cứu người dùng.',
+  roles: [
+    /* Exercises ALL FOUR marks — lead paragraph, sub-headings grouping bullets by
+       project, and inline bold on the numbers. This is the shape a senior CV
+       actually has, and the reason sub-heading earned its place in the set. */
+    {
+      title: 'Senior Product Designer', company: 'Lantern Digital', place: 'Hồ Chí Minh',
+      from: '03/2022', to: 'Nay',
+      body: [
+        'Thiết kế sản phẩm cho 2 nền tảng web & mobile, dẫn dắt hệ thống thiết kế dùng chung cho 4 nhóm sản phẩm.',
+        '## Design System',
+        '• Xây dựng và duy trì hệ thống thiết kế dùng chung cho 4 nhóm sản phẩm, giảm thời gian dựng giao diện mới khoảng 40%.',
+        '• Viết tài liệu hướng dẫn và tổ chức 6 buổi đào tạo cho đội thiết kế và front-end.',
+        '## Checkout redesign',
+        '• Phỏng vấn 18 khách hàng, tìm ra 3 điểm nghẽn chính trong luồng thanh toán.',
+        '• Thiết kế lại luồng checkout, tăng tỷ lệ hoàn tất đơn 12% sau 2 tháng.',
+        '## Research Ops',
+        '• Thiết lập quy trình phỏng vấn và kho dữ liệu nghiên cứu dùng chung cho cả công ty.',
+      ].join('\n'),
+    },
+    /* The common case, and the one that must stay simple: plain bullets, no
+       headings. Most CVs on a general job board look like this. */
+    {
+      title: 'Product Designer', company: 'Zenpay', place: 'Hồ Chí Minh',
+      from: '06/2019', to: '02/2022',
+      body: [
+        '• Thiết kế giao diện ứng dụng ví điện tử cho hơn 200.000 người dùng.',
+        '• Phối hợp với nhóm marketing xây dựng bộ nhận diện trong sản phẩm.',
+        '• Chuẩn hoá thư viện icon và bảng màu, dùng chung cho 3 sản phẩm.',
+      ].join('\n'),
+    },
+  ],
+  schools: [{
+    school: 'ĐH Kinh tế TP.HCM', degree: 'Cử nhân', major: 'Quản trị kinh doanh', from: '2015', to: '2019',
+    /* Achievements take the same two blocks as a job description — the field was
+       a single-line input until 2026-08-22, which is why it read as an
+       afterthought and nobody filled it in. */
+    body: [
+      '• Học bổng khuyến khích học tập 3 kỳ liên tiếp',
+      '• Khoá luận loại Giỏi — hành vi người dùng thương mại điện tử',
+    ].join('\n'),
+  }],
+  skills: ['Figma', 'Design Systems', 'User Research', 'Prototyping', 'Wireframing'],
+  /* Every optional section is the same shape — title · meta · block body — so a
+     project written with sub-headings prints exactly like a role written with
+     them. One vocabulary, everywhere a candidate types prose. */
+  extras: [
+    {
+      heading: 'Dự án nổi bật',
+      entries: [{
+        title: 'Saramin Design Kit', meta: '2024',
+        body: [
+          'Bộ thư viện giao diện mã nguồn mở cho nhóm thiết kế nội bộ.',
+          '## Phạm vi',
+          '• 42 component, tài liệu hướng dẫn và bộ token màu · chữ.',
+          '• Được 3 nhóm sản phẩm sử dụng trong 6 tháng đầu.',
+        ].join('\n'),
+      }],
+    },
+    {
+      heading: 'Giải thưởng',
+      entries: [{
+        title: 'Vietnam Design Awards — Hạng mục UX', meta: '2023',
+        body: '• Giải Bạc cho dự án thiết kế lại luồng thanh toán.',
+      }],
+    },
+    {
+      heading: 'Hoạt động',
+      entries: [{
+        title: 'UX Vietnam Community', meta: 'Mentor · 2022 – nay',
+        body: '• Hướng dẫn 12 bạn mới chuyển ngành, mỗi khoá 8 tuần.',
+      }],
+    },
+    { heading: 'Ngoại ngữ', entries: [{ title: 'Tiếng Anh', meta: 'IELTS 7.5' }] },
+    { heading: 'Chứng chỉ', entries: [{ title: 'Google UX Design Certificate', meta: '2021' }] },
+  ],
+}
+
+/* A messy paste straight out of a PDF — wrapped bullets, mixed glyphs, a numbered
+   list. Shown beside its normalised form because the wrap rule is the one thing
+   readers do not believe until they see it: line 2 is NOT a second bullet. */
+const RAW_PASTE = [
+  '- Built 10+ operational modules (HR, Security, Equipment Tracking) across 60+',
+  '  screens as the sole mobile developer, from architecture to production.',
+  '2. Integrated FCM for push notifications and CodePush for OTA updates,',
+  '   enabling hotfixes without a store re-download.',
+].join('\n')
+
+function CvTemplateScreen() {
+  const [body, setBody] = useState(TEMPLATE_CV.roles[0].body)
+  const cv: CvData = { ...TEMPLATE_CV, roles: [{ ...TEMPLATE_CV.roles[0], body }, TEMPLATE_CV.roles[1]] }
+  const Mark = ({ code, is }: { code: string; is: string }) => (
+    <p className="flex gap-2 text-[11px]">
+      <code className="w-14 shrink-0 rounded bg-canvas px-1 py-0.5 text-center font-mono text-[10.5px] text-ink/80">{code}</code>
+      <span className="min-w-0 text-muted">{is}</span>
+    </p>
+  )
+  return (
+    <div className="relative">
+      <JsHeader active="CV & Profile" />
+      <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+        {/* ── left: the document ── */}
+        <div>
+          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-brand">Saramin Standard — bản CV được tạo ra</p>
+          <SaraminCvDoc cv={cv} frame />
+          <p className="mt-2 text-[11px] leading-relaxed text-faint">
+            Một cột, thứ tự mục cố định, không đổi màu và không đổi bố cục. Ràng buộc quyết định:{' '}
+            <b className="font-semibold text-ink/70">CV do Saramin tạo, đưa ngược qua chính bộ đọc CV của Saramin, phải ra đúng từng trường</b> —
+            nếu bộ đọc của mình còn không đọc nổi bản mình tạo thì không ATS nào đọc được.
+          </p>
+        </div>
+
+        {/* ── right: the vocabulary, live ── */}
+        <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+          <div className="rounded-xl border border-line bg-surface p-3.5">
+            <p className="text-[12px] font-bold text-ink">Hai nút — hết</p>
+            <p className="mt-0.5 mb-2 text-[11px] leading-relaxed text-muted">
+              Một ô nhập, một thanh công cụ, <b className="font-semibold text-ink/75">đúng 2 nút</b> — như ô soạn tin
+              của Slack. Ứng viên chọn <b className="font-semibold text-ink/75">cấu trúc</b>, Saramin chọn{' '}
+              <b className="font-semibold text-ink/75">kiểu hiển thị</b>. Không có cú pháp để học và không bao giờ
+              thấy ký hiệu. Sửa thử ở dưới, bản CV bên trái đổi theo.
+            </p>
+            <div className="space-y-1">
+              <Mark code="H" is="tiêu đề nhỏ — nhóm gạch đầu dòng trong một vị trí" />
+              <Mark code="•" is="gạch đầu dòng, 1 cấp" />
+              <Mark code="—" is="không bấm gì = đoạn văn" />
+            </div>
+            <div className="mt-2.5">
+              <CvComposer value={body} onChange={setBody} />
+            </div>
+          </div>
+
+          {/* The normalisation rule, demonstrated rather than asserted. */}
+          <div className="rounded-xl border border-line bg-surface p-3.5">
+            <p className="text-[12px] font-bold text-ink">Dán từ PDF → chuẩn hoá</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+              Dòng nối tiếp của một gạch đầu dòng bị xuống hàng trong PDF sẽ được{' '}
+              <b className="font-semibold text-ink/75">nhập lại vào đúng gạch đầu dòng đó</b>, không tách thành dòng mới.
+              Mọi ký hiệu <code className="font-mono text-[10.5px]">- · * 1.</code> đều quy về gạch đầu dòng, và mọi định dạng chữ (đậm, nghiêng) bị bỏ.
+            </p>
+            <pre className="mt-2 overflow-x-auto rounded-md border border-line bg-canvas/60 p-2 font-mono text-[10px] leading-relaxed text-muted">{RAW_PASTE}</pre>
+            <p className="mt-1.5 mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Kết quả</p>
+            <div className="rounded-md border border-line bg-canvas/30 p-2">
+              <CvRichText value={normalizeCvText(RAW_PASTE)} />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-line bg-canvas/50 p-3.5">
+            <p className="text-[11px] font-semibold text-ink/80">Bỏ đi, có chủ đích</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              In đậm (tên công nghệ đã nằm ở trường Kỹ năng có cấu trúc — nơi tìm kiếm thật sự đọc) ·
+              in nghiêng &amp; gạch chân (trong CV thật chúng chỉ dùng để đánh dấu tiêu đề nhỏ — nay đã có kiểu dòng riêng) ·
+              danh sách đánh số · gạch đầu dòng nhiều cấp · bảng &amp; chia cột · font, cỡ chữ, màu sắc.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── CV compare — the payoff screen after an upload is read: YOUR PDF on the
    left, the SAME information restructured as a Saramin CV on the right, gaps
    flagged inline in the structure, AI-suggested skills as one-tap chips, and
@@ -3441,6 +3638,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },
   { id: 'js-my-cvs', site: 'Jobseeker', title: 'My CVs', url: 'saramin.vn/my-page/cvs', Comp: MyCvsScreen },
   { id: 'js-cv-detail', site: 'Jobseeker', title: 'CV detail', url: 'saramin.vn/my-page/cvs/ux-designer-cv', Comp: CvDetailScreen },
+  { id: 'js-cv-template', site: 'Jobseeker', title: 'Saramin CV template', url: 'saramin.vn/my-page/cvs/template', Comp: CvTemplateScreen },
   { id: 'js-add-cv', site: 'Jobseeker', title: 'Add a new CV', url: 'saramin.vn/cv/new', Comp: AddCvScreen },
   { id: 'js-cv-compare', site: 'Jobseeker', title: 'CV compare (after upload)', url: 'saramin.vn/cv/review', Comp: CvCompareScreen },
   { id: 'js-profile-cv', site: 'Jobseeker', title: 'My Profile', url: 'saramin.vn/my-page/profile', Comp: ProfileCvScreen },

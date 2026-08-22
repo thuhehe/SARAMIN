@@ -1201,7 +1201,7 @@ export const resumeManagement: BuildModule = {
                 ['BASIC INFO — Years of work experience', 'yearsOfWorkExperience', 'Basic information (onboarding) — stated, overridable'],
                 ['CV CONTENT — Job title', 'workExperience[latest].title', 'CV content → Title taxonomy'],
                 ['CV CONTENT — Skills', 'CvSkill[] (cvId · skillId · source)', 'CV content — extracted or hand-added → Skill taxonomy'],
-                ['CV CONTENT — Certificates', 'certificates[] { name, issuer, date }', 'CV content'],
+                ['CV CONTENT — Certificates', 'certificates[] { name, issuer, date, credentialUrl?, description? }', 'CV content'],
                 ['CV CONTENT — Language + level', 'languages[] { language, proficiency }', 'The `language` (8 rows) and `language_proficiency` (7 rows, CEFR) masters. Indexed AS A PAIR — languages are NOT skills'],
               ],
             },
