@@ -7,3 +7,15 @@
 # macOS Finder metadata. Committed by accident once and then kept showing up
 # in every status; ignored everywhere, not just at the root.
 .DS_Store
+
+# Build output. Vercel builds from source (the deployed site serves its own
+# fresh bundle, not this directory), so committing it only churned on every
+# build and left a stale pre-refactor bundle in the tree.
+dist/
+
+# TypeScript's incremental-build cache. Rewritten by every `tsc -b`.
+tsconfig.tsbuildinfo
+
+# Excel/Office lock files, left behind when a spreadsheet in public/docs is open.
+.~*
+
