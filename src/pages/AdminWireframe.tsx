@@ -1,4 +1,4 @@
-import { Suspense, startTransition, useEffect, useState } from 'react'
+import { Suspense, lazy, startTransition, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
@@ -21,10 +21,13 @@ import { ADMIN_PROTOTYPES } from './admin/registry'
 import { CreateSignalCtx, DetailCrumbCtx, OpenRecordCtx, ScreenNavCtx } from './admin/ctx'
 import type { DetailCrumb } from './admin/ctx'
 import { GlobalCompanySearch } from './admin/screens/companies/search'
-import { NewPackageModal } from './admin/screens/products/newPackage'
-import { NewProductModal } from './admin/screens/products/newProduct'
-import { NewQuotationModal } from './admin/screens/sales/newQuotation'
-import { AdminPipeline } from './admin/screens/sales/pipeline'
+/* The three create forms and the pipeline walkthrough are each a few hundred
+   lines that only open on a click, so they follow the screens and load on
+   demand rather than riding along with the shell. */
+const NewPackageModal = lazy(() => import('./admin/screens/products/newPackage').then((m) => ({ default: m.NewPackageModal })))
+const NewProductModal = lazy(() => import('./admin/screens/products/newProduct').then((m) => ({ default: m.NewProductModal })))
+const NewQuotationModal = lazy(() => import('./admin/screens/sales/newQuotation').then((m) => ({ default: m.NewQuotationModal })))
+const AdminPipeline = lazy(() => import('./admin/screens/sales/pipeline').then((m) => ({ default: m.AdminPipeline })))
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
@@ -611,7 +614,9 @@ export function AdminWireframe() {
                 <ScreenNavCtx.Provider value={goToScreen}>
                   <OpenRecordCtx.Provider value={openRecord}>
                     <DetailCrumbCtx.Provider value={setDetail}>
-                      <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+                      <Suspense fallback={<ScreenLoading />}>
+                        <AdminPipeline onActivate={() => setWalkthrough('activation')} />
+                      </Suspense>
                     </DetailCrumbCtx.Provider>
                   </OpenRecordCtx.Provider>
                 </ScreenNavCtx.Provider>
@@ -656,9 +661,13 @@ export function AdminWireframe() {
             </div>
           </div>
 
-          {creating === 'admin-catalog' && <NewProductModal onClose={() => setCreating(null)} />}
-          {creating === 'admin-bundles' && <NewPackageModal onClose={() => setCreating(null)} />}
-          {creating === 'admin-quotes' && <NewQuotationModal onClose={() => setCreating(null)} />}
+          {/* No placeholder: a create form is an overlay, so showing a spinner
+              where the page is would be worse than the form arriving a beat later. */}
+          <Suspense fallback={null}>
+            {creating === 'admin-catalog' && <NewProductModal onClose={() => setCreating(null)} />}
+            {creating === 'admin-bundles' && <NewPackageModal onClose={() => setCreating(null)} />}
+            {creating === 'admin-quotes' && <NewQuotationModal onClose={() => setCreating(null)} />}
+          </Suspense>
         </div>
       </div>
 

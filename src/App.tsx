@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   Routes,
   Route,
@@ -11,14 +11,19 @@ import { Menu, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
 import { MetaRail } from './components/MetaRail'
 import { SpecView } from './components/SpecView'
-import { Overview } from './pages/Overview'
-import { Legend } from './pages/Legend'
-import { Modules } from './pages/Modules'
-import { BuildPlan } from './pages/BuildPlan'
-import { Mockups } from './pages/Mockups'
-import { CompanyMockups } from './pages/CompanyMockups'
-import { AdminWireframe } from './pages/AdminWireframe'
-import { ModuleDetail, FeatureDetail } from './pages/ModuleDetail'
+/* Pages load on navigation. Each carries a lot with it — the mockup galleries
+   are a few hundred KB of screens, the module pages pull the whole build spec —
+   and a reader opens a handful, so bundling them all into the first load only
+   delays the page they actually asked for. */
+const Overview = lazy(() => import('./pages/Overview').then((m) => ({ default: m.Overview })))
+const Legend = lazy(() => import('./pages/Legend').then((m) => ({ default: m.Legend })))
+const Modules = lazy(() => import('./pages/Modules').then((m) => ({ default: m.Modules })))
+const BuildPlan = lazy(() => import('./pages/BuildPlan').then((m) => ({ default: m.BuildPlan })))
+const Mockups = lazy(() => import('./pages/Mockups').then((m) => ({ default: m.Mockups })))
+const CompanyMockups = lazy(() => import('./pages/CompanyMockups').then((m) => ({ default: m.CompanyMockups })))
+const AdminWireframe = lazy(() => import('./pages/AdminWireframe').then((m) => ({ default: m.AdminWireframe })))
+const ModuleDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.ModuleDetail })))
+const FeatureDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.FeatureDetail })))
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
 import { CommentsProvider, useComments } from './comments/CommentsProvider'
@@ -26,6 +31,16 @@ import { CommentableRoot } from './comments/CommentableRoot'
 import { CommentsLayer } from './comments/CommentsLayer'
 import { OAuthCallback } from './comments/OAuthCallback'
 import { CALLBACK_PATH } from './comments/oauth'
+
+/* Shown while a page's chunk is in flight. Tall enough that the page below does
+   not jump as the content arrives. */
+function PageLoading() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <p className="text-[12px] text-faint">Loading…</p>
+    </div>
+  )
+}
 
 function useScrollTopOnRoute() {
   const { pathname } = useLocation()
@@ -167,22 +182,24 @@ function Layout() {
         <main id="scroll-main" className="flex-1 min-w-0">
           {/* Everything inside is commentable; the nav and rails are not. */}
           <CommentableRoot>
-            <Routes>
-              <Route path="/" element={<Overview />} />
-              <Route path="/plan" element={<BuildPlan />} />
-              <Route path="/mockups" element={<Mockups />} />
-              <Route path="/mockups/company" element={<CompanyMockups />} />
-              <Route path="/modules" element={<Modules />} />
-              <Route path="/wireframe/admin" element={<AdminWireframe />} />
-              <Route path="/legend" element={<Legend />} />
-              <Route path="/m/:moduleId" element={<ModuleDetail />} />
-              <Route path="/m/:moduleId/:featureKey" element={<FeatureDetail />} />
-              <Route path="/f/:id" element={<FeaturePage />} />
-              {/* Landing strip for the BB PM sign-in round trip. It
-                  redirects onward as soon as the code is exchanged. */}
-              <Route path={CALLBACK_PATH} element={<OAuthCallback />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<PageLoading />}>
+              <Routes>
+                <Route path="/" element={<Overview />} />
+                <Route path="/plan" element={<BuildPlan />} />
+                <Route path="/mockups" element={<Mockups />} />
+                <Route path="/mockups/company" element={<CompanyMockups />} />
+                <Route path="/modules" element={<Modules />} />
+                <Route path="/wireframe/admin" element={<AdminWireframe />} />
+                <Route path="/legend" element={<Legend />} />
+                <Route path="/m/:moduleId" element={<ModuleDetail />} />
+                <Route path="/m/:moduleId/:featureKey" element={<FeatureDetail />} />
+                <Route path="/f/:id" element={<FeaturePage />} />
+                {/* Landing strip for the BB PM sign-in round trip. It
+                    redirects onward as soon as the code is exchanged. */}
+                <Route path={CALLBACK_PATH} element={<OAuthCallback />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
           </CommentableRoot>
         </main>
       </div>
