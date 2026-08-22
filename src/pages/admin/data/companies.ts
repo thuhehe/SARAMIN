@@ -2,7 +2,7 @@
  * The CRM company model — who we sell to, what stage they are at, and how long
  * since anyone touched the account.
  */
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Companies ────────────────────────────────────────────────────────────── */
 // Pipeline stage = the sales/document flow. Ordered Qualified → Proposal →

@@ -6,7 +6,7 @@ import type { Company } from '@/pages/admin/data/companies'
 import { SERVICE_USAGE } from '@/pages/admin/data/services'
 import type { ServiceEntitlement } from '@/pages/admin/data/services'
 import { asDate } from '@/pages/admin/lib/fmt'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Content ──────────────────────────────────────────────────────────────── */
 /* A BANNER is an instance of a Placement product: one company's creative, running

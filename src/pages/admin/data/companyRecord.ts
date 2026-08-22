@@ -5,7 +5,7 @@
 import { coKey, coValue, fmtIdle, isCustomer } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
 import { vnd } from '@/pages/admin/lib/fmt'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /** One row per PURCHASE ORDER — what was bought, for how much, and when the VAT
     invoice went out. A PO with no invoice date is money not yet collected. */

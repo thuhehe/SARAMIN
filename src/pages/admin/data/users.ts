@@ -2,7 +2,7 @@
  * People accounts on both sides of the marketplace: company logins and jobseekers.
  */
 import type { CoUserRole } from '@/pages/admin/data/companyRecord'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 export type CUser = { name: string; email: string; company: string; role: CoUserRole; status: 'Active' | 'Invited' | 'Disabled'; last: string }
 export const CUSERS: CUser[] = [

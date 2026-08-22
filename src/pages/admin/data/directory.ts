@@ -4,7 +4,7 @@
  */
 import { COMPANIES } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 import { searchKey } from '@/pages/admin/ui/table'
 
 /* ── Danh bạ doanh nghiệp — the free company pool ──────────────────────────────

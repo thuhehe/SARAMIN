@@ -1,7 +1,7 @@
 /*
  * Inbound self-registrations waiting to be turned into a CRM company.
  */
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
 export type SignupStatus = 'New' | 'Resolved' | 'Archived'

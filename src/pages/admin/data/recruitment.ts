@@ -1,7 +1,7 @@
 /*
  * Recruitment mock data: job rows, applicant delivery states, CV review reasons.
  */
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 import type { Col } from '@/pages/admin/ui/table'
 
 /* ONE column set, shared by Talent pool and CV review. CV review is the same list

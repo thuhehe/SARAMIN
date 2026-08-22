@@ -3,7 +3,7 @@
  * bundle it, and the discount programmes on top.
  */
 import type { Account } from '@/pages/admin/data/companies'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Billing & products ───────────────────────────────────────────────────── */
 /* The five product TYPES, derived from the client Products deck. The type is the

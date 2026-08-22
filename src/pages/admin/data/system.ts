@@ -3,7 +3,7 @@
  * the master-data domains.
  */
 import { COMPANIES } from '@/pages/admin/data/companies'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── System · Roles & permissions ───────────────────────────────────────────
  * Interactive flow — the internal HQ operator lifecycle, in order:

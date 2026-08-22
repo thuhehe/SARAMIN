@@ -6,7 +6,7 @@ import type { Account } from '@/pages/admin/data/companies'
 import { SALES_MANAGER, SALES_TEAMS } from '@/pages/admin/data/salesOrg'
 import type { SalesRole } from '@/pages/admin/data/salesOrg'
 import { MOCK_TODAY, asDate, dmy, endOfMonth } from '@/pages/admin/lib/fmt'
-import type { StatusTone } from '@/pages/admin/ui/status'
+import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Sales / CRM ──────────────────────────────────────────────────────────────
    LEGACY board. This is an older mockup of the same Sales pipeline that the
