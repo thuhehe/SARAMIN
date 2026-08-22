@@ -912,12 +912,13 @@ interface FacetGroup {
 
 /*
  * EVERY field below is one of the client's own 15 candidate-data fields — the
- * 9 of Basic information and the 6 of Desired work condition — plus the CV-content
- * facets (skills, certificates, languages, and the title off the latest work
- * experience). Nothing here is invented; see the requirement's provenance table.
+ * 9 of Basic information and the 6 of Desired work condition — plus the two
+ * CV-content facets that survived the 2026-08-22 trim (skills, and language+level).
+ * Nothing here is invented; see the requirement's provenance table.
  *
- * Two groups mirror the client's field sheet exactly, INCLUDING its order, so the
- * employer's filters and the candidate's own My-CVs form read as the same list.
+ * Work preference still mirrors the client's field sheet exactly, INCLUDING its
+ * order, so the employer's filters and the candidate's own onboarding form read as
+ * the same list. Candidate information no longer does — it is the PM's eight.
  */
 const FILTER_GROUPS: FacetGroup[] = [
   /* Freshness first: how recently a CV was touched is the cheapest way to avoid
@@ -939,32 +940,27 @@ const FILTER_GROUPS: FacetGroup[] = [
     ],
   },
   {
+    /* EIGHT fields, FLAT — set by the PM on 2026-08-22, replacing the two captioned
+       sub-blocks. The split by "which client table did this field come from" was an
+       internal distinction a recruiter never saw, and eight rows are short enough to
+       read without it. Order is the PM's own list.
+
+       ⚠ GENDER and MARITAL STATUS REVERSE the 2026-08-13 cut. The client's own master
+       data marks both 🔒 "stored but never a filter/matching key", and VN Labour Code
+       2019 art. 8 bars discrimination on both. They render here because the PM asked
+       for them; they do NOT ship without the client's written sign-off. See the
+       requirement's protected-fields block. */
     title: 'Candidate information',
-    sections: [
-      {
-        /* TABLE 1 of the field sheet — Basic information, MINUS full name (masked
-           until unlock) and minus email/phone (contact, never a filter). Exactly
-           the six that remain. */
-        facets: [
-          { label: 'Nationality', derived: true, opts: [['Việt Nam', 241], ['Hàn Quốc', 4], ['Philippines', 3]] },
-          { label: 'Age', opts: [['Under 25', 41], ['25 – 34', 138], ['35 – 44', 57], ['45+', 12]] },
-          { label: 'Highest education', opts: [['High school', 9], ['College', 103], ['Bachelor', 138], ['Master', 7], ['Doctor', 0]] },
-          { label: 'Years of work experience', opts: [['No experience / fresher', 34], ['1 – 3 years', 82], ['3 – 5 years', 76], ['5+ years', 56]] },
-        ],
-      },
-      {
-        /* TABLE 3 — CV content. Only the parts of a CV that are searchable facets:
-           skills, certificates, languages, and the title off the latest work
-           experience. About / projects are free text and belong to the keyword box. */
-        facets: [
-          { label: 'Job title', derived: true, multi: true, searchable: true, opts: [['Điều dưỡng viên', 142], ['Điều dưỡng trưởng', 38], ['KTV xét nghiệm', 31], ['Hộ lý', 19]] },
-          { label: 'Skills', derived: true, multi: true, searchable: true, opts: [['Chăm sóc nội khoa', 74], ['Tiêm truyền', 61], ['Hồ sơ bệnh án', 48], ['JCI', 12]] },
-          { label: 'Certificates', derived: true, multi: true, searchable: true, opts: [['CC hành nghề điều dưỡng', 187], ['Sơ cấp cứu (BLS)', 44], ['IELTS', 12]] },
-        ],
-        language: true,
-      },
+    language: true,
+    facets: [
+      { label: 'Nationality', derived: true, opts: [['Việt Nam', 241], ['Hàn Quốc', 4], ['Philippines', 3]] },
+      { label: 'Gender', opts: [['Nam', 96], ['Nữ', 148], ['Khác', 4]] },
+      { label: 'Marital status', opts: [['Độc thân', 152], ['Đã kết hôn', 89], ['Khác', 7]] },
+      { label: 'Age', opts: [['Under 25', 41], ['25 – 34', 138], ['35 – 44', 57], ['45+', 12]] },
+      { label: 'Highest education', opts: [['High school', 9], ['College', 103], ['Bachelor', 138], ['Master', 7], ['Doctor', 0]] },
+      { label: 'Years of work experience', opts: [['No experience / fresher', 34], ['1 – 3 years', 82], ['3 – 5 years', 76], ['5+ years', 56]] },
+      { label: 'Skills', derived: true, multi: true, searchable: true, opts: [['Chăm sóc nội khoa', 74], ['Tiêm truyền', 61], ['Hồ sơ bệnh án', 48], ['JCI', 12]] },
     ],
-    facets: [],
   },
 ]
 
@@ -1148,9 +1144,13 @@ const CHIP_STATE: Record<ChipState, { label: string; cls: string }> = {
   not: { label: 'Loại trừ', cls: 'border-rose-200 bg-rose-50 text-rose-600' },
 }
 const SEARCH_QUERY = 'điều dưỡng trưởng bệnh viện quốc tế'
-const SEARCH_CHIPS: { type: string; value: string; state: ChipState }[] = [
+const SEARCH_CHIPS: { type: string; value: string; state: ChipState; tr?: string }[] = [
+  /* This chip RESOLVED — "Vai trò" reads the Role master — so it already matches a
+     CV written in any language and needs no translation. */
   { type: 'Vai trò', value: 'Điều dưỡng trưởng', state: 'must' },
-  { type: 'Nơi làm việc', value: 'Bệnh viện quốc tế', state: 'pref' },
+  /* This one did NOT resolve; it stayed a plain keyword, so it only matches the
+     language it was typed in. `tr` is its translated sibling. */
+  { type: 'Nơi làm việc', value: 'Bệnh viện quốc tế', state: 'pref', tr: 'international hospital' },
 ]
 
 /** One parsed term. The state selector is the whole boolean model, per chip. */
@@ -1161,6 +1161,30 @@ function QueryChip({ c }: { c: { type: string; value: string; state: ChipState }
       <span className="opacity-60">{c.type}:</span>
       <b className="font-semibold">{c.value}</b>
       <span className="ml-0.5 cursor-pointer rounded bg-black/5 px-1.5 py-px text-[10px] font-medium">{s.label} ▾</span>
+      <span className="cursor-pointer opacity-40 hover:opacity-100">✕</span>
+    </span>
+  )
+}
+
+/* A translated sibling of a chip that did NOT resolve to master data.
+ *
+ * The rail is cross-language because every one of its eight fields matches on an
+ * ID — extraction turns "리액트" into skill `react` and the CV's own language stops
+ * existing. The keyword bar has no such step: it matches the TEXT, so "quản lý dự
+ * án" never finds a CV that wrote "project management". In a market where the
+ * strongest CVs skew English, that is not an edge case, it is the median one.
+ *
+ * So we translate — but as ITS OWN CHIP, labelled and removable, never folded
+ * silently into the original. A recruiter who cannot see why a CV matched cannot
+ * correct the search, and a hidden query rewrite is exactly the kind of help that
+ * reads as a bug. Only plain-keyword chips get one; a chip that already resolved
+ * is a filter wearing chip clothes and needs nothing.
+ */
+function TranslatedChip({ value }: { value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-sky-300 bg-sky-50/70 px-2 py-1 text-[11.5px] text-sky-700">
+      <span className="rounded bg-sky-100 px-1 py-px text-[9.5px] font-semibold uppercase tracking-wide">dịch</span>
+      <b className="font-semibold">{value}</b>
       <span className="cursor-pointer opacity-40 hover:opacity-100">✕</span>
     </span>
   )
@@ -1600,12 +1624,21 @@ function ResumeSearchScreen() {
                 in one click instead of silently returning the wrong people. */}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="text-[10.5px] text-faint">Đang hiểu là:</span>
-              {SEARCH_CHIPS.map((c) => <QueryChip key={c.type} c={c} />)}
+              {SEARCH_CHIPS.flatMap((c) => [
+                <QueryChip key={c.type} c={c} />,
+                ...(c.tr ? [<TranslatedChip key={`${c.type}-tr`} value={c.tr} />] : []),
+              ])}
               <span className="cursor-pointer rounded-lg border border-dashed border-line px-2 py-1 text-[11.5px] text-muted">＋ Thêm điều kiện</span>
               <span onClick={() => setAdvanced(true)} className="ml-auto cursor-pointer text-[10.5px] text-brand">
                 Tìm kiếm nâng cao (OR / AND / NOT) →
               </span>
             </div>
+            {/* Naming what the language split costs. Without this line an
+                English-CV shortfall reads as "there are no candidates" — a silent
+                failure, which is the worst kind because nobody goes looking. */}
+            <p className="mt-1.5 text-[10.5px] text-muted">
+              <b className="font-semibold text-ink/70">12 hồ sơ</b> khớp nhờ chip <span className="text-sky-700">dịch</span> — CV viết bằng tiếng Anh. Bỏ chip đó để chỉ tìm đúng tiếng Việt.
+            </p>
           </>
         )}
       </div>

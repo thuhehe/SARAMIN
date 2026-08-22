@@ -74,7 +74,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
           <div className="grid grid-cols-2 gap-3">
             <SelectField
               label="Purchase order (PO)"
-              value={NO_PO}
+              value={po}
               onChange={setPo}
               options={[NO_PO, 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026']}
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only</span>}

@@ -828,8 +828,8 @@ export const crm: BuildModule = {
       table: {
         cols: ['Card', 'Shows', 'Rule'],
         rows: [
-          ['Products & quota', 'Đang dùng / Đã kết thúc toggle, then quota bars', 'Past purchases are a second list behind the toggle, not a third card — “what did they buy last year, and for how much” is the first question on a renewal call, and it must not require leaving the record.'],
-          ['PO history', 'One row per PURCHASE ORDER: PO number · products in it · value · invoice date', 'One row per thing actually bought. Order / Invoice / Payment as three separate rows was one purchase told three times.'],
+          ['Products & quota', 'Đang dùng / Đã kết thúc toggle, then **one block per SOURCE**, then the totals', 'Past purchases are a second list behind the toggle, not a third card — “what did they buy last year, and for how much” is the first question on a renewal call. The source blocks are the answer to “which product belongs to which PO” — see the next two blocks.'],
+          ['PO history', 'One row per PURCHASE ORDER: PO number · products in it · value · invoice date · **hạn dùng**', 'One row per thing actually bought. Order / Invoice / Payment as three separate rows was one purchase told three times. Derived from the same source list as the quota card, so the two can never disagree about which PO paid for what. Free jobs are absent from it, correctly — they have no PO.'],
         ],
       },
       items: [
@@ -838,7 +838,51 @@ export const crm: BuildModule = {
         'The PRODUCTS in each PO are named on the row. A PO number alone forces a click to answer the question the row exists to answer.',
         'No “Manage in Account mgmt →” link and no “from CRM · Orders” caption: this IS the place, and where the data comes from is not the reader’s problem.',
       ],
-      warn: 'Entitlement is provisioned from the PAID invoice, never picked by hand. A PO with no invoice date has therefore provisioned nothing — the customer has agreed, but the quota does not exist yet.',
+      warn: 'Entitlement is provisioned from the PAID invoice, never picked by hand. A PO with no invoice date has therefore provisioned nothing — the customer has agreed, but the quota does not exist yet. A free job is outside this entirely: it needs no entitlement, because Admin posts it without a PO.',
+    },
+    {
+      label: 'Entitlement is one bucket per SOURCE, never one pool',
+      text: 'A company’s quota is not a single number. It is one bucket per **source**, and the source — not the product — is what the screen labels. That inversion is the whole answer to *“which product belongs to which PO?”*: a reader does not match a product to a PO by hunting a code in a cell, they read the PO once and read the products underneath it.\n\nA company can hold **two live POs at the same time** — a renewal bought before the first one lapses. At that moment “14/50 slots” answers nothing a rep needs: which slots die in October and which in December?',
+      table: {
+        cols: ['Source kind', 'Has a PO?', 'Counts as revenue?', 'When it happens'],
+        rows: [
+          ['**po** — bought', 'Yes, with a VAT invoice behind it', 'Yes — this is the only kind that feeds the membership tier', 'The normal case. Provisioned the moment Kế toán issues the invoice.'],
+          ['**gift** — a 0 ₫ “(Tặng)” line inside a paid PO', 'Yes — traced to that PO', 'No. The PO’s value is the paid lines only', 'A sweetener negotiated into a deal. It has a document, so it hangs off one.'],
+        ],
+      },
+      items: [
+        'The SOURCE BLOCK is the unit of display: header = PO code (or the Miễn phí chip) + invoice date + value + **hạn dùng**; body = that bucket’s product lines, each with its own quota bar. An exhausted line says “đã dùng hết — hạn …” rather than showing an empty bar with no explanation.',
+        'TOTALS stay primary and sit below the blocks: the number a rep quotes a customer is “how many do we have left”, never “how many are left on PO 2”. The blocks are where that total is broken down.',
+        'Paid slots and GIFTED postings are counted in SEPARATE totals. Adding them together was wrong in both directions — it inflated what the customer paid for, and it hid which postings cost them nothing, which is the first thing a renewal call needs to know.',
+        'There is NO single “valid until” line once there are two sources, because it would be a lie about one of them. Expiry is printed per bucket, and the totals line lists each source with its own date.',
+        'DEDUCTION ORDER is a stated rule, not an accident: **soonest expiry first**, so nothing lapses unused while a later bucket sits full.',
+        'A bucket can never fund a posting made BEFORE its invoice date. That plus the deduction order is enough to attribute every posting to exactly one bucket.',
+        'The Jobs tab carries a **Trừ từ** column: the PO code for a paid posting, or the **Miễn phí · không chọn PO** chip for a free one. It is a STORED reference written when the posting is created — never recomputed, or it would drift from the billing tab the first time a bucket is edited.',
+      ],
+      warn: 'A FREE job is not one of these buckets — it draws on nothing. See “Tin miễn phí” below. And do not invent a 0 ₫ PO for it either: that would need a legal name, an MST and an invoice number for a document that is never issued, and it would drop a 0 ₫ row into the revenue that decides the membership tier.',
+    },
+    {
+      label: 'Tin miễn phí — Admin just does not pick a PO',
+      text: 'A free job is not an entitlement, a grant, or a quota. On **Create job**, the *Purchase order (PO)* field has a **— none (Free job) —** option, and choosing it swaps the product list to the tiers flagged *Always available* — today `Tin Free (Admin đăng hộ)`.\n\nThat is the whole mechanism. **Admin can pick it for any company at any time, unlimited**, with no approval, no allowance to draw down and nothing to top up. There is no free-quota field on the company account, because there is nothing to count.',
+      table: {
+        cols: ['Question', 'Answer'],
+        rows: [
+          ['How is a free job posted?', 'On Create job, leave the PO as **— none (Free job) —** and pick the free product. Selecting a PO instead swaps the list to that PO’s paid lines.'],
+          ['Any limit?', '**No.** No cap per company, no cap per month, no expiry on the right to post one, no approval step. The only limit is the product’s own duration (14 ngày, no featured position).'],
+          ['Who can?', 'Admin only. Employers never see the free tier — on the Company site they can post only from what they bought, so an employer with no PO has nothing to post from.'],
+          ['Does it touch quota?', 'No. Nothing is deducted, because there is no bucket. A company with only free jobs has **no quota at all** — the header stat reads *chỉ tin miễn phí*, not “0 slots left”.'],
+          ['Does it make them a customer?', '**No.** Account status stays New (or Churn), revenue stays 0 ₫, membership tier untouched. Customer status means they bought, and they did not.'],
+          ['Does it appear on PO history?', 'No, and it should not — there is no PO. When a company has free jobs and no PO the card says exactly that, so a reader does not conclude a PO went missing.'],
+          ['How do I tell which jobs were free?', 'The Jobs tab **Trừ từ** column: a **Miễn phí · không chọn PO** chip instead of a PO code. Same column that names the PO for a paid posting.'],
+          ['Is a free job a real job?', 'Yes — visible to jobseekers, collects applications, closes on its deadline. The only things it does not do are consume quota and produce a document.'],
+        ],
+      },
+      items: [
+        'A company with NO Job Posting product can still have live jobs, because Admin can post them free. The Jobs tab therefore gates on “are there jobs”, not on “does it own a product” — the old copy said “it can’t post jobs”, which stopped being true.',
+        'The job header line counts them apart: “1 active · 1 total · **1 tin miễn phí** (không PO, không trừ slot)”. Folding free jobs into a slot count would misstate both numbers.',
+        'A free job is recorded on the JOB, not on the account — one flag on the posting, written when it is created. There is no company-level free balance to keep in sync, and nothing to expire.',
+      ],
+      warn: 'Do NOT model this as an account-level allowance (N free slots, an expiry, a grant record). That invents rules the business does not have — a cap to enforce, a balance to top up, an expiry to chase — for something whose entire definition is the ABSENCE of a PO. The free tier is a product flagged “Always available”; posting from it is the same act as posting from a PO line, minus the PO.',
     },
     {
       label: 'List toolbar — Search · Filter · Sort, and nothing else',
@@ -2767,16 +2811,23 @@ export const crm: BuildModule = {
           ],
         },
         {
-          label: 'Company status — Active / Archived (cleanup)',
-          text: 'The state HQ uses to remove a duplicate or junk company. Archive is a soft, reversible action — never a hard delete — consistent with how users and public pages are handled.',
+          label: 'Company status — Active / Archived, and the REASON it was archived',
+          text: 'TWO system states, no more. The state answers one question — can this company get in, and does it show up — and nothing about the commercial relationship, which is what `account` (New / Existing / Churn) is for. Archive is soft and reversible; never a hard delete.',
           table: {
             cols: ['Status', 'Means', 'Rule'],
             rows: [
-              ['Active', 'Normal — appears in all lists, logins work', 'Default'],
-              ['Archived', 'Removed from active lists, logins blocked, jobs hidden — record + audit kept', 'Reversible (Unarchive). An Unverified company with no products and no other users can be archived freely; archiving a company with active products / other users / verified activity needs a reason and is confirmed. Never hard-deleted.'],
+              ['Active', 'Normal — appears in all lists, logins work', 'The default, INCLUDING a churned customer. Không gia hạn, chuyển sang đối thủ and mất liên lạc are all churn: the company still exists and is still worth calling, so it stays Active and stays in the rep’s list.'],
+              ['Archived', 'The company no longer exists, or no longer needs any care', 'Requires a REASON. Reversible (Unarchive). Never hard-deleted.'],
             ],
           },
-          warn: 'To retire a duplicate company: MOVE its users into the surviving company first, THEN archive the empty one — never archive a company that still has active users or paid products without resolving them.',
+          items: [
+            'THE POINT IS NOT HIDING THE RECORD, IT IS STOPPING IT FROM GENERATING WORK. An archived company leaves every rep’s list, round-robin assignment, idle reminders, nurture campaigns and KPI counts, and stops appearing in search suggestions unless “include archived” is ticked. That — not visibility — is what “không cần chăm sóc nữa” means in system terms, and it is why a boolean is enough where an enum of a dozen states is not.',
+            'THE REASON IS AN ENUM, NOT FREE TEXT — Phá sản / giải thể · Sáp nhập vào công ty khác · Trùng lặp / tạo nhầm · Vi phạm — ngừng phục vụ · Khác, with an optional note beside it. The follow-up genuinely differs per reason: a dissolved company means writing off what it owes, a merger means the obligations transfer to the surviving company (Điều 201 Luật Doanh nghiệp 2020), a duplicate means nothing at all. Free text also cannot be counted — “phá sản”, “Phá sản” and “pha san” are three different strings to anyone reporting on churn causes.',
+            'NO “INACTIVE” STATE. A third state between Active and Archived was considered and dropped: every case for it (tạm ngừng kinh doanh, overdue payment, gone dark) is either still-worth-chasing — which is Active — or not worth any care, which is Archived. “Vi phạm” is the only case where the company still exists but needs no care; it is the same state with a different reason, and splitting it out buys nothing.',
+            'THE REASON IS SHOWN ON THE RECORD, not just written to the log — the Archived pill reads “Archived · Sáp nhập vào công ty khác”. A tombstone with no cause of death sends the next rep to look it up.',
+            'ARCHIVING IS NOT A REP’S CALL ALONE. It hides revenue and removes pipeline value, so it sits with a sales lead or HQ admin, and every archive/unarchive is audited with who, when and why.',
+          ],
+          warn: 'To retire a duplicate company: MOVE its users into the surviving company first, THEN archive the empty one — never archive a company that still has active users or paid products without resolving them. And never archive a churned customer: they are still Active, still assigned, still worth a win-back call.',
         },
         {
           label: 'Sign-up status — two tracks: the account and the inbox row',

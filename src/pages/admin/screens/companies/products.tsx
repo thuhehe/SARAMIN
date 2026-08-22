@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { pastPurchases } from '@/pages/admin/data/companyRecord'
+import { entitlementSources, pastPurchases } from '@/pages/admin/data/companyRecord'
+import type { EntSource } from '@/pages/admin/data/companyRecord'
 import { TIERS, TIER_YEAR, nextTierAt, tierAt, tierRevenue } from '@/pages/admin/data/membership'
 import { SERVICE_USAGE } from '@/pages/admin/data/services'
 import type { ServiceEntitlement } from '@/pages/admin/data/services'
@@ -68,6 +69,43 @@ function PurchaseRow({ name, detail, amount, date, expired }: { name: string; de
   )
 }
 
+/* One bucket of entitlement — the PO (or the free grant) that paid for it, with its
+   own lines and its own expiry.
+
+   The header is the source, not the product. That inversion is the whole answer to
+   "which product belongs to which PO": a reader does not match a product to a PO by
+   reading a code in a cell, they read the PO once and the products under it. */
+function SourceBlock({ s }: { s: EntSource }) {
+  return (
+    <div className="rounded-lg border border-line">
+      <div className="flex items-start justify-between gap-2 border-b border-line-soft px-2.5 py-1.5">
+        <span className="min-w-0">
+          <span className="truncate font-mono text-[11px] font-medium text-brand">{s.label}</span>
+          <span className="mt-0.5 block truncate text-[10px] text-faint">xuất hoá đơn {s.from}</span>
+        </span>
+        <span className="shrink-0 text-right">
+          <span className="block text-[11px] font-semibold tabular-nums text-ink">{s.amount ? vnd(s.amount) : '0 ₫'}</span>
+          <span className="block text-[10px] text-faint">đến {s.until}</span>
+        </span>
+      </div>
+      <div className="space-y-2 px-2.5 py-2">
+        {s.lines.map((l) => (
+          <div key={l.name}>
+            <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
+              <span className="min-w-0 truncate">{l.name}</span>
+              <span className={cn('shrink-0 tabular-nums font-semibold', l.left === 0 && 'text-faint')}>
+                {l.left}<span className="font-normal text-faint">/{l.total} {l.unit}</span>
+              </span>
+            </div>
+            <QuotaBar left={l.left} total={l.total} />
+            {l.left === 0 && <p className="mt-0.5 text-[10px] text-faint">đã dùng hết — hạn {s.until}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* Products & quota block — shared by the Overview snapshot and the billing tab */
 export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
   const noProducts = !c.jobPosting && !c.resumeSearch
@@ -77,6 +115,20 @@ export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean })
      just no longer counting toward quota. */
   const [showPast, setShowPast] = useState(false)
   const past = pastPurchases(c)
+  const srcs = entitlementSources(c)
+  // Totals across every bucket. They stay PRIMARY: the number a rep quotes to a
+  // customer is "how many do we have left", never "how many are left on PO 2".
+  const tot = (unit: 'slots' | 'CV unlocks' | 'tin') =>
+    srcs.flatMap((x) => x.lines).filter((l) => l.unit === unit)
+      .reduce((a, l) => ({ left: a.left + l.left, total: a.total + l.total }), { left: 0, total: 0 })
+  const jobT = tot('slots')
+  /* Gifted postings — the 0 ₫ "(Tặng)" lines inside a paid PO — are counted apart
+     from paid slots. Merging them was wrong in both directions: it inflated what the
+     customer paid for, and it hid which postings cost them nothing, which is the
+     first thing a renewal conversation needs to know. */
+  const giftT = tot('tin')
+  const cvT = tot('CV unlocks')
+
   return (
     <>
       {!compact && (
@@ -88,40 +140,68 @@ export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean })
               <button onClick={() => setShowPast(true)} className={cn('border-l border-line px-1.5 py-0.5', showPast ? 'bg-brand text-white' : 'text-muted hover:bg-canvas')}>Đã kết thúc {past.length > 0 && `(${past.length})`}</button>
             </span>
           </div>
-          {/* These lines land here the moment Kế toán issues the VAT invoice on the
-              PO — immediately, with no further step. Until then the company has no
-              quota and cannot post a job or open a CV. */}
+          {/* Bought lines land here the moment Kế toán issues the VAT invoice on the
+              PO. A FREE grant lands here with no document at all — which is why the
+              bucket, not the product, is the thing being labelled. */}
           {showPast ? (
             past.length === 0
               ? <p className="text-[12px] text-muted">Chưa có sản phẩm nào kết thúc.</p>
               : <div className="space-y-1.5">{past.map((x, i) => <PurchaseRow key={i} {...x} expired />)}</div>
-          ) : noProducts ? (
-            <p className="text-[12px] text-muted">No purchases on record yet — products appear here as soon as a VAT invoice is issued on a PO.</p>
+          ) : srcs.length === 0 ? (
+            <p className="text-[12px] text-muted">Chưa mua sản phẩm nào — quota chỉ xuất hiện khi xuất hoá đơn VAT cho một PO. Tin miễn phí không cần quota: Admin đăng mà không chọn PO.</p>
           ) : (
-            <div className="space-y-1.5">
-              {c.jobPosting && <PurchaseRow name="Job Posting — Pro" detail="10 slots · 3 months" amount="15,000,000 ₫" date={c.since} />}
-              {c.resumeSearch && <PurchaseRow name="Resume Search — 6 months" detail="100 CV unlocks" amount="20,000,000 ₫" date={c.since} />}
+            <div className="space-y-2">
+              {srcs.map((x) => <SourceBlock key={x.label} s={x} />)}
+              {srcs.length > 1 && (
+                <p className="text-[10.5px] leading-relaxed text-faint">
+                  <b className="text-muted">Trừ quota theo thứ tự hết hạn gần nhất trước</b>, để không phần nào hết hạn mà chưa dùng.
+                </p>
+              )}
             </div>
           )}
         </>
       )}
-      {!noProducts && (
+      {(!noProducts || giftT.total > 0) && (
         <>
-          <p className={cn('mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint', !compact && 'mt-3.5')}>Quota in use</p>
+          {/* The total is what a rep quotes. It is shown as a total, and the source
+              blocks above are where the same number is broken down. */}
+          <p className={cn('mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint', !compact && 'mt-3.5')}>
+            Tổng quota còn lại {srcs.length > 1 && <span className="font-normal normal-case tracking-normal text-faint">· từ {srcs.length} nguồn</span>}
+          </p>
           <div className="space-y-3">
-            {c.jobPosting && (
+            {jobT.total > 0 && (
               <div>
-                <div className="flex items-baseline justify-between text-[12px]"><b>Job posting</b><span className="tabular-nums font-semibold">{c.jobLeft}<span className="font-normal text-faint">/{c.jobTotal} slots</span></span></div>
-                <QuotaBar left={c.jobLeft} total={c.jobTotal} />
+                <div className="flex items-baseline justify-between text-[12px]">
+                  <b>Job posting</b>
+                  <span className="tabular-nums font-semibold">{jobT.left}<span className="font-normal text-faint">/{jobT.total} slots</span></span>
+                </div>
+                <QuotaBar left={jobT.left} total={jobT.total} />
+                {compact && srcs.length > 1 && <p className="mt-0.5 text-[10px] text-faint">{srcs.map((x) => `${x.kind === 'free' ? 'miễn phí' : x.label.slice(3, 9)}`).join(' + ')}</p>}
               </div>
             )}
-            {c.resumeSearch && (
+            {giftT.total > 0 && (
               <div>
-                <div className="flex items-baseline justify-between text-[12px]"><b>Resume search</b><span className="tabular-nums font-semibold">{c.cvLeft}<span className="font-normal text-faint">/{c.cvTotal} unlocks</span></span></div>
-                <QuotaBar left={c.cvLeft} total={c.cvTotal} />
+                <div className="flex items-baseline justify-between text-[12px]">
+                  <b className="text-amber-800">Tin đăng tặng kèm PO</b>
+                  <span className="tabular-nums font-semibold">{giftT.left}<span className="font-normal text-faint">/{giftT.total} tin</span></span>
+                </div>
+                <QuotaBar left={giftT.left} total={giftT.total} />
+                <p className="mt-0.5 text-[10px] text-faint">0 ₫ trong PO đã trả tiền — tính riêng, để lúc gia hạn biết khách thật sự đã trả tiền cho bao nhiêu tin.</p>
               </div>
             )}
-            <p className="text-[11px] text-faint">Valid until 31/12/2026.</p>
+            {cvT.total > 0 && (
+              <div>
+                <div className="flex items-baseline justify-between text-[12px]"><b>Resume search</b><span className="tabular-nums font-semibold">{cvT.left}<span className="font-normal text-faint">/{cvT.total} unlocks</span></span></div>
+                <QuotaBar left={cvT.left} total={cvT.total} />
+              </div>
+            )}
+            {/* Expiry is per bucket, so a single "valid until" line would be a lie
+                the moment there are two POs. */}
+            <p className="text-[11px] text-faint">
+              {srcs.length === 1
+                ? <>Hạn dùng {srcs[0].until}.</>
+                : <>Hạn dùng khác nhau theo từng nguồn: {srcs.map((x) => `${x.kind === 'free' ? 'miễn phí' : x.label.slice(0, 12)} → ${x.until}`).join(' · ')}.</>}
+            </p>
           </div>
         </>
       )}

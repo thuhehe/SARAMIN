@@ -4,8 +4,8 @@ import { companyId } from '@/lib/companyId'
 import { RO_HINT, ReadOnlyCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany } from '@/pages/admin/data/companies'
 import type { BuyerType, Company } from '@/pages/admin/data/companies'
-import { CO_SIZES } from '@/pages/admin/data/companyPage'
-import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, poHistory } from '@/pages/admin/data/companyRecord'
+import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
+import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
 import { tierOf } from '@/pages/admin/data/membership'
 import { ME } from '@/pages/admin/data/salesOrg'
@@ -42,6 +42,17 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
   /* HQ cleanup for duplicate / junk companies — soft + reversible, never a delete. */
   const [archived, setArchived] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  /* Why it was archived — an enum, not free text: the follow-up differs per reason
+     and free text cannot be counted. Empty until picked, which is what gates Save. */
+  const [archiveWhy, setArchiveWhy] = useState('')
+  /* THE OTHER EXIT. A company that still exists but is no longer worth chasing goes
+     back to the free-data pool: the owner is cleared and the linked pool row flips
+     to Chưa nhận so any rep can Xin nhận it again. The CRM record is KEPT — history,
+     invoices, activity all stay — so a re-claim reattaches to it instead of creating
+     a duplicate. Archive is the opposite door: for a company that must never be
+     worked again, the pool row stays consumed. */
+  const [released, setReleased] = useState(false)
+  const [releaseOpen, setReleaseOpen] = useState(false)
   /* Reached from search rather than owned. Read everything, write nothing — see
      ReadOnlyCtx. Editing state is force-closed so a rep cannot leave the card in
      edit mode and come back to it on someone else's record. */
@@ -52,6 +63,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
+  /* Which entitlement bucket each posted job consumed — see jobSources. */
+  const jobSrc = jobSources(c)
+  /* Jobs Admin posted with no PO selected. Not quota, not a product — just jobs. */
+  const freeJobs = jobs.filter((j) => j.free).length
   const activeJobs = jobs.filter((j) => j.status === 'open').length
   const full = team.length >= MAX_SEATS
   const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
@@ -102,7 +117,8 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
               {/* Both axes, always: customer status (has it ever bought) and, only
                   while a deal is live, the pipeline stage. */}
               <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
-              {archived && <Pill tone="expired">Archived</Pill>}
+              {archived && <Pill tone="expired">Archived{archiveWhy ? ` · ${archiveReason(archiveWhy)?.vi}` : ''}</Pill>}
+              {released && !archived && <Pill tone="pending">Đã trả về bể dữ liệu</Pill>}
               {/* Not a status — a provenance mark. It says the identity fields came
                   from free data a rep re-typed, so verify before the first invoice. */}
               {c.fromPool && (
@@ -139,12 +155,46 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
               Tạo báo giá / Create quotation
             </button>
           )}
-          {/* HQ cleanup for duplicate / junk companies — soft & reversible. */}
+          {/* TWO EXITS, and the question that picks between them is "should another
+              rep be allowed to pick this up?". Yes → back to the pool. No → archive. */}
+          {!ro && !archived && (
+            released
+              ? <button onClick={() => setReleased(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Nhận lại công ty</button>
+              : <button onClick={() => setReleaseOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Trả về bể dữ liệu</button>
+          )}
           {archived
             ? <button onClick={() => setArchived(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Unarchive</button>
             : <button onClick={() => setArchiveOpen(true)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-[12px] font-medium text-rose-600 hover:bg-rose-50">Archive company</button>}
         </div>
       </div>
+
+      {releaseOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+          <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <p className="text-[15px] font-bold">Trả {coLabel(c)} về bể dữ liệu?</p>
+              <button onClick={() => setReleaseOpen(false)} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+            </div>
+            <div className="space-y-3 p-5">
+              <p className="text-[12px] leading-relaxed text-muted">
+                Bỏ bạn khỏi vai trò phụ trách và <b className="text-ink/80">mở lại dòng tương ứng trong Danh bạ doanh nghiệp</b> (về trạng thái <i>Chưa nhận</i>) để bất kỳ sales nào cũng có thể Xin nhận lại.
+              </p>
+              <ul className="space-y-1 rounded-md bg-canvas/70 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+                <li>· Hồ sơ CRM <b className="text-ink/70">được giữ nguyên</b> — hoá đơn, PO, hoạt động, lịch sử phụ trách. Ai nhận lại sẽ nhận đúng hồ sơ này, không tạo bản trùng.</li>
+                <li>· Công ty rời khỏi danh sách và KPI của bạn, không còn nhắc idle.</li>
+                <li>· Không cần lý do — đây là việc thường ngày, và đảo ngược được bằng “Nhận lại công ty”.</li>
+              </ul>
+              <p className="rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800">
+                Chỉ dùng khi công ty <b>vẫn tồn tại</b> nhưng không còn tiềm năng. Công ty đã <b>phá sản, giải thể, sáp nhập, trùng lặp hoặc bị ngừng phục vụ</b> thì phải <b>Archive</b> — trả về bể dữ liệu sẽ khiến một sales khác nhận lại và gọi vào một công ty không còn tồn tại.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+              <button onClick={() => setReleaseOpen(false)} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Huỷ</button>
+              <button onClick={() => { setReleased(true); setReleaseOpen(false) }} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Trả về bể dữ liệu</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {archiveOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -161,14 +211,41 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                 <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>This company has {noProducts ? '' : 'active products and '}{team.length} users. <b>Move its users into the surviving company first</b> — don’t strand a real account.</span></p>
               )}
               <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Reason <span className="text-rose-500">*</span></p>
-                <textarea rows={2} placeholder="e.g. duplicate of Công ty TNHH Vạn Phát — users moved" className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink" />
-                <p className="mt-1 text-[10.5px] text-faint">Written to the audit log with your name and the time.</p>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Lý do <span className="text-rose-500">*</span></p>
+                <div className="space-y-1">
+                  {ARCHIVE_REASONS.map((r) => (
+                    <button
+                      key={r.key}
+                      onClick={() => setArchiveWhy(r.key)}
+                      className={cn('flex w-full gap-2 rounded-md border px-2.5 py-1.5 text-left', archiveWhy === r.key ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand/40')}
+                    >
+                      <span className={cn('mt-[3px] grid h-3 w-3 shrink-0 place-items-center rounded-full border-2', archiveWhy === r.key ? 'border-brand' : 'border-line')}>
+                        {archiveWhy === r.key && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className={cn('block text-[12px]', archiveWhy === r.key ? 'font-semibold text-brand' : 'text-ink/80')}>{r.vi}</span>
+                        {archiveWhy === r.key && r.note && <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted">{r.note}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <textarea rows={2} placeholder="Ghi chú thêm (tuỳ chọn) — vd. đã chuyển user sang Công ty TNHH Vạn Phát" className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12px] text-ink placeholder:text-faint" />
+                <p className="mt-1 text-[10.5px] text-faint">Ghi vào audit log kèm tên bạn và thời điểm.</p>
               </div>
+              <p className="rounded-md bg-canvas/70 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
+                Câu hỏi để chọn đúng cửa: <b className="text-ink/70">có nên để sales khác nhận lại công ty này không?</b>
+                {' '}Còn tồn tại nhưng hết tiềm năng → <b className="text-ink/70">Trả về bể dữ liệu</b>.
+                {' '}Không còn tồn tại, hoặc không được phục vụ nữa → <b className="text-ink/70">Archive</b>, và dòng trong Danh bạ <b className="text-ink/70">không mở lại</b> nên không ai nhận nhầm.
+              </p>
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
               <button onClick={() => setArchiveOpen(false)} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-              <button onClick={() => { setArchived(true); setArchiveOpen(false) }} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Archive company</button>
+              <button
+                disabled={!archiveWhy}
+                title={archiveWhy ? undefined : 'Chọn lý do trước'}
+                onClick={() => { setArchived(true); setArchiveOpen(false) }}
+                className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', archiveWhy ? 'bg-rose-600 hover:opacity-90' : 'cursor-not-allowed bg-rose-600/40')}
+              >Archive company</button>
             </div>
           </div>
         </div>
@@ -180,7 +257,9 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
         <MiniStat label="Customer since" value={c.since.slice(-4)} sub={c.since} />
         <MiniStat label="Open jobs" value={c.jobPosting ? activeJobs : '—'} sub={c.jobPosting ? `${jobs.length} total` : 'No Job Posting'} />
         <MiniStat label="Team" value={`${team.length}/${MAX_SEATS}`} sub="seats used" tone={full ? 'warn' : undefined} />
-        <MiniStat label="Job quota" value={c.jobPosting ? `${c.jobLeft}/${c.jobTotal}` : '—'} sub={c.jobPosting ? 'slots left' : 'n/a'} tone={c.jobPosting && c.jobLeft / c.jobTotal < 0.3 ? 'warn' : undefined} />
+        {/* A free job draws on NO quota, so a company posting only free jobs has
+            none — and "n/a" is the honest reading, not "0 slots left". */}
+        <MiniStat label="Job quota" value={c.jobPosting ? `${c.jobLeft}/${c.jobTotal}` : '—'} sub={c.jobPosting ? 'slots left' : freeJobs > 0 ? 'chỉ tin miễn phí' : 'n/a'} tone={c.jobPosting && c.jobLeft / c.jobTotal < 0.3 ? 'warn' : undefined} />
         <MiniStat label="CV unlocks" value={c.resumeSearch ? `${c.cvLeft}/${c.cvTotal}` : '—'} sub={c.resumeSearch ? 'left' : 'n/a'} tone={c.resumeSearch && c.cvLeft / c.cvTotal < 0.3 ? 'warn' : undefined} />
         <MiniStat label="Sales owner" value={<span className="text-[12.5px]">{c.owner.split(' ').slice(-2).join(' ')}</span>} sub="from CRM" />
       </div>
@@ -464,16 +543,30 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
               No STATUS column — a PO only reaches this list once it is invoiced, so
               every row had the same value. The invoice DATE is the useful fact, and
               it doubles as "has it been invoiced yet". */}
-          <DetailCard title="PO history">
+          <DetailCard title="PO history" action={poHistory(c).length > 1 ? <span className="text-[11px] text-faint">{poHistory(c).length} PO</span> : undefined}>
             {poHistory(c).length === 0 ? (
-              <p className="text-[12px] text-muted">Chưa có PO nào. PO xuất hiện ở đây ngay khi Sales phát hành đơn hàng từ báo giá khách đã chốt.</p>
+              <>
+                <p className="text-[12px] text-muted">Chưa có PO nào. PO xuất hiện ở đây ngay khi Sales phát hành đơn hàng từ báo giá khách đã chốt.</p>
+                {/* The case this card used to have no answer for: jobs are live, but
+                    no document exists. Saying it here stops a reader concluding the
+                    list is broken — or worse, that a PO was lost. */}
+                {freeJobs > 0 && (
+                  <p className="mt-2 rounded-md border border-dashed border-amber-300 bg-amber-50/60 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                    Công ty này đang có <b>{freeJobs} tin miễn phí</b> đang chạy nhưng <b>không có PO nào</b> — và đúng như vậy: tin miễn phí là Admin đăng mà <b>không chọn PO</b>, nên không có báo giá, không có PO, không có hoá đơn.
+                    <span className="mt-0.5 block text-amber-800/85">Không trừ quota nào, không tính doanh thu, không tính hạng — xem cột <b>Trừ từ</b> ở tab Jobs.</span>
+                  </p>
+                )}
+              </>
             ) : (
               <Table
                 cols={[
                   { label: 'PO', w: '1.2fr' },
                   { label: 'Sản phẩm trong PO', w: '1.8fr' },
-                  { label: 'Giá trị', w: '1fr', align: 'r' },
-                  { label: 'Ngày xuất hoá đơn', w: '1.1fr', align: 'r' },
+                  { label: 'Giá trị', w: '0.9fr', align: 'r' },
+                  { label: 'Ngày xuất HĐ', w: '0.95fr', align: 'r' },
+                  // With two live POs, "when does it run out" is the column that
+                  // tells a rep which one to renew first.
+                  { label: 'Hạn dùng', w: '0.9fr', align: 'r' },
                 ]}
                 rows={poHistory(c).map((o) => [
                   <span className="truncate font-mono text-[11.5px] text-brand">{o.po}</span>,
@@ -482,10 +575,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                   o.invoiced
                     ? <span className="tabular-nums text-muted">{o.invoiced}</span>
                     : <span className="text-[10.5px] text-amber-600">chưa xuất</span>,
+                  o.until
+                    ? <span className="tabular-nums text-muted">{o.until}</span>
+                    : <span className="text-[10.5px] text-faint">—</span>,
                 ])}
               />
             )}
-            <p className="mt-2 text-[11px] text-faint">Every entitlement traces back to a paid PO — provisioned automatically when the VAT invoice is issued, never picked by hand.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-faint">
+              Mỗi quota đã mua đều truy về <b className="text-muted">một PO đã trả tiền</b> — cấp tự động khi xuất hoá đơn VAT, không ai chọn tay.
+              Ngoại lệ là <b className="text-muted">tin miễn phí</b>: Admin đăng mà không chọn PO, nên nó không xuất hiện ở đây và <b className="text-muted">không cần xuất hiện</b> — chỉ hiện trên từng tin ở tab Jobs.
+            </p>
           </DetailCard>
         </div>
       )}
@@ -503,29 +602,61 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       {/* ── Jobs ─────────────────────────────────────────────────────────── */}
       {tab === 'Jobs' && (
         <div>
-          {!c.jobPosting ? (
+          {/* A free job needs NO product and NO PO, so "no product" can no longer
+              mean "no jobs" — the gate has to check for jobs, not for entitlement. */}
+          {!c.jobPosting && jobs.length === 0 ? (
             <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-8 text-center text-[12px] text-muted">
-              This account has no Job Posting product — it can’t post jobs. Resume-Search-only customers are invisible to jobseekers.
+              This account has no Job Posting product — it can only be posted for free by Admin (no PO). Resume-Search-only customers are invisible to jobseekers.
             </p>
           ) : jobs.length === 0 ? (
             <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-8 text-center text-[12px] text-muted">No jobs posted yet.</p>
           ) : (
             <>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11.5px] text-muted"><b className="text-ink">{activeJobs}</b> active · <b className="text-ink">{jobs.length}</b> total — using <b className="text-ink">{c.jobTotal - c.jobLeft}/{c.jobTotal}</b> posting slots</p>
+                <p className="text-[11.5px] text-muted">
+                  <b className="text-ink">{activeJobs}</b> active · <b className="text-ink">{jobs.length}</b> total
+                  {c.jobTotal > 0 && <> — using <b className="text-ink">{c.jobTotal - c.jobLeft}/{c.jobTotal}</b> posting slots</>}
+                  {/* Free jobs are counted apart from slots, because they consumed none. */}
+                  {freeJobs > 0 && <> · <b className="text-amber-700">{freeJobs} tin miễn phí</b> (không PO, không trừ slot)</>}
+                </p>
                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-muted">▽ Filter by status</span>
               </div>
               <Table
-                cols={[{ label: 'Job title', w: '2fr' }, { label: 'Status', w: '1.1fr' }, { label: 'Applicants', w: '0.9fr', align: 'r' }, { label: 'Deadline', w: '1fr', align: 'r' }, { label: 'Actions', w: '1fr', align: 'r' }]}
-                rows={jobs.map((j) => [
-                  <div className="min-w-0"><p className="truncate font-medium text-ink">{j.title}</p><p className="text-[11px] text-faint">Posted {j.posted}</p></div>,
-                  <Pill tone={j.status}>{j.statusLabel}</Pill>,
-                  <span className="tabular-nums">{j.applicants || '—'}</span>,
-                  <span className="tabular-nums text-muted">{j.deadline}</span>,
-                  <RowAction>View</RowAction>,
-                ])}
+                cols={[
+                  { label: 'Job title', w: '2fr' },
+                  // Which bucket this posting was deducted from. Assigned in the same
+                  // order the quota drains, so this column and the billing tab can
+                  // never disagree — and "free or paid?" is answered per job, which
+                  // is where the question is actually asked.
+                  { label: 'Trừ từ', w: '1.2fr' },
+                  { label: 'Status', w: '1fr' },
+                  { label: 'Applicants', w: '0.85fr', align: 'r' },
+                  { label: 'Deadline', w: '0.95fr', align: 'r' },
+                  { label: 'Actions', w: '0.9fr', align: 'r' },
+                ]}
+                rows={jobs.map((j, i) => {
+                  const src = jobSrc[i]
+                  return [
+                    <div className="min-w-0"><p className="truncate font-medium text-ink">{j.title}</p><p className="text-[11px] text-faint">Posted {j.posted}</p></div>,
+                    src
+                      ? (src.kind === 'free'
+                          ? <span className="min-w-0" title="Admin đăng mà không chọn PO — Tin Free (Admin đăng hộ). Không trừ quota, không hoá đơn.">
+                              <span className="rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-amber-800">Miễn phí</span>
+                              <span className="mt-0.5 block truncate text-[10px] text-faint">không chọn PO</span>
+                            </span>
+                          : <span className="min-w-0 truncate font-mono text-[10.5px] text-brand" title={`${src.label} · hạn ${src.until}`}>{src.label}</span>)
+                      : <span className="text-[10.5px] text-faint">—</span>,
+                    <Pill tone={j.status}>{j.statusLabel}</Pill>,
+                    <span className="tabular-nums">{j.applicants || '—'}</span>,
+                    <span className="tabular-nums text-muted">{j.deadline}</span>,
+                    <RowAction>View</RowAction>,
+                  ]
+                })}
               />
-              <p className="mt-2 text-[11px] text-faint">Jobs this account posted (HQ oversight). Company posts go live directly — manage them from Recruitment → Jobs.</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                Jobs this account posted (HQ oversight). Company posts go live directly — manage them from Recruitment → Jobs.
+                <b className="text-muted"> Trừ từ</b> nói tin này tiêu quota của nguồn nào — cùng thứ tự trừ với thẻ Products &amp; quota, nên hai chỗ không bao giờ nói khác nhau.
+              </p>
             </>
           )}
         </div>

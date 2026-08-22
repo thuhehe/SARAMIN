@@ -447,7 +447,7 @@ export const jobseekerUser: BuildModule = {
             group: 'Step 1 · What kind of work are you looking for?',
             items: [
               { name: 'desiredJobCategory', type: 'select → Category taxonomy', notes: 'picked FIRST because it narrows the role suggestions below it' },
-              { name: 'desiredJobRole', type: 'text → Title taxonomy', notes: 'the #1 recruiter filter; suggestions come from the chosen category' },
+              { name: 'desiredJobRole', type: 'ref → Master data · Job categories & roles (the ROLE level)', notes: 'the #1 recruiter filter; suggestions come from the chosen category. THE ONLY role field backed by a reference list — it is chosen from a dropdown, so it resolves to an id. A job title written on a CV does NOT (see Resume management → work experience); do not confuse the two' },
               { name: 'desiredIndustry', type: 'multi-select (≤3)', notes: 'the COMPANY’s sector — a different axis from category (a designer can work in Banking or FMCG)' },
             ],
           },

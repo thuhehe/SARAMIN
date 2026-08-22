@@ -537,8 +537,14 @@ type EditField = {
   options?: string[]
   hint?: string
   half?: boolean
+  /* What an EMPTY field says. Distinct from `value`, and worth the extra key:
+     "Search language" tells you the control is a lookup, where the generic
+     "Not filled in yet" tells you only that you have not used it. */
+  placeholder?: string
 }
-type EditSpec = { intro?: string; repeatable?: boolean; note?: string; fields: EditField[] }
+/* `max` caps a repeatable section. Shown in the heading as "(2/5)" rather than
+   enforced silently, so the limit is visible before it is hit. */
+type EditSpec = { intro?: string; repeatable?: boolean; note?: string; max?: number; fields: EditField[] }
 
 const SECTION_EDITORS: Record<string, EditSpec> = {
   'Profile header': {
@@ -621,13 +627,22 @@ const SECTION_EDITORS: Record<string, EditSpec> = {
       { label: 'Replace with', kind: 'file', hint: 'PDF · DOC · DOCX — max 5 MB. PDF parses most reliably.' },
     ],
   },
+  /* TWO FIELDS, and that is the whole section (client design, 2026-08-22).
+     Certificate and Score were dropped from here — NOT lost: a language
+     certificate is a certificate, and the Certificates section already holds
+     name · issuer · date · credential, which carries an IELTS 7.5 better than a
+     free-text score box ever did (the scales differ — 7.5, 850, N3, 4급 — so one
+     box was either unvalidatable or wrong). Keeping both places to record IELTS
+     meant two answers to one question and eventually two different ones. */
   'Foreign Language': {
     repeatable: true,
+    max: 5,
     fields: [
-      { label: 'Language', kind: 'select', req: true, value: 'English', options: ['English', 'Korean', 'Japanese', 'Chinese', 'Vietnamese'], half: true },
-      { label: 'Proficiency', kind: 'select', req: true, value: 'Fluent', options: ['Basic', 'Intermediate', 'Advanced', 'Fluent', 'Native'], half: true },
-      { label: 'Certificate', kind: 'select', value: 'IELTS', options: ['—', 'TOEIC', 'TOEFL', 'IELTS', 'TOPIK', 'OPIc', 'JLPT', 'HSK'], half: true },
-      { label: 'Score / level', value: '7.5', half: true, hint: 'Free text — the scales differ (7.5, 850, N3, 4급).' },
+      { label: 'Language', kind: 'select', req: true, value: '', placeholder: 'Search language', options: ['English', 'Korean', 'Japanese', 'Chinese', 'French', 'German', 'Vietnamese'], half: true },
+      /* FOUR levels, no "Native". A native speaker picks Fluent — a fifth value
+         that only differs by birthplace is not something an employer can act on
+         differently, and it invites a judgement call on every bilingual CV. */
+      { label: 'Level', kind: 'select', req: true, value: '', placeholder: 'Select level', options: ['Basic', 'Intermediate', 'Advanced', 'Fluent'], half: true },
     ],
   },
   'Highlight projects': {
@@ -730,7 +745,7 @@ function EditRow({ f }: { f: EditField }) {
         </div>
       ) : (
         <div className={cn(box, 'flex items-center justify-between gap-2', f.value ? 'text-ink/80' : 'text-faint')}>
-          <span className="truncate">{f.value || (f.kind === 'month' ? 'mm / yyyy' : 'Not filled in yet')}</span>
+          <span className="truncate">{f.value || f.placeholder || (f.kind === 'month' ? 'mm / yyyy' : 'Not filled in yet')}</span>
           {f.kind === 'select' && <span className="shrink-0 text-faint">▾</span>}
         </div>
       )}
@@ -1171,6 +1186,9 @@ function CreateCvScreen() {
                     {spec?.repeatable && (
                       <button className="flex-1 rounded-md border border-dashed border-line py-2 text-[11.5px] font-medium text-brand hover:border-brand">
                         ＋ Add another {title.toLowerCase()} entry
+                        {/* The cap is stated ON the control that spends it, not
+                            discovered by a disabled button on the 6th click. */}
+                        {spec.max && <span className="font-normal text-faint"> · tối đa {spec.max}</span>}
                       </button>
                     )}
                     <button
@@ -2623,8 +2641,16 @@ const TEMPLATE_CV: CvData = {
         body: '• Hướng dẫn 12 bạn mới chuyển ngành, mỗi khoá 8 tuần.',
       }],
     },
-    { heading: 'Ngoại ngữ', entries: [{ title: 'Tiếng Anh', meta: 'IELTS 7.5' }] },
-    { heading: 'Chứng chỉ', entries: [{ title: 'Google UX Design Certificate', meta: '2021' }] },
+    /* Language = name + level, nothing else. The IELTS score that used to sit
+       here now sits in Chứng chỉ, where a certificate has an issuer and a date. */
+    { heading: 'Ngoại ngữ', entries: [{ title: 'Tiếng Anh', meta: 'Fluent' }, { title: 'Tiếng Hàn', meta: 'Basic' }] },
+    {
+      heading: 'Chứng chỉ',
+      entries: [
+        { title: 'IELTS 7.5', meta: 'British Council · 2023' },
+        { title: 'Google UX Design Certificate', meta: 'Coursera · 2021' },
+      ],
+    },
   ],
 }
 

@@ -384,7 +384,11 @@ export function AdminWireframe() {
   /* A record linked from another page: switch to the page that OWNS the record and
      hand it the id to open, so the breadcrumb names the right module and Back
      returns to the right list. */
-  const [openRecord, setOpenRecord] = useState<string | null>(null)
+  /* `?record=<Company ID>` opens that record directly, the same way `?screen=`
+     picks the page. It exists so a specific EXAMPLE can be linked — "the company
+     with two POs", "the one posting free jobs" — instead of described and hunted
+     for. Same mechanism a cross-page link uses, just seeded from the URL. */
+  const [openRecord, setOpenRecord] = useState<string | null>(() => searchParams.get('record'))
   const goToScreen = (specId: string, record?: string) => {
     for (const g of NAV_GROUPS) {
       const item = g.items.find((x) => x.specId === specId)
