@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, startTransition, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Briefcase,
@@ -17,8 +17,14 @@ import { BUILD_MODULES } from '@/data/buildModules'
 import type { Site } from '@/data/buildModules'
 import { featurePath } from '@/data/featureSlug'
 import { cn } from '@/lib/utils'
-import { ADMIN_PROTOTYPES, AdminPipeline, NewProductModal, NewPackageModal, NewQuotationModal, GlobalCompanySearch, DetailCrumbCtx, ScreenNavCtx, OpenRecordCtx, CreateSignalCtx } from './adminPrototypes'
-import type { DetailCrumb } from './adminPrototypes'
+import { ADMIN_PROTOTYPES } from './admin/registry'
+import { CreateSignalCtx, DetailCrumbCtx, OpenRecordCtx, ScreenNavCtx } from './admin/ctx'
+import type { DetailCrumb } from './admin/ctx'
+import { GlobalCompanySearch } from './admin/screens/companies/search'
+import { NewPackageModal } from './admin/screens/products/newPackage'
+import { NewProductModal } from './admin/screens/products/newProduct'
+import { NewQuotationModal } from './admin/screens/sales/newQuotation'
+import { AdminPipeline } from './admin/screens/sales/pipeline'
 import { ActivityLogButton } from './adminActivityLog'
 import { MonetizationFlow } from '@/components/MonetizationFlow'
 import { ActivationFlow } from '@/components/ActivationFlow'
@@ -358,12 +364,18 @@ export function AdminWireframe() {
   /* Bumped by the title-row create button. Pages whose create REPLACES the list
      (company, job) listen for it; pages with a modal are handled below. */
   const [createSeq, setCreateSeq] = useState(0)
+  /* Screens arrive lazily, so switching page is a transition: without it React
+     treats a click that suspends as a synchronous update it cannot finish, throws
+     away the current screen and shows the fallback. The transition lets the page
+     we are leaving stay on screen until the next one is ready. */
   const select = (group: string, item: NavItem) => {
-    setWalkthrough(null)
-    setDetail(null)
-    setOpenRecord(null)
-    setNavSeq((n) => n + 1)
-    setActive({ group, item })
+    startTransition(() => {
+      setWalkthrough(null)
+      setDetail(null)
+      setOpenRecord(null)
+      setNavSeq((n) => n + 1)
+      setActive({ group, item })
+    })
   }
 
   /* A record linked from another page: switch to the page that OWNS the record and
@@ -374,11 +386,13 @@ export function AdminWireframe() {
     for (const g of NAV_GROUPS) {
       const item = g.items.find((x) => x.specId === specId)
       if (!item) continue
-      setWalkthrough(null)
-      setDetail(null)
-      setNavSeq((n) => n + 1)
-      setActive({ group: g.label, item })
-      setOpenRecord(record ?? null)
+      startTransition(() => {
+        setWalkthrough(null)
+        setDetail(null)
+        setNavSeq((n) => n + 1)
+        setActive({ group: g.label, item })
+        setOpenRecord(record ?? null)
+      })
       return
     }
   }
