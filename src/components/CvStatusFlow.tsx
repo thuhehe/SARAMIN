@@ -20,6 +20,12 @@
  *  4. ONLY THE UPLOADED BRANCH REACHES A HUMAN — it has four statuses, the typed
  *     branch two. Rejected only exists where a review exists, and reviews only
  *     happen on uploaded files. The uneven panels ARE the argument.
+ *  5. INTERNAL VALUE ≠ WHAT THE CANDIDATE SEES, which is why every status card
+ *     now carries a second, smaller line underneath it. Read that line DOWN the
+ *     uploaded panel and the rule states itself: nothing, nothing, nothing, then
+ *     one rejection message. A table can list the same facts; only the picture
+ *     puts the internal value and its (usually absent) candidate-facing twin in
+ *     the same glance, which is the mistake this page exists to prevent.
  *
  * SVG, not HTML: curved connectors are the whole point, and this has to survive
  * being screenshotted into a chat and printed. Structural colours come from the
@@ -52,7 +58,15 @@ type SearchStatus = 'Showing' | 'Hidden'
    an application status to describe. Rendering "Not sent" there would invent a
    record that does not exist. The card shows the ACTION first (can / can't apply)
    and the status only when there is one. */
-type Row = { tone: Tone; status: string; canApply: boolean; app?: AppStatus; canToggle: boolean; search?: SearchStatus }
+/* `sees` — WHAT THE CANDIDATE IS SHOWN for this status, printed under the status
+   card. It is the whole reason this picture was redrawn: three of the four
+   uploaded rows show the candidate NOTHING, and that repetition is the argument.
+   `seesTone` absent = render it as an absence (faint, italic) rather than a
+   label. */
+type Row = {
+  tone: Tone; status: string; canApply: boolean; app?: AppStatus; canToggle: boolean; search?: SearchStatus
+  sees: string; seesTone?: Tone
+}
 
 /* Value → colour, so a status reads the same here as it does on its pill. */
 const VALUE_TONE: Record<AppStatus | SearchStatus, Tone> = {
@@ -63,13 +77,16 @@ const VALUE_TONE: Record<AppStatus | SearchStatus, Tone> = {
 }
 
 const UPLOADED: Row[] = [
-  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing' },
-  /* Doubt HOLDS rather than refuses: the apply succeeds, the delivery waits. */
-  { tone: 'doubt', status: 'Can’t read', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden' },
-  { tone: 'doubt', status: 'Not enough information', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden' },
+  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing', sees: 'no label — an ordinary CV' },
+  /* THE TWO DOUBT ROWS SHOW THE CANDIDATE NOTHING. The status is our uncertainty
+     about our own parse, not a fact about them; announcing it would blame them for
+     a failure that may be ours, before any human has confirmed it. */
+  { tone: 'doubt', status: 'Can’t read', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden', sees: 'NOTHING — renders as an ordinary CV' },
+  { tone: 'doubt', status: 'Not enough information', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden', sees: 'NOTHING — renders as an ordinary CV' },
   /* Rejected is the only uploaded status that refuses the apply outright, so it is
-     the only one with no application status to show. */
-  { tone: 'bad', status: 'Rejected', canApply: false, canToggle: false },
+     the only one with no application status to show — and the only one the
+     candidate is ever told about. The admin's reason code completes the chip. */
+  { tone: 'bad', status: 'Rejected', canApply: false, canToggle: false, sees: 'Chưa được duyệt — <lý do> + 1 nút sửa', seesTone: 'bad' },
 ]
 
 /* TWO statuses only, and the missing third is the point: Rejected is written by an
@@ -79,10 +96,13 @@ const UPLOADED: Row[] = [
    rejected. (A spam or reported profile is handled by account moderation, which is
    a different lever and not part of this flow.) */
 const SARAMIN: Row[] = [
-  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing' },
+  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing', sees: 'no label — an ordinary CV' },
   /* The typed route refuses instead of holding — the missing field is the
-     candidate's own and takes seconds to fill — so again there is no application. */
-  { tone: 'doubt', status: 'Not enough information', canApply: false, canToggle: false },
+     candidate's own and takes seconds to fill — so again there is no application.
+     It is also the ONLY doubt state the candidate is shown, because there is no
+     parser to be wrong and nothing queued for review: the check cannot be
+     mistaken about fields they typed into our own form. */
+  { tone: 'doubt', status: 'Not enough information', canApply: false, canToggle: false, sees: '⚠ Chưa đủ thông tin + Cập nhật hồ sơ', seesTone: 'doubt' },
 ]
 
 /** A status chip — the left column of a panel. Two lines when the name is long. */
@@ -231,7 +251,13 @@ function Panel({
         <text key={i} x={x + 22} y={y + 48 + i * 14} fontSize={10.5} fill="var(--color-muted)">{l}</text>
       ))}
 
-      <text x={colStatus} y={y + 72} fontSize={9.5} fontWeight={700} fill="var(--color-faint)" letterSpacing={0.6}>CV STATUS</text>
+      {/* The sub-line is labelled ONCE, in the header, so each row's caption can be
+          the bare thing the candidate sees — a per-row “Ứng viên thấy:” prefix ate
+          the column width and repeated 4×. Kept SHORT on purpose: the column is
+          210px wide before APPLICATION STATUS begins, and the fuller wording
+          (“small line = what the candidate sees”) overran it by 80px. The ▾ does
+          the pointing instead, and the section text spells it out. */}
+      <text x={colStatus} y={y + 72} fontSize={9.5} fontWeight={700} fill="var(--color-faint)" letterSpacing={0.6}>CV STATUS  ·  ▾ CANDIDATE SEES</text>
       <text x={colApp} y={y + 72} fontSize={9.5} fontWeight={700} fill="var(--color-faint)" letterSpacing={0.6}>APPLICATION STATUS</text>
       <text x={colSearch} y={y + 72} fontSize={9.5} fontWeight={700} fill="var(--color-faint)" letterSpacing={0.6}>CV SEARCH STATUS</text>
 
@@ -240,6 +266,19 @@ function Panel({
         return (
           <g key={i}>
             <StatusCard x={colStatus} y={ry} row={r} />
+            {/* WHAT THE CANDIDATE SEES, printed directly against the internal value
+                it contradicts. An absence renders faint and italic so the eye reads
+                it as “nothing here” rather than as another label. */}
+            <text
+              x={colStatus + 4}
+              y={ry + 84}
+              fontSize={9.5}
+              fontWeight={r.seesTone ? 700 : 400}
+              fontStyle={r.seesTone ? 'normal' : 'italic'}
+              fill={r.seesTone ? C[r.seesTone].text : 'var(--color-faint)'}
+            >
+              {r.sees}
+            </text>
             <line x1={colStatus + 184} y1={ry + 33} x2={colApp - 8} y2={ry + 33} stroke={accent} strokeWidth={1.5} markerEnd={`url(#arrow-${accent.slice(1)})`} />
             <ApplicationCard x={colApp} y={ry} canApply={r.canApply} value={r.app} />
             <line x1={colApp + 202} y1={ry + 33} x2={colSearch - 8} y2={ry + 33} stroke={accent} strokeWidth={1.5} markerEnd={`url(#arrow-${accent.slice(1)})`} />
@@ -257,7 +296,7 @@ const BLUE = '#2563eb'
 export function CvStatusFlow() {
   return (
     <div className="mt-2 overflow-x-auto">
-      <svg viewBox="0 0 1500 906" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
+      <svg viewBox="0 0 1500 990" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
         <defs>
           {[RED, BLUE].map((c) => (
             <marker key={c} id={`arrow-${c.slice(1)}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto-start-reverse">
@@ -298,15 +337,15 @@ export function CvStatusFlow() {
         </text>
         <text x={561} y={556} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">3 skills ]</text>
 
-        <path d="M 722 470 C 768 470, 768 250, 812 250" fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#arrow-${RED.slice(1)})`} />
-        <path d="M 722 542 C 768 542, 768 690, 812 690" fill="none" stroke={BLUE} strokeWidth={2} markerEnd={`url(#arrow-${BLUE.slice(1)})`} />
+        <path d="M 722 470 C 768 470, 768 284, 812 284" fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#arrow-${RED.slice(1)})`} />
+        <path d="M 722 542 C 768 542, 768 753, 812 753" fill="none" stroke={BLUE} strokeWidth={2} markerEnd={`url(#arrow-${BLUE.slice(1)})`} />
 
         {/* ── the two outcome panels ─────────────────────────────────────────── */}
         <Panel
           x={816}
           y={28}
           w={668}
-          h={444}
+          h={512}
           accent={RED}
           title="Uploaded CV — parsed into the same fields"
           note={[
@@ -314,23 +353,23 @@ export function CvStatusFlow() {
             'candidate is never told, and delivery waits for a reviewer. Nothing auto-releases.',
           ]}
           rows={UPLOADED}
-          pitch={88}
+          pitch={106}
         />
         {/* The one move the rows can't show, because it is a TRANSITION rather than
             an apply-time outcome: a Qualified CV that already reached employers is
             later Rejected by an admin. Sat under the uploaded panel because only
             that route has an admin to overturn anything. */}
-        <text x={826} y={498} fontSize={11} fill={C.bad.text}>
+        <text x={826} y={560} fontSize={11} fill={C.bad.text}>
           ↩ Rejected AFTER Qualified — an admin overturns a CV that employers already have: every application
         </text>
-        <text x={826} y={514} fontSize={11} fill={C.bad.text}>
+        <text x={826} y={576} fontSize={11} fill={C.bad.text}>
           already Sent flips to <tspan fontWeight={700}>Recall</tspan> (pulled back; the employer is told Saramin withdrew it). Held ones stay Not sent.
         </text>
         <Panel
           x={816}
-          y={556}
+          y={606}
           w={668}
-          h={268}
+          h={294}
           accent={BLUE}
           title="Saramin CV — typed"
           note={[
@@ -338,20 +377,20 @@ export function CvStatusFlow() {
             'A missing field is theirs to fix, and it blocks both doors.',
           ]}
           rows={SARAMIN}
-          pitch={88}
+          pitch={106}
         />
 
         {/* the one sentence the picture is making */}
-        <text x={40} y={856} fontSize={11} fill="var(--color-muted)">
+        <text x={40} y={930} fontSize={11} fill="var(--color-muted)">
           Every arrow points right: both statuses are READ from the CV. Nothing writes back.
         </text>
         {/* …and the one thing the picture CANNOT show, because it is about who is
             looking rather than what the value is. Printed here so nobody reads a
             “Not sent” cell as a label the candidate is shown. */}
-        <text x={40} y={880} fontSize={11} fill="var(--color-muted)">
+        <text x={40} y={954} fontSize={11} fill="var(--color-muted)">
           These are INTERNAL values. A candidate never sees a doubt state: an uploaded CV in doubt renders like a healthy one,
         </text>
-        <text x={40} y={896} fontSize={11} fill="var(--color-muted)">
+        <text x={40} y={970} fontSize={11} fill="var(--color-muted)">
           and its application reads the ordinary “Đã nộp”. Only DECIDED states are ever spoken about — Qualified, or Rejected with its reason.
         </text>
       </svg>

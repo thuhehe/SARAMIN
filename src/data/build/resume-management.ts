@@ -1950,12 +1950,72 @@ export const resumeManagement: BuildModule = {
           {
             early: true,
             heading: 'How CV status drives Application status and CV search status',
-            text: 'The direction is the thing readers get wrong, so it is drawn rather than described: everything on the right is COMPUTED from the box on the left. No arrow ever points back the other way, because there is nothing on the right to write to.',
+            text: 'The direction is the thing readers get wrong, so it is drawn rather than described: everything on the right is COMPUTED from the box on the left. No arrow ever points back the other way, because there is nothing on the right to write to.\n\nEach status card also carries a SMALL SECOND LINE — what the candidate is shown for that status. Read it down the uploaded panel and the visibility rule states itself: nothing, nothing, nothing, then one rejection message.',
             diagram: 'cv-status',
             items: [
               'READ IT LEFT TO RIGHT ONLY. Application status and CV-search status are projections; the CV is the record. A screen that lets someone set either one directly has re-introduced the second source of truth this model exists to remove.',
-              'THE TWO DOUBT ROWS ARE IDENTICAL in their consequences — that is intentional. “Not enough information” and “Can’t read” differ in what the operator has to LOOK at, never in what the candidate or employer experiences.',
+              'THE BIG CELLS ARE INTERNAL VALUES, THE SMALL LINE IS THE PRODUCT. “Not sent” and “Hidden” are what the system stores and what an ADMIN reads; they are not labels anyone else is shown. Confusing the two is the single commonest misreading of this picture, which is why the two now sit one above the other instead of on separate pages.',
+              'THE TWO DOUBT ROWS ARE IDENTICAL in their consequences — that is intentional. “Not enough information” and “Can’t read” differ in what the operator has to LOOK at, never in what the candidate or employer experiences, and neither is shown to anyone outside the review queue.',
+              'THE FOURTH APPLICATION VALUE IS DRAWN AS AN ANNOTATION, NOT A ROW — Recall. It is a transition rather than an apply-time outcome: no CV status produces it, only the act of rejecting a CV that had already been delivered. Squeezing it into a cell would have implied some status you can be in at apply time.',
               'BOTH DOORS FAIL CLOSED (revised — the 24h auto-send is REMOVED). Neither a held application nor a held CV is ever released automatically; both wait for a human. This drops an earlier asymmetry in which applications auto-sent and only the index waited — simpler to explain, and it means nothing unreviewed ever reaches an employer. The cost moves onto US: an unworked queue now stops candidates’ applications outright, so queue staffing is no longer a nice-to-have.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'ONE CV STATUS, THREE AUDIENCES — the same table the flow draws, by status',
+            text: 'The tag matrix above is organised by REJECT REASON, which is the right shape when a reviewer has just picked one. This is the same model pivoted the other way — by CV status, the way a developer implementing a screen meets it, and the way a support agent holding a candidate’s complaint meets it. Read the three right-hand columns as “who is told what”.',
+            table: {
+              cols: ['CV status (stored — the only fact)', 'Jobseeker — My CVs', 'Jobseeker — My applications', 'Employer — Applications'],
+              rows: [
+                [
+                  '**Qualified** — scan passed, or an admin approved',
+                  'No status chip. Green **Hiển thị trong tìm kiếm CV** on the CV picked for search',
+                  '**Đã gửi**, then the employer’s own stages (Viewed · Interview · Offer…)',
+                  'An ordinary row, working the employer’s pipeline',
+                ],
+                [
+                  '**Can’t read** — DOUBT, uploaded only. In the review queue',
+                  '**Nothing.** No chip, no line, no button — the row is indistinguishable from a healthy CV',
+                  '**Nothing special** — blue **Đã nộp** · “Đơn của bạn đã được nộp”. Timeline: “Gửi tới nhà tuyển dụng — Đang xử lý”',
+                  '**Nothing** — never delivered, so no row exists',
+                ],
+                [
+                  '**Not enough information** — DOUBT, uploaded. In the review queue',
+                  '**Nothing** — same as above',
+                  '**Nothing special** — same **Đã nộp**',
+                  '**Nothing** — never delivered',
+                ],
+                [
+                  '**Not enough information** — a SARAMIN CV below the rule. NOT in any queue',
+                  'Amber **⚠ Chưa đủ thông tin** · “Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.” → **Cập nhật hồ sơ**',
+                  '**Nothing** — it cannot be selected to apply at all, so no application exists',
+                  '**Nothing**',
+                ],
+                [
+                  '**Rejected — Not a CV** (admin)',
+                  'Rose **Chưa được duyệt — Không phải CV** · “File bạn tải lên không phải một CV…” → **Tải lên CV khác**',
+                  'Never delivered → **Không được gửi** · was delivered → **Đã thu hồi**, both rose, both naming the reason',
+                  'Only if it had been delivered: **Đã thu hồi**, struck through, View/Download removed, unlock auto-refunded. Banner reason: “File này không phải một CV.”',
+                ],
+                [
+                  '**Rejected — CV but not enough information** (admin)',
+                  'Rose **Chưa được duyệt — Thiếu thông tin** · “Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng.” → **Cập nhật hồ sơ**',
+                  'Same two outcomes, reason: “hồ sơ chưa đủ thông tin”',
+                  'Same treatment. Banner reason: “CV chưa đủ thông tin.”',
+                ],
+                [
+                  '**Rejected — Can’t read** (admin)',
+                  'Rose **Chưa được duyệt — Không đọc được** · “File dạng ảnh scan nên hệ thống không đọc được nội dung…” → **Tải lên CV khác**',
+                  'Same two outcomes, reason: “file là bản scan nên hệ thống không đọc được”',
+                  'Same treatment. Banner reason: “File là bản scan, hệ thống không đọc được nội dung.”',
+                ],
+              ],
+            },
+            items: [
+              'THE ADMIN COLUMN IS MISSING FROM THIS TABLE ON PURPOSE, because the admin sees the LEFT column — the stored status itself, plus the reason and the internal note. That is the asymmetry the whole page is about: one stored fact, and three audiences who are told progressively less of it.',
+              'APPLICATION STATUS HAS EXACTLY THREE VALUES AND THEY ARE ADMIN-SIDE: **Sent · Not sent · Recall**. Everything in the two jobseeker columns above is a LABEL over those three — “Đã nộp” and “Không được gửi” are both `Not sent`, and the CV status is what distinguishes them. Neither the candidate nor the employer is ever shown the raw value.',
+              'READ THE ROWS FOR “Nothing” — there are six of them, and they are the design, not gaps in the spec. A cell saying Nothing means the surface renders exactly as it would for a healthy CV: no placeholder, no greyed state, no “pending” affordance to explain.',
+              'THE FOUR REJECTED/DOUBT ROWS COLLAPSE TO TWO IMPLEMENTATIONS — doubt renders nothing, a rejection renders chip + line + button keyed by reason code. Anyone building this needs one conditional, not seven branches; the table is long because the MESSAGES differ, not because the logic does.',
             ],
           },
           {
