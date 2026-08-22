@@ -3,3 +3,7 @@
 
 # Per-developer overrides of .env (Vite convention). Never commit these.
 *.local
+
+# macOS Finder metadata. Committed by accident once and then kept showing up
+# in every status; ignored everywhere, not just at the root.
+.DS_Store
