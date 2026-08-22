@@ -13,7 +13,40 @@ import { BenefitCards, BenefitsField } from '@/components/BenefitsField'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { LogoSizer } from '@/components/LogoSizer'
 import { CreateSignalCtx, OpenRecordCtx, RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb, useReadOnly } from '@/pages/admin/ctx'
-import { MOCK_TODAY, dateBefore, daysLeft, dmy, enWords, endOfMonth, money, revFmt, vnWords, vnd } from '@/pages/admin/lib/fmt'
+import { AC_STATUS, BUYER_TYPE, COMPANIES, CO_ORDER, CO_SORTS, CO_STATUS, IDLE_RULE, LEAD_SOURCES, RETAIL_BUYER, ROT_DOT, ROT_TEXT, STAGE_NEXT, cadenceOf, coCity, coId, coKey, coLabel, coLastRevenue, coLeadSource, coValue, idleOf, inPipeline, isCustomer, isVNCompany, poGate } from '@/pages/admin/data/companies'
+import type { BuyerType, Cadence, CoSort, CoStatus, Company } from '@/pages/admin/data/companies'
+import { SALES_STAGES, companyDocs, companyOwnerHistory } from '@/pages/admin/data/companyOwner'
+import type { CoDoc } from '@/pages/admin/data/companyOwner'
+import { BUSINESS_FORMS, CO_SIZES, CP_TRAITS } from '@/pages/admin/data/companyPage'
+import { CALL, CHAT, CHAT_CHANNELS, CONTACT_STATUS, CO_ALL_PERMS, CO_NEEDS, CO_PERM_GROUPS, CO_ROLE_DEFS, KIND_META, MAX_SEATS, MEET, coTogglePerm, companyActivity, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, pastPurchases, poHistory } from '@/pages/admin/data/companyRecord'
+import type { CoAtt, CoContact, CoEvent, CoKind, CoPermKey, CoRoleDef, CoTab, CoUserRole, ContactStatus } from '@/pages/admin/data/companyRecord'
+import { INDENT, ancestorsOf, childrenOf, coByName, coRoles, groupOf, groupRootOf, inGroup, taxRoot } from '@/pages/admin/data/companyTree'
+import { BANNERS, BANNER_TONE, CV_SEARCH_PACKAGES, PLACEMENT_POS, POPUPS, PU_AUDIENCE, SOURCE_LABEL, SUPPLY_GAPS, SVC_TONE, TERM_TONE, UNRESOLVED_TERMS, ZERO_RESULT_TERMS, svcState, usageOf } from '@/pages/admin/data/content'
+import type { Banner, Popup, SvcState, UsagePair } from '@/pages/admin/data/content'
+import { CLAIM_REQS, CLAIM_STATUS, DIRECTORY, DIR_STATE, FREE_DATA_KIND, KIND_IS_CUSTOMER, dirCrm, dirCrmMatch } from '@/pages/admin/data/directory'
+import type { DirRow } from '@/pages/admin/data/directory'
+import { BASE_POOL, COMPANY_BENEFITS, JOB_SAVERS, ROLE_SKILL_MAP, SKILL_CAP, SKILL_POOL, SUGGEST_CAP, TITLE_I18N } from '@/pages/admin/data/jobForm'
+import { TIERS, TIER_RESET, TIER_YEAR, nextTierAt, tierAt, tierOf, tierRevenue } from '@/pages/admin/data/membership'
+import type { Tier, TierRow } from '@/pages/admin/data/membership'
+import { ACTIVATE_WITHIN_DEFAULT, CATALOG, DESCRIPTIONS, FILL_META, GALLERY, GALLERY_TOPICS, INDUSTRY_TOPICS, PACKAGES, PENDING_SEED, PLACEMENTS, PRODUCT_TYPES, PROGRAMMES, activateWithin, activateWithinLabel, imgStyle, programmeFor, qtyByProduct, tierPct } from '@/pages/admin/data/products'
+import type { CatalogItem, FillRoute, GalleryImg, PendingFile, ProductTypeId, Programme } from '@/pages/admin/data/products'
+import { CV_COLS, CV_STATUS_TONE, DELIVERY_TONE, JOB_ROWS, REASON_SENDS, REJECT_REASONS, STAGE_TONE, isHeld } from '@/pages/admin/data/recruitment'
+import type { Applicant, CvCheckRow, Delivery, JobRow } from '@/pages/admin/data/recruitment'
+import { AUTO_APPLY, BUILDER_STEPS, CONVERT_STEPS, EXTRACTED_FIELDS, SUGGESTED_TAGS, builderStd, importedStd, matchKeys, useConvertProgress } from '@/pages/admin/data/resume'
+import type { BuilderForm, Prefs, Std } from '@/pages/admin/data/resume'
+import { DEALS, DISCOUNT_MODES, INVOICES, ISSUER, MST_ROOT_MATCHES, NEWCHURN_MAX_QTY, NEWCHURN_PCT, NEXT_BY_STAGE, PATH, PAY_META, PAY_TERMS_DAYS, POS, PO_TONE, QUOTES, QUOTE_CATALOG, QUOTE_SORTS, QUOTE_TERMS, QUOTE_TONE, SARAMIN_BLUE, SARAMIN_MARK_D, SPECIAL_LEADER_MAX, STAGES, VAT_RATE, apprPerson, apprRole, catForMode, daysFromDoc, defaultMode, draftInvOf, fieldCls, invPay, invStage, isOpen, lineTotal, modesFor, optionTotals, payStatus, pdfNum, pdfOptions, poDraftBtn, poExpiry, poLive, poNext, poStage, poStep, selfApproves, signDate } from '@/pages/admin/data/sales'
+import type { Deal, DiscountMode, Inv, Po, QLine, QOption, Quote, QuoteSort, QuoteStatus } from '@/pages/admin/data/sales'
+import { ME, SALES_DEPT, SALES_PERSONAS, SALES_ROLE_LABEL, teamBookOf } from '@/pages/admin/data/salesOrg'
+import type { SalesPersona } from '@/pages/admin/data/salesOrg'
+import { SERVICE_USAGE } from '@/pages/admin/data/services'
+import type { ServiceEntitlement } from '@/pages/admin/data/services'
+import { SIGNUPS, SIGNUP_STATUS } from '@/pages/admin/data/signups'
+import type { Signup, SignupStatus } from '@/pages/admin/data/signups'
+import { MD_DOMAINS, OPERATORS, OPERATOR_ROLE_BY_EMAIL, OP_DEPTS, OP_STATUS, PERM_GROUPS, PERM_LEVELS, ROLES, STAFF, TOTAL_PERMS, companiesOwnedBy, expandGrants, grantedCount, permKey } from '@/pages/admin/data/system'
+import type { MDDomain, OpUser, PermLevel, Role, Staff } from '@/pages/admin/data/system'
+import { CUSERS, JS_STATUS, JS_USERS } from '@/pages/admin/data/users'
+import type { CUser, JSSignup, JSStatus, JSUser } from '@/pages/admin/data/users'
+import { dateBefore, daysLeft, enWords, endOfMonth, money, revFmt, vnWords, vnd } from '@/pages/admin/lib/fmt'
 import { BField, Bi, BiTArea, CardGroup, ChipField, ComboField, DetailCard, EField, FField, FLabel, InfoBit, KV, LField, LabelRow, PageField, RField, Radio, Section, SelectField, SelectRow, TArea } from '@/pages/admin/ui/fields'
 import { FilterBar, FilterRow, FilterSelect, ListPage, RowAction } from '@/pages/admin/ui/list'
 import { Bars, MiniStat, StatCards } from '@/pages/admin/ui/stats'
@@ -26,44 +59,8 @@ import type { Col } from '@/pages/admin/ui/table'
    import them from here. Removed once those imports are repointed. */
 export { CreateSignalCtx, DetailCrumbCtx, OpenRecordCtx, ScreenNavCtx } from '@/pages/admin/ctx'
 export type { DetailCrumb } from '@/pages/admin/ctx'
+export { DESCRIPTIONS, PRICE_SEGMENTS } from '@/pages/admin/data/products'
 
-/* The benefit types declared on the COMPANY page. Every job of that company
-   The benefit types declared on the COMPANY page — the DEFAULT SET a new job is
-   prefilled with. It is a default, NOT a restriction: the job picker still offers
-   every type and there is no cap, so a job freely adds position-specific ones on
-   top of these. */
-const COMPANY_BENEFITS = ['insurance', 'health', 'bonus', 'salary-13th', 'allowance', 'paid-leave', 'training']
-
-/* ONE column set, shared by Talent pool and CV review. CV review is the same list
-   filtered to the two DOUBT statuses, so it must read identically — an operator
-   moving between them should not re-learn the table. Defined once rather than
-   copied, because two copies of a column list are two lists that drift. */
-const CV_COLS: Col[] = [
-  { label: 'Candidate', w: '1fr' },
-  { label: 'CV', w: '1.3fr' },
-  { label: 'Basic information', w: '1.5fr' },
-  { label: 'Work preference', w: '1.5fr' },
-  { label: 'Contact', w: '1.3fr' },
-  { label: 'CV status', w: '1.3fr' },
-  { label: 'Application status', w: '1.3fr' },
-  { label: 'CV Search status', w: '1.3fr' },
-  { label: 'CV content', w: '1.2fr' },
-  { label: 'Unlocks', w: '0.6fr' },
-  { label: 'Updated', w: '0.8fr' },
-  { label: '', w: '0.35fr', align: 'r' },
-]
-
-/* ── Recruitment ──────────────────────────────────────────────────────────── */
-type JobRow = { id: string; title: string; category: string; company: string; source: 'Company' | 'Admin'; product: string; status: StatusTone; statusLabel: string; exposure: 'On' | 'Off'; posted: string; deadline: string; views: number; saves: number; applicants: number }
-const JOB_ROWS: JobRow[] = [
-  { id: 'JOB-2116', title: 'Senior Frontend Engineer (ReactJS)', category: 'CNTT - Phần mềm', company: 'FPT Software', source: 'Company', product: 'Basic', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '31/08/2026', views: 0, saves: 0, applicants: 0 },
-  { id: 'JOB-2117', title: 'Kế toán tổng hợp', category: 'Kế toán - Kiểm toán', company: 'VNG Corporation', source: 'Company', product: 'Free', status: 'schedule', statusLabel: 'Schedule', exposure: 'Off', posted: '01/09/2026', deadline: '20/09/2026', views: 0, saves: 0, applicants: 0 },
-  { id: 'JOB-2109', title: 'Digital Marketing Lead', category: 'Marketing - Truyền thông', company: 'Tiki', source: 'Admin', product: 'Distinction', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '15/07/2026', deadline: '15/09/2026', views: 1240, saves: 86, applicants: 42 },
-  { id: 'JOB-2101', title: 'Product Manager', category: 'Sản phẩm - Dự án', company: 'MoMo', source: 'Company', product: 'Basic plus', status: 'open', statusLabel: 'Open', exposure: 'On', posted: '05/07/2026', deadline: '05/09/2026', views: 890, saves: 54, applicants: 18 },
-  { id: 'JOB-2098', title: 'Nhân viên kinh doanh', category: 'Kinh doanh - Bán hàng', company: 'Thế Giới Di Động', source: 'Company', product: 'Free', status: 'open', statusLabel: 'Open', exposure: 'Off', posted: '20/07/2026', deadline: '28/08/2026', views: 320, saves: 12, applicants: 7 },
-  { id: 'JOB-2040', title: 'Backend Engineer (Go)', category: 'CNTT - Phần mềm', company: 'Shopee', source: 'Company', product: 'Top Job', status: 'closed', statusLabel: 'Closed', exposure: 'Off', posted: '01/04/2026', deadline: '01/07/2026', views: 2150, saves: 143, applicants: 61 },
-  { id: 'JOB-2001', title: 'Thực tập sinh Nhân sự', category: 'Nhân sự', company: 'Base.vn', source: 'Company', product: 'Free', status: 'draft', statusLabel: 'Draft', exposure: 'Off', posted: '—', deadline: '—', views: 0, saves: 0, applicants: 0 },
-]
 /* The create form as a screen in its own right, so the "Create job (Admin)" spec
    page can show the form instead of the list it is reached from. Back returns to
    the list — the same thing it does inside the console. */
@@ -128,77 +125,6 @@ function ExtLink({ children }: { children: React.ReactNode }) {
       {children}
     </a>
   )
-}
-
-/* A CV is always shown as the candidate NAMED it, plus the kind it is — the two
-   things HQ needs to know at a glance. Never the tag alone: "Saramin CV" with no
-   name gives the screener nothing to recognise the document by. */
-
-/* stage is a plain string + its own tone so the list can FILTER on it — a
-   pre-rendered <Pill> is unfilterable. Same shape as CoApplicant below. */
-/*
- * Status model v2 — an application carries TWO status dimensions and the admin
- * list must show both, because they are owned by different people:
- *
- *   status (Layer 2, HQ-owned)   Sent · Not sent · Recall (+ Blocked, user-level)
- *   stage  (Layer 3, company-owned, read-only here)
- *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
- *
- * CV QUALITY IS NOT CHECKED HERE — an uploaded CV is parsed and evaluated once,
- * at UPLOAD (Resume management → "CV qualification — apply & CV search"), so it
- * arrives carrying its own verdict. When that verdict is unresolved the
- * application is NOT SENT: the apply succeeded, delivery is waiting on the CV.
- *
- * The hold belongs to the CV, not to the application, which is why there is no
- * decision to make on this screen — the reviewer works Admin → CV review, and ONE
- * verdict releases (or drops) every application waiting on that CV. A held
- * application now waits for a human — nothing auto-sends — so an unworked queue
- * a candidate a deadline.
- */
-type Delivery = 'Sent' | 'Not sent' | 'Recall' | 'Blocked'
-
-/* THREE values, no more. “Pending” used to sit here and was removed: it was the
-   CV’s doubt written a second time in a column that already reads from the CV,
-   and two copies of one fact are how they start to disagree. A held application
-   simply reads NOT SENT; whether it is still WAITING or finally refused is
-   carried in `hold`, not a fourth status. RECALL is the one legitimate addition —
-   it records history (this one WAS delivered, then its CV was Rejected) that the
-   CV status alone cannot reproduce. */
-const isHeld = (hold?: string) => !!hold?.includes('chờ duyệt')
-
-const DELIVERY_TONE: Record<Delivery, StatusTone> = {
-  Sent: 'neutral',
-  'Not sent': 'rejected',
-  Recall: 'draft',
-  Blocked: 'rejected',
-}
-
-/* The employer funnel, in order. Tones run cool → warm → resolved so the column
-   reads as progress at a glance. */
-const STAGE_TONE: Record<string, StatusTone> = {
-  New: 'draft',
-  Reviewing: 'neutral',
-  Shortlisted: 'schedule',
-  Interview: 'pending',
-  Hired: 'active',
-  Rejected: 'rejected',
-}
-
-/* `hold` — held rows only: why delivery is waiting, and how long is left on the
-   how long it has waited. The decision itself is made on the CV, not here. */
-/* `cvStatus` — the verdict the CV carried in from upload, and the reason a row is
-   not sent at all. Without it a binary Not sent looks arbitrary. */
-type CvStatus = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
-/* `basic` and `pref` are the SAME field-sheet strings the Talent pool renders —
-   Basic information (table 1) and Work preference (table 2). Work preference comes
-   from ONBOARDING, so even a candidate whose CV was unreadable has a full one. */
-type Applicant = { name: string; basic: string; pref: string; contact: [string, string]; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string }
-
-const CV_STATUS_TONE: Record<CvStatus, StatusTone> = {
-  Qualified: 'active',
-  'Not enough information': 'pending',
-  "Can't read": 'draft',
-  Rejected: 'rejected',
 }
 
 /* Applicant detail under status model v2. There is NO pre-send gate any more:
@@ -703,75 +629,6 @@ function AdminResumes() {
   )
 }
 
-/* ── CV review — the review QUEUE, deliberately not the talent pool ────────────
-   Two different jobs, so two different lists: Resumes is for BROWSING the pool
-   (one row per candidate, their searchable CV); this is for DECIDING on the
-   handful of uploaded PDFs whose extraction fell under the rule. Only PDFs
-   appear — a Saramin CV is arithmetic over typed fields and never needs a human.
-
-   The reviewer's real job is telling "not a CV" apart from "our parser failed on
-   this layout", so the row shows WHAT WE EXTRACTED next to the file. One verdict
-   resolves the CV *and* every application waiting on it. Nothing sends without
-   that verdict, which is why the applications-waiting count carries its own
-   countdown — after that the CV is still held, but nobody is blocked. */
-/* CV CHECK — the same population as Talent pool, filtered to rows still awaiting
-   review, so it carries the SAME columns in the SAME order and adds only the two
-   the queue needs: how many applications are waiting on this decision, and how
-   long the CV has been sitting here. An operator moving between the two lists
-   should not have to re-learn the table.
-
-   Only uploaded PDFs appear — a Saramin CV is arithmetic over typed fields and is
-   never queued. `kind` is the REASON under the status: `thin` was read fine but is
-   under the rule (delivery waits), `tech` could not be read at all (applications
-   went out normally, and there is nothing for us to fix). */
-/* Rejection reason codes. FIXED, not free text — a note explains one call, but
-   only a code lets you count thirty of them and see the pattern. `parser` is the
-   valuable one: it turns an operator's rejection into a bug report against the
-   scan, and its share is the honest measure of how much work the automation is
-   creating for humans. */
-/* THREE reasons, reusing the scan's own vocabulary. A rejection records what the
-   reviewer CONFIRMED after opening the file, against what the scan suspected:
-   the scan's doubt is a question, this is the answer to it.
-
-   Deliberately NOT here: fake, abusive, duplicate. Those are judgements about the
-   ACCOUNT rather than the document, and they have their own lever — Block user.
-   Filing them as a CV reason would hide an account that needs blocking behind a
-   row that looks like a bad upload. */
-const REJECT_REASONS = ['Can’t read', 'Not a CV', 'CV but not enough information'] as const
-
-/* What each code SENDS — the exact chip and line the candidate will get on My
-   CVs. A reviewer picking a code without seeing the message is picking blind,
-   and the wrong code is a message the candidate cannot act on, so the picker
-   shows it inline.
-
-   This is also the FIRST thing the candidate hears about any of it: while the CV
-   sat in this queue they saw nothing at all. Rejecting is therefore not "adding a
-   flag to a CV they were already worried about" — it is breaking news, and the
-   reason has to stand on its own. Note “Can’t read” never reaches them as
-   written: it describes OUR extraction failing, and phrasing it as their fault
-   would be both wrong and unfixable by them. */
-const REASON_SENDS: Record<string, string> = {
-  'Can’t read': 'Chip “Chưa được duyệt — Không đọc được” · “File dạng ảnh scan nên hệ thống không đọc được nội dung.” → Tải lên CV khác',
-  'Not a CV': 'Chip “Chưa được duyệt — Không phải CV” · “File bạn tải lên không phải một CV.” → Tải lên CV khác',
-  'CV but not enough information': 'Chip “Chưa được duyệt — Thiếu thông tin” · “Hồ sơ chưa đủ thông tin để gửi tới NTD.” → Cập nhật hồ sơ (kèm checklist thiếu gì)',
-}
-type RejectReason = (typeof REJECT_REASONS)[number]
-
-type CvCheckRow = {
-  name: string; basic: string; contact: [string, string]; pref: string; file: string
-  kind: 'thin' | 'tech'; extracted: string; apps: number; left: string; age: string; updated: string; hint: 'likely' | 'unlikely'
-  /* Which of the three views the row belongs to. `doubt` is the work; the other
-     two are the RECORD of a human decision, kept on the same screen so a bad call
-     can be rechecked and undone where it was made. */
-  state?: 'doubt' | 'approved' | 'rejected'
-  by?: string
-  reason?: RejectReason
-  /* The queue has TWO sources: the automatic check, and CVs REPORTED by an
-     employer or flagged by moderation. A reported row is the only way a CV that
-     scanned Qualified ever lands here, so it is worth showing on the row. */
-  via?: 'report'
-}
-
 function AdminCvCheck() {
   const [open, setOpen] = useState<CvCheckRow | null>(null)
   /* Three views over ONE list: the open queue, and the two resolved outcomes.
@@ -1009,186 +866,6 @@ function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void 
       </div>
     </div>
   )
-}
-
-/* ── Create resume (Admin) ────────────────────────────────────────────────────
-   Two routes into ONE object, converging on the Saramin standard review screen:
-
-     ① Upload CV  → CV Convert pipeline (parse → extract → AI tag → generate)
-     ② Builder    → 4-step wizard (basics → headline & body → AI tags → preview)
-
-   Neither route writes to the resume master. "Register to resume master" on the
-   convergence screen is the only write in the whole flow, which is why switching
-   paths or abandoning half-way costs nothing.
-
-   The route decides only two things: `source` (IMPORT vs SELF_REGISTER) and the
-   document set (Upload carries the original PDF too). Everything downstream —
-   the review screen, the standard JSON, the matching keys — is identical. */
-
-const CONVERT_STEPS = [
-  { n: '①', title: 'Parse PDF', desc: 'Extract text and layout from the original CV.', ms: 1200 },
-  { n: '②', title: 'Extract structured fields', desc: 'Map name, contact, experience, education, skills to the Saramin schema.', ms: 1500 },
-  { n: '③', title: 'AI tag suggestions', desc: 'Suggest skill / role / domain tags. Reviewable by operators.', ms: 1800 },
-  { n: '④', title: 'Generate Saramin-standard resume', desc: 'Create a new Saramin CV PDF from the standard template.', ms: 1400 },
-]
-
-/** The one canonical suggestion set, shared by the pipeline's step ③ and the
-    Builder's tag step — so both routes visibly converge on identical tags. */
-const SUGGESTED_TAGS: { kind: 'Skill' | 'Role' | 'Domain'; value: string; conf: number }[] = [
-  { kind: 'Skill', value: 'React', conf: 0.97 },
-  { kind: 'Skill', value: 'Next.js', conf: 0.94 },
-  { kind: 'Skill', value: 'TypeScript', conf: 0.93 },
-  { kind: 'Skill', value: 'Tailwind CSS', conf: 0.86 },
-  { kind: 'Skill', value: 'GraphQL', conf: 0.78 },
-  { kind: 'Role', value: 'Frontend Engineer', conf: 0.95 },
-  { kind: 'Domain', value: 'E-commerce', conf: 0.82 },
-]
-/** Confidence at or above this auto-applies; below it goes to the operator queue. */
-const AUTO_APPLY = 0.8
-
-const EXTRACTED_FIELDS: [string, string][] = [
-  ['Headline', 'Frontend Engineer | React + Next.js | 3y exp'],
-  ['Location', 'Hà Nội, Việt Nam'],
-  ['Experience', 'Tiki (2023.03~), Sendo (2022.01~2023.02)'],
-  ['Education', 'HUST · B.S. Computer Science'],
-]
-
-/** Drives the pipeline on a timer: idle → running(0..3) → done. */
-function useConvertProgress() {
-  const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
-  const [step, setStep] = useState(-1)
-  useEffect(() => {
-    if (phase !== 'running') return
-    const cur = CONVERT_STEPS[step]
-    if (!cur) return
-    const t = setTimeout(() => {
-      // The last step's timer flips to done, so the effect body stays free of a
-      // synchronous setState.
-      if (step + 1 >= CONVERT_STEPS.length) setPhase('done')
-      else setStep((i) => i + 1)
-    }, cur.ms)
-    return () => clearTimeout(t)
-  }, [phase, step])
-  return {
-    phase,
-    step,
-    start: () => { setPhase('running'); setStep(0) },
-    reset: () => { setPhase('idle'); setStep(-1) },
-  }
-}
-
-/* ── the standard model, as the prototype carries it ─────────────────────────── */
-type StdExp = { company: string; position: string; location: string; startYm: string; endYm: string; areas: string; bullets: string[]; tech: string }
-type StdEdu = { school: string; faculty: string; major: string; degree: string; startYm: string; endYm: string; gpa: string }
-type StdLang = { language: string; cert: string; score: string; level: string }
-type Prefs = {
-  careerLevel: string; yearsOfExp: string; cats: string; empTypes: string
-  locs: string; inds: string; salKind: string; salCur: string; salMin: string; salMax: string
-  remoteOk: boolean; relocate: boolean; overseas: boolean
-}
-type Std = {
-  nameVi: string; nameEn: string; nameKr: string; dob: string; gender: string
-  email: string; phone: string; city: string; district: string; road: string
-  sumVi: string; sumEn: string; sumKo: string
-  experiences: StdExp[]; educations: StdEdu[]
-  skills: { group: string; items: string }[]
-  languages: StdLang[]
-  certifications: { name: string; issuer: string; year: string; score: string }[]
-  projects: { name: string; role: string; period: string; tech: string }[]
-  awards: { name: string; year: string; issuer: string }[]
-  references: { name: string; role: string; relation: string; phone: string }[]
-  links: { kind: string; url: string }[]
-  prefs: Prefs
-  tags: { kind: string; value: string; conf: number }[]
-}
-
-const EMPTY_PREFS: Prefs = {
-  careerLevel: 'ANY', yearsOfExp: '0', cats: '', empTypes: '', locs: '', inds: '',
-  salKind: '', salCur: 'VND', salMin: '', salMax: '', remoteOk: false, relocate: false, overseas: false,
-}
-
-/** What the Upload route hands to the review screen — a fully-extracted resume. */
-function importedStd(): Std {
-  return {
-    nameVi: 'Nguyễn Văn An', nameEn: 'Nguyen Van An', nameKr: '응우옌 반 안',
-    dob: '1998-04-12', gender: 'M', email: 'nguyen.an@example.vn', phone: '+84 90 123 4567',
-    city: 'Hà Nội', district: 'Cầu Giấy', road: 'Trần Thái Tông',
-    sumVi: 'Frontend Engineer 3 năm kinh nghiệm với React, Next.js, TypeScript. Tập trung vào performance và DX cho hệ thống lớn.',
-    sumEn: 'Frontend Engineer with 3 years of experience in React, Next.js, TypeScript. Focused on performance and DX at scale.',
-    sumKo: 'React, Next.js, TypeScript 기반 프론트엔드 엔지니어 3년차. 대규모 서비스의 성능과 DX 개선에 집중합니다.',
-    experiences: [
-      { company: 'Tiki', position: 'Frontend Engineer', location: 'Hồ Chí Minh', startYm: '2023-03', endYm: '', areas: 'Storefront', tech: 'React, Next.js, TypeScript, Tailwind', bullets: ['Migrated the legacy jQuery checkout to React 18 + App Router', 'Owned the performance budget — cut TTI 35% on SKU listing', 'Mentored 2 juniors on Server Component patterns'] },
-      { company: 'Sendo', position: 'Junior Web Developer', location: 'Hồ Chí Minh', startYm: '2022-01', endYm: '2023-02', areas: 'Admin', tech: 'Vue 3, Pinia, Vite', bullets: ['Built seller admin dashboards on Vue 3 + Pinia', 'Cut bundle size 28% via code-splitting'] },
-    ],
-    educations: [{ school: 'Hanoi University of Science and Technology', faculty: 'School of ICT', major: 'Computer Science', degree: 'BACHELOR', startYm: '2018-09', endYm: '2022-07', gpa: '3.4 / 4.0' }],
-    skills: [
-      { group: 'Frontend', items: 'React, Next.js, TypeScript, Tailwind, GraphQL' },
-      { group: 'State & Data', items: 'Redux, TanStack Query, Zustand' },
-      { group: 'Tools', items: 'Git, Figma, Vercel, Sentry' },
-      { group: 'Soft skills', items: 'Mentoring, Cross-team collaboration' },
-    ],
-    languages: [
-      { language: 'vi', cert: '', score: '', level: 'NATIVE' },
-      { language: 'en', cert: 'TOEIC', score: '850', level: 'ADVANCED' },
-      { language: 'ko', cert: 'TOPIK', score: '4급', level: 'INTERMEDIATE' },
-    ],
-    certifications: [
-      { name: 'MOS Excel', issuer: 'Microsoft', year: '2021', score: '960' },
-      { name: 'AWS Cloud Practitioner', issuer: 'Amazon', year: '2024', score: '' },
-    ],
-    projects: [{ name: 'Tiki Storefront PPR migration', role: 'Lead Frontend', period: '2024-04 → 2024-09', tech: 'Next.js, React Server Components' }],
-    awards: [{ name: 'Best Performance Contribution Q3', year: '2024', issuer: 'Tiki' }],
-    references: [{ name: 'Trần Minh Hiếu', role: 'Engineering Manager, Tiki', relation: 'Direct manager', phone: '+84 90 555 1234' }],
-    links: [{ kind: 'github', url: 'https://github.com/nguyen-an' }, { kind: 'linkedin', url: 'https://linkedin.com/in/nguyen-an' }],
-    prefs: {
-      careerLevel: 'EXPERIENCED', yearsOfExp: '3', cats: 'Frontend Developer, Full-stack Developer',
-      empTypes: 'FULL_TIME', locs: 'Hà Nội, Hồ Chí Minh', inds: 'E-commerce, SaaS',
-      salKind: 'MONTHLY', salCur: 'VND', salMin: '30000000', salMax: '45000000',
-      remoteOk: true, relocate: false, overseas: false,
-    },
-    tags: SUGGESTED_TAGS.filter((t) => t.conf >= AUTO_APPLY).map((t) => ({ kind: t.kind, value: t.value, conf: t.conf })),
-  }
-}
-
-/** What the Builder route hands over: the typed free text folded into the model.
-    Headline + body become the VI summary, location becomes the address city, and
-    each checked tag becomes a Skill tag. Everything else starts EMPTY — which is
-    why so many matching keys read Missing on this route. */
-function builderStd(f: { fullName: string; email: string; phone: string; location: string; headline: string; body: string; tags: string[] }): Std {
-  return {
-    nameVi: f.fullName, nameEn: '', nameKr: '', dob: '', gender: '',
-    email: f.email, phone: f.phone, city: f.location, district: '', road: '',
-    sumVi: f.headline ? `${f.headline}\n\n${f.body}` : f.body, sumEn: '', sumKo: '',
-    experiences: [], educations: [], skills: [], languages: [], certifications: [],
-    projects: [], awards: [], references: [], links: [],
-    prefs: { ...EMPTY_PREFS },
-    tags: f.tags.map((value) => ({ kind: 'Skill', value, conf: 0.95 })),
-  }
-}
-
-/* ── Job matching keys ────────────────────────────────────────────────────────
-   Nine derived readiness indicators, named after the JOB-POSTING filters rather
-   than the resume's own fields — because the question they answer is "which job
-   filters can this resume be found by?". Recomputed on every keystroke, so a key
-   flips to Ready as the operator fills the section that feeds it. */
-function matchKeys(s: Std): { label: string; ready: boolean; preview: string }[] {
-  const list = (csv: string) => csv.split(',').map((x) => x.trim()).filter(Boolean)
-  const first3 = (csv: string) => list(csv).slice(0, 3).join(' · ') || '—'
-  const p = s.prefs
-  const edu = s.educations[0]
-  const salReady = p.salKind === 'INTERVIEW' || p.salMin.trim() !== ''
-  const workTypes = [p.remoteOk && 'remote', p.overseas && 'oversea'].filter(Boolean).join(' · ')
-  return [
-    { label: 'Job categories', ready: list(p.cats).length > 0, preview: first3(p.cats) },
-    { label: 'Career', ready: p.careerLevel !== 'ANY' || Number(p.yearsOfExp) > 0, preview: p.careerLevel === 'EXPERIENCED' ? `${p.careerLevel} · ${p.yearsOfExp}y` : p.careerLevel },
-    { label: 'Education', ready: !!edu, preview: edu ? `${edu.degree} · ${edu.school}` : '—' },
-    { label: 'Industries', ready: list(p.inds).length > 0, preview: first3(p.inds) },
-    { label: 'Language certs', ready: s.languages.length > 0, preview: s.languages.map((l) => [l.language, l.cert, l.score].filter(Boolean).join(':')).slice(0, 3).join(' · ') || '—' },
-    { label: 'Salary', ready: salReady, preview: p.salKind === 'INTERVIEW' ? 'INTERVIEW' : p.salMin ? `${p.salMin}~${p.salMax || '?'} ${p.salCur}` : '—' },
-    { label: 'Locations', ready: list(p.locs).length > 0, preview: first3(p.locs) },
-    { label: 'Work types', ready: !!workTypes, preview: workTypes || '—' },
-    { label: 'Willing to relocate', ready: p.relocate, preview: p.relocate ? 'Yes' : '—' },
-  ]
 }
 
 /** One section of the standard resume on the review screen. */
@@ -1483,17 +1160,6 @@ function ResultCard({ title, active, done, children }: { title: string; active: 
     </div>
   )
 }
-
-/* ── ② Builder route — 4-step wizard with gates ──────────────────────────────── */
-
-const BUILDER_STEPS = [
-  { key: 'personal', label: 'Personal info', desc: 'Who the candidate is and how to reach them.' },
-  { key: 'content', label: 'Headline & content', desc: 'Summarise the experience for recruiters.' },
-  { key: 'tags', label: 'AI tags', desc: 'AI analyses the body and suggests Saramin-standard tags. Operator review applies.' },
-  { key: 'preview', label: 'Preview & submit', desc: 'Read back the information before handing off to the standard review screen.' },
-] as const
-
-type BuilderForm = { fullName: string; email: string; phone: string; location: string; headline: string; body: string; tags: string[] }
 
 function BuilderRoute({ onContinue }: { onContinue: (f: BuilderForm) => void }) {
   const [step, setStep] = useState(1)
@@ -1993,329 +1659,6 @@ function PrefSelect({ label, value, options, onChange }: { label: string; value:
   )
 }
 
-/* ── Companies ────────────────────────────────────────────────────────────── */
-// Pipeline stage = the sales/document flow. Ordered Qualified → Proposal →
-// Negotiation → PO → Invoice, plus Lost. (Renewal/lapse is tracked separately by
-// the customer `account` status: New / Existing / Churn.)
-//   Qualified   = HR manager is willing to discuss the Quotation
-//   Proposal    = Quotation has been sent to the customer
-//   Negotiation = HR manager is running it through their internal approval process
-//   PO          = customer agreed to buy; Sales issued the Purchase Order (deal won)
-//   Invoice     = customer paid; Accounting issued the Invoice (deal closed)
-//   Lost        = ended without a PO (declined / lost to a competitor / budget cut / went silent)
-type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'Lost'
-// Customer-relationship health (shown on the Companies directory) — distinct from the
-// deal lifecycle above (shown on the Pipeline board). Only real customers have one;
-// a company still being sold to (no PO yet) has account = null.
-//   New = became a customer recently (onboarding)
-//   Existing = active, currently using a purchased service
-//   Churn = no new product bought for 1 year since the last PO was issued
-/* Customer status — exactly three, and every company always has one.
-     New      = has never bought from us (no VAT e-invoice has ever been issued)
-     Existing = has paid at least once — active service or a past order
-     Churn    = no new order for 12 months since the last invoice
-   New is about BUYING HISTORY, not about having a login: a company can sit at New
-   for years while being quoted repeatedly. Whether an account exists is a separate
-   fact. New → Existing is one-way; a win-back returns a churned company to Existing,
-   never to New. */
-type Account = 'New' | 'Existing' | 'Churn'
-/* ── Who the invoice is made out to ───────────────────────────────────────────
-   The VAT e-invoice has four different shapes depending on WHO is buying, and the
-   difference is not cosmetic: which identifier is legally required changes, and so
-   does which name block prints. Getting it wrong means re-issuing the invoice with
-   a biên bản, so the classification is asked ONCE on the company record and every
-   document reads it from there.
-
-     dn-vn        Doanh nghiệp Việt Nam — MST REQUIRED. The ordinary case.
-     dn-nn        Doanh nghiệp nước ngoài — MST may be EMPTY (they have no
-                  Vietnamese tax code), but legal name + address are still required
-                  because the invoice has to say who it was issued to.
-     ca-nhan-cccd Cá nhân có CCCD — no MST at all. The citizen ID goes in its own
-                  field and the person's name prints in "Họ tên người mua hàng",
-                  which is a DIFFERENT line from "Tên đơn vị".
-     ca-nhan      Cá nhân không có CCCD — MST and CCCD both empty. The invoice
-                  still issues, and "Họ tên người mua hàng" prints the fixed phrase
-                  "Bán cho người tiêu dùng" — the standard wording for a consumer
-                  sale. That line is never blank and never typed.
-
-   MST and CCCD are separate fields on purpose. They are different identifiers with
-   different formats and different legal meaning, and one column holding either is
-   the kind of shortcut that survives until an audit. */
-/** What prints in "Họ tên người mua hàng" for a consumer sale with no CCCD. A fixed
-    legal phrase, SUPPLIED BY THE SYSTEM and never typed: the rep should not have to
-    remember the exact wording, and a typo here lands on a filed fiscal document. */
-const RETAIL_BUYER = 'Bán cho người tiêu dùng'
-type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd' | 'ca-nhan'
-const BUYER_TYPE: Record<BuyerType, { vi: string; en: string; tax: 'req' | 'empty'; needsIdCard?: boolean; needsBuyerName?: boolean; noAddress?: boolean; hint: string }> = {
-  'dn-vn': { vi: 'Doanh nghiệp Việt Nam', en: 'Vietnamese company', tax: 'req', hint: 'MST bắt buộc — in trên hóa đơn VAT.' },
-  'dn-nn': { vi: 'Doanh nghiệp nước ngoài', en: 'Foreign company', tax: 'empty', hint: 'Không có MST Việt Nam — để trống. Vẫn bắt buộc tên pháp lý và địa chỉ.' },
-  'ca-nhan-cccd': { vi: 'Cá nhân có CCCD', en: 'Individual with ID card', tax: 'empty', needsIdCard: true, needsBuyerName: true, hint: 'Không có MST. Điền số CCCD và họ tên người mua hàng.' },
-  /* Điểm 4b, Phụ lục NĐ 254/2026: when the buyer does not provide name, address and
-     số định danh cá nhân, the invoice shows only “Bán cho người tiêu dùng”. So there
-     is no address to ask for either — the whole buyer block is that one line. */
-  'ca-nhan': { vi: 'Cá nhân không có CCCD', en: 'Individual, no ID provided', tax: 'empty', noAddress: true, hint: `Không hỏi MST, CCCD và cả địa chỉ. Hóa đơn chỉ in “${RETAIL_BUYER}” ở dòng Họ tên người mua hàng.` },
-}
-
-type Company = {
-  name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
-  /** Which of the four invoice shapes this buyer takes. Defaults to a Vietnamese
-      company, which is the overwhelming majority. */
-  buyerType?: BuyerType
-  /** Số CCCD — only for an individual buyer. NEVER stored in `tax`. */
-  idCard?: string
-  /** "Họ tên người mua hàng" on the invoice — the PERSON, which is a different line
-      from Tên đơn vị / legal name and is only filled for an individual. */
-  buyerName?: string
-  /** Quốc tịch — where the company is REGISTERED. 'Việt Nam' is what reveals the
-      province picker; every country keeps a free-text address. */
-  country: string
-  // Corporate tree. `parent` is the DIRECT parent's `name` — one parent only, any
-  // depth (parent → subsidiary → sub-subsidiary). Undefined = a root: either the top
-  // of a group, or a company that stands alone. Nothing is inherited down this link:
-  // quota, billing, users and deals all stay on the record that owns them.
-  parent?: string
-  contact: string; owner: string; status: CoStatus
-  account: Account; lastPO: string; renewal: string; nextStep: string
-  idle: number | null; note: string; revenue: number
-  /** the sent quotation has passed its expiry date — the deal does NOT move, it gets flagged */
-  quoteLapsed?: boolean
-  /** Promoted out of the free Danh bạ, not created from a signed document. Worth
-      showing on the record: the identity data started as unverified free data, so
-      the legal name and MST deserve a second look before the first invoice. */
-  fromPool?: { at: string; by: string }
-  jobPosting: boolean; resumeSearch: boolean; jobLeft: number; jobTotal: number; cvLeft: number; cvTotal: number
-  hasPage: boolean; jobs: number; domain: string; since: string
-}
-const COMPANIES: Company[] = [
-  { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', country: 'Việt Nam', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 34, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
-  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', fromPool: { at: '14/07/2026', by: 'Lê Minh Anh (admin)' }, country: 'Việt Nam', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'binhminh.edu.vn', since: '—' },
-  { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', country: 'Việt Nam', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
-  { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', country: 'Việt Nam', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 47, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
-  { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', country: 'Việt Nam', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 60, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: false, jobLeft: 12, jobTotal: 50, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
-  { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', country: 'Việt Nam', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
-  { name: 'Công ty TNHH Việt Tiến', shortName: '', legalName: 'Công ty TNHH Việt Tiến Logistics', country: 'Việt Nam', tax: '0314xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận Bình Tân, HCMC', contact: 'Mr. Ngô Minh Tú', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '10/07/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 73, note: 'No response to renewal ×3.', revenue: 90_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'viettien.vn', since: '15/08/2024' },
-  { name: 'Tiki', shortName: 'Tiki', legalName: 'Công ty TNHH TIKI', country: 'Việt Nam', tax: '0309xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 4, HCMC', contact: 'Ms. Bùi Thu Hằng · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '01/07/2026', renewal: '01/10/2026', nextStep: 'Quarterly review', idle: 86, note: 'QBR booked next week.', revenue: 300_000_000, jobPosting: true, resumeSearch: true, jobLeft: 21, jobTotal: 30, cvLeft: 210, cvTotal: 300, hasPage: true, jobs: 21, domain: 'tiki.vn', since: '10/11/2023' },
-  { name: 'VNG Corporation', shortName: 'VNG', legalName: 'Công ty CP VNG', country: 'Việt Nam', tax: '0304xxxxxx', industry: 'CNTT', size: '1000–5000', address: 'Quận 7, HCMC', contact: 'Mr. Đoàn Hải Nam · HR Director', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '20/06/2026', renewal: '20/12/2026', nextStep: 'Renewal upsell deck', idle: 99, note: 'Interested in employer-branding page.', revenue: 510_000_000, jobPosting: true, resumeSearch: true, jobLeft: 30, jobTotal: 40, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 27, domain: 'vng.com.vn', since: '05/02/2024' },
-  { name: 'MoMo', shortName: 'MoMo', legalName: 'Công ty CP Dịch vụ Di động Trực tuyến (M_Service)', country: 'Việt Nam', tax: '0305xxxxxx', industry: 'Fintech', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Trịnh Khánh Vy · TA Lead', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Collect payment on PO', idle: 2, note: 'PO signed; invoice pending.', revenue: 150_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 15, cvLeft: 90, cvTotal: 120, hasPage: true, jobs: 9, domain: 'momo.vn', since: '18/07/2026' },
-  { name: 'Thế Giới Di Động', shortName: 'TGDĐ', legalName: 'Công ty CP Đầu tư Thế Giới Di Động', country: 'Việt Nam', tax: '0306xxxxxx', industry: 'Bán lẻ', size: '5000+', address: 'Thủ Đức, HCMC', contact: 'Mr. Cao Văn Đức · HR Manager', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '10/05/2026', renewal: '10/11/2026', nextStep: 'Quarterly review', idle: 112, note: 'Volume hiring for new stores.', revenue: 620_000_000, jobPosting: true, resumeSearch: true, jobLeft: 40, jobTotal: 80, cvLeft: 300, cvTotal: 500, hasPage: true, jobs: 54, domain: 'thegioididong.com', since: '22/09/2023' },
-  // Singaporean PARENT, but the buying entity is a VN-registered TNHH with a VN
-  // MST — so it is dn-vn. Quốc tịch does not decide the invoice shape.
-  { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', country: 'Singapore', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
-  { name: 'Base.vn', buyerType: 'ca-nhan-cccd', idCard: '079123456789', buyerName: 'Phan Anh Tuấn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', country: 'Việt Nam', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
-  { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', country: 'Việt Nam', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' },
-  { name: 'Công ty TNHH Minh Long', buyerType: 'ca-nhan', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
-  { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', country: 'Việt Nam', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
-  { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', country: 'Việt Nam', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
-  { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', country: 'Việt Nam', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },
-  // ── Rot coverage: the rows below deliberately span fresh / amber / red for every
-  // open stage, and across all three reps, so the Idle column can be read at a glance
-  // in both Sales view and Sales-lead view. Thresholds are IDLE_AMBER / IDLE_RED above.
-  { name: 'Công ty CP Nam Long', shortName: 'Nam Long', legalName: 'Công ty Cổ phần Đầu tư Nam Long', country: 'Việt Nam', tax: '0323xxxxxx', industry: 'Bất động sản', size: '500–1000', address: 'Quận 7, HCMC', contact: 'Ms. Đặng Kiều Oanh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-send quotation options', idle: 9, note: 'Asked us to circle back after Tết planning.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namlong.vn', since: '—' },
-  { name: 'Công ty TNHH Hòa Bình', shortName: 'Hòa Bình', legalName: 'Công ty TNHH Xây dựng Hòa Bình', country: 'Việt Nam', tax: '0324xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Mr. Đinh Trọng Nghĩa · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — no reply in 2.5 weeks', idle: 18, note: 'Three follow-ups, no answer. Try the CFO.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoabinh.com.vn', since: '—' },
-  { name: 'Công ty CP Thương mại Vina', shortName: 'Vina Trading', legalName: 'Công ty Cổ phần Thương mại Vina', country: 'Việt Nam', tax: '0325xxxxxx', industry: 'FMCG', size: '500–1000', address: 'Quận Bình Thạnh, HCMC', contact: 'Ms. Hoàng Diệu Linh · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase quotation feedback', idle: 12, note: 'Quotation sent; validity ends in 2 days.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinatrading.vn', since: '—' },
-  { name: 'Công ty TNHH An Phú Logistics', shortName: 'An Phú', legalName: 'Công ty TNHH Giao nhận An Phú', country: 'Việt Nam', tax: '0326xxxxxx', industry: 'Logistics', size: '200–500', address: 'Quận 9, HCMC', contact: 'Mr. Lại Văn Bình', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation expired — reissue or close', idle: 26, note: 'Went silent after pricing. Decide: reissue or Lost.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'anphulog.vn', since: '—' },
-  { name: 'Công ty CP Tài chính Đại Tín', shortName: 'Đại Tín', legalName: 'Công ty Cổ phần Tài chính Đại Tín', country: 'Việt Nam', tax: '0327xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Chu Thanh Vân · HR Director', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval timeline', idle: 30, note: 'Legal review dragging; needs a nudge.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'daitin.com.vn', since: '—' },
-  { name: 'Công ty CP Trường Sơn', shortName: 'Trường Sơn', legalName: 'Công ty Cổ phần Tập đoàn Trường Sơn', country: 'Việt Nam', tax: '0328xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Đà Nẵng', contact: 'Mr. Tạ Quang Đạo · Giám đốc NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 52, note: 'Stalled past 45d — approval never came back.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '—' },
-  // The one BRANCH in the mock — same 10-digit tax root as its parent, only the -001
-  // suffix differs. That is what flips the affiliate badge from "Công ty con" to
-  // "Chi nhánh"; nothing else about the record behaves differently. It still buys its
-  // own package, is invoiced on its own tax code, and has its own sales owner.
-  { name: 'CN Trường Sơn — Hà Nội', shortName: 'Trường Sơn HN', legalName: 'Chi nhánh Công ty Cổ phần Tập đoàn Trường Sơn tại Hà Nội', country: 'Việt Nam', tax: '0328xxxxxx-001', industry: 'Sản xuất', size: '200–500', address: 'Long Biên, Hà Nội', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Vân Khánh · HC-NS', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 21, note: 'Hires separately from HQ — own PO, own invoice.', revenue: 42_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongson.vn', since: '08/06/2025' },
-  { name: 'Công ty TNHH Hải Âu Travel', shortName: 'Hải Âu', legalName: 'Công ty TNHH Du lịch Hải Âu', country: 'Việt Nam', tax: '0329xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Quận 1, HCMC', contact: 'Ms. Phùng Mỹ Hạnh · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Chase payment on PO', idle: 10, note: 'PO signed 19/07; payment not received yet.', revenue: 28_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'haiautravel.vn', since: '19/07/2026' },
-  { name: 'Công ty CP Tân Hưng Foods', shortName: 'Tân Hưng', legalName: 'Công ty Cổ phần Thực phẩm Tân Hưng', country: 'Việt Nam', tax: '0330xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Long An', contact: 'Mr. Ngô Bá Thành · HC-NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Payment 24d overdue — escalate', idle: 24, note: 'Accounting has chased twice; no transfer.', revenue: 45_000_000, jobPosting: true, resumeSearch: true, jobLeft: 10, jobTotal: 10, cvLeft: 50, cvTotal: 50, hasPage: false, jobs: 0, domain: 'tanhungfoods.vn', since: '05/07/2026' },
-  // More Qualified cover — idle spans fresh / amber / red (8d / 15d) across all three reps
-  { name: 'Công ty CP Dệt may Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Dệt may Phương Nam', country: 'Việt Nam', tax: '0331xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Quận 12, HCMC', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Nguyễn Hồng Nhung · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 4, note: 'Wants Basic Plus vs Basic breakdown.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuongnamtex.vn', since: '—' },
-  { name: 'Công ty TNHH Cơ khí Đông Phong', shortName: 'Đông Phong', legalName: 'Công ty TNHH Cơ khí Đông Phong', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Trịnh Văn Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-book the demo they missed', idle: 132, note: 'No-showed the demo; rescheduling.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongphong.com.vn', since: '—' },
-  { name: 'Galaxy Media', shortName: 'Galaxy', legalName: 'Công ty Cổ phần Truyền thông Galaxy', country: 'Việt Nam', tax: '0333xxxxxx', industry: 'Truyền thông', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Đặng Thảo My · TA Lead', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase — 3 calls unanswered', idle: 19, note: 'Went quiet after the discovery call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'galaxymedia.vn', since: '—' },
-  // More Proposal cover — includes a quotation that has already lapsed past its 14-day validity
-  { name: 'Công ty CP Dược Hậu Giang', shortName: 'DHG Pharma', legalName: 'Công ty Cổ phần Dược Hậu Giang', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Mr. Lâm Thanh Tùng · HR Director', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quotation sent 22/07 — follow up', idle: 5, note: '2 options sent: Basic Plus + Basic.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
-  { name: 'Vietjet Air', shortName: 'Vietjet', legalName: 'Công ty Cổ phần Hàng không Vietjet', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Hàng không', size: '5000+', address: 'Tân Bình, HCMC', contact: 'Ms. Hoàng Bảo Ngân · TA Manager', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote expires 04/08 — nudge', idle: 13, note: 'Comparing our quote against TopCV.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vietjetair.com', since: '—' },
-  /* ── The deep end of the corporate tree ──────────────────────────────────────
-     Trường Sơn is deliberately the WORST CASE for the group chart: 6 direct
-     children on the root, five levels of nesting, branches (chi nhánh, MST with a
-     -00x suffix) mixed in among real subsidiaries at several depths, and one leaf
-     owned by a different rep from everything above it. If the chart is legible
-     here it is legible anywhere — and the indentation, the "Công ty con" pill and
-     the owner column all get tested at depth rather than at depth 1. */
-  { name: 'Công ty TNHH Sợi Phương Nam', shortName: 'Sợi Phương Nam', legalName: 'Công ty TNHH Sợi Phương Nam', country: 'Việt Nam', tax: '0351xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Củ Chi, HCMC', parent: 'Công ty CP Dệt may Phương Nam', contact: 'Mr. Lâm Quốc Bảo · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 9, note: 'Upstream of the dyeing plant — hires together with it.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'soiphuongnam.vn', since: '—' },
-  { name: 'CN Sợi Phương Nam — Long An', shortName: 'Sợi PN Long An', legalName: 'Chi nhánh Công ty TNHH Sợi Phương Nam tại Long An', country: 'Việt Nam', tax: '0351xxxxxx-001', industry: 'Sản xuất', size: '50–200', address: 'Bến Lức, Long An', parent: 'Công ty TNHH Sợi Phương Nam', contact: 'Ms. Đỗ Kim Yến · HC-NS', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '02/04/2026', renewal: '02/10/2026', nextStep: 'Quarterly review', idle: 30, note: 'Own PO and invoice — hires shift workers locally.', revenue: 18_000_000, jobPosting: true, resumeSearch: false, jobLeft: 2, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'soiphuongnam.vn', since: '02/04/2025' },
-  { name: 'Công ty TNHH Nhuộm Phương Nam', shortName: 'Nhuộm Phương Nam', legalName: 'Công ty TNHH Nhuộm và Hoàn tất Phương Nam', country: 'Việt Nam', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Quận 12, HCMC', parent: 'Công ty CP Dệt may Phương Nam', contact: 'Mr. Ngô Tấn Phát · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 14, note: 'Quotation sent with the parent’s.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'nhuomphuongnam.vn', since: '—' },
-  { name: 'CN Kim Long — Hải Phòng', shortName: 'Kim Long HP', legalName: 'Chi nhánh Công ty TNHH Thép Kim Long tại Hải Phòng', country: 'Việt Nam', tax: '0336xxxxxx-001', industry: 'Sản xuất', size: '50–200', address: 'Ngô Quyền, Hải Phòng', parent: 'Công ty TNHH Kim Long Steel', contact: 'Mr. Bùi Thế Vinh · HC-NS', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send package comparison', idle: 41, note: 'Port-side warehouse — seasonal hiring.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
-  { name: 'Công ty TNHH Kim Long Logistics', shortName: 'Kim Long Logistics', legalName: 'Công ty TNHH Tiếp vận Kim Long', country: 'Việt Nam', tax: '0353xxxxxx', industry: 'Logistics', size: '200–500', address: 'Biên Hòa, Đồng Nai', parent: 'Công ty TNHH Kim Long Steel', contact: 'Ms. Trương Hải Yến · HR Manager', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '11/05/2026', renewal: '11/11/2026', nextStep: 'Collect payment on PO', idle: 6, note: 'Moves the parent’s steel — separate PO.', revenue: 71_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 15, cvLeft: 40, cvTotal: 60, hasPage: true, jobs: 6, domain: 'kimlonglogistics.vn', since: '11/05/2024' },
-  { name: 'Công ty TNHH Kim Long Vận tải biển', shortName: 'Kim Long Marine', legalName: 'Công ty TNHH Vận tải biển Kim Long', country: 'Việt Nam', tax: '0354xxxxxx', industry: 'Logistics', size: '50–200', address: 'Vũng Tàu', parent: 'Công ty TNHH Kim Long Logistics', contact: 'Mr. Hà Trọng Nghĩa · HR', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 18, note: 'Deepest node in the group — five levels below the root.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongmarine.vn', since: '—' },
-  { name: 'Công ty CP Bất động sản Trường Sơn', shortName: 'Trường Sơn Land', legalName: 'Công ty Cổ phần Bất động sản Trường Sơn', country: 'Việt Nam', tax: '0355xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Hải Châu, Đà Nẵng', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Phan Thùy Linh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 25, note: 'Different industry from the rest of the group.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'truongsonland.vn', since: '—' },
-  { name: 'Công ty TNHH Trường Sơn Energy', shortName: 'Trường Sơn Energy', legalName: 'Công ty TNHH Năng lượng Trường Sơn', country: 'Việt Nam', tax: '0356xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Quảng Nam', parent: 'Công ty CP Trường Sơn', contact: 'Mr. Đinh Công Sơn · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/03/2026', renewal: '19/09/2026', nextStep: 'Upsell Resume Search', idle: 12, note: 'Solar + hydro — engineer hiring all year.', revenue: 96_000_000, jobPosting: true, resumeSearch: false, jobLeft: 9, jobTotal: 20, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 9, domain: 'truongsonenergy.vn', since: '19/03/2024' },
-  { name: 'Công ty CP Trường Sơn Digital', shortName: 'TS Digital', legalName: 'Công ty Cổ phần Trường Sơn Digital', country: 'Việt Nam', tax: '0357xxxxxx', industry: 'CNTT', size: '50–200', address: 'Hải Châu, Đà Nẵng', parent: 'Công ty CP Trường Sơn', contact: 'Ms. Lý Thanh Trúc · TA Lead', owner: 'Phạm Quang Huy', status: 'Lost', account: 'Churn', lastPO: '05/02/2025', renewal: 'Lapsed', nextStep: 'Win-back call', idle: 88, note: 'Churned — in-housed their hiring.', revenue: 24_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tsdigital.vn', since: '05/02/2024' },
-  { name: 'Công ty TNHH Kim Long Steel', shortName: 'Kim Long', legalName: 'Công ty TNHH Thép Kim Long', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', parent: 'Công ty TNHH Cơ khí Đông Phong', contact: 'Mr. Vương Chí Kiên · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Quote lapsed — re-issue or close', idle: 126, note: 'Quotation expired 10 days ago.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kimlongsteel.vn', since: '—' },
-  // More Negotiation cover — long internal-approval cycles, so the reds run deep here
-  { name: 'Techcombank', shortName: 'Techcombank', legalName: 'Ngân hàng TMCP Kỹ Thương Việt Nam', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Ms. Phùng Diệu Linh · Head of TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on procurement sign-off', idle: 17, note: 'Legal reviewing our T&C clause 4.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'techcombank.com.vn', since: '—' },
-  { name: 'Công ty CP Bán lẻ Thiên Hà', shortName: 'Thiên Hà', legalName: 'Công ty Cổ phần Bán lẻ Thiên Hà', country: 'Việt Nam', tax: '0338xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Đỗ Nhật Trường · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send v3 quote at 12% discount', idle: 26, note: 'Board meets month-end to approve.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thienharetail.vn', since: '—' },
-  { name: 'Công ty TNHH Bảo Sơn Group', shortName: 'Bảo Sơn', legalName: 'Công ty TNHH Tập đoàn Bảo Sơn', country: 'Việt Nam', tax: '0339xxxxxx', industry: 'Bất động sản', size: '1000–5000', address: 'Nam Từ Liêm, Hà Nội', contact: 'Ms. Cao Quỳnh Anh · HR', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — 7 weeks silent', idle: 51, note: 'Sponsor left the company; no new contact.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'baosongroup.com', since: '—' },
-  // More PO cover — order confirmed, payment outstanding by varying degrees
-  { name: 'Công ty CP Vinh Quang Logistics', shortName: 'Vinh Quang', legalName: 'Công ty Cổ phần Vinh Quang Logistics', country: 'Việt Nam', tax: '0340xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Bùi Xuân Trường · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Awaiting transfer — due 31/07', idle: 3, note: 'Order confirmed; bank details sent.', revenue: 31_000_000, jobPosting: true, resumeSearch: false, jobLeft: 5, jobTotal: 5, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhquanglog.vn', since: '24/07/2026' },
-  { name: 'Lazada Việt Nam', shortName: 'Lazada', legalName: 'Công ty TNHH Recess (Lazada Việt Nam)', country: 'Việt Nam', tax: '0341xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Trương Mỹ Hạnh · TA Lead', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '15/07/2026', renewal: '15/10/2026', nextStep: 'Chase payment — 12d out', idle: 12, note: 'Their finance runs a 30-day cycle.', revenue: 195_000_000, jobPosting: true, resumeSearch: true, jobLeft: 20, jobTotal: 20, cvLeft: 150, cvTotal: 150, hasPage: false, jobs: 0, domain: 'lazada.vn', since: '15/07/2026' },
-  { name: 'Công ty CP Xây dựng Hưng Thịnh', shortName: 'Hưng Thịnh', legalName: 'Công ty Cổ phần Xây dựng Hưng Thịnh', country: 'Việt Nam', tax: '0342xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Quận Bình Thạnh, HCMC', contact: 'Mr. Phan Đăng Hải · Giám đốc NS', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Payment 25d overdue — escalate', idle: 25, note: 'Signed PO but no transfer; CFO on leave.', revenue: 88_000_000, jobPosting: true, resumeSearch: true, jobLeft: 15, jobTotal: 15, cvLeft: 80, cvTotal: 80, hasPage: false, jobs: 0, domain: 'hungthinhcorp.vn', since: '04/07/2026' },
-  // Lost — closed, so no rot colour at all
-  { name: 'Công ty CP Công nghệ Tân Tiến', shortName: 'Tân Tiến', legalName: 'Công ty Cổ phần Công nghệ Tân Tiến', country: 'Việt Nam', tax: '0343xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 7, HCMC', contact: 'Mr. Hoàng Việt Dũng · CTO', owner: 'Phạm Quang Huy', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1 2027', idle: 40, note: 'Lost to competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tantien.tech', since: '—' },
-  { name: 'Công ty TNHH Đức Thành', shortName: 'Đức Thành', legalName: 'Công ty TNHH Thương mại Đức Thành', country: 'Việt Nam', tax: '0344xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lưu Ngọc Diễm · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '20/05/2025', renewal: 'Lapsed', nextStep: 'Win-back call in August', idle: 33, note: 'Hiring frozen; no budget this year.', revenue: 18_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ducthanh.com.vn', since: '20/05/2024' },
-  // Invoice — won and closed
-  // The company behind the client's real quotation QUO-009909-07-2026, so that
-  // quotation resolves to a CRM record like every other one.
-  { name: 'Công ty TNHH AM Software Việt Nam', shortName: 'AM Software', legalName: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', country: 'Việt Nam', tax: '0317110315', industry: 'CNTT', size: '50–200', address: '115/2A Lê Trọng Tấn, Phường Sơn Kỳ, Quận Tân Phú, HCMC', contact: 'Mr. Nguyễn Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 9, note: 'Quotation sent 20/07 — 2 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'aoimirai.co.jp', since: '—' },
-  { name: 'Sacombank', shortName: 'Sacombank', legalName: 'Ngân hàng TMCP Sài Gòn Thương Tín', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Tài chính', size: '5000+', address: 'Quận 3, HCMC', contact: 'Ms. Nguyễn Lê Vy · Head of Talent', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '08/06/2026', renewal: '08/12/2026', nextStep: 'Quarterly review', idle: 66, note: 'Renewed for a second year.', revenue: 380_000_000, jobPosting: true, resumeSearch: true, jobLeft: 25, jobTotal: 40, cvLeft: 220, cvTotal: 350, hasPage: true, jobs: 19, domain: 'sacombank.com.vn', since: '08/06/2025' },
-  { name: 'Công ty TNHH Giáo dục Sunrise', shortName: 'Sunrise Edu', legalName: 'Công ty TNHH Giáo dục Sunrise', country: 'Việt Nam', tax: '0331xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Lưu Ngọc Hân · HR', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 2, note: 'Discovery call done; keen on Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'sunriseedu.vn', since: '—' },
-  { name: 'Công ty CP Bảo Việt Care', shortName: 'Bảo Việt Care', legalName: 'Công ty Cổ phần Bảo Việt Care', country: 'Việt Nam', tax: '0332xxxxxx', industry: 'Y tế', size: '500–1000', address: 'Quận 5, HCMC', contact: 'Ms. Trịnh Bích Thảo · TA Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '28/05/2026', renewal: '28/11/2026', nextStep: 'Quarterly review', idle: 79, note: 'Renewal talk starts next month.', revenue: 185_000_000, jobPosting: true, resumeSearch: true, jobLeft: 14, jobTotal: 20, cvLeft: 120, cvTotal: 200, hasPage: true, jobs: 11, domain: 'baovietcare.vn', since: '14/06/2025' },
-  // ── Volume rows: enough companies for the pipeline board and the list to feel
-  // like a real book of business — every stage populated, owners rotated across
-  // the three reps, idle values spanning fresh / amber / red.
-  { name: 'Công ty CP Vĩnh Cửu', shortName: 'Vĩnh Cửu', legalName: 'Công ty Cổ phần Vĩnh Cửu', country: 'Việt Nam', tax: '0333xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Ms. Lê Kim Chi · HR', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up in 2 days', idle: 3, note: 'Quotation sent, awaiting review.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'vinhcuu.vn', since: '—' },
-  { name: 'Công ty TNHH Bách Khoa Tech', shortName: 'Bách Khoa', legalName: 'Công ty TNHH Bách Khoa Technology', country: 'Việt Nam', tax: '0334xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 10, HCMC', contact: 'Mr. Vương Tuấn Kiệt · CTO', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Call the HR manager', idle: 9, note: 'No reply since the quotation.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bachkhoatech.vn', since: '—' },
-  { name: 'Công ty CP Nội thất Sài Gòn', shortName: 'Nội thất SG', legalName: 'Công ty Cổ phần Nội thất Sài Gòn', country: 'Việt Nam', tax: '0335xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 12, HCMC', contact: 'Ms. Trần Thảo Vy · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Reissue or close', idle: 19, note: 'Quotation validity almost up.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatsg.vn', since: '—' },
-  { name: 'Công ty TNHH Dệt may Phong Phú', shortName: 'Phong Phú', legalName: 'Công ty TNHH Dệt may Phong Phú', country: 'Việt Nam', tax: '0336xxxxxx', industry: 'Dệt may', size: '1000–5000', address: 'Quận 9, HCMC', contact: 'Mr. Bùi Hữu Lộc · Trưởng phòng NS', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Clarify option B', idle: 5, note: 'Comparing our 3 options.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phongphu.com.vn', since: '—' },
-  { name: 'Công ty CP Dược Nam Hà', shortName: 'Nam Hà', legalName: 'Công ty Cổ phần Dược Nam Hà', country: 'Việt Nam', tax: '0337xxxxxx', industry: 'Y tế', size: '1000–5000', address: 'Cần Thơ', contact: 'Ms. Nguyễn Bảo Châu · HR Director', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Decide: reissue or Lost', idle: 24, note: 'Silent for over 3 weeks.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dhgpharma.com.vn', since: '—' },
-  { name: 'Công ty TNHH Cơ khí Tây Đô', shortName: 'Tây Đô', legalName: 'Công ty TNHH Cơ khí Tây Đô', country: 'Việt Nam', tax: '0338xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Hải Dương', contact: 'Mr. Hà Trọng Tín', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book the demo', idle: 2, note: 'Wants a demo next week.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'taydock.vn', since: '—' },
-  { name: 'Công ty CP Vận tải Bắc Nam', shortName: 'Bắc Nam', legalName: 'Công ty Cổ phần Vận tải Bắc Nam', country: 'Việt Nam', tax: '0339xxxxxx', industry: 'Logistics', size: '500–1000', address: 'Đà Nẵng', contact: 'Ms. Đỗ Lan Phương · HC-NS', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask about budget cycle', idle: 11, note: 'Budget check in progress.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'bacnamlogistics.vn', since: '—' },
-  { name: 'Công ty TNHH Kiến Á', shortName: 'Kiến Á', legalName: 'Công ty TNHH Đầu tư Kiến Á', country: 'Việt Nam', tax: '0340xxxxxx', industry: 'Bất động sản', size: '200–500', address: 'Quận 2, HCMC', contact: 'Mr. Lâm Chí Cường · HR', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate to sales lead', idle: 16, note: 'Went quiet after first call.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'kiena.vn', since: '—' },
-  { name: 'Công ty CP Bia Sài Gòn Miền Tây', shortName: 'Bia SG MT', legalName: 'Công ty Cổ phần Bia Sài Gòn Miền Tây', country: 'Việt Nam', tax: '0341xxxxxx', industry: 'Thực phẩm', size: '500–1000', address: 'Cần Thơ', contact: 'Ms. Phạm Ngọc Diệp', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send quotation options', idle: 6, note: 'Interested in Resume Search.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biasgmt.vn', since: '—' },
-  { name: 'Công ty TNHH Thiết bị Y tế Việt', shortName: 'TBYT Việt', legalName: 'Công ty TNHH Thiết bị Y tế Việt', country: 'Việt Nam', tax: '0342xxxxxx', industry: 'Y tế', size: '50–200', address: 'Quận 5, HCMC', contact: 'Mr. Tôn Quang Vinh · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Discovery call', idle: 4, note: 'Referred by an existing client.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tbytviet.vn', since: '—' },
-  { name: 'Công ty CP Xi măng Hà Tiên', shortName: 'Hà Tiên', legalName: 'Công ty Cổ phần Xi măng Hà Tiên', country: 'Việt Nam', tax: '0343xxxxxx', industry: 'Xây dựng', size: '1000–5000', address: 'Kiên Giang', contact: 'Ms. Cao Thị Lệ · HR Manager', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 14, note: 'Haggling on the 6-month price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hatien.com.vn', since: '—' },
-  /* The real dn-nn case: no Vietnamese entity and no Vietnamese tax code, buying
-     employer branding from abroad. `tax` is EMPTY on purpose — that is the whole
-     point of the classification, and the invoice prints without an MST line. */
-  { name: 'Talently Pte. Ltd.', buyerType: 'dn-nn', shortName: 'Talently', legalName: 'Talently Pte. Ltd.', country: 'Singapore', tax: '', industry: 'CNTT', size: '50–200', address: '80 Robinson Road, Singapore 068898', contact: 'Ms. Rachel Ong · Head of Talent', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send bilingual quotation', idle: 4, note: 'No VN entity — invoice issues without MST.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'talently.sg', since: '' },
-  { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', country: 'Nhật Bản / Japan', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
-  { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
-  { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', country: 'Việt Nam', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },
-  { name: 'Công ty CP Du lịch Phương Nam', shortName: 'Phương Nam', legalName: 'Công ty Cổ phần Du lịch Phương Nam', country: 'Việt Nam', tax: '0347xxxxxx', industry: 'Du lịch', size: '50–200', address: 'Nha Trang', contact: 'Ms. Huỳnh Mai Trâm · HR', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '16/07/2026', renewal: '16/10/2026', nextStep: 'Hand to Accounting', idle: 2, note: 'PO signed, invoice next.', revenue: 63_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 54, cvTotal: 100, hasPage: true, jobs: 7, domain: 'phuongnamtravel.vn', since: '16/07/2026' },
-  { name: 'Công ty TNHH Giấy Tân Mai', shortName: 'Tân Mai', legalName: 'Công ty TNHH Giấy Tân Mai', country: 'Việt Nam', tax: '0348xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Đồng Nai', contact: 'Mr. Trịnh Bá Hưng · HC-NS', owner: 'Nguyễn Thị Lan', status: 'PO', account: 'Existing', lastPO: '17/07/2026', renewal: '17/10/2026', nextStep: 'Chase payment', idle: 12, note: 'Payment not received yet.', revenue: 80_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 8, domain: 'tanmai.vn', since: '17/07/2026' },
-  { name: 'Công ty CP Điện máy Thành Công', shortName: 'Thành Công', legalName: 'Công ty Cổ phần Điện máy Thành Công', country: 'Việt Nam', tax: '0349xxxxxx', industry: 'Bán lẻ', size: '500–1000', address: 'Quận Gò Vấp, HCMC', contact: 'Ms. Lý Thu Trang · HR', owner: 'Phạm Quang Huy', status: 'PO', account: 'Existing', lastPO: '18/07/2026', renewal: '18/10/2026', nextStep: 'Escalate to Accounting lead', idle: 23, note: 'Payment badly overdue.', revenue: 97_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 56, cvTotal: 100, hasPage: true, jobs: 9, domain: 'thanhcongdm.vn', since: '18/07/2026' },
-  { name: 'Công ty TNHH Logistics Sao Việt', shortName: 'Sao Việt', legalName: 'Công ty TNHH Logistics Sao Việt', country: 'Việt Nam', tax: '0350xxxxxx', industry: 'Logistics', size: '200–500', address: 'Hải Phòng', contact: 'Mr. Phan Đức Duy', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '19/07/2026', renewal: '19/10/2026', nextStep: 'Kickoff call', idle: 92, note: 'Onboarding in progress.', revenue: 114_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 57, cvTotal: 100, hasPage: true, jobs: 10, domain: 'saovietlog.vn', since: '19/07/2026' },
-  { name: 'Công ty CP Giáo dục Én Nhỏ', shortName: 'Én Nhỏ', legalName: 'Công ty Cổ phần Giáo dục Én Nhỏ', country: 'Việt Nam', tax: '0351xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận Phú Nhuận, HCMC', contact: 'Ms. Ngô Hải Yến · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '20/07/2026', renewal: '20/10/2026', nextStep: 'Quarterly review', idle: 105, note: 'Using both products actively.', revenue: 131_000_000, jobPosting: true, resumeSearch: false, jobLeft: 4, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 2, domain: 'ennho.edu.vn', since: '21/01/2025' },
-  { name: 'Công ty TNHH Sơn Đại Việt', shortName: 'Đại Việt', legalName: 'Công ty TNHH Sơn Đại Việt', country: 'Việt Nam', tax: '0352xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Long An', contact: 'Mr. Chu Văn Thái', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '21/07/2026', renewal: '21/10/2026', nextStep: 'Check-in — usage is low', idle: 118, note: 'Quiet since activation.', revenue: 148_000_000, jobPosting: true, resumeSearch: true, jobLeft: 5, jobTotal: 20, cvLeft: 59, cvTotal: 100, hasPage: true, jobs: 3, domain: 'sondaiviet.vn', since: '21/07/2026' },
-  { name: 'Công ty CP Nông sản Xanh', shortName: 'Nông sản Xanh', legalName: 'Công ty Cổ phần Nông sản Xanh', country: 'Việt Nam', tax: '0353xxxxxx', industry: 'Nông nghiệp', size: '200–500', address: 'Lâm Đồng', contact: 'Ms. Trương Bích Hạnh · HR', owner: 'Trần Quốc Trung', status: 'Invoice', account: 'Existing', lastPO: '22/07/2026', renewal: '22/10/2026', nextStep: 'Prepare renewal quote', idle: 46, note: 'Renewal in 2 months.', revenue: 165_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 30, cvLeft: 60, cvTotal: 100, hasPage: true, jobs: 4, domain: 'nongsanxanh.vn', since: '23/03/2025' },
-  { name: 'Công ty TNHH Nhựa Bình Phát', shortName: 'Bình Phát', legalName: 'Công ty TNHH Nhựa Bình Phát', country: 'Việt Nam', tax: '0354xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Đoàn Quốc Huy · HR', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '23/07/2026', renewal: '23/10/2026', nextStep: 'Re-engage before renewal', idle: 31, note: 'No contact in a month.', revenue: 182_000_000, jobPosting: true, resumeSearch: false, jobLeft: 7, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 5, domain: 'binhphat.vn', since: '23/07/2026' },
-  { name: 'Công ty CP Bán lẻ Vạn Xuân', shortName: 'Vạn Xuân', legalName: 'Công ty Cổ phần Bán lẻ Vạn Xuân', country: 'Việt Nam', tax: '0355xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 3, HCMC', contact: 'Ms. Tạ Mỹ Linh · TA Manager', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '24/07/2026', renewal: '24/10/2026', nextStep: 'Upsell Resume Search', idle: 59, note: 'Repeat customer, 3rd order.', revenue: 199_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 6, domain: 'vanxuan.vn', since: '25/05/2025' },
-  { name: 'Công ty TNHH Kỹ thuật Nam Việt', shortName: 'Nam Việt', legalName: 'Công ty TNHH Kỹ thuật Nam Việt', country: 'Việt Nam', tax: '0356xxxxxx', industry: 'Cơ khí', size: '200–500', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Lưu Anh Tú', owner: 'Trần Quốc Trung', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Re-engage next quarter', idle: 35, note: 'Chose a competitor on price.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'namvieteng.vn', since: '—' },
-  { name: 'Công ty CP Chứng khoán Đại Nam', shortName: 'CK Đại Nam', legalName: 'Công ty Cổ phần Chứng khoán Đại Nam', country: 'Việt Nam', tax: '0357xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Hồ Diễm Quỳnh · HR', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Nurture — revisit Q1', idle: 44, note: 'Budget frozen for the year.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'cknam.vn', since: '—' },
-  { name: 'Công ty TNHH Mỹ phẩm Hương Sen', shortName: 'Hương Sen', legalName: 'Công ty TNHH Mỹ phẩm Hương Sen', country: 'Việt Nam', tax: '0358xxxxxx', industry: 'FMCG', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Bạch Tuyết Nhi', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send discount options', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'huongsen.vn', since: '—' },
-  { name: 'Công ty CP Thép Việt Đức', shortName: 'Thép Việt Đức', legalName: 'Công ty Cổ phần Thép Việt Đức', country: 'Việt Nam', tax: '0359xxxxxx', industry: 'Sản xuất', size: '1000–5000', address: 'Vĩnh Phúc', contact: 'Mr. Kiều Mạnh Hà · Trưởng phòng NS', owner: 'Trần Quốc Trung', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Retry after 01/08', idle: 9, note: 'HR manager on leave.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'thepvietduc.vn', since: '—' },
-  { name: 'Công ty TNHH Cà phê Ban Mê', shortName: 'Ban Mê', legalName: 'Công ty TNHH Cà phê Ban Mê', country: 'Việt Nam', tax: '0360xxxxxx', industry: 'Thực phẩm', size: '200–500', address: 'Đắk Lắk', contact: 'Ms. Phùng Thanh Thúy · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chase legal', idle: 22, note: 'Legal reviewing our T&C.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'banmecoffee.vn', since: '—' },
-  { name: 'Công ty CP Công nghệ TekOne', shortName: 'TekOne', legalName: 'Công ty Cổ phần Công nghệ TekOne', country: 'Việt Nam', tax: '0361xxxxxx', industry: 'CNTT', size: '50–200', address: 'Quận 4, HCMC', contact: 'Mr. Trần Gia Bảo · CEO', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '04/07/2026', renewal: '04/10/2026', nextStep: 'Ask for a testimonial', idle: null, note: 'Inbound sign-up — nobody has called yet.', revenue: 101_000_000, jobPosting: true, resumeSearch: true, jobLeft: 8, jobTotal: 20, cvLeft: 68, cvTotal: 100, hasPage: true, jobs: 3, domain: 'tekone.vn', since: '06/02/2025' },
-  { name: 'Công ty TNHH An Toàn Lao Động Việt', shortName: 'ATLĐ Việt', legalName: 'Công ty TNHH An Toàn Lao Động Việt', country: 'Việt Nam', tax: '0362xxxxxx', industry: 'Dịch vụ', size: '50–200', address: 'Quận Bình Tân, HCMC', contact: 'Ms. Dương Kiều My', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Collect PO number', idle: 6, note: 'Awaiting their PO number.', revenue: 118_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 69, cvTotal: 100, hasPage: true, jobs: 4, domain: 'atldviet.vn', since: '05/07/2026' },
-  { name: 'Công ty CP Khách sạn Biển Đông', shortName: 'Biển Đông', legalName: 'Công ty Cổ phần Khách sạn Biển Đông', country: 'Việt Nam', tax: '0363xxxxxx', industry: 'Du lịch', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Nguyễn Hải Sơn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Confirm option 2', idle: 13, note: 'Second option preferred.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biendonghotel.vn', since: '—' },
-  { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', country: 'Việt Nam', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
-]
-
-/* Colour carries meaning, so customer status must not borrow RED. On a company row
-   red already means "act now" three times over — idle past its red threshold, a
-   lapsed quotation, never contacted. Churn is none of those: it is a factual
-   lifecycle state (no new order in 12 months) and commercially it is an
-   OPPORTUNITY — a churned customer is the warmest win-back lead we have. Amber
-   reads as attention-not-alarm, which is exactly the register, and it leaves red
-   free for the markers that genuinely demand action today. */
-const AC_STATUS: Record<Account, { tone: StatusTone; label: string }> = {
-  New: { tone: 'draft', label: 'New' },
-  Existing: { tone: 'active', label: 'Existing' },
-  Churn: { tone: 'pending', label: 'Churn' },
-}
-/* Onboarding is a CADENCE, not a status — the first 90 days after the first
-   invoice, when a fresh customer needs a tighter touch. The real system reads
-   firstInvoicedAt; the mock uses `since`, which is the same date. */
-const ONBOARDING_DAYS = 90
-const TODAY = new Date(2026, 6, 29) // 29/07/2026 — the mock's "now"
-const daysSince = (dmy: string) => {
-  const [d, m, y] = dmy.split('/').map(Number)
-  if (!d || !m || !y) return Infinity // "—" — never activated
-  return Math.round((TODAY.getTime() - new Date(y, m - 1, d).getTime()) / 86_400_000)
-}
-// A company shows a pipeline step only while a deal is open (before it closes at
-// Invoice, or dies at Lost). Settled customers show "—".
-/* On the board or not. Three ways off it, and only one of them is a decision:
-   closed-won (Invoice), closed-lost (Lost, by a human with a reason), and the
-   quotation EXPIRING. The quotation is the reason the card exists, so when it
-   lapses the card goes with it — but that is not Lost: no reason, no decision,
-   customer status untouched, and a new quotation puts them straight back. */
-const inPipeline = (c: Company) => c.status !== 'Invoice' && c.status !== 'Lost' && !c.quoteLapsed
-/* ── Create-PO gate ───────────────────────────────────────────────────────────
-   A sales order / PO is only ever created from ONE ACCEPTED quotation option —
-   never from scratch, and never from a quotation that has lapsed (T&C clause 2:
-   the discounts and gifts were only committed until the expiry date). So the
-   button is always visible on a pre-PO company, but it explains itself when it
-   cannot fire. Demo mapping by stage: Qualified/Proposal = quote out, not yet
-   accepted · Proposal + idle > 14d = quote lapsed · Negotiation = an option has
-   been accepted, so the PO can be raised. */
-function poGate(c: Company): { ok: boolean; reason?: string; quote: string } {
-  const quote = `QUO-0099${(c.tax.replace(/\D/g, '').slice(0, 2) || '10')}-07-2026`
-  if (c.status === 'PO' || c.status === 'Invoice') return { ok: false, reason: 'An order already exists for this deal.', quote }
-  if (c.status === 'Lost') return { ok: false, reason: 'The deal is closed-lost. Re-open it or start a new deal first.', quote }
-  if (c.status === 'Qualified') return { ok: false, reason: 'No quotation option has been accepted yet.', quote }
-  if (c.status === 'Proposal') {
-    return (c.idle ?? 0) > 14
-      ? { ok: false, reason: 'The quotation has lapsed past its validity — extend it or re-issue as v2 before raising an order.', quote }
-      : { ok: false, reason: 'The quotation is sent but no option has been accepted yet.', quote }
-  }
-  return { ok: true, quote } // Negotiation — an option is agreed, raise the order
-}
-
-/* ── Idle ──────────────────────────────────────────────────────────────────
-   Idle = days since the last human CONTACT with the client. Reset only by a real
-   touch (logged chat/call/meeting, or a document sent/confirmed); system events
-   (auto-reminders, provisioning, page publishes) must NOT reset it.
-
-   ONE rule everywhere — the same definition, thresholds table and display on the
-   Companies list and the Pipeline board. The rule is "idle vs the EXPECTED CONTACT
-   CADENCE for this relationship type", i.e. one formula reading a settings table,
-   never per-stage logic sprinkled through the code. A company with an open deal
-   always uses the openDeal row: the live opportunity sets the pace. */
-type Cadence = 'openDeal' | 'onboarding' | 'existing' | 'nurture' | 'churn'
-const IDLE_RULE: Record<Cadence, { amber: number; red: number; cadence: string }> = {
-  openDeal:    { amber: 7,  red: 14, cadence: 'weekly' },
-  onboarding:  { amber: 14, red: 30, cadence: 'fortnightly' }, // Existing, first 90 days after the first invoice
-  existing:    { amber: 30, red: 60, cadence: 'monthly' },
-  nurture:     { amber: 30, red: 60, cadence: 'monthly' },     // New (never bought), no open deal
-  churn:       { amber: 60, red: 90, cadence: 'quarterly' },   // win-back
-}
-/* Sort options for the Companies list. The default is "chưa liên hệ lâu nhất" —
-   with the Needs-attention filter gone, ordering by neglect is what puts the rows a
-   rep must act on at the top, without spending a colour channel on every row.
-   Never-contacted (idle null) sorts first: it is the highest-priority follow-up. */
-type CoSort = 'contact-old' | 'contact-new' | 'name' | 'revenue'
-const idleRank = (c: Company) => (c.idle === null ? Infinity : c.idle)
-const CO_SORTS: Record<CoSort, { label: string; cmp: (a: Company, b: Company) => number }> = {
-  'contact-old': { label: 'Chưa liên hệ lâu nhất', cmp: (a, b) => idleRank(b) - idleRank(a) },
-  'contact-new': { label: 'Liên hệ gần đây nhất', cmp: (a, b) => idleRank(a) - idleRank(b) },
-  name: { label: 'Tên công ty A → Z', cmp: (a, b) => coLabel(a).localeCompare(coLabel(b), 'vi') },
-  revenue: { label: 'Doanh thu cao nhất', cmp: (a, b) => b.revenue - a.revenue },
-}
-
-function cadenceOf(c: Company): Cadence {
-  if (inPipeline(c)) return 'openDeal'
-  if (c.account === 'Churn') return 'churn'
-  if (c.account === 'New') return 'nurture'
-  return daysSince(c.since) <= ONBOARDING_DAYS ? 'onboarding' : 'existing'
-}
-type Rot = 'fresh' | 'amber' | 'red'
-function idleOf(days: number, k: Cadence = 'openDeal'): Rot {
-  const t = IDLE_RULE[k]
-  return days >= t.red ? 'red' : days >= t.amber ? 'amber' : 'fresh'
-}
-/** ONE display rule, used on both the Companies list and the Pipeline board:
-    under a month reads in days ("12d"); a month or more rolls up to months +
-    remainder ("1m 18d", "3m 2d") so a long gap stays readable instead of "92d".
-    Still used wherever a DURATION is what is being said ("2m 4d ago" on the
-    activity trail); the Last-contact column shows the date itself instead. */
-function fmtIdle(days: number): string {
-  if (days < 30) return `${days}d`
-  const m = Math.floor(days / 30)
-  const d = days % 30
-  return d ? `${m}m ${d}d` : `${m}m`
-}
-const ROT_TEXT: Record<Rot, string> = {
-  fresh: 'text-muted',
-  amber: 'text-amber-600 font-medium',
-  red: 'text-rose-600 font-medium',
-}
-const ROT_DOT: Record<Rot, string> = { fresh: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-rose-500' }
 /** Idle read-out: a health dot + the gap. `days = null` → never contacted at all,
     which is a DISTINCT state from 0d and the highest-priority follow-up. */
 /**
@@ -2345,151 +1688,6 @@ function Idle({ days, kind = 'openDeal', dotOnly, compact }: { days: number | nu
   )
 }
 
-
-const CO_STATUS: Record<CoStatus, { tone: StatusTone; label: string }> = {
-  Qualified: { tone: 'draft', label: 'Qualified' },
-  Proposal: { tone: 'neutral', label: 'Proposal' },
-  Negotiation: { tone: 'pending', label: 'Negotiation' },
-  PO: { tone: 'schedule', label: 'PO' },
-  Invoice: { tone: 'active', label: 'Invoice' },
-  Lost: { tone: 'rejected', label: 'Lost' },
-}
-// Board order follows the document flow: the quotation goes out (Proposal), the HR
-// manager engages with it (Qualified), then internal approval (Negotiation) → PO → Invoice.
-const CO_ORDER: CoStatus[] = ['Proposal', 'Qualified', 'Negotiation', 'PO', 'Invoice', 'Lost']
-/* WHO moves a card out of each stage, and by doing what. Surfaced as the column
-   tooltip so the rule lives where the work happens instead of only in the spec — a
-   rep should not have to open the requirement to learn that PO waits on Accounting.
-   Mirrors the "Rule" column of "Pipeline stages" in the CRM requirement; keep the
-   two in step. */
-const STAGE_NEXT: Record<CoStatus, string> = {
-  Proposal: 'SALES chases the customer for a reply. The card landed here automatically the moment the quotation was marked Sent — it is never dragged in.',
-  Qualified: 'SALES agrees the option and the price, then moves the card on. This stage can be skipped entirely — Proposal → Negotiation is legal.',
-  Negotiation: 'SALES creates the Sales order from the option the customer accepted. Revising to v2 / v3 happens here without leaving the stage.',
-  PO: 'KẾ TOÁN ONLY confirms the payment against the bank statement. Won — but nothing is provisioned yet.',
-  Invoice: 'Closed. KẾ TOÁN issued the VAT e-invoice; the system then flipped the customer to Existing, started the 12-month clock and released provisioning.',
-  Lost: 'SALES set this by hand with a reason — the system never auto-closes a deal. Re-open by moving it back a stage; a win-back is a NEW deal.',
-}
-// A company is a customer once a PO is issued (PO or Invoice stage).
-const isCustomer = (c: Company) => c.status === 'PO' || c.status === 'Invoice'
-const CO_VALUE: Record<string, number> = {
-  'Công ty TNHH Đại Dương': 42_000_000, 'Công ty CP Bình Minh': 68_000_000, 'Công ty TNHH Sao Mai': 155_000_000,
-  'Công ty TNHH Vạn Phát': 37_800_000, 'FPT Software': 420_000_000, 'Công ty CP Hoàng Gia': 20_000_000,
-  'Công ty TNHH Việt Tiến': 90_000_000, 'Tiki': 300_000_000,
-  'VNG Corporation': 510_000_000, 'MoMo': 150_000_000, 'Thế Giới Di Động': 620_000_000,
-  'Shopee Việt Nam': 245_000_000, 'Base.vn': 18_000_000, 'Công ty CP Đông Á': 72_000_000,
-  'Công ty TNHH Minh Long': 60_000_000, 'Công ty CP Thành Đạt': 25_000_000,
-  'Công ty CP An Khang': 95_000_000, 'Công ty TNHH Phú Thịnh': 33_500_000,
-  'Công ty CP Nam Long': 128_000_000, 'Công ty TNHH Hòa Bình': 210_000_000,
-  'Công ty CP Thương mại Vina': 76_000_000, 'Công ty TNHH An Phú Logistics': 54_000_000,
-  'Công ty CP Tài chính Đại Tín': 165_000_000, 'Công ty CP Trường Sơn': 231_000_000,
-  'Công ty TNHH Hải Âu Travel': 28_000_000, 'Công ty CP Tân Hưng Foods': 45_000_000,
-  'Công ty TNHH Giáo dục Sunrise': 22_000_000, 'Công ty CP Bảo Việt Care': 185_000_000,
-  'Công ty CP Dệt may Phương Nam': 64_000_000, 'Công ty TNHH Cơ khí Đông Phong': 41_000_000,
-  'Galaxy Media': 87_000_000, 'Công ty CP Dược Hậu Giang': 240_000_000,
-  'Vietjet Air': 465_000_000, 'Công ty TNHH Kim Long Steel': 58_000_000,
-  'Techcombank': 540_000_000, 'Công ty CP Bán lẻ Thiên Hà': 112_000_000,
-  'Công ty TNHH Bảo Sơn Group': 198_000_000, 'Công ty CP Vinh Quang Logistics': 31_000_000,
-  'Lazada Việt Nam': 195_000_000, 'Công ty CP Xây dựng Hưng Thịnh': 88_000_000,
-  'Công ty CP Công nghệ Tân Tiến': 74_000_000, 'Công ty TNHH Đức Thành': 18_000_000,
-  'Công ty TNHH AM Software Việt Nam': 6_588_000, 'Sacombank': 380_000_000,
-}
-/* Deal value. Rows without an explicit entry above get a stable pseudo-value
-   derived from the name, so a demo company can never render as 0 ₫ — the map only
-   needs maintaining for the few figures we quote in conversation. */
-const coValue = (c: Company) => {
-  const explicit = CO_VALUE[c.name]
-  if (explicit) return explicit
-  let h = 0
-  for (const ch of c.name) h = (h * 31 + ch.codePointAt(0)!) % 100000
-  return (18 + (h % 43)) * 1_000_000 // 18M – 60M ₫, stable per name
-}
-/** Display label: prefer the short/brand name, fall back to the legal name. */
-const coLabel = (c: Company) => c.shortName?.trim() || c.legalName
-/* Demo stand-in for the database primary key. In the real build this is the
-   company row's bigint id; here it is derived from the name so every render (and
-   every screenshot) shows the same company ID. See lib/companyId.ts. */
-const coKey = (c: Company) => {
-  let h = 0
-  for (const ch of c.name) h = (h * 131 + ch.codePointAt(0)!) % 900000
-  return h + 1000
-}
-/** City / province — the last segment of the address (the form captures both). */
-/** A Vietnamese-registered company — the only case that gets the province picker. */
-const isVNCompany = (c: Company) => /^vi[eệ]t nam$|^vietnam$/i.test(c.country.trim())
-const coCity = (c: Company) => c.address.split(',').pop()!.trim()
-/** Demo-only: a stable lead source per company, so the field is exercised without
-    authoring one on every row. Real build stores this from the New-company form. */
-const LEAD_SOURCES = ['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']
-/* Latest revenue = the value of the MOST RECENT paid order, where Total revenue is
-   lifetime. A first-time customer's latest equals their total; a repeat customer's
-   is the last order only — the pair together shows whether an account is growing or
-   coasting. Demo-only derivation; the real build reads the last paid invoice. */
-const coLastRevenue = (c: Company) => {
-  if (!c.revenue) return 0
-  if (c.account === 'New') return c.revenue // first order = their whole history
-  let h = 0
-  for (const ch of c.name) h = (h * 29 + ch.codePointAt(0)!) % 7919
-  const share = 0.2 + (h % 60) / 100 // 20% – 79% of lifetime, stable per company
-  return Math.round((c.revenue * share) / 1_000_000) * 1_000_000
-}
-const coLeadSource = (c: Company) => {
-  let h = 0
-  for (const ch of c.name) h = (h * 17 + ch.codePointAt(0)!) % 9973
-  return LEAD_SOURCES[h % LEAD_SOURCES.length]
-}
-
-/* ── Membership tier — Chương trình Khách hàng Thân thiết ───────────────────
-   A THIRD status axis on the company, and the only one that is purely arithmetic:
-   the tier is a function of ONE number — the cumulative value of the orders the
-   company paid for inside the current programme year. It is never typed, never
-   granted by a rep, and it is not account health (customerStatus) nor a live deal
-   (pipeline).
-
-   The rule that shapes everything: the accumulator RESETS on 1 January. Nothing
-   carries over — a Diamond customer starts the new year with 0 ₫ accumulated and
-   no tier, and climbs again from scratch. That is why the tier can never be stored
-   as a plain column and forgotten: it has to be recomputed against a year window.
-
-   Thresholds and the reward catalogue are SETTINGS (System → Membership tiers),
-   not code — the programme is re-issued every year and the bands move. */
-type Tier = 'Member' | 'Bronze' | 'Silver' | 'Gold' | 'Diamond'
-/** Ascending by threshold — the order every lookup below depends on. */
-const TIERS: { key: Tier; vi: string; from: number; pill: string }[] = [
-  { key: 'Member', vi: 'Thành viên', from: 30_000_000, pill: 'bg-slate-100 text-slate-600 border-slate-200' },
-  { key: 'Bronze', vi: 'Đồng', from: 50_000_000, pill: 'bg-orange-50 text-orange-700 border-orange-200' },
-  { key: 'Silver', vi: 'Bạc', from: 100_000_000, pill: 'bg-slate-200/70 text-slate-700 border-slate-300' },
-  { key: 'Gold', vi: 'Vàng', from: 200_000_000, pill: 'bg-amber-50 text-amber-700 border-amber-300' },
-  { key: 'Diamond', vi: 'Kim Cương', from: 300_000_000, pill: 'bg-sky-50 text-sky-700 border-sky-300' },
-]
-type TierRow = (typeof TIERS)[number]
-/** The programme year the mock sits in, and the date the accumulator zeroes. */
-const TIER_YEAR = 2026
-const TIER_RESET = '01/01/2027'
-
-/** Cumulative paid-order value inside the CURRENT programme year — the only input to
-    the tier. Demo-only derivation: a company whose first invoice landed this year has
-    all of its revenue in-year; an older account keeps a stable share of its lifetime;
-    a churned account has booked nothing this year, which is exactly why it holds no
-    tier. The real build sums paid orders whose paid date falls inside the year. */
-const tierRevenue = (c: Company) => {
-  if (!c.revenue || c.account === 'Churn') return 0
-  if (c.since.endsWith(String(TIER_YEAR))) return c.revenue
-  let h = 0
-  for (const ch of c.name) h = (h * 37 + ch.codePointAt(0)!) % 6151
-  const share = 0.3 + (h % 60) / 100 // 30% – 89% of lifetime, stable per company
-  return Math.round((c.revenue * share) / 1_000_000) * 1_000_000
-}
-/** The tier an amount earns — null below the first threshold, which is a real state
-    ("chưa có hạng"), not an error: most of the book sits there in January. */
-const tierAt = (v: number): TierRow | null => {
-  let hit: TierRow | null = null
-  for (const t of TIERS) if (v >= t.from) hit = t
-  return hit
-}
-const tierOf = (c: Company) => tierAt(tierRevenue(c))
-/** The next band up and therefore the gap to sell against — null once at Diamond. */
-const nextTierAt = (v: number): TierRow | null => TIERS.find((t) => v < t.from) ?? null
 
 function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
   if (!tier) {
@@ -2539,46 +1737,6 @@ function MembershipStat({ c }: { c: Company }) {
   )
 }
 
-/* ── Corporate tree ────────────────────────────────────────────────────────
-   Parent and subsidiary are separate legal entities: separate records, separate
-   tax codes, separate accounts, separate billing, separate sales owners. The
-   only thing the link does is let a rep see the context and click across. A
-   BRANCH is the one exception in Vietnamese law — not its own legal entity, so
-   it shares the parent's 10-digit tax code and only appends a -001 suffix. We
-   store branches in the same tree with the same `parent` field and tell the two
-   apart by comparing tax roots, so there is no second mechanism to maintain. */
-const coByName = (n: string) => COMPANIES.find((x) => x.name === n)
-/** The 10-digit tax number without a branch suffix — the identity of the legal entity. */
-const taxRoot = (t: string) => t.split('-')[0]
-/** Direct children only, in list order. */
-const childrenOf = (c: Company) => COMPANIES.filter((x) => x.parent === c.name)
-/** Ancestor chain, furthest first: [group root, …, direct parent]. Depth-guarded so a
-    bad `parent` value can never spin the render loop. */
-const ancestorsOf = (c: Company) => {
-  const chain: Company[] = []
-  let cur = c.parent ? coByName(c.parent) : undefined
-  while (cur && chain.length < 8 && !chain.includes(cur)) {
-    chain.unshift(cur)
-    cur = cur.parent ? coByName(cur.parent) : undefined
-  }
-  return chain
-}
-/** The top of the group — the company itself when it has no parent. */
-const groupRootOf = (c: Company) => ancestorsOf(c)[0] ?? c
-/** Every company in the same group, the root included. */
-const groupOf = (root: Company) => COMPANIES.filter((x) => groupRootOf(x).name === root.name)
-/** True when the company is part of a group at all (has a parent or any children). */
-const inGroup = (c: Company) => Boolean(c.parent) || childrenOf(c).length > 0
-
-/* A company can hold BOTH roles at once — Đông Phong sits under Trường Sơn and has
-   Kim Long Steel under it. A binary "parent OR child" label hid that middle layer
-   entirely, so every mid-tier company read as a leaf. */
-const coRoles = (c: Company): string[] => {
-  const r: string[] = []
-  if (c.parent) r.push('công ty con')
-  if (childrenOf(c).length > 0) r.push('công ty mẹ')
-  return r
-}
 /* A CHI NHÁNH is a dependent unit (đơn vị phụ thuộc), not a separate legal entity —
    its tax code is the company's 10-digit root plus a suffix (…-001). Having no legal
    personality, it cannot own capital in another company, so it can never be a công ty
@@ -2637,50 +1795,6 @@ function QuotaBar({ left, total }: { left: number; total: number }) {
     </div>
   )
 }
-
-/* The signed-in rep. Every activity is stamped with THIS account — not with the
-   company's sales owner — because whoever does the work is who the KPI counts. */
-const ME = 'Nguyễn Thị Lan'
-
-/* ── Sales org — drives record scope on the Company list ───────────────────────
- * Saramin Sales department:
- *   • A SALES MANAGER heads the department and sees every team's book.
- *   • Under the manager are (up to) 2 TEAMS, each run by a SALES LEAD.
- *   • A salesperson belongs to exactly ONE team; a lead may run up to 2 teams.
- *     Nothing nests below the team.
- * The LIST follows this tree:
- *   rep      → only companies they own (no tab).
- *   lead     → own book (Sales view) + every company owned by a salesperson in
- *              the team(s) they lead (Sales lead view).
- *   manager  → own book (Sales view) + every salesperson's book (Sales manager view).
- * SCOPE APPLIES TO THE LIST ONLY. Every salesperson can SEARCH, OPEN and LOG AN
- * ACTIVITY on ANY company on the platform — otherwise "not in my list" reads as
- * "does not exist" and the rep creates a duplicate. Only the sales OWNER may edit
- * a company's own fields (see the CompanyDetail owner gate). */
-type SalesTeam = { name: string; lead: string; members: string[] }
-const SALES_TEAMS: SalesTeam[] = [
-  // A lead is also a member of their home team; Nguyễn Thị Lan leads BOTH teams.
-  { name: 'Team A', lead: 'Nguyễn Thị Lan', members: ['Nguyễn Thị Lan', 'Phạm Quang Huy'] },
-  { name: 'Team B', lead: 'Nguyễn Thị Lan', members: ['Trần Quốc Trung'] },
-]
-const SALES_MANAGER = 'Đỗ Xuân Trường'
-type SalesRole = 'rep' | 'lead' | 'manager'
-const SALES_ROLE_LABEL: Record<SalesRole, string> = { rep: 'Salesperson', lead: 'Sales lead', manager: 'Sales manager' }
-type SalesPersona = { name: string; role: SalesRole }
-/* The identities you can "log in as" on the Company list to see how scope changes. */
-const SALES_PERSONAS: SalesPersona[] = [
-  { name: 'Phạm Quang Huy', role: 'rep' },       // plain rep, Team A → own book only
-  { name: 'Nguyễn Thị Lan', role: 'lead' },      // leads Team A + Team B → own + team view
-  { name: SALES_MANAGER, role: 'manager' },      // department head → own + department view
-]
-/* Every distinct member of the team(s) a person leads (the lead included). */
-const teamBookOf = (leadName: string): Set<string> => {
-  const set = new Set<string>()
-  for (const t of SALES_TEAMS) if (t.lead === leadName) t.members.forEach((m) => set.add(m))
-  return set
-}
-/* All salespeople in the department — every team member, plus the manager. */
-const SALES_DEPT = new Set<string>([...SALES_TEAMS.flatMap((t) => t.members), SALES_MANAGER])
 
 /* ── Global company search ───────────────────────────────────────────────────
    One search box in the shell, reachable from every page. The Companies list has
@@ -3240,42 +2354,6 @@ function AdminCompanyPipeline() {
   )
 }
 
-/** One row per PURCHASE ORDER — what was bought, for how much, and when the VAT
-    invoice went out. A PO with no invoice date is money not yet collected. */
-function poHistory(c: Company): { po: string; products: string; amount: string; invoiced: string | null }[] {
-  if (!isCustomer(c) && c.account !== 'Churn') return []
-  const k = coKey(c)
-  const rows: { po: string; products: string; amount: string; invoiced: string | null }[] = []
-  if (c.jobPosting && c.resumeSearch) {
-    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Job Posting — Pro · Resume Search — 6 tháng', amount: '37,800,000 ₫', invoiced: c.since })
-  } else if (c.jobPosting) {
-    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Job Posting — Pro (10 slots)', amount: '15,000,000 ₫', invoiced: c.since })
-  } else if (c.resumeSearch) {
-    rows.push({ po: `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`, products: 'Resume Search — 6 tháng (100 CV)', amount: '20,000,000 ₫', invoiced: c.since })
-  }
-  // The PO a rep is chasing: sent, agreed, not yet invoiced — so no date.
-  if (c.status === 'PO') {
-    rows.unshift({ po: `PO-${String(5900 + (k % 90)).padStart(6, '0')}-08-2026`, products: 'Job Posting — Pro (gia hạn)', amount: '15,000,000 ₫', invoiced: null })
-  }
-  if (c.account === 'Churn') {
-    rows.push({ po: `PO-${String(5100 + (k % 300)).padStart(6, '0')}-12-2024`, products: 'Job Posting — Pro · Resume Search', amount: '35,000,000 ₫', invoiced: '20/12/2024' })
-  }
-  return rows
-}
-
-/** Purchases that have run out or lapsed. Kept on the record for renewal calls —
-    "what did they buy last year, and for how much" is the first thing asked. */
-function pastPurchases(c: Company): { name: string; detail: string; amount: string; date: string }[] {
-  if (c.account === 'Churn') return [
-    { name: 'Job Posting — Pro', detail: '10 slots · hết hạn 31/12/2025', amount: '15,000,000 ₫', date: '12/2024' },
-    { name: 'Resume Search — 6 tháng', detail: '100 CV unlocks · đã dùng hết', amount: '20,000,000 ₫', date: '06/2024' },
-  ]
-  if (isCustomer(c)) return [
-    { name: 'Job Posting — Basic', detail: '5 slots · hết hạn ' + (c.since || '—'), amount: '6,100,000 ₫', date: 'kỳ trước' },
-  ]
-  return []
-}
-
 /* No status pill. Everything on this list was PAID — an unpaid product never
    provisions, so "Paid" was true of every row and told the reader nothing. Whether
    it has ENDED is said by which list it is in (Đang dùng / Đã kết thúc) and by the
@@ -3292,192 +2370,6 @@ function PurchaseRow({ name, detail, amount, date, expired }: { name: string; de
       </div>
     </div>
   )
-}
-
-const MAX_SEATS = 4
-
-/* ── per-company mock data (jobs · team · activity) ───────────────────────── */
-type CoJob = { title: string; status: StatusTone; statusLabel: string; applicants: number; posted: string; deadline: string }
-const COMPANY_JOBS: Record<string, CoJob[]> = {
-  'Công ty TNHH Vạn Phát': [
-    { title: 'Điều dưỡng viên (Khoa Nội)', status: 'open', statusLabel: 'Open', applicants: 14, posted: '02/07/2026', deadline: '31/08/2026' },
-    { title: 'Bác sĩ Đa khoa', status: 'open', statusLabel: 'Open', applicants: 6, posted: '28/06/2026', deadline: '28/08/2026' },
-    { title: 'Kế toán viện phí', status: 'open', statusLabel: 'Open', applicants: 0, posted: '20/07/2026', deadline: '15/09/2026' },
-    { title: 'Lễ tân bệnh viện', status: 'closed', statusLabel: 'Closed', applicants: 31, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'FPT Software': [
-    { title: 'Senior Frontend Engineer (ReactJS)', status: 'open', statusLabel: 'Open', applicants: 0, posted: '24/07/2026', deadline: '31/08/2026' },
-    { title: 'Java Developer (Spring Boot)', status: 'open', statusLabel: 'Open', applicants: 52, posted: '10/07/2026', deadline: '10/09/2026' },
-    { title: 'Business Analyst', status: 'open', statusLabel: 'Open', applicants: 28, posted: '05/07/2026', deadline: '05/09/2026' },
-    { title: 'Comtor tiếng Nhật (BrSE)', status: 'open', statusLabel: 'Open', applicants: 11, posted: '01/07/2026', deadline: '31/08/2026' },
-    { title: 'DevOps Engineer', status: 'open', statusLabel: 'Open', applicants: 19, posted: '20/06/2026', deadline: '20/08/2026' },
-    { title: 'QA Automation Engineer', status: 'closed', statusLabel: 'Closed', applicants: 40, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'Tiki': [
-    { title: 'Digital Marketing Lead', status: 'open', statusLabel: 'Open', applicants: 42, posted: '15/07/2026', deadline: '15/09/2026' },
-    { title: 'Product Manager', status: 'open', statusLabel: 'Open', applicants: 18, posted: '05/07/2026', deadline: '05/09/2026' },
-    { title: 'Backend Engineer (Go)', status: 'open', statusLabel: 'Open', applicants: 33, posted: '02/07/2026', deadline: '02/09/2026' },
-    { title: 'Data Analyst', status: 'open', statusLabel: 'Open', applicants: 25, posted: '28/06/2026', deadline: '28/08/2026' },
-    { title: 'Nhân viên Kho vận', status: 'open', statusLabel: 'Open', applicants: 0, posted: '22/07/2026', deadline: '20/09/2026' },
-    { title: 'Category Manager', status: 'closed', statusLabel: 'Closed', applicants: 47, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'Công ty TNHH Đại Dương': [
-    { title: 'Nhân viên Kinh doanh Thủy sản', status: 'open', statusLabel: 'Open', applicants: 9, posted: '20/06/2026', deadline: '31/08/2026' },
-    { title: 'Kỹ sư Nuôi trồng Thủy sản', status: 'open', statusLabel: 'Open', applicants: 4, posted: '15/06/2026', deadline: '15/09/2026' },
-    { title: 'Nhân viên QC (Chế biến)', status: 'closed', statusLabel: 'Closed', applicants: 22, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'VNG Corporation': [
-    { title: 'Kế toán tổng hợp', status: 'schedule', statusLabel: 'Schedule', applicants: 0, posted: '—', deadline: '20/09/2026' },
-    { title: 'Game Product Manager', status: 'open', statusLabel: 'Open', applicants: 36, posted: '12/07/2026', deadline: '12/09/2026' },
-    { title: 'Backend Engineer (Golang)', status: 'open', statusLabel: 'Open', applicants: 44, posted: '08/07/2026', deadline: '08/09/2026' },
-    { title: 'Data Engineer', status: 'open', statusLabel: 'Open', applicants: 17, posted: '30/06/2026', deadline: '31/08/2026' },
-    { title: 'UI/UX Designer', status: 'open', statusLabel: 'Open', applicants: 23, posted: '25/06/2026', deadline: '25/08/2026' },
-    { title: 'Chuyên viên Tuyển dụng', status: 'closed', statusLabel: 'Closed', applicants: 58, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'MoMo': [
-    { title: 'Product Manager', status: 'open', statusLabel: 'Open', applicants: 18, posted: '05/07/2026', deadline: '05/09/2026' },
-    { title: 'Risk & Fraud Analyst', status: 'open', statusLabel: 'Open', applicants: 12, posted: '02/07/2026', deadline: '02/09/2026' },
-    { title: 'Android Engineer (Kotlin)', status: 'open', statusLabel: 'Open', applicants: 29, posted: '28/06/2026', deadline: '28/08/2026' },
-    { title: 'Nhân viên CSKH (Hotline)', status: 'open', statusLabel: 'Open', applicants: 61, posted: '20/06/2026', deadline: '20/08/2026' },
-    { title: 'Kế toán thanh toán', status: 'draft', statusLabel: 'Draft', applicants: 0, posted: '—', deadline: '—' },
-  ],
-  'Thế Giới Di Động': [
-    { title: 'Nhân viên Kinh doanh (Chuỗi cửa hàng)', status: 'open', statusLabel: 'Open', applicants: 128, posted: '22/07/2026', deadline: '30/09/2026' },
-    { title: 'Quản lý Cửa hàng — HCMC', status: 'open', statusLabel: 'Open', applicants: 47, posted: '18/07/2026', deadline: '18/09/2026' },
-    { title: 'Kỹ thuật viên Bảo hành', status: 'open', statusLabel: 'Open', applicants: 63, posted: '15/07/2026', deadline: '15/09/2026' },
-    { title: 'Nhân viên Kho vận', status: 'open', statusLabel: 'Open', applicants: 84, posted: '10/07/2026', deadline: '10/09/2026' },
-    { title: 'Chuyên viên Đào tạo Nội bộ', status: 'schedule', statusLabel: 'Schedule', applicants: 0, posted: '—', deadline: '01/10/2026' },
-    { title: 'Thu ngân (Part-time)', status: 'closed', statusLabel: 'Closed', applicants: 96, posted: '01/04/2026', deadline: '30/06/2026' },
-  ],
-  'Công ty CP Thành Đạt': [
-    { title: 'Kỹ sư Xây dựng (Giám sát công trình)', status: 'open', statusLabel: 'Open', applicants: 7, posted: '14/07/2026', deadline: '14/09/2026' },
-    { title: 'Kỹ sư Dự toán', status: 'open', statusLabel: 'Open', applicants: 3, posted: '12/07/2026', deadline: '12/09/2026' },
-    { title: 'Nhân viên An toàn Lao động', status: 'draft', statusLabel: 'Draft', applicants: 0, posted: '—', deadline: '—' },
-  ],
-}
-const companyJobs = (c: Company) => COMPANY_JOBS[c.name] ?? []
-
-/* Applications received (employer view — like the Company site) */
-type CoApplicant = { name: string; job: string; applied: string; tone: StatusTone; stage: string }
-const APPLICANT_NAMES = ['Trần Văn Hùng', 'Nguyễn Thị Mai', 'Lê Hoàng Nam', 'Phạm Thu Trang', 'Đỗ Minh Quân', 'Vũ Thị Hồng', 'Bùi Đức Anh']
-const APPLICANT_STAGES: { tone: StatusTone; stage: string }[] = [
-  { tone: 'schedule', stage: 'Shortlisted' }, { tone: 'pending', stage: 'Reviewing' }, { tone: 'neutral', stage: 'New' },
-  { tone: 'active', stage: 'Interview' }, { tone: 'rejected', stage: 'Rejected' }, { tone: 'neutral', stage: 'New' }, { tone: 'pending', stage: 'Reviewing' },
-]
-const APPLICANT_WHEN = ['2 days ago', '3 days ago', '5 days ago', '1 week ago', '1 week ago', '2 weeks ago', '2 weeks ago']
-const companyApplicants = (c: Company): CoApplicant[] => {
-  const js = companyJobs(c)
-  if (!js.length) return []
-  return APPLICANT_NAMES.map((n, i) => ({ name: n, job: js[i % js.length].title, applied: APPLICANT_WHEN[i], tone: APPLICANT_STAGES[i].tone, stage: APPLICANT_STAGES[i].stage }))
-}
-
-/* Resume unlocks / opens (employer view — like the Company site) */
-type CoResumeView = { name: string; headline: string; when: string; by: string }
-const companyResumeViews = (c: Company): CoResumeView[] => {
-  if (!c.resumeSearch) return []
-  const mgr = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  return [
-    { name: 'Hoàng Thị Lan Anh', headline: 'Kế toán trưởng · 8 năm KN', when: '1 hour ago', by: mgr },
-    { name: 'Nguyễn Đức Thắng', headline: 'Kỹ sư Cơ khí · 5 năm KN', when: '3 hours ago', by: mgr },
-    { name: 'Trần Bảo Ngọc', headline: 'Nhân viên Marketing · 3 năm KN', when: 'Yesterday', by: 'Đỗ Thị Mai' },
-    { name: 'Lý Quốc Khánh', headline: 'Chuyên viên Nhân sự · 6 năm KN', when: '2 days ago', by: mgr },
-    { name: 'Phan Thị Hương', headline: 'Nhân viên Kinh doanh · 4 năm KN', when: '3 days ago', by: 'Đỗ Thị Mai' },
-  ]
-}
-
-/* ── CONTACT PEOPLE vs LOGIN USERS ───────────────────────────────────────────
-   Two different populations on the same company, deliberately INDEPENDENT:
-
-     Contact  a person we do business with. Owned by Sales, lives in the CRM, and
-              may have no login at all — a CFO who signs off, an accountant who
-              receives invoices, a receptionist who takes the call.
-     User     a login on the Company site. Consumes one of the 4 seats, owned by
-              the customer's HR Manager, and may be someone Sales never met.
-
-   They overlap often (the HR Manager is usually both) but neither implies the
-   other, so one is NEVER auto-created from the other. A contact may optionally be
-   LINKED to a user record; the link is informational, not a dependency. */
-/* FIVE statuses, not nine. Each answers "what do I do about this person NOW?", and
-   two statuses that lead to the SAME action are one status:
-     on leave + asked-us-to-come-back   → Paused          (both: wait, with a date)
-     left + retired + moved department   → No longer here  (all: find the successor)
-     never verified + email now bouncing → Needs verifying (both: fix the details)
-   The sub-reason ("nghỉ hưu" vs "chuyển phòng ban") goes in the note, where a human
-   reads it — rather than multiplying statuses that behave identically. */
-type ContactStatus = 'Active' | 'Needs verifying' | 'Paused' | 'No longer here' | 'Do not contact'
-const CONTACT_STATUS: Record<ContactStatus, { tone: StatusTone; vi: string; hint: string; action: string }> = {
-  Active: {
-    tone: 'active', vi: 'Đang liên hệ',
-    hint: 'Our working contact — reachable and expecting to hear from us.',
-    action: 'Call or email as normal.',
-  },
-  'Needs verifying': {
-    tone: 'pending', vi: 'Cần xác minh',
-    hint: 'Details not confirmed — from a name card or web form, or the email has started bouncing.',
-    action: 'Confirm email + phone before this contact goes on a quotation.',
-  },
-  Paused: {
-    tone: 'schedule', vi: 'Tạm dừng liên hệ',
-    hint: 'On leave, or they asked us to come back later. Still our contact, just not now.',
-    action: 'Do not chase until the resume date; use the cover person if urgent.',
-  },
-  'No longer here': {
-    tone: 'expired', vi: 'Không còn phụ trách',
-    hint: 'Left the company, retired, or moved department — either way they no longer buy from us.',
-    action: 'Find the successor. If you know where they went, that is a warm lead.',
-  },
-  'Do not contact': {
-    tone: 'rejected', vi: 'Không liên hệ',
-    hint: 'They asked not to be contacted. A compliance flag, not an opinion.',
-    action: 'No outreach at all, manual or automated. Only a manager can clear it.',
-  },
-}
-type CoContact = {
-  name: string; title: string; email: string; phone: string
-  status: ContactStatus; primary?: boolean; decisionMaker?: boolean
-  /** receives every quotation / invoice — usually the accountant, rarely the buyer */
-  billing?: boolean
-  /** where a "No longer here" contact went, when we know — a warm lead at the new employer */
-  movedTo?: string
-  /** the date a "Paused" contact should be approached again */
-  snoozedUntil?: string
-  /** email of the login user this person is the same human as, when they have one */
-  linkedUser?: string
-  /** ONE free-text note per contact — the human context a status can never carry:
-      how they prefer to be reached, who they defer to, what went wrong last time. */
-  note: string
-  /** when we last spoke to THIS person (the company's Idle is the newest of these) */
-  lastContact: string
-}
-
-/* Demo contacts: always the primary from the CRM record, plus a realistic spread
-   of the awkward states — someone who left, someone who moved desk, an unlinked
-   finance contact who will never need a login. */
-function companyContacts(c: Company): CoContact[] {
-  const person = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  const title = c.contact.split(' · ')[1] ?? 'HR'
-  const local = (n: string) =>
-    n.split(' ').pop()!.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '')
-  const out: CoContact[] = [
-    { name: person, title, email: `${local(person)}@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', primary: true, decisionMaker: true, linkedUser: `${local(person)}@${c.domain}`, note: 'Prefers Zalo over email. Signs off up to 100M ₫ alone; above that needs the GD.', lastContact: '2 days ago' },
-    // finance contact: receives every invoice, never needs to log in
-    { name: 'Phạm Kế Toán', title: 'Kế toán trưởng / Chief accountant', email: `ketoan@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', billing: true, note: 'Only wants the VAT invoice + MST — do not send sales material. Reachable 8–17h.', lastContact: '3 weeks ago' },
-  ]
-  if (isCustomer(c)) {
-    out.push({ name: 'Đỗ Thị Mai', title: 'HR Specialist', email: `mai@${c.domain}`, phone: '09xx xxx xxx', status: 'Active', linkedUser: `mai@${c.domain}`, note: 'Day-to-day poster of jobs. Ask her for the hiring plan before quoting a renewal.', lastContact: '5 days ago' })
-    // the classic churn cause: the person who bought from us left, and nobody told Sales
-    out.push({ name: 'Trần Cũ', title: 'HR Manager (cũ)', email: `tran@${c.domain}`, phone: '—', status: 'No longer here', movedTo: 'Công ty CP Vạn Phát', note: 'Đã nghỉ việc 06/2026. Bought the first package from us — nobody told Sales, which is why the renewal slipped.', lastContact: '4 months ago' })
-  }
-  if (c.size === '5000+' || c.jobs > 15) {
-    out.push({ name: 'Nguyễn Điều Chuyển', title: 'Trưởng phòng Tuyển dụng', email: `chuyen@${c.domain}`, phone: '09xx xxx xxx', status: 'No longer here', note: 'Đã chuyển sang phòng Đào tạo. Still friendly — happy to introduce the new TA lead.', lastContact: '6 weeks ago' })
-    out.push({ name: 'Vũ Mới Nhập', title: 'Chuyên viên Tuyển dụng', email: `moi@${c.domain}`, phone: '09xx xxx xxx', status: 'Needs verifying', note: 'Captured from a name card at the 07/2026 job fair — email not confirmed yet.', lastContact: '—' })
-  }
-  if (c.account === 'Churn') {
-    out.push({ name: 'Lê Không Phản Hồi', title: 'Giám đốc Nhân sự', email: `le@${c.domain}`, phone: '09xx xxx xxx', status: 'Needs verifying', note: 'Email bounced twice, phone rings out. Try the switchboard or LinkedIn.', lastContact: '5 months ago' })
-    out.push({ name: 'Hoàng Hẹn Lại', title: 'Trưởng phòng HCNS', email: `hoang@${c.domain}`, phone: '09xx xxx xxx', status: 'Paused', snoozedUntil: '01/10/2026', note: 'Budget frozen until Q4. Asked us to come back after 01/10 — do not chase before that.', lastContact: '2 months ago' })
-  }
-  return out
 }
 
 function ContactDetail({ p, c, onClose }: { p: CoContact; c: Company; onClose: () => void }) {
@@ -3703,79 +2595,6 @@ function AddContactModal({ c, onClose }: { c: Company; onClose: () => void }) {
   )
 }
 
-type CoUserRole = 'Admin' | 'Recruiter' | 'Viewer'
-type CoTeamUser = { name: string; email: string; role: CoUserRole; status: 'Active' | 'Invited'; last: string }
-function companyTeam(c: Company): CoTeamUser[] {
-  const noProducts = !c.jobPosting && !c.resumeSearch
-  const managerName = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  const localPart = (n: string) =>
-    n.split(' ').pop()!.toLowerCase()
-      .replace(/đ/g, 'd').replace(/ơ/g, 'o').replace(/ư/g, 'u')
-      .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
-  const base: Omit<CoTeamUser, 'email'>[] = [{ name: managerName, role: 'Admin', status: 'Active', last: '10m ago' }]
-  if (isCustomer(c) && !noProducts) {
-    base.push({ name: 'Đỗ Thị Mai', role: 'Recruiter', status: 'Active', last: '2h ago' })
-    if (c.size === '5000+' || c.jobs > 15) {
-      base.push({ name: 'Ngô Minh Tú', role: 'Recruiter', status: 'Active', last: '1d ago' })
-      base.push({ name: 'Lê Thanh Sơn', role: 'Viewer', status: 'Invited', last: '—' })
-    }
-  }
-  return base.map((u) => ({ ...u, email: `${localPart(u.name)}@${c.domain}` }))
-}
-
-/* ── Company roles — built from a short permission set, then assigned ──────────
-   The VietnamWorks "build a role, then set users" flow, trimmed to 7 permissions
-   across the 3 modules. Prerequisites auto-include so a role can never be invalid.
-   "Manage users & roles" is NOT tickable — it lives on the fixed Admin role. */
-type CoPermKey = 'jobs.view' | 'jobs.post' | 'jobs.edit' | 'apps.view' | 'apps.move' | 'resume.search' | 'resume.unlock'
-const CO_PERM_GROUPS: { module: string; perms: { key: CoPermKey; label: string; needs?: CoPermKey }[] }[] = [
-  { module: 'Job posts', perms: [
-    { key: 'jobs.view', label: 'View jobs' },
-    { key: 'jobs.post', label: 'Post jobs', needs: 'jobs.view' },
-    { key: 'jobs.edit', label: 'Edit jobs', needs: 'jobs.view' },
-  ] },
-  { module: 'Applications', perms: [
-    { key: 'apps.view', label: 'View applications & CVs' },
-    { key: 'apps.move', label: 'Manage applications', needs: 'apps.view' },
-  ] },
-  { module: 'Resume search', perms: [
-    { key: 'resume.search', label: 'Search resumes' },
-    { key: 'resume.unlock', label: 'View / unlock resume detail', needs: 'resume.search' },
-  ] },
-]
-const CO_ALL_PERMS: CoPermKey[] = CO_PERM_GROUPS.flatMap((g) => g.perms.map((p) => p.key))
-const CO_NEEDS: Partial<Record<CoPermKey, CoPermKey>> = Object.fromEntries(
-  CO_PERM_GROUPS.flatMap((g) => g.perms.filter((p) => p.needs).map((p) => [p.key, p.needs])),
-) as Partial<Record<CoPermKey, CoPermKey>>
-
-/* Admin is the one fixed, highest role (all access + manage users) and cannot be
-   edited. EVERY other role is a custom role the Admin builds and can edit. */
-type CoRoleDef = { name: string; admin?: boolean; perms: CoPermKey[] }
-const CO_ROLE_DEFS: CoRoleDef[] = [
-  { name: 'Admin', admin: true, perms: CO_ALL_PERMS },
-  { name: 'Recruiter', perms: [...CO_ALL_PERMS] },
-  { name: 'Viewer', perms: ['jobs.view', 'apps.view'] },
-]
-
-function coTogglePerm(perms: CoPermKey[], key: CoPermKey): CoPermKey[] {
-  if (!perms.includes(key)) {
-    const next = new Set(perms)
-    let k: CoPermKey | undefined = key
-    while (k) { next.add(k); k = CO_NEEDS[k] }
-    return CO_ALL_PERMS.filter((p) => next.has(p))
-  }
-  const drop = new Set<CoPermKey>([key])
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const p of CO_ALL_PERMS) {
-      const n = CO_NEEDS[p]
-      if (n && drop.has(n) && !drop.has(p)) { drop.add(p); changed = true }
-    }
-  }
-  return perms.filter((p) => !drop.has(p))
-}
-
 /* Interactive "build a role" panel — the Add/Edit role screen (VietnamWorks-style,
    trimmed). Roles list on the left, permission checklist on the right. */
 function CoRoleBuilder() {
@@ -3857,111 +2676,6 @@ function CoRolePermsView({ role }: { role: string }) {
   )
 }
 
-/* ── Company activity feed ───────────────────────────────────────────────────
-   ONE merged trail of everything that ever happened on this account, typed by WHO
-   caused it so it can be filtered and so Idle stays honest:
-
-     sales   a human on OUR side did it — chat, call, quotation/PO sent
-     client  the CUSTOMER did it — posted a job, opened a CV, paid, invited a user
-     system  automatic — invoice issued, products provisioned, quota warnings
-
-   IDLE counts from the newest SALES row only. That is the rule that matters: a
-   client opening a CV or the system issuing an invoice must never make a silent
-   account look freshly contacted. Everything is visible; only sales resets the clock. */
-type CoKind = 'sales' | 'client' | 'system'
-/* `by` is the ACCOUNT that performed the activity — not the company's sales owner.
-   A colleague who covers a call while the owner is busy is the one who did the work,
-   so they are the one shown here and the one the KPI counts. `atts` are the files
-   carried by the row (screenshots of a Zalo thread, a forwarded email, meeting
-   photos); they are part of the record, not a separate document library. */
-type CoAtt = { kind: 'image' | 'email' | 'file'; label: string }
-type CoEvent = { icon: string; tone: string; title: string; time: string; sub: string; kind: CoKind; days: number; by: string; atts?: CoAtt[] }
-
-const CHAT = 'bg-sky-100 text-sky-700'
-const CALL = 'bg-emerald-100 text-emerald-700'
-const MEET = 'bg-indigo-100 text-indigo-700'
-const DOC = 'bg-violet-100 text-violet-700'
-const CLIENT = 'bg-amber-100 text-amber-700'
-const SYS = 'bg-slate-100 text-slate-600'
-
-const KIND_META: Record<CoKind, { label: string; hint: string }> = {
-  sales: { label: 'Sales', hint: 'what we did — resets Idle' },
-  client: { label: 'Client', hint: 'what the customer did' },
-  system: { label: 'System', hint: 'automatic events' },
-}
-
-function companyActivity(c: Company): CoEvent[] {
-  const contact = c.contact.replace(/^(Mr\.|Ms\.)\s*/, '').split(' · ')[0]
-  const rep = c.owner.split(' ').slice(-2).join(' ')
-  // No contact has ever been logged — a real state, and the highest-priority
-  // follow-up. An empty trail says that far better than inventing history.
-  if (c.idle === null) return []
-  const last = c.idle
-  const ev: CoEvent[] = []
-  /* Who did it: our own rows are performed by a named colleague — usually the owner,
-     but not always, which is the whole point of showing it. Client rows are performed
-     by the contact on their side; system rows by the system. */
-  const cover = 'Đỗ Minh Quân'
-  const add = (days: number, kind: CoKind, icon: string, tone: string, title: string, sub: string, by?: string, atts?: CoAtt[]) =>
-    ev.push({ days, kind, icon, tone, title, sub, by: by ?? (kind === 'sales' ? rep : kind === 'client' ? contact : 'System'), time: `${fmtIdle(days)} ago`, atts })
-
-  if (c.account === 'Churn') {
-    add(last, 'sales', '', CALL, 'Call · win-back', `${rep} called ${contact} — ${c.note.toLowerCase()} Agreed to revisit.`, cover)
-    add(last + 20, 'system', '', SYS, 'Subscription expired', 'All quota lapsed — the account is read-only until it is renewed.')
-    add(last + 34, 'sales', '', CHAT, 'Chat · Email', `${rep} sent a renewal reminder to ${contact} — no reply.`)
-    add(last + 61, 'sales', '', DOC, 'Renewal quotation sent', `Sent to ${contact}; the quotation lapsed unanswered.`)
-    add(last + 92, 'client', '', CLIENT, 'Last CV unlocked', `${contact} opened a candidate — the final use before they went quiet.`)
-    add(last + 150, 'system', '', SYS, 'Payment confirmed', 'Accounting matched the bank transfer for the previous term.')
-    return ev.sort((x, y) => x.days - y.days)
-  }
-
-  // ── sales side: chats, calls and the documents we sent ────────────────────
-  add(last, 'sales', '', CHAT, 'Chat · Zalo', `${rep} messaged ${contact} — next step: ${c.nextStep.toLowerCase()}.`, undefined,
-    [{ kind: 'image', label: 'zalo-01.png' }, { kind: 'image', label: 'zalo-02.png' }, { kind: 'image', label: 'bao-gia.jpg' }])
-  add(last + 6, 'sales', '', MEET, 'Meeting · at their office', `Package options walked through with ${contact} and the finance lead. 60 phút · 14:00 20/07/2026.`, cover,
-    [{ kind: 'email', label: 'RE- Báo giá tháng 7.eml' }, { kind: 'image', label: 'bien-ban-hop.jpg' }])
-  if (c.status === 'PO' || c.status === 'Invoice') {
-    add(last + 9, 'sales', '', DOC, 'Purchase order issued', `${contact} confirmed the accepted option; PO issued by ${rep} — active until the end of the month.`)
-  }
-  if (c.status !== 'Qualified') {
-    add(last + 21, 'sales', '', DOC, 'Quotation sent', `${rep} sent the priced options to ${contact}.`)
-  }
-  add(last + 38, 'sales', '', CALL, 'Call · discovery', `${rep} called ${contact} — logged via Calio, need and budget qualified.`)
-  add(last + 52, 'sales', '', CHAT, 'Chat · Email', `First outreach to ${contact}.`)
-
-  // ── the money + provisioning chain, once they are a customer ──────────────
-  if (isCustomer(c)) {
-    add(last + 4, 'client', '', CLIENT, 'Payment made', `${contact} transferred ${vnd(coValue(c))} for the order.`)
-    add(last + 3, 'system', '', SYS, 'Payment confirmed', 'Accounting matched the transfer against the bank — invoicing unlocked.')
-    add(last + 2, 'system', '', SYS, 'VAT e-invoice issued', 'Provider stamped the invoice; the 12-month activation window started.')
-    add(last + 2, 'system', '', SYS, 'Products provisioned',
-      [c.jobPosting && 'Job Posting', c.resumeSearch && 'Resume Search'].filter(Boolean).join(' + ') + ' — released from the paid invoice.')
-    add(last + 1, 'system', '', SYS, 'Account activated', `Login created for ${contact} (Admin) · owner ${c.owner}.`)
-  }
-
-  // ── what the client themselves did on their site ──────────────────────────
-  if (c.jobPosting) {
-    add(Math.max(0, last - 2), 'client', '', CLIENT, 'Job published', `${contact} posted a role — ${c.jobTotal - c.jobLeft}/${c.jobTotal} posting slots used.`)
-    add(Math.max(0, last - 1), 'client', '', CLIENT, 'Applications received', 'Candidates applied to the open roles — visible on the Applications tab.')
-    if (c.hasPage) add(last + 30, 'system', '', SYS, 'Company page published', 'The public profile went live on the jobseeker site.')
-    if (c.jobTotal && c.jobLeft / c.jobTotal < 0.3) {
-      add(Math.max(0, last - 3), 'system', '', SYS, 'Posting quota low', `${c.jobLeft} of ${c.jobTotal} slots left — offer a top-up.`)
-    }
-  }
-  if (c.resumeSearch) {
-    add(Math.max(0, last - 1), 'client', '', CLIENT, 'CV unlocked (PII)', `${contact} opened a candidate — ${c.cvTotal - c.cvLeft}/${c.cvTotal} unlocks used · audited.`)
-    add(Math.max(0, last - 4), 'client', '', CLIENT, 'Resume search run', 'Searched the CV pool — no unlock spent on a search itself.')
-  }
-  if (isCustomer(c)) {
-    add(Math.max(0, last - 5), 'client', '', CLIENT, 'User invited', `${contact} invited a user (Recruiter) to the account.`)
-    add(Math.max(0, last - 6), 'client', '', CLIENT, 'Signed in', `${contact} signed in to the company site.`)
-  }
-
-  return ev.sort((x, y) => x.days - y.days)
-}
-
-/* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
-const CHAT_CHANNELS = ['Zalo', 'Facebook Messenger', 'Email', 'SMS', 'Zalo OA', 'Phone', 'Other']
 /** Attachment tray shared by every activity type — images and forwarded emails. */
 /* What may be attached depends on the activity: a chat is screenshots (you cannot
    attach an email to a Zalo thread), a meeting can carry both a photo of the room
@@ -4222,7 +2936,6 @@ function CompanyActivities({ c }: { c: Company }) {
   )
 }
 
-type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Owner history' | 'Activity'
 function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -4303,117 +3016,6 @@ function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
       {noProducts && c.account === 'Churn' && <p className="mt-2 text-[11px] text-amber-700">Subscription expired — no active quota. Renew to reactivate.</p>}
     </>
   )
-}
-
-/* ── Manual-service usage ─────────────────────────────────────────────────────
-   A Manual service has no automatic meter. Nothing on the platform can observe a
-   fanpage post going up or an email blast going out, so "how many of the 4 posts
-   has this customer used?" is only answerable if the person who did the work says
-   so. This is that record.
-
-   ONE LOG ENTRY = ONE UNIT CONSUMED. Remaining is derived (total − entries), never
-   stored and never edited by hand — a typed remaining count is the thing that goes
-   out of step with what was actually delivered.
-
-   Proof is required, not decorative: the link is what a customer asks for when they
-   query the invoice ("show me the post"), and without it the entry is one person's
-   word that a unit was spent. */
-type ServiceDelivery = { id: string; date: string; link: string; image: string | null; content: string; by: string }
-type ServiceEntitlement = { sku: string; name: string; unit: string; total: number; validUntil: string; entries: ServiceDelivery[] }
-
-const SERVICE_USAGE: Record<string, ServiceEntitlement[]> = {
-  'Công ty TNHH Vạn Phát': [
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 4, validUntil: '30/11/2026', entries: [
-      { id: 'SD-001', date: '02/08/2026', link: 'https://facebook.com/topdev.vn/posts/1029384', image: 'vanphat-fb-01.jpg', content: 'Tuyển 5 Backend Engineer — Vạn Phát. Đăng kèm ảnh văn phòng, CTA về trang công ty.', by: 'Nguyễn Thị Lan' },
-      { id: 'SD-002', date: '09/08/2026', link: 'https://facebook.com/topdev.vn/posts/1031002', image: 'vanphat-fb-02.jpg', content: 'Nhắc lại tin tuyển dụng, nhấn phúc lợi 13th-month salary.', by: 'Phạm Quang Huy' },
-    ] },
-    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1, validUntil: '30/11/2026', entries: [] },
-    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 2, validUntil: '30/11/2026', entries: [
-      { id: 'SD-003', date: '05/08/2026', link: 'https://mail.topdev.vn/campaign/9921', image: null, content: 'Big Banner trong Job Alert tuần 32 — 650k ứng viên.', by: 'Nguyễn Thị Lan' },
-    ] },
-  ],
-  'FPT Software': [
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '15/09/2026', entries: [
-      { id: 'SD-010', date: '20/06/2026', link: 'https://facebook.com/topdev.vn/posts/998211', image: null, content: 'Employer branding — FPT Software culture post.', by: 'Phạm Quang Huy' },
-      { id: 'SD-011', date: '05/07/2026', link: 'https://facebook.com/topdev.vn/posts/1004556', image: 'fpt-fb-02.jpg', content: 'Tuyển Java/Go, kèm banner sự kiện tech talk.', by: 'Phạm Quang Huy' },
-    ] },
-    { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', unit: 'bài test', total: 5, validUntil: '15/09/2026', entries: [
-      { id: 'SD-012', date: '01/07/2026', link: 'https://hackerrank.com/x/tests/44120', image: null, content: 'Bộ test Java backend, 5 ứng viên vòng 2.', by: 'Trần Quốc Trung' },
-    ] },
-  ],
-  // The case that matters: paid, partly used, then the validity ran out. Two sends
-  // were never delivered and can no longer be — that has to be visible, not silent.
-  'Tiki': [
-    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 3, validUntil: '30/06/2026', entries: [
-      { id: 'SD-020', date: '10/05/2026', link: 'https://mail.topdev.vn/campaign/8812', image: null, content: 'Chiến dịch tuyển Data Engineer.', by: 'Phạm Quang Huy' },
-    ] },
-  ],
-  'VNG Corporation': [
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 3, validUntil: '20/12/2026', entries: [] },
-    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'mốc', total: 2, validUntil: '20/12/2026', entries: [
-      { id: 'SD-030', date: '01/07/2026', link: 'https://crm.saramin.vn/notes/5521', image: null, content: 'Mốc ngày 11 — review chất lượng CV, khách hài lòng.', by: 'Nguyễn Thị Lan' },
-      { id: 'SD-031', date: '21/07/2026', link: 'https://crm.saramin.vn/notes/5588', image: null, content: 'Mốc ngày 31 — đề xuất nâng lên Top Job.', by: 'Nguyễn Thị Lan' },
-    ] },
-  ],
-  'MoMo': [
-    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 1, validUntil: '18/10/2026', entries: [] },
-  ],
-  'Thế Giới Di Động': [
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 6, validUntil: '10/11/2026', entries: [
-      { id: 'SD-040', date: '15/06/2026', link: 'https://facebook.com/topdev.vn/posts/995001', image: 'tgdd-fb-01.jpg', content: 'Tuyển hàng loạt nhân viên cửa hàng mới.', by: 'Trần Quốc Trung' },
-      { id: 'SD-041', date: '01/07/2026', link: 'https://facebook.com/topdev.vn/posts/1002110', image: 'tgdd-fb-02.jpg', content: 'Đợt 2 — mở rộng khu vực miền Trung.', by: 'Trần Quốc Trung' },
-      { id: 'SD-042', date: '20/07/2026', link: 'https://facebook.com/topdev.vn/posts/1010455', image: null, content: 'Đợt 3 — nhấn lộ trình thăng tiến.', by: 'Trần Quốc Trung' },
-    ] },
-  ],
-  // Churned: validity lapsed with everything unused. The clearest "we owe nothing
-  // any more, but the customer got nothing either" row.
-  'Công ty TNHH Việt Tiến': [
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '10/01/2026', entries: [] },
-  ],
-
-  /* More companies, deliberately spread across all four derived states and all five
-     SKUs — the page is read by scanning for what is owed, so the demo has to show a
-     fresh row, a used-up row, an EXPIRED-with-units-left row (the one that must never
-     be quiet) and a cleanly closed row side by side. */
-  'Công ty CP Hoàng Gia': [
-    // Nothing delivered and validity already gone: the customer paid for two posts
-    // and received none. The loudest row on the page.
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 2, validUntil: '30/06/2026', entries: [] },
-    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'lượt', total: 3, validUntil: '20/12/2026', entries: [
-      { id: 'SD-030', date: '12/08/2026', link: '', image: null, content: 'Gọi review 2 tuần đầu — CV chưa đạt kỳ vọng, đề xuất đổi tiêu đề tin.', by: 'Trần Quốc Trung' },
-    ] },
-  ],
-  'Shopee Việt Nam': [
-    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 3, validUntil: '31/10/2026', entries: [
-      { id: 'SD-031', date: '28/07/2026', link: 'https://mail.topdev.vn/campaign/10032', image: 'shopee-email-01.jpg', content: 'Blast 120k dev — tuyển Backend & Data. Open rate 24%.', by: 'Phạm Quang Huy' },
-    ] },
-    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 2, validUntil: '31/10/2026', entries: [] },
-  ],
-  'Công ty TNHH Minh Long': [
-    // Everything delivered, validity passed — a clean close, nothing owed.
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 1, validUntil: '10/01/2026', entries: [
-      { id: 'SD-032', date: '05/01/2026', link: 'https://facebook.com/topdev.vn/posts/981004', image: 'minhlong-fb.jpg', content: 'Tuyển thợ gốm & QC — đăng kèm ảnh xưởng.', by: 'Nguyễn Thị Lan' },
-    ] },
-  ],
-  'Công ty CP Trường Sơn': [
-    { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', unit: 'bài test', total: 10, validUntil: '30/11/2026', entries: [
-      { id: 'SD-033', date: '01/08/2026', link: 'https://hackerrank.com/x/tests/88120', image: null, content: 'Bộ test Java cho 4 ứng viên vòng 1.', by: 'Nguyễn Thị Lan' },
-      { id: 'SD-034', date: '08/08/2026', link: 'https://hackerrank.com/x/tests/88455', image: null, content: 'Bộ test SQL cho 3 ứng viên Data.', by: 'Nguyễn Thị Lan' },
-    ] },
-    { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', unit: 'lượt', total: 2, validUntil: '30/11/2026', entries: [] },
-  ],
-  'Base.vn': [
-    // Small customer, one service, fully used inside validity.
-    { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', unit: 'lượt gửi', total: 1, validUntil: '30/11/2026', entries: [
-      { id: 'SD-035', date: '11/08/2026', link: 'https://mail.topdev.vn/campaign/10101', image: null, content: 'Blast 40k dev SaaS — tuyển Product Engineer.', by: 'Trần Quốc Trung' },
-    ] },
-  ],
-  'Công ty CP An Khang': [
-    { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', unit: 'lượt gửi', total: 4, validUntil: '18/10/2026', entries: [
-      { id: 'SD-036', date: '04/08/2026', link: 'https://mail.topdev.vn/campaign/10044', image: 'ankhang-banner.jpg', content: 'Job Alert tuần 32 — ngành Y tế / Dược.', by: 'Nguyễn Thị Lan' },
-    ] },
-    { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', unit: 'bài đăng', total: 3, validUntil: '18/10/2026', entries: [] },
-  ],
 }
 
 function ServiceUsageCard({ c }: { c: Company }) {
@@ -4584,34 +3186,6 @@ function LogServiceDeliveryModal({ e, company, onClose }: { e: ServiceEntitlemen
     </div>
   )
 }
-
-/** Hình thức doanh nghiệp — the "business form" a jobseeker filters companies by.
-    Modelled on Saramin KR's 기업형태 and adapted to the VN market, where FDI and
-    state-owned are the two distinctions candidates actually care about. NOT the
-    same as Loại hình doanh nghiệp (the legal form on the ĐKKD, which lives on the
-    company record): this is scale + ownership character, that one is company law. */
-const BUSINESS_FORMS = [
-  'Mid-sized company',
-  'Large enterprise / Corporation',
-  'Small & medium enterprise (SME)',
-  'Startup',
-  'Foreign-invested (FDI) company',
-  'Joint venture',
-  'State-owned enterprise',
-  'Branch / Representative office',
-  'Non-profit / NGO',
-]
-
-/* Headcount bands. A DROPDOWN, not free text: it is a list column and a search
-   facet, so the values have to be identical across every company. */
-const CO_SIZES = ['1–9', '10–49', '50–200', '200–500', '500–1000', '1000–5000', '5000+']
-
-/** Chip row under the facts card. A fixed list, because the whole point of the
-    chips is that they read the same on every company and can be filtered on. */
-const CP_TRAITS = [
-  'Thành viên tập đoàn', 'Gần ga metro', 'Hỗ trợ thai sản', 'Làm việc từ xa',
-  'Trang phục tự do', 'Chế độ nghỉ chăm con', 'Có căn-tin', 'Văn phòng hạng A',
-]
 
 /** One collapsible section = one card on the live page. `state` is what the
     section contributes to the page, said in the reviewer's language. */
@@ -4917,22 +3491,6 @@ function CompanyPageEditor({ c }: { c: Company }) {
     </div>
   )
 }
-
-/* ── the tabbed company record ────────────────────────────────────────────── */
-/* ── Affiliated companies — the corporate-tree block on a company record ─────
-   One level up (as a breadcrumb) and one level down (as a list). Deliberately not
-   the whole tree: the rep needs context and a way across, not an org chart. Every
-   row shows the affiliate's OWN tax code, because that is what makes it obvious
-   these are separate customers that happen to be related. */
-/* Sơ đồ tập đoàn — the whole group as an indented tree, rooted at the top-most
-   parent. Deliberately NOT a revenue roll-up: the point of the chart is to show
-   that the link is for lookup only, so every node carries its own MST, its own
-   tier and its own sales owner. */
-/* One indent step. 18px looked fine on a two-level demo group and squeezed the name
-   to "Kim Lon…" the moment a real conglomerate went five deep: the indent, the two
-   pills and the name all compete for one column. 14px plus a wider modal buys back
-   enough room that depth 5 still reads. */
-const INDENT = 14
 
 function GroupChart({ root, current, onClose, onOpen }: { root: Company; current: Company; onClose: () => void; onOpen?: (x: Company) => void }) {
   const rows: { c: Company; depth: number }[] = []
@@ -5350,80 +3908,6 @@ function CompanyTagPicker({ initial = [] }: { initial?: string[] }) {
   )
 }
 
-/* ── Owner (sales) history — who held the account, and who reassigned it ────
-   The current owner is the newest entry; every earlier tenure records the ACTOR
-   who moved it (a Sales lead, never the old/new owner) and why. Deterministic
-   from the company so a record reads the same every render. Mirrors the CRM
-   requirement "Sales owner — one current owner, and a full reassignment history". */
-type CoOwnerTenure = { owner: string; from: string; to: string; by: string; reason: string; created?: boolean }
-/* Wider than the three reps who currently own companies: a history that goes back
-   years contains people who have since left, and a pool of three makes a six-step
-   chain visibly cycle A → B → A → B. */
-const OWNER_POOL = [
-  'Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung',
-  'Đặng Thu Hà', 'Vũ Minh Khoa', 'Hoàng Anh Tuấn', 'Bùi Ngọc Diệp',
-]
-const OWNER_LEAD = 'Lê Hữu Phong · Sales Lead'
-const REASSIGN_REASONS = [
-  'Territory rebalance — moved to the rep for this region',
-  'Previous rep left the company — handed over',
-  'Upgraded to a key-account rep as the account grew',
-  'Round-robin reallocation after a workload review',
-  'Rep moved to the enterprise team — account stayed in SMB',
-  'Customer asked for a different point of contact',
-  'Maternity cover — returned to the original rep afterwards',
-  'Merged territory after the Q3 reorg',
-]
-const ownerSinceYear = (c: Company) => {
-  const m = /\/(\d{4})$/.exec(c.since)
-  return m ? Number(m[1]) : null
-}
-/** a rep different from `owner`, chosen deterministically by `salt`. */
-const pickPrevOwner = (owner: string, salt: number) => {
-  const others = OWNER_POOL.filter((r) => r !== owner)
-  return others[salt % others.length]
-}
-
-/* Month arithmetic on a fixed "now" (08/2026) so a record renders identically every
-   time — a history that shuffled between renders would be unreadable in review. */
-const NOW_M = 2026 * 12 + 7
-const mLabel = (m: number) => `${String((m % 12) + 1).padStart(2, '0')}/${Math.floor(m / 12)}`
-
-function companyOwnerHistory(c: Company): CoOwnerTenure[] {
-  const yr = ownerSinceYear(c)
-  // A brand-new lead (no purchase / no activation date): one entry — whoever
-  // created it still owns it. "Never reassigned" is a real state, not a gap.
-  if (yr === null) return [{ owner: c.owner, from: 'at creation', to: 'now', by: 'Tạo lead (hệ thống)', reason: `Lead created — ${coLeadSource(c)}`, created: true }]
-
-  const salt = c.name.length + c.tax.length
-  /* How many times it changed hands. Older accounts have seen more reps, but a
-     FLOOR of three keeps the card showing a real chain even on a recently activated
-     company — the wireframe exists to be reviewed, and a two-row list never shows
-     whether the layout survives a long history. Capped at 8 so it stays a list. */
-  const age = Math.max(0, 2026 - yr)
-  const priors = Math.min(8, Math.max(4, age * 2 + (salt % 3)))
-  if (priors === 0) return [{ owner: c.owner, from: c.since, to: 'now', by: 'Tạo lead (hệ thống)', reason: 'Owner set at creation · never reassigned', created: true }]
-
-  /* Handover points, evenly spread across the account's life and walked BACKWARDS
-     from now — index 0 is when the current owner took over. */
-  const span = Math.max(priors, age * 12)
-  const at = (i: number) => mLabel(NOW_M - Math.round(((i + 1) / (priors + 1)) * span))
-
-  const out: CoOwnerTenure[] = []
-  for (let i = 0; i <= priors; i++) {
-    const last = i === priors
-    out.push({
-      owner: i === 0 ? c.owner : pickPrevOwner(c.owner, salt + i),
-      from: last ? c.since : at(i),
-      to: i === 0 ? 'now' : at(i - 1),
-      by: last ? 'Tạo lead (hệ thống)' : OWNER_LEAD,
-      reason: last ? 'Created from CRM · first owner' : REASSIGN_REASONS[(salt + i * 3) % REASSIGN_REASONS.length],
-      created: last,
-    })
-  }
-  return out
-}
-
 function OwnerHistory({ c }: { c: Company }) {
   const hist = companyOwnerHistory(c)
   /* The header counts HANDOVERS, not owners — a company always has exactly one
@@ -5462,25 +3946,6 @@ function OwnerHistory({ c }: { c: Company }) {
   )
 }
 
-/* ── Verification documents — proof the MST belongs to them (giấy phép KD, giấy
-   chứng nhận đăng ký thuế, hợp đồng đã ký). Uploaded at creation AND managed here
-   on the record.
-
-   NO approval status. A file is either on the record or it is not, and that single
-   fact is already visible from the list itself — a per-file Chờ duyệt / Đã duyệt
-   badge added a second state to read without adding anything to act on, and it
-   implied a review queue nobody owns. */
-type CoDoc = { name: string; note?: string }
-function companyDocs(c: Company): CoDoc[] {
-  // Anyone ever invoiced has their licence on file; a churned customer keeps theirs.
-  // A deal that reached PO is collecting it. An early lead has none yet.
-  if (c.account === 'Existing' || c.account === 'Churn') return [
-    { name: 'giay-phep-kinh-doanh.pdf', note: `Tải lên ${c.since}` },
-    { name: 'giay-chung-nhan-dang-ky-thue.pdf' },
-  ]
-  if (isCustomer(c)) return [{ name: 'giay-phep-kinh-doanh.pdf' }]
-  return []
-}
 function CompanyDocs({ c }: { c: Company }) {
   const ro = useReadOnly()
   const [docs, setDocs] = useState<CoDoc[]>(() => companyDocs(c))
@@ -5514,23 +3979,6 @@ function CompanyDocs({ c }: { c: Company }) {
     </DetailCard>
   )
 }
-
-/**
- * Pipeline stage, as a control rather than a read-out.
- *
- * WHO may set WHAT is the whole point of this component:
- *  · SALES moves the deal between the three talking stages — Proposal, Qualified,
- *    Negotiation — in any direction. A deal genuinely goes backwards (the champion
- *    leaves, it returns to Proposal), so this is not a one-way ladder.
- *  · SALES may close to LOST from ANY stage, with a reason. That is the one exit a
- *    person is allowed to take at will.
- *  · PO and INVOICE are SYSTEM-only and are NOT in the menu at all. They are
- *    consequences of issuing the sales order and of Accounting issuing the VAT
- *    invoice; listing them greyed only invited the question "why can't I pick
- *    this?" on a menu whose job is to offer the choices that exist.
- *  · INVOICE is terminal: the deal is closed-won and there is nothing left to move.
- */
-const SALES_STAGES: CoStatus[] = ['Proposal', 'Qualified', 'Negotiation']
 
 function PipelineStatusPicker({ c }: { c: Company }) {
   const ro = useReadOnly()
@@ -6168,15 +4616,6 @@ function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack:
   )
 }
 
-type CUser = { name: string; email: string; company: string; role: CoUserRole; status: 'Active' | 'Invited' | 'Disabled'; last: string }
-const CUSERS: CUser[] = [
-  { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', company: 'Cty Vạn Phát', role: 'Admin', status: 'Active', last: '10m ago' },
-  { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', company: 'Cty Vạn Phát', role: 'Recruiter', status: 'Active', last: '2h ago' },
-  { name: 'Lý Văn Giang', email: 'giang@fpt.com.vn', company: 'FPT Software', role: 'Admin', status: 'Active', last: '1d ago' },
-  { name: 'Ngô Minh Tú', email: 'tu@fpt.com.vn', company: 'FPT Software', role: 'Viewer', status: 'Invited', last: '—' },
-  { name: 'Bùi Thu Hằng', email: 'hang@tiki.vn', company: 'Tiki', role: 'Recruiter', status: 'Disabled', last: '3 months ago' },
-]
-
 function InviteUserModal({ onClose }: { onClose: () => void }) {
   const [role, setRole] = useState('Recruiter')
   return (
@@ -6338,41 +4777,6 @@ function AdminCompanyUsers() {
     </div>
   )
 }
-
-/* ── User — jobseeker accounts ────────────────────────────────────────────────
- * HQ view of the seeker side of the marketplace (module: Job seeker user
- * management). Accounts are born on the Jobseeker site — email + password or one
- * of the 4 social logins — so HQ's job here is search → inspect → activate /
- * deactivate, never "type someone's password". Sign-up method and email
- * verification are first-class columns because they explain most support cases.
- * -------------------------------------------------------------------------- */
-type JSSignup = 'Email' | 'Google' | 'Facebook' | 'LinkedIn' | 'GitHub'
-type JSStatus = 'Active' | 'Unverified' | 'Deactivated' | 'Withdrawn'
-type JSUser = {
-  id: number
-  name: string
-  email: string
-  phone: string
-  location: string
-  headline: string
-  signup: JSSignup
-  status: JSStatus
-  complete: number
-  resumes: number
-  applications: number
-  joined: string
-  last: string
-}
-const JS_STATUS: Record<JSStatus, StatusTone> = { Active: 'active', Unverified: 'pending', Deactivated: 'expired', Withdrawn: 'rejected' }
-const JS_USERS: JSUser[] = [
-  { id: 1, name: 'Nguyễn Văn An', email: 'an.nguyen@gmail.com', phone: '0903 112 445', location: 'Hồ Chí Minh', headline: 'Frontend Engineer · 4 yrs', signup: 'Email', status: 'Active', complete: 92, resumes: 2, applications: 14, joined: '12/03/2025', last: '10m ago' },
-  { id: 2, name: 'Trần Thị Bích', email: 'bich.tran@gmail.com', phone: '0912 668 201', location: 'Hà Nội', headline: 'Digital Marketing · 6 yrs', signup: 'Google', status: 'Active', complete: 78, resumes: 1, applications: 8, joined: '04/01/2026', last: '3h ago' },
-  { id: 3, name: 'Lê Hoàng Cường', email: 'cuong.le@outlook.com', phone: '0977 340 118', location: 'Hồ Chí Minh', headline: 'Product Manager · 8 yrs', signup: 'LinkedIn', status: 'Active', complete: 100, resumes: 3, applications: 27, joined: '22/08/2024', last: '1d ago' },
-  { id: 4, name: 'Phạm Thu Dung', email: 'dung.pham@gmail.com', phone: '—', location: 'Đà Nẵng', headline: 'Kế toán tổng hợp · 3 yrs', signup: 'Email', status: 'Unverified', complete: 24, resumes: 0, applications: 0, joined: '26/07/2026', last: '—' },
-  { id: 5, name: 'Vũ Minh Đức', email: 'duc.vu@gmail.com', phone: '0908 771 903', location: 'Hồ Chí Minh', headline: 'Backend Engineer · 5 yrs', signup: 'Facebook', status: 'Active', complete: 61, resumes: 1, applications: 3, joined: '15/05/2026', last: '2 weeks ago' },
-  { id: 6, name: 'Đặng Thu Trang', email: 'trang.dang@gmail.com', phone: '0356 220 447', location: 'Hải Phòng', headline: 'QA Engineer · 2 yrs', signup: 'GitHub', status: 'Deactivated', complete: 46, resumes: 1, applications: 5, joined: '03/02/2025', last: '3 months ago' },
-  { id: 7, name: 'Hoàng Bảo Ngọc', email: 'ngoc.hoang@gmail.com', phone: '0938 015 662', location: 'Hà Nội', headline: 'HR Specialist · 3 yrs', signup: 'Email', status: 'Withdrawn', complete: 88, resumes: 0, applications: 11, joined: '19/09/2024', last: '1 month ago' },
-]
 
 /** Sign-up channel as a compact chip — email vs one of the 4 social providers. */
 function SignupChip({ via }: { via: JSSignup }) {
@@ -6638,46 +5042,6 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
   )
 }
 
-/* ── Content ──────────────────────────────────────────────────────────────── */
-/* A BANNER is an instance of a Placement product: one company's creative, running
-   on one slot, for a period. The product says what a hero banner costs and how big
-   it is; this record is the thing that actually goes live.
-
-   Status mirrors Jobs exactly — Draft → Schedule → Open → Expired, driven by the
-   publish action and the dates, never typed. Exposure is SEPARATE, as on a job: an
-   Open banner can be pulled off screen without ending its booking. */
-type BannerStatus = 'Draft' | 'Schedule' | 'Open' | 'Expired'
-const BANNER_TONE: Record<BannerStatus, StatusTone> = {
-  Draft: 'draft',
-  Schedule: 'schedule',
-  Open: 'open',
-  Expired: 'closed',
-}
-type Banner = {
-  id: string
-  name: string
-  /* Sold — bought by a customer, backed by a paid PO line.
-     House — Saramin VN's own promotion. No company, no PO, no product. */
-  source: 'Sold' | 'House'
-  sku: string
-  company: string
-  start: string
-  end: string
-  status: BannerStatus
-  exposure: 'On' | 'Off'
-  clicks: string
-  creative: string | null
-}
-const BANNERS: Banner[] = [
-  { id: 'BN-1042', name: 'Hero — Tết 2026 campaign', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', clicks: '12,480', creative: 'tet2026-hero-1536x371.jpg' },
-  { id: 'BN-1051', name: 'Hero — Tuyển dụng Q3', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'Công ty Vạn Phát', start: '01/08/2026', end: '08/08/2026', status: 'Open', exposure: 'On', clicks: '3,190', creative: 'vanphat-hero-1536x371.jpg' },
-  { id: 'BN-1052', name: 'Adsense — IT jobs', source: 'Sold', sku: 'PLC-ADS-HOME', company: 'Tiki', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'tiki-ads-1260x120.jpg' },
-  { id: 'BN-1053', name: 'Hero — Employer promo', source: 'Sold', sku: 'PLC-HOMEHERO', company: 'MoMo', start: '—', end: '—', status: 'Draft', exposure: 'Off', clicks: '—', creative: null },
-  { id: 'BN-1054', name: 'Adsense — Search, Shopee', source: 'Sold', sku: 'PLC-ADS-SEARCH', company: 'Shopee', start: '05/08/2026', end: '12/08/2026', status: 'Open', exposure: 'Off', clicks: '840', creative: 'shopee-search-425x160.jpg' },
-  { id: 'BN-1060', name: 'Tuyển dụng nội bộ — Saramin VN', source: 'House', sku: 'PLC-HOMEHERO', company: 'Saramin VN', start: '01/08/2026', end: '31/08/2026', status: 'Open', exposure: 'On', clicks: '2,410', creative: 'saramin-hiring-1536x371.jpg' },
-  { id: 'BN-1061', name: 'Thông báo bảo trì hệ thống', source: 'House', sku: 'PLC-ADS-HOME', company: 'Saramin VN', start: '20/08/2026', end: '22/08/2026', status: 'Schedule', exposure: 'Off', clicks: '—', creative: 'maintenance-1260x120.jpg' },
-]
-
 /* ── Display: banners + popups ────────────────────────────────────────────────
    ONE page, not two. A banner and a popup are the same commercial object — a
    Display placement product, sold on the same COMPANY → PO → PRODUCT chain, with
@@ -6768,36 +5132,6 @@ function AdminBanners({ leading }: { leading?: React.ReactNode }) {
       {(creating || edit) && <PublishBannerModal banner={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
     </div>
   )
-}
-
-/* Publish a banner. Two decisions only, as asked: WHEN it starts and WHAT runs.
-   Everything else is read from the placement product — size, duration, the slot's
-   rotation cap — because those were fixed when the product was sold. */
-/* Placement lines that have actually been BOUGHT. A banner cannot be published
-   from the catalogue — only from a paid order line — which is the module's own
-   invariant applied to this screen: nothing is entitled without a paid order.
-
-   `qty` is what the customer bought, `used` is how many bookings already exist
-   against that line. A line with none left cannot be chosen again. */
-type PoPlacementLine = { sku: string; qty: number; used: number }
-type PlacementPo = { po: string; invoiced: string | null; lines: PoPlacementLine[] }
-const PLACEMENT_POS: Record<string, PlacementPo[]> = {
-  'Công ty TNHH Vạn Phát': [
-    { po: 'PO-005812-07-2026', invoiced: '26/05/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }, { sku: 'PLC-POPUP', qty: 2, used: 1 }] },
-    { po: 'PO-005940-08-2026', invoiced: null, lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
-  ],
-  'FPT Software': [
-    { po: 'PO-005601-06-2026', invoiced: '15/06/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 1 }] },
-  ],
-  'Tiki': [
-    { po: 'PO-005733-07-2026', invoiced: '01/07/2026', lines: [{ sku: 'PLC-ADS-HOME', qty: 3, used: 1 }] },
-  ],
-  'MoMo': [
-    { po: 'PO-005888-07-2026', invoiced: '18/07/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
-  ],
-  'Shopee': [
-    { po: 'PO-005777-08-2026', invoiced: '05/08/2026', lines: [{ sku: 'PLC-ADS-SEARCH', qty: 2, used: 1 }] },
-  ],
 }
 
 /* Publish a banner. The chain is COMPANY → PO → PRODUCT, then the two decisions
@@ -7196,51 +5530,6 @@ function DestinationPicker() {
   )
 }
 
-/* A POPUP is the same kind of record as a banner — a scheduled creative with a
-   source, a status and an exposure switch. Three things differ, and all three come
-   from the fact that a popup INTERRUPTS rather than sits in a slot:
-
-     · it targets an AUDIENCE, not a placement
-     · it carries a FREQUENCY CAP, so one person is not shown it twice a day
-     · only ONE can show at a time, so it needs a PRIORITY
-
-   Everything else — Draft → Schedule → Open → Expired, Exposure separate, creative
-   frozen while Open — is deliberately identical, because an operator who has learnt
-   the banner screen should not have to learn a second one. */
-type PopupAudience = 'Guests' | 'Jobseekers' | 'Employers'
-type Popup = {
-  id: string
-  name: string
-  source: 'Sold' | 'House'
-  audience: PopupAudience
-  company: string
-  /** the PO line this popup was sold on — empty for a House popup */
-  po?: string
-  /** the placement product bought (Homepage pop-up …) */
-  product: string
-  /** why it is running, in the booker's own words — asked on the form as Mục đích */
-  purpose: string
-  start: string
-  end: string
-  status: BannerStatus
-  exposure: 'On' | 'Off'
-  freq: string
-  priority: number
-  creative: string | null
-}
-const POPUPS: Popup[] = [
-  { id: 'PU-2010', name: 'Chào mừng người dùng mới', source: 'House', audience: 'Guests', product: 'Homepage pop-up', purpose: 'Giới thiệu tính năng cho khách mới', company: 'Saramin VN', start: '01/06/2026', end: 'Always on', status: 'Open', exposure: 'On', freq: '1 / phiên', priority: 1, creative: 'welcome-popup.jpg' },
-  { id: 'PU-2011', name: 'Khảo sát NPS', source: 'House', audience: 'Jobseekers', product: 'Homepage pop-up', purpose: 'Thu thập NPS quý 3', company: 'Saramin VN', start: '01/08/2026', end: '14/08/2026', status: 'Open', exposure: 'On', freq: '1 / tuần', priority: 3, creative: 'nps-survey.jpg' },
-  { id: 'PU-2012', name: 'Tuyển dụng Q3 — Vạn Phát', source: 'Sold', audience: 'Jobseekers', po: 'PO-003862-07-2026', product: 'Homepage pop-up', purpose: 'Đẩy tin tuyển dụng Q3', company: 'Công ty TNHH Vạn Phát', start: '10/08/2026', end: '17/08/2026', status: 'Schedule', exposure: 'Off', freq: '1 / phiên', priority: 2, creative: 'vanphat-popup.jpg' },
-  { id: 'PU-2013', name: 'Employer trial', source: 'House', audience: 'Employers', product: 'Homepage pop-up', purpose: 'Mời NTD dùng thử', company: 'Saramin VN', start: '—', end: '—', status: 'Draft', exposure: 'Off', freq: '1 / tuần', priority: 5, creative: null },
-  { id: 'PU-2009', name: 'Tết 2026 — FPT Software', source: 'Sold', audience: 'Jobseekers', po: 'PO-003790-12-2025', product: 'Homepage pop-up', purpose: 'Chiến dịch Tết 2026', company: 'FPT Software', start: '01/01/2026', end: '15/02/2026', status: 'Expired', exposure: 'Off', freq: '1 / phiên', priority: 4, creative: 'fpt-tet.jpg' },
-]
-const PU_AUDIENCE: Record<PopupAudience, string> = {
-  Guests: 'Khách chưa đăng nhập',
-  Jobseekers: 'Ứng viên đã đăng nhập',
-  Employers: 'Nhà tuyển dụng',
-}
-
 function AdminPopups({ leading }: { leading?: React.ReactNode }) {
   const [fStatus, setFStatus] = useState('')
   const [fSource, setFSource] = useState('')
@@ -7577,27 +5866,6 @@ function PublishPopupModal({ popup, onClose }: { popup: Popup | null; onClose: (
   )
 }
 
-/* ── Account usage, across every customer ─────────────────────────────────────
-   The queues answer "what still needs doing?". This answers the other question —
-   "what has this customer consumed?" — for every customer at once, which today can
-   only be reconstructed by opening thirty company records one at a time.
-
-   Every column is the same shape because every product is: bought N, used M. Job
-   slots, CV unlocks, placement bookings and service deliveries differ only in WHO
-   records the use — the platform observes the first three, a person asserts the
-   fourth — not in what the number means. */
-type UsagePair = { used: number; total: number }
-function usageOf(c: Company) {
-  const placements = (PLACEMENT_POS[c.name] ?? []).flatMap((p) => p.lines)
-  const services = SERVICE_USAGE[c.name] ?? []
-  return {
-    job: { used: c.jobTotal - c.jobLeft, total: c.jobTotal } as UsagePair,
-    cv: { used: c.cvTotal - c.cvLeft, total: c.cvTotal } as UsagePair,
-    plc: { used: placements.reduce((t, l) => t + l.used, 0), total: placements.reduce((t, l) => t + l.qty, 0) } as UsagePair,
-    svc: { used: services.reduce((t, e) => t + e.entries.length, 0), total: services.reduce((t, e) => t + e.total, 0) } as UsagePair,
-  }
-}
-
 /** A used/total cell. Empty means "did not buy this", which is not the same as
     "bought and used none" — so it renders as — rather than 0/0 with a full bar. */
 function UsageCell({ p }: { p: UsagePair }) {
@@ -7688,112 +5956,6 @@ function AdminAccountUsage() {
     </div>
   )
 }
-
-/* ── Manual services, one page for all of them ────────────────────────────────
-   Five products across a hundred companies is not five queues — it is one list at
-   the grain of (company × service), which is where the quota lives. A per-product
-   page fragments the one question ops actually asks: who is owed something?
-
-   STATUS IS DERIVED from two facts, remaining and validity, and both matter:
-
-     Còn lượt    — remaining > 0, still valid. Actionable.
-     Đã dùng hết — delivered everything. Nothing owed, nothing lost.
-     Hết hạn     — validity passed with units UNUSED. The customer paid for
-                   something they never received, and it can no longer be given.
-                   This is the row that must never be silent.
-     Đã kết thúc — validity passed with everything delivered. Clean close.
-
-   Only "Còn lượt" can be logged against. Delivering after expiry would mean giving
-   away a unit the customer's own terms had already forfeited. */
-type SvcState = 'Còn lượt' | 'Đã dùng hết' | 'Hết hạn' | 'Đã kết thúc'
-const SVC_TONE: Record<SvcState, StatusTone> = {
-  'Còn lượt': 'open',
-  'Đã dùng hết': 'expired',
-  'Hết hạn': 'rejected',
-  'Đã kết thúc': 'closed',
-}
-/** Demo "today". A real build compares against the server clock. */
-const SVC_TODAY = new Date(2026, 7, 16)
-const asDate = (d: string) => {
-  const [dd, mm, yy] = d.split('/').map(Number)
-  return new Date(yy, mm - 1, dd)
-}
-function svcState(e: ServiceEntitlement): SvcState {
-  const left = e.total - e.entries.length
-  const expired = asDate(e.validUntil) < SVC_TODAY
-  if (expired) return left > 0 ? 'Hết hạn' : 'Đã kết thúc'
-  return left > 0 ? 'Còn lượt' : 'Đã dùng hết'
-}
-
-/* ── CV search usage ──────────────────────────────────────────────────────────
-   HQ's view of how the CV-search product is actually USED. Same grain and same
-   shape as Manual services — one row per (customer × package bought) — because it
-   is the same kind of object: something a customer paid for that either gets
-   consumed or quietly does not.
-
-   Account usage answers "how much quota is left". This answers "is anybody
-   searching", and the two give opposite readings on the same account: a customer
-   who bought 40 unlocks and never logged in reads as 40 REMAINING there and as a
-   dead renewal here. */
-const CV_SEARCH_PACKAGES = [
-  { pkg: 'CV Search 100 · 6 tháng', co: 'Vạn Phát Healthcare', coId: 'VP-1042', owner: 'Ngọc Anh', used: 39, total: 100, until: '31/12/2026', searches: 142, last: '2 giờ trước' },
-  { pkg: 'CV Search 50 · 3 tháng', co: 'FPT Software', coId: 'FS-0318', owner: 'Minh Tuấn', used: 31, total: 50, until: '30/09/2026', searches: 96, last: 'Hôm nay' },
-  { pkg: 'CV Search 50 · 3 tháng', co: 'Tiki', coId: 'TK-0771', owner: 'Ngọc Anh', used: 12, total: 50, until: '15/10/2026', searches: 61, last: '3 ngày trước' },
-  { pkg: 'CV Search 30 · 1 tháng', co: 'MoMo', coId: 'MM-0209', owner: 'Hải Yến', used: 4, total: 30, until: '05/09/2026', searches: 24, last: '1 tuần trước' },
-  { pkg: 'CV Search 50 · 3 tháng', co: 'Zenpay', coId: 'ZP-1130', owner: 'Minh Tuấn', used: 0, total: 50, until: '20/11/2026', searches: 4, last: '3 tuần trước' },
-  { pkg: 'CV Search 40 · 6 tháng', co: 'One Mount', coId: 'OM-0455', owner: 'Hải Yến', used: 0, total: 40, until: '28/02/2027', searches: 0, last: '—' },
-]
-
-/* Two failures that look identical to the employer and are fixed by different
-   people. The labels say which is which without needing the legend. */
-const ZERO_RESULT_TERMS = [
-  { term: 'Kubernetes + Hà Nội', n: 14, why: 'Không có ứng viên' as const },
-  { term: 'kiến trúc sư giải pháp', n: 11, why: 'Không hiểu từ khoá' as const },
-  { term: 'RPA', n: 9, why: 'Không hiểu từ khoá' as const },
-  { term: 'Điều dưỡng + tiếng Nhật N2', n: 7, why: 'Không có ứng viên' as const },
-  { term: 'flutter dev', n: 5, why: 'Không hiểu từ khoá' as const },
-]
-
-/* ── Unresolved terms ─────────────────────────────────────────────────────────
-   Promoted out of a panel on CV search because it is a QUEUE, not a report: every
-   row needs somebody to do something and then say they did it. A panel cannot
-   hold a status, an owner or a decision, and at real volume this is hundreds of
-   rows a month rather than five.
-
-   The important move is the MERGE. The same failure arrives from two directions —
-   an employer searches "RPA" and gets nothing, a candidate's PDF says "RPA" and it
-   resolves to nothing — and the fix is identical: one alias, one row, both sides
-   fixed at once. Two lists would mean the taxonomy owner watches two queues and
-   fixes the same word twice.
-
-   Tab 2 is deliberately NOT the same problem. A term we understood against a pool
-   that is empty is a sourcing job, not a data job, and it belongs to Sales. It sits
-   here only because both are discovered the same way — by a search returning
-   nothing — and separating them at the tab level is what stops them being confused. */
-type TermStatus = 'Mới' | 'Đã xử lý' | 'Bỏ qua'
-/* `from` is a LIST, not a value. The same word often arrives from both directions —
-   an employer types it into CV search and gets nothing, and a candidate's PDF
-   contains it and resolves to nothing — and seeing both on one row is the clearest
-   possible evidence that one alias fixes two problems. */
-type TermSource = 'search' | 'cv'
-const SOURCE_LABEL: Record<TermSource, string> = { search: 'NTD tìm kiếm', cv: 'CV ứng viên' }
-const UNRESOLVED_TERMS: { term: string; from: TermSource[]; n: number; first: string; last: string; suggest: string; status: TermStatus }[] = [
-  { term: 'RPA', from: ['search', 'cv'], n: 23, first: '02/08', last: 'Hôm nay', suggest: 'Kỹ năng mới · nhóm IT — Software', status: 'Mới' },
-  { term: 'ReactJs', from: ['search', 'cv'], n: 34, first: '21/07', last: 'Hôm nay', suggest: 'Alias của “React”', status: 'Đã xử lý' },
-  { term: 'flutter dev', from: ['search'], n: 5, first: '05/08', last: 'Hôm qua', suggest: 'Alias của “Flutter”', status: 'Mới' },
-  { term: 'kiến trúc sư giải pháp', from: ['search'], n: 11, first: '28/07', last: 'Hôm nay', suggest: 'Chức danh, không phải kỹ năng — bỏ qua', status: 'Mới' },
-  { term: 'kế toán công nợ', from: ['cv'], n: 22, first: '19/07', last: 'Hôm nay', suggest: 'Kỹ năng mới · nhóm Accounting & Finance', status: 'Mới' },
-  { term: 'MS Ofice', from: ['cv'], n: 17, first: '25/07', last: '3 ngày trước', suggest: 'Lỗi chính tả → alias của “Microsoft Office”', status: 'Mới' },
-  { term: 'chăm chỉ', from: ['cv'], n: 63, first: '18/07', last: 'Hôm nay', suggest: 'Không phải kỹ năng — bỏ qua', status: 'Bỏ qua' },
-]
-
-const SUPPLY_GAPS = [
-  { query: 'Kubernetes + Hà Nội', n: 14, pool: 3, note: 'Có 3 ứng viên nhưng đều ở HCM' },
-  { query: 'Điều dưỡng + tiếng Nhật N2', n: 7, pool: 0, note: 'Chưa có ai trong kho' },
-  { query: 'SAP FICO + 5 năm', n: 6, pool: 1, note: 'Có 1, đã bị unlock 4 lần' },
-]
-
-const TERM_TONE: Record<TermStatus, StatusTone> = { 'Mới': 'pending', 'Đã xử lý': 'active', 'Bỏ qua': 'draft' }
 
 function AdminUnresolvedTerms() {
   const [tab, setTab] = useState<'terms' | 'supply'>('supply')
@@ -8171,127 +6333,6 @@ function AdminPages() {
   )
 }
 
-/* ── Billing & products ───────────────────────────────────────────────────── */
-/* The five product TYPES, derived from the client Products deck. The type is the
-   discriminator that decides what "fulfilment" means, so it drives which fields
-   the create form asks for — see NewProductModal. */
-/* ── Placements registry ──────────────────────────────────────────────────────
-   One row per display area on the jobseeker site, transcribed from the client
-   Products deck (§1 Dịch vụ Trang chủ, §2 Dịch vụ Trang Tìm kiếm).
-
-   This is the layer BETWEEN the site and the catalog. Sizes and caps live here,
-   once — not retyped into every banner sale — and each row records how it gets
-   filled, which is the product ⇄ homepage relationship:
-
-     tier   — membership is DERIVED from a job's posting tier. Nothing is booked.
-     booked — a company buys the slot for N days. Capacity-capped → needs a calendar.
-     both   — available by tier AND sellable standalone. Needs a priority rule,
-              or the fixed positions get oversold. */
-type FillRoute = 'tier' | 'booked' | 'both'
-const FILL_META: Record<FillRoute, { label: string; tone: StatusTone; hint: string }> = {
-  tier: { label: 'Tier-driven', tone: 'active', hint: 'Derived from the job’s posting tier — never booked, never assigned by hand.' },
-  booked: { label: 'Booked', tone: 'pending', hint: 'Sold as a time window on the slot. Capacity-capped, so it needs an availability calendar.' },
-  both: { label: 'Tier + booked', tone: 'rejected', hint: 'Two supply routes competing for the same positions — needs an explicit priority rule.' },
-}
-type Placement = { id: string; page: 'Home' | 'Search'; ref: string; name: string; size: string; shown: string; cap: string; route: FillRoute; fedBy: string }
-const PLACEMENTS: Placement[] = [
-  { id: 'home-hero', page: 'Home', ref: '1.1', name: 'Main Banner (Hero)', size: '1536 × 371 px', shown: '1 at a time', cap: 'max 6 · rotate 3s', route: 'booked', fedBy: 'Banner placement product · client-supplied image + link' },
-  { id: 'home-feature-co', page: 'Home', ref: '1.2', name: 'Feature company (logos)', size: 'Logo from profile', shown: '6 logos', cap: 'max 12 · random per reload', route: 'booked', fedBy: 'Feature company product · logo auto-pulled from company profile' },
-  { id: 'home-super-hot', page: 'Home', ref: '1.3', name: 'Công việc Hot hôm nay', size: 'Job card + image', shown: '4 jobs', cap: 'unlimited pool · random per reload', route: 'both', fedBy: 'Top Job tier (first 10 days) — AND sold standalone (10 ngày)' },
-  { id: 'home-top-co', page: 'Home', ref: '1.4', name: 'Top Companies Hiring Now', size: 'Logo + cover', shown: '2 companies', cap: 'max 5 · rotate 5s', route: 'booked', fedBy: 'Công ty nổi bật product (10 ngày)' },
-  { id: 'home-popular-jobs', page: 'Home', ref: '1.5', name: 'Popular Jobs', size: 'Job row', shown: '20 postings', cap: '+4 fixed premium positions', route: 'both', fedBy: 'Distinction + Top Job tiers · 4 fixed positions sold as an add-on' },
-  { id: 'home-highlight-co', page: 'Home', ref: '1.6', name: 'Highlight Companies', size: 'Job row', shown: '20 postings', cap: '+5 fixed premium positions', route: 'both', fedBy: 'Basic Plus tier · 5 fixed positions sold as an add-on' },
-  { id: 'home-new-jobs', page: 'Home', ref: '1.7', name: 'Công việc mới (Job Basic)', size: 'Job row', shown: 'List', cap: 'Bottom of page', route: 'tier', fedBy: 'Basic tier' },
-  { id: 'home-adsense', page: 'Home', ref: '1.8', name: 'Banner adsense', size: '1260 × 120 px', shown: '1 at a time', cap: 'max 6 · refresh on reload', route: 'booked', fedBy: 'Banner placement product · below “Hot Categories”' },
-  { id: 'home-tailored', page: 'Home', ref: '1.9', name: 'Jobs Tailored For You', size: 'Job card', shown: 'List', cap: '—', route: 'tier', fedBy: 'Guests: Distinction + Top Job · Logged in: personalised by profile & behaviour' },
-  { id: 'home-popup', page: 'Home', ref: '1.10', name: 'Homepage pop-up', size: 'Custom creative', shown: '1 at a time', cap: 'priority decides · frequency-capped', route: 'booked', fedBy: 'Popup placement product · per campaign, CTA configurable' },
-  { id: 'search-highlight-co', page: 'Search', ref: '2.1', name: 'Highlight Company', size: 'Company block', shown: '1 company', cap: 'unlimited · random per reload', route: 'booked', fedBy: 'Highlight Company product → links to company profile' },
-  { id: 'search-highlight-jobs', page: 'Search', ref: '2.2', name: 'Highlight Jobs', size: 'Job row', shown: 'Unlimited', cap: 'random per reload', route: 'tier', fedBy: 'Basic Plus · Distinction · Top Job (tier sets the rank band)' },
-  { id: 'search-adsense', page: 'Search', ref: '2.3', name: 'Banner adsense', size: '425 × 160 px', shown: '1 at a time', cap: 'unlimited · position varies on reload', route: 'booked', fedBy: 'Banner placement product · interleaved between results' },
-]
-
-/* ── Image gallery ───────────────────────────────────────────────────────────
-   The stock pictures a JOB borrows when its product feeds a placement with image
-   slots. Classified by TOPIC — what the picture SHOWS — because that is the only
-   thing intrinsic to a photograph: two people at a laptop is a business scene
-   that serves IT, banking, marketing and a school office equally, and calling it
-   "IT / Software" is a claim about the employer, not about the frame.
-
-   Industry keeps its entry point through INDUSTRY_TOPICS: a small ordered map,
-   so "filter by industry" still works and the automatic default still resolves,
-   without any picture carrying an industry it cannot support. Rename an industry
-   and one map row changes instead of hundreds of pictures being re-tagged. */
-type GalleryImg = {
-  id: string; title: string; topics: string[]; tags: string[]
-  /** a scene with people/objects, or a texture the card lays a logo over */
-  role: 'subject' | 'background'
-  /** stand-in for the photo — the wireframe paints a gradient rather than shipping stock */
-  hue: number
-  uses: number; licence: string; expires?: string; archived?: boolean
-}
-const GALLERY: GalleryImg[] = [
-  { id: 'g1', title: 'Kho hàng · xe nâng', topics: ['Kho vận'], tags: ['xe nâng', 'trong nhà'], role: 'subject', hue: 210, uses: 12, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g2', title: 'Dây chuyền sản xuất', topics: ['Nhà máy · sản xuất', 'Kỹ thuật'], tags: ['máy móc'], role: 'subject', hue: 24, uses: 7, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g3', title: 'Nhóm họp trong văn phòng', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 268, uses: 41, licence: 'Stock · Unsplash+' },
-  { id: 'g4', title: 'Phòng khám · điều dưỡng', topics: ['Y tế · chăm sóc', 'Nhóm người'], tags: ['bệnh viện'], role: 'subject', hue: 160, uses: 5, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g5', title: 'Lập trình viên & màn hình code', topics: ['Công nghệ', 'Văn phòng'], tags: ['màn hình'], role: 'subject', hue: 200, uses: 23, licence: 'Stock · Unsplash+' },
-  { id: 'g6', title: 'Quầy bán lẻ · khách hàng', topics: ['Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 340, uses: 9, licence: 'Stock · Shutterstock', expires: '28/02/2026' },
-  { id: 'g7', title: 'Công trường xây dựng', topics: ['Công trường', 'Kỹ thuật'], tags: ['ngoài trời', 'mũ bảo hộ'], role: 'subject', hue: 40, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g8', title: 'Lớp học · giảng viên', topics: ['Lớp học · đào tạo', 'Nhóm người'], tags: ['bảng'], role: 'subject', hue: 96, uses: 6, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g9', title: 'Sảnh khách sạn', topics: ['Nhà hàng · khách sạn'], tags: ['dịch vụ'], role: 'subject', hue: 12, uses: 2, licence: 'Stock · Unsplash+' },
-  { id: 'g10', title: 'Quầy giao dịch ngân hàng', topics: ['Văn phòng', 'Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 224, uses: 15, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g11', title: 'Toà nhà cao tầng (nền)', topics: ['Toà nhà · kiến trúc'], tags: ['ngoài trời', 'skyline'], role: 'background', hue: 190, uses: 18, licence: 'Stock · Unsplash+' },
-  { id: 'g12', title: 'Gradient xanh (nền)', topics: ['Trừu tượng · nền'], tags: ['nền'], role: 'background', hue: 246, uses: 11, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g13', title: 'Cây xanh · ánh sáng tự nhiên', topics: ['Thiên nhiên · môi trường'], tags: ['ngoài trời', 'xanh'], role: 'background', hue: 130, uses: 4, licence: 'Stock · Unsplash+' },
-  { id: 'g14', title: 'Xe tải giao hàng', topics: ['Vận tải'], tags: ['ngoài trời'], role: 'subject', hue: 350, uses: 6, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g15', title: 'Kệ hàng siêu thị (cũ)', topics: ['Bán lẻ · cửa hàng'], tags: [], role: 'subject', hue: 300, uses: 0, licence: 'Stock · hết hạn', archived: true },
-  { id: 'g16', title: 'Bàn làm việc · laptop', topics: ['Văn phòng'], tags: ['bàn làm việc'], role: 'subject', hue: 258, uses: 33, licence: 'Stock · Unsplash+' },
-  { id: 'g17', title: 'Trao đổi trong phòng họp', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 236, uses: 19, licence: 'Stock · Unsplash+' },
-  { id: 'g18', title: 'Kỹ sư kiểm tra máy', topics: ['Kỹ thuật', 'Nhà máy · sản xuất'], tags: ['mũ bảo hộ'], role: 'subject', hue: 32, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g19', title: 'Kỹ sư hiện trường', topics: ['Kỹ thuật', 'Công trường'], tags: ['ngoài trời'], role: 'subject', hue: 48, uses: 5, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g20', title: 'Chia hàng trong kho', topics: ['Kho vận'], tags: ['thùng hàng'], role: 'subject', hue: 196, uses: 10, licence: 'Stock · Unsplash+' },
-  { id: 'g21', title: 'Đóng gói đơn hàng', topics: ['Kho vận', 'Vận tải'], tags: ['thùng hàng'], role: 'subject', hue: 182, uses: 4, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g22', title: 'Đội ngũ chụp chung', topics: ['Nhóm người'], tags: ['chân dung nhóm'], role: 'subject', hue: 288, uses: 27, licence: 'Stock · Unsplash+' },
-  { id: 'g23', title: 'Server room · hạ tầng', topics: ['Công nghệ'], tags: ['trung tâm dữ liệu'], role: 'subject', hue: 214, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g24', title: 'Bo mạch · cận cảnh', topics: ['Công nghệ', 'Trừu tượng · nền'], tags: ['cận cảnh'], role: 'background', hue: 172, uses: 7, licence: 'Stock · Unsplash+' },
-  { id: 'g25', title: 'Thùng carton thương hiệu', topics: ['Sản phẩm · bao bì'], tags: ['tĩnh vật', 'đóng gói'], role: 'subject', hue: 22, uses: 5, licence: 'Stock · Unsplash+' },
-  { id: 'g26', title: 'Hàng tiêu dùng bày trên bàn', topics: ['Sản phẩm · bao bì', 'Bán lẻ · cửa hàng'], tags: ['tĩnh vật'], role: 'subject', hue: 104, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g27', title: 'Ống nghiệm · mô hình phân tử', topics: ['Nghiên cứu · phòng lab'], tags: ['R&D'], role: 'background', hue: 208, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g28', title: 'Kỹ thuật viên trong phòng lab', topics: ['Nghiên cứu · phòng lab', 'Y tế · chăm sóc'], tags: ['áo blouse'], role: 'subject', hue: 174, uses: 2, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g29', title: 'Biểu đồ tài chính trên máy tính bảng', topics: ['Dữ liệu · biểu đồ', 'Công nghệ'], tags: ['cận cảnh bàn tay'], role: 'background', hue: 188, uses: 14, licence: 'Stock · Unsplash+' },
-  { id: 'g30', title: 'Bảng số liệu · màn hình', topics: ['Dữ liệu · biểu đồ'], tags: ['màn hình'], role: 'background', hue: 220, uses: 6, licence: 'Stock · Unsplash+' },
-  { id: 'g31', title: 'Nhà máy nhìn từ trên cao', topics: ['Nhà xưởng · ngoại cảnh', 'Nhà máy · sản xuất'], tags: ['flycam', 'ngoài trời'], role: 'background', hue: 200, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g32', title: 'Toàn cảnh khu công nghiệp', topics: ['Nhà xưởng · ngoại cảnh'], tags: ['ngoài trời'], role: 'background', hue: 30, uses: 4, licence: 'Stock · Unsplash+' },
-  { id: 'g33', title: 'Bắt tay · chúc mừng (cận cảnh)', topics: ['Nhóm người'], tags: ['cận cảnh bàn tay', 'cử chỉ'], role: 'subject', hue: 306, uses: 21, licence: 'Stock · Unsplash+' },
-  { id: 'g34', title: 'Bàn làm việc · sổ và đồng hồ', topics: ['Văn phòng'], tags: ['tĩnh vật'], role: 'background', hue: 44, uses: 12, licence: 'Stock · Unsplash+' },
-]
-/** Master data → Image topic. ~12 values, and it does not grow when the industry list does. */
-const GALLERY_TOPICS = [
-  'Văn phòng', 'Kỹ thuật', 'Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kho vận', 'Vận tải',
-  'Công trường', 'Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Y tế · chăm sóc', 'Nghiên cứu · phòng lab',
-  'Lớp học · đào tạo', 'Nhà hàng · khách sạn', 'Công nghệ', 'Dữ liệu · biểu đồ', 'Nhóm người',
-  'Toà nhà · kiến trúc', 'Thiên nhiên · môi trường', 'Trừu tượng · nền',
-]
-/** INDUSTRY → ordered topics. The first entry is what the automatic default resolves to. */
-const INDUSTRY_TOPICS: [string, string[]][] = [
-  ['IT / Software', ['Công nghệ', 'Dữ liệu · biểu đồ', 'Văn phòng', 'Trừu tượng · nền']],
-  ['FMCG', ['Sản phẩm · bao bì', 'Nhà máy · sản xuất', 'Bán lẻ · cửa hàng', 'Kho vận']],
-  ['Banking / Finance', ['Dữ liệu · biểu đồ', 'Văn phòng', 'Toà nhà · kiến trúc']],
-  ['Healthcare', ['Y tế · chăm sóc', 'Nghiên cứu · phòng lab', 'Nhóm người']],
-  ['Manufacturing', ['Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kỹ thuật']],
-  ['Retail', ['Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Kho vận']],
-  ['Education', ['Lớp học · đào tạo', 'Nhóm người']],
-  ['Logistics', ['Kho vận', 'Vận tải', 'Nhà xưởng · ngoại cảnh']],
-  ['Construction & Real Estate', ['Công trường', 'Toà nhà · kiến trúc', 'Kỹ thuật']],
-  ['Hospitality & Tourism', ['Nhà hàng · khách sạn', 'Nhóm người']],
-  ['Media & Advertising', ['Văn phòng', 'Nhóm người', 'Trừu tượng · nền']],
-  ['Telecommunications', ['Công nghệ', 'Dữ liệu · biểu đồ', 'Toà nhà · kiến trúc']],
-]
-/** the wireframe's stand-in for a photograph */
-const imgStyle = (hue: number) => ({
-  background: `linear-gradient(135deg, hsl(${hue} 55% 62%), hsl(${hue + 28} 45% 42%))`,
-})
-
 function AdminImageGallery() {
   /* Two ways in, one classification: pick a topic directly, or pick an industry
      and let the map resolve which topics it prefers. */
@@ -8443,20 +6484,6 @@ function AdminImageGallery() {
     </div>
   )
 }
-
-/* ── Upload ──────────────────────────────────────────────────────────────────
-   Two steps, because a stock pack arrives forty pictures at a time and nobody
-   classifies forty pictures one modal at a time: drop the batch, let the too-small
-   ones fail loudly, then apply topic / role / licence to the whole batch at once
-   and correct the odd one out. */
-type PendingFile = { name: string; w: number; h: number; hue: number; title: string; ok: boolean }
-const PENDING_SEED: PendingFile[] = [
-  { name: 'warehouse-forklift-02.jpg', w: 2400, h: 1600, hue: 205, title: 'Kho hàng · xe nâng', ok: true },
-  { name: 'team-meeting-natural-light.jpg', w: 3000, h: 2000, hue: 262, title: 'Họp nhóm · ánh sáng tự nhiên', ok: true },
-  { name: 'engineer-inspection.jpg', w: 2048, h: 1365, hue: 34, title: 'Kỹ sư kiểm tra thiết bị', ok: true },
-  { name: 'clinic-corridor.jpg', w: 1800, h: 1200, hue: 158, title: 'Hành lang phòng khám', ok: true },
-  { name: 'logo-square-small.png', w: 800, h: 800, hue: 320, title: 'logo-square-small', ok: false },
-]
 
 function GalleryUploadModal({ thinTopics, onClose }: { thinTopics: string[]; onClose: () => void }) {
   const [step, setStep] = useState<1 | 2>(1)
@@ -8800,136 +6827,6 @@ function AdminPlacements() {
     </div>
   )
 }
-
-/* FOUR types. "Add-on" was a fifth until we noticed it describes how a thing is
-   SOLD, not what it is: an email blast is a Manual service whether it is sold
-   alone or included in Top Job, and a premium fixed position is a Placement
-   either way. So attachability is a FLAG on the product (`standalone`), not a
-   type — which is why the same "Công ty nổi bật" definition serves both the
-   standalone booking and the copy included inside Top Job. */
-const PRODUCT_TYPES = [
-  { id: 'job', label: 'Job posting', blurb: 'A posting tier — publishing a job spends one slot', eg: 'Basic · Basic Plus · Distinction · Top Job' },
-  { id: 'cv', label: 'CV search', blurb: 'Unlock quota + validity, spent per CV opened', eg: 'COMBO 30 / 50 / 100 / 300' },
-  { id: 'placement', label: 'Placement booking', blurb: 'A time window on a slot, capacity-capped', eg: 'Main banner · Công ty nổi bật · Adsense · Popup' },
-  { id: 'service', label: 'Manual service', blurb: 'Ops fulfils it — creates a task, not an entitlement', eg: 'Fanpage post · Email marketing' },
-] as const
-type ProductTypeId = (typeof PRODUCT_TYPES)[number]['id']
-
-/* The catalog, transcribed from the client Products deck. Prices marked ⓒ come
-   from the current CRM product picker (the deck prices only the CV combos).
-
-   Note what is deliberately NOT here: one row per tier, not the four segment
-   variants the CRM carries today (Basic Plus exists there as Basic Plus SMEs
-   3.949.000 / Basic Plus Enterprise 5.544.000 / Basic Plus Job 6.100.000 /
-   Basic Plus 15 days 30.000.000). Segment pricing is a price list ON the
-   product, so what a tier grants is defined once. */
-/* SKU is the stable handle a product keeps for life: it is what a quotation line,
-   an order, an invoice and an entitlement all reference, so it must survive a
-   rename. Shape is TYPE-CAPABILITY — the type prefix makes a row self-describing
-   in an export or a support ticket, where the Type column is not there to help. */
-/* `role` is the product's relationship to a sale — the same axis the create form
-   asks for. Three values, not two, because the fanpage post and the email send are
-   genuinely sold standalone AND included inside Top Job; a binary flag would force
-   duplicating them.
-     Main   — quotable on its own
-     Add-on — reaches a customer only via another product's `includes`
-     Both   — quotable AND includable                                            */
-type ProductRole = 'Main' | 'Add-on'
-/* `entitlement` says HOW a product reaches a job, and it is deliberately NOT
-   derived from price: a promo line can cost 0 ₫ and still be consumed from a PO.
-   'free' = HQ may post it at any time with no PO and no limit; it is Admin-only,
-   never offered on the Company site, and never upgradeable to a paid tier. */
-type Entitlement = 'purchase' | 'free'
-/* ── Activation window ────────────────────────────────────────────────────────
-   How long the customer has to START using what they bought, counted from the
-   INVOICE date — client T&C clause 4. It is the middle of three clocks and the
-   only one that can silently destroy paid-for quota:
-
-     provisioned   the invoice is issued → quota lands on the account (immediate)
-     activate by   invoice date + THIS window → unused quota expires
-     runs for      once a slot is activated, the posting/pack runs its own period
-
-   It sits on the PRODUCT, not on a global setting, because a 12-month bank on a
-   13.800.000 ₫ Top Job slot and a 12-month bank on a free trial tin are not the
-   same promise. Default 12 months, which is what the client T&C states. */
-const ACTIVATE_WITHIN_DEFAULT = 12
-/** Months to activate, or null where the product is never invoiced at all. */
-const activateWithin = (p: { entitlement?: Entitlement; activateWithin?: number }) =>
-  p.entitlement === 'free' ? null : p.activateWithin ?? ACTIVATE_WITHIN_DEFAULT
-/* Always in MONTHS, never "1 năm": the point of the column is to compare 3 against
-   12 at a glance, and the client T&C itself says "trong vòng 12 tháng". */
-const activateWithinLabel = (p: { entitlement?: Entitlement; activateWithin?: number }) => {
-  const m = activateWithin(p)
-  return m === null ? '—' : `${m} tháng`
-}
-
-/* `trial` is a third VISIBILITY axis, alongside role. A trial product is a real
-   SKU with a real (low) price — not a discount — and it is offered ONLY inside a
-   quotation whose discount programme is Gói dùng thử. Keeping it a product is
-   what makes the sale auditable: the invoice states what was sold at what price,
-   and revenue reporting sees a cheap SKU rather than a 95% write-down nobody can
-   explain a year later. */
-const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean }[] = [
-  // ── Job posting ───────────────────────────────────────────────────────────
-  { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
-  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
-  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['PLC-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
-  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS'] },
-  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
-  // Shorter window than the 12-month default on purpose: a giveaway that can be
-  // banked for a year is a liability on the books, not an incentive to start.
-  { sku: 'JOB-TRIAL', name: 'Tin đăng dùng thử (Basic Job)', type: 'Job posting', role: 'Main', price: '500,000 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
-  { sku: 'CV-TRIAL', name: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', type: 'CV search', role: 'Main', price: '300,000 ₫', fulfilment: '5 lượt · 7 ngày · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
-
-  // ── CV search ─────────────────────────────────────────────────────────────
-  { sku: 'CV-030', name: 'COMBO 30 — mở CV', type: 'CV search', role: 'Main', price: '2,400,000 ₫', fulfilment: '30 lượt · 30 ngày · ~80.000/CV', status: 'Active' },
-  { sku: 'CV-050', name: 'COMBO 50 — mở CV', type: 'CV search', role: 'Main', price: '3,700,000 ₫', fulfilment: '50 lượt · 30 ngày · ~74.000/CV', status: 'Active' },
-  { sku: 'CV-100', name: 'COMBO 100 — mở CV', type: 'CV search', role: 'Main', price: '7,000,000 ₫', fulfilment: '100 lượt · 90 ngày · ~70.000/CV', status: 'Active' },
-  { sku: 'CV-300', name: 'COMBO 300 — mở CV', type: 'CV search', role: 'Main', price: '20,000,000 ₫', fulfilment: '300 lượt · 90 ngày · ~67.000/CV', status: 'Active' },
-  { sku: 'CV-SOURCING', name: 'CV sourcing + giới thiệu', type: 'CV search', role: 'Add-on', price: '— nội bộ', fulfilment: '10 lượt · theo gói cha', status: 'Active' },
-
-  // ── Placement booking ─────────────────────────────────────────────────────
-  { sku: 'PLC-HOMEHERO', name: 'Main Banner — Home hero', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1536×371 · 1 of 6 · rotate 3s', status: 'Inactive' },
-  { sku: 'PLC-FEATURECO', name: 'Feature company (logo)', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '6 logo · tối đa 12', status: 'Inactive' },
-  { sku: 'PLC-TOPCOMPANY', name: 'Công ty nổi bật', type: 'Placement booking', role: 'Main', price: '10,000,000 ₫ ⓒ', fulfilment: '10 ngày · Home · logo + cover', status: 'Active' },
-  { sku: 'PLC-HOTJOBS', name: 'Công việc Hot hôm nay', type: 'Placement booking', role: 'Main', price: '5,000,000 ₫ ⓒ', fulfilment: '10 ngày · 4 vị trí', status: 'Active' },
-  { sku: 'PLC-ADS-HOME', name: 'Banner adsense — Home', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1260×120 · 1 of 6', status: 'Inactive' },
-  { sku: 'PLC-ADS-SEARCH', name: 'Banner adsense — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '425×160 · không giới hạn', status: 'Inactive' },
-  { sku: 'PLC-SEARCH-HLCO', name: 'Highlight Company — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 công ty · không giới hạn', status: 'Inactive' },
-  { sku: 'PLC-POPUP', name: 'Homepage pop-up', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 popup · theo chiến dịch', status: 'Inactive' },
-  { sku: 'PLC-POPULARJOBS', name: 'Popular Jobs — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '4 vị trí cố định', status: 'Active' },
-  { sku: 'PLC-HLCOMPANIES', name: 'Highlight Companies — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '5 vị trí cố định', status: 'Active' },
-
-  // ── Manual service ────────────────────────────────────────────────────────
-  { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', type: 'Manual service', role: 'Main', price: '4,000,000 ₫ ⓒ', fulfilment: '1 bài đăng · 176k follower', status: 'Active' },
-  { sku: 'SVC-EMAIL-DEV', name: 'Email Marketing đến Database Developer', type: 'Manual service', role: 'Main', price: '20,000,000 ₫ ⓒ', fulfilment: '1 lượt gửi · reach theo gói cha', status: 'Active' },
-  { sku: 'SVC-HACKERRANK', name: 'Đánh giá ứng viên HackerRank', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '1 bài test · chỉ trong Gói Ultimate', status: 'Active' },
-  { sku: 'SVC-CSKH', name: 'CSKH theo dõi tình hình tuyển dụng', type: 'Manual service', role: 'Add-on', price: '— nội bộ', fulfilment: '2 mốc · ngày 11 và ngày 31', status: 'Active' },
-  { sku: 'SVC-JOBALERT', name: 'Big Banner trong Email Job Alert', type: 'Manual service', role: 'Main', price: '8,000,000 ₫', fulfilment: '1 lượt gửi · 650k ứng viên', status: 'Active' },
-]
-
-/* Price segments and product descriptions are shared by the create form and the
-   product record, so the two can never ask for / show a different set. */
-export const PRICE_SEGMENTS = ['SME / Startup', 'Enterprise', 'Standard'] as const
-
-/** Deck-derived VI/EN description — what prints on the quotation and the PO. */
-export const DESCRIPTIONS: Record<string, { vi: string; en: string }> = {
-  'JOB-BASIC': { vi: 'Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag · Làm mới bài đăng mỗi 15 ngày · Hiển thị tại Trang chủ mục “Công việc mới” và Trang tìm kiếm.', en: 'Official job posting for 30 days, up to 03 skill tags · Refreshed every 15 days · Shown in “New jobs” on the homepage and in search.' },
-  'JOB-BASICPLUS': { vi: 'Đăng tuyển chính thức 30 ngày · Làm mới mỗi 10 ngày · Tiêu đề tô đỏ · Ưu tiên hiển thị trong kết quả tìm kiếm · Logo công ty tại mục Highlight Companies · Email marketing đến 7.500 data.', en: 'Official posting for 30 days · Refreshed every 10 days · Bold red title · Priority in search results · Company logo in Highlight Companies · Email marketing to 7,500 targeted profiles.' },
-  'JOB-DISTINCTION': { vi: 'Đăng tuyển chính thức 30 ngày, tối đa 05 skill tag · Làm mới mỗi 05 ngày · Tiêu đề đỏ + nền nổi bật · Hiển thị 03 phúc lợi ở trang tìm kiếm · Top Search · Hiển thị tại “Các công ty phổ biến”.', en: 'Official posting for 30 days, up to 05 skill tags · Refreshed every 05 days · Red title + highlighted background · 3 benefits shown in search · Top Search · Shown in Popular Companies.' },
-  'JOB-TOPJOB': { vi: 'Gói cao cấp nhất: 30 ngày, tối đa 07 skill tag · Làm mới mỗi ngày trong 7 ngày đầu rồi mỗi 05 ngày · Nhãn “HOT JOB” 10 ngày · “Công việc Hot hôm nay” 10 ngày đầu · Vị trí cao nhất Top Search · Bài đăng fanpage TopDev · Big Banner trong Email Job Alert.', en: 'Top tier: 30 days, up to 07 skill tags · Refreshed daily for the first 7 days then every 05 · “HOT JOB” label for 10 days · “Hot jobs today” for the first 10 days · Highest Top Search position · TopDev fanpage post · Big Banner in the Email Job Alert.' },
-  'JOB-TRIAL': { vi: 'Tin dùng thử tặng khách hàng mới: 15 ngày hiển thị, 01 slot, giới hạn 01 lần trên mỗi mã số thuế.', en: 'Free trial posting for new customers: 15 days, 01 slot, limited to once per tax code.' },
-  'CV-030': { vi: 'Mở 30 hồ sơ ứng viên (mỗi CV tương ứng 01 lượt mở) · Hạn dùng 30 ngày kể từ ngày kích hoạt · Hồ sơ đã mở được bảo lưu 30 ngày sau khi dịch vụ hết hạn.', en: 'Unlock 30 candidate profiles (1 unlock per CV) · Valid 30 days from activation · Opened profiles retained 30 days after expiry.' },
-  'CV-050': { vi: 'Mở 50 hồ sơ ứng viên · Hạn dùng 30 ngày kể từ ngày kích hoạt.', en: 'Unlock 50 candidate profiles · Valid 30 days from activation.' },
-  'CV-100': { vi: 'Mở 100 hồ sơ ứng viên · Hạn dùng 90 ngày kể từ ngày kích hoạt.', en: 'Unlock 100 candidate profiles · Valid 90 days from activation.' },
-  'CV-300': { vi: 'Mở 300 hồ sơ ứng viên · Hạn dùng 90 ngày kể từ ngày kích hoạt.', en: 'Unlock 300 candidate profiles · Valid 90 days from activation.' },
-  'PLC-TOPCOMPANY': { vi: 'Thời gian hiển thị 10 ngày · Vị trí Trang chủ TopDev · Logo công ty và hình ảnh đại diện · Tiếp cận hơn 200.000 lượt truy cập.', en: '10 days · TopDev homepage · Company logo and cover image · Reaches 200,000+ visits.' },
-  'PLC-HOTJOBS': { vi: 'Thời gian hiển thị 10 ngày · Trang chủ TopDev · Logo công ty và thông tin tuyển dụng · 4 vị trí hiển thị.', en: '10 days · TopDev homepage · Company logo and job details · 4 display positions.' },
-  'SVC-FB-TOPDEV': { vi: 'Bài đăng quảng bá tin tuyển dụng hoặc thương hiệu trên fanpage chính thức TopDev, hơn 176.000 follower.', en: 'A promotional post for the job or brand on the official TopDev fanpage, 176,000+ followers.' },
-  'SVC-EMAIL-DEV': { vi: 'Gửi email tin tuyển dụng hoặc chiến dịch truyền thông đến database developer của TopDev.', en: 'Email the job or campaign to the TopDev developer database.' },
-}
-
-type CatalogItem = (typeof CATALOG)[number]
 
 /* Product detail. Deliberately NOT one generic layout: the Fulfilment card and
    the "Where it appears" card change with the type, because that is the whole
@@ -9897,12 +7794,6 @@ export function NewPackageModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-const PACKAGES: { name: string; note: string; components: string; price: string; status: 'Active' | 'Inactive' }[] = [
-  { name: 'Gói Ultimate', note: '6 components · from the client catalogue', components: 'Top Job posting (60 ngày: 30 chính thức + 30 bảo hành) · CV sourcing + giới thiệu · Email marketing 9.500 data · Popular Companies logo · HackerRank assessment · CSKH follow-up', price: '16,489,000 ₫', status: 'Active' },
-  { name: 'Top Job + premium position', note: '2 components · proposed', components: 'Tin Top Job ×1 · Popular Jobs premium position ×1', price: '— price TBC', status: 'Inactive' },
-  { name: 'Enterprise (custom)', note: 'quoted per deal', components: 'All products + negotiated volume', price: 'Custom', status: 'Inactive' },
-]
-
 function AdminBundles() {
   const [fStatus, setFStatus] = useState('')
   const [sort, setSort] = useState('')
@@ -9994,107 +7885,6 @@ function AdminOrders() {
     />
   )
 }
-/* ── Discount programmes ──────────────────────────────────────────────────────
-   The client's own promo sheet, configured here ONCE and applied by the quotation
-   builder automatically. It is deliberately settings, not a hard-coded rule: the
-   thresholds are a commercial decision that changes every campaign, and a rep
-   typing 25 / 30 / 35 by hand gets it wrong roughly as often as they get it right.
-
-   Two programmes, two SHAPES, and the shapes are genuinely different — which is
-   why this is not one table with an audience column:
-
-     volume per PRODUCT (Existing)  — quantities of the SAME product are summed
-                                      across the option, and the tier that total
-                                      reaches sets the % on every line of it
-     flat on the order  (New/Churn) — one % on everything, but only while EVERY
-                                      line stays at or under a quantity cap
-
-   “Cùng loại” is the load-bearing phrase in the first one: 3 + 4 Basic Plus on two
-   lines is 7 Basic Plus, so both lines earn the 5-tier at 30% — not 25% each for
-   being under 5 separately. Splitting a line must never change the price.
-
-   The second is all-or-nothing on purpose: one line over the cap and the whole
-   50% is lost, not just that line's share. That cliff is the client's rule, and
-   it is the reason the builder has to show WHICH line broke it. */
-type PromoAudience = Account
-type VolumeTier = { minQty: number; pct: number }
-type Programme = {
-  id: string
-  name: string
-  vi: string
-  audience: PromoAudience[]
-  /** per-product: quantities of the same product are summed, then tiered ·
-      flat: one % on the whole option */
-  kind: 'volume-per-product' | 'flat-order'
-  tiers?: VolumeTier[]
-  pct?: number
-  /** flat only — every non-gift line must be at or under this, or nothing applies */
-  maxQtyPerLine?: number
-  /** flat only — first PO of the CURRENT status spell, not first in history: for a
-      Churn customer that is the first PO since they came back. Self-enforcing,
-      because the first invoice flips them to Existing and the programme stops
-      matching on its own. */
-  firstPoOfCurrentSpell?: boolean
-  /** whether it may run alongside another programme on the same quotation */
-  stackable: boolean
-  /** gift lines inherit the paid line's activation window rather than their own */
-  giftActivationFollowsPaid?: boolean
-  status: 'Active' | 'Inactive'
-  from: string
-  to: string
-  note?: string
-}
-
-const PROGRAMMES: Programme[] = [
-  {
-    id: 'EXISTING-VOLUME',
-    name: 'Volume discount — existing customers',
-    vi: 'Chiết khấu theo số lượng (cùng loại)',
-    audience: ['Existing'],
-    kind: 'volume-per-product',
-    // Thresholds, not exact matches: 7 tin earns the 5-tier, not nothing.
-    tiers: [
-      { minQty: 2, pct: 25 }, { minQty: 5, pct: 30 }, { minQty: 10, pct: 35 },
-      { minQty: 20, pct: 40 }, { minQty: 30, pct: 45 }, { minQty: 50, pct: 50 },
-      { minQty: 100, pct: 60 },
-    ],
-    stackable: true,
-    status: 'Active',
-    from: '01/01/2026',
-    to: '31/12/2026',
-    note: 'Section 1 of 3 on the client’s sheet — the other two sections that “apply at the same time” have not been supplied yet.',
-  },
-  {
-    id: 'NEWCHURN-50',
-    name: 'Welcome / win-back — 50% off everything',
-    vi: 'Giảm 50% tất cả các dịch vụ',
-    audience: ['New', 'Churn'],
-    kind: 'flat-order',
-    pct: 50,
-    maxQtyPerLine: 5,
-    firstPoOfCurrentSpell: true,
-    stackable: false,
-    giftActivationFollowsPaid: true,
-    status: 'Active',
-    from: '01/01/2026',
-    to: '31/12/2026',
-    note: 'Over the cap, the sheet’s own escape routes are: quote the Existing programme instead, or split into two documents so the customer gets both. Both are a rep decision, not something the system does by itself.',
-  },
-]
-
-/** The one programme that applies to a customer status, or null. */
-const programmeFor = (a?: Account) => PROGRAMMES.find((x) => x.status === 'Active' && a && x.audience.includes(a)) ?? null
-/** Highest tier whose threshold the quantity reaches. 1 earns nothing. */
-const tierPct = (p: Programme, qty: number) =>
-  (p.tiers ?? []).reduce((best, t) => (qty >= t.minQty ? t.pct : best), 0)
-/** Quantity of each product across an option's PAID lines — the number the tier
-    is looked up on. Gifts are 0 ₫ and were not bought, so they never count. */
-const qtyByProduct = (lines: { cat: number; qty: number; gift: boolean }[]) => {
-  const m = new Map<number, number>()
-  lines.forEach((l) => { if (!l.gift) m.set(l.cat, (m.get(l.cat) ?? 0) + l.qty) })
-  return m
-}
-
 /* The settings screen. Not a list of coupon CODES — nobody types a code here.
    A programme is chosen BY the customer's status, so the record reads as a rule
    the quotation builder obeys rather than as something a rep applies by hand. */
@@ -10209,31 +7999,6 @@ function ProgrammeDetail({ p, onBack }: { p: Programme; onBack: () => void }) {
   )
 }
 
-/* ── Sales / CRM ──────────────────────────────────────────────────────────────
-   LEGACY board. This is an older mockup of the same Sales pipeline that the
-   Companies board (CompaniesBoard, sourced from COMPANIES) now covers, with its
-   own stage vocabulary (Lead / Won) and its own demo rows. It shares the ONE
-   idle RULE via idleOf() above, but it still carries its own `idle` numbers — so
-   a company appearing in both shows two different day counts. Idle is a property
-   of the COMPANY; this duplicate field should go when the board is retired in
-   favour of the company-sourced one. */
-type Deal = { company: string; stage: string; tone: StatusTone; value: number; owner: string; idle: number; next: string }
-const DEALS: Deal[] = [
-  { company: 'Cty Việt Tiến Logistics', stage: 'Negotiation', tone: 'pending', value: 369_900_000, owner: 'Trần Quốc Trung', idle: 21, next: 'Chase signed contract' },
-  { company: 'Cty Tinh Hoa Công Nghệ', stage: 'Negotiation', tone: 'pending', value: 111_700_000, owner: 'Nguyễn Thị Lan', idle: 18, next: 'Negotiate discount' },
-  { company: 'Cty Vạn Phát', stage: 'Negotiation', tone: 'pending', value: 133_500_000, owner: 'Nguyễn Thị Lan', idle: 12, next: 'Send revised quote' },
-  { company: 'Cty Hoàng Gia', stage: 'Proposal', tone: 'neutral', value: 171_100_000, owner: 'Nguyễn Thị Lan', idle: 9, next: 'Follow up on proposal' },
-  { company: 'Cty Hồng Đức', stage: 'Qualified', tone: 'neutral', value: 128_000_000, owner: 'Phạm Quang Huy', idle: 6, next: 'Schedule product demo' },
-  { company: 'Cty Sao Mai', stage: 'Proposal', tone: 'neutral', value: 98_400_000, owner: 'Phạm Quang Huy', idle: 3, next: 'Prepare proposal' },
-  { company: 'Cty Thiên Long', stage: 'Lead', tone: 'draft', value: 476_900_000, owner: 'Trần Quốc Trung', idle: 2, next: 'Qualify budget & need' },
-  { company: 'Cty Trường Sơn', stage: 'Won', tone: 'active', value: 231_300_000, owner: 'Phạm Quang Huy', idle: 1, next: 'Activate account' },
-  { company: 'Cty Á Châu', stage: 'Lost', tone: 'rejected', value: 115_500_000, owner: 'Nguyễn Thị Lan', idle: 30, next: 'Re-engage next quarter' },
-]
-const STAGES: { key: string; tone: StatusTone }[] = [
-  { key: 'Lead', tone: 'draft' }, { key: 'Qualified', tone: 'neutral' }, { key: 'Proposal', tone: 'neutral' },
-  { key: 'Negotiation', tone: 'pending' }, { key: 'Won', tone: 'active' }, { key: 'Lost', tone: 'rejected' },
-]
-const isOpen = (s: string) => s !== 'Won' && s !== 'Lost'
 /** Same flat no-contact thresholds as the Companies list — see idleOf above. */
 function IdlePill({ days }: { days: number }) {
   const rot = idleOf(days)
@@ -10300,18 +8065,6 @@ function PipelineBoard({ onConvert, onOpen }: { onConvert: (d: Deal) => void; on
     </div>
   )
 }
-
-/* ── Lead detail (Salesforce-style) ───────────────────────────────────────── */
-const PATH = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won']
-const NEXT_BY_STAGE: Record<string, string> = {
-  Lead: 'Qualify budget, authority & timeline. Confirm the decision-maker.',
-  Qualified: 'Book a product demo and send an intro deck within 2 days.',
-  Proposal: 'Follow up on the proposal; confirm which products they need.',
-  Negotiation: 'Send the revised quote and agree terms — aim to close this week.',
-  Won: 'Activate the customer: create the account & provision products.',
-  Lost: 'Log the loss reason and set a reminder to re-engage next quarter.',
-}
-
 
 function TL({ icon, title, time, sub, tone }: { icon: string; title: string; time: string; sub: string; tone: string }) {
   return (
@@ -10436,110 +8189,6 @@ function LeadDetail({ deal, onBack }: { deal: Deal; onBack: () => void }) {
   )
 }
 
-/* ── New quotation (Báo giá) ───────────────────────────────────────────────────
-   Modelled on the client's live PDF QUO-009909-07-2026. The load-bearing idea is
-   that one quotation carries 1–3 priced OPTIONS which are ALTERNATIVES, not
-   add-ons: each totals independently, exactly one gets accepted, and the document
-   has no grand total. Everything derived (line totals, VAT, total-after-VAT,
-   amount-in-words, benefit lists) is computed here and never typed. */
-const QUOTE_CATALOG = [
-  { vi: 'Dịch vụ tin đăng (Basic Job)', short: 'Basic Job', unitVi: 'tin', unitEn: 'post', price: 2_710_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag', 'Làm mới bài đăng mỗi 15 ngày'] },
-  { vi: 'Dịch vụ tin đăng (Basic Plus Job)', short: 'Basic Plus Job', unitVi: 'tin', unitEn: 'post', price: 6_100_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 03 skill tag', 'Tiêu đề đậm xanh', 'Top Search: ưu tiên trên kết quả tìm kiếm', 'Làm mới bài đăng mỗi 10 ngày', 'Hiển thị tại “Các công ty nổi bật” — Trang chủ'] },
-  { vi: 'Dịch vụ tin đăng (Premium Job)', short: 'Premium Job', unitVi: 'tin', unitEn: 'post', price: 9_800_000, feats: ['Đăng tuyển chính thức 30 ngày, gắn tối đa 05 skill tag', 'Tiêu đề đậm xanh + huy hiệu Premium', 'Top Search + Top Category', 'Làm mới bài đăng mỗi 7 ngày'] },
-  { vi: 'Dịch vụ tìm kiếm hồ sơ (30 ngày)', short: 'CV Search 30d', unitVi: 'hồ sơ', unitEn: 'CV', price: 5_500_000, feats: ['Mở tối đa 50 hồ sơ trong 30 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
-  { vi: 'Dịch vụ tìm kiếm hồ sơ (90 ngày)', short: 'CV Search 90d', unitVi: 'hồ sơ', unitEn: 'CV', price: 13_900_000, feats: ['Mở tối đa 200 hồ sơ trong 90 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
-  { vi: 'Employer Branding Page', short: 'EB Page', unitVi: 'gói', unitEn: 'package', price: 15_000_000, feats: ['Trang thương hiệu tuyển dụng riêng', 'Banner + video giới thiệu'] },
-  /* ── Trial products ─────────────────────────────────────────────────────
-     The trial "discount" is not a discount at all — it is a small set of real
-     products priced low, carrying `trial`. Modelling it as products rather than
-     as a percentage is what makes it auditable: the invoice shows what was
-     actually sold at what price, instead of a 95% write-down nobody can explain
-     a year later, and revenue reporting sees a cheap SKU rather than a discount.
-     They are offered ONLY inside a trial quotation. */
-  { vi: 'Tin đăng dùng thử (Basic Job)', short: 'Trial Basic', unitVi: 'tin', unitEn: 'post', price: 500_000, trial: true, feats: ['Đăng tuyển 15 ngày', 'Không có vị trí nổi bật', 'Giới hạn 01 lần trên mỗi MST'] },
-  { vi: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', short: 'Trial CV 7d', unitVi: 'hồ sơ', unitEn: 'CV', price: 300_000, trial: true, feats: ['Mở tối đa 05 hồ sơ trong 07 ngày', 'Giới hạn 01 lần trên mỗi MST'] },
-]
-/** Trial SKUs never appear in a normal quotation, and normal SKUs never in a trial. */
-const catForMode = (m: DiscountMode) => QUOTE_CATALOG.map((c, i) => ({ c, i })).filter((x) => !!x.c.trial === (m === 'trial'))
-/* ── The four ways a quotation can be discounted ──────────────────────────────
-   A rep picks exactly ONE mode. Which modes are offered depends on the customer's
-   status, and each mode decides — independently — what happens to the THREE
-   discount inputs the client's live system has:
-
-     line %    "Discount" on each product row
-     order %   "Addition Discount" on the whole order
-     fixed ₫   "Voucher", a flat amount off
-
-   Three inputs and four modes is twelve rules, which is exactly why they are a
-   table here rather than conditionals scattered through the form. */
-type DiscountMode = 'newchurn' | 'existing' | 'trial' | 'special'
-type FieldRule = 'off' | 'auto' | 'free'   // locked at 0 · written by a rule · the rep's
-const DISCOUNT_MODES: Record<DiscountMode, {
-  vi: string; en: string; hint: string
-  line: FieldRule; order: FieldRule; fixed: FieldRule
-  /** order-% approval bands apply only where this is true */
-  approves?: boolean
-  audience: Account[]
-}> = {
-  newchurn: {
-    vi: 'Ưu đãi khách mới / quay lại', en: 'New & Churn discount',
-    hint: 'Giảm 50% trên tổng đơn, với điều kiện mọi dòng ≤ 5 số lượng. Chỉ áp dụng cho PO đầu tiên kể từ khi khách ở trạng thái hiện tại, và không chạy cùng chương trình khác.',
-    line: 'off', order: 'auto', fixed: 'free', audience: ['New', 'Churn'],
-  },
-  existing: {
-    vi: 'Chiết khấu theo số lượng', en: 'Existing discount',
-    hint: 'Cộng dồn số lượng theo từng loại sản phẩm rồi lấy bậc tương ứng (2+ → 25% … 100+ → 60%). Có thể cộng thêm chiết khấu trên tổng đơn — mức này phải được duyệt.',
-    line: 'auto', order: 'free', fixed: 'free', approves: true, audience: ['New', 'Churn', 'Existing'],
-  },
-  trial: {
-    vi: 'Gói dùng thử', en: 'Trial',
-    hint: 'Không phải chiết khấu: đây là các sản phẩm dùng thử có giá riêng, chỉ xuất hiện trong báo giá. Mọi ô chiết khấu đều khoá ở 0.',
-    line: 'off', order: 'off', fixed: 'off', audience: ['New', 'Churn'],
-  },
-  special: {
-    vi: 'Ưu đãi đặc biệt', en: 'Special offer',
-    hint: 'Sales tự quyết cả ba mức — từng dòng, tổng đơn và số tiền cố định. Không có bước duyệt, nên mọi con số ở đây là trách nhiệm của người lập báo giá.',
-    line: 'free', order: 'free', fixed: 'free', audience: ['New', 'Churn', 'Existing'],
-  },
-}
-const modesFor = (a?: Account) =>
-  (Object.keys(DISCOUNT_MODES) as DiscountMode[]).filter((m) => a && DISCOUNT_MODES[m].audience.includes(a))
-/** What a customer status starts on. Existing has no welcome offer to default to. */
-const defaultMode = (a?: Account): DiscountMode => (a === 'Existing' ? 'existing' : 'newchurn')
-
-/* Approval bands for the ORDER-level percentage, and only under the Existing
-   programme. 10% and below is a sales lead's call; above it is the manager's.
-   Constants because they are a sales policy that will be renegotiated, not a fact
-   about the software. */
-const SPECIAL_LEADER_MAX = 10
-/* The New & Churn offer, in numbers. All-or-nothing on the cap: one line over and
-   the whole 50% is lost, not just that line's share. */
-const NEWCHURN_PCT = 50
-const NEWCHURN_MAX_QTY = 5
-/** How a discount cell looks: locked at 0, written by a rule, or the rep's own. */
-const fieldCls = (r: FieldRule, filled: boolean) =>
-  r === 'free' ? 'border-amber-400 bg-surface font-semibold text-amber-900'
-    : r === 'auto' && filled ? 'border-emerald-300 bg-emerald-50 font-semibold text-emerald-800'
-      : 'border-line bg-canvas text-faint'
-
-type QLine = { cat: number; qty: number; price: number; disc: number; gift: boolean }
-type QOption = { id: number; lines: QLine[]; recommended: boolean; optDisc: number; fixed: number }
-/* The three discounts stack in ONE order and it is not interchangeable: line %
-   first (it changes the subtotal), then the order % on what is left, then the
-   fixed amount off that, and VAT only on the remainder. Applying the voucher
-   before the percentage would quietly make it worth more, and charging VAT on
-   the pre-discount figure would overcharge the customer on a filed invoice. */
-const optionTotals = (o: QOption) => {
-  const sub = o.lines.reduce((s, l) => s + lineTotal(l), 0)
-  const pctCut = Math.round(sub * o.optDisc / 100)
-  const fixedCut = Math.min(Math.max(0, o.fixed), sub - pctCut)   // never below zero
-  const net = sub - pctCut - fixedCut
-  const vat = Math.round(net * VAT_RATE / 100)
-  return { sub, pctCut, fixedCut, net, vat, total: net + vat }
-}
-const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
-const VAT_RATE = 8
-
 /* ── Tạo PO / Create sales order ───────────────────────────────────────────────
    Raised from ONE accepted quotation option. Nothing is retyped: lines, totals,
    VAT and the VAT-billing block are copied from the quotation, because those are
@@ -10646,8 +8295,6 @@ function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void }) {
   )
 }
 
-/** Company ID in the same format the Create-job picker uses: "Vạn Phát · CO-0312". */
-const coId = (c: Company) => 'CO-' + (c.tax.replace(/\D/g, '').slice(0, 4) || '0000').padEnd(4, '0')
 /* Confirmation card — mirrors CompanyInfoCard on Create job. Its job is to let the
    rep verify they picked the right company, and it doubles as the VAT-billing
    read-out: legal name, MST and registered address all print on the invoice, and
@@ -11122,15 +8769,6 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   )
 }
 
-/* Companies sharing the first 10 digits of a tax code — the same legal entity's
-   branches, or genuinely unrelated companies that happen to collide. The form does
-   NOT decide which; it lists them and lets the rep link. */
-const MST_ROOT_MATCHES = [
-  { name: 'Công ty CP Trường Sơn', tax: '0328xxxxxx', owner: 'Nguyễn Thị Lan', where: 'Đà Nẵng', status: 'Existing' },
-  { name: 'CN Trường Sơn — Hà Nội', tax: '0328xxxxxx-001', owner: 'Phạm Quang Huy', where: 'Long Biên, Hà Nội', status: 'Existing' },
-  { name: 'CN Trường Sơn — Cần Thơ', tax: '0328xxxxxx-002', owner: 'Trần Quốc Trung', where: 'Ninh Kiều, Cần Thơ', status: 'New' },
-]
-
 /** One row of the MST-root suggestion list, with its two link directions. */
 function MstMatchRow({ m, rel, onSet }: {
   m: typeof MST_ROOT_MATCHES[number]
@@ -11562,79 +9200,6 @@ export function AdminPipeline({ onActivate }: { onActivate?: () => void } = {}) 
     </div>
   )
 }
-/* Quote-to-cash, in the order it actually happens:
-   Quotation (1–3 options) → Sales order / PO (confirm = won) → Payment
-   (Accounting confirms) → VAT e-invoice (issue = closed + provisioning released). */
-/* FOUR statuses only: Draft · Sent · Issued to PO · Expired. Everything that used
-   to be its own status is a FLAG on one of these — discount approval is a gate on
-   Draft, an accepted option is recorded on a Sent quote until the PO exists, a
-   revision is a version (v2) not a status, and a lapsed offer is Sent + expired
-   validity. The flags live in the data and surface on the DETAIL page; the list
-   stays scannable and shows the status pill alone. */
-type QuoteStatus = 'Draft' | 'Sent' | 'Issued to PO' | 'Expired'
-/* Expiry first by default: every quotation dies at month-end, so "what runs out
-   soonest" is the only ordering that tells a rep what to chase today. */
-type QuoteSort = 'expires' | 'created' | 'value'
-const QUOTE_SORTS: Record<QuoteSort, { label: string; cmp: (a: Quote, b: Quote) => number }> = {
-  expires: { label: 'Sắp hết hạn trước', cmp: (a, b) => dmy(a.expires) - dmy(b.expires) },
-  created: { label: 'Mới tạo trước', cmp: (a, b) => dmy(b.created) - dmy(a.created) },
-  value: { label: 'Giá trị cao nhất', cmp: (a, b) => b.value - a.value },
-}
-type Quote = {
-  code: string; customer: string; co?: string; products: number[]; options: number
-  value: number; status: QuoteStatus; created: string; expires: string
-  acceptedOpt?: number; lapsed?: boolean; note?: string
-  /* ── Special discount + its approval ───────────────────────────────────────
-     `special` is the one percentage a rep may type (the option-subtotal rate).
-     Everything else here is the approval trail, and `apprPct` exists so that
-     editing the rate after a decision can VOID it — an approval that does not
-     record WHAT was approved cannot be enforced. */
-  special?: number
-  appr?: 'pending' | 'approved' | 'rejected'
-  reqBy?: string; reqAt?: string
-  apprBy?: string; apprAt?: string; apprPct?: number; apprReason?: string
-}
-/* Which ROLE a special discount routes to — by amount, not by chain, so above the
-   band the lead is skipped entirely. Reuses the sales org already defined for the
-   Companies list rather than inventing a second hierarchy. */
-const apprRole = (pct: number): SalesRole => (pct <= SPECIAL_LEADER_MAX ? 'lead' : 'manager')
-/* Seniority, so "can this person sign their own discount?" is one comparison
-   rather than a pile of special cases. Anyone whose own role is at or above the
-   role a rate routes to approves it by raising it — a lead's ≤10% needs nobody,
-   a lead's >10% still goes to the manager, and a manager's rate never routes at
-   all. Sending a request to yourself is not a control; it is a click. */
-const ROLE_RANK: Record<SalesRole, number> = { rep: 0, lead: 1, manager: 2 }
-const selfApproves = (creator: SalesRole, required: SalesRole) => ROLE_RANK[creator] >= ROLE_RANK[required]
-/** The person that role resolves to for a given rep. A lead approves their own
-    team's requests; there is one department manager. */
-const apprPerson = (pct: number, rep?: string) =>
-  apprRole(pct) === 'manager'
-    ? SALES_MANAGER
-    : SALES_TEAMS.find((t) => rep && t.members.includes(rep))?.lead ?? SALES_TEAMS[0].lead
-const QUOTE_TONE: Record<QuoteStatus, StatusTone> = { Draft: 'draft', Sent: 'pending', 'Issued to PO': 'active', Expired: 'expired' }
-const QUOTES: Quote[] = [
-  /* Three options — Basic Plus (the one we RECOMMEND), Basic as the cheaper
-     alternative, Premium as the upsell. The client's own file had two; a third is
-     the case the document has to prove it handles, since the rule is 1–3
-     ALTERNATIVES that are never summed.
-     value = 10,584,000 = the HIGHEST option (Premium), per the documented rule —
-     NOT the recommended one. This row is deliberately the worked example of the
-     open question in the spec: recommended ≠ highest, and the two give different
-     pipeline totals. */
-  { code: 'QUO-009909-07-2026', customer: 'AM Software Việt Nam', co: 'Công ty TNHH AM Software Việt Nam', products: [1, 0, 2], options: 3, value: 10_584_000, status: 'Sent', created: '20/07/2026', expires: '31/07/2026' },
-  { code: 'QUO-009908-07-2026', customer: 'Công ty Vạn Phát', co: 'Công ty TNHH Vạn Phát', products: [1, 4], options: 3, value: 37_800_000, status: 'Sent', created: '14/07/2026', expires: '31/07/2026', acceptedOpt: 2, note: 'Customer confirmed Option 2 by email.' },
-  { code: 'QUO-009907-07-2026', customer: 'Hoàng Gia', products: [2], options: 1, value: 131_429_662, status: 'Issued to PO', created: '30/06/2026', expires: '30/06/2026', acceptedOpt: 1 },
-  { code: 'QUO-009906-06-2026', customer: 'Việt Tiến Logistics', co: 'Công ty TNHH Việt Tiến', products: [0, 3], options: 2, value: 28_536_925, status: 'Sent', created: '16/06/2026', expires: '30/06/2026', lapsed: true, note: 'Went quiet after pricing. Extend or re-issue as v2.' },
-  { code: 'QUO-009904-05-2026', customer: 'Tinh Hoa (v1)', products: [1], options: 2, value: 58_900_000, status: 'Expired', created: '17/05/2026', expires: '31/05/2026', note: 'Replaced by v2 — QUO-009905-06-2026.' },
-  // 8% → routes to the Sales leader, still waiting
-  { code: 'QUO-009905-06-2026', customer: 'Tinh Hoa', products: [1, 5], options: 2, value: 60_206_698, status: 'Draft', created: '28/07/2026', expires: '31/07/2026', special: 8, appr: 'pending', reqBy: 'Nguyễn Thị Lan', reqAt: '06/08/2026 09:12', note: 'Khách so sánh với đối thủ, xin thêm 8% trên tổng đơn.' },
-  // 18% → skips the leader and goes straight to the Sales manager
-  { code: 'QUO-009913-08-2026', customer: 'Công ty CP Bình Minh', co: 'Công ty CP Bình Minh', products: [2], options: 1, value: 148_000_000, status: 'Draft', created: '07/08/2026', expires: '31/08/2026', special: 18, appr: 'pending', reqBy: 'Trần Quốc Trung', reqAt: '07/08/2026 16:40', note: 'Đơn lớn, khách chốt trong tuần nếu có 18%.' },
-  // approved, and therefore sendable
-  { code: 'QUO-009914-08-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', products: [1], options: 2, value: 92_400_000, status: 'Sent', created: '05/08/2026', expires: '31/08/2026', special: 10, appr: 'approved', reqBy: 'Trần Quốc Trung', reqAt: '05/08/2026 11:02', apprBy: 'Nguyễn Thị Lan', apprAt: '05/08/2026 14:20', apprPct: 10 },
-  // refused, with the reason the rep has to act on
-  { code: 'QUO-009915-08-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', products: [2], options: 1, value: 64_800_000, status: 'Draft', created: '06/08/2026', expires: '31/08/2026', special: 22, appr: 'rejected', reqBy: 'Phạm Quang Huy', reqAt: '06/08/2026 08:30', apprBy: 'Đỗ Xuân Trường', apprAt: '06/08/2026 10:05', apprPct: 22, apprReason: 'Trên 20% thì âm biên. Tối đa 12%, hoặc đổi sang gói Basic Plus.' },
-]
 /** Products, compactly: first name + "+N" when there are more. Full list on hover. */
 function ProductCell({ ids }: { ids: number[] }) {
   if (!ids.length) return <span className="text-faint">—</span>
@@ -11646,130 +9211,6 @@ function ProductCell({ ids }: { ids: number[] }) {
   )
 }
 
-/* ── Export quotation to PDF ───────────────────────────────────────────────────
-   The document the customer actually receives. Content is a faithful reproduction
-   of the client's live PDF (EST-009909-07-2026) — every block, every field, both
-   languages, nothing added and nothing dropped. What is REFINED here is only the
-   presentation:
-
-     · bilingual pairs are stacked (VN primary, EN muted underneath) instead of
-       being run together on one line — the single biggest readability win;
-     · the two customer blocks become side-by-side cards instead of wrapped prose;
-     · line tables get real columns, tabular figures and right-aligned money;
-     · each option is a self-contained card with its own totals box, because the
-       options are ALTERNATIVES and the document must never look like it sums;
-     · terms become numbered clauses with a VN/EN pair each.
-
-   Everything printed is derived (line totals, VAT, total-after-VAT, amount in
-   words, benefit lists) — see the "What prints on the page" spec section. */
-const ISSUER = {
-  nameVi: 'CÔNG TY TNHH DAOUKIWOOM INNOVATION',
-  nameEn: 'DAOUKIWOOM INNOVATION COMPANY LIMITED',
-  addrVi: 'Tầng 12, 13 & 14, Tòa nhà AP, 518B Điện Biên Phủ, Phường Thạnh Mỹ Tây, Thành phố Hồ Chí Minh, Việt Nam',
-  addrEn: 'Level 12, 13 & 14, AP Tower, 518B Dien Bien Phu Street, Thanh My Tay Ward, Ho Chi Minh City, Vietnam',
-  web: 'https://topdev.vn',
-  support: 'customercare@topdev.vn',
-  brand: 'TopDev',
-}
-
-const pdfNum = (n: number) => n.toLocaleString('en-US')
-/** "20/07/2026" → "Ngày 20 tháng 07 năm 2026 / July 20th, 2026" */
-function signDate(d: string) {
-  const [dd, mm, yyyy] = d.split('/')
-  const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-  const n = Number(dd)
-  const ord = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'
-  return { vi: `Ngày ${dd} tháng ${mm} năm ${yyyy}`, en: `${EN[Number(mm) - 1]} ${n}${ord}, ${yyyy}` }
-}
-
-/* T&C — verbatim from the client's PDF, split into VN/EN pairs so each clause can
-   be read in one language without the other interleaved. Six clauses, in order. */
-const QUOTE_TERMS: { vi: string[]; en: string[] }[] = [
-  { vi: ['Giá đã bao gồm 8% thuế VAT.'], en: ['Price is inclusive of 8% VAT.'] },
-  {
-    vi: ['Báo giá bao gồm chính sách chiết khấu, ưu đãi và quà tặng có hiệu lực áp dụng cho khách hàng đến hết ngày hết hạn được đề cập phía trên. Sau thời gian này, các chính sách có thể thay đổi dựa trên các chương trình khách hàng chính thức khác do TopDev áp dụng.'],
-    en: ['The quote includes discounts, incentives and gifts valid for customers until the expiration date mentioned above. After this time, policies may change based on other official promotions programs applied by TopDev.'],
-  },
-  {
-    vi: ['Dịch vụ được kích hoạt sau khi khách hàng thanh toán đơn hàng & hóa đơn cho đơn hàng được xuất.'],
-    en: ['The service will be activated after the customer completes the payment & the invoice is issued.'],
-  },
-  {
-    vi: [
-      'Thời hạn dịch vụ:',
-      '– Đối với dịch vụ tin đăng: Dịch vụ đã mua phải được kích hoạt trong vòng 12 tháng kể từ ngày xuất hóa đơn.',
-      '– Đối với dịch vụ tìm kiếm hồ sơ: Dịch vụ đã mua phải được kích hoạt trong vòng 12 tháng kể từ ngày xuất hóa đơn.',
-      '– Thời gian trên không áp dụng cho các trường hợp tin đăng thuộc chương trình ưu đãi với quy định khác về thời gian sử dụng.',
-      '– Sau thời gian tương ứng nêu trên, bất kỳ dịch vụ nào đã mua nhưng chưa được kích hoạt sẽ không còn giá trị sử dụng nếu không có thỏa thuận khác được xác nhận.',
-    ],
-    en: [
-      'Service term:',
-      '– Job posting service: The purchased service must be activated within 12 months from the date the invoice is issued.',
-      '– Search CV service: The purchased service must be activated within 12 months from the date the invoice is issued.',
-      '– The above time does not apply to cases of job posts applied to promotional programs with different regulations on usage time.',
-      '– After this period, any service purchased but not activated will no longer be valid unless other agreements have been confirmed.',
-    ],
-  },
-  {
-    vi: [
-      'Thời hạn sử dụng sau khi kích hoạt dịch vụ (được áp dụng cho cả dịch vụ đặt mua và dịch vụ tặng kèm):',
-      '– Dịch vụ đăng tin: 30 ngày đăng tin chính thức.',
-      '– Tìm kiếm hồ sơ: 30 ngày hoặc 90 ngày tương ứng với dịch vụ đặt mua.',
-      '– Quà tặng kèm: theo ghi chú quà tặng phía trên.',
-    ],
-    en: [
-      'Usage period after activating the service (applicable to both service and bonus service):',
-      '– Job Posting service: 30 days for official posting.',
-      '– Search CV: 30 days or 90 days corresponding to the ordered service.',
-      '– Employer Branding gift: according to note information above.',
-    ],
-  },
-  {
-    vi: [`TopDev cam kết chính sách giá & ưu đãi tại thời điểm báo giá là tốt nhất dành cho khách hàng theo chương trình khách hàng thân thiết & chính sách hiện hành (trừ trường hợp thay đổi thuế suất VAT theo quy định Nhà nước). Liên hệ hỗ trợ: ${ISSUER.support}.`],
-    en: [`We commit that the price policy & incentives at the time of quotation are the best offer for you according to the loyalty program & current policies (except for changes in VAT rates according to State regulations). Contact support: ${ISSUER.support}.`],
-  },
-]
-
-type PdfLine = { name: string; unitVi: string; unitEn: string; qty: number; price: number; disc: number; gift: boolean }
-type PdfOption = { n: number; title: string; lines: PdfLine[]; sub: number; vat: number; total: number; feats: { name: string; items: string[] }[] }
-
-/** Build the printable options from the quotation — paid line + its gift line, as
-    the client's document does. Gift lines print at 0 ₫ but are real entitlements. */
-function pdfOptions(q: Quote): PdfOption[] {
-  return Array.from({ length: Math.max(1, q.options) }, (_, i) => {
-    const cat = QUOTE_CATALOG[q.products[i % q.products.length]]
-    /* LINES DRIVE THE TOTAL, never the reverse. Back-solving quantity from the
-       quotation's value made every option's quantity shift whenever the value
-       changed — add a pricier third option and Option 1 silently became "2 tin".
-       Quantity is a property of the option; the value is derived FROM the options
-       (the highest one), not the other way round. */
-    const qty = 1
-    const lines: PdfLine[] = [
-      { name: cat.vi, unitVi: cat.unitVi, unitEn: cat.unitEn, qty, price: cat.price, disc: 0, gift: false },
-      { name: `${cat.vi} (Tặng)`, unitVi: cat.unitVi, unitEn: cat.unitEn, qty: 1, price: 0, disc: 0, gift: true },
-    ]
-    const sub = lines.reduce((s, l) => s + (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100))), 0)
-    const vat = Math.round(sub * VAT_RATE / 100)
-    return {
-      n: i + 1,
-      title: lines.map((l) => l.name).join(' + '),
-      lines,
-      sub,
-      vat,
-      total: sub + vat,
-      feats: [
-        { name: cat.vi, items: cat.feats },
-        { name: `${cat.vi} (Tặng)`, items: cat.feats },
-      ],
-    }
-  })
-}
-
-/* Saramin wordmark, inlined as a path rather than hotlinked from saramin.co.kr:
-   a document must render identically offline, in print and a year from now, which
-   a remote asset cannot promise. Brand blue #2D65F2, taken from the live site. */
-const SARAMIN_BLUE = '#2D65F2'
-const SARAMIN_MARK_D = 'M29.1,24.5L29.1,24.5c-0.4,0.3-1.5,0.9-3.5,0.9c-2.1,0-3.3-0.9-3.3-2.4c0-1.4,1.3-2.3,3.2-2.3 c1.3,0,2.4,0.2,3.5,0.5h0.1C29.1,21.2,29.1,24.5,29.1,24.5z M19.1,13.4c0,0.6,0.3,1.2,0.7,1.5c0.6,0.4,1.4,0.5,2.4,0.2 c0.9-0.3,2.1-0.6,3.4-0.6c2.4,0,3.4,0.8,3.4,2.8v1h-0.1c-1.3-0.3-2.3-0.5-3.9-0.5c-6.6,0-7.1,4.2-7.1,5.5c0,2.9,1.9,5.9,7.3,5.9 c4.2,0,6.7-1.4,7.4-1.9c0.6-0.4,0.8-0.8,0.8-1.5v-8.4c0-4.5-2.6-6.8-7.7-6.8c-2.1,0-4.1,0.4-5.1,0.8S19.1,12.5,19.1,13.4z M80.9,12.6L80.9,12.6c-1.3-1.4-2.9-2-5.1-2c-2.3,0-4.7,0.7-6.3,1.9c-0.7,0.5-0.9,0.9-0.9,1.6v12.7c0,1.2,1,2.3,2.2,2.3 c1.3,0,2.2-1,2.2-2.3v-11l0.1-0.1c0.3-0.2,1.3-0.8,2.8-0.8c1.9,0,2.9,1.1,2.9,3.2v8.8c0,1.2,1,2.3,2.2,2.3c1.3,0,2.2-1,2.2-2.3V15.8 l0.1-0.1c0.3-0.2,1.3-0.8,2.8-0.8c1.9,0,2.9,1.1,2.9,3.2v8.8c0,1.2,1,2.3,2.2,2.3c1.3,0,2.3-1,2.3-2.3V18c0-5-2.3-7.4-7.2-7.4 C84.5,10.6,82.6,11.3,80.9,12.6L80.9,12.6L80.9,12.6z M60.6,24.5L60.6,24.5c-0.4,0.3-1.5,0.9-3.5,0.9c-2.1,0-3.3-0.9-3.3-2.4 c0-1.4,1.3-2.3,3.2-2.3c1.3,0,2.4,0.2,3.5,0.5h0.1C60.6,21.3,60.6,24.5,60.6,24.5z M50.6,13.4c0,0.6,0.3,1.2,0.7,1.5 c0.6,0.4,1.4,0.5,2.4,0.2c0.9-0.3,2.1-0.6,3.4-0.6c2.4,0,3.4,0.8,3.4,2.8v1h-0.1c-1.3-0.3-2.3-0.5-3.9-0.5c-6.6,0-7.1,4.2-7.1,5.5 c0,2.9,1.9,5.9,7.3,5.9c4.2,0,6.7-1.4,7.4-1.9c0.6-0.4,0.8-0.8,0.8-1.5v-8.4c0-4.5-2.6-6.8-7.7-6.8c-2.1,0-4.2,0.4-5.1,0.8 C51.1,11.8,50.6,12.5,50.6,13.4z M46.3,10.9c-0.7-0.2-1.8-0.3-3-0.3c-3.9,0-6.1,2.1-6.1,5.8V27c0,1.2,1,2.1,2.2,2.1l0,0l0,0l0,0 c1.3,0,2.3-1,2.3-2.2v-9.7c0-1.5,0.6-2.3,1.9-2.3c0.6,0,1.1,0.1,1.6,0.2c0.4,0.1,0.7,0.1,1.1,0.1c1.4,0,2.1-1.2,2.1-2.1 C48.4,12,47.6,11.2,46.3,10.9 M10.7,18.4l-2.8-0.6c-1.5-0.3-2.2-0.8-2.2-1.7c0-0.5,0.3-1.6,2.6-1.6c1,0,2.4,0.3,3.3,0.8 c1.1,0.6,2.3,0.5,2.9-0.3c0.4-0.4,0.6-1,0.5-1.6c0-0.4-0.2-0.9-0.7-1.4c-1.1-0.9-3.5-1.6-5.9-1.6c-4.3,0-7.1,2.3-7.1,5.7 c0,3.3,2.8,4.7,5.1,5.3c0.8,0.2,1.2,0.3,1.7,0.4c0.3,0.1,0.7,0.1,1.2,0.2c1.5,0.3,2.1,0.9,2.1,1.8c0,0.6-0.4,1.7-2.8,1.7 c-1.7,0-3.5-0.5-4.6-1.2C3.7,24.2,3.3,24,2.8,24c-0.6,0-1.2,0.3-1.6,0.8c-0.6,0.8-0.4,2.1,0.4,2.8c0.7,0.6,2.9,2,6.9,2 c4.3,0,7.2-2.4,7.2-6C15.8,20.9,14.1,19.2,10.7,18.4 M99.6,8.5c-1.2,0-2.1,1-2.1,2.2v11.9c0,1.2,1,2.2,2.1,2.2c1.2,0,2.1-1,2.1-2.2 V10.7C101.7,9.5,100.8,8.5,99.6,8.5 M99.6,0c-1.8,0-3.2,1.3-3.2,3.1s1.4,3.2,3.2,3.2c1.7,0,3.2-1.5,3.2-3.2 C102.8,1.4,101.4,0,99.6,0 M113.6,10.6c-4.5,0-6.9,1.6-7.3,1.9c-0.6,0.4-0.8,0.8-0.8,1.6v12.8c0,1.2,1,2.3,2.2,2.3 c1.3,0,2.2-1,2.2-2.3V15.7l0,0c0.7-0.4,2-0.8,3.5-0.8c1.7,0,3.5,0.9,3.5,3.3v8.7c0,1.2,1,2.3,2.2,2.3c1.3,0,2.2-1,2.2-2.3V18 C121.5,13.2,118.8,10.6,113.6,10.6'
 function SaraminMark({ width = 104, fill = SARAMIN_BLUE }: { width?: number; fill?: string }) {
   return (
     <svg viewBox="0 0 123.3 31" width={width} height={(width * 31) / 123.3} role="img" aria-label="Saramin">
@@ -12471,41 +9912,6 @@ function AdminQuotes() {
     </div>
   )
 }
-/* An invoice only EXISTS once it has been issued — before that there is a PO
-   awaiting one, which is the PO list's job. So this list carries no "blocked"
-   or "draft" rows: every row here is a real fiscal document with a legal number.
-   That is why there are only two statuses. */
-/* ── VAT e-invoice ────────────────────────────────────────────────────────────
-   ONE number, the provider's own: 1C26TTD-173. The separate internal INV-…
-   sequence is gone — it existed to give an invoice a code before the provider
-   issued one, and a draft already carries a number in this series, so it bought
-   nothing and gave support two numbers to ask about.
-
-   Four statuses, and they mirror the PO exactly, because an invoice IS the second
-   half of a PO's life:
-
-     Draft invoice      nháp — a working document. No legal force, nothing filed
-                        with the tax authority, and it grants the customer NOTHING.
-     Invoice requested  Sales has asked Kế toán to make it official.
-     Invoice issued     chính — signed and filed. THIS is what releases the product.
-     Expired            the PO lapsed at month end before it was ever made
-                        official. See the note on invExpired below.
-
-   ARCHIVED stays as a fifth, and only ever applies to an ISSUED one:
-   VN regulation forbids editing a filed invoice, so a wrong one is cancelled and
-   re-issued with a biên bản. That is also the route for an invoice issued ahead
-   of a payment that never arrived. */
-type InvStep = 'draft' | 'requested' | 'issued' | 'archived'
-const INV_STAGE: Record<InvStep, { vi: string; en: string; tone: StatusTone; by: string }> = {
-  draft: { vi: 'Hóa đơn nháp', en: 'Draft', tone: 'draft', by: 'Sales' },
-  requested: { vi: 'Đang yêu cầu xuất hóa đơn chính', en: 'Invoice requested', tone: 'schedule', by: 'Sales' },
-  issued: { vi: 'Đã xuất hóa đơn chính', en: 'Invoice issued', tone: 'active', by: 'Kế toán' },
-  archived: { vi: 'Lưu trữ — PO đã hết hạn', en: 'Archived', tone: 'expired', by: 'System' },
-}
-type Inv = { code: string; step: InvStep; customer: string; co?: string; po: string; payment?: string; total: number; issued: string; activateBy: string; product: number; qty: number; issuer: string }
-
-const invStage = (i: Inv) => INV_STAGE[i.step]
-
 /* ── VAT e-invoice as PDF ──────────────────────────────────────────────────────
    The provider's own template (easyinvoice), reproduced because Kế toán and the
    customer both work from this exact sheet. It renders in TWO forms off one
@@ -12966,100 +10372,6 @@ function AdminInvoices() {
     </div>
   )
 }
-/* ── Purchase order ───────────────────────────────────────────────────────────
-   Page layout follows the client's live system. Numbering is PO-{seq6}-{MM}-
-   {YYYY}, issuer block on the left, recipient + dates on the right, line items
-   with the package benefits printed inline. */
-/* FIVE statuses. The PO and the invoice on it move together — the PO status IS
-   the invoice's status, seen from the commercial side:
-
-     Active             the PO exists. No invoice yet.
-     Draft invoice      Sales issued a draft (hóa đơn nháp)   → invoice: Draft
-     Invoice requested  Sales asked for the official one      → invoice: Invoice requested
-     Invoice issued     Kế toán filed it (hóa đơn chính)      → invoice: Invoice issued
-     Expired            the month ended first                 → invoice: Archived
-
-   Two things give this its shape rather than a straight line:
-
-   1 · From Active, Sales has a CHOICE. Issue a draft, or skip it and request the
-       official invoice directly. The draft is never a precondition.
-
-   2 · Expiry beats everything. A PO lapses at the end of the month it was issued
-       in whether it is Active, Draft invoice or Invoice requested — no matter
-       what. Only an official invoice takes it out of reach of the clock.
-
-   The line that matters commercially: ONLY the official invoice releases the
-   product. A draft grants nothing, however long it has existed.
-
-   There is deliberately NO Cancelled on a PO. A PO that goes nowhere expires. */
-type PoStep = 'active' | 'draft-inv' | 'requested' | 'invoiced' | 'expired'
-type PoStage = { key: PoStep; vi: string; en: string; by: string }
-const PO_FLOW: PoStage[] = [
-  { key: 'active', vi: 'Đang hiệu lực', en: 'Active', by: 'Sales' },
-  { key: 'draft-inv', vi: 'Đã xuất hóa đơn nháp', en: 'Draft invoice', by: 'Sales' },
-  { key: 'requested', vi: 'Đang yêu cầu xuất hóa đơn chính', en: 'Invoice requested', by: 'Sales' },
-  { key: 'invoiced', vi: 'Đã xuất hóa đơn chính', en: 'Invoice issued', by: 'Kế toán' },
-]
-/* An exit, not a step — nobody reaches it by clicking the flow forward. */
-const PO_EXITS: Record<string, PoStage> = {
-  expired: { key: 'expired', vi: 'Hết hạn', en: 'Expired', by: 'System' },
-}
-const poStage = (k: PoStep) => PO_FLOW.find((x) => x.key === k) ?? PO_EXITS[k]
-/* The forward action. Active and Draft invoice share one, because issuing a draft
-   is optional — a PO can go straight from Active to Invoice requested. */
-const PO_ACTIONS: Partial<Record<PoStep, { label: string; en: string; by: string; accounting: boolean }>> = {
-  active: { label: 'Yêu cầu xuất hóa đơn chính', en: 'Request official invoice', by: 'Sales', accounting: false },
-  'draft-inv': { label: 'Yêu cầu xuất hóa đơn chính', en: 'Request official invoice', by: 'Sales', accounting: false },
-  requested: { label: 'Xuất hóa đơn chính', en: 'Issue official invoice', by: 'Kế toán', accounting: true },
-}
-const poNext = (step: PoStep) => PO_ACTIONS[step] ?? null
-/** Still running out of month. Expiry beats all three of these. */
-const poLive = (step: PoStep) => step === 'active' || step === 'draft-inv' || step === 'requested'
-/* ONE button, one action, three statuses. On Active it creates the draft; after
-   that the same click opens it. They were never two different things — a rep
-   issues a draft precisely in order to look at it. Gone once the official invoice
-   exists (that is the document you read then) and gone once expired. */
-const poDraftBtn = (step: PoStep) => poLive(step)
-
-/* ── Payment status — a THIRD axis, independent of both document statuses ──────
-   Money is not a stage of a document. A PO can be Active and already paid; an
-   invoice can be issued and still unpaid (VN practice routinely invoices ahead of
-   the transfer). So payment is tracked on its own and never folded into PoStep or
-   InvStep — the moment it becomes a stage, one of the two has to lie.
-
-   Only two of the three values are STORED, and only one of them as a fact:
-     Paid     paidAt has a date. The one thing a human records.
-     Unpaid   no paidAt yet, and inside the 14-day window.
-     Overdue  no paidAt and MORE THAN 14 DAYS since the PO was issued. Derived, so
-              it turns over by itself at midnight — nobody has to run anything, and
-              there is no stored "overdue" that can go stale.
-
-   Counted from the PO's issue date, not the invoice's: the customer's obligation
-   starts when the order is confirmed, and an invoice issued late must not reset
-   the clock the customer is already late against. */
-const PAY_TERMS_DAYS = 14
-type PayStatus = 'Paid' | 'Unpaid' | 'Overdue'
-const PAY_META: Record<PayStatus, { tone: StatusTone; vi: string }> = {
-  Paid: { tone: 'active', vi: 'Đã thanh toán' },
-  Unpaid: { tone: 'pending', vi: 'Chưa thanh toán' },
-  Overdue: { tone: 'rejected', vi: `Quá hạn — hơn ${PAY_TERMS_DAYS} ngày kể từ ngày xuất PO` },
-}
-/** Dotted or slashed dd.mm.yyyy → days elapsed against the mock's fixed today. */
-const daysFromDoc = (d: string) => {
-  const [dd, mm, yy] = d.replace(/\./g, '/').split('/').map(Number)
-  if (!dd || !mm || !yy) return 0
-  return Math.round((MOCK_TODAY.getTime() - new Date(yy, mm - 1, dd).getTime()) / 86_400_000)
-}
-/* An invoice's payment status is its PO's — the same money, read from one place.
-   Confirming on the invoice therefore updates the PO by construction rather than by
-   a second write that could fail on its own. */
-const poOf = (code: string) => POS.find((p) => p.code === code)
-const invPay = (i: Inv): { paidAt?: string; poIssued: string } => {
-  const po = poOf(i.po)
-  // Older rows carry a payment reference instead of a date; treat it as paid.
-  return { paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined), poIssued: po?.issued ?? i.issued }
-}
-
 /** Payment read-out. Overdue also says HOW late, because "overdue" alone does not
     tell a rep whether to send a reminder or escalate. */
 function PayCell({ paidAt, poIssued }: { paidAt?: string; poIssued: string }) {
@@ -13073,106 +10385,6 @@ function PayCell({ paidAt, poIssued }: { paidAt?: string; poIssued: string }) {
     </span>
   )
 }
-
-function payStatus(paidAt: string | undefined, poIssued: string): PayStatus {
-  if (paidAt) return 'Paid'
-  return daysFromDoc(poIssued) > PAY_TERMS_DAYS ? 'Overdue' : 'Unpaid'
-}
-
-/** `invNo` is allocated by the provider the moment the FIRST draft is issued, so
-    a PO that never got one has none — that is what tells the two apart. `invIssued`
-    is filled only when the official invoice is filed. */
-type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; seller: string; product: number; qty: number; invNo?: string; invIssued?: string
-  /** the date Kế toán confirmed the money arrived — the ONLY stored payment fact */
-  paidAt?: string }
-/* A PO lapses at the end of the month it was issued in — the same end-of-month
-   rule as the quotation it came from, so the two documents can never disagree
-   about how long the commercial terms stand. Dates on the document are dotted. */
-const poExpiry = (p: Po) => endOfMonth(p.issued.replace(/\./g, '/'))
-/* Expiry is a nightly JOB, not a field anyone sets — so the mock must not store
-   it either. A PO whose month has ended is Expired no matter what its last
-   recorded step was, and the invoice on it is Archived with it. Keeping a stored
-   `step` and a computed expiry date side by side and hoping they agree is the
-   same bug as keeping the invoice status beside the PO's: the demo drifted into
-   showing a "Draft invoice" PO that had lapsed a week earlier.
-
-   Only `invoiced` is immune — an official invoice takes the PO out of reach of
-   the clock, which is the whole point of the rule. */
-const poStep = (p: Po): PoStep =>
-  p.step !== 'invoiced' && MOCK_TODAY.getTime() > asDate(poExpiry(p)).getTime() ? 'expired' : p.step
-const POS: Po[] = [
-  /* Dated against MOCK_TODAY = 08/08/2026, and every status below is DERIVED from
-     that date plus the stored step — nothing here asserts "Expired" by hand. The
-     August rows are the live ones; the July and June rows are what the nightly
-     expiry job has already caught, which is why four of them read Expired no
-     matter what step they were left in. */
-
-  // Issued inside the 14-day payment window and not yet paid — the plain Unpaid
-  // case. Without a row like this the column only ever shows the two loud states
-  // and nobody sees what "on time" looks like.
-  { code: 'PO-005865-08-2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
-  { code: 'PO-005864-08-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
-  { code: 'PO-005863-08-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
-  { code: 'PO-005862-08-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
-
-  /* Left at "Invoice requested" in July and never made official. Expiry beats it:
-     the PO reads Expired and its invoice is Archived — the single clearest proof
-     that a draft does not stop the clock. */
-  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
-  // never got past Active — expired with no invoice at all
-  { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
-  // a June draft, lapsed on 30/06 — not on a rolling 30 days
-  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
-  { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
-]
-const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', 'draft-inv': 'draft', requested: 'schedule', invoiced: 'active', expired: 'expired' }
-
-/* ── Where the invoice list comes from ────────────────────────────────────────
-   DERIVED from the POs, never hand-written beside them. An invoice is not a
-   record with a lifecycle of its own — it is the fiscal half of a PO — so its
-   status is a function of the PO's status and nothing else:
-
-     PO draft-inv → Draft · requested → Invoice requested
-     PO invoiced  → Invoice issued    · expired   → Archived
-
-   Two hand-maintained arrays drifted the moment they existed: a PO reading
-   "Invoice requested" carried an invoice reading "Invoice issued", and one PO
-   had two invoices contradicting each other. Deriving makes that unrepresentable.
-
-   A PO appears here only once it has an `invNo`, i.e. once a draft was actually
-   issued. An Active PO has no invoice, and a PO that expired while still Active
-   never had one either. */
-const PO_TO_INV: Partial<Record<PoStep, InvStep>> = {
-  'draft-inv': 'draft', requested: 'requested', invoiced: 'issued', expired: 'archived',
-}
-/** invoice date + the product's activation window (clause 4). */
-const activateByOf = (issued: string) => {
-  const [dd, mm, yy] = issued.split('/').map(Number)
-  return dd && mm && yy ? `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yy + 1}` : '—'
-}
-const invOf = (p: Po): Inv => ({
-  code: p.invNo!,
-  step: PO_TO_INV[poStep(p)]!,
-  customer: p.customer,
-  co: p.co,
-  po: p.code,
-  payment: poStep(p) === 'invoiced' ? 'PAY-1042' : undefined,
-  total: p.total,
-  issued: p.invIssued ?? '—',
-  activateBy: p.invIssued ? activateByOf(p.invIssued) : '—',
-  product: p.product,
-  qty: p.qty,
-  issuer: poStep(p) === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
-})
-const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[poStep(p)]).map(invOf)
-
-/** The draft VAT invoice a PO would produce. Not stored — a draft only becomes a
-    record when the rep actually issues one, and until then this is what it WOULD
-    say. Rendered through the real invoice component so the two can never drift. */
-const draftInvOf = (po: Po): Inv => ({
-  code: '1C26TTD-—', step: 'draft', customer: po.customer, co: po.co, po: po.code,
-  total: po.total, issued: '—', activateBy: '—', product: po.product, qty: po.qty, issuer: po.seller,
-})
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
@@ -13439,50 +10651,6 @@ function AdminUserBehavior() {
   )
 }
 
-/* ── System · Roles & permissions ───────────────────────────────────────────
- * Interactive flow — the internal HQ operator lifecycle, in order:
- *   1. Define a ROLE first  → a permission tree (None / Read / Read & write per page)
- *   2. Create an operator   → fill name + email
- *   3. Assign the role      → pick from the roles defined in step 1
- *   4. Send email invite    → operator sets their OWN password via the link
- *   → status is Pending until they activate it, then Active
- * Same invitation format/flow as the company Admin / assigned-role invite.
- */
-type PermLevel = 'none' | 'read' | 'write'
-const PERM_GROUPS: { key: string; label: string; resources: string[] }[] = [
-  { key: 'recruitment', label: 'Recruitment', resources: ['Jobs', 'Job approval', 'Applicants', 'Resumes / candidates (PII)'] },
-  { key: 'companies', label: 'Companies', resources: ['Company accounts', 'Company users', 'Company page review'] },
-  // One resource, because Displays is one page (banners + popups behind a switcher).
-  { key: 'content', label: 'Service', resources: ['Displays (banners + popups)', 'Manual services'] },
-  { key: 'billing', label: 'Billing & products', resources: ['Catalog', 'Bundles', 'Credits', 'Orders', 'Promotions'] },
-  { key: 'crm', label: 'CRM', resources: ['Sign-ups', 'Pipeline / leads', 'Quotes', 'Invoices', 'Purchase orders', 'Payments', 'Contracts'] },
-  { key: 'analytics', label: 'Analytics', resources: ['Dashboard', 'Sales report', 'Recruit report', 'Revenue report', 'User behavior'] },
-  { key: 'system', label: 'System', resources: ['Operator accounts', 'Roles & permissions', 'Master data', 'Job categories & roles', 'Audit log', 'Environment / flags', 'Departments'] },
-]
-const TOTAL_PERMS = PERM_GROUPS.reduce((n, g) => n + g.resources.length, 0)
-const permKey = (gk: string, r: string) => `${gk}:${r}`
-
-type Role = { name: string; desc: string; users: number; grants: Record<string, PermLevel> }
-const ROLES: Role[] = [
-  { name: 'Super admin', desc: 'Full access to every module, including roles & operator accounts.', users: 3, grants: { recruitment: 'write', companies: 'write', content: 'write', billing: 'write', crm: 'write', analytics: 'write', system: 'write' } },
-  { name: 'Sales', desc: 'CRM pipeline, companies & billing. No content or system settings.', users: 8, grants: { recruitment: 'none', companies: 'read', content: 'none', billing: 'write', crm: 'write', analytics: 'read', system: 'none' } },
-  { name: 'Operations', desc: 'Recruitment moderation, company accounts & content.', users: 12, grants: { recruitment: 'write', companies: 'write', content: 'write', billing: 'none', crm: 'none', analytics: 'read', system: 'none' } },
-  { name: 'Content editor', desc: 'Content module only — banners, popups, pages, blog.', users: 5, grants: { recruitment: 'none', companies: 'none', content: 'write', billing: 'none', crm: 'none', analytics: 'read', system: 'none' } },
-  { name: 'Finance', desc: 'Billing, orders & revenue reports. Read-only CRM.', users: 4, grants: { recruitment: 'none', companies: 'read', content: 'none', billing: 'write', crm: 'read', analytics: 'read', system: 'none' } },
-]
-// expand a role's per-group grants into a full per-resource permission map
-const expandGrants = (grants: Record<string, PermLevel>): Record<string, PermLevel> => {
-  const m: Record<string, PermLevel> = {}
-  for (const g of PERM_GROUPS) for (const r of g.resources) m[permKey(g.key, r)] = grants[g.key] ?? 'none'
-  return m
-}
-const grantedCount = (perms: Record<string, PermLevel>) => Object.values(perms).filter((l) => l !== 'none').length
-
-const PERM_LEVELS: { key: PermLevel; label: string }[] = [
-  { key: 'none', label: 'None' },
-  { key: 'read', label: 'Read' },
-  { key: 'write', label: 'Read & write' },
-]
 function PermSeg({ value, onChange }: { value: PermLevel | null; onChange: (l: PermLevel) => void }) {
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-md border border-line">
@@ -13638,45 +10806,6 @@ function AdminRoles() {
     </div>
   )
 }
-
-/* ── System · Users (HQ operators) — create → assign role → invite → status ── */
-/* Department is the org unit (who they sit with, from System → Departments);
-   role is the RBAC grant set. The two are orthogonal — same department, different
-   roles is normal — so they get their own columns. */
-const OP_DEPTS = ['Sales', 'Operations', 'Content', 'Engineering'] as const
-type OpUser = { id: number; name: string; email: string; dept: string; role: string; status: 'Active' | 'Pending' | 'Disabled'; last: string }
-const OPERATORS: OpUser[] = [
-  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', dept: 'Content', role: 'Super admin', status: 'Active', last: '5m ago' },
-  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', dept: 'Operations', role: 'Operations', status: 'Active', last: '1h ago' },
-  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Active', last: '2h ago' },
-  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', dept: 'Sales', role: 'Sales', status: 'Pending', last: '—' },
-  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', dept: 'Content', role: 'Content editor', status: 'Disabled', last: '2 months ago' },
-]
-const OP_STATUS: Record<OpUser['status'], StatusTone> = { Active: 'active', Pending: 'pending', Disabled: 'expired' }
-
-/* ── System · Staff directory ─────────────────────────────────────────────────
- * The master people list for HQ — name · email · phone · department. It is the
- * single source that two other places draw from:
- *   • Operators (console logins) — you create an operator by PICKING a staff
- *     member here, then assigning a role. Not every staff member is an operator.
- *   • CRM ownership — a company is assigned to a SALES staff member (its owner).
- * A person's email / department is entered once, here, then reused everywhere.
- */
-type Staff = { id: number; name: string; email: string; phone: string; dept: string; title: string }
-const STAFF: Staff[] = [
-  { id: 1, name: 'Trần Quốc Trung', email: 'admin@saramin.vn', phone: '0901 234 567', dept: 'Content', title: 'Founder / Super admin' },
-  { id: 2, name: 'Lê Hữu Phong', email: 'ops1@saramin.vn', phone: '0902 345 678', dept: 'Operations', title: 'Operations lead' },
-  { id: 3, name: 'Nguyễn Thị Lan', email: 'sales1@saramin.vn', phone: '0903 456 789', dept: 'Sales', title: 'Account executive' },
-  { id: 4, name: 'Phạm Quang Huy', email: 'sales2@saramin.vn', phone: '0904 567 890', dept: 'Sales', title: 'Account executive' },
-  { id: 5, name: 'Đặng Thu Trang', email: 'content1@saramin.vn', phone: '0905 678 901', dept: 'Content', title: 'Content editor' },
-  { id: 6, name: 'Ngô Minh Tú', email: 'tu@saramin.vn', phone: '0906 789 012', dept: 'Operations', title: 'Moderator' },
-  { id: 7, name: 'Vũ Thanh Hải', email: 'hai@saramin.vn', phone: '0907 890 123', dept: 'Sales', title: 'Sales rep' },
-  { id: 8, name: 'Seonguk Park', email: 'seonguk@saramin.vn', phone: '0908 901 234', dept: 'Engineering', title: 'Engineering lead' },
-]
-/** which staff already have a console login (seed operators), by email → role. */
-const OPERATOR_ROLE_BY_EMAIL: Record<string, string> = Object.fromEntries(OPERATORS.map((o) => [o.email, o.role]))
-/** how many CRM companies a staff member owns (drawn from the CRM company list). */
-const companiesOwnedBy = (name: string) => COMPANIES.filter((c) => c.owner === name).length
 
 function AddStaffModal({ onAdd, onClose }: { onAdd: (s: Omit<Staff, 'id'>) => void; onClose: () => void }) {
   const [name, setName] = useState('')
@@ -13934,148 +11063,6 @@ function AdminUsers() {
     </div>
   )
 }
-/* ── Master data — one place for every reference list ─────────────────────────
- * Single source of truth for the dropdown / filter vocabularies used across all
- * three sites. One page, one left rail of domains, one detail panel. Each domain
- * declares its shape: flat list, tag cloud, two-level taxonomy, or grouped list.
- * Mirrors the client's master-data spec sheet (Industry, Job categories, roles,
- * level, skills, education, languages, job types, locations, currency).
- * ---------------------------------------------------------------------------- */
-type MDKind = 'flat' | 'tags' | 'taxonomy' | 'grouped'
-type MDDomain = {
-  key: string
-  label: string
-  i18n: string
-  used: string
-  note: string
-  kind: MDKind
-  entries?: string[]
-  groups?: { name: string; items: string[] }[]
-}
-const MD_DOMAINS: MDDomain[] = [
-  {
-    // Numbering series belong in Master data: they are configuration an admin looks
-    // up, not something any screen lets you type. Records and documents follow
-    // OPPOSITE rules, which is the whole point of listing them side by side.
-    key: 'doc-numbering', label: 'Document numbering', i18n: '—', used: 'Company · quotation · sales order · invoice',
-    note: 'System-assigned, never editable (except the customer’s own PO number, typed as given). A RECORD id must not be guessable — its sequence would reveal how many customers we have. A DOCUMENT number must be sequential + date-stamped so it is filable, quotable on the phone, and legal for VAT.',
-    kind: 'flat',
-    entries: [
-      'Company (record) — CO-XXXXXXX · e.g. CO-P9FCEPD · 6 encoded chars + 1 check char, Crockford Base32 (no I/L/O/U) · NOT sequential, capacity 1.07 billion',
-      'Quotation — QUO-{seq6}-{MM}-{YYYY} · e.g. QUO-009909-07-2026 · sequential',
-      'Sales order / PO — PO-{seq6}-{MM}-{YYYY} · e.g. PO-005864-08-2026 · sequential',
-      'Invoice — the e-invoice provider’s own series · e.g. 1C26TTD-173 · sequential and gapless, required by law. ONE number: a draft already carries one, so there is no separate internal INV- code',
-      'Customer’s own PO number — free text, recorded exactly as given · e.g. PO-VP/2026/044',
-    ],
-  },
-  {
-    key: 'industry', label: 'Industry', i18n: 'vi · en · ko', used: 'Company profile · job form · Store filter',
-    note: 'Classifies companies (and jobs). Single-level list.', kind: 'flat',
-    entries: ['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics', 'Construction & Real Estate', 'Hospitality & Tourism', 'Media & Advertising', 'Telecommunications'],
-  },
-  {
-    key: 'job-categories', label: 'Job categories & roles', i18n: 'vi · en · ko', used: 'Job form (Category → Role) · Store filter',
-    note: 'Two-level taxonomy: each Category owns a list of Roles (job titles). Roles are children of their category — pick a category on the left to manage its roles. Distinct from System → Roles & permissions (admin RBAC).',
-    kind: 'taxonomy',
-    groups: [
-      { name: 'IT', items: ['Software Developer', 'Machine Learning / AI Engineer', 'Augmented Reality (AR) Developer', 'Internet of Things (IoT) Developer', 'Blockchain Developer', 'DevOps Engineer', 'Data Engineer / Scientist / Analyst', 'Network Engineer / Cyber Security', 'QA / Tester', 'Product Manager / Business Analyst', 'IT Support Specialist', 'IT - Hardware / Network'] },
-      { name: 'Business, Finance', items: ['Accountant', 'Financial Analyst', 'Auditor', 'Investment Analyst', 'Business Development', 'Sales Executive'] },
-      { name: 'Management', items: ['Project Manager', 'Operations Manager', 'General Manager', 'Team Lead'] },
-      { name: 'Manufacturing & Engineering', items: ['Mechanical Engineer', 'Electrical Engineer', 'QA/QC Engineer', 'Production Supervisor'] },
-      { name: 'Service', items: ['Customer Service', 'Restaurant Staff', 'Housekeeping', 'Security'] },
-      { name: 'Design, Creativity', items: ['UI/UX Designer', 'Graphic Designer', 'Copywriter', 'Video Editor'] },
-    ],
-  },
-  {
-    key: 'benefits', label: 'Benefits (phúc lợi)', i18n: 'vi · en · ko', used: 'Job form (Benefits picker) · Job detail · Store filter',
-    note: 'A benefit = a fixed TYPE (icon + label, here) + a DESCRIPTION written per job. Typing them is what gives each benefit an icon, a translation and a SEARCH FILTER — a free-text blob can never answer “show me jobs with a shuttle bus”. Kept deliberately short (12, one 4×3 grid): the description carries the detail, so “Phụ cấp” covers ăn trưa / xăng xe / điện thoại / chuyên cần without four separate types. Max 6 per job.',
-    kind: 'flat',
-    entries: [
-      'Lương & thưởng — Pay & bonus',
-      'Phụ cấp — Allowances',
-      'Bảo hiểm & sức khoẻ — Insurance & health',
-      'Nghỉ phép — Paid leave',
-      'Làm việc linh hoạt — Flexible working',
-      'Đưa đón & chỗ ở — Transport & housing',
-      'Căn-tin — Canteen',
-      'Trang bị làm việc — Equipment & uniform',
-      'Đào tạo & thăng tiến — Training & career',
-      'Du lịch & hoạt động — Trips & activities',
-      'Chăm lo gia đình — Family care',
-      'Khác — Other (tiêu đề tự nhập, luôn xếp cuối)',
-    ],
-  },
-  {
-    key: 'job-level', label: 'Job level', i18n: 'vi · en · ko', used: 'Job form · Store filter',
-    note: 'Seniority of the posting. Single-level list.', kind: 'flat',
-    entries: ['Intern/Student', 'Fresher/Entry level', 'Experienced (non-manager)', 'Manager', 'Director and above'],
-  },
-  {
-    key: 'skills', label: 'Skills', i18n: 'vi · en', used: 'Job form · resume · Store filter (tags)',
-    note: 'Free-growing tag vocabulary; can be connected to Job categories / roles. Displayed as tags on the Jobseeker site.', kind: 'tags',
-    entries: ['ASP.NET Core', '.NET', 'React', 'Vue', 'Angular', 'Node.js', 'Python', 'SQL Server', 'AWS', 'Docker', 'Kubernetes', 'Figma', 'Photoshop', 'SEO', 'Copywriting', 'Japanese N2', 'Excel'],
-  },
-  {
-    key: 'education', label: 'Education level', i18n: 'vi · en', used: 'Job form (min. education) · resume',
-    note: 'Single-level list.', kind: 'flat',
-    entries: ['High school', "Associate's degree", 'College', 'Bachelor', 'Master', 'Doctorate', 'Others'],
-  },
-  {
-    key: 'languages', label: 'Preferred languages for application', i18n: 'vi · en', used: 'Job form · resume',
-    note: 'Languages a candidate may apply / be assessed in. Single-level list.', kind: 'flat',
-    entries: ['English', 'Vietnamese', 'Japanese', 'Chinese', 'Korean', 'French', 'Spanish', 'Italian'],
-  },
-  {
-    // TWO axes, two lists — see Job management → "WORK TYPE and CONTRACT TYPE are
-    // TWO fields". They combine freely ("Fulltime + Remote"), so one merged list
-    // would force the employer to pick a side and drop the other half.
-    key: 'work-types', label: 'Work types (job_type)', i18n: 'vi · en · ko', used: 'Job form · Search filter · Matching',
-    note: 'WHERE and HOW the work happens. Single-level list.', kind: 'flat',
-    entries: ['In office', 'Remote', 'Hybrid', 'Oversea'],
-  },
-  {
-    key: 'contract-types', label: 'Contract types (contract_type)', i18n: 'vi · en · ko', used: 'Job form · Search filter',
-    note: 'The EMPLOYMENT RELATIONSHIP. Job side only — the candidate is never asked for one, so this drives the jobseeker\u2019s SEARCH FILTER, not the match score. No "Other": a catch-all here meant the old list was carrying two axes at once.', kind: 'flat',
-    entries: ['Fulltime', 'Part-time', 'Fixed-term contract', 'Internship', 'Probation', 'Freelance', 'Seasonal'],
-  },
-  {
-    // Gates the Locations field: a Vietnamese company picks a province from
-    // Locations below; a foreign one does not, and writes its city into Address.
-    key: 'country', label: 'Country (quốc tịch công ty)', i18n: 'vi · en', used: 'Company profile (create + detail)',
-    note: 'Quốc gia ĐĂNG KÝ của công ty — nơi thành lập theo giấy chứng nhận đăng ký, KHÔNG phải nơi đặt văn phòng và KHÔNG phải quốc tịch của chủ sở hữu (một công ty Hàn Quốc đầu tư, thành lập tại VN thì vẫn là Việt Nam — dùng Company tag cho phần sở hữu). Danh sách ĐẦY ĐỦ theo ISO 3166-1: các nước hay gặp trong kinh doanh tại VN được xếp lên đầu và có tên tiếng Việt, phần còn lại theo tên tiếng Anh, A→Z. Không có mục “Khác” — một quốc gia có thật luôn chọn được, và “Khác” thì không dùng được vào việc gì (hiệp định thuế, báo cáo).',
-    kind: 'flat',
-    entries: ['Việt Nam', 'Hàn Quốc / Korea, Republic of', 'Nhật Bản / Japan', 'Singapore', 'Hoa Kỳ / United States', 'Trung Quốc / China', 'Đài Loan / Taiwan', 'Hồng Kông / Hong Kong', 'Thái Lan / Thailand', 'Malaysia', 'Indonesia', 'Philippines', 'Ấn Độ / India', 'Úc / Australia', 'Đức / Germany', 'Pháp / France', 'Anh / United Kingdom', 'Hà Lan / Netherlands', 'Thụy Sĩ / Switzerland', 'Canada', 'Nga / Russian Federation', 'Campuchia / Cambodia', 'Lào / Laos', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei Darussalam', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cameroon', 'Central African Republic', 'Chad', 'Chile', 'Colombia', 'Comoros', 'Congo', 'Congo, Democratic Republic of the', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Côte d\'Ivoire', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'Gabon', 'Gambia', 'Georgia', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Korea, Democratic People\'s Republic of', 'Kuwait', 'Kyrgyzstan', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Palestine, State of', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Syria', 'Tajikistan', 'Tanzania', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkmenistan', 'Tuvalu', 'Türkiye', 'Uganda', 'Ukraine', 'United Arab Emirates', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Yemen', 'Zambia', 'Zimbabwe'],
-  },
-  {
-    key: 'js-nationality', label: 'Quốc tịch ứng viên / Jobseeker nationality', i18n: 'vi · en',
-    used: 'Job form (yêu cầu ứng viên) · Jobseeker profile · Applicant filter',
-    note: 'HAI giá trị, và danh sách này không được phép dài ra. Câu hỏi mà nhà tuyển dụng thực sự cần trả lời là “có phải bảo lãnh giấy phép lao động không”, chứ không phải “hộ chiếu nước nào” — mà câu đó chỉ có hai vế. Tách theo từng quốc gia sẽ biến một trường dữ liệu cá nhân nhạy cảm thành bộ lọc phân biệt đối xử, và nếu vai trò cần tiếng Nhật hay tiếng Hàn thì đó là KỸ NĂNG NGÔN NGỮ, không phải quốc tịch.\n\nKhác hẳn Country của CÔNG TY (đủ ~196 nước): quốc gia đăng ký của công ty là dữ liệu công khai trên giấy phép và quyết định cách tính thuế; quốc tịch ứng viên là dữ liệu cá nhân nhạy cảm (NĐ 13/2023) nên chỉ thu thập đúng phần dùng đến.',
-    kind: 'flat',
-    entries: ['Việt Nam / Vietnamese', 'Nước ngoài / Foreigner'],
-  },
-  {
-    key: 'locations', label: 'Locations', i18n: 'vi · en', used: 'Company profile · job form · Store filter',
-    note: 'ĐỦ 34 đơn vị hành chính cấp tỉnh của Việt Nam sau sáp nhập 01/7/2025 (6 thành phố trực thuộc trung ương + 28 tỉnh), và giá trị CUỐI CÙNG là “Quốc tế / International”. Sáu thành phố xếp trước vì phần lớn tin tuyển dụng nằm ở đó; 28 tỉnh còn lại A→Z. Danh sách phẳng, không nhóm — một tin đăng chọn một tỉnh, không chọn một vùng.\n\nQuốc tế nằm CUỐI, không nằm đầu và không tách thành từng nước: ở một sàn tuyển dụng Việt Nam đây là ngoại lệ, và tách Japan/Singapore/Korea thành từng mục sẽ tạo ra bộ lọc gần như luôn rỗng.',
-    kind: 'flat',
-    entries: ['Hà Nội', 'Hồ Chí Minh', 'Hải Phòng', 'Đà Nẵng', 'Huế', 'Cần Thơ', 'An Giang', 'Bắc Ninh', 'Cao Bằng', 'Cà Mau', 'Gia Lai', 'Hà Tĩnh', 'Hưng Yên', 'Khánh Hòa', 'Lai Châu', 'Lào Cai', 'Lâm Đồng', 'Lạng Sơn', 'Nghệ An', 'Ninh Bình', 'Phú Thọ', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị', 'Sơn La', 'Thanh Hóa', 'Thái Nguyên', 'Tuyên Quang', 'Tây Ninh', 'Vĩnh Long', 'Điện Biên', 'Đắk Lắk', 'Đồng Nai', 'Đồng Tháp', 'Quốc tế / International'],
-  },
-  {
-    key: 'currency', label: 'Salary currency', i18n: '—', used: 'Job form (salary range) · Candidate expected salary',
-    note: 'TWO entries only, and this list must not grow. A JPY or RUB salary is unfilterable, unrankable and unmaintainable on a VN board. USD is a DISPLAY denomination — payroll settles in VND either way. Separate from the BILLING currency owned by the billing BC: what you invoice a customer in has nothing to do with what a job pays.', kind: 'flat',
-    entries: ['VND', 'USD'],
-  },
-  {
-    key: 'company-tag', label: 'Company tag', i18n: 'vi · en', used: 'Company profile · Store filter (tags)',
-    note: 'Editorial labels applied to a company (a company can carry several). Displayed as tags on the Company site. Free-growing list — start with the two below.', kind: 'tags',
-    entries: ['Korean company', 'Big company'],
-  },
-  {
-    key: 'image-topic', label: 'Image topic', i18n: 'vi · en', used: 'Image gallery · job picture picker',
-    note: 'WHAT A PICTURE SHOWS — the gallery is classified on this, not on industry, because a photograph is a scene and industry is a fact about the employer. Industry reaches the pictures through the industry → topic map beside the gallery, so this list stays small and does not grow when the industry list does.', kind: 'flat',
-    entries: ['Văn phòng', 'Kỹ thuật', 'Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kho vận', 'Vận tải', 'Công trường', 'Bán lẻ · cửa hàng', 'Sản phẩm · bao bì', 'Y tế · chăm sóc', 'Nghiên cứu · phòng lab', 'Lớp học · đào tạo', 'Nhà hàng · khách sạn', 'Công nghệ', 'Dữ liệu · biểu đồ', 'Nhóm người', 'Toà nhà · kiến trúc', 'Thiên nhiên · môi trường', 'Trừu tượng · nền'],
-  },
-]
-
 function MDEntryRow({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-between border-b border-line-soft px-4 py-2.5 text-[12.5px] last:border-0">
@@ -14563,102 +11550,6 @@ function AdminEnvironment() {
     </div>
   )
 }
-/* ── Danh bạ doanh nghiệp — the free company pool ──────────────────────────────
-   A reference dataset, deliberately OUTSIDE the CRM. Three reasons it is not just
-   another flag on the company table:
-
-     COUNTS   Every CRM number would break. "My customers 84", the pipeline totals,
-              the register — all meaningless once unowned rows share the table.
-     TRUST    Every CRM company feeds a quotation and then a VAT invoice, where the
-              legal name and MST must be exact. A pool where MST is optional and
-              sometimes WRONG cannot live in the same store.
-     OWNERSHIP A CRM company always has a sales owner and a last-contact clock. A
-              pool row has neither and never should.
-
-   Only the NAME is required. MST is stored unverified and is never copied into a
-   CRM company — the rep re-enters it on promotion, where the dedup rules run.
-
-   Rows are read-only for sales: letting twenty people edit shared dirty data is how
-   it gets dirtier. The only thing a rep can do is REQUEST one. */
-type DirState = 'free' | 'pending' | 'claimed'
-const DIR_STATE: Record<DirState, { vi: string; tone: StatusTone }> = {
-  free: { vi: 'Chưa nhận', tone: 'draft' },
-  pending: { vi: 'Đang chờ duyệt', tone: 'pending' },
-  claimed: { vi: 'Đã nhận', tone: 'active' },
-}
-
-/* "Phân loại khách hàng trong Free Data" — the rep says WHY this company is worth
-   taking, from a fixed list. It is not decoration: it is the only thing that makes
-   the queue reviewable at a glance, and it is what lets HQ measure which pool
-   segments actually convert instead of guessing which import batch to buy again.
-
-   Two of these are traps, and the form treats them as such (see KIND_IS_CUSTOMER):
-   a company that HAS or HAD a Saramin package is not free data at all — it is a
-   customer or a churned customer, and it already has an owner in the CRM. */
-const FREE_DATA_KIND = [
-  'Đang/Đã đăng tuyển tại Saramin, hết gói dịch vụ',
-  'Còn gói dịch vụ chưa sử dụng tại Saramin',
-  'Đang đăng tuyển trên thị trường',
-  'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển',
-  'KH tôi từng liên hệ / bán hàng trước đây',
-  'Từng đăng tuyển trong quá khứ',
-  'Có nhu cầu tuyển dụng trong tương lai',
-  'Công ty thuộc ngành / khu vực tôi phụ trách',
-]
-/** the two classifications that describe an EXISTING customer, not free data */
-const KIND_IS_CUSTOMER = new Set([FREE_DATA_KIND[0], FREE_DATA_KIND[1]])
-
-type DirRow = {
-  name: string
-  /** the contact the source came with — columns, not a stack, so they can be scanned
-      and so an empty one is visibly empty rather than silently missing */
-  person?: string
-  email?: string
-  phone?: string
-  web?: string
-  addr?: string
-  industry?: string
-  /** untrusted: may be absent, may be wrong. Never promoted without re-entry. */
-  tax?: string
-  source: string
-  added: string
-  state: DirState
-  /** who asked / who holds it, and the CRM record once promoted (by `name`, so the
-      Company ID shown is the real one and never a second copy of it) */
-  by?: string
-  crm?: string
-  /** how many reps have asked for this row. More than one is normal and is the
-      admin's problem to resolve, not something the pool should silently block. */
-  reqs?: number
-}
-const DIRECTORY: DirRow[] = [
-  { name: 'Công ty TNHH Cơ điện Tân Tiến', person: 'Ms. Trần Thu Hà · HR', email: 'hr@tantien-me.vn', phone: '028 3822 xxxx', web: 'tantien-me.vn', addr: 'Quận 12, HCMC', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
-  { name: 'Công ty CP Thực phẩm Vạn An', person: 'Phòng nhân sự', email: 'tuyendung@vanan.com.vn', phone: '0909 118 xxx', addr: 'Long An', industry: 'Thực phẩm', tax: '0311xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
-  // Name only. Still worth keeping: it is a name a rep can find before creating it.
-  { name: 'Nhà máy Dệt Phú Cường', addr: 'Bình Dương', industry: 'Dệt may', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'free' },
-  { name: 'Công ty TNHH Logistics Đại Hưng', email: 'info@daihung-log.vn', phone: '0283 776 xxxx', web: 'daihung-log.vn', industry: 'Logistics', tax: '0999xxxxxx', source: 'Nhập từ web tuyển dụng', added: '25/06/2026', state: 'free' },
-  { name: 'Công ty CP Xây dựng Minh Khang', person: 'Mr. Lê Đình Trung', email: 'tuyendung@minhkhang.vn', phone: '0918 442 xxx', addr: 'Hà Nội', industry: 'Xây dựng', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: 'Nguyễn Thị Lan', reqs: 2 },
-  { name: 'Công ty TNHH Nội thất An Bình', person: 'Ms. Phạm Thuỳ Dương', email: 'hr@anbinh-furniture.vn', phone: '0274 356 xxxx', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'pending', by: 'Trần Quốc Trung', reqs: 1 },
-  { name: 'Công ty CP Bao bì Tiến Phát', person: 'Mr. Vũ Đức Thắng', email: 'hcns@tienphat-pack.vn', phone: '0251 388 xxxx', addr: 'Đồng Nai', industry: 'Sản xuất', tax: '0362xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'claimed', by: 'Phạm Quang Huy', crm: 'Công ty CP Bình Minh' },
-  // Dirty data on purpose: this row is ALREADY a CRM company under another rep.
-  // It stays Chưa nhận because the pool cannot know that — the check runs when the
-  // rep clicks Xin nhận, and blocks the request there instead of at approval.
-  { name: 'Công ty TNHH Sao Mai', person: 'Mr. Trần Đức Anh', email: 'hr@saomai.vn', phone: '0274 221 xxxx', web: 'saomai.vn', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
-]
-
-/** Does this pool row already exist in the CRM? Name-normalised, plus phone/domain.
-    Run BEFORE a request is submitted — "already owned" is the commonest outcome and
-    it must not cost an approval cycle. */
-function dirCrmMatch(r: DirRow): Company | undefined {
-  const norm = (x: string) => searchKey(x).replace(/cong ty|tnhh|cp|co phan|nha may|\s+/g, '')
-  return COMPANIES.find((c) =>
-    norm(c.legalName) === norm(r.name) || norm(c.name) === norm(r.name) ||
-    (Boolean(r.web) && c.domain === r.web))
-}
-
-/** the CRM record a claimed pool row became */
-const dirCrm = (r: DirRow) => (r.crm ? COMPANIES.find((c) => c.name === r.crm) : undefined)
-
 /* ── Tạo yêu cầu nhận công ty ─────────────────────────────────────────────────
    The request form. Four things the rep supplies, and every one of them is used by
    somebody downstream rather than merely collected:
@@ -14895,51 +11786,6 @@ function AdminCompanyDirectory() {
   )
 }
 
-/* ── Yêu cầu nhận công ty — the admin approval queue ──────────────────────────
-   Admin approves, per the client's decision. Approving is one write: it promotes
-   the pool row into a CRM company, sets the requester as sales owner, and files the
-   contact point as contact #1. Rejecting returns the row to Chưa nhận with a reason,
-   because a rep refused twice for the same reason should be able to read it.
-
-   Resolved requests STAY in this list. The queue is also the record of how every
-   company entered the CRM — filtering them out would leave the only copy of that
-   history in an audit log nobody opens. */
-type ClaimStatus = 'pending' | 'approved' | 'rejected'
-const CLAIM_STATUS: Record<ClaimStatus, { vi: string; tone: StatusTone }> = {
-  pending: { vi: 'Đang chờ', tone: 'pending' },
-  approved: { vi: 'Được duyệt', tone: 'active' },
-  rejected: { vi: 'Từ chối', tone: 'expired' },
-}
-type ClaimReq = {
-  id: number
-  co: string
-  by: string
-  when: string
-  person: string
-  phone: string
-  email?: string
-  reason: string
-  kind: string
-  /** a link the approver can OPEN, or a file they have to open and believe */
-  link?: string
-  file?: string
-  /** how many requests exist on this company, this one included */
-  reqs: number
-  status: ClaimStatus
-  /** the approver's note — required on a rejection */
-  note?: string
-}
-const CLAIM_REQS: ClaimReq[] = [
-  { id: 23941, co: 'Công ty CP Xây dựng Minh Khang', by: 'Nguyễn Thị Lan', when: '11/08/2026 10:09', person: 'Mr. Lê Đình Trung · Trưởng phòng HC-NS', phone: '0918 442 xxx', email: 'tuyendung@minhkhang.vn', reason: 'KH đang tuyển 8 vị trí kỹ thuật công trường trên thị trường, đã gọi HR và được hẹn gửi báo giá tuần sau.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/minhkhang-ky-thuat-cong-truong', reqs: 2, status: 'pending' },
-  // The competing request on the same company. This is what the count means, and it
-  // is the decision the admin actually has to make.
-  { id: 23944, co: 'Công ty CP Xây dựng Minh Khang', by: 'Trần Quốc Trung', when: '12/08/2026 08:41', person: 'Ms. Đỗ Kim Ngân · HR', phone: '0918 442 xxx', reason: 'đang tuyển', kind: 'Có nhu cầu tuyển dụng trong tương lai', file: 'anh-tin-tuyen-dung.png', reqs: 2, status: 'pending' },
-  { id: 23902, co: 'Công ty TNHH Nội thất An Bình', by: 'Trần Quốc Trung', when: '12/08/2026 09:48', person: 'Ms. Phạm Thuỳ Dương · HR', phone: '0274 356 xxxx', email: 'hr@anbinh-furniture.vn', reason: 'Gặp tại hội chợ nội thất 06/2026, đang cần 8 thợ mộc, HR xin gửi thông tin gói tin đăng.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', file: 'namecard-hoi-cho.jpg', reqs: 1, status: 'pending' },
-  { id: 23810, co: 'Công ty CP Bao bì Tiến Phát', by: 'Phạm Quang Huy', when: '20/07/2026 10:12', person: 'Mr. Vũ Đức Thắng · HCNS', phone: '0251 388 xxxx', email: 'hcns@tienphat-pack.vn', reason: 'KH tôi từng liên hệ năm 2024, nay mở nhà máy 2 và tuyển 20 công nhân.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'topcv.vn/tien-phat-cong-nhan-bao-bi', reqs: 1, status: 'approved', note: 'Đúng thông tin, đang tuyển thật. Đã tạo hồ sơ.' },
-  // Rejected for the reason the form now tries to prevent.
-  { id: 23788, co: 'Công ty TNHH Amazon Web Services Việt Nam', by: 'Nguyễn Thị Lan', when: '30/06/2026 15:32', person: 'Mr Hiếu', phone: '—', reason: 'test', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', note: 'Thiếu thông tin liên hệ và không có bằng chứng đang tuyển.' },
-]
-
 function AdminClaimQueue() {
   const [fStatus, setFStatus] = useState('')
   const rows = CLAIM_REQS.filter((r) => !fStatus || CLAIM_STATUS[r.status].vi === fStatus)
@@ -15033,31 +11879,6 @@ function AdminDepartments() {
   )
 }
 
-/* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
-type SignupStatus = 'New' | 'Resolved' | 'Archived'
-type Signup = {
-  person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; when: string
-  /** gate 1 — email verified? HQ can only act on verified rows. */
-  verified: boolean
-  /** MATCH is binary and informational: did the tax code match a company we already have? */
-  matched: boolean; matchName?: string
-  status: SignupStatus
-  /** what happened once resolved */
-  outcome?: string
-}
-/* Two gates: (1) EMAIL VERIFIED — automatic, gates whether HQ can act; (2) HQ placement.
-   MATCH is just information. The ACTION is the SAME 3 choices for every verified sign-up:
-   move to an existing company · create a new company + move · archive.
-   Move / Create unlock login + send a "you’re in" email (password already set at sign-up). */
-const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Archived: 'expired' }
-const SIGNUPS: Signup[] = [
-  { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, when: '15m ago', verified: true, matched: false, status: 'New' },
-  { person: 'Trần Thị Hà', email: 'ha@viettien.vn', phone: '0912 445 780', tax: '0314xxxxxx', company: 'Việt Tiến Logistics', hiring: true, when: '1h ago', verified: true, matched: true, matchName: 'Cty TNHH Việt Tiến', status: 'New' },
-  { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, when: '3h ago', verified: true, matched: true, matchName: 'FPT Software', status: 'Resolved', outcome: 'Moved to FPT Software · sign-in email sent' },
-  { person: 'Phạm Thu Trang', email: 'trang@newco.vn', phone: '0905 771 220', tax: '0399xxxxxx', company: 'Công ty CP NewCo', hiring: true, when: '20m ago', verified: false, matched: false, status: 'New' },
-  { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, when: '5h ago', verified: true, matched: false, status: 'New' },
-  { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', verified: false, matched: false, status: 'Archived', outcome: 'Archived' },
-]
 /* The three sign-up actions, each with its own confirm flow. Move / Create both end by
    emailing the user a set-password / activation link; Archive discards the request. */
 function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'create' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void }) {
@@ -15265,56 +12086,6 @@ function TaxoPane({ title, items, activeIndex, onSelect }: { title: string; item
   )
 }
 
-/* ── Job skills — ONE field ──────────────────────────────────────────────────
-   A single list, drawn from the canonical Skill taxonomy (never free text — that
-   is what lets a JD skill join to a CV skill).
-
-   Skills RANK candidates, they do not exclude anyone: a flat list where every
-   entry filtered would narrow the pool to nothing after four or five picks. The
-   candidate line is there so an employer can see how rare their combination is
-   before they publish. */
-const SKILL_POOL: { name: string; sel: number }[] = [
-  { name: 'React', sel: 0.20 },
-  { name: 'TypeScript', sel: 0.35 },
-  { name: 'Node.js', sel: 0.30 },
-  { name: 'Git', sel: 0.55 },
-  { name: 'ASP.NET Core', sel: 0.10 },
-  { name: '.NET', sel: 0.14 },
-  { name: 'GraphQL', sel: 0.12 },
-  { name: 'Docker', sel: 0.18 },
-  { name: 'Kubernetes', sel: 0.06 },
-  { name: 'AWS', sel: 0.15 },
-  { name: 'Figma', sel: 0.22 },
-]
-const BASE_POOL = 3200
-const SKILL_CAP = 10
-
-/* Suggestions for the EMPLOYER, keyed on the job's own Job role — the same
-   occupation↔skill map the candidate side reads, just entered from the job end
-   instead of the desired-role end. ESSENTIAL rows first, then OPTIONAL; that
-   flag is already on the client's occupation_skill table, so the ordering costs
-   no demand data and no new backend. */
-const ROLE_SKILL_MAP: Record<string, { name: string; essential: boolean }[]> = {
-  'Software Developer': [
-    { name: 'Git', essential: true },
-    { name: 'TypeScript', essential: true },
-    { name: 'React', essential: true },
-    { name: 'Node.js', essential: true },
-    { name: 'Docker', essential: false },
-    { name: 'AWS', essential: false },
-    { name: 'GraphQL', essential: false },
-    { name: 'Kubernetes', essential: false },
-  ],
-  'DevOps Engineer': [
-    { name: 'Docker', essential: true },
-    { name: 'Kubernetes', essential: true },
-    { name: 'AWS', essential: true },
-    { name: 'Git', essential: true },
-    { name: 'Node.js', essential: false },
-  ],
-}
-const SUGGEST_CAP = 6
-
 function JobSkillsField({ roles = ['Software Developer'] }: { roles?: string[] } = {}) {
   const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'GraphQL'])
   const [adding, setAdding] = useState(false)
@@ -15419,19 +12190,6 @@ function KVShow({ label, value, shown }: { label: string; value: string; shown: 
     </div>
   )
 }
-
-/* ── Job detail (read-only) — opened by clicking a job title ─────────────────── */
-/* Who saved this job. HQ asked to see the people behind the Saves number — a
-   save is a demand signal, and a shortlist of warm candidates worth sourcing.
-   Names are candidate PII, so opening one is an audited action like any resume view. */
-type Saver = { name: string; title: string; exp: string; location: string; when: string; applied: boolean }
-const JOB_SAVERS: Saver[] = [
-  { name: 'Nguyễn Văn An', title: 'Frontend Engineer', exp: '4 năm', location: 'Hồ Chí Minh', when: '2 giờ trước', applied: true },
-  { name: 'Trần Thị Bích', title: 'Digital Marketing Executive', exp: '6 năm', location: 'Hà Nội', when: '5 giờ trước', applied: false },
-  { name: 'Lê Hoàng Cường', title: 'Product Manager', exp: '8 năm', location: 'Hồ Chí Minh', when: '1 ngày trước', applied: false },
-  { name: 'Phạm Thu Dung', title: 'Content Strategist', exp: '3 năm', location: 'Đà Nẵng', when: '2 ngày trước', applied: true },
-  { name: 'Vũ Minh Đức', title: 'Growth Marketing', exp: '5 năm', location: 'Hồ Chí Minh', when: '3 ngày trước', applied: false },
-]
 
 function SavedByCard({ job }: { job: JobRow }) {
   const [open, setOpen] = useState(false)
@@ -15680,11 +12438,6 @@ function CompanyInfoCard() {
       <span className="ml-auto text-[15px] text-muted">→</span>
     </button>
   )
-}
-
-const TITLE_I18N: Record<'VI' | 'EN', string> = {
-  VI: 'Trưởng nhóm kỹ thuật (.NET, tiếng Nhật N4+)',
-  EN: 'Technical Leader / Technical Architect (.NET)',
 }
 
 /* ONE create-job form for both surfaces. The Company site renders this same

@@ -18,6 +18,10 @@ export function dateBefore(days: number, short?: boolean): string {
 }
 /** Full VND — e.g. 18,000,000 ₫ (pipeline values are read exactly, not rounded to M). */
 export const vnd = (v: number) => v.toLocaleString('en-US') + ' ₫'
+export const asDate = (d: string) => {
+  const [dd, mm, yy] = d.split('/').map(Number)
+  return new Date(yy, mm - 1, dd)
+}
 export const money = (v: number) => (v / 1e6).toFixed(1) + 'M ₫'
 
 /* A quotation ALWAYS expires on the last day of the month it was created in —
