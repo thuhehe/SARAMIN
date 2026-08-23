@@ -126,7 +126,13 @@ export function FilterBar({ count, onClear, children, disabled }: { count: numbe
 }
 
 /** One row inside the Filter panel — label above, full-width select. */
-export function FilterRow({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+export function FilterRow({ label, value, onChange, options, allLabel = 'Tất cả' }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]
+  /** What the empty value reads as. Defaults to "Tất cả" — override where empty is
+      not "no filter" but a real default, e.g. the archive filter, whose unset state
+      means "đang hoạt động" and which needs its own explicit "Tất cả" option. */
+  allLabel?: string
+}) {
   return (
     <span className="block">
       <span className="mb-0.5 block text-[10.5px] text-faint">{label}</span>
@@ -135,7 +141,7 @@ export function FilterRow({ label, value, onChange, options }: { label: string; 
         onChange={(e) => onChange(e.target.value)}
         className={cn('w-full cursor-pointer rounded-md border bg-surface px-2 py-1 text-[11.5px] outline-none focus:border-brand', value ? 'border-brand font-medium text-brand' : 'border-line text-ink')}
       >
-        <option value="">Tất cả</option>
+        <option value="">{allLabel}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </span>

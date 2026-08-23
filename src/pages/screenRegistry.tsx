@@ -44,7 +44,7 @@ const ADMIN_NAV_PAGES = new Set([
   // — a CRM feature renders it via the crm-company-directory alias, so leaving it
   // out suppressed that page's console link. Claim queue has no feature pointing at
   // it yet and is listed for the same reason as any other built nav page.
-  'admin-company-directory', 'admin-claim-queue',
+  'admin-company-directory', 'admin-claim-requests',
   'admin-jobseekers', 'admin-company-users',
   // The whole Products group is back in the console nav — Packages, Placements and
   // Discount programmes alongside Products — so all four get a link again. Omitting
@@ -106,7 +106,7 @@ const ALIAS: Record<string, { src: 'js' | 'co' | 'admin'; id: string }> = {
   'crm-signups': { src: 'admin', id: 'admin-signups' },
   // The free company pool and its approval queue. Two screens, one spec feature.
   'crm-company-directory': { src: 'admin', id: 'admin-company-directory' },
-  'crm-claim-queue': { src: 'admin', id: 'admin-claim-queue' },
+  'crm-claim-requests': { src: 'admin', id: 'admin-claim-requests' },
   // No screen built yet: crm-products (entitlements), crm-activate (activation is a flow)
 }
 

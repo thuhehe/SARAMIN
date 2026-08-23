@@ -71,11 +71,12 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // CRM
   'admin-company-list': { module: 'crm', feature: 'Companies' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
+  'admin-company-archived': { module: 'crm', feature: 'Companies' },
   'admin-signups': { module: 'crm', feature: 'Sign-ups' },
   // Both pool screens are specified as ONE feature — the claim flow is the spec, and
   // the queue is the second half of it. They sit on the System nav but belong to CRM.
   'admin-company-directory': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
-  'admin-claim-queue': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
+  'admin-claim-requests': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
   'admin-invoices': { module: 'crm', feature: 'Invoice (VAT e-invoice)' },
@@ -236,6 +237,22 @@ const NAV_GROUPS: NavGroup[] = [
       // What every customer has actually consumed, across all four product types —
       // the screen sales opens before a renewal call.
       { label: 'Account usage', specId: 'admin-account-usage' },
+      // The free company pool and its claim queue. They live in CRM because that is
+      // where a rep looks for their next customer — the pool is the top of the same
+      // funnel Companies and Pipeline sit further down. (They remain a SEPARATE
+      // STORE outside the CRM tables, which is what keeps unowned, unverified rows
+      // out of every CRM count; where the nav puts them and where the data lives are
+      // different questions — see Danh bạ doanh nghiệp → "Two stores, not one flag".)
+      { label: 'Free data', specId: 'admin-company-directory' },
+      // Two views, two jobs: CHỜ DUYỆT is the admin's decision queue, grouped BY
+      // COMPANY (the decision is "công ty này về tay ai", so the rivals must stand
+      // side by side — a flat request table scatters them); TẤT CẢ YÊU CẦU is
+      // request-level tracking, default Của tôi, with no action buttons — it exists
+      // because a rejection is otherwise silent for the rep who asked.
+      { label: 'Yêu cầu nhận công ty', specId: 'admin-claim-requests' },
+      // Last: the register of companies nobody will work again. A dead end by
+      // design, so it sits at the bottom of the group and not beside Companies.
+      { label: 'Công ty đã lưu trữ', specId: 'admin-company-archived' },
     ],
   },
   {
@@ -292,11 +309,6 @@ const NAV_GROUPS: NavGroup[] = [
       // The 8 score weights + the salary exchange rate. HQ-only configuration that
       // changes how another module behaves — same reason Products sits here.
       { label: 'Matching settings', specId: 'admin-matching-settings' },
-      // The free company pool. Under System, NOT under CRM: these are not customers
-      // and not owned by anyone — a reference dataset a rep can request FROM. Putting
-      // it in CRM would put unowned, unverified rows inside every CRM count.
-      { label: 'Danh bạ doanh nghiệp', specId: 'admin-company-directory' },
-      { label: 'Yêu cầu nhận công ty', specId: 'admin-claim-queue' },
       // The taxonomy's maintenance queue, and the answer to "who keeps the skill
       // list from rotting". Fed from BOTH sides — employer searches that matched
       // nothing and CV imports that resolved nothing — because one alias fixes both.
@@ -324,6 +336,7 @@ export const ADMIN_SCREEN_LABELS: Record<string, string> = Object.fromEntries(
 const PRIMARY_ACTION: Record<string, string> = {
   'admin-catalog': '+ New product',
   'admin-company-list': '+ New company',
+  'admin-company-directory': '+ Thêm công ty',
   'admin-bundles': '+ New package',
   'admin-quotes': '+ New quotation',
 }

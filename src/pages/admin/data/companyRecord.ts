@@ -4,54 +4,51 @@
  */
 import { coKey, coValue, fmtIdle, isCustomer } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
+import { PLACEMENT_POS } from '@/pages/admin/data/content'
+import { CATALOG } from '@/pages/admin/data/products'
+import { SERVICE_USAGE } from '@/pages/admin/data/services'
+import type { ServiceEntitlement } from '@/pages/admin/data/services'
 import { vnd } from '@/pages/admin/lib/fmt'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
-/* ── Where a company's quota came from ────────────────────────────────────────
-   A company's entitlement is NOT one pool. It is one bucket per SOURCE, and there
-   are three kinds of source:
+/* ── What a company holds, product by product ─────────────────────────────────
+   ONE FLAT LIST, grouped by product TYPE — job · CV search · display · manual
+   service — and NOT by purchase order.
 
-     po     bought — a purchase order with a VAT invoice behind it
-     gift   a 0 ₫ "(Tặng)" line inside a paid PO — traced to that PO, not to money
+   The product is what the reader came for ("how many CV unlocks are left?"), so the
+   product name and its quota are the headline and the PO that bought it is a small
+   line underneath. Grouping by PO instead put a document number where the answer
+   should be, and forced a reader who wanted one number to first work out which
+   order paid for it.
 
-   A FREE JOB is not in this list, because it is not entitlement at all: Admin posts
-   it without selecting a PO, any time, with no quota to draw down. It shows up per
-   JOB (see jobSources / FREE_JOB), never as a bucket on the account.
+   Two things carry NO PO, and they are separated at the end of the list for exactly
+   that reason:
 
-   Two things force the per-source split rather than one aggregate number:
+     TẶNG      a gifted posting. Negotiated, not ordered — no PO line, no quota.
+     TIN FREE  Admin posts a job with no PO selected. Any time, unlimited.
 
-     1. A company can hold TWO live POs at once (a renewal bought before the first
-        one lapses). "14/50 slots" then answers nothing a rep needs: which slots
-        expire in October and which in December?
-     2. A free grant must never be added to revenue, because revenue decides the
-        membership tier. Keeping it a separate bucket makes that structural.
-
-   DEDUCTION ORDER is a rule, not an accident: soonest expiry first. Nothing is
-   wasted. The split below drains bucket 1 first, which is what makes that order
-   visible on the screen. */
-export type EntKind = 'po' | 'free' | 'gift'
-export type EntLine = { name: string; left: number; total: number; unit: string }
-export type EntSource = {
-  kind: EntKind
-  /** what the reader identifies the bucket by — a PO code, or "Miễn phí" */
-  label: string
-  /** the PO this bucket hangs off. Absent on a free grant, and that is the point. */
+   There is no grand total. "12/50 slots across 2 POs" is a number nobody quotes: a
+   rep quotes what is left on the line that is still valid, and the lines expire on
+   different days. */
+export type EntType = 'job' | 'cv' | 'placement' | 'service' | 'none'
+export type Ent = {
+  type: EntType
+  name: string
+  /** null when the item genuinely HAS no quota — a gift, a free job */
+  left: number | null
+  total: number | null
+  unit: string
+  /** the order that bought it. Absent on a gift or a free job, and that is the point. */
   po?: string
-  /** VAT invoice date for a paid bucket; the grant date for a free one */
-  from: string
-  until: string
-  /** 0 on a gift line — never added to tier revenue */
-  amount: number
-  lines: EntLine[]
-}
-
-/* A free job — posted by Admin with NO PO selected. Not a bucket, not a quota, no
-   expiry of its own beyond the product's own 14 days: just the absence of a PO, which
-   is exactly how it is created. Rendered on the job row so a reader can tell at a
-   glance which postings were never paid for. */
-export const FREE_JOB: EntSource = {
-  kind: 'free', label: 'Miễn phí · không PO', from: '—', until: '—', amount: 0,
-  lines: [{ name: 'Tin Free (Admin đăng hộ)', left: 0, total: 0, unit: 'tin' }],
+  invoiced?: string
+  until?: string
+  /** manual services carry their delivery log, so it opens where the quota is shown */
+  svc?: ServiceEntitlement
+  /** For a FREE row there is no quota to count down, so it reports the one fact the
+      quota rows also report: how many postings were made. Deliberately NOT whether
+      they are still running — a posting counts the moment it goes up, here exactly as
+      it does for a paid slot. */
+  posts?: number
 }
 
 /** Split one quota across n buckets so the parts always sum to the whole, draining
@@ -70,127 +67,138 @@ function splitQuota(total: number, left: number, n: number): { total: number; le
 }
 
 /** How many live POs this company holds. Big books carry a renewal alongside the
-    original — which is the case the per-PO breakdown exists for. */
+    original — which is the case the per-PO line exists for. */
 const poCount = (c: Company) => (c.jobTotal >= 30 ? 2 : 1)
+const jobPoOf = (c: Company, i: number) =>
+  i === 0 ? `PO-${String(5500 + (coKey(c) % 400)).padStart(6, '0')}-07-2026` : `PO-${String(5900 + (coKey(c) % 90)).padStart(6, '0')}-08-2026`
 
-export function entitlementSources(c: Company): EntSource[] {
-  const out: EntSource[] = []
-  const k = coKey(c)
-  const po1 = `PO-${String(5500 + (k % 400)).padStart(6, '0')}-07-2026`
-  const po2 = `PO-${String(5900 + (k % 90)).padStart(6, '0')}-08-2026`
+/** A gifted posting. Kept as data rather than a flag so it can be named — at renewal
+    a rep has to know what the customer got for nothing. */
+const GIFTS: Record<string, string[]> = { 'FPT Software': ['Tin đăng Basic (Tặng)'] }
 
+export function entitlements(c: Company): Ent[] {
+  const out: Ent[] = []
   const n = poCount(c)
   const jobs = c.jobPosting ? splitQuota(c.jobTotal, c.jobLeft, n) : []
-  for (let i = 0; i < n; i++) {
-    const lines: EntLine[] = []
-    if (c.jobPosting) lines.push({ name: i === 0 ? 'Job Posting — Pro' : 'Job Posting — Pro (gia hạn)', left: jobs[i].left, total: jobs[i].total, unit: 'slots' })
-    // Resume Search hangs off the LAST PO only — so the screen answers "which PO
-    // bought the CV unlocks?" instead of implying both did.
-    if (c.resumeSearch && i === n - 1) lines.push({ name: 'Resume Search — 6 tháng', left: c.cvLeft, total: c.cvTotal, unit: 'CV unlocks' })
-    if (lines.length === 0) continue
+  for (let i = 0; i < n && c.jobPosting; i++) {
     out.push({
-      kind: 'po',
-      label: i === 0 ? po1 : po2,
-      po: i === 0 ? po1 : po2,
-      from: i === 0 ? (c.since && c.since !== '—' ? c.since : '—') : '15/06/2026',
+      type: 'job',
+      name: i === 0 ? 'Job Posting — Pro' : 'Job Posting — Pro (gia hạn)',
+      left: jobs[i].left, total: jobs[i].total, unit: 'slots',
+      po: jobPoOf(c, i),
+      invoiced: i === 0 ? (c.since && c.since !== '—' ? c.since : '—') : '15/06/2026',
       until: i === 0 ? '31/10/2026' : '31/12/2026',
-      amount: i === 0 ? 15_000_000 : (c.resumeSearch ? 35_000_000 : 15_000_000),
-      lines,
     })
   }
-  // A gift line inside the last paid PO: 0 ₫, traced to the PO, never to revenue.
-  if (out.length > 1) {
-    out[out.length - 1].lines.push({ name: 'Tin đăng Basic (Tặng)', left: 1, total: 2, unit: 'tin' })
+  // CV search hangs off the LAST job PO, so the list answers "which order bought the
+  // unlocks?" instead of implying every order did.
+  if (c.resumeSearch) {
+    out.push({
+      type: 'cv', name: `COMBO ${c.cvTotal} — mở CV`, left: c.cvLeft, total: c.cvTotal, unit: 'CV unlocks',
+      po: jobPoOf(c, n - 1), invoiced: n > 1 ? '15/06/2026' : (c.since !== '—' ? c.since : '—'), until: n > 1 ? '31/12/2026' : '31/10/2026',
+    })
   }
+  // Display / placement bookings — bought by the line, spent by the booking.
+  for (const po of PLACEMENT_POS[c.name] ?? []) {
+    for (const l of po.lines) {
+      const prod = CATALOG.find((x) => x.sku === l.sku)
+      out.push({
+        type: 'placement', name: prod?.name ?? l.sku, left: l.qty - l.used, total: l.qty, unit: 'lượt đặt',
+        po: po.po, invoiced: po.invoiced ?? undefined, until: po.invoiced ? undefined : undefined,
+      })
+    }
+  }
+  // Manual services — same shape as everything else, plus their delivery log.
+  for (const e of SERVICE_USAGE[c.name] ?? []) {
+    out.push({ type: 'service', name: e.name, left: e.total - e.entries.length, total: e.total, unit: e.unit, po: e.po, until: e.validUntil, svc: e })
+  }
+  /* JOB FREE — no PO, no quota. Reported by the count of postings it produced, and
+     by nothing else: a quota row records that a job was posted, so a free row records
+     the same thing. Whether the posting is still running belongs to the Jobs tab,
+     where every job's status already lives. */
+  const posted = companyJobs(c)
+  const gift = posted.filter((j) => j.gift).length
+  if (gift > 0 || (GIFTS[c.name] ?? []).length > 0) {
+    out.push({ type: 'none', name: (GIFTS[c.name] ?? ['Tin đăng (Tặng)'])[0], left: null, total: null, unit: '', posts: gift })
+  }
+  const free = posted.filter((j) => j.free).length
+  if (free > 0) out.push({ type: 'none', name: 'Tin Free (Admin đăng hộ)', left: null, total: null, unit: '', posts: free })
   return out
 }
 
-/** Which bucket a given job consumed.
+/** the PO codes this company's entitlement came from, in list order */
+const entPos = (c: Company) => [...new Set(entitlements(c).map((e) => e.po).filter((x): x is string => Boolean(x)))]
 
-    Attribution follows the deduction rule — soonest expiry first, and a bucket can
-    never fund a posting made before it was invoiced — so this column and the numbers
-    on the billing tab are two readings of one arithmetic, not two guesses.
+/* A free job — posted by Admin with NO PO selected. Not a bucket, not a quota, no
+   expiry of its own beyond the product's own 14 days: just the absence of a PO, which
+   is exactly how it is created. Rendered on the job row so a reader can tell at a
+   glance which postings were never paid for. */
+export const FREE_JOB = { label: 'Job free · không PO' }
+
+/** Which PO a given job was posted against.
+
+    Attribution follows the deduction rule — soonest expiry first — so this column and
+    the numbers on the billing tab are two readings of one arithmetic.
 
     The mock job list is a SAMPLE (FPT shows 6 jobs against 38 consumed slots), so the
     listed jobs are shared out in the same PROPORTION as the real consumption. In the
-    product this is a stored `entitlementSourceId` on the job — one column, written
-    when the posting is created, never recomputed. */
-export function jobSources(c: Company): (EntSource | undefined)[] {
-  const srcs = entitlementSources(c).filter((s) => s.lines.some((l) => l.unit === 'slots' || l.unit === 'tin'))
+    product this is a stored `entitlementId` on the job — one column, written when the
+    posting is created, never recomputed. */
+export function jobSources(c: Company): ({ label: string; until?: string } | undefined)[] {
   const js = companyJobs(c)
-  // A free job consumed nothing, so it takes no part in the allocation below.
-  const isFree = js.map((j) => Boolean(j.free))
-  if (srcs.length === 0 || js.length === 0) return js.map((_, i) => (isFree[i] ? FREE_JOB : undefined))
-  if (srcs.length === 1) return js.map((_, i) => (isFree[i] ? FREE_JOB : srcs[0]))
+  const isFree = js.map((j) => Boolean(j.free || j.gift))
+  const jobEnts = entitlements(c).filter((e) => e.type === 'job')
+  if (jobEnts.length === 0 || js.length === 0) return js.map((_, i) => (isFree[i] ? FREE_JOB : undefined))
+  if (jobEnts.length === 1) return js.map((_, i) => (isFree[i] ? FREE_JOB : { label: jobEnts[0].po!, until: jobEnts[0].until }))
 
-  const consumedOf = (s: EntSource) =>
-    s.lines.filter((l) => l.unit === 'slots' || l.unit === 'tin').reduce((a, l) => a + (l.total - l.left), 0)
-  const consumed = srcs.map(consumedOf)
+  const consumed = jobEnts.map((e) => (e.total ?? 0) - (e.left ?? 0))
   const totalConsumed = consumed.reduce((a, b) => a + b, 0) || 1
-  // seats per bucket, scaled to the sample and guaranteed to cover every job
-  const seats = consumed.map((n) => Math.round((n / totalConsumed) * js.length))
-  let slack = js.length - seats.reduce((a, b) => a + b, 0)
+  const paid = js.filter((_, i) => !isFree[i]).length
+  const seats = consumed.map((x) => Math.round((x / totalConsumed) * paid))
+  let slack = paid - seats.reduce((a, b) => a + b, 0)
   for (let i = 0; slack !== 0 && i < seats.length; i++) {
     const d = slack > 0 ? 1 : -1
     if (seats[i] + d >= 0) { seats[i] += d; slack -= d }
   }
-
-  // oldest posting first — the same order the quota drains
   const day = (d: string) => { const [dd, mm, yy] = d.split('/').map(Number); return (yy || 0) * 10000 + (mm || 0) * 100 + (dd || 0) }
   const order = js.map((_, i) => i).filter((i) => !isFree[i]).sort((a, b) => day(js[a].posted) - day(js[b].posted))
-  const out: (EntSource | undefined)[] = js.map((_, i) => (isFree[i] ? FREE_JOB : undefined))
+  const out: ({ label: string; until?: string } | undefined)[] = js.map((_, i) => (isFree[i] ? FREE_JOB : undefined))
   let si = 0
   for (const i of order) {
-    while (si < srcs.length - 1 && seats[si] <= 0) si++
-    out[i] = srcs[si]
+    while (si < jobEnts.length - 1 && seats[si] <= 0) si++
+    out[i] = { label: jobEnts[si].po!, until: jobEnts[si].until }
     seats[si]--
   }
   return out
 }
 
-/** One row per PURCHASE ORDER — what was bought, for how much, when the VAT invoice
-    went out, and when it runs out. A PO with no invoice date is money not yet
-    collected.
+/** One row per PURCHASE ORDER — what was bought on it, for how much, when the VAT
+    invoice went out, and when it runs out.
 
-    DERIVED from entitlementSources, deliberately: the quota card and this table are
-    two views of one fact, and computing them separately is how they end up
-    disagreeing about which PO paid for what. */
+    DERIVED from the same entitlement list the quota card renders, so the two can
+    never disagree about which order paid for what. */
 export function poHistory(c: Company): { po: string; products: string; amount: string; invoiced: string | null; until: string | null }[] {
   type PoRow = { po: string; products: string; amount: string; invoiced: string | null; until: string | null }
-  const rows: PoRow[] = entitlementSources(c)
-    .filter((s) => s.kind === 'po')
-    .map((s) => ({
-      po: s.label,
-      products: s.lines.map((l) => l.name).join(' · '),
-      amount: vnd(s.amount),
-      invoiced: s.from === '—' ? null : s.from,
-      until: s.until,
-    }))
+  const ents = entitlements(c)
+  const rows: PoRow[] = entPos(c).map((po) => {
+    const on = ents.filter((e) => e.po === po)
+    return {
+      po,
+      products: on.map((e) => e.name).join(' · '),
+      amount: vnd(on.some((e) => e.type === 'cv') ? 35_000_000 : 15_000_000),
+      invoiced: on.find((e) => e.invoiced)?.invoiced ?? null,
+      until: on.find((e) => e.until)?.until ?? null,
+    }
+  })
   const k = coKey(c)
-  // The PO a rep is chasing: sent, agreed, not yet invoiced — so no quota, no
-  // expiry, and no date in the invoice column.
-  if (c.status === 'PO') {
-    rows.unshift({ po: `PO-${String(5900 + (k % 90)).padStart(6, '0')}-08-2026`, products: 'Job Posting — Pro (gia hạn)', amount: '15,000,000 ₫', invoiced: null, until: null })
+  // The previous period's order — history a renewal call opens with.
+  if (isCustomer(c)) {
+    rows.push({ po: `PO-${String(4900 + (k % 200)).padStart(6, '0')}-01-2025`, products: 'Job Posting — Basic (5 slots)', amount: '6,100,000 ₫', invoiced: '12/01/2025', until: '31/12/2025' })
   }
-  // A churned company has no live entitlement, but its history is the whole reason
-  // a win-back call is worth making.
   if (c.account === 'Churn') {
     rows.push({ po: `PO-${String(5100 + (k % 300)).padStart(6, '0')}-12-2024`, products: 'Job Posting — Pro · Resume Search', amount: '35,000,000 ₫', invoiced: '20/12/2024', until: '31/12/2025' })
   }
   return rows
-}
-
-/** Purchases that have run out or lapsed. Kept on the record for renewal calls —
-    "what did they buy last year, and for how much" is the first thing asked. */
-export function pastPurchases(c: Company): { name: string; detail: string; amount: string; date: string }[] {
-  if (c.account === 'Churn') return [
-    { name: 'Job Posting — Pro', detail: '10 slots · hết hạn 31/12/2025', amount: '15,000,000 ₫', date: '12/2024' },
-    { name: 'Resume Search — 6 tháng', detail: '100 CV unlocks · đã dùng hết', amount: '20,000,000 ₫', date: '06/2024' },
-  ]
-  if (isCustomer(c)) return [
-    { name: 'Job Posting — Basic', detail: '5 slots · hết hạn ' + (c.since || '—'), amount: '6,100,000 ₫', date: 'kỳ trước' },
-  ]
-  return []
 }
 
 export const MAX_SEATS = 4
@@ -200,6 +208,8 @@ type CoJob = {
   title: string; status: StatusTone; statusLabel: string; applicants: number; posted: string; deadline: string
   /** posted by Admin with no PO selected — the Tin Free product. No quota touched. */
   free?: boolean
+  /** posted on a gifted line negotiated into a PO. Also free, also no quota. */
+  gift?: boolean
 }
 const COMPANY_JOBS: Record<string, CoJob[]> = {
   // A FREE job: Admin posted it without selecting a PO. The company has no product
@@ -215,6 +225,10 @@ const COMPANY_JOBS: Record<string, CoJob[]> = {
     { title: 'Lễ tân bệnh viện', status: 'closed', statusLabel: 'Closed', applicants: 31, posted: '01/04/2026', deadline: '30/06/2026' },
   ],
   'FPT Software': [
+    // The free jobs on the worked example: no PO, no quota, beside 5 paid ones. One
+    // still running and one already closed, so the row can say which is which.
+    { title: 'Thực tập sinh Kiểm thử (QA Intern)', status: 'open', statusLabel: 'Open', applicants: 3, posted: '01/08/2026', deadline: '30/09/2026', free: true },
+    { title: 'Nhân viên Hành chính — Văn phòng HN', status: 'closed', statusLabel: 'Closed', applicants: 22, posted: '02/05/2026', deadline: '30/06/2026', gift: true },
     { title: 'Senior Frontend Engineer (ReactJS)', status: 'open', statusLabel: 'Open', applicants: 0, posted: '24/07/2026', deadline: '31/08/2026' },
     { title: 'Java Developer (Spring Boot)', status: 'open', statusLabel: 'Open', applicants: 52, posted: '10/07/2026', deadline: '10/09/2026' },
     { title: 'Business Analyst', status: 'open', statusLabel: 'Open', applicants: 28, posted: '05/07/2026', deadline: '05/09/2026' },
@@ -567,4 +581,5 @@ export function companyActivity(c: Company): CoEvent[] {
 
 /* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
 export const CHAT_CHANNELS = ['Zalo', 'Facebook Messenger', 'Email', 'SMS', 'Zalo OA', 'Phone', 'Other']
-export type CoTab = 'Overview' | 'Contacts' | 'Users' | 'Products & billing' | 'Company page' | 'Jobs' | 'Applications' | 'Resumes' | 'Owner history' | 'Activity'
+export const CO_TABS = ['Overview', 'Contacts', 'Users', 'Products & billing', 'Company page', 'Jobs', 'Applications', 'Resumes', 'Owner history', 'Activity'] as const
+export type CoTab = (typeof CO_TABS)[number]

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { CV_STATUS_TONE, DELIVERY_TONE, REASON_SENDS, REJECT_REASONS, STAGE_TONE, isHeld } from '@/pages/admin/data/recruitment'
+import { CV_STATUS_TONE, DELIVERY_TONE, STAGE_TONE, isHeld } from '@/pages/admin/data/recruitment'
 import type { Applicant, Delivery } from '@/pages/admin/data/recruitment'
 import { FilterSelect, ListPage, RowAction } from '@/pages/admin/ui/list'
+import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
 import { Pill } from '@/pages/admin/ui/status'
 import { TwoLine, split2 } from '@/pages/admin/ui/table'
 
@@ -131,6 +132,9 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
 export function AdminApplicants() {
   const [open, setOpen] = useState<Applicant | null>(null)
   const [menuA, setMenuA] = useState<number | null>(null)
+  /* THE SAME dialog component as CV review, not a copy — one decision reached
+     from two screens must not grow two forms with two wordings. */
+  const [reject, setReject] = useState<{ name: string; file: string } | null>(null)
   const [fStatus, setFStatus] = useState('')
   const [fStage, setFStage] = useState('')
   const [fCompany, setFCompany] = useState('')
@@ -222,25 +226,18 @@ export function AdminApplicants() {
               </button>
             )}
             {a.cvStatus !== 'Rejected' && (
-              <>
-                {/* A REASON, not a bare Reject: the code picks which message the
-                    candidate gets, and it is what makes thirty rejections countable. */}
-                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-rose-500">Reject CV — chọn lý do</p>
-                {REJECT_REASONS.map((rr) => (
-                  <button key={rr} onClick={() => setMenuA(null)} className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11.5px] text-ink hover:bg-canvas">
-                    <span className="w-3.5 shrink-0 pt-0.5 text-center text-rose-500">✕</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{rr}</span>
-                      <span className="block text-[10px] leading-snug text-faint">Ứng viên thấy: {REASON_SENDS[rr]}</span>
-                    </span>
-                  </button>
-                ))}
-              </>
+              <button onClick={() => { setMenuA(null); setReject({ name: a.name, file: a.cv[0] }) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
+                <span className="w-3.5 text-center">✕</span>
+                <span className="flex-1">Reject CV…</span>
+                <span className="shrink-0 text-[10px] text-faint">chọn lý do ở bước sau</span>
+              </button>
             )}
+            {/* SAME two-verb menu and SAME reject dialog as CV review — this is one
+                decision reached from a different screen, so it must not grow a
+                second form with its own wording. The dialog itself is specced once,
+                on CV review. */}
             <div className="border-t border-line-soft px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Internal note <span className="font-normal text-rose-500">*required</span></p>
-              <div className="h-12 rounded-md border border-line bg-canvas/40" />
-              <p className="mt-1 text-[10px] leading-snug text-faint">The decision applies to the CV — it resolves every application using it, not just this one.</p>
+              <p className="text-[10px] leading-snug text-faint">Quyết định áp lên CV — nó xử lý mọi đơn dùng CV này, không riêng đơn này.</p>
             </div>
           </div>
         </>
@@ -293,6 +290,7 @@ export function AdminApplicants() {
         rows={rows}
       />
       {open && <ApplicantDetail name={open.name} status={open.status} hold={open.hold} onClose={() => setOpen(null)} />}
+      {reject && <RejectDialog name={reject.name} file={reject.file} onClose={() => setReject(null)} />}
     </div>
   )
 }

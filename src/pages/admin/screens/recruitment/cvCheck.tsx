@@ -1,13 +1,28 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { CV_COLS, REASON_SENDS, REJECT_REASONS } from '@/pages/admin/data/recruitment'
+import { CV_COLS } from '@/pages/admin/data/recruitment'
 import type { CvCheckRow } from '@/pages/admin/data/recruitment'
 import { ListPage } from '@/pages/admin/ui/list'
+import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
+import { Toast, type ToastMsg } from '@/pages/admin/ui/toast'
 import { Pill } from '@/pages/admin/ui/status'
 import { TwoLine, split2 } from '@/pages/admin/ui/table'
 
 export function AdminCvCheck() {
   const [open, setOpen] = useState<CvCheckRow | null>(null)
+  const [reject, setReject] = useState<CvCheckRow | null>(null)
+  /* APPROVE RESOLVES ON THE CLICK — no confirmation step. It is the frequent,
+     low-risk, reversible half of the queue, and a modal on it would interrupt a
+     reviewer once per row to prevent a mistake that costs one click to undo.
+     What the dialog used to explain now travels in the toast, where it does not
+     stand between the reviewer and the next row.
+
+     `decided` is the local override — a wireframe's stand-in for the write, so
+     the row visibly leaves Cần duyệt and the count drops. Undo deletes the key. */
+  /* `| undefined` on purpose — without it TS reads every lookup as a hit and
+     narrows stateOf to the literal 'approved'. */
+  const [decided, setDecided] = useState<Record<string, 'approved' | undefined>>({})
+  const [toast, setToast] = useState<ToastMsg | null>(null)
   /* Three views over ONE list: the open queue, and the two resolved outcomes.
      Resolved rows stay here rather than disappearing, because a rejection is the
      only call in this model a machine cannot make — so it is the one that has to
@@ -49,7 +64,25 @@ export function AdminCvCheck() {
     { name: 'Hà Kiều Trang', basic: 'Female · 30/01/2000 · Vietnamese · Single · Bachelor · 1 yr exp', contact: ['trang.ha@gmail.com', '0966 220 771'], pref: 'Translator · Education · Hà Nội · 12–16M · Remote', file: 'trang-cv-1trang.pdf', kind: 'thin', extracted: '0 experience · 3 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
     { name: 'Phạm Gia Huy', basic: 'Male · 12/12/2001 · Vietnamese · Single · Student · 0 yrs exp', contact: ['huy.pham@gmail.com', '0388 117 550'], pref: 'Intern · IT · Hồ Chí Minh · Negotiable · In office', file: 'anh-the-3x4.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 weeks ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
   ]
-  const stateOf = (r: CvCheckRow) => r.state ?? 'doubt'
+  const stateOf = (r: CvCheckRow) => decided[r.name] ?? r.state ?? 'doubt'
+  /* One click: write the status, then say what it did. The toast carries the two
+     things the dialog was there for — the consequences the row cannot show, and
+     the empty-extraction caveat — plus the Undo that makes skipping the
+     confirmation safe. */
+  const approveNow = (r: CvCheckRow) => {
+    const undoing = stateOf(r) === 'rejected'
+    setDecided((d) => ({ ...d, [r.name]: 'approved' }))
+    setToast({
+      msg: undoing ? `Đã bỏ từ chối — ${r.name}` : `Đã duyệt CV — ${r.name}`,
+      sub: r.apps
+        ? `CV → Qualified · ${r.apps} đơn đang chờ đã gửi tới NTD · vào tìm kiếm CV nếu ứng viên đã bật.`
+        : 'CV → Qualified · vào tìm kiếm CV nếu ứng viên đã bật. Ứng viên không nhận thông báo nào.',
+      warn: /no readable content|0 experience · 0 skills/i.test(r.extracted ?? '')
+        ? 'Không trích xuất được nội dung — CV sẽ không xuất hiện khi NTD tìm theo kỹ năng. Nên nhắc ứng viên tải lên bản PDF dạng văn bản.'
+        : undefined,
+      onUndo: () => setDecided((d) => { const n = { ...d }; delete n[r.name]; return n }),
+    })
+  }
   const shown = raw.filter((r) => stateOf(r) === view)
   const rows = shown.map((r, i) => [
     <span onClick={() => setOpen(r)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
@@ -98,45 +131,33 @@ export function AdminCvCheck() {
         <>
           <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
           <div className="absolute right-0 top-8 z-30 w-[360px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
-            {/* Doubt offers BOTH verbs — the admin's whole job is ending the question.
-                A RESOLVED row offers only the opposite one, because the useful action
-                on a decided CV is undoing it, and re-applying the verdict it already
-                carries is a no-op that only invites a mis-click.
-                Opening the CV lives on the file name itself, not in this menu. */}
+            {/* TWO ACTIONS, and nothing else. The menu used to carry the whole
+                reject form — a reason list, a message box and a note, inside a
+                360px dropdown — which is where a menu stops being a menu. It now
+                answers one question (approve or reject) and the REJECT DIALOG asks
+                the rest, where there is room to read what the candidate will get
+                before sending it.
+
+                A RESOLVED row offers only the opposite verb: the useful action on
+                a decided CV is undoing it, and re-applying the verdict it already
+                carries is a no-op that only invites a mis-click. Opening the CV
+                lives on the file name itself, not in here. */}
             {stateOf(r) !== 'approved' && (
-              <button onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-emerald-700 hover:bg-canvas">
-                <span className="w-3.5 text-center">✓</span><span className="flex-1">{stateOf(r) === 'rejected' ? 'Approve CV — undo the rejection…' : 'Approve CV…'}</span>
+              <button onClick={() => { setMenu(null); approveNow(r) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-emerald-700 hover:bg-canvas">
+                <span className="w-3.5 text-center">✓</span>
+                {/* NO ELLIPSIS, unlike Reject — the punctuation is the promise.
+                    "…" means a step follows; this one acts on the click. */}
+                <span className="flex-1">{stateOf(r) === 'rejected' ? 'Approve CV — undo the rejection' : 'Approve CV'}</span>
                 <span className="shrink-0 text-[10px] text-faint">→ Qualified · Sent · Showing</span>
               </button>
             )}
             {stateOf(r) !== 'rejected' && (
-              <>
-                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-rose-500">Reject CV — chọn lý do</p>
-                {REJECT_REASONS.map((rr) => (
-                  <button key={rr} onClick={() => { setMenu(null); setOpen(r) }} className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11.5px] text-ink hover:bg-canvas">
-                    <span className="w-3.5 shrink-0 pt-0.5 text-center text-rose-500">✕</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{rr}</span>
-                      <span className="block text-[10px] leading-snug text-faint">Ứng viên thấy: {REASON_SENDS[rr]}</span>
-                    </span>
-                  </button>
-                ))}
-              </>
+              <button onClick={() => { setMenu(null); setReject(r) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
+                <span className="w-3.5 text-center">✕</span>
+                <span className="flex-1">Reject CV…</span>
+                <span className="shrink-0 text-[10px] text-faint">chọn lý do ở bước sau</span>
+              </button>
             )}
-            <div className="border-t border-line-soft px-3 py-2">
-              {/* A REASON CODE, not just a note. The note explains one call; only a
-                  fixed code lets thirty rejections be counted, and reading them
-                  against what the SCAN said is how a parser gap becomes visible. */}
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Reject reason <span className="font-normal text-rose-500">*required</span></p>
-              <div className="mb-2 flex flex-wrap gap-1">
-                {REJECT_REASONS.map((x) => (
-                  <span key={x} className="cursor-pointer rounded border border-line px-1.5 py-0.5 text-[10px] text-muted hover:border-rose-300 hover:text-rose-600">{x}</span>
-                ))}
-              </div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Internal note <span className="font-normal text-rose-500">*required</span></p>
-              <div className="h-12 rounded-md border border-line bg-canvas/40" />
-              {r.apps > 0 && <p className="mt-1 text-[10px] leading-snug text-faint">Approve sends the {r.apps} waiting application(s); Reject makes them Not sent.</p>}
-            </div>
           </div>
         </>
       )}
@@ -184,6 +205,8 @@ export function AdminCvCheck() {
         rows={rows}
       />
       {open && <CvCheckDetail row={open} onClose={() => setOpen(null)} />}
+      {reject && <RejectDialog name={reject.name} file={reject.file} extracted={reject.extracted} apps={reject.apps} onClose={() => setReject(null)} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }

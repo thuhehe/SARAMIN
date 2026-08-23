@@ -19,6 +19,7 @@ const adminResumes = screen(() => import('@/pages/admin/screens/recruitment/resu
 const adminCvCheck = screen(() => import('@/pages/admin/screens/recruitment/cvCheck'), 'AdminCvCheck')
 const adminResumeNewStandalone = screen(() => import('@/pages/admin/screens/recruitment/resumes'), 'AdminResumeNewStandalone')
 const adminCompanyList = screen(() => import('@/pages/admin/screens/companies/list'), 'AdminCompanyList')
+const adminCompanyArchived = screen(() => import('@/pages/admin/screens/companies/archived'), 'AdminCompanyArchived')
 const adminCompanyPipeline = screen(() => import('@/pages/admin/screens/companies/pipeline'), 'AdminCompanyPipeline')
 const adminJobseekers = screen(() => import('@/pages/admin/screens/users/jobseekers'), 'AdminJobseekers')
 const adminCompanyUsers = screen(() => import('@/pages/admin/screens/users/companyUsers'), 'AdminCompanyUsers')
@@ -59,7 +60,7 @@ const adminMatchingReport = screen(() => import('@/pages/admin/screens/system/ma
 const adminEnvironment = screen(() => import('@/pages/admin/screens/system/environment'), 'AdminEnvironment')
 const adminDepartments = screen(() => import('@/pages/admin/screens/directory/departments'), 'AdminDepartments')
 const adminCompanyDirectory = screen(() => import('@/pages/admin/screens/directory/directory'), 'AdminCompanyDirectory')
-const adminClaimQueue = screen(() => import('@/pages/admin/screens/directory/claimQueue'), 'AdminClaimQueue')
+const adminClaimRequests = screen(() => import('@/pages/admin/screens/directory/claimRequests'), 'AdminClaimRequests')
 
 export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   // Recruitment
@@ -71,6 +72,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-resume-new': adminResumeNewStandalone,
   // Companies
   'admin-company-list': adminCompanyList,
+  'admin-company-archived': adminCompanyArchived,
   'admin-company-pipeline': adminCompanyPipeline,
   // User — both sides of the marketplace's people accounts
   'admin-jobseekers': adminJobseekers,
@@ -117,7 +119,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-environment': adminEnvironment,
   'admin-departments': adminDepartments,
   'admin-company-directory': adminCompanyDirectory,
-  'admin-claim-queue': adminClaimQueue,
+  'admin-claim-requests': adminClaimRequests,
   // Job categories & roles now live inside Master data (one page); keep the id mapped.
   'admin-job-categories': adminMasterData,
 }

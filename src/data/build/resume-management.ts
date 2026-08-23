@@ -835,7 +835,7 @@ export const resumeManagement: BuildModule = {
           },
           {
             vi: 'Ô tìm kiếm theo mô hình Saramin Hàn Quốc: BA ô — OR (chứa bất kỳ từ nào), AND (phải chứa tất cả), NOT (loại trừ) — nhà tuyển dụng không phải học cú pháp toán tử.',
-            en: 'The keyword bar follows Saramin KR: THREE boxes — OR (any of these), AND (must contain every one), NOT (exclude) — so a recruiter never has to learn an operator syntax.',
+            en: 'SARAMIN-KR PARITY — three plain lists in one bar: OR (any of these), AND (must contain every one), NOT (exclude). The recruiter never learns an operator syntax; the screen states the logic and they state the words.',
           },
           {
             vi: 'Bộ lọc nằm ở CỘT TRÁI, chia 4 nhóm theo nguồn dữ liệu: Work preference → Profile → Work information → CV activity. Mỗi trường là một dropdown, riêng "Last resume update" là dãy nút chọn nhanh.',
@@ -904,7 +904,10 @@ export const resumeManagement: BuildModule = {
               { name: 'chip.state', type: 'enum', required: true, notes: 'Bắt buộc (must — changes the COUNT) · Ưu tiên (preferred — changes only the ORDER) · Loại trừ (exclude). Role defaults to Bắt buộc, every other type to Ưu tiên' },
               { name: 'chip.expand', type: 'action', notes: 'ENTITY chips only — "＋ thương hiệu tương tự". Opt-in, never automatic. Hidden until the brand mapping exists; see the dependencies section' },
               { name: 'autocomplete', type: 'behaviour', notes: 'the box autocompletes against the Title + Skill + Industry taxonomies, so a typed word resolves to a canonical tag where one exists — the same join the extractor writes' },
-              { name: 'advanced mode', type: 'link', notes: '"Tìm kiếm nâng cao" reveals the old OR / AND / NOT boxes plus keywordScope. Kept for parity and as the escape hatch when a parse cannot be expressed as chips' },
+              { name: 'the three boxes', type: 'text input ×3', required: true, notes: 'OR · AND · NOT in one bordered bar with the search button on the end, exactly the client’s reference screen. Each box takes a plain comma-separated list and prints, underneath itself, one line saying what it does to the result set — an operator name is only learnable when its meaning sits beside it' },
+              { name: 'CUT: preset condition chips', type: 'removed', notes: 'the row under the bar on the reference screen (대기업 · 코스닥 · 국내 유명 대학 · 적극 구직 중 …). Built and REMOVED 2026-08-23 on the PM’s instruction. Worth keeping the note: they were shortcuts over data the rail already holds, so nothing is lost that a recruiter cannot still reach by hand — and the two that were NOT reachable, “gắn bó ≥ 3 năm” (a computation over work history) and “được mời nhiều gần đây” (our own outreach record), are the only real candidates if the row ever returns' },
+              { name: 'CUT: the sentence box + parsed pills', type: 'removed', notes: 'built 2026-08-22, REMOVED 2026-08-23 on the PM’s instruction — Saramin-KR parity was chosen as the SAFE option, since it needs no client approval and no parser. What went with it is listed in the section below; do not rebuild it from the older draft without reopening that decision' },
+              { name: 'CUT: keywordScope', type: 'removed', notes: 'the All fields · Job title only · Skills only · Company only selector. It belonged to the old advanced mode and did not return with the boxes: it is orthogonal to the operators and adds a second question the recruiter has to answer before their first search' },
               { name: 'Reset · Load a saved search · Save this search', type: 'actions', required: true, notes: 'on the same band, in BOTH modes. A saved search stores the CHIPS (not the raw sentence) plus every rail filter, so it keeps working when the parser improves. See the saved-search open question' },
               { name: 'NO location box', type: 'removed', notes: 'DELIBERATE: location is two distinct fields (lives in / wants to work in) and a single box beside the query could only guess which one was meant. Both are dropdowns in the rail instead' },
             ],
@@ -974,8 +977,8 @@ export const resumeManagement: BuildModule = {
 
         sections: [
           {
-            heading: 'Result row — what is visible while LOCKED, and what an unlock adds',
             early: true,
+            heading: 'Result row — what is visible while LOCKED, and what an unlock adds',
             text: 'The commercial design of the whole feature sits in this one table. Too little on the locked row and no recruiter risks a credit; too much and there is nothing left to buy. The line we draw: everything that describes the CANDIDATE’S FIT is free to read, everything that lets you CONTACT them is paid.',
             table: {
               cols: ['Field on the row', 'While locked', 'After unlock'],
@@ -996,6 +999,7 @@ export const resumeManagement: BuildModule = {
             warn: 'CHANGED 2026-08-12 — the button now reads just "Unlock" (no "· 1 credit"), and clicking it opens the CV page DIRECTLY: the confirm dialog that showed cost and remaining balance is gone. The unlock is still logged and still pools across the team, but there is no longer a moment where the recruiter is told what it costs before it is spent. That is a real change to the paid moment, not a label tweak — if unlocks remain metered, the balance has to surface somewhere else (the page header already shows "62 / 100 unlocks left") and an accidental click now spends one. Confirm with the client whether per-CV metering is being dropped, or whether the confirm step should come back.',
           },
           {
+            early: true,
             heading: 'Filter rail — three groups, in this order',
             text: 'A COLLAPSIBLE LEFT RAIL beside the results, with one dropdown per field. Work preference sits first because it is what a recruiter with a specific vacancy narrows on first. Grouping by WHERE THE DATA COMES FROM still holds ACROSS the three groups — it tells the developer which fields go thin when the CV parser is not live — but no longer WITHIN Candidate information, which the PM flattened on 2026-08-22 into one eight-field list.',
             table: {
@@ -1016,28 +1020,63 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
-            heading: 'CV LANGUAGE — the filter rail is cross-language, the keyword bar is NOT',
-            text: 'A Vietnamese job board receives CVs in Vietnamese, in English, and — this being Saramin — in Korean and Japanese. The whole answer is ONE distinction: the rail matches on IDS, the keyword bar matches on TEXT. Extraction does exactly one job, which is to turn words into ids; after that step a CV’s own language has stopped existing. Whatever could not become an id stays trapped in the language it was written in, and that is precisely the keyword bar’s territory.',
+            early: true,
+            heading: 'CV IN ANOTHER LANGUAGE — two layers, and the search box reads BOTH',
+            text: 'The two layers are DATA, not screens. LAYER 1 is everything that resolved to master data and is stored as ids; LAYER 2 is the free text that had no master to resolve to. The filter rail only ever reads Layer 1. The keyword box reads BOTH — it tries to resolve what you typed first, and only falls back to text when it cannot.\n\nSo the failure is narrower than “search does not cross languages”: it is ONE case — a keyword with no master data, against content written in another language.',
+            diagram: 'cv-language',
             table: {
-              cols: ['Layer', 'What it matches on', 'A CV written in another language'],
+              cols: ['', 'LAYER 1 · Master data (ids)', 'LAYER 2 · Raw text'],
               rows: [
-                ['FILTER RAIL — all eight fields', 'IDs, from master data or a closed enum', '✅ FOUND. Extraction resolves 리액트 → skill id `react`, and an employer filtering React gets that CV. Cross-language by construction, not by effort.'],
-                ['KEYWORD BAR — chips that RESOLVED', 'the same ids as the rail', '✅ FOUND. A chip that parsed to a role, skill or location is a filter wearing chip clothes; the language never mattered.'],
-                ['KEYWORD BAR — plain-keyword chips', 'THE TEXT, exactly as the CV wrote it', '❌ MISSED. ASCII folding, punctuation stripping, prefix matching and typeahead fuzziness all work WITHIN one language and none of them crosses one. “quản lý dự án” never finds “project management”.'],
+                ['Holds', 'Anything with a reference list: skills, job role, job category, industry, location, education level, language + level, work type', 'Anything without one: About, work-history descriptions, projects, company names, job title as typed, certificate names'],
+                ['Filter rail', '✅ reads this — all eight fields', '✕ cannot read it. No master → not filterable, full stop'],
+                ['Keyword box', '✅ ALSO reads this. Type “React”, “Kế toán”, “Hồ Chí Minh” and it resolves to an id like any filter would', '✅ reads this too — as the FALLBACK, when the term resolved to nothing'],
+                ['Cross-language?', '✅ always. 리액트 → `react`, so the CV is found whatever it was written in', '❌ never. Folding, prefix and fuzzy all work WITHIN one language'],
               ],
             },
             items: [
-              'THE SPLIT RUNS THROUGH THE CV, not through the search box. STRUCTURED and therefore cross-language: skills, language + level, education level, years of experience, plus every Work-preference field (all chosen from dropdowns). PROSE and therefore language-bound: About, work-history descriptions, project descriptions, company names. Prose is what the keyword bar reads, which is why the keyword bar is where the whole problem lives.',
-              'THE RAIL IS SAFE BY ACCIDENT, AND WORTH KNOWING WHY. The PM’s eight (2026-08-22) are exactly the fields backed by a reference list — that was the test, and it was applied for a different reason. The two cut in the same instruction, JOB TITLE and CERTIFICATES, are free text: filtering “Điều dưỡng viên” could never have found a CV that wrote “Nurse”. They were also the rail’s ONLY two language leaks. One decision closed both problems, which is the argument for keeping the reference-list test rather than treating it as a one-off.',
-              'THE FIX IS A CHIP, NEVER A HIDDEN QUERY REWRITE. A plain-keyword chip that resolved to nothing gets a translated SIBLING chip, labelled “dịch” and removable, sitting beside the original: `quản lý dự án [từ khoá]` · `project management [dịch ✕]`. The chip mechanism already exists, so this costs one short AI call and no new UI concept. Silently widening the query behind the recruiter’s back is the version to avoid — someone who cannot see why a CV matched cannot correct the search.',
-              'SAY WHAT THE LANGUAGE SPLIT COSTS, in one line under the results: “12 hồ sơ khớp nhờ chip dịch — CV viết bằng tiếng Anh.” Without it, an English-CV shortfall reads as “there are no candidates”, which is a silent failure and therefore the worst kind: nobody goes looking for it.',
-              'VIETNAM IS BILINGUAL AND THE STRONG CVS SKEW ENGLISH — in IT especially. A recruiter searching in Vietnamese systematically misses the better half of the pool, so this is the median case in some categories rather than an edge case. Korean adds a second axis: Korean-speaking recruiters at Korean firms in VN will search in Korean against a Skill master whose only name columns are `name_en` and `name_vi`.',
-              'DO NOT ADD `name_ko` TO THE SKILL MASTER. The row only has to DISPLAY in vi/en; resolution is a separate step and the extractor bridges 리액트 → React on its own knowledge. When it fails, `unmatched_term` reports the term and it becomes an alias — the same machinery already specced for Vietnamese typos and diacritic-free spellings. Adding a language column to the taxonomy is taxonomy work with no display payoff.',
-              'CV LANGUAGE AS A NINTH FACET IS A PROPOSAL, NOT A DECISION. Detecting and storing `cvLanguage` at extraction would pass the reference-list test (a closed enum) and has a real use of its own — a Korean employer wanting a CV their hiring manager can actually read. It is NOT in the rail because the PM closed the list at eight on 2026-08-22. Raise it as its own decision; do not slip it in.',
+              'THE ONLY MISS, stated exactly: a keyword that is NOT in master data, searched against content in a language the recruiter did not type. “quản lý dự án” never finds “project management”. Everything else — every filter, and every keyword that resolves — crosses languages for free.',
+              'THE SEARCH BOX IS A SURFACE, NOT A LAYER. It queries ids when it can and text when it cannot, which is why the same box can behave cross-language on one term and language-bound on the next. A chip that resolved is a filter wearing chip clothes.',
+              'THE RULE THAT DECIDES EVERYTHING ELSE: any field you want as a FILTER must resolve to a reference list. No master → it stays in Layer 2 → searchable as text, never filterable, never cross-language. This is why JOB TITLE and CERTIFICATES were cut from the rail on 2026-08-22.',
+              'DO NOT ADD `name_ko` TO THE SKILL MASTER. The row only has to DISPLAY in vi/en; resolution is a separate step and the extractor bridges 리액트 → React itself. A miss goes to `unmatched_term` and becomes an alias — the machinery already specced for Vietnamese typos.',
             ],
-            warn: 'EXTRACTION LANGUAGE COVERAGE IS A QUALIFICATION DEPENDENCY, and this is the part that bites without anyone noticing. The qualification rule runs on EXTRACTED fields: `AND [ OR [ Work experience, AND [ Education, Projects ] ], 3 skills ]`. If the extractor does not handle the CV’s language it extracts nothing → 0 skills → NOT ENOUGH INFORMATION → the CV is blocked from CV search AND from applying, and the candidate is told their CV is incomplete, which is FALSE. Whatever languages we do not extract, we silently reject.\n\nTWO THINGS TO SETTLE BEFORE LAUNCH: (1) name the languages extraction covers, and treat that list as a product commitment rather than a model detail; (2) those CVs land in the CV REVIEW queue, so clearing them requires an admin who reads the language — a staffing question stacked on top of the review-SLA question already open on “CV qualification — apply & CV search”.',
+            warn: 'EXTRACTION LANGUAGE COVERAGE IS A QUALIFICATION DEPENDENCY — the part that bites silently. The qualification rule runs on EXTRACTED fields. A language the extractor does not handle yields 0 skills → NOT ENOUGH INFORMATION → the CV is blocked from CV search AND from applying, and the candidate is told their CV is incomplete, which is false. Whatever we do not extract, we silently reject. Before launch: (1) name the languages extraction covers and treat that list as a product commitment; (2) those CVs land in CV review, so clearing them needs an admin who reads the language.',
           },
           {
+            early: true,
+            heading: 'KEYWORD SEARCH — exactly which candidate fields it reads',
+            text: 'Candidate data is three groups, and the keyword box does not treat them alike: it reads NONE of Basic information, reaches Work preference only through master-data resolution, and does its text work entirely inside CV content. Written as one table so “what does keyword search actually search?” has one answer instead of six scattered ones.',
+            table: {
+              cols: ['Group', 'Field', 'Keyword search reads it?'],
+              rows: [
+                ['1 · Basic information', 'Full name · email · phone', '❌ NEVER — deliberately. Names are masked until unlock; a searchable name or email would let an employer confirm a specific person is job-hunting (their own employee, most damagingly) or fish for contacts without spending an unlock. Identity is reachable only through unlock, which is paid and audited.'],
+                ['1 · Basic information', 'DOB · gender · nationality · marital status', '❌ Not keyword-searchable. Nationality and age are rail facets; gender and marital status are not filterable at all (client’s own rule).'],
+                ['1 · Basic information', 'Highest education · years of experience', '❌ Not as text. Both are rail facets; “cử nhân” typed as a keyword may RESOLVE to the education-level id, which is the rail’s field, not a text match.'],
+                ['2 · Work preference', 'Desired role · category · industry · location · work type', '✅ YES — through resolution, which is the NORMAL case, not an edge. These fields hold ids, not sentences (the candidate picked from a dropdown), so there is no text to scan; instead the typed term is resolved against master data first, and a hit compares ids. Worked example: candidate picks desired role “UX Designer” → we store the role id; recruiter types “ux designer” → resolves to the same id → FOUND (and cross-language: “thiết kế UX” with an alias finds it too). The only miss is a term resolution cannot map — “ux desginer” with no alias reaches no id, and there is no text here to fuzzy-match against.'],
+                ['2 · Work preference', 'Expected salary', '❌ A number. Rail only.'],
+                ['3 · CV content', 'Skills · language + level', '✅ Both ways — the resolved id (cross-language), and the words as written on the CV (text).'],
+                ['3 · CV content', 'Headline / current title · About · work-history titles, employers and descriptions · projects · certificate names', '✅ TEXT — this is the keyword box’s whole territory, and the only place Layer 2 exists. Language-bound: matches only in the language the CV wrote.'],
+              ],
+            },
+            items: [
+              'THE ONE-LINE ANSWER for a developer: keyword = CV CONTENT text + anything that resolves to master data. Basic information is out entirely; Work preference is in only as ids.',
+              'THE PII RULE IS THE POINT of the first row, and it is not in any earlier section: excluding name/email/phone from the index is what makes the masked row honest. If the text index contained them, search itself would unmask — no unlock needed, no audit line written.',
+              'ENTITY CHIPS OBEY THE SAME SCOPE — employer name, job title, work-history description. Nothing an entity chip can reach is outside this table.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'CV language — decisions already taken, kept out of the summary above',
+            text: 'Recorded so they are not re-opened or re-discovered. None of these changes what a developer builds in Phase 1.',
+            items: [
+              '⏭ KEYWORD TRANSLATION IS A LATER-PHASE ITEM (2026-08-23) — deferred, not dropped. Phase 1 matches text in the language it was typed, and the screen says nothing about what that hid. The design to start from when the phase comes up: a translated SIBLING shown beside the original, labelled and removable — `quản lý dự án [từ khoá]` · `project management [dịch ✕]` — because someone who cannot see why a CV matched cannot correct the search. The panel that drew this was removed from the diagram: it described work that is not being built, and a deferred feature drawn beside two shipping layers reads as a third thing to build.',
+              '❌ NO PHASE-1 STOPGAP LINE under the keyword box (“12 hồ sơ khớp bằng tiếng Anh — thêm vào tìm kiếm?”). It shipped 08-22, came off 08-23, and is not returning as a half-measure. THE CONSEQUENCE IS WHY THIS IS WRITTEN DOWN: with no line and no translation, an English-CV shortfall is indistinguishable from an empty market. Whoever answers “where are the candidates?” needs to know this is expected, and that the FILTER RAIL is the workaround.',
+              'THE RAIL IS SAFE BY ACCIDENT, AND WORTH KNOWING WHY — the PM’s eight (2026-08-22) are exactly the fields backed by a reference list. The two cut in the same instruction, JOB TITLE and CERTIFICATES, are free text and were the rail’s only two language leaks. One decision closed both problems, which is the argument for keeping the reference-list test rather than treating it as a one-off.',
+              'VIETNAM IS BILINGUAL AND THE STRONG CVs SKEW ENGLISH, in IT especially — so a recruiter searching in Vietnamese systematically misses the better half of the pool. This is the median case in some categories, not an edge case. Korean adds a second axis: Korean-speaking recruiters at Korean firms searching Korean against a master whose name columns are only `name_en` and `name_vi`.',
+              'CV LANGUAGE AS A NINTH FACET IS A PROPOSAL, NOT A DECISION. Detecting and storing `cvLanguage` would pass the reference-list test and has a real use — a Korean employer wanting a CV their hiring manager can read. It is not in the rail because the PM closed the list at eight. Raise it as its own decision; do not slip it in.',
+            ],
+          },
+          {
+            early: true,
             heading: '⚠ GENDER AND MARITAL STATUS AS FILTERS CONTRADICT THE CLIENT’S OWN WRITTEN RULE',
             text: 'This is not our objection — it is the client’s. Their master-data export marks the gender and marital-status tables 🔒 and states the constraint in their own words: "stored but never a filter/matching key; enforce at API + search when wired." THE FIELDS HAVE NOW MOVED THREE TIMES: built 2026-08-12, removed 2026-08-13, RE-ADDED 2026-08-22 on the PM’s instruction. They are in the mockup today. What has not moved is the client’s sentence, and it is the client who has to unwrite it — so this block is no longer a record of a closed round trip, it is the open item that has to be settled before the search index is built. Vietnamese law points the same way: Bộ luật Lao động 2019, điều 8 bars discrimination in employment on both grounds.',
             table: {
@@ -1057,6 +1096,27 @@ export const resumeManagement: BuildModule = {
             warn: '⚠ REOPENED 2026-08-22 — the PM has put gender and marital status back in the filter panel, so the written reversal IS needed again.\n\nBEFORE BUILDING: get the client to confirm IN WRITING that they are reversing their own "never a filter/matching key" rule. Their sheet specifies WHERE the old rule was to be enforced — at the API layer AND in the search index — so this is not a UI change, it is a decision to let those two fields ENTER THE INDEX AT ALL. A field the index never holds cannot be filtered on by accident; once it is in, every later removal is a migration rather than a checkbox.\n\nTHE ASK IS NOT “can we add two dropdowns”, it is “are you reversing your own rule, and has your legal counsel seen it” — those are different questions and only the second one matters. Recommendation unchanged: ship nationality, and put gender + marital status in front of the client’s legal counsel first. Every query using them is logged (FacetAudit). Cutting the two dropdowns back out is a five-minute change; unwinding an indexed protected field after launch is not.',
           },
           {
+            early: true,
+            heading: '★ THE THREE BOXES — what ships, and what choosing it costs',
+            text: 'DECIDED 2026-08-23 by the PM, on the grounds that Saramin-KR parity is the SAFE option: it is the screen the client already runs, so it needs no approval, no parser, and no argument. One bordered bar — OR · AND · NOT — with the search button on the end, and nothing else. They combine as (or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …).\n\nThis REVERSES the 08-22 build (a sentence box with the parse shown as editable pills). The reversal is recorded honestly below rather than quietly, because four capabilities went with it and each will be noticed by somebody eventually.',
+            table: {
+              cols: ['What the 08-22 build had', 'What it did', 'Where it stands now'],
+              rows: [
+                ['The sentence box', 'Carried the VERB — “có kinh nghiệm làm việc TẠI bệnh viện quốc tế” vs “MUỐN làm ở bệnh viện quốc tế”. Identical words, opposite meanings, two different fields.', '❌ GONE. The boxes cannot hold that distinction, so a term typed into AND is matched wherever the engine looks and the recruiter cannot say which they meant.'],
+                ['Per-term TYPE on the pill', '“Vai trò: điều dưỡng”, “Nơi TỪNG làm: bệnh viện quốc tế” — the screen said WHERE it would look.', '❌ GONE. Boxes hold plain words. This is also why keywordScope keeps being asked for: it is the crude version of the same answer.'],
+                ['The translated sibling', 'Made the keyword bar work across languages — the one mitigation for a Vietnamese query missing every English CV.', '⚠ NO HOME. See the ⚠ below; this is the loss worth actually deciding about.'],
+                ['The flag on a protected term', '“nam” rendered flagged, and the screen said the criterion was not applied.', '⚠ GONE FROM THE UI. The API and index gate still stand — but nothing on screen now distinguishes a word we honoured from one we dropped.'],
+              ],
+            },
+            items: [
+              'THE PRESET CHIP ROW FROM THE REFERENCE SCREEN WAS BUILT AND CUT on the same day. If it is ever revisited: they are shortcuts over data the rail already holds, so they add reach rather than data — and LOCALISE rather than translate, because KOSDAQ / KOSPI mean “listed company” (→ HOSE / HNX) and 인서울 대학 means a university in the capital (→ HN / HCM). A row of literally-translated Korean chips is the tell that nobody localised the screen.',
+              'RESET · LOAD A SAVED SEARCH · SAVE THIS SEARCH stay on the band. A saved search stores the whole condition — all three boxes, the preset chips, AND every rail filter.',
+              'THE FILTER RAIL IS UNAFFECTED by any of this. It matches on ids and is cross-language by construction; everything above concerns the keyword boxes alone. Do not let a keyword-bar decision be read as a rail decision.',
+            ],
+            warn: '⏭ DEFERRED TO A LATER PHASE (decided 2026-08-23) — KEYWORD TRANSLATION IS NOT CUT, IT IS SCHEDULED. Phase 1 ships the boxes as they are: they match text, in the language it was typed. The two Phase-1 stopgaps were both declined — appending a translation into the OR box (a silent query rewrite) and a notice line under the bar — because the real fix is worth doing properly rather than approximated in chrome.\n\nWHAT PHASE 1 THEREFORE ACCEPTS, stated plainly so nobody rediscovers it as a bug: a recruiter typing “quản lý dự án” does not see CVs that wrote “project management”, and the screen does not say so — the shortfall reads as “there are no candidates”. In IT that is most of the strong pool, not an edge case. THE FILTER RAIL IS UNAFFECTED and remains cross-language, so the answer to a recruiter reporting thin results is “use the rail, it matches ids”. That is true, and it is the workaround Phase 1 leans on.\n\nWHAT THE LATER PHASE OWES: the translation itself, and a way for the recruiter to SEE it — a silent widening of the query is the version to avoid, whatever the widget. One Phase-1 item makes that phase scopeable rather than guessed at: store `cvLanguage` at extraction (a closed enum, cheap). Without it we cannot tell a thin market from an unreachable one, and the later phase starts with no number to size itself against. Full model: “CV LANGUAGE — the filter rail is cross-language, the keyword bar is NOT”.',
+          },
+          {
+            early: true,
             heading: 'CV detail — a PAGE, and the same three groups as the data model',
             text: 'Unlock (and View CV on an already-unlocked row) opens the CV as its OWN PAGE, not a dialog. A CV is a document a recruiter reads end to end, forwards to a colleague and prints; a 560px modal fights all three. Back returns to the result list with the search intact.',
             table: {
@@ -1075,6 +1135,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'WHO IS IN THE POOL AT ALL — the CV-status gate, before any query runs',
             text: 'Nothing on this screen decides who is searchable; it only orders and narrows people who already are. Eligibility is one join, and it reads a status this module does not own — cv.status, defined in Resume management → “CV qualification — apply & CV search”.',
             table: {
@@ -1094,17 +1155,20 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'SEARCH MODEL — the recruiter states INTENT, the screen states the logic',
-            text: 'REWRITTEN (Aug 2026), replacing the Saramin-KR three-box OR / AND / NOT bar. The problem with operators was never that they are hard to type — it is that they force the recruiter to resolve their own intent into set logic BEFORE the screen has shown it understood them. A recruiter searching “kế toán trưởng ngành ngân hàng” has to decide whether ngân hàng is an AND (which excludes every good accountant outside banking) or an OR (which dilutes the list to every accountant alive). Neither is what they mean. They mean banking is PREFERRED, and three boxes cannot say that.',
+            text: '⛔ NOT BUILT — kept as the ARGUMENT, not as the spec. The screen ships Saramin-KR’s three boxes (decision 2026-08-23, below). This section stays because the problem it describes does not go away by not solving it, and because reversing the decision later should not mean re-deriving it.\n\nTHE PROBLEM: operators are not hard to TYPE, they are hard to MEAN. A recruiter searching “kế toán trưởng ngành ngân hàng” has to decide whether ngân hàng is an AND (which excludes every good accountant outside banking) or an OR (which dilutes the list to every accountant alive). Neither is what they mean. They mean banking is PREFERRED — a third state the three boxes do not have. Watch for it in the wild: recruiters working around the gap will run the same search twice, once with the term in AND and once without.',
             items: [
-              'THE WHOLE FIX IS ONE SUBSTITUTION: operators become PRIORITY. Every term the recruiter gives is a chip with three states — Bắt buộc (must) · Ưu tiên (preferred) · Loại trừ (exclude) — which is AND / weighted-OR / NOT expressed as “how much do I care”, not as algebra.',
+              'THE WHOLE FIX IS ONE SUBSTITUTION: operators become PRIORITY. Each box is named for what it does to the result set rather than for its algebra — AND = bắt buộc, OR = ưu tiên, NOT = loại trừ — and prints that meaning underneath itself. An operator name is only learnable when its meaning sits beside it.',
               'NOTHING IS LOST. Any query expressible in the old three boxes is expressible in chips; the reverse is not true, because the old bar had no way to say “preferred”.',
-              'A PREFERRED TERM NEVER REMOVES ANYBODY — it only re-orders. This is what makes the search safe to use on a thin pool: the recruiter can always add intent without risking an empty screen.',
+              'A PREFERRED TERM NEVER REMOVES ANYBODY — it only re-orders. This is what makes the search safe to use on a thin pool: the recruiter can always add intent without risking an empty screen. It is printed under the OR box in those words, because “OR” alone does not promise it.',
+              'THE VERB IS WHY THE SENTENCE BOX STAYS ON TOP, and it is the argument for this whole layout. “có kinh nghiệm làm việc TẠI bệnh viện quốc tế” and “MUỐN làm ở bệnh viện quốc tế” put identical words in an identical box and mean opposite things — work history versus desired location, two different fields. The boxes cannot hold that distinction; the sentence can, and the parse then STAMPS it on the term (“Nơi TỪNG làm: bệnh viện quốc tế”). Typing into a box directly skips the verb, so a term typed by hand keeps whatever type the recruiter picks and defaults to a plain keyword.',
             ],
           },
           {
-            heading: 'QUERY UNDERSTANDING — one box, then chips the recruiter can correct',
-            text: 'The recruiter types a sentence in their own words. We parse it, and SHOW the parse as editable chips directly under the box. The parse is never silent: a wrong reading is visible and fixable in one click, instead of quietly returning the wrong people.',
+            early: true,
+            heading: 'QUERY UNDERSTANDING — ⛔ NOT BUILT, kept as the design if the boxes are ever revisited',
+            text: '⛔ SUPERSEDED 2026-08-23 by Saramin-KR parity (see “★ THE THREE BOXES”). Nothing below ships. It is kept because the chip TYPES are the useful part independent of the input widget — they are the vocabulary a parser would have to produce, and the same list answers “what could a preset chip be” and “what does keywordScope crudely approximate”. Delete this section only when the boxes are confirmed permanent.\n\nTHE DESIGN WAS: the recruiter types a sentence in their own words; we parse it and SHOW the parse as editable chips directly under the box, so a wrong reading is visible and fixable in one click instead of quietly returning the wrong people.',
             table: {
               cols: ['Chip type', 'From “kế toán trưởng ngành ngân hàng”', 'Default state', 'Matched against'],
               rows: [
@@ -1124,6 +1188,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'EVIDENCE SOURCE — why “đã làm ngân hàng” outranks “đã học ngân hàng”',
             text: 'The same chip matching in two different places is not the same strength of evidence, and this table is what produces the ordering the client asked for. It is a property of the MATCH, not a separate rule per query.',
             table: {
@@ -1142,6 +1207,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'RESULT TIERS — three labelled bands, and every row says WHY',
             text: 'The result list is never one flat run of 248 rows ordered by an invisible score. It is grouped into named bands, so a recruiter can stop reading at the point the tier stops being worth their time — and so nobody has to wonder why a row is where it is.',
             table: {
@@ -1160,6 +1226,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'ENTITY CHIPS — companies and brands (the Starbucks case)',
             text: 'The client’s second example — “tìm bartender cho quán cafe style Starbucks” — is not a role or an industry query. “Starbucks” is an ENTITY, and it needs to match across the whole CV rather than in the employer field alone.',
             table: {
@@ -1178,15 +1245,7 @@ export const resumeManagement: BuildModule = {
 
           },
           {
-            heading: 'ADVANCED (boolean) — kept, demoted, not deleted',
-            text: 'The three OR / AND / NOT boxes move behind a “Tìm kiếm nâng cao” link. They are not removed: some recruiters do use them, it is Saramin KR parity, and it is the escape hatch when the parser gets a query wrong in a way the chips cannot express.',
-            items: [
-              'The combined expression is unchanged where it is used: (or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …).',
-              'The keyword SCOPE selector (All fields · Job title only · Skills only · Company only) belongs to advanced mode, where it is orthogonal to the operators. In the default mode the chip TYPE already says where to look, so a scope selector would be a second, contradictory answer to the same question.',
-              'RESET · LOAD A SAVED SEARCH · SAVE THIS SEARCH stay on the main band in BOTH modes. A saved search stores the whole condition — chips (or boxes) AND every rail filter.',
-            ],
-          },
-          {
+            early: true,
             heading: 'WHAT THIS NEEDS THAT WE DO NOT HAVE YET',
             text: 'The UI is only as good as the mapping behind it. Two dependencies, and the first is a launch risk rather than a nicety.',
             table: {
@@ -1203,6 +1262,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Every filter, and the field it reads',
             text: 'No filter on this screen invents a field. Each one maps to something the profile or the CV already holds — this table is the check, and anything that cannot fill a row here does not ship as a filter.',
             table: {
@@ -1230,6 +1290,7 @@ export const resumeManagement: BuildModule = {
             warn: 'CUT because the field does not exist in the client’s 15-field sheet — do not re-add without adding the field first: AVAILABILITY / notice period, EMPLOYMENT TYPE (full-time/part-time is not separate from desired work type), CURRENTLY LIVING IN (the sheet states plainly that current location is not a field), INDUSTRY EXPERIENCE (a CV has no industry field), GRADUATION STATUS (not one of the nine; still shown on the row, just not filterable). Separately cut on client direction, all backed by real fields and re-addable in minutes: the "include Thỏa thuận" checkbox and the two credit-protection toggles. Also recorded so nobody builds from an earlier draft: `expectedSalary` always carried currency VND · USD — the older `desiredSalary: int (VND)` sketch in CV data & matching architecture is superseded by it.',
           },
           {
+            early: true,
             heading: 'Salary — ONE figure from the candidate, a RANGE from the employer',
             text: 'CANONICAL RULES live in the feature "Salary — the one contract" in this module, which covers all five surfaces at once; this section is the CV-SEARCH application of them, case by case. The two sides are deliberately different shapes, and that asymmetry IS the logic. A CANDIDATE states a single expected figure ("Từ 15 triệu"). An EMPLOYER posting a job states a band, and an employer searching CVs also filters by a band (DECIDED 2026-08-13, client direction). So a CV matches when THE CANDIDATE’S ONE FIGURE FALLS INSIDE THE EMPLOYER’S BAND — a point-in-range test, not two ranges overlapping. There is no second candidate number to overlap with.',
             table: {
@@ -1264,6 +1325,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Filter panel — what is query-driven and what is fixed',
             text: 'The panel is dynamic in only two ways, and confusing them produces a panel that is either useless or unlearnable. The GROUPS and the fields inside them are FIXED and always render in the same order, even when one is entirely empty for the current query. What changes with the query is the counts on every option, and the option LIST of the open-ended fields.',
             table: {
@@ -1286,6 +1348,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Re-identification — the risk this field set creates',
             text: 'Masking the name is not the same as anonymity. Gender + age + employer name + job title + school is, in a market the size of Vietnam, frequently enough to identify one person — a recruiter who reads "Nữ · 34 · Điều dưỡng trưởng khoa Ngoại · BV Quốc tế Mỹ" has effectively identified the candidate without spending a credit. This is a deliberate trade, not an oversight, and it needs a decision rather than a default.',
             items: [
@@ -1297,6 +1360,7 @@ export const resumeManagement: BuildModule = {
             warn: 'Do not ship gender and age as facets before the client’s legal side has signed them off. Filtering a candidate pool by gender or age is the textbook shape of a discrimination claim, and the log of who filtered by what is discoverable.',
           },
           {
+            early: true,
             heading: 'Where each field comes from — nothing new is asked of the candidate',
             text: 'Every field on the row already exists upstream. This screen is a read model, not a new collection point; if a field is blank here the fix is upstream, in extraction or in the CV form.',
             table: {
@@ -1311,6 +1375,7 @@ export const resumeManagement: BuildModule = {
             },
           },
           {
+            early: true,
             heading: 'Research scope — what to investigate',
             items: [
               'A. DATA & STRUCTURE — what fields make up a CV; which are structured (searchable/filterable) vs. free text; how each CV is stored so search is fast; how we "featurize" a CV (which attributes we extract and index).',
@@ -1321,6 +1386,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Living document — maintain as you go (not just a final answer)',
             items: [
               'Findings — data structure, criteria, ranking approach.',
@@ -1332,6 +1398,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Reference products to study',
             items: [
               'VietnamWorks — primary reference. We provide a login/account ID and buy the credits needed to test search, filters, result presentation and the unlock/credit model.',
@@ -1340,6 +1407,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'What we provide / how we support',
             items: [
               'Sample CV data — a small set (~2–3 CVs) to validate the model against, provided later.',
@@ -1348,6 +1416,7 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            early: true,
             heading: 'Suggested phases',
             items: [
               '1. Study references (VietnamWorks + our Admin resume list) → notes.',
@@ -1832,6 +1901,20 @@ export const resumeManagement: BuildModule = {
         sections: [
           {
             early: true,
+            heading: 'How CV status drives Application status and CV search status',
+            text: 'Everything on the right is COMPUTED from the box on the left. No arrow points back, because there is nothing on the right to write to.',
+            diagram: 'cv-status',
+            items: [
+              'EACH STATUS CARD CARRIES A SMALL SECOND LINE — what the candidate is shown for that status. Read it down the uploaded panel and the visibility rule states itself: nothing, nothing, nothing, then one rejection message.',
+              'READ IT LEFT TO RIGHT ONLY. Application status and CV-search status are projections; the CV is the record. A screen that lets someone set either one directly has re-introduced the second source of truth this model exists to remove.',
+              'THE BIG CELLS ARE INTERNAL VALUES, THE SMALL LINE IS THE PRODUCT. “Not sent” and “Hidden” are what the system stores and what an ADMIN reads; they are not labels anyone else is shown. Confusing the two is the single commonest misreading of this picture, which is why the two now sit one above the other instead of on separate pages.',
+              'THE TWO DOUBT ROWS ARE IDENTICAL in their consequences — that is intentional. “Not enough information” and “Can’t read” differ in what the operator has to LOOK at, never in what the candidate or employer experiences, and neither is shown to anyone outside the review queue.',
+              'THE FOURTH APPLICATION VALUE IS DRAWN AS AN ANNOTATION, NOT A ROW — Recall. It is a transition rather than an apply-time outcome: no CV status produces it, only the act of rejecting a CV that had already been delivered. Squeezing it into a cell would have implied some status you can be in at apply time.',
+              'BOTH DOORS FAIL CLOSED (revised — the 24h auto-send is REMOVED). Neither a held application nor a held CV is ever released automatically; both wait for a human. This drops an earlier asymmetry in which applications auto-sent and only the index waited — simpler to explain, and it means nothing unreviewed ever reaches an employer. The cost moves onto US: an unworked queue now stops candidates’ applications outright, so queue staffing is no longer a nice-to-have.',
+            ],
+          },
+          {
+            early: true,
             heading: 'In one table',
             text: 'Two kinds of CV, one rule, and one field it writes. Everything downstream — whether the application is delivered, whether the CV is searchable — is READ from that field and never decided anywhere else.',
             table: {
@@ -1852,19 +1935,6 @@ export const resumeManagement: BuildModule = {
               'ADMIN APPROVES THE CV, NEVER THE APPLICATION. One approval sends every application waiting on that CV and makes the CV searchable, because both were only ever reading the CV.',
               'THE ASYMMETRY IS DELIBERATE and is the one thing to remember from this table: a SARAMIN CV in doubt cannot be applied with at all (the candidate can fix it in seconds), while an UPLOAD in doubt can — because the failure may be our parser, not their document. Same rule, same statuses, different consequence.',
               'REJECTED IS THE ONLY STATUS THAT BEHAVES THE SAME ON BOTH ROUTES. Doubt is a question about the file; rejection is a verdict about the CV, and a verdict does not care how the CV was made.',
-            ],
-          },
-          {
-            early: true,
-            heading: 'How CV status drives Application status and CV search status',
-            text: 'The direction is the thing readers get wrong, so it is drawn rather than described: everything on the right is COMPUTED from the box on the left. No arrow ever points back the other way, because there is nothing on the right to write to.\n\nEach status card also carries a SMALL SECOND LINE — what the candidate is shown for that status. Read it down the uploaded panel and the visibility rule states itself: nothing, nothing, nothing, then one rejection message.',
-            diagram: 'cv-status',
-            items: [
-              'READ IT LEFT TO RIGHT ONLY. Application status and CV-search status are projections; the CV is the record. A screen that lets someone set either one directly has re-introduced the second source of truth this model exists to remove.',
-              'THE BIG CELLS ARE INTERNAL VALUES, THE SMALL LINE IS THE PRODUCT. “Not sent” and “Hidden” are what the system stores and what an ADMIN reads; they are not labels anyone else is shown. Confusing the two is the single commonest misreading of this picture, which is why the two now sit one above the other instead of on separate pages.',
-              'THE TWO DOUBT ROWS ARE IDENTICAL in their consequences — that is intentional. “Not enough information” and “Can’t read” differ in what the operator has to LOOK at, never in what the candidate or employer experiences, and neither is shown to anyone outside the review queue.',
-              'THE FOURTH APPLICATION VALUE IS DRAWN AS AN ANNOTATION, NOT A ROW — Recall. It is a transition rather than an apply-time outcome: no CV status produces it, only the act of rejecting a CV that had already been delivered. Squeezing it into a cell would have implied some status you can be in at apply time.',
-              'BOTH DOORS FAIL CLOSED (revised — the 24h auto-send is REMOVED). Neither a held application nor a held CV is ever released automatically; both wait for a human. This drops an earlier asymmetry in which applications auto-sent and only the index waited — simpler to explain, and it means nothing unreviewed ever reaches an employer. The cost moves onto US: an unworked queue now stops candidates’ applications outright, so queue staffing is no longer a nice-to-have.',
             ],
           },
           {
@@ -1957,7 +2027,7 @@ export const resumeManagement: BuildModule = {
           {
             early: true,
             heading: 'THE MATRIX — one CV status, every surface that shows it',
-            text: 'Everything a status produces, in one table. The left column is the only stored fact; the four to its right are what each audience is shown, and they are read, never written. Rejected splits into three rows because the reason is the one thing that changes what people see — everywhere else the status alone decides. Read a row left to right and it is the same story every time: progressively less of the truth, for progressively more distant audiences.',
+            text: 'Everything a status produces, in one table. The left column is the only stored fact; the four to its right are what each audience is shown, and they are read, never written. Read a row left to right and it is the same story every time: progressively less of the truth, for progressively more distant audiences.\n\nREJECTED IS SPLIT INTO ITS THREE REASONS (2026-08-23), because although the TAG is identical for all of them, the WORDS are not — and the words are the whole point of having three codes. The chip stays “Chưa được duyệt” everywhere; what changes per row is the message drafted for the candidate and the one clause the employer is given.',
             table: {
               cols: [
                 'CV status',
@@ -1969,56 +2039,71 @@ export const resumeManagement: BuildModule = {
               rows: [
                 [
                   '**Qualified**',
-                  'No status chip. Green **Hiển thị trong tìm kiếm CV** on the CV picked for search. **CV detail:** no notice at all — an ordinary CV.',
+                  'No status chip. Green **Hiển thị trong tìm kiếm CV** on the CV picked for search. **CV detail:** no notice at all.',
                   '**Đã gửi**, then the employer’s own stages (Viewed · Interview · Offer…)',
                   'An ordinary row, worked through the employer’s pipeline',
                   'In the pool — but ONLY if it is the flagged CV and the account is Discoverable. Otherwise simply absent, which is not the same as hidden: it was never chosen.',
                 ],
                 [
                   '**Can’t read** — DOUBT, upload only. In the review queue',
-                  '**NOTHING.** No chip, no line, no button — the row is indistinguishable from a healthy CV. **CV detail:** nothing either.',
-                  '**Nothing special** — blue **Đã nộp**, “Đơn của bạn đã được nộp”. Timeline: “Gửi tới nhà tuyển dụng — Đang xử lý”',
-                  '**Nothing** — never delivered, so no employer row exists',
-                  '**Not in the pool** — Hidden until an admin approves. The employer never sees it, so there is nothing to label.',
+                  '**Không hiển thị gì** — y hệt một CV bình thường.',
+                  '**Không hiển thị gì đặc biệt** — vẫn là **Đã nộp** như mọi đơn đang chờ.',
+                  '**Không có gì** — chưa từng gửi đi.',
+                  '**Không có trong pool** — Hidden cho tới khi admin duyệt.',
                 ],
                 [
                   '**Not enough information** — DOUBT',
-                  '**Upload (in the queue): NOTHING** — same as the row above. **Saramin CV (never queued):** amber **⚠ Chưa đủ thông tin** · “Chưa hiển thị với NTD & chưa ứng tuyển được — cần bổ sung kinh nghiệm hoặc kỹ năng.” → **Cập nhật hồ sơ**. **CV detail (Saramin only):** “Hồ sơ chưa đủ điều kiện hiển thị và ứng tuyển” + the missing fields as a CHECKLIST, each with its own hint (“Chưa có kinh nghiệm? Điền Học vấn + Dự án thay thế”).',
-                  '**Upload: nothing special** — the same **Đã nộp**. **Saramin: nothing** — it cannot be selected to apply at all, so no application ever exists.',
-                  '**Nothing** — never delivered',
-                  '**Not in the pool** — Hidden. A Saramin CV below the rule cannot even be toggled on.',
+                  '**Upload: không hiển thị gì.** · **Saramin CV** (không vào hàng đợi): amber **⚠ Chưa đủ thông tin** → **Cập nhật hồ sơ**; CV detail thêm CHECKLIST các mục còn thiếu.',
+                  '**Upload: không hiển thị gì đặc biệt.** · **Saramin: không có đơn nào** — không chọn được để ứng tuyển.',
+                  '**Không có gì** — chưa từng gửi đi.',
+                  '**Không có trong pool** — Hidden.',
+                ],
+                /* THE THREE REJECTIONS. Same chip, different words — which is the
+                   only reason three codes exist. Candidate text is specific and
+                   carries the fix; employer text is ONE fixed clause and carries
+                   nothing to do. */
+                [
+                  '**Rejected — Không phải CV**',
+                  'Rose **Chưa được duyệt** + “File bạn tải lên không phải một CV. Hãy tải lên CV của bạn, hoặc tạo Saramin CV.” → **Tải lên CV khác**',
+                  'Chưa gửi → **Không được gửi** · đã gửi → **Đã thu hồi**. Chip thôi — lý do không lặp lại, CV chỉ cách một chạm.',
+                  '**Đã thu hồi** + “Saramin đã thu hồi CV này — **file không phải một CV**.”',
+                  'Rời khỏi pool. Nếu đã unlock: gạch tên, **hoàn 1 lượt unlock**, “Không còn khả dụng”.',
                 ],
                 [
-                  '**Rejected** · Can’t read',
-                  'Rose **Chưa được duyệt — Không đọc được** · “File dạng ảnh scan nên hệ thống không đọc được nội dung.” → **Tải lên CV khác**. **CV detail:** “Hệ thống chưa đọc được hồ sơ của bạn” — “CV của bạn hợp lệ, nhưng file là bản scan/ảnh nên chúng tôi không trích xuất được nội dung. Hãy tải lên bản PDF dạng văn bản.” NEVER blame the candidate here: the file is unreadable to US, and saying otherwise asks them to fix something that is not broken.',
-                  'Never delivered → rose **Không được gửi** · was delivered → rose **Đã thu hồi**. Reason: “file là bản scan nên hệ thống không đọc được”',
-                  'Only if it had been delivered: **Đã thu hồi** + a banner naming the reason — “File là bản scan, hệ thống không đọc được nội dung.”',
-                  '**Removed from the pool.** If the employer had ALREADY unlocked it, the row survives: name struck through, rose **Đã thu hồi · hoàn 1 lượt unlock**, action replaced by “Không còn khả dụng”.',
+                  '**Rejected — Thiếu thông tin**',
+                  'Rose **Chưa được duyệt** + “Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng.” + CHECKLIST các mục còn thiếu → **Cập nhật hồ sơ**',
+                  'Như trên.',
+                  '**Đã thu hồi** + “Saramin đã thu hồi CV này — **hồ sơ chưa đủ thông tin**.”',
+                  'Như trên.',
                 ],
                 [
-                  '**Rejected** · Not a CV',
-                  'Rose **Chưa được duyệt — Không phải CV** · “File bạn tải lên không phải một CV.” → **Tải lên CV khác**. **CV detail:** “Hồ sơ chưa được duyệt” — “File bạn tải lên không phải một CV (giấy tờ, bảng giá, ảnh không liên quan). Hãy tải lên CV của bạn, hoặc tạo Saramin CV.” Two routes out, because the candidate may not have another file to hand.',
-                  'Same two outcomes, reason: “file không phải một CV”',
-                  'Same treatment. Banner reason: “File này không phải một CV.”',
-                  'Same treatment as the row above.',
-                ],
-                [
-                  '**Rejected** · CV but not enough information',
-                  'Rose **Chưa được duyệt — Thiếu thông tin** · “Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng.” → **Cập nhật hồ sơ**. **CV detail:** “Hồ sơ chưa đủ điều kiện” + the missing fields as a CHECKLIST with the same hints. This is the one rejection with a self-service fix, and it is the commonest — so the checklist matters more here than the prose.',
-                  'Same two outcomes, reason: “hồ sơ chưa đủ thông tin”',
-                  'Same treatment. Banner reason: “CV chưa đủ thông tin.”',
-                  'Same treatment as the row above.',
+                  '**Rejected — Không đọc được**',
+                  'Rose **Chưa được duyệt** + “Hệ thống không đọc được nội dung trong file này. Bạn thử tải lên bản PDF xuất trực tiếp từ Word hoặc Google Docs giúp nhé.” → **Tải lên CV khác**',
+                  'Như trên.',
+                  '**Đã thu hồi** + “Saramin đã thu hồi CV này — **hệ thống không đọc được nội dung file**.”',
+                  'Như trên.',
                 ],
               ],
             },
             items: [
               'READ COLUMN 2 DOWN THE DOUBT ROWS AND THE RULE STATES ITSELF — nothing, then nothing. Our uncertainty about our OWN parse is not the candidate’s news to receive: announcing it blames them for a failure that may well be ours, before any human has confirmed it.',
-              'THE MY-CVS CHIP NAMES STATUS **AND** REASON — “Chưa được duyệt — <reason>” (decided 2026-08-20, client feedback; reverses a brief one-uniform-chip draft). The three rejections have three different fixes, so they must be tellable apart without opening the row. Everywhere ELSE the chip stays status-only with the reason in the line or banner: an application’s fix is always “fix the CV”, and the employer only needs to know the row is dead.',
+              '★ ONE TAG, MANY MESSAGES (decided 2026-08-23) — and this is the load-bearing change. The chip is **Chưa được duyệt** for EVERY reason; what the candidate can act on comes from a REQUIRED message the reviewer writes, drafted from the reason code and editable. Three problems die with the old per-reason chips: adding a code no longer means writing new candidate-facing copy across three surfaces; picking the WRONG code no longer shows a wrong explanation in a place the reviewer cannot edit; and our internal taxonomy stops leaking to someone who has no use for it. A generic tag cannot be wrong, and it survives any future code — while the words underneath it stay specific, which is why the matrix lists the three rejections as three rows.',
+              '★ HOW MUCH DETAIL, BY AUDIENCE — the question the three rejection rows exist to answer, and the rule is not symmetric.\n\n**CANDIDATE: specific, and it must end in an action.** They are the only person who can fix this, so they get the full sentence, the missing-fields checklist where one applies, and exactly one button. Detail here is the entire value of having three reason codes at all — “không đạt yêu cầu” sends someone off guessing between re-uploading, editing, and giving up.\n\n**EMPLOYER: one fixed clause, and nothing to do.** They cannot fix anything, so the only questions worth answering are “should I stop working this row?” (the chip answers it) and “is this person coming back?” — which the clause answers: a scan problem may well return as a clean PDF, a not-a-CV will not. One clause is also the honest floor: a bare “Saramin đã thu hồi CV này” reads as evasive about our own mistake.',
+              'THE EMPLOYER NEVER SEES THE REVIEWER’S WRITTEN MESSAGE — they get the FIXED clause for that code, and the two must not be confused. The written message is composed to help one person repair their document; the same words in a recruiter’s dashboard read as a quality verdict on a candidate, which is neither its purpose nor safe. Fixed clause out, free text never.',
+              '★ NAME THE SYMPTOM, NEVER THE CAUSE (2026-08-23) — for “Can’t read”, on every surface. “File là bản scan” is a DIAGNOSIS and we are not in a position to make it: extraction also fails on a corrupt file, on text saved as vector outlines, on unusual font embedding, and on permission-locked PDFs. A candidate told their file is a scan when it is not re-exports the same document, fails again, and has learned only that we do not know what we are talking about. State what we OBSERVED — “hệ thống không đọc được nội dung trong file này” — then give an action that works whatever the cause: export a fresh PDF from Word or Google Docs. Same rule for the employer clause, in one shorter breath.',
+              'ALL THREE EMPLOYER CLAUSES DESCRIBE THE DOCUMENT, NEVER THE PERSON — “file không phải một CV”, “hồ sơ chưa đủ thông tin”, “hệ thống không đọc được nội dung file”. That is precisely what makes them safe to show. The moment a reason would describe the PERSON (fake, abusive, duplicate) it stops being a CV rejection and becomes **Block user**, which is communicated as a withdrawal with no reason at all.',
+              '“CHƯA”, NOT “KHÔNG”. A rejection is reversible — Approve undoes it — and most of these are faults of the FILE, not of the person. “CV không phù hợp” would read as a verdict on the candidate, which is both wrong and unfixable by them.',
+              'THE MESSAGE IS REQUIRED, and that is what makes a generic tag safe. A uniform chip with no message is strictly WORSE than the old specific chips: the candidate learns that something is wrong and nothing about what. The draft per code keeps the curated quality of the old fixed copy for the three known cases; “Khác” drafts nothing on purpose, so the box has to be written.',
+              'A MESSAGE WITH NO NEXT STEP IS A DEAD END, so the reviewer also picks the ACTION BUTTON — Tải lên CV khác · Cập nhật hồ sơ · Liên hệ hỗ trợ · none. It drafts from the code for the same reason the message does.',
               'MY CVS SUMMARISES, CV DETAIL EXPLAINS — one line and one button in the list, because that screen is for recognising your CVs; the full heading, body and checklist on CV detail, because that is the page a candidate opens precisely to find out what to do. Both are in column 2 so they can never drift apart.',
               'THE REASON CODE IS NOT SHOWN VERBATIM — “Can’t read” is a statement about OUR extraction, not about their document. Shown raw it reads as blame for something they did not do, so it maps to a message that says plainly the failure is ours.',
-              'ALL THREE REASONS HAVE A SELF-SERVICE FIX now that abuse is no longer a CV reason — upload a different file, or fill the missing fields. Abuse routes to **Block user** instead, an account action with its own messaging and no self-service path.',
+              'FOUR REASON CODES, INTERNAL ONLY: Can’t read · Not a CV · CV but not enough information · **Khác**. “Khác” is the pressure valve that lets the list stay short without a reviewer forcing a real case into a wrong box — and it is also the metric: a rising share of Khác is the evidence that a fifth code is owed. Abuse is still NOT one of them; it routes to **Block user**, an account action with its own messaging and no self-service path.',
               'THE TWO EMPLOYER COLUMNS ARE DELIBERATELY THIN. What a recalled row looks like in full — the struck-through name, the missing match score, the blurred CV, the removed Download, the refunded unlock, the notification — is specced ONCE in “What the EMPLOYER sees when a CV is recalled”, below. Repeating it here is what made the earlier three tables drift apart.',
-              'THERE IS NO ADMIN COLUMN, on purpose. The admin sees the LEFT column — the stored status itself — plus the reason and the internal note. That asymmetry IS what this page is about: one stored fact, four audiences told progressively less of it.',
+              'THERE IS NO ADMIN COLUMN, on purpose. The admin sees the LEFT column — the stored status — plus the reason code and the internal note, neither of which leaves the console. That asymmetry IS what this page is about: one stored fact, four audiences told progressively less of it.',
+              '★ REJECT IS A DIALOG, NOT A MENU (decided 2026-08-23). The row menu offers exactly TWO verbs — **Approve CV** and **Reject CV…** — and Reject opens a dialog that asks the rest. The menu had grown into a whole form inside a 360px dropdown, which is where a menu stops being a menu; more importantly the middle of that form is OUTBOUND WRITING, and a reviewer has to be able to READ the sentence a stranger will receive before sending it.',
+              'THE DIALOG ASKS IN THE ORDER THE DECISION IS MADE: (1) WHY — the four reason codes as a radio list, each showing ITS DRAFT underneath so the code is picked for what it will SAY rather than for what it is called; (2) WHAT THE CANDIDATE GETS — a tinted block holding the fixed tag, the message, and the action button; (3) the internal note. A pending-application warning sits above the buttons when the CV has applications waiting, because rejecting is the moment that decision reaches other people.',
+              'THE TAG RENDERS READ-ONLY IN THE DIALOG. It is the same for every reason and it is not the reviewer’s to choose — an editable-looking tag field would invite a per-case tag, which is exactly the coupling this design removed. The reason chips that used to sit loose in the form are gone: the radio list IS the picker, and having both was two controls for one choice.',
+              'APPLICANTS USES THE SAME MENU AND THE SAME DIALOG. It is one decision reached from a different screen, so it must never grow a second form with its own wording — the dialog is specced once, here.',
               'THE SECOND CHIP ON MY CVS SAYS SEARCH, NOT STATE — “Hiển thị trong tìm kiếm CV”, not the older bare “Đang hiển thị”, which never said WHERE it was showing. A flagged CV that stops qualifying keeps its flag and shows “Tạm không hiển thị”, so the candidate’s choice is not silently lost.',
               'NO SKILLS LINE ON THE CV ROW — it was a second place to edit skills, competing with the editor, on a screen whose job is recognition. Skills live in the CV editor only.',
               'REMOVED TWICE, and worth recording so it is not rebuilt a third time: an “Đang kiểm tra” chip telling the candidate their CV was under review. First it went because it described the older model where doubt held only search. It came back briefly as “Chờ duyệt” and went again on 2026-08-20 for a stronger reason — no candidate-facing surface mentions the review AT ALL now. Any future ticket asking for a “pending review” chip is asking to reverse a decision, not to fill a gap.',
@@ -2096,7 +2181,7 @@ export const resumeManagement: BuildModule = {
               'STILL RECALL, in every case. The alternative is knowingly leaving a CV we have judged fake or not-a-CV sitting in a paying customer’s dashboard, which is worse than the awkwardness of pulling it back.',
               'THE CONFIRM MUST SHOW WHAT IT UNDOES — not just “12 applications dropped, 3 recalled” but “1 employer has moved this candidate to Interview”. An operator must not discover afterwards that they pulled someone out of a live hiring process.',
               'THE EMPLOYER NOTICE NAMES SARAMIN. “Saramin đã thu hồi CV này”, never “ứng viên đã rút hồ sơ”. Hiding that the withdrawal came from us is the kind of thing that costs trust exactly once.',
-              'THE EMPLOYER NOW SEES THE REASON (revised) — “File này không phải một CV”, “File là bản scan nên hệ thống không đọc được”. This reverses an earlier rule that hid it, and the reversal follows from cutting the reason list to three: all three describe the DOCUMENT, so none is an accusation about a person. A generic “không đạt yêu cầu” told the employer nothing and read as evasive.',
+              'THE EMPLOYER NOW SEES THE REASON (revised) — “File này không phải một CV”, “Hệ thống không đọc được”. This reverses an earlier rule that hid it, and the reversal follows from cutting the reason list to three: all three describe the DOCUMENT, so none is an accusation about a person. A generic “không đạt yêu cầu” told the employer nothing and read as evasive.',
               'WHAT THE EMPLOYER STILL NEVER SEES is an account-level judgement. Fake, misleading and abusive are no longer CV reasons at all — they are **Block user**, and a block is communicated as a withdrawal with no reason given. Spelling out what tripped an abuse rule teaches the next attempt how to pass.',
             ],
             warn: 'REMOVED WITH THE TIMER: the `rejected_after_timer_release` event, and the threshold question that went with it. Both existed only to measure CVs that reached employers unreviewed, which can no longer happen. The staffing risk did not disappear though — it moved to the CANDIDATE side, where an unworked queue now means applications that never leave at all.',

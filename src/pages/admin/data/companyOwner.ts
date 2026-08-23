@@ -45,6 +45,16 @@ const NOW_M = 2026 * 12 + 7
 const mLabel = (m: number) => `${String((m % 12) + 1).padStart(2, '0')}/${Math.floor(m / 12)}`
 
 export function companyOwnerHistory(c: Company): CoOwnerTenure[] {
+  /* Promoted out of the Danh bạ: the chain does not start with "Lead created" —
+     it starts with the approved claim, naming the admin who approved it. That is
+     the join point with Lịch sử yêu cầu nhận, shown right below this chain: the
+     approved request there and the first tenure here are the same event. */
+  if (c.fromPool) {
+    return [
+      { owner: c.owner, from: '05/08/2026', to: 'now', by: 'Lê Hữu Phong (Sales lead)', reason: 'Rebalance — người nhận ban đầu chuyển vùng phụ trách' },
+      { owner: 'Trần Quốc Trung', from: c.fromPool.at, to: '05/08/2026', by: c.fromPool.by, reason: 'Yêu cầu xin nhận được duyệt', created: true },
+    ]
+  }
   const yr = ownerSinceYear(c)
   // A brand-new lead (no purchase / no activation date): one entry — whoever
   // created it still owns it. "Never reassigned" is a real state, not a gap.

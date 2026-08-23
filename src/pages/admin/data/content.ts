@@ -64,8 +64,11 @@ export const PLACEMENT_POS: Record<string, PlacementPo[]> = {
     { po: 'PO-005812-07-2026', invoiced: '26/05/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }, { sku: 'PLC-POPUP', qty: 2, used: 1 }] },
     { po: 'PO-005940-08-2026', invoiced: null, lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 0 }] },
   ],
+  // Deliberately the same PO as FPT's job/CV renewal: this company is the one
+  // worked example that carries all four product types, so its orders have to look
+  // like one customer's orders and not four unrelated codes.
   'FPT Software': [
-    { po: 'PO-005601-06-2026', invoiced: '15/06/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 1, used: 1 }] },
+    { po: 'PO-005929-08-2026', invoiced: '15/06/2026', lines: [{ sku: 'PLC-HOMEHERO', qty: 2, used: 1 }, { sku: 'PLC-TOPCOMPANY', qty: 1, used: 0 }] },
   ],
   'Tiki': [
     { po: 'PO-005733-07-2026', invoiced: '01/07/2026', lines: [{ sku: 'PLC-ADS-HOME', qty: 3, used: 1 }] },

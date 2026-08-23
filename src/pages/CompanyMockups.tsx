@@ -22,9 +22,7 @@ import {
   SlidersHorizontal,
   Filter,
   Pencil,
-  MoreHorizontal,
   MoreVertical,
-  Building2,
   CheckCheck,
   Plus,
   Inbox,
@@ -1137,71 +1135,28 @@ function FilterGroupBlock({ g, children }: { g: FacetGroup; children?: React.Rea
  * Role defaults to Bắt buộc, everything else to Ưu tiên, because a recruiter
  * means "an accountant, ideally from banking" — never "anyone from banking".
  */
-type ChipState = 'must' | 'pref' | 'not'
-const CHIP_STATE: Record<ChipState, { label: string; cls: string }> = {
-  must: { label: 'Bắt buộc', cls: 'border-brand bg-brand-soft text-brand' },
-  pref: { label: 'Ưu tiên', cls: 'border-line bg-surface text-ink/75' },
-  not: { label: 'Loại trừ', cls: 'border-rose-200 bg-rose-50 text-rose-600' },
-}
-const SEARCH_QUERY = 'điều dưỡng trưởng bệnh viện quốc tế'
-const SEARCH_CHIPS: { type: string; value: string; state: ChipState; tr?: string }[] = [
-  /* This chip RESOLVED — "Vai trò" reads the Role master — so it already matches a
-     CV written in any language and needs no translation. */
-  { type: 'Vai trò', value: 'Điều dưỡng trưởng', state: 'must' },
-  /* This one did NOT resolve; it stayed a plain keyword, so it only matches the
-     language it was typed in. `tr` is its translated sibling. */
-  { type: 'Nơi làm việc', value: 'Bệnh viện quốc tế', state: 'pref', tr: 'international hospital' },
-]
-
-/** One parsed term. The state selector is the whole boolean model, per chip. */
-function QueryChip({ c }: { c: { type: string; value: string; state: ChipState } }) {
-  const s = CHIP_STATE[c.state]
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11.5px]', s.cls)}>
-      <span className="opacity-60">{c.type}:</span>
-      <b className="font-semibold">{c.value}</b>
-      <span className="ml-0.5 cursor-pointer rounded bg-black/5 px-1.5 py-px text-[10px] font-medium">{s.label} ▾</span>
-      <span className="cursor-pointer opacity-40 hover:opacity-100">✕</span>
-    </span>
-  )
-}
-
-/* A translated sibling of a chip that did NOT resolve to master data.
+/* ── The search bar: Saramin KR's three boxes, verbatim ────────────────────
  *
- * The rail is cross-language because every one of its eight fields matches on an
- * ID — extraction turns "리액트" into skill `react` and the CV's own language stops
- * existing. The keyword bar has no such step: it matches the TEXT, so "quản lý dự
- * án" never finds a CV that wrote "project management". In a market where the
- * strongest CVs skew English, that is not an edge case, it is the median one.
+ * DECIDED 2026-08-23 — "phương án an toàn". The three lists are what the client
+ * already ships, so nothing here has to be argued or approved; the layout is the
+ * reference screen's, down to the operator badges and the blue button on the end.
  *
- * So we translate — but as ITS OWN CHIP, labelled and removable, never folded
- * silently into the original. A recruiter who cannot see why a CV matched cannot
- * correct the search, and a hidden query rewrite is exactly the kind of help that
- * reads as a bug. Only plain-keyword chips get one; a chip that already resolved
- * is a filter wearing chip clothes and needs nothing.
- */
-function TranslatedChip({ value }: { value: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-sky-300 bg-sky-50/70 px-2 py-1 text-[11.5px] text-sky-700">
-      <span className="rounded bg-sky-100 px-1 py-px text-[9.5px] font-semibold uppercase tracking-wide">dịch</span>
-      <b className="font-semibold">{value}</b>
-      <span className="cursor-pointer opacity-40 hover:opacity-100">✕</span>
-    </span>
-  )
-}
-
-/* ── Advanced mode: the old Saramin-KR boolean bar ─────────────────────────
- * Kept, not deleted. It is Saramin KR parity, some recruiters genuinely think
- * in operators, and it is the escape hatch for the query a chip cannot express
- * ("either of these two job titles, but never this third word"). It is simply
- * no longer the thing a first-time recruiter has to understand.
+ * The recruiter still never types AND, OR or a bracket: the SCREEN states the
+ * logic, the recruiter states the words. They combine as
+ *   (or₁ OR or₂ …) AND and₁ AND and₂ … AND NOT (not₁ OR not₂ …)
+ *
+ * REPLACES the sentence box + parsed pills built 2026-08-22. What that costs —
+ * no verb to disambiguate "từng làm" from "muốn làm", no per-term TYPE, no
+ * cross-language translation, no flag on a protected term — is written up in the
+ * requirement under "THE THREE BOXES" rather than re-argued here.
  */
 const ADV_BOXES: { op: string; value?: string; hint: string; note: string }[] = [
-  { op: 'OR', value: 'điều dưỡng trưởng, y tá trưởng', hint: 'bất kỳ từ nào', note: 'Câu truy vấn chính — khớp nếu CV chứa ÍT NHẤT MỘT từ' },
-  { op: 'AND', value: 'quản lý', hint: 'phải có tất cả', note: 'Thu hẹp — mọi từ ở đây đều phải xuất hiện' },
+  { op: 'OR', value: 'điều dưỡng, y tá', hint: 'bất kỳ từ nào', note: 'Câu truy vấn chính — khớp nếu CV chứa ÍT NHẤT MỘT từ' },
+  { op: 'AND', value: 'bệnh viện quốc tế', hint: 'phải có tất cả', note: 'Thu hẹp — mọi từ ở đây đều phải xuất hiện' },
   { op: 'NOT', value: 'thực tập', hint: 'loại trừ các từ này', note: 'Loại bỏ — CV chứa bất kỳ từ nào ở đây sẽ bị bỏ' },
 ]
-const ADV_SCOPES = ['Tất cả các trường', 'Chỉ chức danh', 'Chỉ kỹ năng', 'Chỉ công ty']
+
+
 
 /* ── CV detail page ────────────────────────────────────────────────────────
  * Opened by Unlock / View CV. A PAGE, not a modal — a CV is a document a
@@ -1355,7 +1310,6 @@ function CvDetailPage({ onBack }: { onBack: () => void }) {
 function ResumeSearchScreen() {
   const [viewing, setViewing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState('Any')
-  const [advanced, setAdvanced] = useState(false)
   /* Each row carries the full locked-preview field set: DESIRED ROLE, demographic
      line (gender · age), years of experience, the LATEST company (name, role,
      period, one-line description), the LATEST education (school, degree,
@@ -1573,74 +1527,34 @@ function ResumeSearchScreen() {
           </div>
         </div>
 
-        {advanced ? (
-          <>
-            {/* Three plain lists, the Saramin-KR model. The recruiter still never
-                types AND, OR or a bracket — the SCREEN states the logic and the
-                recruiter states the words. */}
-            <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
-              {ADV_BOXES.map((b) => (
-                <div key={b.op} className="flex min-w-0 flex-1 items-center gap-2 border-r border-line px-3 py-2">
-                  <span className="shrink-0 rounded bg-brand-soft px-1.5 py-px text-[10px] font-bold tracking-wide text-brand">{b.op}</span>
-                  <span className={cn('min-w-0 flex-1 truncate text-[12px]', b.value ? 'text-ink' : 'text-faint')}>{b.value ?? b.hint}</span>
-                </div>
-              ))}
-              <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Tìm</span>
+        {/* SARAMIN-KR PARITY, decided 2026-08-23 and chosen as the SAFE option:
+            one bar, three plain lists, the blue search button on the end. The
+            recruiter never types AND, OR or a bracket — the SCREEN states the
+            logic and the recruiter states the words.
+
+            What this replaced, and what it costs, is recorded in the requirement
+            ("THE THREE BOXES") rather than argued here: the sentence box, the
+            parsed pills that carried each term's TYPE, the translated sibling that
+            made the keyword bar work across languages, and the flag on a gender
+            term. Those were the newer design; this is the one the client ships. */}
+        <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
+          {ADV_BOXES.map((b) => (
+            <div key={b.op} className="flex min-w-0 flex-1 items-center gap-2 border-r border-line px-3 py-2">
+              <span className="shrink-0 rounded bg-brand-soft px-1.5 py-px text-[10px] font-bold tracking-wide text-brand">{b.op}</span>
+              <span className={cn('min-w-0 flex-1 truncate text-[12px]', b.value ? 'text-ink' : 'text-faint')}>{b.value ?? b.hint}</span>
             </div>
-            {/* What each box does, under the box it describes — the operator names
-                are only learnable if their meaning is on screen beside them. */}
-            <div className="mt-1 grid grid-cols-3 gap-0">
-              {ADV_BOXES.map((b) => (
-                <p key={b.op} className="px-3 text-[10px] leading-snug text-faint">{b.note}</p>
-              ))}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {/* Scope is ORTHOGONAL to the operators: the boxes say WHICH words,
-                  this says WHERE to look. It exists only in advanced mode — in the
-                  default mode the chip TYPE already answers "where", and two
-                  answers to one question is how a search starts lying. */}
-              <span className="text-[10.5px] text-faint">Tìm trong:</span>
-              <span className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-ink">
-                {ADV_SCOPES[0]} <ChevronDown className="h-3 w-3 text-faint" />
-              </span>
-              <span className="rounded-md border border-line bg-canvas/60 px-2 py-1 font-mono text-[10.5px] text-muted">
-                (điều dưỡng trưởng OR y tá trưởng) AND quản lý NOT thực tập
-              </span>
-              <span onClick={() => setAdvanced(false)} className="ml-auto cursor-pointer text-[10.5px] font-medium text-brand">
-                ← Quay lại tìm kiếm thường
-              </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-stretch overflow-hidden rounded-lg border border-brand">
-              <span className="grid shrink-0 place-items-center pl-3 text-faint">
-                <Search className="h-3.5 w-3.5" />
-              </span>
-              <span className="min-w-0 flex-1 truncate px-2.5 py-2 text-[12.5px] text-ink">{SEARCH_QUERY}</span>
-              <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Tìm</span>
-            </div>
-            {/* The parse, shown and editable. A wrong reading is visible and fixable
-                in one click instead of silently returning the wrong people. */}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10.5px] text-faint">Đang hiểu là:</span>
-              {SEARCH_CHIPS.flatMap((c) => [
-                <QueryChip key={c.type} c={c} />,
-                ...(c.tr ? [<TranslatedChip key={`${c.type}-tr`} value={c.tr} />] : []),
-              ])}
-              <span className="cursor-pointer rounded-lg border border-dashed border-line px-2 py-1 text-[11.5px] text-muted">＋ Thêm điều kiện</span>
-              <span onClick={() => setAdvanced(true)} className="ml-auto cursor-pointer text-[10.5px] text-brand">
-                Tìm kiếm nâng cao (OR / AND / NOT) →
-              </span>
-            </div>
-            {/* Naming what the language split costs. Without this line an
-                English-CV shortfall reads as "there are no candidates" — a silent
-                failure, which is the worst kind because nobody goes looking. */}
-            <p className="mt-1.5 text-[10.5px] text-muted">
-              <b className="font-semibold text-ink/70">12 hồ sơ</b> khớp nhờ chip <span className="text-sky-700">dịch</span> — CV viết bằng tiếng Anh. Bỏ chip đó để chỉ tìm đúng tiếng Việt.
-            </p>
-          </>
-        )}
+          ))}
+          <span className="flex shrink-0 cursor-pointer items-center bg-brand px-6 text-[12.5px] font-semibold text-white">Tìm</span>
+        </div>
+
+        {/* What each box does, under the box it describes — an operator name is
+            only learnable when its meaning sits beside it. */}
+        <div className="mt-1 hidden grid-cols-3 sm:grid">
+          {ADV_BOXES.map((b) => (
+            <p key={b.op} className="px-3 text-[10px] leading-snug text-faint">{b.note}</p>
+          ))}
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -2368,13 +2282,17 @@ interface NavGroup {
 }
 
 const DASHBOARD: NavItem = { id: 'co-dashboard', label: 'Home', Comp: DashboardScreen }
-const POST_JOB: NavItem = { id: 'co-post-job', label: 'Post a job', Comp: PostJobScreen }
-/* Top-level nav, in Saramin KR's employer order: Home · Jobs · Talent pool ·
-   Candidates · Hiring products · ⋯, with the blue "Post a job" CTA on the end.
-   Each entry opens a small dropdown of its screens. */
+const POST_JOB: NavItem = { id: 'co-post-job', label: 'Post job', Comp: PostJobScreen }
+/* Top-level nav: Home · Job management · Talent pool · Candidate management, with the
+   blue "Post job" CTA on the end. FOUR PLAIN LINKS, no dropdowns — each goes straight
+   to that area's list screen (items[0]) and the rest of the area is reached from
+   inside it. A menu that has to be opened to find out what is in it costs a click on
+   every visit; the areas are few enough that the list screen is the better landing.
+   The `More` group is not in the bar at all — it hangs off the user menu on the right,
+   because products, billing and team are settings, not daily work. */
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Jobs',
+    label: 'Job management',
     items: [
       { id: 'co-jobs', label: 'My jobs', Comp: MyJobsScreen },
       POST_JOB,
@@ -2385,21 +2303,16 @@ const NAV_GROUPS: NavGroup[] = [
     items: [{ id: 'co-resume-search', label: 'Resume search', Comp: ResumeSearchScreen }],
   },
   {
-    label: 'Candidates',
+    label: 'Candidate management',
     items: [{ id: 'co-applicants', label: 'Applicants', Comp: ApplicantsScreen, flush: true }],
   },
   {
-    // What the company bought is its own concern, separate from who can log in.
-    label: 'Hiring products',
+    // What the company bought, and who may log in — both are settings, not daily work.
+    label: 'More',
+    overflow: true,
     items: [
       { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
       { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
-    ],
-  },
-  {
-    label: 'Account',
-    overflow: true,
-    items: [
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
       { id: 'co-team', label: 'Team', Comp: TeamScreen },
       { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
@@ -2461,10 +2374,17 @@ export function CompanyMockups() {
           Saramin KR's sibling PROPERTIES, not this product's navigation. */}
       <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
         {isSignup ? (
-          /* pre-login frame — no logged-in header, just the brand + a way back */
-          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+          /* pre-login frame — the SIGNED-OUT half of the same bar: brand on the left,
+             sign in / sign up on the right, exactly where the user identity sits once
+             you are through. Saramin KR does the same (로그인 | 회원가입). */
+          <div className="flex items-center gap-3 border-b border-line px-5 py-3">
             <span className="text-[19px] font-bold lowercase tracking-tight text-brand">saramin</span>
-            <button onClick={() => setActive({ group: 'Home', item: DASHBOARD })} className="text-[12px] font-medium text-muted hover:text-brand">← Back to the logged-in console</button>
+            <button onClick={() => setActive({ group: 'Home', item: DASHBOARD })} className="ml-3 text-[12px] font-medium text-muted hover:text-brand">← Back to the logged-in console</button>
+            <div className="ml-auto flex items-center gap-3 text-[12px]">
+              <span className="cursor-pointer font-medium text-ink/80 hover:text-brand">Sign in</span>
+              <span className="text-line">|</span>
+              <span className="cursor-pointer font-semibold text-brand">Sign up</span>
+            </div>
           </div>
         ) : (
           <CoHeader active={active} onSelect={setActive} />
@@ -2479,7 +2399,14 @@ export function CompanyMockups() {
       </div>
 
       <p className="mt-4 max-w-[72ch] text-[12px] leading-relaxed text-faint">
-        This is the company's own console. It can be created two ways: <b>self-serve</b> via the pre-login sign-up above,
+        This is the company's own console. It can be created two ways:{' '}
+        <b
+          onClick={() => setActive({ group: 'Sign up', item: SIGNUP })}
+          className="cursor-pointer text-brand underline decoration-dotted underline-offset-2"
+        >
+          self-serve
+        </b>{' '}
+        via the pre-login sign-up,
         or by Sales in the CRM. Everything here draws on the same company record and pooled quota shown in the Admin &amp; CRM mockups.
       </p>
     </div>
@@ -2500,52 +2427,47 @@ function CoHeader({ active, onSelect }: { active: CoActive; onSelect: (a: CoActi
 
       <NavTop label="Home" active={active.item.id === DASHBOARD.id} onClick={() => pick('Home', DASHBOARD)} />
       {NAV_GROUPS.filter((g) => !g.overflow).map((g) => (
-        <NavMenu
+        <NavTop
           key={g.label}
-          group={g}
-          activeId={active.item.id}
-          open={open === g.label}
-          onToggle={() => setOpen((o) => (o === g.label ? null : g.label))}
-          onPick={(item) => pick(g.label, item)}
-        />
-      ))}
-      {NAV_GROUPS.filter((g) => g.overflow).map((g) => (
-        <NavMenu
-          key={g.label}
-          group={g}
-          activeId={active.item.id}
-          open={open === g.label}
-          onToggle={() => setOpen((o) => (o === g.label ? null : g.label))}
-          onPick={(item) => pick(g.label, item)}
-          icon={<MoreHorizontal className="h-4 w-4" />}
+          label={g.label}
+          active={g.items.some((i) => i.id === active.item.id)}
+          onClick={() => pick(g.label, g.items[0])}
         />
       ))}
 
       <span
-        onClick={() => pick('Jobs', POST_JOB)}
-        className="ml-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white"
+        onClick={() => pick('Job management', POST_JOB)}
+        className="ml-3 inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white"
       >
         <Pencil className="h-3.5 w-3.5" />
-        Post a job
+        Post job
       </span>
 
+      {/* Right side carries ONE identity state, never two. Signed in → who you are;
+          signed out → sign in / sign up, which lives on the pre-login frame below.
+          The two used to render together, which is a state no real session has. */}
       <div className="ml-auto flex items-center gap-3">
-        {/* Pre-login sign-up entry, kept in the top bar for discoverability. */}
-        <span
-          onClick={() => onSelect({ group: 'Sign up', item: SIGNUP })}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-brand px-3 py-1.5 text-[12px] font-semibold text-brand hover:bg-brand-soft"
-        >
-          Create account
-        </span>
         {/* No notification bell — removed on the same call as the Admin console's:
-            a badge that never changes is decoration, not a signal. */}
-        <span className="hidden items-center gap-1.5 text-[12px] md:flex">
-          <Building2 className="h-4 w-4 text-faint" />
-          <span className="text-ink/80">Vạn Phát Healthcare</span>
-          <span className="text-line">|</span>
-          <span className="font-medium text-ink">Trần Thị Mai</span>
-          <ChevronDown className="h-3 w-3 text-faint" />
-        </span>
+            a badge that never changes is decoration, not a signal.
+            The company name was dropped too: one company per console, and it is already
+            the page's own heading — repeating it in the bar spent width on a constant. */}
+        {NAV_GROUPS.filter((g) => g.overflow).map((g) => (
+          <NavMenu
+            key={g.label}
+            group={g}
+            activeId={active.item.id}
+            open={open === g.label}
+            onToggle={() => setOpen((o) => (o === g.label ? null : g.label))}
+            onPick={(item) => pick(g.label, item)}
+            alignRight
+            icon={
+              <>
+                <span className="font-medium text-ink">Trần Thị Mai</span>
+                <ChevronDown className={cn('h-3 w-3 text-faint transition-transform', open === g.label && 'rotate-180')} />
+              </>
+            }
+          />
+        ))}
       </div>
     </div>
   )
@@ -2556,14 +2478,14 @@ function NavTop({ label, active, onClick }: { label: string; active: boolean; on
   return (
     <button
       onClick={onClick}
-      className={cn('rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold', active ? 'text-brand' : 'text-ink/80 hover:text-brand')}
+      className={cn('shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold', active ? 'text-brand' : 'text-ink/80 hover:text-brand')}
     >
       {label}
     </button>
   )
 }
 
-/** A nav entry that drops its screens down, the way the KR header's ▾ items do. */
+/** The one remaining dropdown — the user menu. Top-level nav entries are plain links. */
 function NavMenu({
   group,
   activeId,
@@ -2571,6 +2493,7 @@ function NavMenu({
   onToggle,
   onPick,
   icon,
+  alignRight,
 }: {
   group: NavGroup
   activeId: string
@@ -2578,6 +2501,7 @@ function NavMenu({
   onToggle: () => void
   onPick: (item: NavItem) => void
   icon?: React.ReactNode
+  alignRight?: boolean
 }) {
   const owns = group.items.some((i) => i.id === activeId)
   return (
@@ -2585,19 +2509,14 @@ function NavMenu({
       <button
         onClick={onToggle}
         className={cn(
-          'flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold',
+          'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13.5px] font-semibold',
           owns ? 'text-brand' : 'text-ink/80 hover:text-brand',
         )}
       >
-        {icon ?? (
-          <>
-            {group.label}
-            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} />
-          </>
-        )}
+        {icon ?? group.label}
       </button>
       {open && (
-        <ul className="absolute left-0 top-full z-20 mt-1 min-w-[176px] overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lg">
+        <ul className={cn('absolute top-full z-20 mt-1 min-w-[176px] overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lg', alignRight ? 'right-0' : 'left-0')}>
           {group.items.map((it) => (
             <li key={it.id}>
               <button

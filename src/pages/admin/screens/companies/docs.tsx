@@ -32,9 +32,9 @@ export function CompanyDocs({ c }: { c: Company }) {
           ))}
         </div>
       )}
-      {docs.length === 0
-        ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-800">Chưa có tài liệu xác minh — vẫn bán được, nhưng sẽ bị chặn ở bước <b>xuất hoá đơn VAT</b>.</p>
-        : <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>}
+      {docs.length > 0 && (
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Chứng minh MST là của họ. Bản cũ vẫn giữ lại cho audit khi công ty đăng ký lại.</p>
+      )}
     </DetailCard>
   )
 }

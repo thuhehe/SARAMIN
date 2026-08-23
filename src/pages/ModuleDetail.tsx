@@ -8,6 +8,7 @@ import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
+import { CvLanguageLayers } from '@/components/CvLanguageLayers'
 import { cn } from '@/lib/utils'
 
 /* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
@@ -327,11 +328,21 @@ function SiteTag({ site }: { site: BuildFeature['site'] }) {
 /* Every feature-detail section is one CARD with a titled header — the same shape as
    the requirement blocks, so a long spec reads as a stack of labelled groups
    instead of an undifferentiated wall of headings and text. */
+/* Every section is addressable, the same way a requirement card and a mockup screen
+   already are. A spec this long gets discussed one section at a time (“the CV
+   language one”, “the three boxes”), and without a link per section the only way to
+   point at one is to describe where to scroll. The id comes from the TITLE rather
+   than the position, so a link survives the reordering that happens constantly
+   while a spec is being written. */
 function SpecBlock({ title, children, note }: { title: string; children: React.ReactNode; note?: React.ReactNode }) {
+  const id = slugify(title)
   return (
-    <section className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">
+    <section id={id} className="group/sec mt-4 scroll-mt-6 overflow-hidden rounded-xl border border-line bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/40 px-4 py-2">
-        <h2 className="text-[12px] font-bold uppercase tracking-widest text-muted">{title}</h2>
+        <h2 className="flex min-w-0 items-center gap-1.5 text-[12px] font-bold uppercase tracking-widest text-muted">
+          <span className="min-w-0">{title}</span>
+          <CopySectionLink hash={id} />
+        </h2>
         {note && <span className="text-[11px] text-faint">{note}</span>}
       </div>
       <div className="px-4 py-3">{children}</div>
@@ -514,6 +525,7 @@ function SectionBlock({ s }: { s: NonNullable<FeatureDetail['sections']>[number]
         </div>
       )}
       {s.diagram === 'cv-status' && <CvStatusFlow />}
+      {s.diagram === 'cv-language' && <CvLanguageLayers />}
       {s.table && <ReqTableView t={s.table} />}
       {s.items && <div className={cn(s.table && 'mt-3')}><Bullets items={s.items} /></div>}
       {s.warn && (
@@ -625,8 +637,9 @@ function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolv
 
 function FeatureDetailBlocks({ d, screenBlock }: { d: FeatureDetail; screenBlock?: React.ReactNode }) {
   /* A section marked `early` describes what the screen/document actually IS, so it
-     belongs directly under Overview — above the field list, not below the backend
-     contract. Everything else keeps its place in the trailing group. */
+     belongs directly under Overview — above the SCREEN and above the field list,
+     not below the backend contract. Everything else keeps its place in the trailing
+     group. */
   const early = d.sections?.filter((s) => s.early) ?? []
   const rest = d.sections?.filter((s) => !s.early) ?? []
   return (
@@ -660,8 +673,14 @@ function FeatureDetailBlocks({ d, screenBlock }: { d: FeatureDetail; screenBlock
           <Requirements items={d.requirements} />
         </SpecBlock>
       )}
-      {screenBlock}
+      {/* EARLY sections come BEFORE the screen, not after. A feature page can embed
+          a whole admin list here — ten thousand pixels of it — and a section pinned
+          "early" that renders below that is not early by any definition a reader
+          would recognise: they scroll a dozen screens past a mockup to reach the
+          model that explains it. Overview → key points → rules → THE MODEL → the
+          screen it describes. */}
       {early.map((s, i) => <SectionBlock key={`early-${i}`} s={s} />)}
+      {screenBlock}
       {d.uiFields && (
         <SpecBlock title="UI fields">
           <FieldTable groups={d.uiFields} />

@@ -2211,7 +2211,7 @@ function MyCvsScreen() {
   const REJECTED: Record<RejectReason, { chip: string; why: string; action: string; to: string }> = {
     not_a_cv: { chip: 'Chưa được duyệt — Không phải CV', why: 'File bạn tải lên không phải một CV. Hãy tải lên CV của bạn, hoặc tạo Saramin CV.', action: 'Tải lên CV khác', to: 'js-add-cv' },
     not_enough: { chip: 'Chưa được duyệt — Thiếu thông tin', why: 'Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng.', action: 'Cập nhật hồ sơ', to: 'js-create-cv' },
-    unreadable: { chip: 'Chưa được duyệt — Không đọc được', why: 'File dạng ảnh scan nên hệ thống không đọc được nội dung. Hãy tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
+    unreadable: { chip: 'Chưa được duyệt — Không đọc được', why: 'Hệ thống không đọc được nội dung trong file này. Bạn thử tải lên bản PDF dạng văn bản.', action: 'Tải lên CV khác', to: 'js-add-cv' },
   }
   /* The union is what enforces the route rule: a row typed as Saramin cannot be
      given `unreadable` or `rejected` — TypeScript refuses it. And `reason` exists
@@ -3306,7 +3306,7 @@ function MyApplicationsScreen() {
        rejected on review. The candidate must be told it was WITHDRAWN BY US rather
        than turned down by the employer: "Not selected" here would be a lie that
        costs them the chance to fix the real problem. */
-    { job: 'Motion Designer', co: 'Momo', applied: '15/07/2026', cv: 'old_scan.pdf', status: 'Đã thu hồi', tone: 'rose' as const, note: 'Saramin đã thu hồi CV này — file là bản scan nên hệ thống không đọc được', reason: 'Can’t read' },
+    { job: 'Motion Designer', co: 'Momo', applied: '15/07/2026', cv: 'old_scan.pdf', status: 'Đã thu hồi', tone: 'rose' as const, note: 'Saramin đã thu hồi CV này — hệ thống không đọc được nội dung file', reason: 'Can’t read' },
     { job: 'Design Lead', co: 'MWG', applied: '12/07/2026', cv: 'My Saramin CV', status: 'Not selected', tone: 'muted' as const, note: 'Closed by employer' },
   ]
   /* Two shapes, and the difference is the point: a normal application has NO
@@ -3329,7 +3329,7 @@ function MyApplicationsScreen() {
           /* Names SARAMIN as the actor. The candidate must not read this as the
              employer turning them down — that would send them off fixing the
              wrong thing, and it would be untrue. */
-          ['Saramin thu hồi CV', 'File là bản scan/ảnh nên hệ thống không đọc được nội dung', true],
+          ['Saramin thu hồi CV', 'Hệ thống không đọc được nội dung trong file này', true],
           ['Cần làm gì', 'Tải lên bản PDF dạng văn bản, rồi ứng tuyển lại', false],
         ]
       : app.status === 'Đã nộp'

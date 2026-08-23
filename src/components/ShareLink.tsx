@@ -140,7 +140,14 @@ export function CopySectionLink({ hash, className }: { hash: string; className?:
       aria-label="Copy a link to this section"
       className={cn(
         'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-all',
-        'opacity-0 focus-visible:opacity-100 group-hover/req:opacity-100',
+        /* ALWAYS VISIBLE, faintly. Hover-only was the wrong call: a control nobody
+           can see is a control nobody uses, and this one was asked for twice by a
+           reader who already had it. It sits at 45% so it reads as available
+           without competing with the heading, and comes to full strength on hover
+           of the button or of its section (`group/req` on a requirement card,
+           `group/sec` on a section block — both named so it works wherever it is
+           dropped rather than failing silently under a different wrapper). */
+        'opacity-45 hover:opacity-100 focus-visible:opacity-100 group-hover/req:opacity-100 group-hover/sec:opacity-100',
         done ? 'border-emerald-200 bg-emerald-50 text-emerald-600 opacity-100' : 'border-line text-faint hover:border-ink/40 hover:text-ink',
         className,
       )}

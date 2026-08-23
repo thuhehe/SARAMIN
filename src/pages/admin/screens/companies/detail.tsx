@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
-import { RO_HINT, ReadOnlyCtx, useDetailCrumb } from '@/pages/admin/ctx'
+import { RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany } from '@/pages/admin/data/companies'
 import type { BuyerType, Company } from '@/pages/admin/data/companies'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
+import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
+import { CLAIM_REQS } from '@/pages/admin/data/directory'
+import type { DirRow } from '@/pages/admin/data/directory'
+import { ClaimChain, pendingClaims } from '@/pages/admin/screens/directory/assign'
 import { tierOf } from '@/pages/admin/data/membership'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { MD_DOMAINS } from '@/pages/admin/data/system'
@@ -17,7 +22,7 @@ import { AddContactModal, ContactDetail } from '@/pages/admin/screens/companies/
 import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
 import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/companies/owner'
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
-import { MembershipStat, ProductsQuota, ServiceUsageCard } from '@/pages/admin/screens/companies/products'
+import { MembershipStat, ProductsQuota } from '@/pages/admin/screens/companies/products'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
 import { CoRoleBuilder, InviteUserModal } from '@/pages/admin/screens/companies/users'
 import { NewQuotationModal } from '@/pages/admin/screens/sales/newQuotation'
@@ -27,8 +32,23 @@ import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill, TierPill } from '@/pages/admin/ui/status'
 import { Table } from '@/pages/admin/ui/table'
 
-export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string }) {
-  const [tab, setTab] = useState<CoTab>('Overview')
+/* One page for both a CRM company and a Danh bạ row.
+   A pool row is shown on THIS page, not a lookalike of it: the reader is answering
+   the same question ("who is this company?") and a second page drifts from this one
+   the first time a field is added. What the pool variant does is SUBTRACT — one tab,
+   no customer pills, no writes — because a company nobody owns has no pipeline, no
+   quota, no contacts and no activity to show. */
+export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, poolAssign }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void; /** admin's assign-to-a-sales block, injected by the Danh bạ screen so this page stays unaware of claims */ poolAssign?: React.ReactNode }) {
+  const isPool = Boolean(pool)
+  const goTo = useContext(ScreenNavCtx)
+  const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
+  /* `?tab=<name>` lands on a specific tab. Same reason as `?record=`: a link to a
+     demo has to open ON the thing being demonstrated, not one click away from it. */
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<CoTab>(() => {
+    const want = params.get('tab')
+    return (CO_TABS.find((t) => t.toLowerCase() === want?.toLowerCase()) ?? 'Overview') as CoTab
+  })
   const [inviting, setInviting] = useState(false)
   const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
   /* One Edit toggle for the whole Basic-info card, rather than a pencil per row:
@@ -53,13 +73,20 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
      worked again, the pool row stays consumed. */
   const [released, setReleased] = useState(false)
   const [releaseOpen, setReleaseOpen] = useState(false)
+  /* Lifecycle actions live behind one ⋯ rather than as two buttons in the header.
+     They are rare and mutually exclusive — a record is worked, released, or
+     archived — so two permanent buttons competed for attention with the one action
+     that IS routine (Tạo báo giá) and made the header read as a row of equals. */
+  const [moreOpen, setMoreOpen] = useState(false)
   /* Reached from search rather than owned. Read everything, write nothing — see
      ReadOnlyCtx. Editing state is force-closed so a rep cannot leave the card in
      edit mode and come back to it on someone else's record. */
   /* Read-only when you are NOT the sales owner: you can view everything and LOG
      ACTIVITY (that stays open — see CompanyActivities), but you cannot EDIT the
      record's own fields. Owner is resolved against the signed-in viewer. */
-  const ro = c.owner !== viewer
+  // Nobody owns a pool row, so every write is off — the same read-only rule applies,
+  // not a second one.
+  const ro = isPool || c.owner !== viewer
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
@@ -71,10 +98,15 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
   const full = team.length >= MAX_SEATS
   const initials = c.name.replace(/^Công ty (TNHH|CP|Cổ phần)?\s*/i, '').slice(0, 2).toUpperCase()
 
+  /* ONE tab strip for both kinds of record. A pool row is not a different species:
+     a CRM company can be RELEASED back to the pool, arriving here with contacts,
+     POs and an owner chain behind it — so the layouts must match, or the same
+     company changes shape when it changes list. A fresh import simply shows the
+     tabs' normal empty states. */
   const tabs: { key: CoTab; label: string; count?: number }[] = [
     { key: 'Overview', label: 'Overview' },
-    { key: 'Contacts', label: 'Contacts', count: companyContacts(c).length },
-    { key: 'Users', label: 'Users', count: team.length },
+    { key: 'Contacts', label: 'Contacts', count: isPool ? undefined : companyContacts(c).length },
+    { key: 'Users', label: 'Users', count: isPool ? undefined : team.length },
     { key: 'Products & billing', label: 'Products & billing' },
     { key: 'Company page', label: 'Company page' },
     { key: 'Jobs', label: 'Jobs', count: c.jobPosting ? jobs.length : undefined },
@@ -90,6 +122,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
   ]
 
 
+  /* Pool tabs keep the CRM layout but never fabricate content to fill it — the
+     synthesised sample contacts/users the CRM record uses would print invented
+     people on a company nobody has worked yet. Each tab states what will put real
+     data here instead. */
+  const PoolEmpty = ({ children }: { children: React.ReactNode }) => (
+    <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-8 text-center text-[12px] leading-relaxed text-muted">{children}</p>
+  )
+
   return (
     <ReadOnlyCtx.Provider value={ro}>
     <div>
@@ -98,7 +138,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
           is allowed and useful — it is what stops a duplicate being created. ACTING
           on it is not, and saying so here is what makes the read-only rule legible
           instead of a mystery when a button does nothing. */}
-      {ro && (
+      {isPool ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-[11.5px]">
+          <span className="text-amber-900">Đây là công ty trong <b className="font-medium">Danh bạ doanh nghiệp</b> — <b className="font-medium">chưa phải khách hàng</b>, chưa có sales phụ trách, không đếm vào bất kỳ số nào của CRM. Chỉ đọc.</span>
+          {onClaim && (
+            <button onClick={onClaim} className="ml-auto shrink-0 rounded-md border border-brand/40 bg-brand-soft px-2.5 py-1 text-[11px] font-semibold text-brand hover:border-brand">Xin nhận</button>
+          )}
+        </div>
+      ) : ro && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
           <span className="text-[13px]"></span>
           <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn <b className="font-medium text-ink">không sửa được thông tin</b>, nhưng vẫn <b className="font-medium text-ink">ghi nhận hoạt động</b> được.</span>
@@ -111,14 +158,19 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
         <div className="flex items-start gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[16px] font-bold text-white shadow-sm">{initials}</span>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">Company account</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-faint">{isPool ? 'Danh bạ doanh nghiệp' : 'Company account'}</p>
             <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">
               {c.name}
               {/* Both axes, always: customer status (has it ever bought) and, only
                   while a deal is live, the pipeline stage. */}
-              <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>
+              {isPool
+                ? <Pill tone={pool!.state === 'pending' ? 'pending' : 'draft'}>{pool!.state === 'pending' ? `Đang chờ duyệt${(pool!.reqs ?? 1) > 1 ? ` · ${pool!.reqs} yêu cầu` : ''}` : 'Chưa ai nhận'}</Pill>
+                : <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>}
               {archived && <Pill tone="expired">Archived{archiveWhy ? ` · ${archiveReason(archiveWhy)?.vi}` : ''}</Pill>}
-              {released && !archived && <Pill tone="pending">Đã trả về bể dữ liệu</Pill>}
+              {/* Grey, not amber: released is a settled lifecycle state, not something
+                  needing attention today — same channel as Archived. See CRM →
+                  "Status colour — red is reserved for act today". */}
+              {released && !archived && <Pill tone="expired">Đã trả về bể dữ liệu</Pill>}
               {/* Not a status — a provenance mark. It says the identity fields came
                   from free data a rep re-typed, so verify before the first invoice. */}
               {c.fromPool && (
@@ -130,18 +182,30 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                   can be re-opened to an earlier stage, so hiding the control there
                   would remove the only way back. Closed-won (Invoice) stays hidden:
                   there is nothing left to move. */}
-              {(inPipeline(c) || c.status === 'Lost') && <PipelineStatusPicker c={c} />}
+              {!isPool && (inPipeline(c) || c.status === 'Lost') && <PipelineStatusPicker c={c} />}
               {/* third axis — only rendered once a tier is actually earned, so the
                   header never carries a "chưa có hạng" non-fact. */}
-              {tierOf(c) && <TierPill tier={tierOf(c)} en />}
+              {!isPool && tierOf(c) && <TierPill tier={tierOf(c)} en />}
             </h2>
-            <p className="text-[11.5px] text-muted"><span className="font-mono font-medium text-ink/70">{companyId(coKey(c))}</span> · {c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
+            {/* A pool row has no Company ID and no verified legal name, so the
+                subtitle carries only what the source actually gave us — and marks the
+                MST as unverified rather than printing it like a fact. */}
+            {isPool ? (
+              <p className="text-[11.5px] text-muted">
+                {pool!.addr ?? 'chưa rõ địa chỉ'}
+                {pool!.industry && <> · {pool!.industry}</>}
+                {' · MST '}
+                {pool!.tax ? <span className="font-mono text-amber-700">{pool!.tax} ⚠ chưa xác minh</span> : <span className="text-faint">chưa có</span>}
+                {pool!.web && <> · <span className="font-mono">{pool!.web}</span></>}
+              </p>
+            ) : (
+              <p className="text-[11.5px] text-muted"><span className="font-mono font-medium text-ink/70">{companyId(coKey(c))}</span> · {c.legalName} · MST {c.tax} · <span className="font-mono">{c.domain}</span></p>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
           {/* Edit and Create-quotation are WRITES — withdrawn on someone else's
               record. "View on jobseeker" is a read, so it stays. */}
-          {!ro && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Edit</button>}
           {c.hasPage && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">View on jobseeker ↗</button>}
           {/* Tạo báo giá — unconditional, for EVERY company. A quotation is the one
               document that is always legitimate to raise: a first quote for a
@@ -155,16 +219,36 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
               Tạo báo giá / Create quotation
             </button>
           )}
-          {/* TWO EXITS, and the question that picks between them is "should another
-              rep be allowed to pick this up?". Yes → back to the pool. No → archive. */}
-          {!ro && !archived && (
-            released
-              ? <button onClick={() => setReleased(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Nhận lại công ty</button>
-              : <button onClick={() => setReleaseOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">Trả về bể dữ liệu</button>
-          )}
-          {archived
-            ? <button onClick={() => setArchived(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">Unarchive</button>
-            : <button onClick={() => setArchiveOpen(true)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-[12px] font-medium text-rose-600 hover:bg-rose-50">Archive company</button>}
+          {/* TWO EXITS behind one ⋯ — the question that picks between them is
+              "should another rep be allowed to pick this up?". Yes → back to the
+              pool. No → archive. Both are rare; neither deserves header real estate
+              next to the action a rep actually performs every week. */}
+          <div className="relative">
+            <button
+              onClick={() => setMoreOpen((o) => !o)}
+              title="Hành động khác"
+              className={cn('grid h-[30px] w-[30px] place-items-center rounded-lg border text-[16px] leading-none', moreOpen ? 'border-brand text-brand' : 'border-line text-muted hover:border-ink/40 hover:text-ink')}
+            >⋯</button>
+            {moreOpen && (
+              <>
+                <span className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 w-[248px] overflow-hidden rounded-lg border border-line bg-surface py-1 text-left shadow-lg">
+                  {archived ? (
+                    <MoreItem onClick={() => { setArchived(false); setMoreOpen(false) }} label="Bỏ lưu trữ" hint="Đưa công ty trở lại danh sách hoạt động." />
+                  ) : (
+                    <>
+                      {!ro && (released
+                        ? <MoreItem onClick={() => { setReleased(false); setMoreOpen(false) }} label="Nhận lại công ty" hint="Nhận lại quyền phụ trách; dòng trong Danh bạ về Đã nhận." />
+                        : <MoreItem onClick={() => { setReleaseOpen(true); setMoreOpen(false) }} label="Trả về bể dữ liệu" hint="Còn tồn tại nhưng hết tiềm năng — sales khác có thể nhận lại." />
+                      )}
+                      <span className="my-1 block border-t border-line-soft" />
+                      <MoreItem danger onClick={() => { setArchiveOpen(true); setMoreOpen(false) }} label="Lưu trữ công ty" hint="Không còn tồn tại hoặc không phục vụ nữa — không ai nhận lại được." />
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -251,7 +335,19 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
         </div>
       )}
 
-      {/* at-a-glance stats */}
+      {/* at-a-glance stats. The pool variant swaps in the only facts a pool row has:
+          where it came from, when, and how to reach it. Printing "Hạng 2026" or
+          "Job quota" for a company that has never bought anything would be six
+          dashes in a row pretending to be a dashboard. */}
+      {isPool ? (
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <MiniStat label="Nguồn" value={<span className="text-[12.5px]">{pool!.source.replace(/^Nhập từ |^Thu thập /, '')}</span>} sub="import batch" />
+          <MiniStat label="Ngày nhập" value={<span className="text-[12.5px]">{pool!.added}</span>} sub="vào danh bạ" />
+          <MiniStat label="Người liên hệ" value={<span className="text-[12.5px]">{pool!.person ?? '—'}</span>} sub={pool!.person ? 'từ nguồn' : 'chưa có'} />
+          <MiniStat label="SĐT" value={<span className="text-[12.5px]">{pool!.phone ?? '—'}</span>} sub={pool!.email ?? 'chưa có email'} />
+          <MiniStat label="Yêu cầu" value={pool!.state === 'pending' ? (pool!.reqs ?? 1) : 0} sub={pool!.state === 'pending' ? `đầu tiên: ${pool!.by}` : 'chưa ai xin'} tone={pool!.state === 'pending' ? 'warn' : undefined} />
+        </div>
+      ) : (
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <MembershipStat c={c} />
         <MiniStat label="Customer since" value={c.since.slice(-4)} sub={c.since} />
@@ -263,6 +359,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
         <MiniStat label="CV unlocks" value={c.resumeSearch ? `${c.cvLeft}/${c.cvTotal}` : '—'} sub={c.resumeSearch ? 'left' : 'n/a'} tone={c.resumeSearch && c.cvLeft / c.cvTotal < 0.3 ? 'warn' : undefined} />
         <MiniStat label="Sales owner" value={<span className="text-[12.5px]">{c.owner.split(' ').slice(-2).join(' ')}</span>} sub="from CRM" />
       </div>
+      )}
 
       <CoTabBar tabs={tabs} active={tab} onSelect={setTab} />
 
@@ -277,7 +374,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
             {/* Mirrors the New-company form field-for-field, in the same order, so a
                 rep never wonders where something they typed went. */}
             <DetailCard
-              title="Basic info — from CRM"
+              title={isPool ? 'Thông tin — từ danh bạ' : 'Basic info — from CRM'}
               action={
                 editInfo
                   ? (
@@ -298,7 +395,18 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                   nobody has to ask. Editing is one toggle for the whole card, not a
                   pencil per row — 20 inline editors is 20 chances to half-save one. */}
 
-              <KV label="Company ID" value={companyId(coKey(c))} />
+              {isPool
+                ? <KV label="Company ID" value="chưa có — cấp khi tạo hồ sơ CRM" />
+                : <KV label="Company ID" value={companyId(coKey(c))} />}
+              {/* Invoice details do not exist yet for a pool row: nothing has been
+                  quoted, so no buyer classification has been decided and there is no
+                  legal name to invoice. Showing the group with defaults would put a
+                  guess where a decision belongs. */}
+              {isPool ? (
+                <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+                  <b className="text-ink/70">Thông tin xuất hóa đơn</b> chưa có — phân loại người mua, legal name và địa chỉ xuất hóa đơn được nhập khi tạo hồ sơ CRM, trước lần báo giá đầu tiên.
+                </p>
+              ) : (<>
               <CardGroup title="Thông tin xuất hóa đơn" first />
               {editInfo ? (
                 <>
@@ -336,6 +444,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                     : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                 </>
               )}
+              </>)}
 
               <CardGroup title="Thông tin cơ bản" />
               {/* Country always, Vietnamese province only for a Vietnamese company —
@@ -355,7 +464,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                 <>
                   <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
                   <KV label="Industry" value={c.industry} />
-                  <KV label="Company size" value={`${c.size} staff`} />
+                  <KV label="Company size" value={c.size ? `${c.size} staff` : '—'} />
                   <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />
                   {isVNCompany(c)
                     ? <KV label="Tỉnh / Thành phố · City" value={coCity(c)} />
@@ -364,6 +473,15 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                 </>
               )}
 
+              {/* The Sales group is CRM qualification data — lead source, owner,
+                  products interested, deal value. A pool row has none of it: nobody
+                  has qualified this company, which is the whole reason it is still in
+                  the pool. Defaults here would read as recorded facts. */}
+              {isPool ? (
+                <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+                  <b className="text-ink/70">Chưa có thông tin sales</b> — nguồn lead, sales phụ trách, sản phẩm quan tâm và giá trị dự kiến đều được ghi khi công ty được nhận về CRM.
+                </p>
+              ) : (<>
               <CardGroup title="Sales" />
               {editInfo ? (
                 <>
@@ -400,14 +518,22 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
               {/* Contact person / email / phone deliberately NOT here — they live on the
                   Contacts tab, where a company can have several with their own statuses.
                   Duplicating the primary one here guarantees the two drift apart. */}
+              </>)}
             </DetailCard>
             <CompanyDocs c={c} />
             {/* Owner history moved to its own tab — see the tab strip above. */}
-            <AffiliatedCompanies c={c} onOpen={onOpen} />
+            {!isPool && <AffiliatedCompanies c={c} onOpen={onOpen} />}
           </div>
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
-          <CompanyActivities c={c} />
+          {isPool ? (
+            /* Just the assignment. No activity feed (an activity is something a sales
+               owner did, and this company has no owner) and no explainer cards — the
+               empty tabs and the ⚠ on the MST already say what this record is. */
+            <div className="space-y-3">{poolAssign}</div>
+          ) : (
+            <CompanyActivities c={c} />
+          )}
         </div>
       )}
 
@@ -418,16 +544,47 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       {tab === 'Owner history' && (
         <div className="max-w-[620px]">
           <div className="mb-2">
-            <p className="text-[13px] font-semibold text-ink">Owner history <span className="font-normal text-muted">— one current owner, and every handover before it</span></p>
-            <p className="text-[11px] text-faint">Append-only. Quotations, sales targets and commission all reference who owned the account at the time, so a past tenure is never edited to tidy it up.</p>
+            <p className="text-[13px] font-semibold text-ink">Owner history <span className="font-normal text-muted">— {isPool ? 'chưa có sales phụ trách' : 'one current owner, and every handover before it'}</span></p>
+            <p className="text-[11px] text-faint">
+              {isPool
+                ? 'Chuỗi chủ sở hữu bắt đầu khi công ty được nhận về CRM. Trước đó, các sự kiện sở hữu là những yêu cầu xin nhận bên dưới — ai xin, ai bị từ chối, ai được phân. Công ty trả về từ CRM giữ nguyên chuỗi chủ cũ.'
+                : 'Append-only. Quotations, sales targets and commission all reference who owned the account at the time, so a past tenure is never edited to tidy it up.'}
+            </p>
           </div>
-          <OwnerHistory c={c} />
+          <div className="space-y-3">
+            {/* The tenure chain — on a promoted company its FIRST entry is the
+                approved claim ("Nhận từ Free data — duyệt bởi …"), and that one line
+                is all of the claim story that belongs here. The request-by-request
+                detail lives on Yêu cầu nhận công ty; repeating it on every promoted
+                record would be the same list maintained twice. */}
+            {!isPool && <OwnerHistory c={c} />}
+            {!isPool && c.fromPool && (
+              <p className="text-[11px] leading-relaxed text-faint">
+                Chi tiết các yêu cầu xin nhận (ai xin, ai bị từ chối) xem ở{' '}
+                <button onClick={() => goTo('admin-claim-requests')} className="font-medium text-brand hover:underline">Yêu cầu nhận công ty →</button>
+              </p>
+            )}
+            {/* On the POOL record the chain stays — there it is not a history display
+                but decision context: the admin assigns on this page, and a
+                re-submitted weak request has to be visible next to the fresh one.
+                It is also the only ownership story a row with no owner has. */}
+            {isPool && <ClaimChain co={c.name} />}
+            {isPool && pendingClaims(c.name).length === 0 && decidedNone(c.name) && (
+              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này.</p>
+            )}
+          </div>
         </div>
       )}
 
       {/* ── Users ────────────────────────────────────────────────────────── */}
       {/* ── Contacts — people we do business with (may have no login) ────── */}
-      {tab === 'Contacts' && (
+      {tab === 'Contacts' && isPool && (
+        <PoolEmpty>
+          Chưa có contact nào — công ty chưa được nhận về CRM.
+          {pool!.person && <><br />Người liên hệ từ nguồn (<b className="text-ink/70">{pool!.person}</b>{pool!.phone && ` · ${pool!.phone}`}) và contact point trong yêu cầu xin nhận sẽ thành <b className="text-ink/70">contact #1</b> khi admin duyệt.</>}
+        </PoolEmpty>
+      )}
+      {tab === 'Contacts' && !isPool && (
         <div>
           <div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
@@ -485,7 +642,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       )}
 
       {/* ── Users — logins on the Company site (the account's 4 seats) ────── */}
-      {tab === 'Users' && (
+      {tab === 'Users' && isPool && (
+        <PoolEmpty>Chưa có user nào — công ty chưa có tài khoản đăng nhập trên Company site. Seat đầu tiên được mời sau khi công ty thành khách hàng.</PoolEmpty>
+      )}
+      {tab === 'Users' && !isPool && (
         <div>
           <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -529,13 +689,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       {/* ── Products & billing ───────────────────────────────────────────── */}
       {tab === 'Products & billing' && (
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <DetailCard title="Products & quota">
+          {/* Manual services used to be a card of their own beside this one. They are
+              entitlement bought on a PO like everything else, so they are lines in
+              this list now — with their delivery log where their quota is shown. */}
+          <DetailCard title="Products & quota" action={<span className="text-[11px] text-faint">theo từng sản phẩm</span>}>
             <ProductsQuota c={c} />
           </DetailCard>
-          {/* Manual services sit next to the metered quota, not inside it: the
-              numbers look the same to a reader, but one is observed and the other
-              is asserted by a person. */}
-          <ServiceUsageCard c={c} />
           {/* PO history, not "billing history": the PO is the document a rep and a
               customer both refer to, and one row per PO is one row per thing that
               was actually bought. Order / Invoice / Payment as three separate rows
@@ -590,7 +749,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       )}
 
       {/* ── Company page ─────────────────────────────────────────────────── */}
-      {tab === 'Company page' && (
+      {tab === 'Company page' && isPool && (
+        <PoolEmpty>Chưa có trang công ty trên site ứng viên — trang được tạo khi công ty mua sản phẩm có Company page.</PoolEmpty>
+      )}
+      {tab === 'Company page' && !isPool && (
         <DetailCard
           title="Company detail page (jobseeker)"
           action={<Pill tone={c.hasPage ? 'active' : 'pending'}>{c.hasPage ? 'Published' : 'Draft'}</Pill>}
@@ -600,7 +762,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       )}
 
       {/* ── Jobs ─────────────────────────────────────────────────────────── */}
-      {tab === 'Jobs' && (
+      {tab === 'Jobs' && isPool && (
+        <PoolEmpty>Chưa có tin tuyển dụng nào trên Saramin. Bằng chứng “đang tuyển” trong yêu cầu xin nhận là tin đăng <b className="text-ink/70">ở nơi khác</b> — xem link/tệp trong Lịch sử yêu cầu nhận (tab Owner history).</PoolEmpty>
+      )}
+      {tab === 'Jobs' && !isPool && (
         <div>
           {/* A free job needs NO product and NO PO, so "no product" can no longer
               mean "no jobs" — the gate has to check for jobs, not for entitlement. */}
@@ -639,12 +804,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
                   return [
                     <div className="min-w-0"><p className="truncate font-medium text-ink">{j.title}</p><p className="text-[11px] text-faint">Posted {j.posted}</p></div>,
                     src
-                      ? (src.kind === 'free'
-                          ? <span className="min-w-0" title="Admin đăng mà không chọn PO — Tin Free (Admin đăng hộ). Không trừ quota, không hoá đơn.">
+                      ? (src.until
+                          ? <span className="min-w-0 truncate font-mono text-[10.5px] text-brand" title={`${src.label} · hạn ${src.until}`}>{src.label}</span>
+                          : <span className="min-w-0" title="Admin đăng mà không chọn PO — Tin Free (Admin đăng hộ). Không trừ quota, không hoá đơn.">
                               <span className="rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-amber-800">Miễn phí</span>
                               <span className="mt-0.5 block truncate text-[10px] text-faint">không chọn PO</span>
-                            </span>
-                          : <span className="min-w-0 truncate font-mono text-[10.5px] text-brand" title={`${src.label} · hạn ${src.until}`}>{src.label}</span>)
+                            </span>)
                       : <span className="text-[10.5px] text-faint">—</span>,
                     <Pill tone={j.status}>{j.statusLabel}</Pill>,
                     <span className="tabular-nums">{j.applicants || '—'}</span>,
@@ -712,5 +877,17 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME }: { c: Company; 
       {quoting && <NewQuotationModal company={c.name} onClose={() => setQuoting(false)} />}
     </div>
     </ReadOnlyCtx.Provider>
+  )
+}
+
+/** One row in the ⋯ menu. The hint is the point: these two actions are easy to
+    confuse and the difference (can someone else pick this up?) has to be readable
+    at the moment of choosing, not in a doc. */
+function MoreItem({ label, hint, danger, onClick }: { label: string; hint: string; danger?: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="block w-full px-3 py-2 text-left hover:bg-canvas">
+      <span className={cn('block text-[12px] font-medium', danger ? 'text-rose-600' : 'text-ink')}>{label}</span>
+      <span className="mt-0.5 block text-[10.5px] leading-relaxed text-faint">{hint}</span>
+    </button>
   )
 }

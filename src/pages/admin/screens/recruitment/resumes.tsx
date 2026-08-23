@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
+import { Toast, type ToastMsg } from '@/pages/admin/ui/toast'
 import { CV_COLS } from '@/pages/admin/data/recruitment'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 import { AdminResumeNew } from '@/pages/admin/screens/recruitment/resumeNew/index'
@@ -103,6 +105,17 @@ export function AdminResumes() {
   const [creating, setCreating] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
   const [menu, setMenu] = useState<number | null>(null)
+  /* THE SAME TWO DIALOGS AS CV REVIEW, imported rather than re-built. Talent pool
+     and CV review write the same field with the same two verbs, so a second
+     reject form here would be a second place for the candidate-facing wording to
+     drift — which is exactly how the three status tables drifted apart before. */
+  const [reject, setReject] = useState<PoolRow | null>(null)
+  /* Approve resolves on the click and reports in a toast — same as CV review, and
+     for the same reason: it is the frequent, reversible half of the pair, and a
+     modal per row buys nothing that Undo does not. Reject keeps its dialog; it
+     sends words to a stranger and there is no undoing a delivered message. */
+  const [decided, setDecided] = useState<Record<string, 'Qualified' | undefined>>({})
+  const [toast, setToast] = useState<ToastMsg | null>(null)
   if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
   /* THE TALENT POOL. Columns come from the REAL field sheets: BASIC INFORMATION is
      table 1 (9 fields, sign-up), WORK PREFERENCE is table 2 (6 fields, onboarding).
@@ -150,6 +163,22 @@ export function AdminResumes() {
     { name: 'Lý Khánh Vy', basic: 'Female · 17/03/2000 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['vy.ly@gmail.com', '0903 887 441'], pref: 'Graphic Designer · Design · Hồ Chí Minh · 15–22M · Hybrid', cv: 'CV-KhanhVy-design.pdf', kind: 'Upload', st: 'Qualified', why: 'Approved by admin — real CV, two-column layout the parser missed', content: '0 experience · 2 skills', unlocks: 1, updated: '13 hours ago' },
     { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', contact: ['lan.ngo@gmail.com', '0918 332 447'], pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', cv: 'lan-cv.docx', kind: 'Upload', st: 'Qualified', content: '4 experience · 10 skills', unlocks: 15, updated: '1 day ago' },
   ]
+  /* The row's EFFECTIVE status — the local override first. A wireframe stand-in
+     for the write, so an approve visibly moves the row instead of leaving it
+     looking untouched, which is the whole reason a toast is trustworthy. */
+  const stOf = (r: PoolRow) => decided[r.name] ?? r.st
+  const approveNow = (r: PoolRow) => {
+    const undoing = stOf(r) === 'Rejected'
+    setDecided((d) => ({ ...d, [r.name]: 'Qualified' }))
+    setToast({
+      msg: undoing ? `Đã bỏ từ chối — ${r.name}` : `Đã duyệt CV — ${r.name}`,
+      sub: 'CV → Qualified · mọi đơn đang chờ đã gửi tới NTD · vào tìm kiếm CV nếu ứng viên đã bật. Ứng viên không nhận thông báo nào.',
+      warn: /no readable content|0 experience · 0 skills/i.test(r.content)
+        ? 'Không trích xuất được nội dung — CV sẽ không xuất hiện khi NTD tìm theo kỹ năng.'
+        : undefined,
+      onUndo: () => setDecided((d) => { const n = { ...d }; delete n[r.name]; return n }),
+    })
+  }
   const rows = raw.map((r, i) => [
     <span onClick={() => setSel(r.name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
     <div className="min-w-0">
@@ -161,13 +190,13 @@ export function AdminResumes() {
     <TwoLine top={r.contact[0]} bottom={r.contact[1]} />,
     /* ONE status. `why` under it is the admin's recorded reason, where one exists. */
     <div className="min-w-0">
-      <Pill tone={ST_TONE[r.st]}>{r.st}</Pill>
+      <Pill tone={ST_TONE[stOf(r)]}>{stOf(r)}</Pill>
       {r.why && <p className="mt-0.5 truncate text-[10.5px] text-muted" title={r.why}>{r.why}</p>}
     </div>,
     /* CV-search visibility — DERIVED from the status, never stored. */
-    <Pill tone={SEARCH_OF[r.st][1]}>{SEARCH_OF[r.st][0]}</Pill>,
-    <span className={cn('truncate', r.st !== 'Qualified' || /^1 experience · [123] /.test(r.content) || r.content === 'No readable content' ? 'text-amber-700' : 'text-muted')}>{r.content}</span>,
-    r.st === 'Qualified'
+    <Pill tone={SEARCH_OF[stOf(r)][1]}>{SEARCH_OF[stOf(r)][0]}</Pill>,
+    <span className={cn('truncate', stOf(r) !== 'Qualified' || /^1 experience · [123] /.test(r.content) || r.content === 'No readable content' ? 'text-amber-700' : 'text-muted')}>{r.content}</span>,
+    stOf(r) === 'Qualified'
       ? <span className={cn(r.unlocks === 0 ? 'text-faint' : 'font-medium text-ink/80')}>{r.unlocks}</span>
       : <span className="text-faint" title="Not showing in CV search, so it cannot have unlocks">—</span>,
     <span className="text-muted">{r.updated}</span>,
@@ -183,18 +212,23 @@ export function AdminResumes() {
           <div className="absolute right-0 top-8 z-30 w-[286px] overflow-hidden rounded-xl border border-line bg-surface py-1 text-left shadow-lg">
             {/* Opening things lives on the row itself — name → profile, CV name →
                 the file. This menu is only the decision. */}
-            {verbs(r.st).map((v) => (
-              <button key={v} onClick={() => setMenu(null)} className={cn('flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium hover:bg-canvas', v === 'Approve' ? 'text-emerald-700' : 'text-rose-600')}>
+            {/* TWO ACTIONS AND NOTHING ELSE — the same shape as CV review. The
+                internal note that used to sit in this dropdown moved into the two
+                dialogs, which is where it belongs: a note box under a menu is
+                impossible to write in, and a reject in particular now has to show
+                the reviewer the sentence the candidate will receive before it is
+                sent. A 286px menu cannot do that. */}
+            {verbs(stOf(r)).map((v) => (
+              <button
+                key={v}
+                onClick={() => { setMenu(null); v === 'Approve' ? approveNow(r) : setReject(r) }}
+                className={cn('flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium hover:bg-canvas', v === 'Approve' ? 'text-emerald-700' : 'text-rose-600')}
+              >
                 <span className="w-3.5 text-center">{v === 'Approve' ? '✓' : '✕'}</span>
-                <span className="flex-1">{v} CV…</span>
+                <span className="flex-1">{v === 'Approve' && stOf(r) === 'Rejected' ? 'Approve CV — undo the rejection' : `${v} CV…`}</span>
                 <span className="shrink-0 text-[10px] text-faint">→ {v === 'Approve' ? 'Qualified' : 'Rejected'}</span>
               </button>
             ))}
-            <div className="border-t border-line-soft px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">Internal note <span className="font-normal text-rose-500">*required</span></p>
-              <div className="h-12 rounded-md border border-line bg-canvas/40" />
-              <p className="mt-1 text-[10px] leading-snug text-faint">Internal only. While a CV sits in this queue the candidate sees NOTHING — the CV row and its applications look ordinary, so an unworked queue is a silent failure. On a Reject they are told, with the reason: waiting applications become Không được gửi and sent ones are recalled.</p>
-            </div>
           </div>
         </>
       )}
@@ -223,6 +257,8 @@ export function AdminResumes() {
         rows={rows}
       />
       {sel && <ResumeCandidateDetail name={sel} onClose={() => setSel(null)} />}
+      {reject && <RejectDialog name={reject.name} file={reject.cv} extracted={reject.content} onClose={() => setReject(null)} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }

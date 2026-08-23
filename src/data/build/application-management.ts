@@ -682,7 +682,7 @@ export const applicationManagement: BuildModule = {
               'Hired — stage = Hired. Terminal.',
               'Not selected — stage = Rejected. Terminal; no reason is exposed unless the employer opts in.',
               'Không được gửi — cv.status = Rejected and the application was NEVER delivered (status not_sent, final). Told, because it is actionable and the fix belongs to the candidate: the reason is named and "Tải lên CV khác / Cập nhật hồ sơ" sits beside it. Rose, never muted — the employer did not decline this; we stopped it.',
-              'Đã thu hồi — status = recall: the application WAS delivered, then the CV was Rejected and Saramin pulled it back. The copy names SARAMIN as the actor and the reason ("Saramin đã thu hồi CV này — file là bản scan nên hệ thống không đọc được"): read as an employer rejection it sends the candidate off fixing the wrong thing, and it would be untrue. One CV rejection can flip several rows at once — held ones to Không được gửi, delivered ones to Đã thu hồi. See Resume management → the tag matrix.',
+              'Đã thu hồi — status = recall: the application WAS delivered, then the CV was Rejected and Saramin pulled it back. The copy names SARAMIN as the actor and the reason ("Saramin đã thu hồi CV này — hệ thống không đọc được nội dung file"): read as an employer rejection it sends the candidate off fixing the wrong thing, and it would be untrue. One CV rejection can flip several rows at once — held ones to Không được gửi, delivered ones to Đã thu hồi. See Resume management → the tag matrix.',
             ],
           },
         ],

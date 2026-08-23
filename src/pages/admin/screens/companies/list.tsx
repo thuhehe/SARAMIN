@@ -42,6 +42,11 @@ export function AdminCompanyList() {
   const [fStatus, setFStatus] = useState('')
   const [fPipeline, setFPipeline] = useState('')
   const [fOwner, setFOwner] = useState('')
+  /* Archived companies never appear here, and there is no filter to bring them
+     back: a state whose purpose is to stop generating work must not be one wrong
+     dropdown away from sitting among live customers. They have their own register —
+     CRM → Công ty đã lưu trữ — which is also where "was this archived, and why" is
+     answered. */
   const [sort, setSort] = useState<CoSort>('contact-old')
   const goTo = useContext(ScreenNavCtx)
   /* Arrived from the shell's global search (or any cross-page link): open that
@@ -74,6 +79,7 @@ export function AdminCompanyList() {
   const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b, 'vi'))
   const rows = base
     .filter((c) =>
+      !c.archived &&
       (!fIndustry || c.industry === fIndustry) &&
       (!fLocation || coCity(c) === fLocation) &&
       (!fStatus || c.account === fStatus) &&
@@ -297,6 +303,7 @@ export function AdminCompanyList() {
             <FilterRow label="Status" value={fStatus} onChange={setFStatus} options={Object.keys(AC_STATUS)} />
             <FilterRow label="Pipeline" value={fPipeline} onChange={setFPipeline} options={[...CO_ORDER, 'Not in pipeline']} />
             {showOwner && <FilterRow label="Owner" value={fOwner} onChange={setFOwner} options={uniq(base.map((c) => c.owner))} />}
+
           </FilterBar>
         }
         cols={[
@@ -323,6 +330,7 @@ export function AdminCompanyList() {
         rows={rows.map((c) => [
           <div className="min-w-0">
             <button onClick={() => setOpen(c)} className="block min-w-0 max-w-full truncate text-left font-medium text-brand hover:underline">{coLabel(c)}</button>
+
             {/* The group tag is the whole affordance: it says "this record is part of a
                 bigger customer" and doubles as the filter into that group. */}
             {inGroup(c) && (

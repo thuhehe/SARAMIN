@@ -139,24 +139,65 @@ export const CV_STATUS_TONE: Record<CvStatus, StatusTone> = {
    ACCOUNT rather than the document, and they have their own lever — Block user.
    Filing them as a CV reason would hide an account that needs blocking behind a
    row that looks like a bad upload. */
-export const REJECT_REASONS = ['Can’t read', 'Not a CV', 'CV but not enough information'] as const
+/* WHAT THE ADMIN RECORDS — internal, never shown to anyone outside the console.
+   A code rather than a note alone: a note explains one call, but only a fixed
+   code lets thirty rejections be COUNTED, and counting them against what the scan
+   said is how a parser gap becomes visible.
 
-/* What each code SENDS — the exact chip and line the candidate will get on My
-   CVs. A reviewer picking a code without seeing the message is picking blind,
-   and the wrong code is a message the candidate cannot act on, so the picker
-   shows it inline.
+   "Khác" exists so the list can stay short without the reviewer having to force a
+   real case into a wrong box. It is the pressure valve — and it is also the
+   metric: a rising share of Khác is the signal that a fifth code is owed. */
+export const REJECT_REASONS = ['Can’t read', 'Not a CV', 'CV but not enough information', 'Khác'] as const
 
-   This is also the FIRST thing the candidate hears about any of it: while the CV
-   sat in this queue they saw nothing at all. Rejecting is therefore not "adding a
-   flag to a CV they were already worried about" — it is breaking news, and the
-   reason has to stand on its own. Note “Can’t read” never reaches them as
-   written: it describes OUR extraction failing, and phrasing it as their fault
-   would be both wrong and unfixable by them. */
-export const REASON_SENDS: Record<string, string> = {
-  'Can’t read': 'Chip “Chưa được duyệt — Không đọc được” · “File dạng ảnh scan nên hệ thống không đọc được nội dung.” → Tải lên CV khác',
-  'Not a CV': 'Chip “Chưa được duyệt — Không phải CV” · “File bạn tải lên không phải một CV.” → Tải lên CV khác',
-  'CV but not enough information': 'Chip “Chưa được duyệt — Thiếu thông tin” · “Hồ sơ chưa đủ thông tin để gửi tới NTD.” → Cập nhật hồ sơ (kèm checklist thiếu gì)',
+/* WHAT THE CANDIDATE SEES — ONE tag, the same for every reason, forever.
+ *
+ * The earlier design mapped each code to its own chip ("Không đọc được", "Không
+ * phải CV", "Thiếu thông tin"). Three problems with that, and they get worse as
+ * the code list grows: adding a code means writing new candidate-facing copy and
+ * touching three surfaces; picking the WRONG code silently shows the candidate a
+ * wrong explanation; and the chip leaks our internal taxonomy to someone who has
+ * no use for it.
+ *
+ * One generic tag CANNOT be wrong, survives any future code, and moves the whole
+ * explanation into a field written for this one person.
+ *
+ * "CHƯA", not "KHÔNG": a rejection is reversible — Approve undoes it — and most
+ * of these are faults of the FILE, not of the candidate. "Không phù hợp" would
+ * read as a judgement on them, which is both wrong and unfixable. */
+export const REJECT_TAG = 'Chưa được duyệt'
+
+/* THE PUBLIC MESSAGE is what actually tells the candidate anything, so it is
+   REQUIRED — a generic tag with no message is strictly worse than the old
+   specific chips. Picking a code DRAFTS it (and the action button), and the
+   reviewer can rewrite every word.
+
+   Drafts keep the curated quality of the old fixed copy for the three known
+   cases while letting any case be expressed. "Khác" drafts NOTHING on purpose:
+   the box has to be written, or the code means nothing to the person receiving it.
+
+   Note “Can’t read” never reaches the candidate as written — it describes OUR
+   extraction failing, and phrasing it as their fault would be both wrong and
+   unfixable by them.
+
+   AND IT NAMES THE SYMPTOM, NEVER THE CAUSE (2026-08-23). The draft used to say
+   “file ở dạng ảnh scan”, which is a GUESS: extraction also fails on a corrupt
+   file, on text saved as vector outlines, on odd font embedding, and on
+   permission-locked PDFs. Told “your file is a scan” about a file that is not
+   one, the candidate re-exports the same document, it fails again, and we have
+   spent their trust on a diagnosis we were never able to make. So the message
+   states what we observed — we could not read it — and follows with an action
+   that helps in every one of those cases. */
+export const REASON_DRAFTS: Record<string, { msg: string; cta: string }> = {
+  'Can’t read': { msg: 'Hệ thống không đọc được nội dung trong file này. Bạn thử tải lên bản PDF xuất trực tiếp từ Word hoặc Google Docs giúp nhé.', cta: 'Tải lên CV khác' },
+  'Not a CV': { msg: 'File bạn tải lên không phải một CV. Bạn kiểm tra và tải lại đúng file giúp nhé.', cta: 'Tải lên CV khác' },
+  'CV but not enough information': { msg: 'Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. Bạn bổ sung kinh nghiệm làm việc và ít nhất 3 kỹ năng giúp nhé.', cta: 'Cập nhật hồ sơ' },
+  'Khác': { msg: '', cta: 'Cập nhật hồ sơ' },
 }
+
+/** The action button under the message. A message with no next step is a dead
+    end, and the right step differs by case — so it is picked, not derived. */
+export const REJECT_CTAS = ['Tải lên CV khác', 'Cập nhật hồ sơ', 'Liên hệ hỗ trợ', 'Không có nút'] as const
+
 type RejectReason = (typeof REJECT_REASONS)[number]
 
 export type CvCheckRow = {

@@ -32,7 +32,7 @@ export function OwnerHistory({ c }: { c: Company }) {
             </div>
             <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
               {i === 0 && <span className="tabular-nums text-muted">{t.from} – now · </span>}
-              {t.created ? 'Created the lead' : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
+              {t.created ? (c.fromPool ? <span className="text-ink/70">Nhận từ Free data — duyệt bởi {t.by}</span> : 'Created the lead') : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
               {' · '}{t.reason}
             </p>
           </li>
