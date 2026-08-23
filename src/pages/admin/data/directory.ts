@@ -75,6 +75,63 @@ export type DirRow = {
       admin's problem to resolve, not something the pool should silently block. */
   reqs?: number
 }
+const QUEUE_NAMES = [
+  'Công ty TNHH Nhựa Tân Phú', 'Công ty CP Thép Miền Nam', 'Công ty TNHH Dược phẩm Hà Tây',
+  'Công ty TNHH May mặc Song Long', 'Công ty CP Vận tải Hoà Bình', 'Công ty TNHH Điện lạnh Ngọc Anh',
+  'Công ty CP Thực phẩm Bốn Mùa', 'Công ty TNHH Xây lắp Điện Quang', 'Công ty TNHH In ấn Lê Gia',
+  'Công ty CP Nông sản Cửu Long', 'Công ty TNHH Gỗ Việt Ý', 'Công ty CP Cáp điện Thăng Long',
+  'Công ty TNHH Du lịch Bầu Trời', 'Công ty TNHH Nhôm kính Đại Phát', 'Công ty CP Bảo vệ Toàn Cầu',
+  'Công ty TNHH Giáo dục Sao Việt', 'Công ty CP Chuyển phát Tia Chớp', 'Công ty TNHH Thuỷ sản Biển Đông',
+]
+const QUEUE_REPS = ['Nguyễn Thị Lan', 'Trần Quốc Trung', 'Phạm Quang Huy']
+const QUEUE_REASONS = [
+  'KH đang tuyển trên thị trường, đã gọi HR và được hẹn gửi báo giá.',
+  'đang tuyển',
+  'Gặp tại hội chợ, đang cần tuyển gấp cho xưởng mới, HR xin thông tin gói tin đăng.',
+  'KH tôi từng liên hệ năm ngoái, nay quay lại có nhu cầu tuyển 10+ vị trí.',
+  'Thấy tin tuyển dụng trên website công ty, chưa liên hệ được.',
+]
+
+/* GENERATED POOL ROWS AND THEIR CLAIM REQUESTS.
+   These used to be a bare top-level block that pushed into DIRECTORY and
+   CLAIM_REQS after both were declared. Source order was legal, but the minifier
+   merges and reorders top-level const groups, and in the production bundle the
+   CLAIM_REQS declaration ended up AFTER the pushing block — a TDZ
+   ReferenceError that blanked the whole admin console while dev and an
+   unminified build were both fine. Function declarations hoist, so computing the
+   rows and spreading them into the literal cannot be reordered into a
+   use-before-init. Nothing top-level mutates anything any more. */
+function generatedClaimReqs(): ClaimReq[] {
+  const out: ClaimReq[] = []
+  let id = 23960
+  QUEUE_NAMES.forEach((co, i) => {
+    // every 6th company is contested by two reps; the rest have one requester
+    const n = i % 6 === 2 ? 2 : 1
+    const day = 4 + (i % 12)
+    for (let k = 0; k < n; k++) {
+      const by = QUEUE_REPS[(i + k) % 3]
+      const ev = (i + k) % 4
+      out.push({
+        id: id++, co, by,
+        when: `${String(day + k).padStart(2, '0')}/08/2026 ${String(8 + ((i + k) % 9)).padStart(2, '0')}:${String((i * 7 + k * 13) % 60).padStart(2, '0')}`,
+        person: k === 0 ? 'Phòng nhân sự' : 'Ms. HR (nguồn khác)',
+        phone: `09${String(10 + i)}${k} ${String(200 + i * 7)} xxx`,
+        reason: QUEUE_REASONS[(i + k) % QUEUE_REASONS.length],
+        kind: FREE_DATA_KIND[2 + ((i + k) % 6)],
+        ...(ev === 0 || ev === 3 ? { link: `vietnamworks.com/tin-tuyen-dung-${1000 + i * 10 + k}` } : ev === 1 ? { file: `tin-tuyen-${i}${k}.png` } : {}),
+        reqs: n, status: 'pending',
+      })
+    }
+  })
+  return out
+}
+function generatedDirRows(): DirRow[] {
+  return QUEUE_NAMES.map((co, i) => ({
+    name: co, phone: `028 3${String(700 + i)} xxxx`, addr: ['HCMC', 'Hà Nội', 'Bình Dương', 'Đồng Nai'][i % 4],
+    industry: ['Sản xuất', 'Logistics', 'Thực phẩm', 'Xây dựng', 'Giáo dục'][i % 5],
+    source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending' as DirState, by: QUEUE_REPS[i % 3], reqs: i % 6 === 2 ? 2 : 1,
+  }))
+}
 export const DIRECTORY: DirRow[] = [
   { name: 'Công ty TNHH Cơ điện Tân Tiến', person: 'Ms. Trần Thu Hà · HR', email: 'hr@tantien-me.vn', phone: '028 3822 xxxx', web: 'tantien-me.vn', addr: 'Quận 12, HCMC', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
   { name: 'Công ty CP Thực phẩm Vạn An', person: 'Phòng nhân sự', email: 'tuyendung@vanan.com.vn', phone: '0909 118 xxx', addr: 'Long An', industry: 'Thực phẩm', tax: '0311xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
@@ -91,6 +148,7 @@ export const DIRECTORY: DirRow[] = [
   // It stays Chưa nhận because the pool cannot know that — the check runs when the
   // rep clicks Xin nhận, and blocks the request there instead of at approval.
   { name: 'Công ty TNHH Sao Mai', person: 'Mr. Trần Đức Anh', email: 'hr@saomai.vn', phone: '0274 221 xxxx', web: 'saomai.vn', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'free' },
+  ...generatedDirRows(),
 ]
 
 /** Does this pool row already exist in the CRM? Name-normalised, plus phone/domain.
@@ -122,55 +180,6 @@ export function dirAsCompany(r: DirRow): Company {
   }
 }
 
-/* ── Volume seeding ────────────────────────────────────────────────────────────
-   The queue is reviewed at real load — around twenty companies waiting — and a
-   two-card mock never shows whether a design survives that. Generated determin-
-   istically (no randomness: a queue that reshuffles between renders is unreview-
-   able in review). Mostly one requester per company, a few contested, evidence
-   quality deliberately mixed so the triage signals have something to signal. */
-const QUEUE_NAMES = [
-  'Công ty TNHH Nhựa Tân Phú', 'Công ty CP Thép Miền Nam', 'Công ty TNHH Dược phẩm Hà Tây',
-  'Công ty TNHH May mặc Song Long', 'Công ty CP Vận tải Hoà Bình', 'Công ty TNHH Điện lạnh Ngọc Anh',
-  'Công ty CP Thực phẩm Bốn Mùa', 'Công ty TNHH Xây lắp Điện Quang', 'Công ty TNHH In ấn Lê Gia',
-  'Công ty CP Nông sản Cửu Long', 'Công ty TNHH Gỗ Việt Ý', 'Công ty CP Cáp điện Thăng Long',
-  'Công ty TNHH Du lịch Bầu Trời', 'Công ty TNHH Nhôm kính Đại Phát', 'Công ty CP Bảo vệ Toàn Cầu',
-  'Công ty TNHH Giáo dục Sao Việt', 'Công ty CP Chuyển phát Tia Chớp', 'Công ty TNHH Thuỷ sản Biển Đông',
-]
-const QUEUE_REPS = ['Nguyễn Thị Lan', 'Trần Quốc Trung', 'Phạm Quang Huy']
-const QUEUE_REASONS = [
-  'KH đang tuyển trên thị trường, đã gọi HR và được hẹn gửi báo giá.',
-  'đang tuyển',
-  'Gặp tại hội chợ, đang cần tuyển gấp cho xưởng mới, HR xin thông tin gói tin đăng.',
-  'KH tôi từng liên hệ năm ngoái, nay quay lại có nhu cầu tuyển 10+ vị trí.',
-  'Thấy tin tuyển dụng trên website công ty, chưa liên hệ được.',
-]
-{
-  let id = 23960
-  QUEUE_NAMES.forEach((co, i) => {
-    // every 6th company is contested by two reps; the rest have one requester
-    const n = i % 6 === 2 ? 2 : 1
-    const day = 4 + (i % 12)
-    for (let k = 0; k < n; k++) {
-      const by = QUEUE_REPS[(i + k) % 3]
-      const ev = (i + k) % 4
-      CLAIM_REQS.push({
-        id: id++, co, by,
-        when: `${String(day + k).padStart(2, '0')}/08/2026 ${String(8 + ((i + k) % 9)).padStart(2, '0')}:${String((i * 7 + k * 13) % 60).padStart(2, '0')}`,
-        person: k === 0 ? 'Phòng nhân sự' : 'Ms. HR (nguồn khác)',
-        phone: `09${String(10 + i)}${k} ${String(200 + i * 7)} xxx`,
-        reason: QUEUE_REASONS[(i + k) % QUEUE_REASONS.length],
-        kind: FREE_DATA_KIND[2 + ((i + k) % 6)],
-        ...(ev === 0 || ev === 3 ? { link: `vietnamworks.com/tin-tuyen-dung-${1000 + i * 10 + k}` } : ev === 1 ? { file: `tin-tuyen-${i}${k}.png` } : {}),
-        reqs: n, status: 'pending',
-      })
-    }
-    DIRECTORY.push({
-      name: co, phone: `028 3${String(700 + i)} xxxx`, addr: ['HCMC', 'Hà Nội', 'Bình Dương', 'Đồng Nai'][i % 4],
-      industry: ['Sản xuất', 'Logistics', 'Thực phẩm', 'Xây dựng', 'Giáo dục'][i % 5],
-      source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: QUEUE_REPS[i % 3], reqs: i % 6 === 2 ? 2 : 1,
-    })
-  })
-}
 
 /** The signed-in rep's own request on a company, if they made one.
 
@@ -252,4 +261,12 @@ export const CLAIM_REQS: ClaimReq[] = [
   // Rejected, and the company went straight back to Chưa nhận — see Nhà máy Dệt Phú
   // Cường in DIRECTORY, still free for anyone to ask for again.
   { id: 23788, co: 'Nhà máy Dệt Phú Cường', by: 'Nguyễn Thị Lan', when: '30/06/2026 15:32', person: 'Mr Hiếu', phone: '—', reason: 'test', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '02/07/2026 11:15' },
+  ...generatedClaimReqs(),
 ]
+
+/* ── Volume seeding ────────────────────────────────────────────────────────────
+   The queue is reviewed at real load — around twenty companies waiting — and a
+   two-card mock never shows whether a design survives that. Generated determin-
+   istically (no randomness: a queue that reshuffles between renders is unreview-
+   able in review). Mostly one requester per company, a few contested, evidence
+   quality deliberately mixed so the triage signals have something to signal. */
