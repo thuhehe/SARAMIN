@@ -2717,8 +2717,8 @@ export const crm: BuildModule = {
               cols: ['Step', 'Who', 'Where', 'What they see / do'],
               rows: [
                 ['1 · Xin nhận', 'Sales', 'Free data → company record → **Xin nhận**', 'The request form (mô tả + phân loại + link/tệp). The record warns if others already asked.'],
-                ['2 · Xem hàng đợi', 'Admin', '**Yêu cầu nhận công ty → view “Chờ duyệt”** (default)', 'One card per company — the badge counts **companies**, because that is how many decisions are waiting, not how many rows. Each card lists every requester side by side: lý do · bằng chứng (link/📎/⚠) · contact point · timestamp, oldest first.'],
-                ['3 · Quyết định', 'Admin', 'On the card', 'Radio-pick one rep → **Phân công ty cho {tên} →** (one write: CRM company + owner + contact #1 + pool removal + rivals → Từ chối), or **Từ chối tất cả**. A receipt / grey panel confirms what happened. “Mở hồ sơ trong Free data →” under each card for deep context (source, unverified MST, claim history) — the SAME AssignCard renders there, so the two entry points cannot offer different decisions.'],
+                ['2 · Xem hàng đợi', 'Admin', '**Yêu cầu nhận công ty → view “Chờ duyệt”** (default)', '**One LINE per company**, oldest waiting first — the badge counts companies, because that is how many decisions are waiting. The line is the triage: tên công ty · số sales xin (amber “N — chọn 1” on a contest) · bằng chứng tóm tắt (**N link · N 📎 · N ⚠**) · chờ từ ngày nào. At real load (~20 companies) rendering every requester of every company at once is a wall — the admin only ever decides one company at a time.'],
+                ['3 · Quyết định', 'Admin', 'Click the line — it EXPANDS in place', 'One company open at a time. The expansion is the full side-by-side comparison: every requester with lý do · bằng chứng · contact point, radio-pick one → **Phân công ty cho {tên} →** (one write: CRM company + owner + contact #1 + pool removal + rivals → Từ chối), or **Từ chối tất cả**. A receipt / grey panel confirms what happened. “Mở hồ sơ trong Free data →” for deep context — the SAME AssignCard renders on the record, so the two entry points cannot offer different decisions.'],
                 ['4 · Theo dõi', 'Sales', 'Same page → view **“Tất cả yêu cầu”**, default **Của tôi**', 'Request-level tracking, **no action buttons**: status pill + what it means (đã có hồ sơ trong CRM / công ty về lại Chưa nhận — xin lại được) + who decided and when. Plus the banner on the company’s own record.'],
               ],
             },
@@ -2726,7 +2726,8 @@ export const crm: BuildModule = {
               'ONE place to decide. The tracking view deliberately carries no Duyệt/Từ chối — a second decision surface is a second place for the two to disagree, and row-level approval is the exact thing that made the queue unreviewable.',
               'The Free data LIST stays company-level reference: a pending row shows “Đang chờ duyệt · N sales xin” so the queue is visible from there too, and opening the company shows the assignment card in full context.',
               'RECOMMENDED TIE-BREAK, printed under the queue: strongest evidence first, timestamp second — a link that can be opened beats a screenshot, a screenshot beats a bare note. The mockup seeds a 3-way contest where the strongest evidence has the LATEST timestamp, so the rule actually has to be applied.',
-              'A suspiciously short reason renders amber and a request with no evidence renders ⚠, so a weak candidate is visible without opening anything.',
+              'A suspiciously short reason renders amber and a request with no evidence renders ⚠, so a weak candidate is visible without opening anything — the collapsed line already says “2 link · 1 ⚠”.',
+              'The mockup seeds the queue at REAL load: 20 companies waiting, 4 of them contested, evidence quality mixed — a two-card mock never shows whether a design survives volume.',
             ],
           },
           {

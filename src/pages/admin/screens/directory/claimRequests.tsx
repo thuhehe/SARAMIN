@@ -38,8 +38,12 @@ export function AdminClaimRequests() {
     else groups.push({ co: r.co, reqs: [r] })
   }
 
-  /* Oldest waiting first — the queue's sort is the fairness rule. */
-  groups.sort((a, b) => a.reqs[0].id - b.reqs[0].id)
+  /* Oldest waiting first — the queue's sort is the fairness rule. Sorted on the
+     TIMESTAMP, not the request id: ids are allocation order, and the two disagree
+     the moment a request is created for an older conversation. */
+  const whenKey = (w: string) => { const [d, rest] = w.split(' '); const [dd, mm, yy] = d.split('/'); return `${yy}${mm}${dd}${rest ?? ''}` }
+  for (const g of groups) g.reqs.sort((a, b) => whenKey(a.when).localeCompare(whenKey(b.when)))
+  groups.sort((a, b) => whenKey(a.reqs[0].when).localeCompare(whenKey(b.reqs[0].when)))
   const [view, setView] = useState<'queue' | 'all'>('queue')
   /* One company open at a time: the comparison is only ever read for the company
      being decided, and two open comparisons is how rows get mixed up. */
