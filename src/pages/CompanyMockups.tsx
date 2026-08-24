@@ -13,9 +13,14 @@
 import { createContext, Fragment, useContext, useState } from 'react'
 import {
   Search,
+  Bookmark,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
+  Clock,
   Crown,
+  Mail,
+  Phone,
   Shield,
   List,
   Columns3,
@@ -26,6 +31,7 @@ import {
   CheckCheck,
   Plus,
   Inbox,
+  TriangleAlert,
   User,
   Users,
 } from 'lucide-react'
@@ -71,16 +77,6 @@ function PageBar({ title, sub, action }: { title: string; sub?: string; action?:
   )
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'warn' }) {
-  return (
-    <div className="rounded-xl border border-line p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{label}</p>
-      <p className={cn('mt-0.5 text-[19px] font-bold tabular-nums', tone === 'warn' ? 'text-amber-600' : 'text-ink')}>{value}</p>
-      {sub && <p className="text-[10.5px] text-faint">{sub}</p>}
-    </div>
-  )
-}
-
 function Bar({ pct, tone }: { pct: number; tone?: 'warn' }) {
   return (
     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
@@ -103,71 +99,406 @@ const STAGE_TONE: Record<string, 'muted' | 'blue' | 'amber' | 'green'> = {
 }
 
 /* ── screen bodies (no chrome — the shell provides top bar + sidebar) ─────── */
+
+/* ── Home dashboard ────────────────────────────────────────────────────────
+   Laid out like Saramin KR's employer home (hiring.saramin.co.kr/home): a wide
+   WORK column beside a narrow ACCOUNT rail, so "what needs me today" and "what
+   did we buy" never compete for the same space.
+
+     KR  진행중 공고 · 진행중 인재풀  →  Jobs in progress · Saved searches
+     KR  내 할일 (tabbed queue)      →  My to-do
+     KR  기업 카드 · 이용중인 상품    →  company card · Products in use
+     KR  고객센터                    →  your account manager + help
+
+   Every number here is READ from something the spec already defines — job
+   status + deadline, pipeline stage + waiting days, saved searches, pooled
+   quota, company-page completeness, the CRM sales owner. Home invents no
+   entity of its own: a panel that needs a new field means that field belongs
+   to the module owning it, never to the dashboard.
+
+   Two KR blocks are deliberately NOT copied. The ad rail — we sell nothing
+   there in Phase 1, so it would be a column of permanent placeholders. And
+   쿠폰/포인트 — there is no coupon or point currency in the VN product model,
+   and a counter pinned at 0 forever is furniture, not information. */
+
+/** One "in progress" strip head — label, count, and the way into the full list.
+    KR sets the count in the brand colour beside the label: the number is what
+    you came to read, the label only says what it counts. */
+function StripHead({ label, count, onClick }: { label: string; count: number; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="mb-2 flex items-center gap-1.5">
+      <span className="text-[13.5px] font-bold text-ink">{label}</span>
+      <span className="text-[15px] font-bold tabular-nums text-brand">{count}</span>
+      <ChevronRight className="h-3.5 w-3.5 text-faint" />
+    </button>
+  )
+}
+
+/** KR's first-run panel: a soft tinted box that names the gap and offers the one
+    action that closes it. An employer with nothing posted sees this — never an
+    empty table with column headings, which explains a shape instead of a step. */
+function StripEmpty({ lines, cta, onClick }: { lines: string[]; cta: string; onClick: () => void }) {
+  return (
+    <div className="rounded-xl bg-brand-soft/60 px-4 py-8 text-center">
+      {lines.map((l) => (
+        <p key={l} className="text-[12px] leading-relaxed text-muted">{l}</p>
+      ))}
+      <button onClick={onClick} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand">
+        <Pencil className="h-3.5 w-3.5" />
+        {cta}
+      </button>
+    </div>
+  )
+}
+
+/** A card in one of the two strips: what it is, its state, and the ONE number
+    that says whether it needs you. Two compact lines rather than KR's tall tinted
+    panel — a Vietnamese job title needs the full width of a half-column, and the
+    KR shape truncated it to three characters. */
+function StripCard({ title, meta, chip, tone, metric, metricLabel, onClick }: {
+  title: string
+  meta: string
+  chip?: string
+  tone?: 'green' | 'blue' | 'muted'
+  metric: string
+  metricLabel: string
+  onClick: () => void
+}) {
+  return (
+    <div onClick={onClick} className="cursor-pointer rounded-xl border border-line bg-surface px-3 py-2.5 hover:border-brand/40">
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink">{title}</p>
+        {chip && <Chip tone={tone ?? 'muted'}>{chip}</Chip>}
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 truncate text-[10.5px] text-faint">{meta}</span>
+        <span className="shrink-0 text-[10.5px] text-muted">{metricLabel}</span>
+        <span className="shrink-0 text-[14px] font-bold tabular-nums text-brand">{metric}</span>
+      </div>
+    </div>
+  )
+}
+
+/** A condition that is BLOCKING something or running out of time, with the action
+    that clears it. Rendered only when one exists — an "all clear" row is a
+    permanent fixture, and a strip that is always there is a strip the eye learns
+    to skip, which is the opposite of what it is for. */
+function AlertRow({ warn, text, action, onClick }: { warn?: boolean; text: React.ReactNode; action: string; onClick: () => void }) {
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2', warn ? 'border-amber-200 bg-amber-50/70' : 'border-line bg-canvas/50')}>
+      {warn ? <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-600" /> : <Clock className="h-3.5 w-3.5 shrink-0 text-faint" />}
+      <span className={cn('min-w-0 flex-1 text-[11.5px]', warn ? 'text-amber-900' : 'text-ink/75')}>{text}</span>
+      <button onClick={onClick} className={cn('shrink-0 rounded-md border bg-surface px-2 py-1 text-[11px] font-medium', warn ? 'border-amber-300 text-amber-800' : 'border-line text-brand')}>
+        {action}
+      </button>
+    </div>
+  )
+}
+
+/** One product on the account rail. KR lists products the company does NOT hold
+    beside the ones it does, each with a 구매 button — the rail doubles as the
+    store front. Held products show live quota instead, because for those the
+    question is "how much is left", not "do I want this". */
+function RailProduct({ name, left, total, unit, until, onUse, onBuy }: {
+  name: string
+  left?: number
+  total?: number
+  unit?: string
+  until?: string
+  onUse?: () => void
+  onBuy: () => void
+}) {
+  const held = left !== undefined && total !== undefined
+  const low = held && left / total <= 0.2
+  return (
+    <div className="border-t border-line-soft py-2.5 first:border-t-0 first:pt-0">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-ink/85">{name}</span>
+        {held ? (
+          <span className={cn('shrink-0 text-[11.5px] font-bold tabular-nums', low ? 'text-amber-600' : 'text-ink')}>{left}<span className="font-normal text-faint">/{total}</span></span>
+        ) : (
+          <span className="shrink-0 text-[11.5px] text-faint">—</span>
+        )}
+        <button onClick={onBuy} className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[10.5px] font-medium text-muted hover:border-brand/40 hover:text-brand">
+          Buy
+        </button>
+      </div>
+      {held && (
+        <>
+          <Bar pct={Math.round((left / total) * 100)} tone={low ? 'warn' : undefined} />
+          <div className="mt-1 flex items-center justify-between">
+            <span className="text-[10px] text-faint">{unit} · until {until}</span>
+            {onUse && <button onClick={onUse} className="text-[10px] font-medium text-brand">Use →</button>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** A titled block on the account rail. */
+function RailCard({ title, link, onLink, children }: { title: string; link?: string; onLink?: () => void; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface p-3.5">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[12px] font-bold text-ink">{title}</p>
+        {link && (
+          <button onClick={onLink} className="flex items-center gap-0.5 text-[10.5px] font-medium text-muted hover:text-brand">
+            {link}
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** The four to-do queues. Each is a STAGE the pipeline already has, so the tab
+    counts and the Applicants screen can never disagree — the alternative was a
+    read/unread flag invented for this page alone, a second source of truth for
+    "has anyone looked at this candidate". */
+const TODO_TABS: { key: string; label: string; empty: string; rows: [string, string, string, number][] }[] = [
+  {
+    key: 'new',
+    label: 'Not reviewed',
+    empty: 'No candidates waiting for a first look.',
+    rows: [
+      ['Nguyễn Thị Hoa', 'Điều dưỡng viên (Khoa Nội)', '2 days', 88],
+      ['Phạm Thu Trang', 'Điều dưỡng viên (Khoa Nội)', '3 days', 64],
+    ],
+  },
+  { key: 'screening', label: 'Screening', empty: 'Nobody is in screening.', rows: [['Trần Văn Bình', 'Điều dưỡng viên (Khoa Nội)', '4 days', 81]] },
+  { key: 'interview', label: 'Interview', empty: 'No interviews in progress.', rows: [['Lê Thị Cúc', 'Điều dưỡng viên (Khoa Nội)', '6 days', 76]] },
+  { key: 'offer', label: 'Offer', empty: 'No offers out.', rows: [['Võ Minh Anh', 'Điều dưỡng trưởng', '1 day', 92]] },
+]
+
 function DashboardScreen() {
   const go = useCoNav()
-  const recent = [
-    ['Nguyễn Thị Hoa', 'Điều dưỡng viên (Khoa Nội)', 'New', '10m'],
-    ['Trần Văn Bình', 'Bác sĩ Đa khoa', 'Screening', '2h'],
-    ['Lê Thị Cúc', 'Điều dưỡng viên (Khoa Nội)', 'Interview', '1d'],
-    ['Phạm Minh Dũng', 'Kế toán viện phí', 'New', '1d'],
-  ]
+  /* Demo-only. The dashboard has two genuinely different shapes and a reviewer
+     needs to see both: a first-run account (nothing posted, page still Draft,
+     package not activated) and one in flight. Not product UI — see the label. */
+  const [demo, setDemo] = useState<'active' | 'first'>('active')
+  const [tab, setTab] = useState('new')
+  const first = demo === 'first'
+  const todo = TODO_TABS.find((t) => t.key === tab) ?? TODO_TABS[0]
+  const rows = first ? [] : todo.rows
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[13px] font-bold text-white">VP</span>
-        <div>
-          <p className="text-[15px] font-bold">Vạn Phát Healthcare</p>
-          <p className="text-[11px] text-muted">Healthcare · HCMC · 200–500 staff</p>
-        </div>
-        <div className="ml-auto flex gap-1.5"><Chip tone="blue">Job Posting</Chip><Chip tone="blue">Resume Search</Chip></div>
+      {/* preview switch — scaffolding for review, not part of the screen */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line px-3 py-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Preview</span>
+        {([['active', 'Account in flight'], ['first', 'First run (empty)']] as const).map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setDemo(k)}
+            className={cn('rounded-md px-2 py-0.5 text-[11px] font-medium', demo === k ? 'bg-brand-soft text-brand' : 'text-muted hover:text-ink')}
+          >
+            {l}
+          </button>
+        ))}
+        <span className="ml-auto text-[10px] text-faint">Demo control — not part of the screen.</span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Open jobs" value="4" sub="1 scheduled" />
-        <Stat label="New applicants" value="12" sub="this week" />
-        <Stat label="Interviews" value="3" sub="scheduled" />
-        <Stat label="CV unlocks left" value="62" sub="of 100" />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <div className="rounded-xl border border-line p-4">
-          <div className="mb-2 flex items-center justify-between"><p className="text-[14px] font-bold">Recent applicants</p><span className="text-[11.5px] text-brand">View all →</span></div>
-          <div className="space-y-1.5">
-            {recent.map(([name, job, stage, t]) => (
-              <div key={name} className="flex items-center gap-2 rounded-md border border-line px-3 py-2">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-canvas text-[11px]"></span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
-                  <p className="truncate text-[11px] text-muted">{job}</p>
-                </div>
-                <Chip tone={STAGE_TONE[stage]}>{stage}</Chip>
-                <span className="w-8 text-right text-[10.5px] text-faint">{t}</span>
-              </div>
-            ))}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_296px]">
+        {/* ── work column ──────────────────────────────────────────────────── */}
+        <div className="min-w-0">
+          {/* Blocking + time-boxed conditions, ahead of everything. These are the
+              only things on Home that can cost the customer money or a hire. */}
+          <div className="mb-5 space-y-1.5">
+            {first ? (
+              <>
+                <AlertRow
+                  warn
+                  text={<>Your company page is a <b>Draft</b> — publish it before your first job can go live.</>}
+                  action="Publish page"
+                  onClick={() => go('co-company-page')}
+                />
+                <AlertRow
+                  text={<>Job Posting — Pro is paid but not started. <b>Activate by 12/09/2026</b> or the package expires unused.</>}
+                  action="Activate"
+                  onClick={() => go('co-products')}
+                />
+              </>
+            ) : (
+              <>
+                <AlertRow
+                  warn
+                  text={<><b>Bác sĩ Đa khoa</b> closes in 4 days and 3 candidates are still unreviewed.</>}
+                  action="Review"
+                  onClick={() => go('co-applicants')}
+                />
+                <AlertRow
+                  text={<>Order <b>ORD-5602</b> is awaiting payment — 50 CV unlocks arrive once Saramin confirms it.</>}
+                  action="View order"
+                  onClick={() => go('co-orders')}
+                />
+              </>
+            )}
           </div>
-        </div>
 
-        <div className="space-y-3">
-          <div className="rounded-xl border border-line p-4">
-            <p className="mb-2 text-[12.5px] font-bold">Your quota</p>
-            <div className="mb-3">
-              <div className="flex justify-between text-[11.5px]"><span>Job posting slots</span><b className="tabular-nums">7/10</b></div>
-              <Bar pct={70} />
-            </div>
+          {/* KR's two 진행중 strips, side by side */}
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <div className="flex justify-between text-[11.5px]"><span>Resume CV unlocks</span><b className="tabular-nums">62/100</b></div>
-              <Bar pct={62} />
+              <StripHead label="Jobs in progress" count={first ? 0 : 3} onClick={() => go('co-jobs')} />
+              {first ? (
+                <StripEmpty
+                  lines={['Post a job and start collecting candidates.', 'It goes live immediately — there is no approval wait.']}
+                  cta="Post a job"
+                  onClick={() => go('co-post-job')}
+                />
+              ) : (
+                <div className="space-y-2">
+                  <StripCard title="Điều dưỡng viên (Khoa Nội)" meta="Closes 31/08/2026" chip="Open" tone="green" metric="6" metricLabel="candidates" onClick={() => go('co-applicants')} />
+                  <StripCard title="Bác sĩ Đa khoa" meta="Closes in 4 days" chip="Open" tone="green" metric="3" metricLabel="candidates" onClick={() => go('co-applicants')} />
+                  <StripCard title="Kế toán viện phí" meta="Goes live 01/09/2026" chip="Scheduled" tone="blue" metric="—" metricLabel="candidates" onClick={() => go('co-jobs')} />
+                </div>
+              )}
             </div>
-            <p className="mt-2 text-[10.5px] text-faint">Shared across your team · valid until 31/12/2026.</p>
-          </div>
-          <div className="rounded-xl border border-line p-4">
-            <p className="mb-2 text-[12.5px] font-bold">Quick actions</p>
-            <div className="flex flex-col gap-2">
-              <Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn>
-              <Btn onClick={() => go('co-resume-search')}>Search resumes</Btn>
-              <Btn onClick={() => go('co-company-page')}>✎ Edit company page</Btn>
+
+            <div>
+              <StripHead label="Saved searches" count={first ? 0 : 2} onClick={() => go('co-resume-search')} />
+              {first ? (
+                <StripEmpty
+                  lines={['Search the CV database and save the search.', 'Home then tells you when new CVs match it.']}
+                  cta="Search resumes"
+                  onClick={() => go('co-resume-search')}
+                />
+              ) : (
+                <div className="space-y-2">
+                  <StripCard title="Điều dưỡng · HCMC · 2–5 năm" meta="Since 22/08/2026" metric="12" metricLabel="new CVs" onClick={() => go('co-resume-search')} />
+                  <StripCard title="Kế toán · HCMC" meta="Since 19/08/2026" metric="3" metricLabel="new CVs" onClick={() => go('co-resume-search')} />
+                  <div className="flex items-start gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-[10.5px] leading-relaxed text-faint">
+                    <Bookmark className="mt-0.5 h-3 w-3 shrink-0" />
+                    A saved search stores the filters, not the sentence.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* KR's 내 할일 — the work queue, tabbed by stage */}
+          <div className="mt-5 rounded-xl border border-line bg-surface">
+            <div className="flex flex-wrap items-center gap-2 border-b border-line-soft px-4 py-3">
+              <p className="text-[13.5px] font-bold text-ink">My to-do</p>
+              <span className="text-[10.5px] text-faint">Candidates waiting on you, oldest first.</span>
+            </div>
+            <div className="flex flex-wrap gap-1 px-3 pt-2.5">
+              {TODO_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium',
+                    tab === t.key ? 'bg-brand-soft text-brand' : 'text-muted hover:text-ink',
+                  )}
+                >
+                  {t.label}
+                  <span className="tabular-nums">{first ? 0 : t.rows.length}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="px-3 pb-3 pt-2">
+              {rows.length === 0 ? (
+                <div className="py-10 text-center">
+                  <Inbox className="mx-auto h-5 w-5 text-faint" />
+                  <p className="mt-1.5 text-[12px] text-muted">{first ? 'No candidates yet — they appear here once a job is live.' : todo.empty}</p>
+                  <button onClick={() => go(first ? 'co-post-job' : 'co-applicants')} className="mt-2 rounded-md border border-line px-2.5 py-1 text-[11.5px] font-medium text-brand">
+                    {first ? 'Post a job' : 'Open Applicants'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {rows.map(([name, job, waiting, match]) => (
+                    <div key={name} onClick={() => go('co-applicants')} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line px-3 py-2 hover:border-brand/40">
+                      <Avatar name={name} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12.5px] font-medium text-ink">{name}</p>
+                        <p className="truncate text-[10.5px] text-muted">{job}</p>
+                      </div>
+                      <Chip tone={match >= 80 ? 'green' : match >= 60 ? 'amber' : 'muted'}>{match}%</Chip>
+                      <span className="w-[84px] shrink-0 whitespace-nowrap text-right text-[10.5px] text-faint">Waiting {waiting}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── account rail ─────────────────────────────────────────────────── */}
+        <div className="space-y-3">
+          {/* who you are + how complete your public face is */}
+          <div className="rounded-xl border border-line bg-surface p-3.5">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-[13px] font-bold text-white">VP</span>
+              <div className="min-w-0">
+                <p className="truncate text-[13.5px] font-bold text-ink">Vạn Phát Healthcare</p>
+                <p className="flex items-center gap-1 text-[10.5px] text-muted">
+                  <Crown className="h-3 w-3 text-brand" />
+                  Admin · Trần Thị Mai
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 border-t border-line-soft pt-2.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted">Company page</span>
+                {first ? <Chip tone="amber">Draft</Chip> : <Chip tone="green">Published</Chip>}
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                <span className="text-faint">Profile complete</span>
+                <b className="tabular-nums text-ink">{first ? '35%' : '62%'}</b>
+              </div>
+              <Bar pct={first ? 35 : 62} tone={first ? 'warn' : undefined} />
+              <button onClick={() => go('co-company-page')} className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-line py-1.5 text-[11px] font-medium text-brand hover:bg-canvas/60">
+                <Pencil className="h-3 w-3" />
+                {first ? 'Finish your company page' : 'Add photos & benefits'}
+              </button>
+            </div>
+          </div>
+
+          {/* KR's 이용중인 상품 — what you hold, what is left, what you could add */}
+          <RailCard title="Products in use" link="Orders" onLink={() => go('co-orders')}>
+            {first ? (
+              <>
+                <RailProduct name="Job Posting — Pro" onBuy={() => go('co-products')} />
+                <RailProduct name="Resume Search" onBuy={() => go('co-products')} />
+                <p className="mt-2 border-t border-line-soft pt-2 text-[10px] leading-relaxed text-faint">
+                  Paid, not started. Quota begins counting the day you activate — activate by 12/09/2026.
+                </p>
+              </>
+            ) : (
+              <>
+                <RailProduct name="Job Posting — Pro" left={7} total={10} unit="posting slots" until="31/12/2026" onUse={() => go('co-post-job')} onBuy={() => go('co-products')} />
+                <RailProduct name="Resume Search" left={62} total={100} unit="CV unlocks" until="31/12/2026" onUse={() => go('co-resume-search')} onBuy={() => go('co-products')} />
+                <RailProduct name="Homepage placement" onBuy={() => go('co-products')} />
+                <p className="mt-2 border-t border-line-soft pt-2 text-[10px] leading-relaxed text-faint">
+                  Quota is pooled across your team — every spend is attributed to the member who made it.
+                </p>
+              </>
+            )}
+          </RailCard>
+
+          {/* KR's 고객센터, made specific: the company HAS a named sales owner on
+              its CRM record, so the rail shows that person rather than a hotline
+              nobody at Saramin is accountable for answering. */}
+          <RailCard title="Your account manager">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand">LN</span>
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-semibold text-ink">Lê Ngọc Nam</p>
+                <p className="truncate text-[10.5px] text-faint">Saramin Vietnam · Sales</p>
+              </div>
+            </div>
+            <div className="mt-2.5 space-y-1 border-t border-line-soft pt-2">
+              <p className="flex items-center gap-1.5 text-[10.5px] text-muted"><Phone className="h-3 w-3 shrink-0 text-faint" />028 xxxx xxxx</p>
+              <p className="flex items-center gap-1.5 text-[10.5px] text-muted"><Mail className="h-3 w-3 shrink-0 text-faint" />nam.le@saramin.vn</p>
+              <p className="flex items-center gap-1.5 text-[10.5px] text-faint"><Clock className="h-3 w-3 shrink-0" />Mon–Fri · 09:00–18:00</p>
+            </div>
+            <button className="mt-2.5 w-full rounded-md border border-line py-1.5 text-[11px] font-medium text-brand hover:bg-canvas/60">Help centre &amp; FAQ</button>
+          </RailCard>
         </div>
       </div>
     </div>

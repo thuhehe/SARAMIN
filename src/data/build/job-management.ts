@@ -386,6 +386,183 @@ export const jobManagement: BuildModule = {
         ],
       },
     },
+    /* The company console's landing page. It lives in THIS module because the
+       module owns the employer's other primary screens (Post job, My jobs) and
+       Home's largest strip and primary CTA are jobs — but it READS from five
+       modules, and the alert table below names the owner of every row. */
+    {
+      name: 'Home dashboard (company site)',
+      site: 'Companies',
+      slug: 'home-dashboard-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The landing screen after an employer logs in. A READ-ONLY aggregate — it owns no data of its own and every panel links into the module that does.',
+      mockup: 'co-dashboard',
+      ready: true,
+      detail: {
+        description:
+          'Where an employer lands after signing in. It answers three questions in one screen, in priority order: what is BLOCKING or expiring, who is WAITING on me, and what did we buy / how much is left. The layout follows Saramin Korea’s employer home (hiring.saramin.co.kr/home) — a wide work column beside a narrow account rail — because that split keeps daily recruiting work from competing for space with billing and settings.\n\nIt is deliberately an aggregate and nothing else. Every number is derived from a record another module owns: job status and deadline, application stage and waiting days, saved searches, pooled quota, company-page completeness, the CRM sales owner. Home has no entity, no status of its own, and no action that cannot also be done on the screen that owns it.',
+        userStory:
+          'As an HR user, I want to see what is blocking me and who is waiting on me the moment I log in, so that I do not have to open four screens to find out whether anything needs me today.',
+        keyPoints: [
+          {
+            vi: 'Home CHỈ ĐỌC. Mọi con số đều được suy ra từ module khác — không tạo thực thể, không có trạng thái riêng, không có hành động nào mà màn hình gốc không có.',
+            en: 'Home is READ-ONLY. Every number is derived from another module — it creates no entity, holds no status of its own, and offers no action the owning screen does not.',
+          },
+          {
+            vi: 'Tab "Chưa xem" dùng STAGE = New của pipeline, KHÔNG thêm cờ đã đọc/chưa đọc. Một cờ riêng cho Home sẽ tạo nguồn sự thật thứ hai cho "đã có ai xem ứng viên này chưa".',
+            en: 'The “Not reviewed” tab is pipeline STAGE = New — no read/unread flag is added. A flag owned by Home would be a second source of truth for “has anyone looked at this candidate”.',
+          },
+          {
+            vi: 'Dải cảnh báo chỉ hiện khi CÓ việc cần xử lý. Không có dòng "mọi thứ ổn" — một dải luôn hiện là một dải mắt học cách bỏ qua.',
+            en: 'The alert strip renders only when something needs action. There is no “all clear” row — a strip that is always there is one the eye learns to skip.',
+          },
+          {
+            vi: 'Không sao chép cột quảng cáo và 쿠폰/포인트 của Saramin KR: Phase 1 không bán gì ở đó và mô hình sản phẩm VN không có coupon/point.',
+            en: 'Saramin KR’s ad rail and coupon/point counters are NOT copied: Phase 1 sells nothing there, and the VN product model has no coupon or point currency.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'The alert strip — the only part that can cost money or a hire',
+            text: 'Pinned above everything. Each row is a condition that is blocking something or running out of time, plus the one action that clears it. Rows are ordered blocking-first, then by deadline. Everything here is owned elsewhere; Home only surfaces it.',
+            table: {
+              cols: ['Condition', 'Shows when', 'Action → goes to', 'Owned by'],
+              rows: [
+                ['Company page not Published', 'Account holds Job Posting AND page status ≠ Published', 'Publish page → Company page', 'Account management → Company detail'],
+                ['Product paid but not activated', 'An entitlement exists with no activation date and an activationDeadline in the future', 'Activate → Products & quota', 'Products & packages'],
+                ['Job closing soon', 'An Open job’s deadline is ≤7 days away AND it has unreviewed candidates', 'Review → Applicants', 'Job management'],
+                ['Quota low / exhausted', 'Remaining posting slots or CV unlocks ≤20% of the pack, or 0', 'Buy more → Products & quota', 'Account management → Products & quota'],
+                ['Order awaiting payment', 'An order exists in Pending payment', 'View order → Orders & invoices', 'CRM → Payments'],
+              ],
+            },
+            warn: 'No “all clear” row, and no alert that Home alone can resolve. If a condition cannot be cleared on the screen the action links to, it does not belong in this strip.',
+          },
+          {
+            label: 'The two states Home must be designed for',
+            text: 'A first-run account and an account in flight are genuinely different screens, and the first-run one is what most new customers see for their first week. Both are specified; neither is an afterthought empty state.',
+            table: {
+              cols: ['State', 'When', 'What Home shows'],
+              rows: [
+                ['First run', 'Activated, nothing posted, no search saved', 'Alerts: publish page + activate package. Both strips show a tinted panel naming the gap and its one CTA. To-do is empty with “Post a job”. Rail shows products held but not started, with no quota bar yet.'],
+                ['In flight', 'At least one job Open or Scheduled', 'Strips list jobs and saved searches with their live counts; to-do carries the stage queues; rail shows quota bars.'],
+                ['Resume Search not owned', 'Account holds Job Posting only', 'The Saved searches strip is replaced by the product offer — the rail already lists the unowned product with a Buy path; the strip must not show an empty panel for something the account cannot use.'],
+              ],
+            },
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Alert strip (conditional — see the rule block)',
+            items: [
+              { name: 'alerts[]', type: 'derived', notes: 'each = { severity: warn | info, message, actionLabel, target screen }. Empty array → the strip does not render at all' },
+            ],
+          },
+          {
+            group: 'Jobs in progress (KR 진행중 공고)',
+            items: [
+              { name: 'count', type: 'derived', notes: 'Open + Scheduled. Draft and Closed are NOT “in progress” and are not counted' },
+              { name: 'card', type: 'composite', notes: 'title · status chip (Open / Scheduled) · deadline or go-live date · candidate count. Click → Applicants for that job' },
+              { name: 'empty state', type: 'panel', notes: 'first-run only: “Post a job and start collecting candidates · it goes live immediately” + Post a job' },
+            ],
+          },
+          {
+            group: 'Saved searches (KR 진행중 인재풀)',
+            items: [
+              { name: 'count', type: 'derived', notes: 'saved searches on the account — see Resume management → “Save this search”' },
+              { name: 'card', type: 'composite', notes: 'search name · last-run date · NEW CVs matching since that run. Click → Resume search with the search loaded' },
+              { name: 'gating', type: 'rule', notes: 'the whole strip is hidden unless the account is entitled to Resume Search' },
+            ],
+          },
+          {
+            group: 'My to-do (KR 내 할일)',
+            items: [
+              { name: 'tabs', type: 'stage counts', required: true, notes: 'Not reviewed (stage = New) · Screening · Interview · Offer. The counts ARE the pipeline stage counts — no separate computation' },
+              { name: 'row', type: 'composite', notes: 'photo · name · job applied to · match % (with its two contributing signals on hover — never a bare number) · days waiting' },
+              { name: 'sort', type: 'rule', required: true, notes: 'longest waiting first — the queue exists to surface who has been ignored, so recency sorting would defeat it' },
+              { name: 'scope', type: 'rule', notes: 'across ALL of the account’s jobs, not one posting; recalled and withdrawn applications never appear' },
+            ],
+          },
+          {
+            group: 'Account rail — company card',
+            items: [
+              { name: 'identity', type: 'composite', notes: 'logo · company display name · signed-in user with their role badge' },
+              { name: 'company page status', type: 'enum', notes: 'Draft · Published · Unpublished — the same status the Company page screen owns' },
+              { name: 'completeness', type: 'derived %', notes: 'the same figure the Company page screen shows; the CTA names the highest-value missing block rather than saying “edit”' },
+            ],
+          },
+          {
+            group: 'Account rail — products in use (KR 이용중인 상품)',
+            items: [
+              { name: 'held product', type: 'row', notes: 'name · remaining / total · progress bar · unit + valid-until · “Use →” into the screen that spends it' },
+              { name: 'unheld product', type: 'row', notes: 'listed with “—” and a Buy button — KR’s pattern: the rail doubles as the store front' },
+              { name: 'low-quota tone', type: 'rule', notes: '≤20% remaining turns the figure and bar amber; this is the same threshold that raises the quota alert' },
+            ],
+          },
+          {
+            group: 'Account rail — account manager (KR 고객센터)',
+            items: [
+              { name: 'salesOwner', type: 'ref → CRM user', notes: 'the company record’s sales owner — a named person, not a generic hotline' },
+              { name: 'contact', type: 'composite', notes: 'phone · email · working hours, plus a Help centre link' },
+              { name: 'fallback', type: 'rule', notes: 'no sales owner assigned (self-serve signup not yet placed) → the general support block is shown instead' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Home loads as ONE aggregate request; no panel fetches on its own, so the page never renders half-populated.',
+          'Every panel is a link into the owning screen. Nothing on Home mutates a record — the alert actions navigate, they do not resolve the condition in place.',
+          'A panel whose product is not entitled is hidden entirely, not shown empty: an employer without Resume Search never sees a Saved searches box.',
+          'To-do counts and the Applicants screen read the same stage data, so they cannot disagree.',
+          'The alert strip is absent — not empty — when nothing needs action.',
+        ],
+        rules: [
+          'Home owns no entity and no status. Any field a panel needs belongs to the module that owns the record.',
+          'The “Not reviewed” queue is stage = New. No read/unread flag is introduced for this screen.',
+          'Counts are scoped to the ACCOUNT, not to the signed-in user — quota is pooled and the pipeline is shared, so a personal view would misreport the team’s work.',
+          'Role permissions apply: a user without “View applications” sees no to-do queue, and one without Resume Search permissions sees no saved searches — the dashboard never leaks what the role cannot open.',
+          'A match % is never shown as a bare number; it carries its contributing signals, the same rule as Applicants and the jobseeker side.',
+        ],
+        states: [
+          'First run — activated, nothing posted, page still Draft, package not activated',
+          'In flight — jobs Open, candidates waiting, quota burning down',
+          'Job Posting only — Saved searches strip hidden, product offered on the rail',
+          'Quota exhausted — alert raised, the related CTA points at Buy rather than at the blocked action',
+          'No sales owner assigned — account-manager card falls back to general support',
+          'Loading / aggregate request failed — the page shows a single retry, never a grid of empty boxes',
+        ],
+        backend: {
+          endpoints: [
+            'GET /company/dashboard → { alerts[], jobsInProgress[], savedSearches[], todo{ byStage }, account{ page, entitlements[], salesOwner } }',
+          ],
+          integrations: [
+            'Job management (status, deadline, applicant counts)',
+            'Application management (stage counts, waiting days, match)',
+            'Resume management (saved searches + new-match counts)',
+            'Products & packages (entitlements, quota, activation deadline)',
+            'Account management (company page status + completeness, roles)',
+            'CRM (sales owner, pending-payment orders)',
+          ],
+          notes:
+            'One read-only projection assembled server-side. It is a VIEW: no dashboard table, no cached counters that can drift from the records they summarise. Permission filtering happens in this endpoint, so the client never receives a panel the role may not see.',
+        },
+        acceptance: [
+          'A first-run account sees exactly two alerts (publish page, activate package) and both strips render their CTA panel, not an empty table.',
+          'Publishing the company page removes its alert on the next load without any other change.',
+          'The “Not reviewed” count equals the number of New-stage applications across the account’s jobs, and matches the Applicants screen exactly.',
+          'The to-do list is ordered longest-waiting first.',
+          'An account without Resume Search sees no Saved searches strip, and sees Resume Search on the rail with a Buy button.',
+          'A user whose role lacks “View applications” loads Home without a to-do queue and without an application count anywhere on it.',
+          'Quota at or below 20% shows amber on the rail and raises exactly one quota alert.',
+          'No action on Home changes a record; each one navigates to the screen that owns it.',
+        ],
+        openQuestions: [
+          'Does “new CVs since last run” on a saved search require storing lastRunAt per search, or is it computed from the search’s created date until the first run? (Recommendation: store lastRunAt — otherwise the count is wrong for every search after the first visit.)',
+          'Should the job “closing soon” alert fire on deadline alone, or only when unreviewed candidates exist? Specified as the latter, so a fully-processed job closing quietly raises nothing.',
+          'Is the account manager’s direct phone shown to the customer, or only an email + the general hotline? Needs a sales decision before the field is exposed.',
+          'Should Home offer a “what changed since your last visit” marker, and if so does that need a per-user lastSeenAt — the one piece of state Home would have to own?',
+        ],
+      },
+    },
     // 1 ──────────────────────────────────────────────────────────────────────
     {
       name: 'Create job',

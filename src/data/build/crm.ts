@@ -2610,7 +2610,7 @@ export const crm: BuildModule = {
             items: [
               'The row is NOT deleted. Approving removes it from the LIST, not from the store — the record of how a company entered the CRM is the audit trail, and the duplicate check reads it.',
               'The Trạng thái filter therefore offers two options, not three. A filter for a state no row in the list can have is a dead option.',
-              'REJECTION NEEDS NO REASON. Nothing is taken from the rep — the company is free again and they may ask again — so a mandatory sentence would be ceremony. The request simply shows **Từ chối** in the history, and that status is the whole record of it.',
+              'A rejection carries an optional **note to that rep** (per request, not per company). It is not mandatory — the company is free again either way — but it is the only channel telling a refused rep what a better request would look like, and the rep reads it verbatim on the log.',
               'If the ROW itself is bad (the company does not exist, the data is junk), rejecting a request is the wrong tool — admin hides the row instead. Two different problems: one is about a rep’s claim, the other about the data.',
               'The list has NO action button on the row. Clicking the company name opens its detail page, and Xin nhận lives there — one way in, at the point where the rep has actually read the record they are asking for.',
             ],
@@ -2683,7 +2683,7 @@ export const crm: BuildModule = {
               cols: ['Action', 'Effect'],
               rows: [
                 ['Duyệt → tạo hồ sơ', '(1) creates the CRM company · (2) sets the requesting rep as **sales owner** · (3) files the submitted phone + name as **contact #1** · (4) marks the pool row **Đã nhận** and links it to the new Company ID.'],
-                ['Từ chối', '**No reason required.** The pool row returns to **Chưa nhận** and anyone may ask again; the row carries a derived “đã từ chối N lần” so the next approver sees the history.'],
+                ['Từ chối', 'Per request, with an **optional note to that rep** (read on the log). The pool row returns to **Chưa nhận** once no request is left pending, and anyone may ask again; the row carries a derived “đã từ chối N lần” so the next approver sees the history.'],
                 ['Approving one of several competing requests', 'The others on that company turn to Từ chối in the same write. One action, every request resolved.'],
                 ['Resolved requests', '**Stay listed** on Yêu cầu nhận công ty, filterable by Trạng thái (Đang chờ · Đã duyệt · Từ chối). That table is the record of how each company entered the CRM; hiding resolved rows would leave the only copy of it in an audit log nobody opens.'],
                 ['MST on promotion', 'The pool MST is **never copied**. The rep re-enters it on the new company form, where the normal MST rules run (10-digit duplicate check, the three lookup outcomes, the affiliate prompt). This is the single point where an unverified tax code becomes a verified one.'],
@@ -2697,7 +2697,7 @@ export const crm: BuildModule = {
               cols: ['Where', 'What it says'],
               rows: [
                 ['**On the company’s record** (Danh bạ variant)', 'A banner about the viewer’s OWN request: *đang chờ* (grey, with the request ID and date) · *đã được duyệt* (green) · *đã bị từ chối* (rose — “công ty đã trở lại Chưa nhận, nên bạn xin lại được, nhưng hãy bổ sung lý do và bằng chứng rõ hơn”). This is the screen a rep opens when the row is back at Chưa nhận and they wonder why.'],
-                ['**Yêu cầu nhận công ty → Tất cả yêu cầu**', 'The tracking view, defaulting to **Của tôi** (the me/team switch sits in the toolbar). Columns: công ty (linked to its record) · sales xin · ngày · lý do + bằng chứng · phân loại · **trạng thái** with the decided-by/when line. **No action buttons** (deciding happens in Chờ duyệt) and **no ID column** — the request number is an internal handle; company + sales name identifies a row.'],
+                ['**Yêu cầu nhận công ty** — the log', 'Default **Của tôi** (the me/team switch sits in the toolbar). Columns: công ty (linked to its record) · sales xin · ngày · lý do + bằng chứng · phân loại · **trạng thái** with the decided-by/when line. **No action buttons** — deciding happens on the company’s record in Free data.'],
                 ['Status column there', 'Not just the pill: a rejected row adds *“công ty về lại Chưa nhận — xin lại được”*, an approved one *“đã có hồ sơ trong CRM”*, and a contested pending one *“N sales cùng xin”*. The pill alone does not say what to do next.'],
               ],
             },
@@ -2711,23 +2711,61 @@ export const crm: BuildModule = {
             warn: 'OPEN — the console has **no notification bell**, deliberately: “nothing in this console pushes an alert a reader can act on”. A claim decision is the first thing that genuinely does. A rep who submitted a request has no reason to revisit the Free-data screen, so with pull-only surfaces a rejection can sit unseen for weeks. Needs a decision: email the requester on decision, or add the first real in-app notification and drop the no-bell rule. Recommendation: email — it reaches a rep who is not in the console, which is exactly the person being told.',
           },
           {
-            label: 'The approve/reject flow — one queue, grouped BY COMPANY',
-            text: 'The decision is never *“approve request #23941”* — it is *“which of these reps gets this company?”*, and that question can only be answered with the rivals **side by side**. A flat one-row-per-request table scatters them the moment anything else arrives, which is why deciding row-by-row is impossible.\n\nSo **Yêu cầu nhận công ty** carries two views, one per job:',
+            label: 'The approve/reject flow — admin decides on Free data, the log is a separate screen',
+            text: 'Approval lives on **Free data**, because that is where every rep who asked for the same company can be read **side by side** — the decision is never *“approve request #23941”*, it is *“which of these reps gets this company?”*.\n\n**Yêu cầu nhận công ty** is deliberately only a **log**: append-only, no action buttons. It exists because a rejection is otherwise silent — the pool row just returns to Chưa nhận, which looks exactly like a company the rep never asked for. Until a notification exists, the log (default Của tôi) is how a rep learns the outcome.',
             table: {
               cols: ['Step', 'Who', 'Where', 'What they see / do'],
               rows: [
                 ['1 · Xin nhận', 'Sales', 'Free data → company record → **Xin nhận**', 'The request form (mô tả + phân loại + link/tệp). The record warns if others already asked.'],
-                ['2 · Xem hàng đợi', 'Admin', '**Yêu cầu nhận công ty → view “Chờ duyệt”** (default)', '**One LINE per company**, oldest waiting first — the badge counts companies, because that is how many decisions are waiting. The line is the triage: tên công ty · số sales xin (amber “N — chọn 1” on a contest) · bằng chứng tóm tắt (**N link · N 📎 · N ⚠**) · chờ từ ngày nào. At real load (~20 companies) rendering every requester of every company at once is a wall — the admin only ever decides one company at a time.'],
-                ['3 · Quyết định', 'Admin', 'Click the line — it EXPANDS in place', 'One company open at a time. The expansion is the full side-by-side comparison: every requester with lý do · bằng chứng · contact point, radio-pick one → **Phân công ty cho {tên} →** (one write: CRM company + owner + contact #1 + pool removal + rivals → Từ chối), or **Từ chối tất cả**. A receipt / grey panel confirms what happened. “Mở hồ sơ trong Free data →” for deep context — the SAME AssignCard renders on the record, so the two entry points cannot offer different decisions.'],
-                ['4 · Theo dõi', 'Sales', 'Same page → view **“Tất cả yêu cầu”**, default **Của tôi**', 'Request-level tracking, **no action buttons**: status pill + what it means (đã có hồ sơ trong CRM / công ty về lại Chưa nhận — xin lại được) + who decided and when. Plus the banner on the company’s own record.'],
+                ['2 · Xem hàng đợi', 'Admin', '**Free data list**, filter `Trạng thái = Đang chờ duyệt`', 'Pending rows carry the queue signal inline: **Đang chờ duyệt · N sales xin** + tên người xin đầu tiên. The list IS the queue — no separate queue screen to keep in sync with it.'],
+                ['3 · Quyết định', 'Admin', 'Open the company → **tab Owner history** (the banner offers “Duyệt yêu cầu (N) →”)', 'Every requester side by side — lý do · bằng chứng (link/📎/⚠) · contact point — each row with its OWN note field and its own **Duyệt → / Từ chối**. The note travels with the decision and is what that rep reads on the log. Approving any one request ends the contest: rivals still pending are auto-rejected with a note naming the winner (one write: CRM company + owner + contact #1 + pool removal). Rejecting individually leaves the rest pending. The Overview right column stays the ACTIVITY area, as on every company record — claim work does not squat in it.'],
+                ['4 · Theo dõi', 'Sales', '**Yêu cầu nhận công ty** — the log, default **Của tôi**', 'Status pill + what it means (*được chọn — là sales phụ trách* / *công ty về lại Chưa nhận — xin lại được*), who decided and when, and **the admin’s note to this rep, verbatim**. Plus the banner on the company’s own record. NO action buttons here — one place to decide, or two places disagree.'],
               ],
             },
             items: [
-              'ONE place to decide. The tracking view deliberately carries no Duyệt/Từ chối — a second decision surface is a second place for the two to disagree, and row-level approval is the exact thing that made the queue unreviewable.',
-              'The Free data LIST stays company-level reference: a pending row shows “Đang chờ duyệt · N sales xin” so the queue is visible from there too, and opening the company shows the assignment card in full context.',
-              'RECOMMENDED TIE-BREAK, printed under the queue: strongest evidence first, timestamp second — a link that can be opened beats a screenshot, a screenshot beats a bare note. The mockup seeds a 3-way contest where the strongest evidence has the LATEST timestamp, so the rule actually has to be applied.',
-              'A suspiciously short reason renders amber and a request with no evidence renders ⚠, so a weak candidate is visible without opening anything — the collapsed line already says “2 link · 1 ⚠”.',
-              'The mockup seeds the queue at REAL load: 20 companies waiting, 4 of them contested, evidence quality mixed — a two-card mock never shows whether a design survives volume.',
+              'RECOMMENDED TIE-BREAK, printed with the assignment card: strongest evidence first, timestamp second — a link that can be opened beats a screenshot, a screenshot beats a bare note.',
+              'A suspiciously short reason renders amber and a request with no evidence renders ⚠, so a weak candidate is visible without opening anything.',
+              'The mockup seeds the queue at REAL load — 20 companies waiting, 4 contested, evidence mixed — because a two-row mock never shows whether a design survives volume.',
+              'OPEN: a decision notification (recommended: email the requester) would make the log a backstop instead of the primary channel. Accepted for now per the client — the log covers it until then.',
+            ],
+          },
+          {
+            label: 'Worked example — a released company carries all three at once',
+            text: 'The Owner history tab of a Free-data record can hold **three** things at the same time, and one company in the mockup shows all of them: **Công ty TNHH Logistics Đại Hưng** (Free data → Đang chờ duyệt).\n\nIts story: a customer since 03/2025 → handed back to the pool on 15/07/2026 → one rep refused right after → two reps waiting now. That is the case the layout has to survive, because a released company is the one pool row that arrives with a past.\n\nOrder is **decision first, history after**: a pending request is the only thing here that needs acting on today, and burying the buttons under a timeline is how a queue goes stale.',
+            table: {
+              cols: ['#', 'Block', 'Why it is there'],
+              rows: [
+                ['1', '**Assignment card** — FIRST. 2 sales cùng xin, each row with its own note field + Duyệt/Từ chối', 'The only thing on this tab that needs acting on today, so it gets the top. The admin still sees, just below, that this company was given up once already and that one of the two applicants is the rep who owned it in 2025.'],
+                ['2', '**Owner history** — one timeline, release included: *↩ Trả về bể dữ liệu — Nguyễn Thị Lan · 15/07/2026* → Nguyễn Thị Lan 11/2025–15/07/2026 → Phạm Quang Huy 03/2025–11/2025', 'A release IS an ownership event — the only one nobody picks up — so it is an entry in the chain (amber dot, single date, no range) rather than a banner beside it. A banner made the reader stitch two orderings together. The chain renders **closed**: no “Current” badge, header *“chuỗi đã đóng — hiện không ai phụ trách”*, because badging the rep who handed it back would name them as the person to call. Detected from the data — the newest entry being a release, or having a real end date — not from a flag.'],
+                ['3', '**Lịch sử yêu cầu nhận** — 3 requests, newest first', 'Includes the refusal from 21/07 with its note (“mới trả về 5 ngày… chờ khách đăng tin rồi xin lại”), so the admin sees the precedent they set three weeks ago while deciding the same company again.'],
+              ],
+            },
+            items: [
+              'The tab carries NO heading of its own — no “Owner history — chưa có sales phụ trách”, no paragraph explaining the chain. The blocks are self-describing, and prose above them just pushed the decision below the fold.',
+              'Reading order is decision → timeline → request log: act on today’s thing, then look backwards exactly once.',
+              'The **Owner history tab carries an AMBER count** of pending requests (Owner history · 2) — the tab is where the decision is made, so the badge belongs on it. Amber, not the neutral grey used by Contacts/Users: those counts are an inventory, this one is people waiting. Zero renders NOTHING — a badge that can read “0” trains the reader to ignore it.',
+              'A CLOSED chain is detected from the data (the newest tenure has a real end date), not from a flag — so any released company renders correctly without anyone remembering to set something.',
+              'Whoever is approved next becomes the NEXT link in that same chain, not the start of a new one. The company keeps its Company ID and its record through the round trip.',
+            ],
+          },
+          {
+            label: 'What the log stores — the claim request IS the record',
+            text: 'There is no separate “log table”. Every yêu cầu xin nhận is **one append-only row** that carries the whole story: who asked, why, with what evidence, and — written onto the same row at decision time — what was decided, by whom, when. **Ai được chọn** is not a field anywhere: it is the request whose status is *Đã duyệt*, and its sales is the company’s first owner.',
+            table: {
+              cols: ['Question the log answers', 'Where it is stored', 'Where it is read'],
+              rows: [
+                ['Ai xin?', '`requestedBy · requestedAt` on the claim row', 'Log screen · assignment card · Lịch sử yêu cầu nhận on the pool record'],
+                ['Lý do xin?', '`reason` (the description with the Contact Point template) + `freeDataKind`', 'Same three places — kept verbatim, never summarised, so the next approver reads what the rep actually wrote'],
+                ['Bằng chứng?', '`evidenceUrl` / `evidenceFileId` — the file itself is stored, not just its name', 'Same. A link stays openable years later; a deleted attachment would turn the log into a claim about evidence rather than evidence'],
+                ['Ai được chọn?', 'The row whose `status = approved`, plus `resultCompanyId` — the CRM company the approval created', 'The log (pill + “được chọn — là sales phụ trách”) · the CRM record’s first owner-history tenure: “Nhận từ Free data — duyệt bởi {admin}”'],
+                ['Ai bị từ chối, khi nào, bởi ai?', '`status = rejected` + `decidedBy · decidedAt` on each losing row', 'The log · “đã từ chối N lần” on the pool row (derived by counting these)'],
+                ['Note cho từng sales?', '`note` on each request — written at decision time, one sentence PER REP, not per company: the winner and each loser get different sentences. On an auto-rejection (a rival was approved) the system fills “Đã phân công ty cho {winner}” unless the admin wrote one.', 'The rep reads their own on the log (Của tôi) and in Lịch sử yêu cầu nhận. It is the only channel that tells a refused rep what a better request would look like.'],
+              ],
+            },
+            items: [
+              'APPEND-ONLY: the only write a decision makes to a request row is `status + decidedBy + decidedAt` (+ `resultCompanyId` on the winner). No edit, no delete — a rep cannot reword a reason after the fact, and an admin cannot tidy away a refusal.',
+              'The log survives everything downstream: the company leaving the pool, the CRM record changing owners, even the company being archived. It is the permanent answer to “công ty này vào CRM bằng đường nào, và ai từng muốn nó”.',
+              'Every decision also writes an audit-log entry (who · when · action), but the audit log is not where anyone reads this — the claim rows are, on the three surfaces above.',
             ],
           },
           {
@@ -2826,7 +2864,9 @@ export const crm: BuildModule = {
             { name: '(constraint)', type: '', notes: 'evidenceUrl OR evidenceFileId must be present' },
             { name: 'requestCountOnCompany', type: 'int (derived)', notes: 'the Số YC column / the contest signal' },
             { name: 'status', type: 'enum', required: true, notes: 'pending | approved | rejected' },
-            { name: 'decidedBy / decidedAt', type: '', notes: 'no reason field — a rejection frees the company again, so there is nothing to justify' },
+            { name: 'decidedBy / decidedAt', type: 'uuid? / timestamp?', notes: 'filled on decision — the ONLY write a decision makes to the row, besides status and resultCompanyId. No reason field: a rejection frees the company again, so there is nothing to justify' },
+            { name: 'resultCompanyId', type: 'uuid?', notes: 'on the APPROVED row only: the CRM company the approval created. “Ai được chọn” is this row; its requestedBy is the first owner' },
+            { name: 'note', type: 'string?', notes: 'the admin’s note to THIS rep, written at decision time. Optional; auto-filled “Đã phân công ty cho {winner}” on an auto-rejection. Read by the rep on the log' },
           ],
           endpoints: [
             'GET /admin/crm/company-pool?q=&state= — searchable by sales, read-only',

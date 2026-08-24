@@ -10,8 +10,9 @@ import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJ
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
 import { CLAIM_REQS } from '@/pages/admin/data/directory'
+import { releaseChain } from '@/pages/admin/data/directory'
 import type { DirRow } from '@/pages/admin/data/directory'
-import { ClaimChain, pendingClaims } from '@/pages/admin/screens/directory/assign'
+import { AssignCard, ClaimChain, MyClaimNotice, pendingClaims } from '@/pages/admin/screens/directory/assign'
 import { tierOf } from '@/pages/admin/data/membership'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { MD_DOMAINS } from '@/pages/admin/data/system'
@@ -38,7 +39,7 @@ import { Table } from '@/pages/admin/ui/table'
    the first time a field is added. What the pool variant does is SUBTRACT — one tab,
    no customer pills, no writes — because a company nobody owns has no pipeline, no
    quota, no contacts and no activity to show. */
-export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, poolAssign }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void; /** admin's assign-to-a-sales block, injected by the Danh bạ screen so this page stays unaware of claims */ poolAssign?: React.ReactNode }) {
+export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void }) {
   const isPool = Boolean(pool)
   const goTo = useContext(ScreenNavCtx)
   const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
@@ -103,7 +104,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, p
      POs and an owner chain behind it — so the layouts must match, or the same
      company changes shape when it changes list. A fresh import simply shows the
      tabs' normal empty states. */
-  const tabs: { key: CoTab; label: string; count?: number }[] = [
+  const tabs: { key: CoTab; label: string; count?: number; alert?: boolean }[] = [
     { key: 'Overview', label: 'Overview' },
     { key: 'Contacts', label: 'Contacts', count: isPool ? undefined : companyContacts(c).length },
     { key: 'Users', label: 'Users', count: isPool ? undefined : team.length },
@@ -118,7 +119,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, p
     // ("who held this when, and who moved it"), not something read while working
     // the account. In the Overview column it cost a card's height on every visit
     // to answer a question asked a few times a year.
-    { key: 'Owner history', label: 'Owner history' },
+    /* The pending-claim count lives on this tab because this is where the decision
+       is made. Amber, not grey: it is people waiting, not an inventory. Zero renders
+       nothing — a badge that can read "0" trains the reader to ignore it. */
+    { key: 'Owner history', label: 'Owner history', count: pendingClaims(c.name).length || undefined, alert: true },
   ]
 
 
@@ -141,9 +145,18 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, p
       {isPool ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-[11.5px]">
           <span className="text-amber-900">Đây là công ty trong <b className="font-medium">Danh bạ doanh nghiệp</b> — <b className="font-medium">chưa phải khách hàng</b>, chưa có sales phụ trách, không đếm vào bất kỳ số nào của CRM. Chỉ đọc.</span>
-          {onClaim && (
-            <button onClick={onClaim} className="ml-auto shrink-0 rounded-md border border-brand/40 bg-brand-soft px-2.5 py-1 text-[11px] font-semibold text-brand hover:border-brand">Xin nhận</button>
-          )}
+          <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            {/* The admin's way in: the decision UI lives on the Owner history tab, and
+                a banner button beats knowing that. */}
+            {pendingClaims(c.name).length > 0 && (
+              <button onClick={() => setTab('Owner history')} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">
+                Duyệt yêu cầu ({pendingClaims(c.name).length}) →
+              </button>
+            )}
+            {onClaim && (
+              <button onClick={onClaim} className="rounded-md border border-brand/40 bg-brand-soft px-2.5 py-1 text-[11px] font-semibold text-brand hover:border-brand">Xin nhận</button>
+            )}
+          </span>
         </div>
       ) : ro && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
@@ -527,10 +540,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, p
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
           {isPool ? (
-            /* Just the assignment. No activity feed (an activity is something a sales
-               owner did, and this company has no owner) and no explainer cards — the
-               empty tabs and the ⚠ on the MST already say what this record is. */
-            <div className="space-y-3">{poolAssign}</div>
+            /* The right column is the ACTIVITY area on every company record, so on a
+               pool record it says the truthful empty state of that area — it does not
+               get repurposed for claim work. The requests and the assignment live on
+               the Owner history tab, reachable from the banner above. */
+            <div className="space-y-3">
+              <MyClaimNotice co={c.name} />
+              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-8 text-center text-[12px] leading-relaxed text-muted">
+                Chưa có hoạt động nào — activity bắt đầu khi công ty có sales phụ trách.
+              </p>
+            </div>
           ) : (
             <CompanyActivities c={c} />
           )}
@@ -543,33 +562,26 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, p
           left with a date at the far right and nothing between them. */}
       {tab === 'Owner history' && (
         <div className="max-w-[620px]">
-          <div className="mb-2">
-            <p className="text-[13px] font-semibold text-ink">Owner history <span className="font-normal text-muted">— {isPool ? 'chưa có sales phụ trách' : 'one current owner, and every handover before it'}</span></p>
-            <p className="text-[11px] text-faint">
-              {isPool
-                ? 'Chuỗi chủ sở hữu bắt đầu khi công ty được nhận về CRM. Trước đó, các sự kiện sở hữu là những yêu cầu xin nhận bên dưới — ai xin, ai bị từ chối, ai được phân. Công ty trả về từ CRM giữ nguyên chuỗi chủ cũ.'
-                : 'Append-only. Quotations, sales targets and commission all reference who owned the account at the time, so a past tenure is never edited to tidy it up.'}
-            </p>
-          </div>
+          {/* Decision FIRST. A pending request is the only thing on this tab that
+              needs acting on today — history can wait until after it is answered,
+              and burying the buttons under a timeline is how a queue goes stale. */}
           <div className="space-y-3">
-            {/* The tenure chain — on a promoted company its FIRST entry is the
-                approved claim ("Nhận từ Free data — duyệt bởi …"), and that one line
-                is all of the claim story that belongs here. The request-by-request
-                detail lives on Yêu cầu nhận công ty; repeating it on every promoted
-                record would be the same list maintained twice. */}
+            {isPool && pendingClaims(c.name).length > 0 && <AssignCard reqs={pendingClaims(c.name)} />}
+            {/* Then the ownership timeline. On a released company the release is the
+                newest EVENT in it (see releaseChain) rather than a banner beside it,
+                so the reader follows one ordering instead of stitching two. */}
             {!isPool && <OwnerHistory c={c} />}
+            {/* A promoted company shows only the tenure that the approved claim
+                created; the request-by-request detail is the log's job. */}
             {!isPool && c.fromPool && (
               <p className="text-[11px] leading-relaxed text-faint">
-                Chi tiết các yêu cầu xin nhận (ai xin, ai bị từ chối) xem ở{' '}
+                Chi tiết các yêu cầu xin nhận (ai xin, ai bị từ chối, note của admin) xem ở{' '}
                 <button onClick={() => goTo('admin-claim-requests')} className="font-medium text-brand hover:underline">Yêu cầu nhận công ty →</button>
               </p>
             )}
-            {/* On the POOL record the chain stays — there it is not a history display
-                but decision context: the admin assigns on this page, and a
-                re-submitted weak request has to be visible next to the fresh one.
-                It is also the only ownership story a row with no owner has. */}
+            {isPool && pool!.released && <OwnerHistory c={c} tenures={releaseChain(pool!)} />}
             {isPool && <ClaimChain co={c.name} />}
-            {isPool && pendingClaims(c.name).length === 0 && decidedNone(c.name) && (
+            {isPool && !pool!.released && pendingClaims(c.name).length === 0 && decidedNone(c.name) && (
               <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này.</p>
             )}
           </div>

@@ -19,127 +19,127 @@ import type { ClaimReq } from '@/pages/admin/data/directory'
     tie-break of last resort, so it has to be readable in order */
 export const pendingClaims = (co: string) => CLAIM_REQS.filter((r) => r.co === co && r.status === 'pending')
 
-function Requester({ r, chosen, onPick }: { r: ClaimReq; chosen: boolean; onPick: () => void }) {
+/* ── The assignment card: one decision PER REQUEST ────────────────────────────
+   Each requester row carries its own note field and its own Duyệt / Từ chối —
+   because the admin is answering each rep individually, and the note is the only
+   channel that tells a refused rep what a better request would look like. The
+   winner and each loser get different sentences, and each rep reads their own on
+   the Yêu cầu nhận công ty log.
+
+   Approving any ONE request still ends the whole contest — the company has one
+   owner — so the rivals still pending at that moment are auto-rejected with a note
+   naming the winner. Rejecting individually leaves the rest pending. */
+
+type RowDecision = { status: 'approved' | 'rejected'; note: string }
+
+function RequesterRow({ r, decided, note, onNote, onApprove, onReject }: {
+  r: ClaimReq
+  decided?: RowDecision
+  note: string
+  onNote: (v: string) => void
+  onApprove: () => void
+  onReject: () => void
+}) {
   const thin = r.reason.trim().length < 20
   return (
-    <button
-      onClick={onPick}
-      className={cn('flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left', chosen ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand/40')}
-    >
-      <span className={cn('mt-[3px] grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border-2', chosen ? 'border-brand' : 'border-line')}>
-        {chosen && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className={cn('text-[12.5px] font-semibold', chosen ? 'text-brand' : 'text-ink')}>{r.by}</span>
-          <span className="font-mono text-[10.5px] text-faint">#{r.id}</span>
-          <span className="text-[10.5px] tabular-nums text-faint">{r.when}</span>
-        </span>
-        {/* The three things being compared, in the order they decide it: the reason,
-            the evidence, and whether this rep actually has a way in. */}
-        <span className={cn('mt-1 block text-[11.5px] leading-snug', thin ? 'text-amber-700' : 'text-muted')}>{r.reason}</span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px]">
-          {r.link
-            ? <span className="min-w-0 max-w-full truncate font-mono text-brand underline" title={r.link}>{r.link}</span>
-            : r.file
-              ? <span className="text-muted">📎 {r.file}</span>
-              : <span className="font-medium text-amber-700">⚠ không có bằng chứng</span>}
-          <span className="text-faint">· {r.person}</span>
-          <span className="text-faint">· {r.phone}{r.email ? ` · ${r.email}` : ''}</span>
-        </span>
-        <span className="mt-1 block truncate text-[10.5px] text-faint">{r.kind}</span>
-      </span>
-    </button>
+    <div className={cn('rounded-lg border px-3 py-2.5', decided ? (decided.status === 'approved' ? 'border-emerald-300 bg-emerald-50/50' : 'border-line bg-canvas/50') : 'border-line bg-surface')}>
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-[12.5px] font-semibold text-ink">{r.by}</span>
+        <span className="font-mono text-[10.5px] text-faint">#{r.id}</span>
+        <span className="text-[10.5px] tabular-nums text-faint">{r.when}</span>
+        {decided && <Pill tone={decided.status === 'approved' ? 'active' : 'expired'}>{decided.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}</Pill>}
+      </div>
+      {/* The three things being compared, in the order they decide it: the reason,
+          the evidence, and whether this rep actually has a way in. */}
+      <p className={cn('mt-1 text-[11.5px] leading-snug', thin ? 'text-amber-700' : 'text-muted')}>{r.reason}</p>
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px]">
+        {r.link
+          ? <span className="min-w-0 max-w-full truncate font-mono text-brand underline" title={r.link}>{r.link}</span>
+          : r.file
+            ? <span className="text-muted">📎 {r.file}</span>
+            : <span className="font-medium text-amber-700">⚠ không có bằng chứng</span>}
+        <span className="text-faint">· {r.person}</span>
+        <span className="text-faint">· {r.phone}{r.email ? ` · ${r.email}` : ''}</span>
+      </p>
+      {decided ? (
+        /* After deciding this row: the note the rep will read, verbatim. */
+        decided.note
+          ? <p className="mt-1.5 rounded-md bg-surface px-2 py-1.5 text-[11px] leading-relaxed text-muted">Note gửi {r.by}: “{decided.note}”</p>
+          : <p className="mt-1.5 text-[10.5px] text-faint">Không kèm note.</p>
+      ) : (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {/* The note travels WITH the decision — one input, two buttons, so a note
+              cannot be written and then attached to nothing. */}
+          <input
+            value={note}
+            onChange={(e) => onNote(e.target.value)}
+            placeholder={`Note cho ${r.by} — đọc được ở Yêu cầu nhận công ty (không bắt buộc)`}
+            className="min-w-[220px] flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px] text-ink outline-none placeholder:text-faint focus:border-brand"
+          />
+          <button onClick={onReject} className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-muted hover:border-rose-300 hover:text-rose-700">Từ chối</button>
+          <button onClick={onApprove} className="rounded-md bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90">Duyệt →</button>
+        </div>
+      )}
+    </div>
   )
 }
 
-export function AssignCard({ co, reqs }: { co: string; reqs: ClaimReq[] }) {
-  const [pick, setPick] = useState<number | null>(reqs.length === 1 ? reqs[0].id : null)
-  const chosen = reqs.find((r) => r.id === pick)
+export function AssignCard({ reqs }: { reqs: ClaimReq[] }) {
   const contest = reqs.length > 1
-  /* The card has three states, and the mockup plays all of them: deciding →
-     approved / rejected. The AFTER states exist because clicking a button that
-     rewrites three records and closes a page must show what it did — silence after
-     an action that big reads as "did that work?". */
-  const [done, setDone] = useState<null | { kind: 'approved'; rep: ClaimReq } | { kind: 'rejected' }>(null)
+  const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
+  const [notes, setNotes] = useState<Record<number, string>>({})
+  const winner = reqs.find((r) => decisions[r.id]?.status === 'approved')
+  const allRejected = reqs.length > 0 && reqs.every((r) => decisions[r.id]?.status === 'rejected')
 
-  /* ── after: approved ── The company is no longer pool data, so this panel is the
-     last thing this page shows — a receipt, then the pointer to where the work
-     continues (the new CRM record, owned by the chosen rep). */
-  if (done?.kind === 'approved') {
-    const rep = done.rep
-    return (
-      <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 p-4">
-        <p className="text-[13px] font-bold text-emerald-900">✓ Đã phân công ty cho {rep.by}</p>
-        <ul className="mt-2 space-y-1 text-[11.5px] leading-relaxed text-emerald-900/90">
-          <li>· Hồ sơ CRM đã được tạo — <b>{rep.by}</b> là sales phụ trách.</li>
-          <li>· <b>{rep.person}</b> ({rep.phone}{rep.email ? ` · ${rep.email}` : ''}) là người liên hệ đầu tiên.</li>
-          <li>· Công ty <b>rời khỏi danh bạ</b> — không còn xin được nữa.</li>
-          {contest && <li>· {reqs.length - 1} yêu cầu còn lại chuyển sang <b>Từ chối</b> ({reqs.filter((r) => r.id !== rep.id).map((r) => r.by).join(', ')}).</li>}
-        </ul>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <button className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Mở hồ sơ CRM →</button>
-          <span className="text-[10.5px] text-emerald-900/70">Ghi vào audit log và Yêu cầu nhận công ty kèm tên bạn và thời điểm.</span>
-        </div>
-      </div>
-    )
-  }
-
-  /* ── after: rejected ── The company survives this, so the panel says what is now
-     true of it — back in the pool, claimable by anyone — and where the refusals
-     went (Lịch sử duyệt, right below). */
-  if (done?.kind === 'rejected') {
-    return (
-      <div className="rounded-xl border border-line bg-canvas/70 p-4">
-        <p className="text-[13px] font-bold text-ink">Đã từ chối {reqs.length > 1 ? `cả ${reqs.length} yêu cầu` : 'yêu cầu'}</p>
-        <ul className="mt-2 space-y-1 text-[11.5px] leading-relaxed text-muted">
-          <li>· Công ty trở lại <b className="text-ink/80">Chưa nhận</b> — ai cũng xin lại được, kể cả {reqs.length > 1 ? 'những người' : 'người'} vừa bị từ chối.</li>
-          <li>· {reqs.length > 1 ? 'Các yêu cầu' : 'Yêu cầu'} chuyển vào <b className="text-ink/80">Lịch sử duyệt</b> bên dưới, kèm tên bạn và thời điểm.</li>
-          <li>· Dòng trong danh bạ hiện thêm <b className="text-ink/80">“đã từ chối {reqs.length} lần”</b> để lần duyệt sau nhìn thấy.</li>
-        </ul>
-      </div>
-    )
+  const reject = (id: number) => setDecisions((d) => ({ ...d, [id]: { status: 'rejected', note: (notes[id] ?? '').trim() } }))
+  /* One approval ends the contest: the rivals still pending get auto-rejected with
+     a note naming the winner, so every rep reads a sentence and not a bare status. */
+  const approve = (id: number) => {
+    const win = reqs.find((r) => r.id === id)!
+    setDecisions((d) => {
+      const next = { ...d, [id]: { status: 'approved' as const, note: (notes[id] ?? '').trim() } }
+      for (const r of reqs) if (r.id !== id && next[r.id]?.status !== 'rejected') {
+        next[r.id] = { status: 'rejected', note: (notes[r.id] ?? '').trim() || `Đã phân công ty cho ${win.by}.` }
+      }
+      return next
+    })
   }
 
   return (
     <div className="rounded-xl border border-line bg-surface">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-3.5 py-2.5">
-        <p className="text-[13px] font-semibold text-ink">{co}</p>
-        {contest
-          ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-800">{reqs.length} sales cùng xin — chọn 1</span>
-          : <span className="text-[10.5px] text-faint">1 sales xin</span>}
+        {/* The card only ever renders ON the company's own record, where the header
+            already names the company — so the title says what the card IS. */}
+        <p className="text-[13px] font-semibold text-ink">Yêu cầu nhận công ty</p>
+        {/* The header reports the card's state. After a decision it is the receipt —
+            the outcome is a fact worth keeping; the how-it-works prose that used to
+            sit in a footer is not. */}
+        {winner
+          ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-bold text-emerald-800">Đã phân cho {winner.by} · công ty rời danh bạ</span>
+          : allRejected
+            ? <span className="rounded-full bg-canvas px-2 py-0.5 text-[10.5px] font-bold text-muted">Đã từ chối tất cả — công ty về Chưa nhận</span>
+            : contest
+              ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-800">{reqs.length} sales cùng xin — duyệt 1</span>
+              : <span className="text-[10.5px] text-faint">1 sales xin</span>}
       </div>
 
       <div className="space-y-1.5 p-3">
-        {reqs.map((r) => <Requester key={r.id} r={r} chosen={pick === r.id} onPick={() => setPick(r.id)} />)}
+        {reqs.map((r) => (
+          <RequesterRow
+            key={r.id}
+            r={r}
+            decided={decisions[r.id]}
+            note={notes[r.id] ?? ''}
+            onNote={(v) => setNotes((n) => ({ ...n, [r.id]: v }))}
+            onApprove={() => approve(r.id)}
+            onReject={() => reject(r.id)}
+          />
+        ))}
       </div>
 
-      {/* Two actions and nothing else. No reason field: a rejection here does not
-          need justifying — it returns the company to the pool for anyone to ask
-          again, so nothing is taken away from the rep that a sentence would soften. */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-line-soft bg-canvas/40 px-3.5 py-3">
-        <button
-          disabled={!chosen}
-          title={chosen ? undefined : 'Chọn một sales ở trên trước'}
-          onClick={() => chosen && setDone({ kind: 'approved', rep: chosen })}
-          className={cn('rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white', chosen ? 'bg-brand hover:opacity-90' : 'cursor-not-allowed bg-line')}
-        >
-          {chosen ? `Phân công ty cho ${chosen.by} →` : 'Chọn 1 sales để phân công'}
-        </button>
-        <button onClick={() => setDone({ kind: 'rejected' })} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-rose-300 hover:text-rose-700">
-          Từ chối {contest ? 'tất cả' : ''}
-        </button>
-        {/* The consequence of each action, where the action is. */}
-        <span className="w-full text-[10.5px] leading-relaxed text-faint">
-          {chosen
-            ? <>Tạo hồ sơ CRM, gán <b className="text-muted">{chosen.by}</b> làm sales phụ trách, ghi <b className="text-muted">{chosen.person}</b> làm người liên hệ đầu tiên, và đưa công ty ra khỏi danh bạ.{contest && <> {reqs.length - 1} yêu cầu còn lại tự động chuyển sang <b className="text-muted">Từ chối</b>.</>}</>
-            : <>Chọn 1 sales ở trên để phân công ty. <b className="text-muted">Từ chối</b> thì công ty <b className="text-muted">quay lại “Chưa nhận”</b> — ai cũng xin lại được, kể cả người vừa bị từ chối.</>}
-        </span>
-      </div>
     </div>
   )
 }
-
 
 /* ── Lịch sử yêu cầu nhận — every request on this company, newest first ───────
    Rendered inside the record's OWNER HISTORY tab, because that is what these are:
@@ -186,6 +186,7 @@ export function ClaimChain({ co }: { co: string }) {
                     {r.status === 'approved' && <> — {r.by} trở thành sales phụ trách</>}
                   </span>
                 )}
+              {r.note && <span className="mt-0.5 block text-[10.5px] leading-snug text-muted">Note: “{r.note}”</span>}
             </span>
           </li>
         ))}

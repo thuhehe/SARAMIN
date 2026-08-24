@@ -10,7 +10,13 @@ import type { CoStatus, Company } from '@/pages/admin/data/companies'
    who moved it (a Sales lead, never the old/new owner) and why. Deterministic
    from the company so a record reads the same every render. Mirrors the CRM
    requirement "Sales owner — one current owner, and a full reassignment history". */
-type CoOwnerTenure = { owner: string; from: string; to: string; by: string; reason: string; created?: boolean }
+export type CoOwnerTenure = {
+  owner: string; from: string; to: string; by: string; reason: string; created?: boolean
+  /** This entry is the RELEASE back to the Free-data pool, not a tenure. It is an
+      ownership event like any handover — the only difference is that nobody picks it
+      up — so it belongs in the timeline rather than in a banner beside it. */
+  released?: boolean
+}
 /* Wider than the three reps who currently own companies: a history that goes back
    years contains people who have since left, and a pool of three makes a six-step
    chain visibly cycle A → B → A → B. */

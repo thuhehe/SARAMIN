@@ -2,7 +2,11 @@
 import { cn } from '@/lib/utils'
 import type { CoTab } from '@/pages/admin/data/companyRecord'
 
-export function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
+/* `alert` makes a count AMBER instead of neutral grey. The distinction is what the
+   number means: "Contacts 6" is an inventory, "Owner history 2" is two sales waiting
+   on a decision. Same badge slot, two different jobs — and a queue that looks like an
+   inventory is a queue nobody clears. */
+export function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label: string; count?: number; alert?: boolean }[]; active: CoTab; onSelect: (t: CoTab) => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
       {tabs.map((t) => (
@@ -15,7 +19,19 @@ export function CoTabBar({ tabs, active, onSelect }: { tabs: { key: CoTab; label
           )}
         >
           {t.label}
-          {t.count != null && <span className={cn('rounded-full px-1.5 text-[10px]', active === t.key ? 'bg-brand text-white' : 'bg-canvas text-faint')}>{t.count}</span>}
+          {t.count != null && (
+            <span
+              title={t.alert ? `${t.count} yêu cầu xin nhận đang chờ duyệt` : undefined}
+              className={cn(
+                'rounded-full px-1.5 text-[10px]',
+                t.alert
+                  ? 'bg-amber-100 font-bold text-amber-800'
+                  : active === t.key ? 'bg-brand text-white' : 'bg-canvas text-faint',
+              )}
+            >
+              {t.count}
+            </span>
+          )}
         </button>
       ))}
     </div>

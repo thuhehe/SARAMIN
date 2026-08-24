@@ -9,7 +9,6 @@ import { ME } from '@/pages/admin/data/salesOrg'
 import { FLabel, LField } from '@/pages/admin/ui/fields'
 import { JobGroup } from '@/pages/admin/ui/form'
 import { CompanyDetail } from '@/pages/admin/screens/companies/detail'
-import { AssignCard, MyClaimNotice, pendingClaims } from '@/pages/admin/screens/directory/assign'
 import { FilterBar, FilterRow, ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
 
@@ -171,16 +170,6 @@ export function AdminCompanyDirectory() {
           pool={shown}
           onBack={() => { setPeek(null); if (handed) goTo('admin-company-directory') }}
           onClaim={() => { setClaim(shown); }}
-          /* Admin's half of the flow, on the company's own record: who asked for it
-             and which of them gets it. There is no separate approval screen — see
-             the requirement. */
-          poolAssign={<>
-            {/* What happened to MY request, on the record where I would look for it.
-                A rejection puts the row back to Chưa nhận, which is indistinguishable
-                from never having asked — so it has to be said here. */}
-            <MyClaimNotice co={shown.name} />
-            {pendingClaims(shown.name).length > 0 && <AssignCard co={shown.name} reqs={pendingClaims(shown.name)} />}
-          </>}
         />
         {claim && <ClaimModal row={claim} onClose={() => setClaim(null)} />}
       </>

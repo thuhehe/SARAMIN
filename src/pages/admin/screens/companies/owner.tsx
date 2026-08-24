@@ -4,43 +4,56 @@ import { RO_HINT, useReadOnly } from '@/pages/admin/ctx'
 import { CO_STATUS } from '@/pages/admin/data/companies'
 import type { CoStatus, Company } from '@/pages/admin/data/companies'
 import { SALES_STAGES, companyOwnerHistory } from '@/pages/admin/data/companyOwner'
+import type { CoOwnerTenure } from '@/pages/admin/data/companyOwner'
 import { DetailCard } from '@/pages/admin/ui/fields'
 import { Pill } from '@/pages/admin/ui/status'
 
-export function OwnerHistory({ c }: { c: Company }) {
-  const hist = companyOwnerHistory(c)
+/* `tenures` overrides the derived chain. It exists for a company that has been
+   RELEASED back to the Free-data pool: the row is pool data now, but the tenures it
+   accumulated while it was a customer are real history and must not disappear
+   because the record changed lists. */
+export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenure[] }) {
+  const hist = tenures ?? companyOwnerHistory(c)
   /* The header counts HANDOVERS, not owners — a company always has exactly one
      owner, so "N owners" would read as if it could hold several at once. With a
      long chain the number is the thing a lead actually wants ("this account has
      moved five times"), which is why it is worth stating at all. */
-  const moves = hist.filter((t) => !t.created).length
+  const moves = hist.filter((t) => !t.created && !t.released).length
+  /* A CLOSED chain: the newest tenure has a real end date, which happens when the
+     company was released back to the Free-data pool. Nobody owns it now, so the top
+     entry must not be badged "Current" — that would name a rep who handed it back
+     as the person to call. */
+  const closed = hist.length > 0 && (hist[0].released || hist[0].to !== 'now')
   return (
     <DetailCard
       title="Owner history"
-      action={<span className="text-[11px] text-faint">{moves === 0 ? 'chưa chuyển giao lần nào' : `${moves} lần chuyển giao`}</span>}
+      action={<span className="text-[11px] text-faint">{closed ? 'chuỗi đã đóng — hiện không ai phụ trách' : moves === 0 ? 'chưa chuyển giao lần nào' : `${moves} lần chuyển giao`}</span>}
     >
       <ol className="space-y-2.5">
         {hist.map((t, i) => (
           <li key={i} className="relative pl-4">
-            <span className={cn('absolute left-0 top-[5px] h-2 w-2 rounded-full', i === 0 ? 'bg-brand' : 'bg-line')} />
+            {/* The release is an ownership EVENT, not a tenure — amber dot, no date
+                range, because nothing began at that moment. */}
+            <span className={cn('absolute left-0 top-[5px] h-2 w-2 rounded-full', t.released ? 'bg-amber-500' : i === 0 ? 'bg-brand' : 'bg-line')} />
             {i < hist.length - 1 && <span className="absolute bottom-[-10px] left-[3px] top-4 w-px bg-line-soft" />}
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[12.5px] font-medium text-ink">{t.owner}</span>
-              {i === 0
-                ? <Pill tone="active">Current</Pill>
-                : <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{t.from} – {t.to}</span>}
+              <span className={cn('truncate text-[12.5px] font-medium', t.released ? 'text-amber-800' : 'text-ink')}>{t.owner}</span>
+              {t.released
+                ? <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{t.from}</span>
+                : i === 0 && !closed
+                  ? <Pill tone="active">Current</Pill>
+                  : <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{t.from} – {t.to}</span>}
             </div>
             <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
-              {i === 0 && <span className="tabular-nums text-muted">{t.from} – now · </span>}
-              {t.created ? (c.fromPool ? <span className="text-ink/70">Nhận từ Free data — duyệt bởi {t.by}</span> : 'Created the lead') : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
+              {!t.released && i === 0 && !closed && <span className="tabular-nums text-muted">{t.from} – now · </span>}
+              {t.released
+                ? <span className="text-amber-800/80">↩ Trả về bể dữ liệu — công ty rời CRM, chờ sales khác nhận</span>
+                : t.created ? (c.fromPool ? <span className="text-ink/70">Nhận từ Free data — duyệt bởi {t.by}</span> : 'Created the lead') : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
               {' · '}{t.reason}
             </p>
           </li>
         ))}
       </ol>
-      <p className="mt-2 border-t border-line-soft pt-2 text-[11px] leading-relaxed text-faint">
-        Every reassignment is logged with <b className="text-ink/70">who moved it and why</b> — the record is append-only, never overwritten. Changing owner does not touch contacts, deals or the customer relationship.
-      </p>
     </DetailCard>
   )
 }

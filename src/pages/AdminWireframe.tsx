@@ -244,11 +244,10 @@ const NAV_GROUPS: NavGroup[] = [
       // out of every CRM count; where the nav puts them and where the data lives are
       // different questions — see Danh bạ doanh nghiệp → "Two stores, not one flag".)
       { label: 'Free data', specId: 'admin-company-directory' },
-      // Two views, two jobs: CHỜ DUYỆT is the admin's decision queue, grouped BY
-      // COMPANY (the decision is "công ty này về tay ai", so the rivals must stand
-      // side by side — a flat request table scatters them); TẤT CẢ YÊU CẦU is
-      // request-level tracking, default Của tôi, with no action buttons — it exists
-      // because a rejection is otherwise silent for the rep who asked.
+      // The LOG of every claim request — append-only, no action buttons. Approval
+      // happens on Free data (the company's record shows all rivals side by side);
+      // this page exists because a rejection is otherwise silent for the rep who
+      // asked, until a notification exists. Default view: Của tôi.
       { label: 'Yêu cầu nhận công ty', specId: 'admin-claim-requests' },
       // Last: the register of companies nobody will work again. A dead end by
       // design, so it sits at the bottom of the group and not beside Companies.
