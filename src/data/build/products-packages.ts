@@ -96,12 +96,13 @@ export const productsPackages: BuildModule = {
           ['Jobs Tailored For You (1.9)', 'List', 'Guests: Distinction + Top Job · Logged in: personalised', 'Tier'],
           ['Homepage pop-up (1.10)', '1 at a time, priority + frequency cap', 'Popup placement product', 'Booked'],
           ['Highlight Company — Search (2.1)', '1 company, unlimited', 'Highlight Company product', 'Booked'],
-          ['Highlight Jobs — Search (2.2)', 'Unlimited, random per reload', 'Basic Plus · Distinction · Top Job', 'Tier'],
+          ['Highlight Jobs — Search (2.2)', 'Unlimited, shuffled per search session (NOT per reload — see below)', 'Basic Plus · Distinction · Top Job', 'Tier'],
           ['Banner adsense — Search (2.3)', '425×160 · unlimited, interleaved', 'Banner placement product', 'Booked'],
         ],
       },
       items: [
-        'Tier-driven — membership is DERIVED from the job’s posting tier. Nothing is booked, nothing is assigned by hand. The site query is “jobs where tier = X, ordered by last refresh, randomised per page load”.',
+        'Tier-driven — membership is DERIVED from the job’s posting tier. Nothing is booked, nothing is assigned by hand. The site query is “jobs where tier = X, ordered by last refresh”.',
+        'THE SHUFFLE IS SEEDED PER SESSION, NOT PER RELOAD — a correctness fix, not a preference. Re-randomising on every request breaks pagination: page 2 re-shows rows from page 1 and silently drops others, and the candidate never learns they missed jobs. Seed the shuffle on (sessionId, query) so the order still varies BETWEEN searches — which is what the fairness intent behind "random" actually wants — while staying stable WITHIN one search. Paginated surfaces must have a total order.',
         'Booked — a company buys the slot for N days. The site query is “active bookings for this slot today, rotate through them”. Capacity is a hard cap, so selling it needs an availability calendar.',
       ],
       warn:
@@ -584,7 +585,7 @@ export const productsPackages: BuildModule = {
           {
             heading: 'The two fill routes',
             items: [
-              'Tier-driven — membership is DERIVED from a job’s posting tier. Nothing is booked and nothing is assigned by hand. Site query: “jobs where tier = X, ordered by last refresh, randomised per page load.”',
+              'Tier-driven — membership is DERIVED from a job’s posting tier. Nothing is booked and nothing is assigned by hand. Site query: “jobs where tier = X, ordered by last refresh”, with any shuffle SEEDED per (session, query) rather than per reload — a per-reload shuffle breaks pagination.',
               'Booked — a company buys the slot for N days. Site query: “active bookings for this slot today, rotate through them.” Capacity is a hard cap, so the sale needs an availability check.',
               'Both — the same area is fed by a tier AND sold standalone. Three placements are in this state and each needs one resolver with an explicit priority rule.',
             ],

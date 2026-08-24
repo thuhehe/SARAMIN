@@ -257,6 +257,38 @@ export const jobManagement: BuildModule = {
         'NOT the rich-text field — the job form also has a free-text “Your skills & qualifications” block, and the two must never be confused. That one is bilingual prose a human reads and nothing indexes it; JobSkill rows are what matching actually uses.',
       ],
     },
+    {
+      label: 'JOB SEARCH — gate → filter → rank, and relevance is ONLY what the candidate typed',
+      text: 'DECIDED: job search ranks on QUERY RELEVANCE alone. It does NOT read the candidate’s CV, preferences or match score. Search answers “how well does this job match what I typed”; the match score answers “how well does this job fit me”, and that second question belongs to the recommendations feed, not here. The consequence is a property worth having: the same query returns the SAME results for everyone, logged in or out — so a result URL is shareable, cacheable and debuggable, and “why am I seeing this?” is always answerable from the query.',
+      table: {
+        cols: ['Stage', 'What it does', 'Rule'],
+        rows: [
+          ['1 · GATE', 'Decides what is eligible at all — binary', 'status = Open · exposure = On · not past deadline · moderation approved. The same jobseeker-direction gate the match score uses. NEVER gate on a domain field (salary, industry, experience): every one of those can empty the result set and none can explain why.'],
+          ['2 · FILTER', 'The facets the candidate ticked — binary', 'OR within one facet, AND across facets. Location (province, multi) · category/role · level · work type · contract type · benefits · salary band. The keyword is NOT a filter — it is the input to stage 3.'],
+          ['3 · RANK', 'Orders the survivors', 'With a query: relevance × tier multiplier. With no query there is no relevance signal, so ordering is explicit — tier, then freshness. Never random (see the pagination rule below).'],
+          ['4 · TIE-BREAK', 'Breaks equal scores deterministically', 'last refreshed → posted_at → job_id. No randomness anywhere, so pagination is stable.'],
+        ],
+      },
+      items: [
+        'RELEVANCE IS FIELD-WEIGHTED, highest to lowest: job title → skills (JobSkill rows) → role / category label → company name → the prose body (description · requirements). The body ranks LAST on purpose: a long JD that happens to say “kế toán” five times must not outrank a posting actually titled “Kế toán tổng hợp”.',
+        'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — reuse the one already decided for skill typeahead: lower-casing, ASCII FOLDING (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), ranked exact → prefix → contains, with fuzzy (edit distance ≤ 1–2) on the typeahead. Do not define a second analyser for search; two analysers means “ke toan” works in one box and not the other.',
+        'THE PAID BOOST IS MULTIPLICATIVE AND FLOORED, never additive. Top Job ×1.5 · Distinction ×1.3 · Basic Plus ×1.15 · Basic and Free ×1.0. Additive boost lets a Top Job with near-zero relevance climb above a perfect match; multiplication cannot resurrect an irrelevant job (0 × 1.5 = 0). Plus a floor: a job below a relevance threshold is never boosted onto page 1 whatever its tier. This is what makes the existing “boosted jobs get limited priority but stay clearly relevant” actually implementable.',
+        'AN EXPLICIT SORT DROPS THE BOOST. When the candidate chooses Newest or Salary, tier multipliers fall out entirely and only the tie-break remains. A “Newest” list that money can still reorder is a lie about what the control does.',
+        'SALARY FILTER + SORT follow the already-decided currency contract — the currency SCOPES rather than converts, ÷12 for an annual figure, “Thỏa thuận” jobs are ALWAYS included, sorting is within one currency with the other placed after rather than interleaved, and the UI says what the scope hid (“8 jobs quote USD — switch to see them”).',
+        'ZERO RESULTS RELAX IN A FIXED ORDER, and always disclose it: salary → experience → contract type → province (widen to region) → keyword AND→OR. Show what was relaxed (“Không có việc nào ở Đà Nẵng — đang hiện cả miền Trung”), or the candidate believes a filter is still in force when it is not.',
+        'DE-DUPLICATE BY COMPANY. One employer posting five near-identical titles must collapse to one card plus “3 vị trí tương tự tại X”, otherwise a single company owns the whole first page.',
+      ],
+      warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score keeps exactly one home: Resume management → Job recommendations (the jobseeker feed).',
+    },
+    {
+      label: 'The search INDEX — what is in it, and when a job leaves',
+      text: 'Eligibility is enforced at index time as well as query time, because the expensive failure is a candidate applying to a posting that is already closed.',
+      items: [
+        'A JOB LEAVES THE INDEX SYNCHRONOUSLY when it closes, expires, or has Exposure turned Off — not on a nightly sweep. This mirrors the rule already decided for CVs (“Hidden takes effect on the search index synchronously”); the same reasoning applies in the other direction.',
+        'INDEXED FIELDS: title (vi/en), JobSkill names, role + category labels, company display name, benefit type keys, province ids, work type, contract type, salary min/max + currency, tier, publishedAt, lastRefreshedAt. The prose body is indexed for matching but weighted lowest.',
+        'RECOMMENDATION — a dedicated search index (Meilisearch / Typesense) for Phase-1, and the reason is not speed. Two requirements are already decided elsewhere and both are awkward in SQL: Vietnamese ASCII folding with typo tolerance, and FACET COUNTS shown live beside each filter. Postgres can fold with `unaccent` + GIN, but multi-dimension facet counts is where it gets expensive and fiddly. If the client prefers to stay on SQL in Phase-1 the cost is concrete and must be stated up front: drop the counts next to the facets.',
+      ],
+    },
   ],
   features: [
     // 0 ──────────────────────────────────────────────────────────────────────
@@ -888,9 +920,18 @@ export const jobManagement: BuildModule = {
           'Filters reflect in the URL (shareable / back-button safe).',
           'Debounced keyword; facets apply instantly with result counts.',
           'Save (scrap) a job from the card without leaving results.',
-          'Boosted jobs get limited priority but stay clearly relevant.',
+          'Boosted jobs get limited priority but stay clearly relevant — implemented as a MULTIPLIER on relevance (Top Job ×1.5 · Distinction ×1.3 · Basic Plus ×1.15) plus a relevance floor, so a boost can raise a relevant job but never resurrect an irrelevant one.',
+          'Ranking is QUERY-ONLY: relevance × tier, then a deterministic tie-break. The candidate’s CV, preferences and match score are NOT read here — the same query returns the same results logged in or out.',
+          'Choosing Newest or Salary drops the tier multiplier entirely; only the tie-break remains.',
         ],
-        rules: ['Only active, non-expired jobs.', 'Salary sort treats "Thỏa thuận" as unranked / last.'],
+        rules: [
+          'Only active, non-expired jobs.',
+          'Salary sort treats "Thỏa thuận" as unranked / last.',
+          'Gate = Open + Exposure On + not past deadline + moderation approved. No domain field (salary, industry, experience) may ever act as a gate — see “JOB SEARCH — gate → filter → rank”.',
+          'Facet semantics are OR within a facet, AND across facets — stated because it is the commonest cause of an unexplained empty result set.',
+          'The match score never participates in search ranking, in any form. It belongs to the recommendations feed only.',
+          'No randomness in the ordering — pagination must be stable across page loads.',
+        ],
         states: ['Loading', 'No results (suggest broadening)', 'Has results', 'Error / retry'],
         backend: {
           endpoints: ['GET /jobs/search?q=&filters…&sort=&page='],
@@ -898,7 +939,11 @@ export const jobManagement: BuildModule = {
           notes: 'Consider a search index (e.g. Meilisearch/ES) vs SQL for facets + relevance — decision needed.',
         },
         acceptance: ['Filters + sort + pagination work and are URL-encoded; only active jobs appear.'],
-        openQuestions: ['SQL vs dedicated search engine for Phase-1?', 'Is relevance ranking in scope, or newest-first only?'],
+        openQuestions: [
+          'CLOSED — relevance ranking IS in scope, and it is the default sort when a query is present. It is also the ONLY ranking input: query relevance × tier multiplier, no profile matching. See “JOB SEARCH — gate → filter → rank”.',
+          'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts); still needs the client’s sign-off, and the SQL fallback costs the facet counts. See “The search INDEX”.',
+          'The relevance FLOOR below which a paid tier may not reach page 1 — needs one number, and it should be tuned against real queries rather than guessed now.',
+        ],
       },
     },
     // 6 ──────────────────────────────────────────────────────────────────────
