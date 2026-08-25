@@ -313,13 +313,28 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
+/* OFF THE NAV, STILL ROUTABLE. Three screens were pulled from the sidebar by the
+   client (2026-08) but their screens and registry entries were kept on purpose, so
+   restoring one is a single nav line. `?screen=` used to resolve ONLY against
+   NAV_GROUPS, which quietly made these unreachable: the URL fell through to the
+   default page, and the Environment spec page's own "open in console" link landed
+   on Job list instead. Listed here so a link to a de-navved screen still opens it,
+   while the sidebar stays exactly as the client asked. */
+const OFF_NAV: { group: string; item: NavItem }[] = [
+  { group: 'CRM', item: { label: 'Account usage', specId: 'admin-account-usage' } },
+  { group: 'System', item: { label: 'Audit log', specId: 'admin-audit-log' } },
+  { group: 'System', item: { label: 'Environment', specId: 'admin-environment' } },
+]
+
 /* The console's nav is where an admin screen is NAMED, so it is also the source
    for any other surface that needs to show a screen's name — the spec pages'
    Screen-UI tabs, for one. Without this they fall back to the raw id, and
    "admin-cv-check" is a slug, not a name. */
-export const ADMIN_SCREEN_LABELS: Record<string, string> = Object.fromEntries(
-  NAV_GROUPS.flatMap((g) => g.items.map((it) => [it.specId, it.label] as const)),
-)
+export const ADMIN_SCREEN_LABELS: Record<string, string> = Object.fromEntries([
+  ...NAV_GROUPS.flatMap((g) => g.items.map((it) => [it.specId, it.label] as const)),
+  // de-navved screens keep their name too — they are still openable by link
+  ...OFF_NAV.map((o) => [o.item.specId, o.item.label] as const),
+])
 
 
 /* Primary create action per page, rendered on the page title row — the
@@ -361,6 +376,9 @@ export function AdminWireframe() {
         const item = g.items.find((x) => x.specId === wanted)
         if (item) return { group: g.label, item }
       }
+      // then the screens that exist but are not listed in the sidebar
+      const off = OFF_NAV.find((o) => o.item.specId === wanted)
+      if (off) return off
     }
     const g = NAV_GROUPS.find((x) => x.label === 'Recruitment') ?? NAV_GROUPS[0]
     return { group: g.label, item: g.items[0] }
