@@ -93,11 +93,57 @@ function MoveUserModal({ user, users, onConfirm, onClose }: { user: CUser; users
   )
 }
 
+/* HQ deactivation. Same soft, reversible action the company Admin has — but done by
+   Saramin (support / trust & safety). A user HQ deactivates can only be re-enabled by
+   HQ, so a company Admin can't quietly undo it. Never a hard delete. */
+function DisableUserModal({ user, users, onConfirm, onClose }: { user: CUser; users: CUser[]; onConfirm: (reason: string) => void; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  const admins = users.filter((u) => u.company === user.company && u.role === 'Admin' && u.status !== 'Disabled')
+  const lastAdmin = user.role === 'Admin' && admins.length <= 1
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-4 w-full max-w-[470px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Deactivate {user.name}?</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3 p-5">
+          {lastAdmin ? (
+            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>{user.name} is the <b>last active Admin</b> of {user.company}. Assign Admin to someone else first — a company can’t be left without one.</span></p>
+          ) : (
+            <>
+              <p className="text-[12px] leading-relaxed text-muted">Blocks this login immediately and frees their seat. Their jobs, applicants and CV unlocks <b className="text-ink/80">stay with {user.company}</b>. Reversible and audited — never a delete.</p>
+              <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>🔒</span><span>Because <b>HQ</b> is doing this, the company’s own Admin <b>cannot</b> re-enable them — only Saramin can.</span></p>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Reason <span className="text-rose-500">*</span></p>
+                <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. left the company · support request · abuse report" className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink placeholder:text-faint" />
+                <p className="mt-1 text-[10.5px] text-faint">Internal — written to the audit log, never shown to the user.</p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => !lastAdmin && reason.trim() && onConfirm(reason.trim())} disabled={lastAdmin || !reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Deactivate</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminCompanyUsers() {
   const [inviting, setInviting] = useState(false)
   const [users, setUsers] = useState<CUser[]>(CUSERS)
   const [changing, setChanging] = useState<CUser | null>(null)
   const [moving, setMoving] = useState<CUser | null>(null)
+  const [disabling, setDisabling] = useState<CUser | null>(null)
+  const applyDisable = (reason: string) => {
+    if (!disabling) return
+    setUsers((prev) => prev.map((u) => (u.email === disabling.email ? { ...u, status: 'Disabled', disabledBy: 'HQ', disabledNote: reason } : u)))
+    setDisabling(null)
+  }
+  const reEnable = (email: string) =>
+    setUsers((prev) => prev.map((u) => (u.email === email ? { ...u, status: 'Active', disabledNote: undefined } : u)))
   const applyRole = (role: CoUserRole) => {
     if (!changing) return
     setUsers((prev) => prev.map((u) => (u.email === changing.email ? { ...u, role } : u)))
@@ -121,21 +167,27 @@ export function AdminCompanyUsers() {
           <div className="min-w-0"><p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p><p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p></div>,
           <span className="truncate">{u.company}</span>,
           <Pill tone={u.role === 'Admin' ? 'neutral' : 'draft'}>{u.role}</Pill>,
-          <Pill tone={u.status === 'Active' ? 'active' : u.status === 'Invited' ? 'pending' : 'expired'}>{u.status}</Pill>,
+          <div className="min-w-0">
+            <Pill tone={u.status === 'Active' ? 'active' : u.status === 'Invited' ? 'pending' : 'expired'}>{u.status}</Pill>
+            {u.status === 'Disabled' && u.disabledNote && <p className="mt-0.5 truncate text-[10.5px] text-faint">{u.disabledBy === 'HQ' ? 'by Saramin' : 'by company'} · {u.disabledNote}</p>}
+          </div>,
           <span className="text-[11.5px] text-muted">{u.last}</span>,
           <div className="flex items-center justify-end gap-1.5">
             {u.status === 'Invited'
               ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
               : u.status === 'Disabled'
-                ? <RowAction tone="brand">Re-enable</RowAction>
-                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button><button onClick={() => setMoving(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Move</button>{u.role !== 'Admin' && <RowAction tone="rose">Disable</RowAction>}</>}
+                ? <button onClick={() => reEnable(u.email)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand hover:bg-canvas/70">Reactivate</button>
+                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button><button onClick={() => setMoving(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Move</button><button onClick={() => setDisabling(u)} className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button></>}
           </div>,
         ])}
       />
-      <p className="mt-2 text-[11px] leading-relaxed text-faint">Each user is assigned a role built on the Roles screen. Every account keeps at least one <b>Admin</b> — the last Admin can’t be downgraded or disabled. <b>Move</b> (HQ only) sends a login to another company with a chosen role; the sole Admin of a company can’t be moved out until another Admin is assigned.</p>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        <b className="text-ink/70">Deactivate</b> is offboarding (nhân viên nghỉ việc): login blocked, seat freed, their work stays with the company — reversible, audited, never deleted. The company’s own Admin can do this too; a user <b>HQ</b> deactivated can only be reactivated by HQ. The last active Admin can’t be deactivated, downgraded, or moved out.
+      </p>
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
       {changing && <ChangeRoleModal user={changing} users={users} onConfirm={applyRole} onClose={() => setChanging(null)} />}
       {moving && <MoveUserModal user={moving} users={users} onConfirm={applyMove} onClose={() => setMoving(null)} />}
+      {disabling && <DisableUserModal user={disabling} users={users} onConfirm={applyDisable} onClose={() => setDisabling(null)} />}
     </div>
   )
 }

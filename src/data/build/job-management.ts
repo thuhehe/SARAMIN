@@ -270,7 +270,7 @@ export const jobManagement: BuildModule = {
         ],
       },
       items: [
-        'RELEVANCE IS FIELD-WEIGHTED, highest to lowest: job title → skills (JobSkill rows) → role / category label → company name → the prose body (description · requirements). The body ranks LAST on purpose: a long JD that happens to say “kế toán” five times must not outrank a posting actually titled “Kế toán tổng hợp”.',
+        'RELEVANCE IS FIELD-WEIGHTED, and the ranked field list lives in exactly one place — “WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal”. Summary: title → skills → role/category → company name → prose body, body last. Kept in one place deliberately: a field list restated in two requirements is a field list that will disagree with itself.',
         'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — reuse the one already decided for skill typeahead: lower-casing, ASCII FOLDING (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), ranked exact → prefix → contains, with fuzzy (edit distance ≤ 1–2) on the typeahead. Do not define a second analyser for search; two analysers means “ke toan” works in one box and not the other.',
         'THE PAID BOOST IS MULTIPLICATIVE AND FLOORED, never additive. Top Job ×1.5 · Distinction ×1.3 · Basic Plus ×1.15 · Basic and Free ×1.0. Additive boost lets a Top Job with near-zero relevance climb above a perfect match; multiplication cannot resurrect an irrelevant job (0 × 1.5 = 0). Plus a floor: a job below a relevance threshold is never boosted onto page 1 whatever its tier. This is what makes the existing “boosted jobs get limited priority but stay clearly relevant” actually implementable.',
         'AN EXPLICIT SORT DROPS THE BOOST. When the candidate chooses Newest or Salary, tier multipliers fall out entirely and only the tie-break remains. A “Newest” list that money can still reorder is a lie about what the control does.',
@@ -281,11 +281,36 @@ export const jobManagement: BuildModule = {
       warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score keeps exactly one home: Resume management → Job recommendations (the jobseeker feed).',
     },
     {
-      label: 'The search INDEX — what is in it, and when a job leaves',
-      text: 'Eligibility is enforced at index time as well as query time, because the expensive failure is a candidate applying to a posting that is already closed.',
+      label: 'WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal',
+      text: 'The keyword is matched against FIVE fields, and their weights differ. The order below is the specification: a hit in a higher row outranks a hit in a lower one, so the same word found in a title beats the same word found in a paragraph.',
+      table: {
+        cols: ['#', 'Field', 'Why it sits there'],
+        rows: [
+          ['1', 'Job title (vi + en)', 'What the candidate is actually looking for. Typing “kế toán” must put the posting NAMED “Kế toán tổng hợp” at the top.'],
+          ['2', 'Skills — JobSkill rows', 'Canonical names from Master data, which is what lets “nodejs” resolve to Node.js. NOT the free-text “Your skills & qualifications” block — that prose counts only at body weight.'],
+          ['3', 'Job role / category label', 'Carries the broad queries: “IT”, “marketing”.'],
+          ['4', 'Company display name', 'Typing “FPT” has to return FPT’s jobs.'],
+          ['5', 'Prose body — description · requirements · benefit descriptions', 'LOWEST, deliberately. A long JD that repeats “kế toán” five times must never outrank a posting titled “Kế toán tổng hợp”; equal weighting turns search into a reward for writing at length instead of writing accurately.'],
+        ],
+      },
+      warn: 'Nothing outside these five is keyword-matchable. Province, work type, contract type, level, experience, salary and tier are FILTERS — typing “Hà Nội” in the keyword box hits it through the title or body if those words appear, it does not switch on the province facet. See the next block for the fields that must never be indexed at all.',
+    },
+    {
+      label: 'FILTER-ONLY and NEVER-INDEXED fields, and when a job leaves the index',
+      text: 'The other two buckets. A field sits in exactly one of the three — listing everything in one flat “indexed fields” line is how province ids end up keyword-matchable, a mistake nothing on screen would reveal.',
+      table: {
+        cols: ['Bucket', 'Fields', 'Rule'],
+        rows: [
+          ['FILTER-ONLY (never touched by the keyword)', 'Province · work type · contract type · level · experience range · salary min/max + currency · posting tier · publishedAt / expiresAt / lastRefreshedAt', 'These are facets, not text. Narrowing by province is done by ticking the facet, never by typing the province name.'],
+          ['NEVER INDEXED', 'Internal notes (HQ only) · contact person · application recipient emails · linked PO / product / entitlement · applicant data', 'A safety rule, not an optimisation. Internal notes can hold negotiation context, and a searchable recipient mailbox publishes an internal address to the whole internet.'],
+        ],
+      },
       items: [
-        'A JOB LEAVES THE INDEX SYNCHRONOUSLY when it closes, expires, or has Exposure turned Off — not on a nightly sweep. This mirrors the rule already decided for CVs (“Hidden takes effect on the search index synchronously”); the same reasoning applies in the other direction.',
-        'INDEXED FIELDS: title (vi/en), JobSkill names, role + category labels, company display name, benefit type keys, province ids, work type, contract type, salary min/max + currency, tier, publishedAt, lastRefreshedAt. The prose body is indexed for matching but weighted lowest.',
+        'ONE ANALYSER FOR THE WHOLE PLATFORM — the one already decided for skill typeahead: lower-casing → ASCII folding (“ke toan” finds Kế toán) → punctuation stripping (“nodejs” finds Node.js), ranked exact → prefix → contains. Never a second analyser for search, or “ke toan” works in one box and fails in the other.',
+        'BILINGUAL BY DEFAULT: a query matches title.vi OR title.en. The candidate is never asked to pick a language first.',
+        'MULTI-WORD QUERIES AND their terms by default, relaxing to OR only when the result set is empty — and the relaxation is disclosed, like every other one.',
+        'SKILLS MEANS JobSkill ROWS, not the free-text “Your skills & qualifications” block. That prose counts only at body weight; the canonical rows are what make “nodejs” resolve to Node.js.',
+        'A JOB LEAVES THE INDEX SYNCHRONOUSLY when it closes, expires, or has Exposure turned Off — not on a nightly sweep. This mirrors the rule already decided for CVs (“Hidden takes effect on the search index synchronously”); the same reasoning applies in the other direction, and the expensive failure is a candidate applying to a posting that is already closed.',
         'RECOMMENDATION — a dedicated search index (Meilisearch / Typesense) for Phase-1, and the reason is not speed. Two requirements are already decided elsewhere and both are awkward in SQL: Vietnamese ASCII folding with typo tolerance, and FACET COUNTS shown live beside each filter. Postgres can fold with `unaccent` + GIN, but multi-dimension facet counts is where it gets expensive and fiddly. If the client prefers to stay on SQL in Phase-1 the cost is concrete and must be stated up front: drop the counts next to the facets.',
       ],
     },
@@ -941,7 +966,7 @@ export const jobManagement: BuildModule = {
         acceptance: ['Filters + sort + pagination work and are URL-encoded; only active jobs appear.'],
         openQuestions: [
           'CLOSED — relevance ranking IS in scope, and it is the default sort when a query is present. It is also the ONLY ranking input: query relevance × tier multiplier, no profile matching. See “JOB SEARCH — gate → filter → rank”.',
-          'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts); still needs the client’s sign-off, and the SQL fallback costs the facet counts. See “The search INDEX”.',
+          'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts); still needs the client’s sign-off, and the SQL fallback costs the facet counts. See “FILTER-ONLY and NEVER-INDEXED fields”.',
           'The relevance FLOOR below which a paid tier may not reach page 1 — needs one number, and it should be tuned against real queries rather than guessed now.',
         ],
       },

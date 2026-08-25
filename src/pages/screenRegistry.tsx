@@ -53,7 +53,8 @@ const ADMIN_NAV_PAGES = new Set([
   'admin-catalog', 'admin-bundles', 'admin-placements', 'admin-promotions',
   // ONE page for all manual services (the per-service split was reverted — five
   // products across a hundred companies is one list at the grain of company ×
-  // service), plus the per-account usage view.
+  // service). 'admin-account-usage' is OFF THE NAV for now (client, 2026-08) but the
+  // screen and its registry entry stay, so putting it back is a one-line change.
   'admin-manual-services', 'admin-account-usage', 'admin-cv-search-usage',
   // Image gallery sits beside Placements in the nav — it is configuration a
   // placement reads (the stock pictures its image slots draw from), not something
@@ -66,6 +67,8 @@ const ADMIN_NAV_PAGES = new Set([
   // covers every screen a spec page CAN show, and the gap would only surface as
   // a missing link the day a feature points at one.
   'admin-matching-settings', 'admin-matching-report',
+  // 'admin-audit-log' is OFF THE NAV (client, 2026-08) — screen + registry entry stay
+  // so restoring it is one line, and auditing is still referenced by other modules.
   'admin-master-data', 'admin-unresolved-terms', 'admin-audit-log', 'admin-environment', 'admin-departments',
 ])
 

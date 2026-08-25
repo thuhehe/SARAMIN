@@ -101,9 +101,29 @@ export const companyUser: BuildModule = {
           ['Pending', 'Self-serve sign-up submitted, not yet placed by HQ', 'A request only — no company, no access. Becomes Invited/Active once HQ moves or creates a company and sends the activation link (see CRM → Sign-ups).'],
           ['Invited', 'Invite/activation sent, awaiting activation', 'Person sets/confirms their own password via the link — no one types it for them. Applies to both an HR-Manager invite and a self-serve sign-up HQ has placed.'],
           ['Active', 'Link clicked / password set — full use', 'Shares the account’s pooled products/quota; can act within their assigned role’s permissions.'],
-          ['Disabled', 'Access removed', 'Remove = deactivate, never hard-delete (keep the audit trail); the last Admin can’t be disabled — grant Admin to another user first.'],
+          ['Disabled', 'Deactivated — offboarded (“nhân viên nghỉ việc”)', 'Login blocked, SEAT FREED, their work stays with the company. Reversible (Reactivate); never hard-delete — keep the audit trail. The last active Admin can’t be disabled: grant Admin to another user first.'],
         ],
       },
+    },
+    {
+      label: 'Deactivate = offboarding (nhân viên nghỉ việc)',
+      text: 'When someone leaves the company, they are DEACTIVATED — not deleted. This is the company-user equivalent of the jobseeker’s "withdraw account", with one deliberate difference: a company user cannot deactivate themselves, because the seat belongs to the company (the same rule Google Workspace / Slack / M365 use). The employer offboards them.',
+      table: {
+        cols: ['Who can deactivate', 'Scope', 'Typical reason'],
+        rows: [
+          ['Company Admin', 'Only their own company’s users', 'The normal case — an employee left'],
+          ['HQ (Saramin)', 'Any company’s user', 'Support / concierge (the Admin is unreachable), or a trust & safety call'],
+          ['The user themselves', '— NOT ALLOWED', 'A company login is the employer’s seat; a personal data-deletion request goes through support, not a self-serve button'],
+        ],
+      },
+      items: [
+        'What deactivation does: login blocked immediately · the seat is freed so a replacement can be invited · their jobs, applicants and CV unlocks STAY with the company account · row kept for the audit trail.',
+        'Reversible — Reactivate restores access, and consumes a seat again (blocked if the account is already at its seat cap).',
+        'Who deactivated matters: a user deactivated by HQ can only be reactivated by HQ, so a company Admin cannot quietly undo a Saramin decision. A user the company deactivated can be reactivated by that company’s Admin.',
+        'A reason is optional for the company Admin and REQUIRED for HQ; either way it is internal and written to the audit log with the actor and date.',
+        'There is deliberately NO separate "suspend/block" status for company users: HQ deactivation covers an individual bad actor, and archiving the company covers a company-level block (see CRM → Sign-ups, Company status).',
+      ],
+      warn: 'Never hard-delete a company user. Deactivate keeps the person’s history attributable — deleting the row would silently re-attribute their jobs and CV unlocks, which is what makes an audit trail worthless.',
     },
     {
       label: 'Public company page status',

@@ -4,13 +4,20 @@
 import type { CoUserRole } from '@/pages/admin/data/companyRecord'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
-export type CUser = { name: string; email: string; company: string; role: CoUserRole; status: 'Active' | 'Invited' | 'Disabled'; last: string }
+/* Disabled = offboarded ("nhân viên nghỉ việc"): login blocked, seat freed, work stays
+   with the company, reversible, never deleted. `disabledBy` decides who may re-enable —
+   a user HQ deactivated cannot be re-enabled by the company's own Admin. */
+export type CUser = {
+  name: string; email: string; company: string; role: CoUserRole
+  status: 'Active' | 'Invited' | 'Disabled'; last: string
+  disabledBy?: 'Company' | 'HQ'; disabledNote?: string
+}
 export const CUSERS: CUser[] = [
   { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', company: 'Cty Vạn Phát', role: 'Admin', status: 'Active', last: '10m ago' },
   { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', company: 'Cty Vạn Phát', role: 'Recruiter', status: 'Active', last: '2h ago' },
   { name: 'Lý Văn Giang', email: 'giang@fpt.com.vn', company: 'FPT Software', role: 'Admin', status: 'Active', last: '1d ago' },
   { name: 'Ngô Minh Tú', email: 'tu@fpt.com.vn', company: 'FPT Software', role: 'Viewer', status: 'Invited', last: '—' },
-  { name: 'Bùi Thu Hằng', email: 'hang@tiki.vn', company: 'Tiki', role: 'Recruiter', status: 'Disabled', last: '3 months ago' },
+  { name: 'Bùi Thu Hằng', email: 'hang@tiki.vn', company: 'Tiki', role: 'Recruiter', status: 'Disabled', last: '3 months ago', disabledBy: 'Company', disabledNote: 'Nghỉ việc 05/2026' },
 ]
 
 /* ── User — jobseeker accounts ────────────────────────────────────────────────

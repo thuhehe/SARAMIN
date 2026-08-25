@@ -2306,71 +2306,142 @@ function RolesScreen() {
   )
 }
 
+/* Offboarding ("nhân viên nghỉ việc") = DEACTIVATE. Soft and reversible: the login is
+   blocked, the seat is freed, but the person's jobs/applications stay with the company
+   and the row is kept for the audit trail. Never a hard delete. */
+type CoTeamStatus = 'Active' | 'Invited' | 'Disabled'
+type CoTeamRow = { name: string; email: string; role: string; status: CoTeamStatus; note?: string; byHQ?: boolean }
+const CO_SEAT_CAP = 4
+
+function DeactivateUserModal({ u, onConfirm, onClose }: { u: CoTeamRow; onConfirm: (reason: string) => void; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-8 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <p className="text-[15px] font-bold">Deactivate {u.name}?</p>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="space-y-3 p-5">
+          <p className="text-[12px] leading-relaxed text-muted">
+            Use this when someone <b className="text-ink/80">leaves the company</b>. Their login is blocked immediately and their seat is freed — but nothing they created is lost.
+          </p>
+          <ul className="space-y-1 rounded-lg border border-line bg-canvas/40 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+            <li>🚫 They can no longer sign in.</li>
+            <li>💺 Their seat is freed — you can invite a replacement.</li>
+            <li>📁 Their jobs, applicants and CV unlocks <b className="text-ink/80">stay with the company</b>.</li>
+            <li>↩️ Reversible — you can reactivate them later if they return.</li>
+          </ul>
+          <div>
+            <p className="mb-1 text-[11.5px] font-medium text-ink/80">Reason <span className="text-faint">(optional)</span></p>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. nghỉ việc 08/2026" className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink placeholder:text-faint" />
+            <p className="mt-1 text-[10.5px] text-faint">Saved to the activity log with your name and the date.</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
+          <button onClick={() => onConfirm(reason.trim())} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Deactivate</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TeamScreen() {
   const go = useCoNav()
-  const team = [
+  const [team, setTeam] = useState<CoTeamRow[]>([
     { name: 'Vũ Thanh Linh', email: 'linh@vanphat.vn', role: 'Admin', status: 'Active' },
     { name: 'Đỗ Thị Mai', email: 'mai@vanphat.vn', role: 'Recruiter', status: 'Active' },
     { name: 'Ngô Văn Sơn', email: 'son@vanphat.vn', role: 'Viewer', status: 'Invited' },
-  ] as const
+    { name: 'Trần Văn Hùng', email: 'hung@vanphat.vn', role: 'Recruiter', status: 'Disabled', note: 'Nghỉ việc 07/2026' },
+  ])
+  const [confirming, setConfirming] = useState<CoTeamRow | null>(null)
+  /* A Disabled user does NOT hold a seat — that is the point of offboarding. */
+  const seatsUsed = team.filter((u) => u.status !== 'Disabled').length
+  const activeAdmins = team.filter((u) => u.role === 'Admin' && u.status !== 'Disabled').length
+
+  const deactivate = (reason: string) => {
+    if (!confirming) return
+    setTeam((ts) => ts.map((t) => (t.email === confirming.email ? { ...t, status: 'Disabled', note: reason || undefined } : t)))
+    setConfirming(null)
+  }
+  const reactivate = (email: string) =>
+    setTeam((ts) => ts.map((t) => (t.email === email ? { ...t, status: 'Active', note: undefined } : t)))
+
+  const dot = { Active: 'bg-emerald-500', Invited: 'bg-amber-500', Disabled: 'bg-slate-400' }
+  const txt = { Active: 'text-emerald-700', Invited: 'text-amber-700', Disabled: 'text-slate-500' }
+
   return (
     <div>
       <PageBar title="Team" sub="The people who can log in for your company." />
-      <div className="max-w-[820px] rounded-xl border border-line p-4">
+      <div className="max-w-[860px] rounded-xl border border-line p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[12.5px] font-bold">Users</p>
-          <div className="flex items-center gap-2"><span className="text-[11px] text-faint">3 / 4 seats</span><Btn primary>+ Invite user</Btn></div>
+          <div className="flex items-center gap-2"><span className="text-[11px] text-faint">{seatsUsed} / {CO_SEAT_CAP} seats</span><Btn primary>+ Invite user</Btn></div>
         </div>
         {/* column captions so ROLE and STATUS read as two different things */}
         <div className="mb-1 flex items-center gap-3 px-3 text-[9.5px] font-semibold uppercase tracking-wide text-faint">
           <span className="flex-1">User</span>
           <span className="w-[120px]">Role</span>
-          <span className="w-[84px]">Status</span>
-          <span className="w-[180px] text-right">Actions</span>
+          <span className="w-[96px]">Status</span>
+          <span className="w-[200px] text-right">Actions</span>
         </div>
         <div className="space-y-1.5">
           {team.map((u) => {
             const admin = u.role === 'Admin'
-            const active = u.status === 'Active'
+            const disabled = u.status === 'Disabled'
+            /* The LAST active Admin can never be deactivated — that would strand the company. */
+            const lastAdmin = admin && activeAdmins <= 1
             return (
-              <div key={u.email} className="flex items-center gap-3 rounded-md border border-line px-3 py-2.5">
+              <div key={u.email} className={cn('flex items-center gap-3 rounded-md border border-line px-3 py-2.5', disabled && 'bg-canvas/50')}>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-ink">{u.name}</p>
-                  <p className="truncate font-mono text-[10.5px] text-faint">{u.email}</p>
+                  <p className={cn('truncate text-[12.5px] font-medium', disabled ? 'text-muted line-through' : 'text-ink')}>{u.name}</p>
+                  <p className="truncate font-mono text-[10.5px] text-faint">{u.email}{u.note && !disabled ? '' : ''}</p>
+                  {disabled && <p className="truncate text-[10.5px] text-faint">Deactivated{u.note ? ` · ${u.note}` : ''}</p>}
                 </div>
                 {/* ROLE — a bordered pill with an icon; clearly an assignment, not a state */}
-                <span className={cn('inline-flex w-[120px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium', admin ? 'border-brand/40 bg-brand-soft/50 text-brand' : 'border-line text-ink/75')}>
+                <span className={cn('inline-flex w-[120px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium',
+                  disabled ? 'border-line text-faint' : admin ? 'border-brand/40 bg-brand-soft/50 text-brand' : 'border-line text-ink/75')}>
                   {admin ? <Crown className="h-3 w-3 shrink-0" /> : <Shield className="h-3 w-3 shrink-0" />}
                   <span className="truncate">{u.role}</span>
                 </span>
                 {/* STATUS — a coloured dot + label; clearly a state, not a role */}
-                <span className="inline-flex w-[84px] items-center gap-1.5 text-[11px] font-medium">
-                  <span className={cn('h-2 w-2 shrink-0 rounded-full', active ? 'bg-emerald-500' : 'bg-amber-500')} />
-                  <span className={active ? 'text-emerald-700' : 'text-amber-700'}>{u.status}</span>
+                <span className="inline-flex w-[96px] items-center gap-1.5 text-[11px] font-medium">
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', dot[u.status])} />
+                  <span className={txt[u.status]}>{u.status}</span>
                 </span>
-                {/* ACTIONS — deactivate an Active user; resend / cancel an Invite */}
-                <div className="flex w-[180px] shrink-0 items-center justify-end gap-1.5">
+                {/* ACTIONS — deactivate an Active user; resend / cancel an Invite; reactivate a Disabled one */}
+                <div className="flex w-[200px] shrink-0 items-center justify-end gap-1.5">
                   {u.status === 'Invited' ? (
                     <>
                       <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand hover:bg-canvas">Resend</button>
                       <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Cancel invitation</button>
                     </>
-                  ) : admin ? (
-                    <span className="text-[10.5px] text-faint">Super admin · can’t deactivate</span>
+                  ) : disabled ? (
+                    u.byHQ ? (
+                      <span className="text-right text-[10.5px] text-faint">Deactivated by Saramin — contact support</span>
+                    ) : (
+                      <button onClick={() => reactivate(u.email)} disabled={seatsUsed >= CO_SEAT_CAP} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand hover:bg-canvas disabled:cursor-not-allowed disabled:text-faint">Reactivate</button>
+                    )
+                  ) : lastAdmin ? (
+                    <span className="text-right text-[10.5px] text-faint">Last Admin · can’t deactivate</span>
                   ) : (
-                    <button className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button>
+                    <button onClick={() => setConfirming(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button>
                   )}
                 </div>
               </div>
             )
           })}
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-faint">Invite by email and pick a role. Every account keeps at least one Admin (its login can’t be deactivated). All users share the account’s pooled quota.</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-faint">
+          <b className="text-ink/70">Someone left the company?</b> Deactivate them — the login is blocked and the seat is freed, but their jobs and applicants stay with the company. It’s reversible, and never deletes the record. The last Admin can’t be deactivated; grant Admin to someone else first.
+        </p>
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
           <span className="text-faint">Roles are built on the</span>
           <button onClick={() => go('co-roles')} className="font-medium text-brand">Roles screen →</button>
         </div>
       </div>
+      {confirming && <DeactivateUserModal u={confirming} onConfirm={deactivate} onClose={() => setConfirming(null)} />}
     </div>
   )
 }

@@ -165,7 +165,6 @@ export const NAV: NavModule[] = [
     app: 'HQ Admin',
     children: [
       { id: 'admin-sales-pipeline', label: 'Pipeline' },
-      { id: 'admin-account-usage', label: 'Account usage' },
       { id: 'admin-customers', label: 'Customers' },
       { id: 'admin-customer-activation', label: 'Lead → customer activation' },
       // ordered as the quote-to-cash chain runs — Payments before Invoices,
@@ -188,8 +187,6 @@ export const NAV: NavModule[] = [
       { id: 'admin-pages', label: 'Pages' },
       { id: 'admin-blog', label: 'Blog / articles' },
       { id: 'admin-master-data', label: 'Master data' },
-      { id: 'admin-audit-log', label: 'Audit log' },
-      { id: 'admin-environment', label: 'Environment' },
       { id: 'admin-departments', label: 'Departments' },
     ],
   },

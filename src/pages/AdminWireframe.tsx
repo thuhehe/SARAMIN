@@ -96,7 +96,6 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // and the log belong to the matching logic, not to the admin shell.
   'admin-matching-settings': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
   'admin-matching-report': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
-  'admin-audit-log': { module: 'admin-system', feature: 'Audit log' },
   'admin-environment': { module: 'admin-system', feature: 'Environment' },
   'admin-departments': { module: 'admin-system', feature: 'Departments' },
 }
@@ -234,9 +233,6 @@ const NAV_GROUPS: NavGroup[] = [
       // Last in the group: inbound self-registrations are a triage inbox that
       // feeds the pipeline, not a step in the document flow above it.
       { label: 'Sign-ups', specId: 'admin-signups' },
-      // What every customer has actually consumed, across all four product types —
-      // the screen sales opens before a renewal call.
-      { label: 'Account usage', specId: 'admin-account-usage' },
       // The free company pool and its claim queue. They live in CRM because that is
       // where a rep looks for their next customer — the pool is the top of the same
       // funnel Companies and Pipeline sit further down. (They remain a SEPARATE
@@ -312,8 +308,6 @@ const NAV_GROUPS: NavGroup[] = [
       // list from rotting". Fed from BOTH sides — employer searches that matched
       // nothing and CV imports that resolved nothing — because one alias fixes both.
       { label: 'Chất lượng tìm kiếm', specId: 'admin-unresolved-terms' },
-      { label: 'Audit log', specId: 'admin-audit-log' },
-      { label: 'Environment', specId: 'admin-environment' },
       { label: 'Departments', specId: 'admin-departments' },
     ],
   },

@@ -472,8 +472,7 @@ export const adminSystem: BuildModule = {
       name: 'Audit log',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'The whole-platform change trail — the firehose behind the per-page History drawer.',
-      mockup: 'admin-audit-log',
+      notes: 'The whole-platform change trail — the firehose behind the per-page History drawer. SCREEN OFF THE NAV for now (client, 2026-08): auditing itself is unchanged and still referenced across the modules, but there is no standalone page to open — the per-page History drawer and a record’s Activity tab remain the way it is read.',
       detail: {
         description:
           'The searchable, filterable record of every change on the platform: who did it, what changed (before → after), and when. This is the widest of the three audit scopes — the per-page History drawer and a record’s own Activity tab are filtered views of the same data.',
