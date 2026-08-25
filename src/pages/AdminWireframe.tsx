@@ -80,9 +80,9 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
   'admin-invoices': { module: 'crm', feature: 'Invoice (VAT e-invoice)' },
-  // NOTE: 'admin-company-users' has no target on purpose — the Account management
-  // module was trimmed out of the build plan (buildModules.ts), so there is no
-  // authored feature page to link to. Re-add it there to make this page linkable.
+  // Account management is back in the build plan, so the Company-users screen links
+  // to its authored feature page (users, roles, deactivate/offboarding, move-user).
+  'admin-company-users': { module: 'account-management', feature: 'Company users & roles (on Admin)' },
   // System
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },

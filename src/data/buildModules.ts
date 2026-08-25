@@ -19,6 +19,7 @@ export { SITE_META, SCOPE_META, READY_META } from './build/types'
 
 import type { BuildModule } from './build/types'
 import { crm } from './build/crm'
+import { companyUser } from './build/company-user'
 import { jobseekerUser } from './build/jobseeker-user'
 import { adminAccess } from './build/admin-access'
 import { adminSystem } from './build/admin-system'
@@ -37,6 +38,7 @@ import { tools } from './build/tools'
  *
  *   Products & Packages  what we sell — the catalogue the CRM's documents draw on
  *   CRM                  selling it — quotation → order → payment → invoice
+ *   Account management   the account the sale creates — logins, roles, offboarding
  *   Job management       delivering the thing they bought
  *   Job seeker user      the other side of the marketplace: who applies
  *   Resume management    the CV they build — the input to an application
@@ -49,6 +51,7 @@ import { tools } from './build/tools'
 export const BUILD_MODULES: BuildModule[] = [
   productsPackages,
   crm,
+  companyUser,
   jobManagement,
   jobseekerUser,
   resumeManagement,
