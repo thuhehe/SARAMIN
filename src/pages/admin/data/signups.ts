@@ -11,6 +11,11 @@ export type Signup = {
   verified: boolean
   /** MATCH is binary and informational: did the tax code match a company we already have? */
   matched: boolean; matchName?: string
+  /** the typed company hit a FREE-DATA row (name-normalised). A third placement
+      path then applies: promote that pool row into the CRM company and move the
+      user in — instead of creating a duplicate from scratch while the same company
+      sits unclaimed in the pool. */
+  freeDataMatch?: string
   status: SignupStatus
   /** what happened once resolved */
   outcome?: string
@@ -26,5 +31,8 @@ export const SIGNUPS: Signup[] = [
   { person: 'Lê Minh Khôi', email: 'khoi@fpt.com.vn', phone: '0977 320 118', tax: '0301xxxxxx', company: 'FPT Software', hiring: true, when: '3h ago', verified: true, matched: true, matchName: 'FPT Software', status: 'Resolved', outcome: 'Moved to FPT Software · sign-in email sent' },
   { person: 'Phạm Thu Trang', email: 'trang@newco.vn', phone: '0905 771 220', tax: '0399xxxxxx', company: 'Công ty CP NewCo', hiring: true, when: '20m ago', verified: false, matched: false, status: 'New' },
   { person: 'Đỗ Quốc Bảo', email: 'baohr@gmail.com', phone: '0938 015 662', tax: '—', company: 'Startup ABC', hiring: false, when: '5h ago', verified: true, matched: false, status: 'New' },
+  // The Free-data hit: no CRM match, but the typed company IS a pool row. The right
+  // placement is promotion, not a from-scratch create that duplicates the pool.
+  { person: 'Trần Thu Hà', email: 'hr@tantien-me.vn', phone: '028 3822 145', tax: '—', company: 'Cơ điện Tân Tiến', hiring: true, when: '2h ago', verified: true, matched: false, freeDataMatch: 'Công ty TNHH Cơ điện Tân Tiến', status: 'New' },
   { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', verified: false, matched: false, status: 'Archived', outcome: 'Archived' },
 ]

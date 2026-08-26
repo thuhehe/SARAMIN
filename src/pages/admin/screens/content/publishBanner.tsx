@@ -37,6 +37,10 @@ export function PublishBannerModal({ banner, onClose }: { banner: Banner | null;
   const lines = chosenPo?.lines ?? []
 
   const product = CATALOG.find((c) => c.sku === sku)
+  /* What step 4 asks for follows the PRODUCT, not the screen: a banner placement
+     needs a creative, a job placement needs one of the company's OPEN jobs picked,
+     a company placement needs nothing — logo/cover come from the profile. */
+  const slotContent = product?.content ?? 'banner'
   const slot = PLACEMENTS.find((x) =>
     (sku === 'PLC-HOMEHERO' && x.id === 'home-hero') ||
     (sku === 'PLC-ADS-HOME' && x.id === 'home-adsense') ||
@@ -58,10 +62,10 @@ export function PublishBannerModal({ banner, onClose }: { banner: Banner | null;
   /* The name is required on both paths — a booking nobody can name is one nobody
      can find again in the list. */
   const valid = Boolean(name.trim()) && (editing
-    ? Boolean(file)
+    ? (slotContent === 'company' || Boolean(file))
     : house
-      ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && Boolean(file)
-      : Boolean(company) && Boolean(po) && Boolean(sku) && Boolean(file) && Boolean(chosenPo?.invoiced))
+      ? Boolean(sku) && Boolean(houseEnd) && Boolean(purpose.trim()) && (slotContent === 'company' || Boolean(file))
+      : Boolean(company) && Boolean(po) && Boolean(sku) && (slotContent === 'company' || Boolean(file)) && Boolean(chosenPo?.invoiced))
 
   const pick = (v: string) => { setCompany(v); setPo(''); setSku('') }
 
@@ -316,7 +320,34 @@ export function PublishBannerModal({ banner, onClose }: { banner: Banner | null;
             </div>
           </div>
 
-          <Section title="4 · Banner" />
+          <Section title={slotContent === 'job' ? '4 · Job hiển thị' : slotContent === 'company' ? '4 · Nội dung' : '4 · Banner'} />
+          {slotContent === 'job' && (
+            <div>
+              <FLabel req>Chọn job của {company || 'khách hàng'}</FLabel>
+              <select
+                value={file ?? ''}
+                onChange={(e) => setFile(e.target.value || null)}
+                disabled={creativeLocked || (!editing && !sku)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
+              >
+                <option value="">— Chọn job đang Open —</option>
+                <option value="JOB-2109">JOB-2109 · Digital Marketing Lead · Open đến 15/09</option>
+                <option value="JOB-2101">JOB-2101 · Product Manager · Open đến 05/09</option>
+              </select>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                Không upload gì — slot render chính tin đăng. Chỉ job <b className="text-ink/70">Open</b> chọn được;
+                job hết hạn giữa chừng thì booking tự nhả chỗ. Hết {product?.fulfilment.match(/(\d+ ngày)/)?.[1] ?? 'booking'},
+                job vẫn chạy tiếp trên trang tìm kiếm — hai đồng hồ độc lập.
+              </p>
+            </div>
+          )}
+          {slotContent === 'company' && (
+            <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+              Không cần upload — slot tự lấy <b className="text-ink/70">logo và ảnh cover</b> từ hồ sơ công ty.
+              Hồ sơ thiếu logo thì chặn publish, vì slot sẽ render ô trống.
+            </p>
+          )}
+          {slotContent === 'banner' && (
           <div>
             <FLabel req>Ảnh banner</FLabel>
             <div className={cn('rounded-lg border border-dashed px-3 py-4 text-center', creativeLocked ? 'border-line bg-canvas/50' : 'border-line hover:border-brand/50')}>
@@ -341,6 +372,7 @@ export function PublishBannerModal({ banner, onClose }: { banner: Banner | null;
               Đúng kích thước <b className="text-ink/70">{slot?.size ?? '— chọn sản phẩm trước'}</b>. Ảnh sai tỉ lệ bị chặn khi lưu, không tự crop.
             </p>
           </div>
+          )}
           <DestinationPicker />
         </div>
 

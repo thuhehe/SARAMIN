@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { COMPANIES } from '@/pages/admin/data/companies'
 import { CO_ROLE_DEFS } from '@/pages/admin/data/companyRecord'
 import type { CoUserRole } from '@/pages/admin/data/companyRecord'
 import { CUSERS } from '@/pages/admin/data/users'
@@ -36,57 +35,6 @@ function ChangeRoleModal({ user, users, onConfirm, onClose }: { user: CUser; use
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
           <button onClick={() => !blocked && onConfirm(target)} disabled={blocked} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Save role</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* HQ-only: move a user from one company to another. One email = one employer login
-   = one company at a time, so a move is detach-then-attach (login never changes).
-   Blocked if the user is the sole Admin of their current company. */
-function MoveUserModal({ user, users, onConfirm, onClose }: { user: CUser; users: CUser[]; onConfirm: (toCompany: string, role: CoUserRole) => void; onClose: () => void }) {
-  const admins = users.filter((u) => u.company === user.company && u.role === 'Admin' && u.status !== 'Disabled')
-  const soleAdmin = user.role === 'Admin' && admins.length <= 1
-  const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name)))).filter((n) => n !== user.company)
-  const [toCompany, setToCompany] = useState(targets[0] ?? '')
-  const [role, setRole] = useState<CoUserRole>('Recruiter')
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-4 w-full max-w-[460px] rounded-2xl border border-line bg-surface shadow-2xl">
-        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <p className="text-[15px] font-bold">Move user — {user.name}</p>
-          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
-        </div>
-        <div className="space-y-3 p-5">
-          {soleAdmin ? (
-            <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-800"><span>⚠️</span><span>{user.name} is the <b>sole Admin</b> of {user.company}. Assign another Admin there first — a company can’t be left without one.</span></p>
-          ) : (
-            <>
-              <p className="text-[12px] text-muted">Move this login into another company. <b className="text-ink/80">The email &amp; password never change</b> — only which company they’re in and their role there.</p>
-              <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink/80">From</p>
-                <div className="rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[12.5px] text-ink">{user.company}</div>
-              </div>
-              <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink/80">To company <span className="text-rose-500">*</span></p>
-                <select value={toCompany} onChange={(e) => setToCompany(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                  {targets.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Role in that company <span className="text-rose-500">*</span></p>
-                <select value={role} onChange={(e) => setRole(e.target.value as CoUserRole)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                  {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
-                </select>
-              </div>
-              <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>📝</span><span>This is an HQ action and is written to the audit log (who moved whom, from → to, role).</span></p>
-            </>
-          )}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          <button onClick={() => !soleAdmin && toCompany && onConfirm(toCompany, role)} disabled={soleAdmin || !toCompany} className="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Move user</button>
         </div>
       </div>
     </div>
@@ -135,7 +83,6 @@ export function AdminCompanyUsers() {
   const [inviting, setInviting] = useState(false)
   const [users, setUsers] = useState<CUser[]>(CUSERS)
   const [changing, setChanging] = useState<CUser | null>(null)
-  const [moving, setMoving] = useState<CUser | null>(null)
   const [disabling, setDisabling] = useState<CUser | null>(null)
   const applyDisable = (reason: string) => {
     if (!disabling) return
@@ -148,11 +95,6 @@ export function AdminCompanyUsers() {
     if (!changing) return
     setUsers((prev) => prev.map((u) => (u.email === changing.email ? { ...u, role } : u)))
     setChanging(null)
-  }
-  const applyMove = (toCompany: string, role: CoUserRole) => {
-    if (!moving) return
-    setUsers((prev) => prev.map((u) => (u.email === moving.email ? { ...u, company: toCompany, role } : u)))
-    setMoving(null)
   }
   return (
     <div>
@@ -177,16 +119,15 @@ export function AdminCompanyUsers() {
               ? <><RowAction tone="brand">Resend</RowAction><RowAction tone="rose">Cancel</RowAction></>
               : u.status === 'Disabled'
                 ? <button onClick={() => reEnable(u.email)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-brand hover:bg-canvas/70">Reactivate</button>
-                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button><button onClick={() => setMoving(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Move</button><button onClick={() => setDisabling(u)} className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button></>}
+                : <><button onClick={() => setChanging(u)} className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-canvas/70">Change role</button><button onClick={() => setDisabling(u)} className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">Deactivate</button></>}
           </div>,
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        <b className="text-ink/70">Deactivate</b> is offboarding (nhân viên nghỉ việc): login blocked, seat freed, their work stays with the company — reversible, audited, never deleted. The company’s own Admin can do this too; a user <b>HQ</b> deactivated can only be reactivated by HQ. The last active Admin can’t be deactivated, downgraded, or moved out.
+        <b className="text-ink/70">Deactivate</b> is offboarding (nhân viên nghỉ việc): login blocked, seat freed, their work stays with the company — reversible, audited, never deleted. The company’s own Admin can do this too; a user <b>HQ</b> deactivated can only be reactivated by HQ. The last active Admin can’t be deactivated or downgraded.
       </p>
       {inviting && <InviteUserModal onClose={() => setInviting(false)} />}
       {changing && <ChangeRoleModal user={changing} users={users} onConfirm={applyRole} onClose={() => setChanging(null)} />}
-      {moving && <MoveUserModal user={moving} users={users} onConfirm={applyMove} onClose={() => setMoving(null)} />}
       {disabling && <DisableUserModal user={disabling} users={users} onConfirm={applyDisable} onClose={() => setDisabling(null)} />}
     </div>
   )

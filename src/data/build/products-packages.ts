@@ -130,6 +130,38 @@ export const productsPackages: BuildModule = {
         'Do NOT model a tier as a package to express its extras, and do NOT model a segment price as a package (see the next block). Both mistakes produce the same failure: the same capability defined in several records that then drift apart, which is exactly what happened to Basic Plus.',
     },
     {
+      label: 'Placement content — a slot shows a banner, a JOB, or a company',
+      text: 'Every Placement product declares WHAT fills the slot, and that decides what publishing asks for. “Job hiển thị trên trang chủ 10 ngày” is NOT a banner sale and NOT a new product type — it is a Placement whose content is a job, sold as an Add-on riding on a Job posting product.',
+      table: {
+        cols: ['Content', 'Publishing asks for', 'Examples'],
+        rows: [
+          ['Banner', 'A creative upload, exact slot dimensions', 'Main Banner hero · adsense Home/Search · pop-up'],
+          ['Job', 'ONE of the company’s OPEN jobs — nothing uploaded', 'Công việc Hot hôm nay · Popular Jobs premium · Highlight Companies premium'],
+          ['Company', 'Nothing — logo/cover pulled from the company profile', 'Công ty nổi bật · Feature company · Highlight Company (Search)'],
+        ],
+      },
+      items: [
+        'TWO CLOCKS, never one: the JOB runs its posting lifetime (30 ngày, from the Job posting product); the BOOKING holds the slot for its own display duration (10 ngày, from the Placement product). The booking ending does not expire the job — it keeps running on search. Conflating these two numbers is the single most likely modelling mistake here.',
+        'A job-content booking is only publishable against an OPEN job. If the job closes or expires mid-booking, the booking releases its slot — it never renders a dead job on the homepage.',
+        'A company-content placement blocks publish while the profile lacks a logo, because the slot would render an empty box.',
+      ],
+    },
+    {
+      label: 'Booking queue — one slot, sequential bookings (build later)',
+      text: 'Sections with 1 slot (or a small fixed pool) need a BOOKING SYSTEM: while a booking runs, the next one cannot start. A job booked for 10 days occupies the slot for exactly those 10 days; the next booking’s start date is the previous booking’s end. Selling is therefore selling the NEXT AVAILABLE WINDOW, not a date the customer picks freely.',
+      table: {
+        cols: ['Rule', 'Why'],
+        rows: [
+          ['Bookings on one slot never overlap — next start = previous end', 'One slot physically shows one thing; overlap = an oversell discovered on the live page'],
+          ['The queue is visible at the point of sale', 'Sales must quote “lên sóng từ ngày X” from the queue, not promise a date the slot cannot honour'],
+          ['A cancelled/released booking pulls the queue forward', 'An empty slot with a waiting queue is paid inventory idling'],
+          ['Publish-now is only offered when the slot is free today', 'Otherwise “đăng ngay” silently becomes “đăng khi đến lượt” and the operator was not told'],
+        ],
+      },
+      warn:
+        'PHASE-LATER, agreed — but the SALE must respect it from day one: quote the next available window, never a free-typed start date on a 1-slot placement. The availability data model (PlacementBooking with start/end per slot) already exists in this spec; the queue is a constraint query over it, not a new table.',
+    },
+    {
       label: 'Packages are a catalogue object — but “Gói Enterprise / Gói SME” are NOT packages',
       text: 'A PACKAGE is several catalogue products sold together at one package price, reusable across customers. The client has a real one: Gói Ultimate at 16.489.000 ₫ bundles posting + CV sourcing + email marketing + a Popular Companies logo + HackerRank + CSKH support. That earns its own admin screen, because it is defined once and quoted many times.',
       table: {

@@ -581,5 +581,5 @@ export function companyActivity(c: Company): CoEvent[] {
 
 /* Sales activity log — compose a chat (channel + note) or a call (via Calio) */
 export const CHAT_CHANNELS = ['Zalo', 'Facebook Messenger', 'Email', 'SMS', 'Zalo OA', 'Phone', 'Other']
-export const CO_TABS = ['Overview', 'Contacts', 'Users', 'Products & billing', 'Company page', 'Jobs', 'Applications', 'Resumes', 'Owner history', 'Activity'] as const
+export const CO_TABS = ['Overview', 'Yêu cầu nhận', 'Contacts', 'Users', 'Products & billing', 'Company page', 'Jobs', 'Applications', 'Resumes', 'Owner history', 'Activity'] as const
 export type CoTab = (typeof CO_TABS)[number]

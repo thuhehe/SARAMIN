@@ -9,10 +9,10 @@ import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/com
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
-import { CLAIM_REQS } from '@/pages/admin/data/directory'
+import { CLAIM_REQS, CLAIM_STATUS } from '@/pages/admin/data/directory'
 import { releaseChain } from '@/pages/admin/data/directory'
 import type { DirRow } from '@/pages/admin/data/directory'
-import { AssignCard, ClaimChain, MyClaimNotice, pendingClaims } from '@/pages/admin/screens/directory/assign'
+import { AssignCard, ClaimChain, DirectAssignCard, MyClaimNotice, openClaim } from '@/pages/admin/screens/directory/assign'
 import { tierOf } from '@/pages/admin/data/membership'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { MD_DOMAINS } from '@/pages/admin/data/system'
@@ -119,10 +119,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
     // ("who held this when, and who moved it"), not something read while working
     // the account. In the Overview column it cost a card's height on every visit
     // to answer a question asked a few times a year.
-    /* The pending-claim count lives on this tab because this is where the decision
-       is made. Amber, not grey: it is people waiting, not an inventory. Zero renders
-       nothing — a badge that can read "0" trains the reader to ignore it. */
-    { key: 'Owner history', label: 'Owner history', count: pendingClaims(c.name).length || undefined, alert: true },
+    { key: 'Owner history', label: 'Owner history' },
+    /* Pool records only, and LAST: the claim work — two-level approval, direct
+       assign, and the request log. Its own tab because actions do not belong under
+       a tab named "history"; last per the client — the amber badge and the banner's
+       Duyệt yêu cầu button are what pull the admin in, not the position. */
+    ...(isPool ? [{ key: 'Yêu cầu nhận' as CoTab, label: 'Yêu cầu nhận', count: openClaim(c.name) ? 1 : undefined, alert: true }] : []),
   ]
 
 
@@ -148,12 +150,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
           <span className="ml-auto flex shrink-0 items-center gap-1.5">
             {/* The admin's way in: the decision UI lives on the Owner history tab, and
                 a banner button beats knowing that. */}
-            {pendingClaims(c.name).length > 0 && (
-              <button onClick={() => setTab('Owner history')} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">
-                Duyệt yêu cầu ({pendingClaims(c.name).length}) →
+            {openClaim(c.name) && (
+              <button onClick={() => setTab('Yêu cầu nhận')} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">
+                Duyệt yêu cầu ({CLAIM_STATUS[openClaim(c.name)!.status].vi}) →
               </button>
             )}
-            {onClaim && (
+            {/* Xin nhận only while the row is FREE — one open request at a time,
+                so a locked row offers no second entry point to the same wall. */}
+            {onClaim && pool!.state === 'free' && (
               <button onClick={onClaim} className="rounded-md border border-brand/40 bg-brand-soft px-2.5 py-1 text-[11px] font-semibold text-brand hover:border-brand">Xin nhận</button>
             )}
           </span>
@@ -562,27 +566,37 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
           left with a date at the far right and nothing between them. */}
       {tab === 'Owner history' && (
         <div className="max-w-[620px]">
-          {/* Decision FIRST. A pending request is the only thing on this tab that
-              needs acting on today — history can wait until after it is answered,
-              and burying the buttons under a timeline is how a queue goes stale. */}
+          {/* HISTORY ONLY — the claim work lives on the Yêu cầu nhận tab. A tab named
+              history that carries approve buttons is mislabeled, and a mislabeled
+              queue is a queue nobody finds. */}
           <div className="space-y-3">
-            {isPool && pendingClaims(c.name).length > 0 && <AssignCard reqs={pendingClaims(c.name)} />}
-            {/* Then the ownership timeline. On a released company the release is the
-                newest EVENT in it (see releaseChain) rather than a banner beside it,
-                so the reader follows one ordering instead of stitching two. */}
             {!isPool && <OwnerHistory c={c} />}
-            {/* A promoted company shows only the tenure that the approved claim
-                created; the request-by-request detail is the log's job. */}
             {!isPool && c.fromPool && (
               <p className="text-[11px] leading-relaxed text-faint">
                 Chi tiết các yêu cầu xin nhận (ai xin, ai bị từ chối, note của admin) xem ở{' '}
                 <button onClick={() => goTo('admin-claim-requests')} className="font-medium text-brand hover:underline">Yêu cầu nhận công ty →</button>
               </p>
             )}
-            {isPool && pool!.released && <OwnerHistory c={c} tenures={releaseChain(pool!)} />}
-            {isPool && <ClaimChain co={c.name} />}
-            {isPool && !pool!.released && pendingClaims(c.name).length === 0 && decidedNone(c.name) && (
-              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này.</p>
+            {/* A released company keeps its chain, with the release as the newest
+                event in it. A fresh import has no ownership story yet — say so. */}
+            {isPool && (pool!.released
+              ? <OwnerHistory c={c} tenures={releaseChain(pool!)} />
+              : <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có sales phụ trách — chuỗi chủ sở hữu bắt đầu khi công ty được nhận về CRM.</p>)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Yêu cầu nhận — the pool record's WORK tab ─────────────────────── */}
+      {tab === 'Yêu cầu nhận' && isPool && (
+        <div className="max-w-[620px]">
+          <div className="space-y-3">
+            {/* Decision first, then the bypass, then the log — act on today's thing,
+                then look backwards exactly once. */}
+            {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} />}
+            <DirectAssignCard co={c.name} />
+            <ClaimChain co={c.name} />
+            {!openClaim(c.name) && decidedNone(c.name) && (
+              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này — sales xin bằng nút Xin nhận, hoặc admin phân trực tiếp ở trên.</p>
             )}
           </div>
         </div>

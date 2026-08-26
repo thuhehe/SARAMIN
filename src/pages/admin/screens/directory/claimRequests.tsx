@@ -75,9 +75,12 @@ export function AdminClaimRequests() {
              được chọn" — its sales became the owner. */
           <span className="flex min-w-0 flex-col gap-0.5">
             <Pill tone={CLAIM_STATUS[r.status].tone}>{CLAIM_STATUS[r.status].vi}</Pill>
-            {r.status === 'rejected' && <span className="text-[10px] leading-snug text-faint">công ty về lại Chưa nhận — xin lại được</span>}
+            {/* Which level it sits at / who said no — the two-level chain, told from
+                the rep's side. */}
+            {r.status === 'pending' && <span className="text-[10px] leading-snug text-faint">lần 1 — chờ Admin duyệt</span>}
+            {r.status === 'admin_ok' && <span className="text-[10px] leading-snug text-faint">✓ Admin duyệt — lần 2, chờ Sales lead</span>}
+            {r.status === 'rejected' && <span className="text-[10px] leading-snug text-faint">bởi {r.rejectedLevel ?? 'Admin'} — công ty về lại Chưa nhận, xin lại được</span>}
             {r.status === 'approved' && <span className="text-[10px] leading-snug text-faint">được chọn — là sales phụ trách</span>}
-            {r.status === 'pending' && (r.reqs ?? 1) > 1 && <span className="text-[10px] leading-snug text-amber-700">{r.reqs} sales cùng xin</span>}
             {r.decidedAt && <span className="text-[10px] leading-snug text-faint">{r.decidedAt}{r.decidedBy && ` · ${r.decidedBy}`}</span>}
             {/* The admin's note to THIS rep — the sentence that tells a refused rep
                 what a better request would look like. Verbatim, never summarised. */}
@@ -86,7 +89,7 @@ export function AdminClaimRequests() {
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Đây là <b className="text-muted">log</b>, không phải chỗ duyệt — admin duyệt ở <b className="text-muted">Free data</b> (lọc Đang chờ duyệt, mở công ty, xem hết các sales cùng xin rồi phân công).
+        Đây là <b className="text-muted">log</b>, không phải chỗ duyệt — duyệt ở <b className="text-muted">Free data</b> (lọc Đang chờ duyệt, mở công ty): <b className="text-muted">Admin duyệt trước (bước 1), Sales lead duyệt sau (bước 2)</b> — từ chối ở bước nào là chốt ở bước đó.
         Sales mở <b className="text-muted">Của tôi</b> để biết yêu cầu của mình được duyệt hay bị từ chối, và đọc <b className="text-muted">note của admin</b> gửi riêng cho mình — vì khi bị từ chối, dòng trong danh bạ chỉ âm thầm quay về Chưa nhận.
       </p>
     </div>

@@ -78,7 +78,7 @@ export const companyUser: BuildModule = {
       text: 'Company-user sign-up is specified on the CRM → Sign-ups page. In short: a self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves it with one of three actions (move the user into an existing company · create a new company + move the user in as Admin · archive), and Move/Create email the user an activation link. Access + a company are granted only after HQ places them and they activate.',
       items: [
         'One email = one employer login = at most one company at a time, separate from the jobseeker site (Phase-1). A second sign-up on the same email is blocked ("sign in instead").',
-        'No company or products are created at sign-up — the company comes from HQ (existing or newly created). Duplicate/junk requests are simply archived; a duplicate real company is cleaned up by moving its users out then archiving it (Move-user behavior below).',
+        'No company or products are created at sign-up — the company comes from HQ (existing or newly created). Duplicate/junk requests are simply archived; a duplicate real company is retired by offboarding its users (the surviving company re-invites them), then archiving it.',
       ],
     },
     {
@@ -455,40 +455,25 @@ export const companyUser: BuildModule = {
       name: 'Company users & roles (on Admin)',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. Adds the cross-company power: move a user between companies.',
+      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. There is NO cross-company move of an existing user.',
       detail: {
         description:
-          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. Because HQ is the only actor with a cross-company view, it also owns the one action a company can never do itself: MOVE a user from one company to another. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
+          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
         behaviors: [
-          'Same build-role / invite / assign-role / disable actions as the CO side, but performed by HQ.',
-          'Move user between companies: HQ picks a user, a target company, and the role they will have there (Admin or any lower role). The login and password never change — only which company the user is in, and their role there. This is how a curious self-signup, or a person invited to the wrong place, is put where they belong.',
+          'Same build-role / invite / assign-role / deactivate actions as the CO side, but performed by HQ.',
           'Break-glass: HQ can reassign Admin for a company when the sole Admin is unavailable (left / lost access) — the one recovery path the single-Admin floor needs.',
         ],
         rules: [
-          'A move cannot strand a company: if the user is the SOLE Admin of their current company, the move is blocked until another Admin is assigned there first (the ≥1-Admin floor).',
-          'The destination role is chosen at move time; moving in as Admin is allowed (adds/replaces an Admin), subject to the destination’s seat cap.',
-          'Only HQ can move users across companies — a company Admin can only invite within its own account, never pull a user from another company.',
-          'HQ role/user edits, and every move, are permission-gated (specific HQ roles) and written to the audit log (who moved whom, from → to, role, when).',
+          'There is deliberately NO "move a user between companies" action for existing users. A user in the wrong company is fixed the boring way: deactivate the login there, and the right company invites their email fresh (or, for a brand-new sign-up, HQ places it correctly on the Sign-ups screen). One email = one login = one company at a time.',
+          'HQ role/user edits are permission-gated (specific HQ roles) and written to the audit log.',
           'Prefer the company-scoped Users / Roles sections for edits; keep the global list read-oriented (find a user, see which company).',
         ],
-        states: ['User with no company (self-signup)', 'Move blocked (sole Admin of source)', 'Moved (source membership ended, target membership created)', 'Move to Admin', 'Destination seat cap reached'],
-        backend: {
-          endpoints: [
-            'POST /admin/company-users/:userId/move { toCompanyId, role } — ends the source membership, creates the target membership; blocked if it would leave the source with zero Admins or exceed the target’s seat cap',
-          ],
-          integrations: ['Audit log (move recorded)', 'Notifications (optional: tell the user they were moved)'],
-          notes: 'One email = one employer login = one company at a time, so a move is detach-then-attach — not a second membership. Enforce the sole-Admin and seat-cap checks server-side.',
-        },
         acceptance: [
-          'HQ can resolve support cases (build a role, invite, assign role, disable) with every action audited.',
-          'HQ can move a user into another company as Admin or a lower role; the login/password is unchanged.',
-          'Moving the sole Admin out of a company is blocked with a clear reason.',
-          'A move that would exceed the destination seat cap is blocked.',
+          'HQ can resolve support cases (build a role, invite, assign role, deactivate) with every action audited.',
           'HQ can reassign a stranded company’s Admin.',
         ],
         openQuestions: [
-          'Which HQ roles may edit company users / roles, move users, and use break-glass, and should the global list be read-only?',
-          'When a user is moved, is the user notified, and what happens to any work (jobs/notes) they created in the source company?',
+          'Which HQ roles may edit company users / roles and use break-glass, and should the global list be read-only?',
         ],
       },
     },

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
-import { ACTIVATE_WITHIN_DEFAULT, CATALOG, DESCRIPTIONS, FILL_META, PLACEMENTS, activateWithin, activateWithinLabel } from '@/pages/admin/data/products'
+import { ACTIVATE_WITHIN_DEFAULT, CATALOG, DESCRIPTIONS, FILL_META, PLACEMENTS, SLOT_CONTENT, activateWithin, activateWithinLabel } from '@/pages/admin/data/products'
 import type { CatalogItem } from '@/pages/admin/data/products'
 import { DetailCard, KV } from '@/pages/admin/ui/fields'
 import { FilterSelect, ListPage } from '@/pages/admin/ui/list'
@@ -193,6 +193,13 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
           </>)}
           {isPlacement && (<>
             <KV label="Placement slot" value={placement ? `${placement.name} — ${placement.page}` : '— not mapped'} link={!!placement} />
+            <KV label="Nội dung hiển thị" value={p.content ? SLOT_CONTENT[p.content].vi : '— chưa đặt'} />
+            {p.content === 'job' && (
+              <p className="mt-1 rounded-md bg-canvas/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-muted">
+                Booking giữ chỗ theo <b className="text-ink/70">thời gian hiển thị của slot</b>; job vẫn chạy đủ vòng đời
+                tin đăng của nó. Hai đồng hồ độc lập — hết booking không có nghĩa job hết hạn.
+              </p>
+            )}
             <KV label="Thời gian hiển thị" value={p.fulfilment.match(/(\d+ ngày)/)?.[1] ?? '— chưa đặt'} />
             {/* Not every slot has a numeric pool — the Hot-jobs area is an unlimited
                 pool, so fall back to the registry's own capacity wording. */}

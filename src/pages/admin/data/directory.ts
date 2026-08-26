@@ -113,23 +113,23 @@ function generatedClaimReqs(): ClaimReq[] {
   const out: ClaimReq[] = []
   let id = 23960
   QUEUE_NAMES.forEach((co, i) => {
-    // every 6th company is contested by two reps; the rest have one requester
-    const n = i % 6 === 2 ? 2 : 1
+    // ONE open request per company — a pending row locks Xin nhận for everyone
+    // else. Every 6th is already past level 1, waiting on the Sales lead.
     const day = 4 + (i % 12)
-    for (let k = 0; k < n; k++) {
-      const by = QUEUE_REPS[(i + k) % 3]
-      const ev = (i + k) % 4
-      out.push({
-        id: id++, co, by,
-        when: `${String(day + k).padStart(2, '0')}/08/2026 ${String(8 + ((i + k) % 9)).padStart(2, '0')}:${String((i * 7 + k * 13) % 60).padStart(2, '0')}`,
-        person: k === 0 ? 'Phòng nhân sự' : 'Ms. HR (nguồn khác)',
-        phone: `09${String(10 + i)}${k} ${String(200 + i * 7)} xxx`,
-        reason: QUEUE_REASONS[(i + k) % QUEUE_REASONS.length],
-        kind: FREE_DATA_KIND[2 + ((i + k) % 6)],
-        ...(ev === 0 || ev === 3 ? { link: `vietnamworks.com/tin-tuyen-dung-${1000 + i * 10 + k}` } : ev === 1 ? { file: `tin-tuyen-${i}${k}.png` } : {}),
-        reqs: n, status: 'pending',
-      })
-    }
+    const by = QUEUE_REPS[i % 3]
+    const ev = i % 4
+    const adminOk = i % 6 === 2
+    out.push({
+      id: id++, co, by,
+      when: `${String(day).padStart(2, '0')}/08/2026 ${String(8 + (i % 9)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`,
+      person: 'Phòng nhân sự',
+      phone: `09${String(10 + i)} ${String(200 + i * 7)} xxx`,
+      reason: QUEUE_REASONS[i % QUEUE_REASONS.length],
+      kind: FREE_DATA_KIND[2 + (i % 6)],
+      ...(ev === 0 || ev === 3 ? { link: `vietnamworks.com/tin-tuyen-dung-${1000 + i * 10}` } : ev === 1 ? { file: `tin-tuyen-${i}.png` } : {}),
+      reqs: 1,
+      ...(adminOk ? { status: 'admin_ok' as const, adminBy: 'Lê Minh Anh (admin)', adminAt: `${String(day + 1).padStart(2, '0')}/08/2026 09:30` } : { status: 'pending' as const }),
+    })
   })
   return out
 }
@@ -137,7 +137,7 @@ function generatedDirRows(): DirRow[] {
   return QUEUE_NAMES.map((co, i) => ({
     name: co, phone: `028 3${String(700 + i)} xxxx`, addr: ['HCMC', 'Hà Nội', 'Bình Dương', 'Đồng Nai'][i % 4],
     industry: ['Sản xuất', 'Logistics', 'Thực phẩm', 'Xây dựng', 'Giáo dục'][i % 5],
-    source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending' as DirState, by: QUEUE_REPS[i % 3], reqs: i % 6 === 2 ? 2 : 1,
+    source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending' as DirState, by: QUEUE_REPS[i % 3], reqs: 1,
   }))
 }
 export const DIRECTORY: DirRow[] = [
@@ -152,7 +152,7 @@ export const DIRECTORY: DirRow[] = [
      to the pool, was refused once after that, and now has two reps waiting. Its
      Owner history tab therefore shows all three things at once — the tenure chain
      it kept, the live confirm/assign UI, and the log of past requests. */
-  { name: 'Công ty TNHH Logistics Đại Hưng', person: 'Mr. Đỗ Trung Kiên · Trưởng phòng NS', email: 'info@daihung-log.vn', phone: '0283 776 xxxx', web: 'daihung-log.vn', addr: 'Quận 7, HCMC', industry: 'Logistics', tax: '0999xxxxxx', source: 'Trả về từ CRM · Nguyễn Thị Lan (hết tiềm năng)', added: '15/07/2026', state: 'pending', by: 'Phạm Quang Huy', reqs: 2,
+  { name: 'Công ty TNHH Logistics Đại Hưng', person: 'Mr. Đỗ Trung Kiên · Trưởng phòng NS', email: 'info@daihung-log.vn', phone: '0283 776 xxxx', web: 'daihung-log.vn', addr: 'Quận 7, HCMC', industry: 'Logistics', tax: '0999xxxxxx', source: 'Trả về từ CRM · Nguyễn Thị Lan (hết tiềm năng)', added: '15/07/2026', state: 'pending', by: 'Phạm Quang Huy', reqs: 1,
     released: {
       at: '15/07/2026', by: 'Nguyễn Thị Lan', reason: 'Hết tiềm năng — 3 lần báo giá không phản hồi, khách nói chưa có ngân sách 2026.',
       tenures: [
@@ -160,7 +160,7 @@ export const DIRECTORY: DirRow[] = [
         { owner: 'Phạm Quang Huy', from: '03/2025', to: '11/2025', by: 'Tạo lead (hệ thống)', reason: 'Lead created — Website sign-up', created: true },
       ],
     } },
-  { name: 'Công ty CP Xây dựng Minh Khang', person: 'Mr. Lê Đình Trung', email: 'tuyendung@minhkhang.vn', phone: '0918 442 xxx', addr: 'Hà Nội', industry: 'Xây dựng', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: 'Nguyễn Thị Lan', reqs: 3 },
+  { name: 'Công ty CP Xây dựng Minh Khang', person: 'Mr. Lê Đình Trung', email: 'tuyendung@minhkhang.vn', phone: '0918 442 xxx', addr: 'Hà Nội', industry: 'Xây dựng', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'pending', by: 'Phạm Quang Huy', reqs: 1 },
   { name: 'Công ty TNHH Nội thất An Bình', person: 'Ms. Phạm Thuỳ Dương', email: 'hr@anbinh-furniture.vn', phone: '0274 356 xxxx', addr: 'Bình Dương', industry: 'Sản xuất', source: 'Thu thập hội chợ 06/2026', added: '18/06/2026', state: 'pending', by: 'Trần Quốc Trung', reqs: 1 },
   { name: 'Công ty CP Bao bì Tiến Phát', person: 'Mr. Vũ Đức Thắng', email: 'hcns@tienphat-pack.vn', phone: '0251 388 xxxx', addr: 'Đồng Nai', industry: 'Sản xuất', tax: '0362xxxxxx', source: 'Nhập từ danh bạ VCCI', added: '02/07/2026', state: 'claimed', by: 'Phạm Quang Huy', crm: 'Công ty CP Bình Minh' },
   // Dirty data on purpose: this row is ALREADY a CRM company under another rep.
@@ -243,9 +243,21 @@ export const dirCrm = (r: DirRow) => (r.crm ? COMPANIES.find((c) => c.name === r
    Resolved requests STAY in this list. The queue is also the record of how every
    company entered the CRM — filtering them out would leave the only copy of that
    history in an audit log nobody opens. */
-type ClaimStatus = 'pending' | 'approved' | 'rejected'
+/* TWO approval levels, in order: Admin first, then Sales lead.
+
+     pending   waiting on ADMIN (level 1)
+     admin_ok  admin passed it — waiting on SALES LEAD (level 2)
+     approved  sales lead passed it: the company is assigned
+     rejected  refused at EITHER level, and final either way
+
+   A rejection is terminal at whichever level it happens: admin refusing never
+   reaches the lead, and the lead refusing does not bounce back to admin. Two levels
+   of yes, one level of no — a rejection the next level could overturn would make
+   "Từ chối" mean nothing until the whole chain finishes. */
+type ClaimStatus = 'pending' | 'admin_ok' | 'approved' | 'rejected'
 export const CLAIM_STATUS: Record<ClaimStatus, { vi: string; tone: StatusTone }> = {
-  pending: { vi: 'Đang chờ', tone: 'pending' },
+  pending: { vi: 'Chờ duyệt lần 1 · Admin', tone: 'pending' },
+  admin_ok: { vi: 'Chờ duyệt lần 2 · Sales lead', tone: 'draft' },
   approved: { vi: 'Đã duyệt', tone: 'active' },
   rejected: { vi: 'Từ chối', tone: 'expired' },
 }
@@ -270,6 +282,14 @@ export type ClaimReq = {
       question is "who turned this down, and was that before or after my call?" */
   decidedBy?: string
   decidedAt?: string
+  /** the ADMIN's level-1 pass, kept separately from the final decision: once a
+      request reaches the lead, the record must show who passed level 1 — the lead is
+      otherwise approving something with no visible provenance. */
+  adminBy?: string
+  adminAt?: string
+  /** which level refused it. A rejection is terminal, so "who said no" is the whole
+      explanation, and it must not have to be guessed from timestamps. */
+  rejectedLevel?: 'Admin' | 'Sales lead'
   /** the admin's note to THIS rep, written at decision time. Per request, not per
       company: the winner and each loser get different sentences, and each rep reads
       their own on the Yêu cầu nhận công ty log. Optional — but it is the only channel
@@ -282,29 +302,29 @@ export const CLAIM_REQS: ClaimReq[] = [
      history tab carry the tenure chain, the live decision and the request log
      together. */
   { id: 23820, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Trần Quốc Trung', when: '20/07/2026 08:55', person: 'Mr. Đỗ Trung Kiên · Trưởng phòng NS', phone: '0283 776 xxxx', reason: 'Công ty vừa trả về bể, tôi muốn thử lại vì có quen anh Kiên.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', reqs: 1, status: 'rejected', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '21/07/2026 09:10', note: 'Mới trả về 5 ngày và chưa có tín hiệu tuyển mới — chờ khách đăng tin rồi xin lại.' },
-  { id: 23966, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Phạm Quang Huy', when: '08/08/2026 09:20', person: 'Mr. Đỗ Trung Kiên · Trưởng phòng NS', phone: '0283 776 xxxx', email: 'info@daihung-log.vn', reason: 'Tôi từng phụ trách KH này 2025, nay họ mở tuyến Cần Thơ và đang tuyển 15 tài xế + 4 điều phối. Đã gọi anh Kiên, hẹn gặp 20/08.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/dai-hung-logistics-tai-xe', reqs: 2, status: 'pending' },
-  { id: 23974, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Nguyễn Thị Lan', when: '10/08/2026 16:40', person: 'Phòng nhân sự', phone: '0283 776 xxxx', reason: 'KH cũ của tôi, xin nhận lại.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', reqs: 2, status: 'pending' },
+  { id: 23966, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Phạm Quang Huy', when: '08/08/2026 09:20', person: 'Mr. Đỗ Trung Kiên · Trưởng phòng NS', phone: '0283 776 xxxx', email: 'info@daihung-log.vn', reason: 'Tôi từng phụ trách KH này 2025, nay họ mở tuyến Cần Thơ và đang tuyển 15 tài xế + 4 điều phối. Đã gọi anh Kiên, hẹn gặp 20/08.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/dai-hung-logistics-tai-xe', reqs: 1, status: 'admin_ok', adminBy: 'Lê Minh Anh (admin)', adminAt: '12/08/2026 09:00' },
+  { id: 23974, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Nguyễn Thị Lan', when: '04/08/2026 16:40', person: 'Phòng nhân sự', phone: '0283 776 xxxx', reason: 'KH cũ của tôi, xin nhận lại.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '05/08/2026 10:12', note: 'Chính bạn vừa trả KH này về bể — chờ khách đăng tin thật rồi xin lại.' },
   /* The claim history of a company that has ALREADY been promoted (Bình Minh,
      CO-N3V7F5Z — fromPool on its CRM record). The chain follows the company into
      the CRM: its Owner history tab shows these two below the tenure chain, and the
      approved one IS the first tenure. One contest, one loser, one winner. */
-  { id: 23701, co: 'Công ty CP Bình Minh', by: 'Nguyễn Thị Lan', when: '10/07/2026 09:41', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', reason: 'Thấy tin tuyển giáo viên trên website trường, chưa liên hệ được.', kind: 'Đang đăng tuyển trên thị trường', reqs: 2, status: 'rejected', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '14/07/2026 10:30', note: 'Đã phân cho Trần Quốc Trung — bên đó có link tin đăng và đã liên hệ được HR.' },
-  { id: 23702, co: 'Công ty CP Bình Minh', by: 'Trần Quốc Trung', when: '11/07/2026 14:05', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', email: 'hr@binhminh.edu.vn', reason: 'Trường mở thêm cơ sở quận 7, cần 12 giáo viên và 3 nhân viên tuyển sinh cho kỳ 9/2026. Đã gọi HR, hẹn demo.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', link: 'binhminh.edu.vn/tuyen-dung-giao-vien-2026', reqs: 2, status: 'approved', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '14/07/2026 10:30', note: 'Hồ sơ đầy đủ, đã hẹn demo — triển khai sớm nhé.' },
-  { id: 23941, co: 'Công ty CP Xây dựng Minh Khang', by: 'Nguyễn Thị Lan', when: '11/08/2026 10:09', person: 'Mr. Lê Đình Trung · Trưởng phòng HC-NS', phone: '0918 442 xxx', email: 'tuyendung@minhkhang.vn', reason: 'KH đang tuyển 8 vị trí kỹ thuật công trường trên thị trường, đã gọi HR và được hẹn gửi báo giá tuần sau.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/minhkhang-ky-thuat-cong-truong', reqs: 3, status: 'pending' },
+  { id: 23701, co: 'Công ty CP Bình Minh', by: 'Nguyễn Thị Lan', when: '10/07/2026 09:41', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', reason: 'Thấy tin tuyển giáo viên trên website trường, chưa liên hệ được.', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '14/07/2026 10:30', note: 'Đã phân cho Trần Quốc Trung — bên đó có link tin đăng và đã liên hệ được HR.' },
+  { id: 23702, co: 'Công ty CP Bình Minh', by: 'Trần Quốc Trung', when: '11/07/2026 14:05', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', email: 'hr@binhminh.edu.vn', reason: 'Trường mở thêm cơ sở quận 7, cần 12 giáo viên và 3 nhân viên tuyển sinh cho kỳ 9/2026. Đã gọi HR, hẹn demo.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', link: 'binhminh.edu.vn/tuyen-dung-giao-vien-2026', reqs: 1, status: 'approved', adminBy: 'Lê Minh Anh (admin)', adminAt: '14/07/2026 10:30', decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: '15/07/2026 08:45', note: 'Hồ sơ đầy đủ, đã hẹn demo — triển khai sớm nhé.' },
+  { id: 23941, co: 'Công ty CP Xây dựng Minh Khang', by: 'Nguyễn Thị Lan', when: '01/08/2026 10:09', person: 'Mr. Lê Đình Trung · Trưởng phòng HC-NS', phone: '0918 442 xxx', email: 'tuyendung@minhkhang.vn', reason: 'KH đang tuyển 8 vị trí kỹ thuật công trường trên thị trường, đã gọi HR và được hẹn gửi báo giá tuần sau.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/minhkhang-ky-thuat-cong-truong', reqs: 1, status: 'rejected', rejectedLevel: 'Sales lead', adminBy: 'Lê Minh Anh (admin)', adminAt: '05/08/2026 09:00', decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: '06/08/2026 14:20', note: 'Địa bàn Hà Nội đang quá tải với em — để bạn khác nhận.' },
   // The competing request on the same company. This is what the count means, and it
   // is the decision the admin actually has to make.
-  { id: 23944, co: 'Công ty CP Xây dựng Minh Khang', by: 'Trần Quốc Trung', when: '12/08/2026 08:41', person: 'Ms. Đỗ Kim Ngân · HR', phone: '0918 442 xxx', reason: 'đang tuyển', kind: 'Có nhu cầu tuyển dụng trong tương lai', file: 'anh-tin-tuyen-dung.png', reqs: 3, status: 'pending' },
+  { id: 23944, co: 'Công ty CP Xây dựng Minh Khang', by: 'Trần Quốc Trung', when: '07/08/2026 08:41', person: 'Ms. Đỗ Kim Ngân · HR', phone: '0918 442 xxx', reason: 'đang tuyển', kind: 'Có nhu cầu tuyển dụng trong tương lai', file: 'anh-tin-tuyen-dung.png', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '08/08/2026 11:05', note: 'Lý do quá mỏng và chưa liên hệ được ai — bổ sung bằng chứng rồi xin lại.' },
   // A third rep on Minh Khang: the strongest evidence but the latest timestamp, so
   // the recommended tie-break (evidence first, time second) actually has to be used.
-  { id: 23951, co: 'Công ty CP Xây dựng Minh Khang', by: 'Phạm Quang Huy', when: '12/08/2026 15:20', person: 'Ms. Bùi Thanh Mai · Giám đốc Nhân sự', phone: '0918 442 xxx', email: 'ns@minhkhang.vn', reason: 'Giám đốc NS là khách cũ của tôi ở công ty trước, đã hẹn gặp 18/08 và họ đang tuyển 12 vị trí cho 2 dự án mới.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'vietnamworks.com/cong-ty-minh-khang-tuyen-dung', reqs: 3, status: 'pending' },
+  { id: 23951, co: 'Công ty CP Xây dựng Minh Khang', by: 'Phạm Quang Huy', when: '12/08/2026 15:20', person: 'Ms. Bùi Thanh Mai · Giám đốc Nhân sự', phone: '0918 442 xxx', email: 'ns@minhkhang.vn', reason: 'Giám đốc NS là khách cũ của tôi ở công ty trước, đã hẹn gặp 18/08 và họ đang tuyển 12 vị trí cho 2 dự án mới.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'vietnamworks.com/cong-ty-minh-khang-tuyen-dung', reqs: 1, status: 'pending' },
   { id: 23902, co: 'Công ty TNHH Nội thất An Bình', by: 'Trần Quốc Trung', when: '12/08/2026 09:48', person: 'Ms. Phạm Thuỳ Dương · HR', phone: '0274 356 xxxx', email: 'hr@anbinh-furniture.vn', reason: 'Gặp tại hội chợ nội thất 06/2026, đang cần 8 thợ mộc, HR xin gửi thông tin gói tin đăng.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', file: 'namecard-hoi-cho.jpg', reqs: 1, status: 'pending' },
   // An APPROVED request belonging to the signed-in rep, so all three statuses are
   // visible in the default "Của tôi" view instead of only two.
-  { id: 23755, co: 'Công ty TNHH Cơ khí Thành Đạt', by: 'Nguyễn Thị Lan', when: '02/07/2026 09:15', person: 'Mr. Đặng Văn Sơn · Trưởng phòng NS', phone: '0274 990 xxx', email: 'ns@thanhdat-me.vn', reason: 'KH đang tuyển 15 thợ hàn và 3 kỹ sư cơ khí cho nhà máy mới, đã gặp trực tiếp và họ xin báo giá gói tin đăng.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/thanh-dat-tho-han', reqs: 1, status: 'approved', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '05/07/2026 14:02' },
-  { id: 23810, co: 'Công ty CP Bao bì Tiến Phát', by: 'Phạm Quang Huy', when: '20/07/2026 10:12', person: 'Mr. Vũ Đức Thắng · HCNS', phone: '0251 388 xxxx', email: 'hcns@tienphat-pack.vn', reason: 'KH tôi từng liên hệ năm 2024, nay mở nhà máy 2 và tuyển 20 công nhân.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'topcv.vn/tien-phat-cong-nhan-bao-bi', reqs: 1, status: 'approved', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '22/07/2026 09:30' },
+  { id: 23755, co: 'Công ty TNHH Cơ khí Thành Đạt', by: 'Nguyễn Thị Lan', when: '02/07/2026 09:15', person: 'Mr. Đặng Văn Sơn · Trưởng phòng NS', phone: '0274 990 xxx', email: 'ns@thanhdat-me.vn', reason: 'KH đang tuyển 15 thợ hàn và 3 kỹ sư cơ khí cho nhà máy mới, đã gặp trực tiếp và họ xin báo giá gói tin đăng.', kind: 'Đang đăng tuyển trên thị trường', link: 'vietnamworks.com/thanh-dat-tho-han', reqs: 1, status: 'approved', adminBy: 'Lê Minh Anh (admin)', adminAt: '03/07/2026 15:40', decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: '05/07/2026 14:02' },
+  { id: 23810, co: 'Công ty CP Bao bì Tiến Phát', by: 'Phạm Quang Huy', when: '20/07/2026 10:12', person: 'Mr. Vũ Đức Thắng · HCNS', phone: '0251 388 xxxx', email: 'hcns@tienphat-pack.vn', reason: 'KH tôi từng liên hệ năm 2024, nay mở nhà máy 2 và tuyển 20 công nhân.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', link: 'topcv.vn/tien-phat-cong-nhan-bao-bi', reqs: 1, status: 'approved', adminBy: 'Lê Minh Anh (admin)', adminAt: '21/07/2026 10:00', decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: '22/07/2026 09:30' },
   // Rejected, and the company went straight back to Chưa nhận — see Nhà máy Dệt Phú
   // Cường in DIRECTORY, still free for anyone to ask for again.
-  { id: 23788, co: 'Nhà máy Dệt Phú Cường', by: 'Nguyễn Thị Lan', when: '30/06/2026 15:32', person: 'Mr Hiếu', phone: '—', reason: 'test', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '02/07/2026 11:15', note: 'Thiếu thông tin liên hệ và không có bằng chứng đang tuyển — bổ sung link tin đăng rồi xin lại.' },
+  { id: 23788, co: 'Nhà máy Dệt Phú Cường', by: 'Nguyễn Thị Lan', when: '30/06/2026 15:32', person: 'Mr Hiếu', phone: '—', reason: 'test', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '02/07/2026 11:15', note: 'Thiếu thông tin liên hệ và không có bằng chứng đang tuyển — bổ sung link tin đăng rồi xin lại.' },
   ...generatedClaimReqs(),
 ]
 

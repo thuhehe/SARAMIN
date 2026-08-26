@@ -2,13 +2,14 @@ import { useContext, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { COMPANIES, coKey, coLabel } from '@/pages/admin/data/companies'
-import { DIRECTORY, DIR_STATE, FREE_DATA_KIND, KIND_IS_CUSTOMER, dirAsCompany, dirCrmMatch, rejectedCount } from '@/pages/admin/data/directory'
+import { DIRECTORY, DIR_STATE, FREE_DATA_KIND, KIND_IS_CUSTOMER, dirAsCompany, dirCrmMatch, rejectedCount, CLAIM_STATUS} from '@/pages/admin/data/directory'
 import type { DirRow } from '@/pages/admin/data/directory'
 import { CreateSignalCtx, OpenRecordCtx, ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { FLabel, LField } from '@/pages/admin/ui/fields'
 import { JobGroup } from '@/pages/admin/ui/form'
 import { CompanyDetail } from '@/pages/admin/screens/companies/detail'
+import { openClaim } from '@/pages/admin/screens/directory/assign'
 import { FilterBar, FilterRow, ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
 
@@ -33,7 +34,8 @@ function ClaimModal({ row, onClose }: { row: DirRow; onClose: () => void }) {
   const [file, setFile] = useState('')
   const dup = dirCrmMatch(row)
   const kindIsCustomer = KIND_IS_CUSTOMER.has(kind)
-  const ok = Boolean(desc.trim()) && !dup && !kindIsCustomer
+  const locked = row.state === 'pending'
+  const ok = Boolean(desc.trim()) && !dup && !kindIsCustomer && !locked
 
   const inp = 'w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand'
   /* The client's own placeholder, kept verbatim — it is the only instruction a rep
@@ -64,9 +66,12 @@ Format:
               <p className="mt-1 text-amber-800/85">Không tạo được yêu cầu. Nếu cần làm việc với khách này, xin chuyển giao từ hồ sơ công ty.</p>
             </div>
           )}
+          {/* ONE open request at a time: a pending row is locked for everyone else.
+              The block says when it unlocks, so a rep does not keep checking. */}
           {row.state === 'pending' && (
-            <div className="rounded-lg border border-line bg-canvas/70 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
-              <b className="text-ink">{row.reqs ?? 1} sales đã xin công ty này</b> (đầu tiên: {row.by}). Bạn vẫn gửi được — admin chọn một người và nêu lý do cho những người còn lại.
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-amber-900">
+              <p className="font-semibold">⚠ Công ty đang có yêu cầu chờ duyệt{row.by ? <> — của <b>{row.by}</b></> : null}</p>
+              <p className="mt-1 text-amber-800/85">Mỗi công ty chỉ nhận <b>một yêu cầu một lúc</b>. Nếu yêu cầu đó bị từ chối, công ty trở lại Chưa nhận và bạn xin được.</p>
             </div>
           )}
 
@@ -220,10 +225,11 @@ export function AdminCompanyDirectory() {
           <span className="truncate text-[11px] text-faint">{r.source}</span>,
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="flex items-center gap-1.5">
-              <Pill tone={DIR_STATE[r.state].tone}>{DIR_STATE[r.state].vi}</Pill>
-              {/* Competing requests are normal. The count is the admin's tie-break
-                  signal, so it belongs on the row and not only in the queue. */}
-              {r.state === 'pending' && <span className="text-[10.5px] font-medium text-amber-700">{r.reqs ?? 1} sales xin</span>}
+              {/* On a pending row the pill IS the level — one request at a time, so
+                  "which level is it waiting on" is the whole status. */}
+              {r.state === 'pending' && openClaim(r.name)
+                ? <Pill tone={CLAIM_STATUS[openClaim(r.name)!.status].tone}>{CLAIM_STATUS[openClaim(r.name)!.status].vi}</Pill>
+                : <Pill tone={DIR_STATE[r.state].tone}>{DIR_STATE[r.state].vi}</Pill>}
               {/* Refused before, and free again. The count is a warning to the next
                   approver, not a state on the company. */}
               {r.state === 'free' && rejectedCount(r.name) > 0 && (

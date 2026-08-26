@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ACTIVATE_WITHIN_DEFAULT, CATALOG, PLACEMENTS, PRODUCT_TYPES } from '@/pages/admin/data/products'
+import { ACTIVATE_WITHIN_DEFAULT, CATALOG, PLACEMENTS, PRODUCT_TYPES , SLOT_CONTENT } from '@/pages/admin/data/products'
+import type { SlotContent } from '@/pages/admin/data/products'
 import type { ProductTypeId } from '@/pages/admin/data/products'
 import { FLabel, LField, Section, SelectField } from '@/pages/admin/ui/fields'
 
@@ -14,6 +15,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   /* A trial SKU is quotable only inside a trial quotation — see the catalog note. */
   const [trial, setTrial] = useState(false)
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Inactive')
+  const [content, setContent] = useState<SlotContent>('banner')
   const [nameVi, setNameVi] = useState('')
   // Product ID auto-follows the name until someone types their own, then stops.
   const [skuEdited, setSkuEdited] = useState(false)
@@ -315,6 +317,30 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                 options={PLACEMENTS.filter((p) => p.route !== 'tier').map((p) => `${p.name} — ${p.page} (${p.size})`)}
                 extra={<span className="ml-1 font-normal text-faint">— tier-driven areas are excluded; they aren’t bookable</span>}
               />
+              {/* WHAT fills the slot — decides what publishing will ask for. "Job
+                  hiển thị trên trang chủ" is a placement whose content is a JOB, not
+                  a banner: same booking mechanics, no creative upload. */}
+              <div>
+                <FLabel req>Nội dung hiển thị</FLabel>
+                <div className="grid gap-1.5 sm:grid-cols-3">
+                  {(Object.keys(SLOT_CONTENT) as SlotContent[]).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setContent(c)}
+                      className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', content === c ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                    >
+                      <span className={cn('block text-[11.5px] font-medium', content === c ? 'text-brand' : 'text-ink')}>{SLOT_CONTENT[c].vi}</span>
+                      <span className="block text-[10px] leading-tight text-faint">{SLOT_CONTENT[c].needs}</span>
+                    </button>
+                  ))}
+                </div>
+                {content === 'job' && (
+                  <p className="mt-1 rounded-md bg-canvas/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-muted">
+                    Hai đồng hồ, đừng nhầm: job chạy <b className="text-ink/70">30 ngày</b> theo tin đăng; booking này chỉ giữ chỗ
+                    trang chủ <b className="text-ink/70">10 ngày</b>. Hết booking, job vẫn chạy tiếp trên trang tìm kiếm.
+                  </p>
+                )}
+              </div>
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Thời gian hiển thị (days)" req value="10 ngày" select />
                 <LField label="Slots consumed" value="1 of 6 in rotation" />
