@@ -19,6 +19,12 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [nameVi, setNameVi] = useState('')
   // Product ID auto-follows the name until someone types their own, then stops.
   const [skuEdited, setSkuEdited] = useState(false)
+  /* Đơn vị tính prints on the quotation / PO line ("SL 2 tin"), so it is identity,
+     not fulfilment. It follows the type until someone overrides it — the default is
+     right almost always, but "gói" vs "tin" on a combo is a sales-language call. */
+  const UNIT_DEFAULT: Record<ProductTypeId, string> = { job: 'tin', cv: 'gói', placement: 'slot', service: 'bài đăng' }
+  const [unitManual, setUnitManual] = useState('')
+  const unit = unitManual || UNIT_DEFAULT[type]
   const [skuManual, setSkuManual] = useState('')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('50')
@@ -102,6 +108,18 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               {skuEdited ? 'Manual — ' : 'Follows the name — '}
               locked after the first sale, because quotations, orders and invoices reference it.
             </p>
+          </div>
+          <div>
+            <FLabel req>Đơn vị tính<span className="ml-1 font-normal text-faint">in trên dòng báo giá / PO — ví dụ “SL 2 {unit}”</span></FLabel>
+            <select
+              value={unit}
+              onChange={(e) => setUnitManual(e.target.value)}
+              className="w-full cursor-pointer rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand"
+            >
+              {['tin', 'gói', 'slot', 'bài đăng'].map((u) => (
+                <option key={u} value={u}>{u}{u === UNIT_DEFAULT[type] ? ' — mặc định theo loại' : ''}</option>
+              ))}
+            </select>
           </div>
           {/* Applies to EVERY type, so it lives in Identity rather than inside one
               branch. Three values, not two: the fanpage post and the email send are
