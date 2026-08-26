@@ -109,6 +109,27 @@ export const productsPackages: BuildModule = {
         'THREE placements have two supply routes at once. “Công việc Hot hôm nay” shows 4 jobs but is both a Top Job perk and a standalone purchase; Popular Jobs and Highlight Companies each have a fixed premium block (4 and 5 positions) sold on top of the tier-driven list. Each needs ONE resolver with an explicit priority rule, or the finite positions get oversold.',
     },
     {
+      label: 'Slot rotation — ⚠ PROPOSAL, under BA investigation (Lương)',
+      text: 'THE PROBLEM (settled): every capped section has more eligible jobs than visible slots (e.g. 60 eligible, 24 slots), and the client\u2019s criterion is FAIRNESS between them. THE RULE (not settled): the table below is a proposal the BA has not accepted — BA to investigate and decide. \u201cFairness\u201d alone is not decidable; it hides four choices the BA must answer first: fair BETWEEN WHOM (whole pool · same tier · same product)? in WHAT UNIT (impressions · viewable impressions · clicks)? over WHAT WINDOW (per day · booking lifetime · cumulative)? EQUAL or PROPORTIONAL (identical share · by price paid · by remaining days)? The proposal below answers per-tier / impressions / cumulative / equal — change any answer and the algorithm changes.',
+      table: {
+        cols: ['Rule', 'What it says', 'Why'],
+        rows: [
+          ['Per page load, never live', 'Rotation is evaluated once, server-side, when the page is built. A rendered page is NEVER mutated client-side; a user sees a new rotation only on their next load.', 'Content changing in front of a reading user reads as broken. Auto-animation is a different, deliberate pattern (hero banner 3s / Top Companies 5s carousels) — grids rotate per load, banners animate on a timer.'],
+          ['Deficit-balanced pick', 'Per slot section, keep an impression counter per eligible job. Each load picks the N jobs with the largest exposure deficit (target share × loads − impressions), ties random, then shuffles their order.', 'Pure random is only fair at high traffic — at a few hundred loads/day some jobs drift 30% ahead in any given week. The counter drags everyone to exactly equal, and it IS the impression figure the employer report needs anyway.'],
+          ['Rotation is per pool, per tier', 'Fixed premium positions rotate among their buyers; the tier-driven list rotates among that tier. Never one merged pool.', 'Merging pools dilutes paid exposure with free inventory — the thing the tier price bought.'],
+          ['Full rows only', 'capacity = floor(min(pool, slots) / perRow) × perRow. With 22 eligible on a 6×4 grid, render 20; the 2 cut jobs are just the tail of the same rotation, so each job is hidden 2/22 of loads — equally.', 'A half-filled last row looks broken, and without rotation the same 2 jobs would be the permanent victims of the layout.'],
+          ['Small-pool exception', 'When the pool is under ~1.5 rows short of capacity, show everything and tolerate one partial row.', 'Flooring 18 jobs to 16 hides 2 despite free slots — the full-row rule exists for rotation, not for hiding paid inventory.'],
+        ],
+      },
+      items: [
+        'The “refresh test” is a support requirement, not a nicety: an employer who does not see their job refreshes the page, and must be able to find it within a couple of loads. This is why rotation is per load and NOT time-bucketed — a 5-minute window means five minutes of refreshing without ever seeing the ad you paid for.',
+        'Hidden ≠ gone: a job cut by rotation or the full-row rule is still in search and on “view all” — rotation only governs the capped strip.',
+        'The search-results list is the one surface that must NOT re-pick per reload — it paginates, so its shuffle is seeded per (sessionId, query); see the Placements block above.',
+      ],
+      warn:
+        'STATUS: proposal only — do not build until the BA signs off the four fairness answers above. Two constraints survive ANY answer and are already settled: (1) rotation is evaluated per page load, never mutating a rendered page; (2) paginated lists never re-randomise per request (seed per sessionId + query). Everything else in this block is open.',
+    },
+    {
       label: 'Included ≠ bundled — why Top Job is a PRODUCT, not a package',
       text: 'Top Job comes with an email send and a fanpage post, so it looks like a bundle. It is not. The test is whether the customer could buy the pieces instead, and whether the thing maps to a single choice when publishing a job.',
       table: {

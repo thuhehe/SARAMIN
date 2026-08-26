@@ -278,7 +278,7 @@ export const jobManagement: BuildModule = {
         'ZERO RESULTS RELAX IN A FIXED ORDER, and always disclose it: salary → experience → contract type → province (widen to region) → keyword AND→OR. Show what was relaxed (“Không có việc nào ở Đà Nẵng — đang hiện cả miền Trung”), or the candidate believes a filter is still in force when it is not.',
         'DE-DUPLICATE BY COMPANY. One employer posting five near-identical titles must collapse to one card plus “3 vị trí tương tự tại X”, otherwise a single company owns the whole first page.',
       ],
-      warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score keeps exactly one home: Resume management → Job recommendations (the jobseeker feed).',
+      warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score keeps exactly one home: Resume management → Recommended jobs — matched to a jobseeker’s profile.',
     },
     {
       label: 'WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal',

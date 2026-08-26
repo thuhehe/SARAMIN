@@ -94,8 +94,8 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-master-data': { module: 'admin-system', feature: 'Master data' },
   // Both point at the Resume-management feature that specifies them — the weights
   // and the log belong to the matching logic, not to the admin shell.
-  'admin-matching-settings': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
-  'admin-matching-report': { module: 'resume-management', feature: 'Job recommendations — the jobseeker feed' },
+  'admin-matching-settings': { module: 'resume-management', feature: 'Recommended jobs — matched to a jobseeker’s profile' },
+  'admin-matching-report': { module: 'resume-management', feature: 'Recommended jobs — matched to a jobseeker’s profile' },
   'admin-environment': { module: 'admin-system', feature: 'Environment' },
   'admin-departments': { module: 'admin-system', feature: 'Departments' },
 }

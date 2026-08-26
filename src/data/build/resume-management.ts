@@ -11,19 +11,19 @@ export const resumeManagement: BuildModule = {
       table: {
         cols: ['Feature', 'Site', 'What it is', 'Gate'],
         rows: [
-          ['[Create CV](/m/resume-management/0)', 'Jobseekers', 'Add a CV: upload a file, or build a Saramin CV. Includes the CV-COMPARE step — the PDF beside the structured version, gaps flagged inline — which is a step in this flow, not a screen of its own', '—'],
-          ['[CV management (My CVs)](/m/resume-management/1)', 'Jobseekers', 'The CV shelf on My page: which CVs exist, which one is searchable, the profile summary card, and the visibility switch', '—'],
-          ['[Resume list](/m/resume-management/2)', 'Admin', 'HQ oversight of the CV pool, including the review queue for CVs held out of the paid index', 'HQ role'],
-          ['[Create resume](/m/resume-management/4)', 'Admin', 'HQ registers a candidate on their behalf: upload + CV Convert, or the Builder wizard', 'HQ role'],
-          ['[Resume list](/m/resume-management/3)', 'Companies', 'The paid CV search — keyword bar, filter rail, locked result rows, unlock, and the CV detail page', 'Package + candidate visibility consent'],
+          ['[Create CV](/m/resume-management/create-cv)', 'Jobseekers', 'Add a CV: upload a file, or build a Saramin CV. Includes the CV-COMPARE step — the PDF beside the structured version, gaps flagged inline — which is a step in this flow, not a screen of its own', '—'],
+          ['[CV management (My CVs)](/m/resume-management/cv-management-my-cvs)', 'Jobseekers', 'The CV shelf on My page: which CVs exist, which one is searchable, the profile summary card, and the visibility switch', '—'],
+          ['[Resume list](/m/resume-management/resume-list-admin)', 'Admin', 'HQ oversight of the CV pool, including the review queue for CVs held out of the paid index', 'HQ role'],
+          ['[Create resume](/m/resume-management/create-resume)', 'Admin', 'HQ registers a candidate on their behalf: upload + CV Convert, or the Builder wizard', 'HQ role'],
+          ['[Resume list](/m/resume-management/resume-list-companies)', 'Companies', 'The paid CV search — keyword bar, filter rail, locked result rows, unlock, and the CV detail page', 'Package + candidate visibility consent'],
         ],
       },
       items: [
         'Up to 3 CVs per jobseeker, exactly ONE of them searchable — decided; see the data model below.',
-        'LOGIC · Salary — written on two surfaces and read on three, and all five must agree: shape, currency, period and the comparison rule. → [Salary — the one contract](/m/resume-management/5)',
-        'LOGIC · CV qualification — the single rule deciding what a CV may be used for, and what failing it costs: applying always survives, CV-search entry does not. → [CV qualification — apply & CV search](/m/resume-management/6)',
-        'LOGIC · Search quality — every zero-result search classified at query time into supply gap vs. our own defect, with the second owned and trending to zero. → [Search quality tracking](/m/resume-management/7)',
-        'LOGIC · Job recommendations — the jobseeker feed reads the SAME match score as CV search rather than defining a second one. → [Job recommendations — the jobseeker feed](/m/resume-management/8)',
+        'LOGIC · Salary — written on two surfaces and read on three, and all five must agree: shape, currency, period and the comparison rule. → [Salary — the one contract](/m/resume-management/salary-the-one-contract)',
+        'LOGIC · CV qualification — the single rule deciding what a CV may be used for, and what failing it costs: applying always survives, CV-search entry does not. → [CV qualification — apply & CV search](/m/resume-management/cv-qualification-apply-cv-search)',
+        'LOGIC · Search quality — every zero-result search classified at query time into supply gap vs. our own defect, with the second owned and trending to zero. → [Search quality tracking](/m/resume-management/search-quality-tracking)',
+        'LOGIC · Recommended jobs (matched to a jobseeker) and Relevant jobs (matched to another job) are two DIFFERENT calculations, and both reuse existing data rather than defining a new score. → [Recommended jobs](/m/resume-management/recommended-jobs-matched-to-a-jobseeker-s-profile) · [Relevant jobs](/m/resume-management/relevant-jobs-matched-to-another-job)',
       ],
       warn: 'The four Logic pages are the ones most likely to be skipped in a read-through, and they are exactly where the cross-screen bugs come from — a filter that means one thing in CV search and another in the match score, or a salary compared in the wrong currency.',
     },
@@ -44,7 +44,7 @@ export const resumeManagement: BuildModule = {
         'The “Saramin Standard Resume” (`standardJson` — the CV-content sections plus preferences and tags) is the RENDERED CONTRACT: the shape a Saramin CV is serialised to and read back in. It is not a third storage location — identity and preferences resolve from the Profile, career content from the CV record. Its field list is defined once, in the Admin “Create resume” backend contract.',
         'Naming follows the type, never a class of object: a CV is labelled “Uploaded” or “Saramin”. Wording that implies “your profile vs your files” recreates the VietnamWorks split we deliberately avoided.',
       ],
-      warn: 'Search, matching and the employer-facing CV all read the STRUCTURED layer — never how it got there. An uploaded file is still parsed into the Saramin fields on write (see **[CV qualification — apply & CV search](/m/resume-management/6)**), so “an unconverted PDF with no structured data” is no longer a category.',
+      warn: 'Search, matching and the employer-facing CV all read the STRUCTURED layer — never how it got there. An uploaded file is still parsed into the Saramin fields on write (see **[CV qualification — apply & CV search](/m/resume-management/cv-qualification-apply-cv-search)**), so “an unconverted PDF with no structured data” is no longer a category.',
     },
     {
       label: 'DATA MODEL (decided): CANDIDATE DATA = 3 groups — Basic information · Work preference · CV content',
@@ -60,10 +60,10 @@ export const resumeManagement: BuildModule = {
       items: [
         'Naming: "Candidate data" is the umbrella (spec + database only). Jobseekers never see that term — they see "My CVs" and their profile card.',
         'Why Basic information and Work preference are ONE table: they are 1:1, written by the same sign-up/onboarding flow and always read together. Splitting them would only add a join.',
-        'Exactly ONE CV is the searchable/main CV at any time — that flag gates the EMPLOYER index only. The other CVs are still applied with, and the jobseeker’s own recommendation feed reads EVERY CV (see [Job recommendations](/m/resume-management/8)), so “not searchable” never means “ignored”.',
+        'Exactly ONE CV is the searchable/main CV at any time — that flag gates the EMPLOYER index only. The other CVs are still applied with, and the jobseeker’s own recommendation feed reads EVERY CV (see [Recommended jobs](/m/resume-management/recommended-jobs-matched-to-a-jobseeker-s-profile)), so “not searchable” never means “ignored”.',
         'Visibility is ONE account-level switch (Discoverable / Hidden, Indeed-style) — no per-CV searchable toggles. "Searchable CV" only decides WHICH CV\'s content feeds search and which document an unlocking employer sees.',
         'CV header (name, title, contact) is read from the Profile — never re-typed per CV.',
-        'Upload → convert: an uploaded PDF is parsed into the CV template and the gaps are flagged for the candidate to fill — but NOTHING here gates applying. An uploaded file is always selectable at apply; only a Saramin CV carries a send gate. An uploaded file is evaluated ONCE at upload by the same rule (see **[CV qualification — apply & CV search](/m/resume-management/6)**); failing it costs the candidate CV-search entry, never the ability to apply. Uploading a file to attach to ONE application does not touch the searchable CV.',
+        'Upload → convert: an uploaded PDF is parsed into the CV template and the gaps are flagged for the candidate to fill — but NOTHING here gates applying. An uploaded file is always selectable at apply; only a Saramin CV carries a send gate. An uploaded file is evaluated ONCE at upload by the same rule (see **[CV qualification — apply & CV search](/m/resume-management/cv-qualification-apply-cv-search)**); failing it costs the candidate CV-search entry, never the ability to apply. Uploading a file to attach to ONE application does not touch the searchable CV.',
         'If Profile and a CV disagree, employer search reads Profile + the searchable CV — mismatches on the searchable CV are surfaced to the user, never silent.',
       ],
       warn: 'This supersedes any earlier profile-centric wording: career content lives in the CV table (group 3), never on the Profile. Search = Profile (Basic information + Work preference) JOIN the searchable CV (CV content).',
@@ -350,7 +350,7 @@ export const resumeManagement: BuildModule = {
         rows: [
           ['`skill`', 'The master list — 17 groups, three-level tree group → skill → version.', '731', 'Exists, but dirty — see below.'],
           ['`skill_alias` / `industry_alias` / `job_role_alias`', 'The curated TAIL — abbreviations and EN↔VN pairs the search index cannot derive (CSKH, PTS). Their own doc calls it “node aliases (CV/typeahead normalization)”, with a `lower(alias)` index.', '**0**', '🟢 Not a launch blocker — Phase-1 ships empty and fills from `unmatched_term`.'],
-          ['`occupation_skill`', 'Occupation ↔ skill, flagged ESSENTIAL / OPTIONAL. This is our role-based suggestion source.', '233', '🟡 Too thin — ≈ 4 skills across 60 roles; suggestion needs ~10 each.'],
+          ['`occupation_skill`', 'Occupation ↔ skill, flagged ESSENTIAL / OPTIONAL. Our role-based suggestion source.', '233', '🟡 Superseded — the role→skill mapping now arrives as a column in the client’s new master-data sheet. See the block below.'],
           ['`unmatched_term`', 'Admin approve / merge / reject queue — the miss path in the import pipeline above, and the source of every alias worth writing.', '—', '🔴 Exists, unused — and Phase-1 now DEPENDS on it. Wire it before launch or the taxonomy never learns.'],
           ['`skill_relation`', 'Skill ↔ skill edges for search expansion. Phase-2 for us.', '0', 'Not needed in Phase-1.'],
           ['`language` + `language_proficiency`', 'Proper language master with CEFR levels.', '8 + 7', '✅ Use these — languages must NOT be skills.'],
@@ -367,6 +367,31 @@ export const resumeManagement: BuildModule = {
         'WHAT TO ASK FOR, in order: (1) a cleanup pass — retire job titles and languages, fix typos, merge spelling variants INTO `skill_alias` rather than deleting them, group the 141; (2) grow the non-IT groups to usable depth; (3) grow `occupation_skill` to ~10 rows per role, which drives suggestions on BOTH sides. Diacritic-free spellings are NOT on this list any more — folding handles them — and the alias tail comes later from `unmatched_term`, not from a homework assignment. Steps 1–2 are the client’s taxonomy work; step 3 is where our seed file is the worked example.',
       ],
       warn: 'NARROWED — the ZERO alias rows are no longer a launch blocker. An analysed index (folding + prefix + typeahead fuzziness) covers most of what aliases were for, so Phase-1 ships without a curated list and `unmatched_term` tells the client which aliases are worth writing; see SKILLS → “search engine first”.\n\nWhat DOES still block is the CANONICAL ROWS, which no search engine can fix — it only finds a wrong row faster. `Product Manager`, `Project Manager` and `Business Analyst` are stored as skills; `English`, `Japanese - N2` and `Korean` are stored as skills while a proper `language` table sits unused; 141 rows are Ungrouped; and `Soft skill` holds two rows, so non-IT candidates find nothing that describes them. Agree an owner and a date for THAT cleanup before the skills screens are estimated.',
+    },
+    {
+      label: 'NEW TAXONOMY (client sheet, Aug 2026) — 21 categories, 477 roles, skills for 5 of them',
+      text: 'The client’s “Master data of new SVN” sheet REPLACES what is live in svn-be: `job_category` goes from 6 to 21 and `job_role` from 60 to 477, bilingual EN/VN. Confirmed with the client 2026-08-19, so every count elsewhere in this spec that says 6 categories or 60 roles is out of date.\n\nThe sheet also carries the role→skill mapping as a column — which is where `occupation_skill` now comes from. But that column is only AUTHORED for 5 of the 21 categories.',
+      table: {
+        cols: ['Category', 'Roles', 'Roles with a real skill list'],
+        rows: [
+          ['IT Development · Data', '42', '**42** ✅'],
+          ['Marketing, PR, Research', '38', '**38** ✅'],
+          ['Design', '24', '**24** ✅'],
+          ['Human Resources, Labor Relations, HRD', '11', '**11** ✅'],
+          ['Planning and Strategy', '7', '**7** ✅'],
+          ['The other 16 — Construction · service · Finance · Driving · education · production · Accounting · medical · Sales · Logistics · Media · Legal · R&D · Customer service · Product planning · Public welfare', '355', '**0** ❌ — the skill column just repeats the role name in Vietnamese: Architect → “Kiến trúc sư”, Chef → “Đầu bếp”, Accountant → “Kế toán”'],
+        ],
+      },
+      items: [
+        'WHERE SKILLS EXIST THEY ARE GOOD — about 5 per role, clean, and with no job titles mixed in. Frontend Developer → JavaScript · React · HTML5 · CSS · TypeScript. Graphic Designer → Graphic Design · Photoshop · Illustrator · InDesign · Typography. Materially better than the 731-row list in the current database.',
+        '122 OF 477 ROLES (26%) HAVE SKILLS. That figure, not an opinion, is what should decide how far the score leans on skills.',
+        'NO WEIGHT CHANGE IS NEEDED, because the renormalise rule already handles this per job: a job listing no skills has the skills points redistributed across role, location and years. A Construction posting scores on what it has; a React posting scores on skills. The model adapts by category on its own.',
+        'THE CANDIDATE SIDE IS NOT PROTECTED, and this is the gap to close. A chef’s CV resolves almost no skills, so it scores LOW on evidence — as though they gave us nothing, when the truth is we never had a vocabulary for their trade. RULE: if a CV’s extracted skill terms did not resolve and went to `unmatched_term`, score skills as UNKNOWN and redistribute — never as “no evidence”. Our missing data must not cost a real candidate their ranking.',
+        'NEVER SHOW AN EMPTY SKILL PICKER. For a candidate in one of the 16 unauthored categories the suggestion strip has nothing to offer and autocomplete finds almost nothing. Either hide the skills step for them, or say it plainly: “Chúng tôi đang xây dựng danh sách kỹ năng cho ngành của bạn — hãy nhập kỹ năng bạn dùng, chúng tôi sẽ thêm vào.” An empty dropdown reads as broken software.',
+        'HOW TO FILL THE OTHER 16 — and the first option is the one to refuse. Do NOT hand-author ~1,700 entries for trades nobody on the team has worked: invented skills look authoritative, are wrong, and use words candidates do not recognise. Instead: (1) SEED FROM THE CV SAMPLE already being requested — 150 real CVs across categories ARE the vocabulary, frequency-ranked per category; (2) let `unmatched_term` collect the long tail after launch; (3) prioritise by POSTING VOLUME, which the client can answer from their own data — “service” with 30 roles matters far more in Vietnam than “heavy equipment” with 11.',
+        'THE FIVE AUTHORED CATEGORIES ARE NOT AN ACCIDENT — IT, Marketing, Design, HR and Planning are white-collar office roles, which is where a job board’s paying employers concentrate. The gap may bite less than 355/477 suggests. The client’s own posting mix is the only way to know, and it is worth asking before anyone estimates the authoring work.',
+      ],
+      warn: 'SCOPE NOT YET DECIDED — the sheet also carries FIVE facet tiers we have never specced: Specialization (319 rows), Technology stack (58), Workplace (48), Work tools (48), plus Medical department, Employment type, means of transportation, financial institutions, heavy equipment and Educational subjects. That is Saramin KR’s richer model, where a job is tagged on several axes rather than one skills list. Ignoring them in Phase 1 is a valid choice; ignoring them SILENTLY is not — the sheet will reach a developer who then has to guess. Decide explicitly which tiers Phase 1 imports.',
     },
     {
       label: 'CV visibility (candidate-owned) — ONE account-level switch',
@@ -2473,10 +2498,11 @@ export const resumeManagement: BuildModule = {
       },
     },
     {
-      name: 'Job recommendations — the jobseeker feed',
+      name: 'Recommended jobs — matched to a jobseeker’s profile',
       site: 'Logic',
       scope: ['BE', 'FE'],
       ready: true,
+      notes: 'JOBSEEKER ↔ JOB. The personal feed — “jobs for you”, from the profile and every CV. Needs a signed-in jobseeker. Not to be confused with Relevant jobs, which compares one job to another and needs nobody signed in.',
       detail: {
         requirements: [
           {
@@ -2630,6 +2656,9 @@ export const resumeManagement: BuildModule = {
               '① THEY ARE NOT FILTERED OUT. Skills rank, they never exclude. That candidate still scores on desired role, category, years, location and salary — 62 of the 100 points do not involve skills at all. They rank lower; they do not disappear.',
               '② `skill_relation` ALREADY EXISTS in the client’s database — skill↔skill edges, currently 0 rows. A few dozen hand-written edges (Python → Data Analysis, n8n → Automation) give partial credit for a neighbouring skill immediately, with no new table and no model.',
               '③ THE UNMATCHED-TERM QUEUE IS THE DISCOVERY MECHANISM. When 200 candidates type “n8n” and it is not in the list, that queue is what tells the taxonomy owner to add it. An emerging skill is invisible until someone tries to type it — which is exactly why the queue has to be staffed.',
+              'ONLY 26% OF ROLES HAVE SKILLS TODAY — 122 of 477, in IT, Marketing, Design, HR and Planning. The other 16 categories (service, construction, accounting, driving, education, medical…) have none, so for those candidates and those jobs the score runs on role, location and years. That is fine for the JOB side, because the renormalise rule redistributes the skills points automatically.',
+              'IT IS NOT FINE FOR THE CANDIDATE, so one rule protects them: if a CV’s extracted skill terms did not resolve to the taxonomy, score skills as UNKNOWN and redistribute — never as “no evidence”. A chef whose trade has no vocabulary in our list must not rank as though they submitted a blank CV. Our data gap is not their fault, and the unmatched-term queue already tells us which case it is.',
+              'AND NEVER SHOW THEM AN EMPTY PICKER — a candidate in an unauthored category gets no suggestions and almost no autocomplete hits. Either hide the skills step, or say what is happening: “Chúng tôi đang xây dựng danh sách kỹ năng cho ngành của bạn — hãy nhập kỹ năng bạn dùng, chúng tôi sẽ thêm vào.”',
               'PHASE 2, no UI change: replace exact skill matching with embedding nearness, so React ↔ Next.js and Python ↔ Pandas score partial credit automatically instead of waiting for someone to write the edge. The screen consumes one number and a reason list either way.',
             ],
           },
@@ -2681,8 +2710,8 @@ export const resumeManagement: BuildModule = {
               rows: [
                 ['After onboarding', 'Only users who just answered the onboarding questions', 'Their new work preference. This is the reward for filling in the form.'],
                 ['Homepage section', 'Everyone (all 4 cases in section 3)', 'The jobseeker’s profile + CVs'],
-                ['Job detail page', 'Everyone', 'The jobseeker + the job they are looking at'],
-                ['After applying to a job', 'Everyone', 'The jobseeker + the job they just applied to'],
+                ['Job detail page', 'Everyone, including visitors who are NOT signed in', 'Mostly the job on screen — a different calculation, specced in **Relevant jobs**'],
+                ['After applying to a job', 'Everyone', 'Mostly the job just applied to — the **Relevant jobs** calculation, minus jobs already applied to'],
               ],
             },
             items: [
@@ -2710,6 +2739,62 @@ export const resumeManagement: BuildModule = {
               'IT IS PERSONAL DATA — it records what a named person was shown and what they did. Keep roughly 12 months, then delete. Never expose it to employers, and never join it into anything employer-facing.',
               'PERMISSIONS: Matching settings is a **System** resource (same level as Master data — very few operators), the Matching report is an **Analytics** resource (read-only for most roles). Neither should be writable by Sales or Content roles.',
               'BUILD BOTH IN PHASE 1 — even though neither is visible to a user. Adding the log later means throwing away every month of data before it existed, which is exactly the data needed to justify the first tuning round.',
+            ],
+          },
+        ],
+      },
+    },
+    {
+      name: 'Relevant jobs — matched to another job',
+      site: 'Logic',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'JOB ↔ JOB. Shown on a job detail page and after applying — “jobs like this one”. Works for visitors who are not signed in, because it never reads a profile. Not to be confused with Recommended jobs, which is JOBSEEKER ↔ JOB.',
+      detail: {
+        requirements: [
+          {
+            label: '1 · How we score one job against another',
+            text: 'The job detail page and the after-apply page show jobs similar to THE JOB ON SCREEN, not jobs matching the jobseeker. That is a second, smaller calculation: job ↔ job instead of jobseeker ↔ job.\n\nIt exists because a job detail page is PUBLIC. Most people reading it are not signed in and we know nothing about them, so a list that depends on a profile would be empty for the majority of viewers. This one works with zero knowledge of who is reading.',
+            table: {
+              cols: ['What we compare', 'Points', 'Full points when…'],
+              rows: [
+                ['Skills', '35', 'The two jobs list the same skills. Both sides point at the same master list, so this is an exact comparison and costs nothing to compute. Partial: 4 shared out of 6 → 4/6 × 35.'],
+                ['Job role + category', '25', 'Same role. 12 for a different role in the same category — “Frontend Engineer” and “Backend Engineer” are both IT.'],
+                ['Job level', '15', 'Same seniority. A Senior role is a poor suggestion to someone reading an Intern post, however well the skills line up. 7 for one level apart, 0 for two or more.'],
+                ['Location', '15', 'Same province. 8 for a neighbouring province in the same region, 15 if either job is remote.'],
+                ['Salary band', '5', 'The two ranges overlap. Convert first if the currencies differ, same rule as the main score.'],
+                ['Industry', '5', 'Same industry. 2 for the same industry group.'],
+              ],
+            },
+            items: [
+              'ALWAYS EXCLUDE: the job being viewed, closed and expired jobs, and jobs with exposure off. On the after-apply page also exclude every job this person has already applied to.',
+              'EXCLUDE THE SAME COMPANY from this list, and give it its own section instead — “Việc làm khác tại FPT Software”. A company’s own jobs are the most similar jobs to each other, so without this rule the list fills up with the employer whose page the visitor is already on. Someone reading a job wants ALTERNATIVES; someone who wants more from that company clicks the company.',
+              'SHOW 5–8 CARDS, and require a minimum similarity of about 40 points. If fewer than 3 jobs clear that, HIDE the section — an empty or padded “similar jobs” row is worse than no row, because it teaches the reader the suggestions are not worth looking at.',
+              'IF THE VISITOR IS SIGNED IN, blend: 70% job similarity + 30% their personal match score. Similarity stays dominant because the visitor is looking at THIS job right now — that context is stronger evidence than a preference they set months ago. The two lists then differ only in ORDER, which keeps them easy to reason about.\n\nVN — Khách chưa đăng nhập: chỉ tính độ giống nhau giữa 2 tin. Đã đăng nhập: 70% độ giống + 30% điểm phù hợp cá nhân.',
+              'IF THE VISITOR IS NOT SIGNED IN, use similarity alone. No cookie, no profile, no personal data — which also means the list is IDENTICAL for every anonymous viewer of that job.',
+              'WHICH MAKES IT CACHEABLE, and this matters more than it looks: job detail pages are the highest-traffic pages on the site. Compute the similar-jobs list ONCE per job and cache it — recompute when the job changes or roughly hourly as new jobs appear. Only the signed-in re-ordering happens per request.',
+              'IF EITHER JOB LISTS NO SKILLS — likely outside IT, Marketing, Design, HR and Planning, since the new taxonomy has skill lists for only those 5 of 21 categories — drop the skills row and share its 35 points across the rest, the same renormalise rule as the main score. Two construction jobs are then compared on role, level, location, salary and industry, which is exactly what a human would compare them on.',
+              'NO NEW DATA IS NEEDED. Every field above already exists on the job: skills, role, category, level, location, salary, industry. This is the same reason the skills comparison is exact — both jobs point at the same master list.',
+            ],
+          },
+          {
+            label: '2 · Worked example',
+            text: 'The visitor is reading: **Senior Frontend Engineer · FPT Software · Hồ Chí Minh · Senior · IT/Software · 30–45 triệu · skills React, TypeScript, Git, Docker, AWS**.',
+            table: {
+              cols: ['Candidate job', 'Skills', 'Role/cat', 'Level', 'Location', 'Salary', 'Industry', 'Total'],
+              rows: [
+                ['React Developer · Tiki · HCMC · Senior', '28 (4 of 5)', '25', '15', '15', '5', '5', '**93**'],
+                ['Frontend Engineer · VNG · Hà Nội · Senior', '21 (3 of 5)', '25', '15', '0', '5', '5', '**71**'],
+                ['Backend Engineer · Shopee · HCMC · Senior', '7 (1 of 5)', '12', '15', '15', '5', '5', '**59**'],
+                ['Frontend Intern · Base.vn · HCMC · Intern', '21 (3 of 5)', '25', '0', '15', '0', '5', '**66**'],
+                ['React Developer · FPT Software · HCMC', '—', '—', '—', '—', '—', '—', '⤫ excluded — same company'],
+              ],
+            },
+            items: [
+              'THE ORDER: Tiki 93 · VNG 71 · Base.vn 66 · Shopee 59. All four clear the minimum of 40, so all four are shown.',
+              'WHY THE INTERN JOB STILL APPEARS at 66 — same role, same city, overlapping skills. It loses all 15 level points and all 5 salary points, which pushes it below the two Senior roles but not out of the list. That is the intended behaviour: it is a weaker suggestion, not an invalid one.',
+              'WHY THE BACKEND JOB SCORES LOWEST despite being the same company size, city and level: only 1 shared skill. Skills carry 35 points precisely so that “same city, same level, different work” cannot outrank “same work, different city”.',
+              'THE FPT JOB IS EXCLUDED even though it would have scored highest — it belongs in “Việc làm khác tại FPT Software” underneath, not in the alternatives list.',
             ],
           },
         ],
