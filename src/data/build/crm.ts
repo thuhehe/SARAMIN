@@ -2522,6 +2522,45 @@ export const crm: BuildModule = {
       detail: {
         requirements: [
           {
+            label: 'ONE company table, two states — and three doors into it',
+            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên + **MST** + **người liên hệ** + **sales owner** | có |\n\nMọi thứ khác trong module này là hệ quả của một câu đó.',
+            diagram: 'company-intake',
+            table: {
+              cols: ['Cửa', 'Ai', 'Nhập gì', 'Đích'],
+              rows: [
+                ['① Import / thêm tay', 'Admin', 'Chỉ tên công ty (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
+                ['② Sales tự tạo', 'Sales', 'Đủ MST + người liên hệ; người tạo tự làm chủ', '**Company list** thẳng'],
+                ['③ Admin tạo & chọn owner', 'Admin', 'Đủ thông tin + chọn sales owner', '**Company list** thẳng'],
+              ],
+            },
+            items: [
+              'CÂU HỎI ĐÃ TRẢ LỜI — “có cần cho tạo ở cả hai chỗ không?”: **có, giữ cả ba cửa**, vì chúng khác nhau ở dữ liệu người tạo ĐANG CÓ, không phải ở luồng. Bắt sales đang ngồi với khách sắp ký phải tạo ở Free data rồi *xin phép nhận* chính công ty họ vừa gõ là vô lý; bắt admin xử lý một sign-up công ty mới phải tạo một dòng Free data để 5 giây sau promote nó là một bước thừa sinh ra một dòng chỉ để rời đi ngay.',
+              'ĐIỀU KIỆN để giữ ba cửa mà không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Tạo công ty kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa ②③ tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
+              'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc MST hợp lệ + không trùng + một sales owner.',
+              'Xong thì dòng **rời khỏi Free data** — không xoá, giữ liên kết tới hồ sơ CRM để truy vết “công ty này vào CRM bằng đường nào”.',
+            ],
+          },
+          {
+            label: 'Sign-up user — luôn WAIT, không bao giờ tự tạo công ty',
+            text: 'Một employer tự đăng ký trên trang Company sẽ vào list **Sign-ups**. Ở đó admin chỉ trả lời **một câu hỏi**: *công ty người này khai đang nằm ở đâu?* — và chỉ có một hành động tạo giá trị (**Move to existing company**) cộng với **Archive**.\n\nMàn hình này **không có cửa tạo công ty**. Nếu có, cùng một công ty sẽ vào hệ thống bằng hai đường với hai bộ dữ liệu khác nhau.',
+            table: {
+              cols: ['Công ty đang ở đâu', 'Hành động trên Sign-ups', 'Vì sao'],
+              rows: [
+                ['**Đã ở Company list**', '**Move to existing company** — chọn công ty + role → mở khoá login, gửi mail “you’re in”', 'Công ty đã tồn tại và đã có chủ. Đây là ca duy nhất bấm được ngay.'],
+                ['**Đang ở Free data**', '**CHẶN** — nút “Đưa công ty lên Company list →” mở thẳng dòng Free data đó', 'Phải qua đường A hoặc B trước (MST + owner). Xong quay lại Sign-ups thì row thành ca 1 và Move được.'],
+                ['**Chưa có ở đâu**', '**CHẶN** — nút “Tạo công ty trước →” mở form tạo công ty', 'Tạo qua cửa ② hoặc ③, có MST + owner. Xong quay lại Move.'],
+                ['Rác / spam', '**Archive** kèm lý do', 'Không tạo gì cả.'],
+              ],
+            },
+            items: [
+              'Cột **Match** giờ nói công ty đang ở ĐÂU, không chỉ “trùng MST hay không”: `Company list: {tên}` · `Free data: {tên}` · `Not match`. Đó là dữ kiện quyết định hành động, nên nó phải là thứ đọc được ngay trên dòng.',
+              'Hai nút chặn đều là **liên kết sang màn hình đúng**, không phải thông báo lỗi. Một dòng bị chặn mà không chỉ đường thì admin sẽ đi tìm — hoặc tệ hơn, tạo công ty bằng cách nào đó khác.',
+              'BỎ khỏi menu: “Create new company + move” và “Promote from Free data + move”. Cả hai đều là cửa tạo công ty thứ tư và thứ năm, đặt ở màn hình không có đủ trường (MST, người liên hệ, owner, phân loại người mua) để tạo một hồ sơ dùng được cho hoá đơn.',
+              'Kết quả: **kiểu gì cũng tạo công ty trước rồi mới assign user** — đúng như luật bất biến ở cuối sơ đồ.',
+            ],
+            warn: 'Đừng “tiện tay” thêm lại nút tạo công ty vào Sign-ups. Màn hình đó không hỏi phân loại người mua, địa chỉ xuất hoá đơn hay người liên hệ — một hồ sơ tạo từ đó sẽ chặn ở bước xuất hoá đơn VAT, và lúc đó công ty đã có user đang đăng nhập.',
+          },
+          {
             label: 'Two stores, not one flag — why the pool sits outside the CRM',
             text: 'Saramin holds tens of thousands of company names collected from public directories, trade fairs and job boards. That list is **not** a customer list: most rows have a name and nothing else, the tax code is often missing and sometimes **wrong**, and nobody owns any of them.\n\nIt is a **separate store**, not an `isLead` flag on the company table. Three things break the moment unowned, unverified rows share one table with customers.',
             table: {
@@ -2720,8 +2759,9 @@ export const crm: BuildModule = {
                 ['1 · Xin nhận', 'Sales', 'Free data → company record → **Xin nhận**', 'The request form (mô tả + phân loại + link/tệp). The record warns if others already asked.'],
                 ['2 · Khoá', 'System', 'The pool row', 'Sending a request flips the row to **Đang chờ duyệt** and Xin nhận disappears for everyone else — the claim form hard-blocks with “mỗi công ty chỉ nhận một yêu cầu một lúc”, and says when it unlocks. The status pill on the list IS the level: *Chờ duyệt lần 1 · Admin* / *Chờ duyệt lần 2 · Sales lead*.'],
                 ['3 · Duyệt bước 1', 'Admin', 'Open the company → **tab Yêu cầu nhận** (amber badge; the banner offers “Duyệt yêu cầu ({level}) →”)', 'The request card shows lý do · bằng chứng (link/📎/⚠) · contact point, a note field, and **Duyệt · Admin / Từ chối · Admin** (role on the button, the Kế toán convention). Duyệt moves it to **Chờ Sales lead** — nothing is created yet. Từ chối ends it: công ty về Chưa nhận.'],
-                ['4 · Duyệt bước 2', 'Sales lead', 'Same card, now stamped “✓ Admin đã duyệt {when} · {who}”', 'The lead sees level 1’s pass — they never approve something with no provenance — plus their own note field and **Duyệt · Sales lead / Từ chối · Sales lead**. Duyệt is the ONE WRITE: CRM company + owner + contact #1 + pool removal. Từ chối ends it, and it does NOT go back to Admin.'],
-                ['(bypass) · Phân trực tiếp', 'Admin', 'The **Phân trực tiếp · Admin** card, always on a pool record’s **Yêu cầu nhận** tab', 'Admin picks a rep → **Phân ngay** — no request, no level 2. Management assignment, not a claim. If a request is open it is auto-rejected with the note “Admin đã phân trực tiếp cho {X}”, and the card warns about that BEFORE the click.'],
+                ['4 · Duyệt bước 2', 'Sales lead', 'Same card, now stamped “✓ Admin đã duyệt {when} · {who}”', 'The lead sees level 1’s pass — they never approve something with no provenance — plus **the MST field (see the MST gate below)**, their own note field, and **Duyệt · Sales lead / Từ chối · Sales lead**. Duyệt is the ONE WRITE: CRM company + owner + contact #1 + pool removal — so the MST gate sits on this button and nowhere earlier: Admin’s level-1 pass creates nothing. Từ chối ends it, and it does NOT go back to Admin.'],
+                ['(bypass) · Phân trực tiếp', 'Admin', 'The **Phân trực tiếp · Admin** card, always on a pool record’s **Yêu cầu nhận** tab', 'Admin enters the **MST** (same gate) and picks a rep → **Phân ngay** — no request, no level 2. A bypass of the QUEUE is not a bypass of the DEDUP: this button creates the company too. If a request is open it is auto-rejected with the note “Admin đã phân trực tiếp cho {X}”, and the card warns about that BEFORE the click.'],
+                ['(gate) · MST', 'Whoever creates', 'On every button that CREATES the company — lead approve, direct assign, sign-up promote', 'The MST lives in **ONE place: the record itself** (tab Overview), where the admin fills or corrects it — the assign/approve cards **read** that value and never carry their own input, or the same number is asked for twice and the two copies drift. Three states, told inline on the card: **chưa có MST** → button disabled + a jump “Điền MST ở tab Overview →”; **trùng** → red block naming the company, its Company ID and its sales owner (“không tạo được hồ sơ mới — nếu đúng là công ty này, dùng Yêu cầu chuyển giao; nếu là chi nhánh, tạo từ hồ sơ công ty mẹ”); **hợp lệ** → “✓ MST … không trùng” và nút mở. A duplicate BLOCKS, never warns-and-allows: two records with one MST is two invoices claiming the same legal entity. (Sign-up promote is the one door that keeps an input — the record is not open on that screen.)'],
                 ['5 · Theo dõi', 'Sales', '**Yêu cầu nhận công ty** — the log, default **Của tôi**', 'Status pill + what it means (*được chọn — là sales phụ trách* / *công ty về lại Chưa nhận — xin lại được*), who decided and when, and **the admin’s note to this rep, verbatim**. Plus the banner on the company’s own record. NO action buttons here — one place to decide, or two places disagree.'],
               ],
             },
@@ -2881,9 +2921,9 @@ export const crm: BuildModule = {
             'POST /admin/crm/company-pool/:id/claim { reason, freeDataKind, contactName, contactPhone, contactEmail?, evidenceUrl?, evidenceFileId? } — 409 if a CRM match exists OR the row already has an open request (one at a time); 422 if freeDataKind is one of the two customer values.',
             'GET /admin/crm/company-claims?status=pending',
             'POST /admin/crm/company-claims/:id/admin-approve { note? } — level 1 (Admin role). status → admin_ok; nothing is created yet',
-            'POST /admin/crm/company-claims/:id/lead-approve { note? } — level 2 (Sales-lead role); 409 unless status = admin_ok. THE write: creates the company, sets salesOwner = requestedBy, creates contact #1, sets pool state = claimed + claimedCompanyId',
+            'POST /admin/crm/company-claims/:id/lead-approve { note? } — level 2 (Sales-lead role); 409 unless status = admin_ok; 422 if the POOL ROW’s taxCode is empty; 409 with the existing companyId if it duplicates a CRM company. THE write: creates the company with the record’s taxCode, sets salesOwner = requestedBy, creates contact #1, sets pool state = claimed + claimedCompanyId',
             'POST /admin/crm/company-claims/:id/reject { note? } — either role at its own level; terminal. rejectedLevel recorded; pool state returns to free',
-            'POST /admin/crm/company-pool/:id/direct-assign { salesOwnerId, note? } — Admin only, no approval chain: creates the company + owner + contact #1 (from pool data), auto-rejects any open claim with a note naming the assignee',
+            'POST /admin/crm/company-pool/:id/direct-assign { salesOwnerId, note? } — Admin only, no approval chain, SAME MST rules as lead-approve (reads the pool row’s taxCode; 422 empty · 409 duplicate): creates the company + owner + contact #1, auto-rejects any open claim with a note naming the assignee',
             'GET /admin/crm/free-data-kinds — the 8 classifications (master data, so the list can be tuned without a release)',
             'POST /admin/crm/company-pool/import — admin only; records `source` on every row',
           ],
@@ -3041,16 +3081,17 @@ export const crm: BuildModule = {
         behaviors: [
           'On submit the system creates a pending sign-up (holding the person’s chosen password), sends an email-verification link immediately, and runs a tax-code match.',
           'Gate 1 — email verification: when the user clicks the link, emailVerified flips true. This is automatic and does NOT resolve the row; it only makes the row actionable for HQ.',
-          'Gate 2 — HQ placement: an operator resolves each EMAIL-VERIFIED row with Move to existing · Create new company + move · Archive — plus a FOURTH action that appears only when the typed company hits a Free-data row: **Promote from Free data + move**. An unverified row is shown but not actionable ("awaiting email verification").',
+          'Gate 2 — HQ placement: an operator resolves each EMAIL-VERIFIED row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Company list. An unverified row is shown but not actionable ("awaiting email verification").',
           'Match is binary + informational: tax hit (Match, shows which) or not (Not match). A public email domain can’t auto-match. Match never changes the three actions.',
           'Move / Create create/attach the company membership, unlock login, and send the "you’re in — sign in" email (password already set). Archive rejects the request.',
           'The user sees a status tracker and a stated SLA throughout; trying to log in before both gates pass shows an "under review" screen, never a bare error.',
         ],
         rules: [
           'Two independent gates: (1) email verification — instant, automatic; (2) HQ placement — manual. Login unlocks only when BOTH pass.',
-          'Three actions on every verified row — Move to existing · Create new company + move · Archive — plus **Promote from Free data + move**, offered only when the typed company name hits a Free-data row (shown as a “Free data: {tên}” hint pill beside the tax-code Match hint).',
-          'PROMOTE = the pool row becomes the CRM company and the user moves in: pool data (SĐT, địa chỉ, người liên hệ → contact #1) carries over, MST is RE-ENTERED (the pool MST is never trusted), the user becomes the company’s Admin, a sales owner is assigned, and the pool row leaves Free data marked Đã nhận with the link. Creating from scratch instead would put the same company in two stores.',
-          'Promotion via a sign-up is an ADMIN PLACEMENT — same rule as direct assign: no claim, no Sales-lead step. Any open claim on that pool row is auto-rejected with a note naming the outcome.',
+          'TWO actions, not four: **Move to existing company** · **Archive**. The Match column says WHERE the company is — `Company list: {tên}` · `Free data: {tên}` · `Not match` — and that is what decides whether the row is actionable at all.',
+          'A row whose company is NOT yet in the Company list is BLOCKED here, with a link to the screen that fixes it: “Đưa công ty lên Company list →” (opens that Free-data record) or “Tạo công ty trước →” (opens the create form). A blocked row that does not point somewhere sends the operator hunting, or worse, inventing a way round.',
+          'REMOVED: “Create new company + move” and “Promote from Free data + move”. Both were extra doors into the company table, placed on a screen that does not ask for phân loại người mua, địa chỉ xuất hoá đơn or người liên hệ — a record created there would stall at the VAT-invoice step, by which time the company already has users signing in.',
+          'The result is the invariant: **the company is always created first, then the user is assigned.** See the intake flow diagram on this page.',
           'Creating a new company makes the user its Admin; placing them into an existing company picks their role there and respects its seat cap.',
           'When placing a sign-up (Move or Create), HQ also assigns a CRM sales owner — the rep who owns the resulting company. Required on both actions.',
           'Password is set at sign-up; the approval email is a sign-in notice, not a set-password link.',

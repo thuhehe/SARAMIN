@@ -592,8 +592,8 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
           <div className="space-y-3">
             {/* Decision first, then the bypass, then the log — act on today's thing,
                 then look backwards exactly once. */}
-            {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} />}
-            <DirectAssignCard co={c.name} />
+            {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} tax={pool!.tax} onFillMst={() => setTab('Overview')} />}
+            <DirectAssignCard co={c.name} tax={pool!.tax} onFillMst={() => setTab('Overview')} />
             <ClaimChain co={c.name} />
             {!openClaim(c.name) && decidedNone(c.name) && (
               <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này — sales xin bằng nút Xin nhận, hoặc admin phân trực tiếp ở trên.</p>

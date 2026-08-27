@@ -69,7 +69,7 @@ export interface SpecSection {
   /** render a named diagram component above the table. Diagrams are hand-built
       React, not data, because the one thing worth drawing on a spec page is the
       DIRECTION of a model — and that is a layout problem, not a list of rows. */
-  diagram?: 'cv-status' | 'cv-language'
+  diagram?: 'cv-status' | 'cv-language' | 'company-intake'
   /** value grid — use it for enums (status, exposure, stage) where each value has
       a meaning and a consequence; a table beats four bullets every time. */
   table?: SpecTable

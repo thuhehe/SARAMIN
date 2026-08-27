@@ -7,6 +7,7 @@ import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
+import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { CvLanguageLayers } from '@/components/CvLanguageLayers'
 import { cn } from '@/lib/utils'
@@ -194,6 +195,9 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
         </p>
       )}
       {r.figure && FIGURES[r.figure] && <div className={measure}>{FIGURES[r.figure]()}</div>}
+      {/* A whole-process flow gets the FULL width, not the reading measure — a
+          diagram squeezed into a text column is a diagram nobody can follow. */}
+      {r.diagram === 'company-intake' && <CompanyIntakeFlow />}
       {r.table && <ReqTableView t={r.table} dense={dense} />}
       {r.items && <ReqBullets items={r.items} dense={dense} />}
       {r.warn && (

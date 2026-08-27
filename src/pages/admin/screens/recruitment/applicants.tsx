@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CV_STATUS_TONE, DELIVERY_TONE, STAGE_TONE, isHeld } from '@/pages/admin/data/recruitment'
-import type { Applicant, Delivery } from '@/pages/admin/data/recruitment'
+import type { Applicant } from '@/pages/admin/data/recruitment'
 import { FilterSelect, ListPage, RowAction } from '@/pages/admin/ui/list'
 import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
 import { Pill } from '@/pages/admin/ui/status'
@@ -21,11 +21,12 @@ function ExtLink({ children }: { children: React.ReactNode }) {
    left is oversight — read the same information the employer sees, then either
    pull it back (Recall) or shut the whole account off (Block). The quality
    checks stay on screen as LABELS: they inform, they never block. */
-function ApplicantDetail({ name, status, hold, onClose }: { name: string; status: Delivery; hold?: string; onClose: () => void }) {
+function ApplicantDetail({ a, onClose }: { a: Applicant; onClose: () => void }) {
+  const { name, status, hold } = a
   const [decision, setDecision] = useState<'none' | 'recall' | 'block'>('none')
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
-      <div className="flex max-h-[600px] w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+      <div className="flex max-h-[640px] w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <p className="flex items-center gap-2 text-[14px] font-bold text-ink">
@@ -33,23 +34,58 @@ function ApplicantDetail({ name, status, hold, onClose }: { name: string; status
               <Pill tone={DELIVERY_TONE[status]}>{status}</Pill>
             </p>
             <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
-              Senior Frontend Engineer · FPT Software · applied 2h ago · CV: <b className="font-semibold text-ink/80">Frontend Engineer CV</b>
-              <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Saramin CV</span>
+              {a.job} · {a.company} · applied {a.when} · CV: <b className="font-semibold text-ink/80">{a.cv[0]}</b>
+              <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
             </p>
           </div>
           <span className="cursor-pointer text-faint" onClick={onClose}>✕</span>
         </div>
         <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(0,1fr)_220px]">
-          {/* CV under review */}
-          <div className="rounded-lg border border-line bg-canvas/30 p-4">
-            <p className="text-[13px] font-bold text-ink">{name}</p>
-            <p className="mb-2 text-[11px] text-muted">Frontend Engineer · Hồ Chí Minh · 4 yrs</p>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
-            <p className="text-[11px] text-ink">Frontend Engineer · Zenpay · 2022–nay</p>
-            <p className="mb-2 text-[11px] text-muted">Web Developer · Lantern Digital · 2020–2022</p>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Skills</p>
-            <p className="text-[11px] text-ink">React · TypeScript · Next.js · Tailwind · Testing</p>
-            <p className="mt-2 text-[10.5px] text-faint">Opening the full CV is a PII action and is audited.</p>
+          {/* The WHOLE candidate record, in the order an operator reads it: who
+              they are, what they want, then the document itself. The list shows
+              Basic information and Work preference as truncated two-liners, so
+              this is where those columns are read in full — the CV alone was
+              never enough to judge an application. */}
+          <div className="space-y-3">
+            <div className="rounded-lg border border-line p-3">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Basic information</p>
+              <p className="text-[11.5px] leading-relaxed text-ink">{a.basic}</p>
+              <p className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted">
+                <span>✉ {a.contact[0]}</span><span>📞 {a.contact[1]}</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-line p-3">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Work preference</p>
+              <p className="text-[11.5px] leading-relaxed text-ink">{a.pref}</p>
+            </div>
+            <div className="rounded-lg border border-line bg-canvas/30 p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-faint">CV content — {a.cv[0]}</p>
+                <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">⬇ Download</span>
+              </div>
+              {/* A CV nothing could be read from has NO parsed content to show. It
+                  says so, instead of rendering a work history that does not exist
+                  — that is the whole reason the row is held. */}
+              {a.role === '—' ? (
+                <p className="rounded-md border border-dashed border-line px-3 py-4 text-center text-[11px] leading-relaxed text-muted">
+                  Nothing could be extracted from this file.<br />
+                  <span className="text-faint">Open the original to check it by eye — the verdict is made in CV review.</span>
+                </p>
+              ) : (
+                <>
+                  <p className="text-[13px] font-bold text-ink">{name}</p>
+                  <p className="mb-2 text-[11px] text-muted">{a.role} · {a.loc} · {a.years}</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Experience</p>
+                  <p className="text-[11px] text-ink">{a.role} · Zenpay · 2022–nay</p>
+                  <p className="mb-2 text-[11px] text-muted">{a.role} · Lantern Digital · 2020–2022</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Education</p>
+                  <p className="mb-2 text-[11px] text-ink">{a.edu}</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">Skills</p>
+                  <p className="text-[11px] text-ink">React · TypeScript · Next.js · Tailwind · Testing</p>
+                </>
+              )}
+              <p className="mt-2 text-[10.5px] text-faint">Opening the full CV is a PII action and is audited.</p>
+            </div>
           </div>
           {/* labels + the two oversight actions */}
           <div className="space-y-3">
@@ -181,7 +217,7 @@ export function AdminApplicants() {
     /* Same cell shapes as Talent pool, so an operator reads the two lists as one
        system: CV = name + kind pill, then Basic information and Work preference. */
     <div className="min-w-0">
-      <p onClick={() => setOpen(a)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the CV — PII action, logged">{a.cv[0]}</p>
+      <p onClick={() => setOpen(a)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the full candidate record — basic information, work preference and CV content. PII action, logged">{a.cv[0]}</p>
       <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
     </div>,
     <TwoLine top={split2(a.basic, 3)[0]} bottom={split2(a.basic, 3)[1]} />,
@@ -275,7 +311,7 @@ export function AdminApplicants() {
         }
         cols={[
           { label: 'Candidate', w: '1.1fr' },
-          { label: 'CV', w: '1.3fr' },
+          { label: 'Profile & CV', w: '1.3fr' },
           { label: 'Basic information', w: '1.1fr' },
           { label: 'Work preference', w: '1.3fr' },
           { label: 'Contact', w: '1.3fr' },
@@ -289,7 +325,7 @@ export function AdminApplicants() {
         ]}
         rows={rows}
       />
-      {open && <ApplicantDetail name={open.name} status={open.status} hold={open.hold} onClose={() => setOpen(null)} />}
+      {open && <ApplicantDetail a={open} onClose={() => setOpen(null)} />}
       {reject && <RejectDialog name={reject.name} file={reject.file} onClose={() => setReject(null)} />}
     </div>
   )

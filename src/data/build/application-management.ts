@@ -383,7 +383,7 @@ export const applicationManagement: BuildModule = {
               { name: 'candidate', type: 'ref → Jobseeker', required: true, notes: 'name + masked contact; full contact and the CV need an explicit, audited open' },
               { name: 'snapshot', type: 'derived', notes: 'role · years / location · education — enough to recognise the person without opening the CV' },
               { name: 'job / company', type: 'ref → Job / ref → Company', required: true },
-              { name: 'cv', type: 'file', notes: 'file name + whether it is a Saramin CV or an uploaded file' },
+              { name: 'profile & CV', type: 'file + ref → Jobseeker', notes: 'column is NOT called "CV": the cell prints the file name + kind, but opening it returns the whole candidate record — basic information, work preference and the parsed CV content — because a CV alone is not enough to judge an application. Opening is a PII action and is audited' },
               { name: 'status', type: 'badge', required: true, notes: 'Saramin-owned: Sent · Recalled · Blocked. Labelled "Status · Saramin" in the header so the owner is unambiguous' },
               { name: 'stage', type: 'badge', notes: 'employer-owned, read-only. Labelled "Stage · employer". Renders an EM-DASH when status ≠ Sent — a recalled or blocked CV is off the dashboard, so the funnel no longer applies' },
               { name: 'appliedAt', type: 'timestamp' },
@@ -396,8 +396,8 @@ export const applicationManagement: BuildModule = {
             items: [
               '1. Recruitment → Applicants. Every application across all companies lands here first.',
               '2. Tabs split the list: All · Not sent (CV in doubt or rejected) · Sent · Recall · Interview · Hired · Rejected. Filters: search · stage · company · location · CV kind. There is no "to screen" tab — screening happens on the CV, in Resume management → CV qualification, not on an application.',
-              '3. Each row shows candidate · snapshot (role · years · location · education) · applied-to job · company · the CV (name + Saramin CV / Uploaded tag) · stage · applied.',
-              '4. Click a candidate → the SCREENING DETAIL: the CV under review, a quality checklist, and the match-to-job score.',
+              '3. Each row shows candidate · Profile & CV (file name + Saramin CV / Upload tag) · basic information · work preference · contact · applied-to job · company · CV status · application status · pipeline stage · applied.',
+              '4. Click the candidate name OR the Profile & CV cell → the SAME popup, holding the FULL candidate record in reading order: Basic information · Work preference · CV content. Both entry points open one detail, because an operator judging an application needs the profile and the document together.',
               '5. Decide — "✓ Approve & forward to employer" (the company pipeline starts) or "✕ Reject…" with a mandatory, audited reason.',
               '6. Both decisions notify the candidate and the employer, and are written to the audit log.',
               '→ HQ is READ-ONLY on the employer pipeline: it never moves a company’s candidates through their stages.',
@@ -437,6 +437,7 @@ export const applicationManagement: BuildModule = {
           },
         ],
         behaviors: [
+          'The Profile & CV column is deliberately NOT called "CV": the cell prints the file, but opening it returns the whole record. A CV that could not be parsed shows a plain "nothing could be extracted" note instead of an empty work history — that absence IS the reason the row is held.',
           'The list has NO status tabs — the filter row is the only way to narrow it. One control set covers every combination, instead of tabs and filters overlapping on the same field.',
           'A one-line legend above the table names both owners, because two status badges on one row is exactly where a reader guesses wrong.',
           'Recall removes the CV from the employer dashboard and notifies them; it cannot un-send the original email.',

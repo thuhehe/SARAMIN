@@ -1044,6 +1044,55 @@ export const resumeManagement: BuildModule = {
           },
           {
             early: true,
+            heading: 'CV SEARCH — gate → filter → rank, and which fields the keyword actually matches',
+            text: 'The same four stages as [JOB SEARCH](/m/job-management#job-search-gate-filter-rank-and-relevance-is-only-what-the-candidate-typed), on purpose: one search model on the platform, one text analyser, one set of words for the same ideas. This block states only what DIFFERS on the CV side, plus the field list — which is the gap left behind when the `keywordScope` selector was cut. The selector went; nothing recorded what the box searches instead.',
+            table: {
+              cols: ['Stage', 'What it does', 'CV-side rule'],
+              rows: [
+                ['**1 · GATE**', 'What is eligible at all — binary', 'Account **Discoverable** · this is the **flagged** CV · CV status = **Qualified** · not blocked by this company. NEVER gate on a domain field (salary, years, education): every one can empty the result set and none can explain why.'],
+                ['**2 · FILTER**', 'The rail facets the recruiter ticked — binary', 'OR within one facet, AND across facets. Location · desired role / category / industry · expected salary · years · education · CV activity. **The keyword is NOT a filter** — it is the input to stage 3.'],
+                ['**3 · RANK**', 'Orders the survivors', 'With a query: **field-weighted relevance only** (table below). With no query there is no relevance signal, so ordering is explicit: **most recently updated**.'],
+                ['**4 · TIE-BREAK**', 'Breaks equal scores deterministically', '`lastUpdatedAt` → completeness → `cvId`. No randomness anywhere, so pagination is stable.'],
+              ],
+            },
+            items: [
+              '★ NO PAID BOOST IN CV SEARCH — the one place this model deliberately parts from job search, where a posting tier multiplies relevance (Top Job ×1.5). Nobody pays on the candidate side, so a boost would mean WE decide which people surface for reasons unrelated to the query. A recruiter who has bought the pool is paying for relevance; selling them sponsored candidates on top is the fastest way to lose trust in a paid search product. No multiplier, no floor, no exceptions — there is nothing to multiply BY.',
+              'NO MATCH SCORE IN THE KEYWORD BOX, mirroring the same ban on the job side. Typing “điều dưỡng” returns nurses, ranked by how well they answer that word — not by how well they fit a job the recruiter happens to have open. “Find candidates for THIS job” is a different entry point with its own screen, exactly as recommendations stay out of job search. Blending them makes “why is this person here?” unanswerable from the query.',
+              'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — the same one already decided for skill typeahead and job search: lower-casing, ASCII FOLDING (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), ranked exact → prefix → contains. Do not define a second analyser here; two analysers means a query works in one box and not the other, and nobody can say which is broken.',
+              'THE DEFAULT SORT IS FRESHNESS, NOT TIER. Job search falls back to posting tier when there is no query; CV search has no tier, so `Mới cập nhật` is the honest default — a CV untouched for eight months is usually someone who has stopped looking. Explicit sorts: **Liên quan** (default whenever a query exists) · **Mới cập nhật** · **Số năm kinh nghiệm**.',
+              'SHOW WHY EACH ROW MATCHED — the matched terms as chips on the result row (`Kế toán trưởng` · `SAP` · `+2`). This matters more here than in job search because the recruiter is about to spend a credit: an unexplained rank is an unlock they will not risk. The Applicants list already does this with “2/10 kỹ năng”, so the pattern exists.',
+              'ZERO RESULTS RELAX IN A FIXED ORDER, and always disclose it: salary → years → location (widen to region) → keyword AND→OR. Show what was relaxed — “Không có ứng viên ở Đà Nẵng — đang hiện cả miền Trung” — or the recruiter believes a filter is still in force when it is not.',
+              'ONE ROW PER CANDIDATE, NEVER PER CV. Only the flagged CV is in the pool, so this mostly holds by construction — but it is the invariant to protect if a candidate is ever allowed two searchable CVs.',
+            ],
+          },
+          {
+            early: true,
+            heading: 'WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal',
+            text: 'The list lives HERE and nowhere else, the same discipline the job side keeps: a field list restated in two requirements is a field list that will disagree with itself.\n\nA word that resolves to a taxonomy row (skill · industry · location) matches that facet exactly. A word that resolves to nothing falls through to this weighted bundle.',
+            table: {
+              cols: ['#', 'Field', 'Why it sits here'],
+              rows: [
+                ['1', '`headline` / `currentTitle`', 'The candidate’s own answer to “what am I”. FREE TEXT — there is no Title taxonomy (see the field note), so this is matched as analysed text, not as a tag.'],
+                ['2', 'Skills — canonical name + aliases', 'A taxonomy join: the highest-precision signal we have, and the only one that cannot be accidentally matched by prose.'],
+                ['3', 'Past job titles', 'Proof they have actually done it, as opposed to wanting to.'],
+                ['4', 'Desired role · category · industry', 'Wanting to be it is a real, weaker signal — a candidate moving INTO a role is often exactly who a recruiter wants, just not ahead of someone already in it.'],
+                ['5', 'Company names — current + prior', '“ai từng làm ở Vinmec”. A common and legitimate search.'],
+                ['6', 'School · major', ''],
+                ['7', 'Certificate · project · award · language NAMES', 'Names only — the credential code and project URL are masked (see the access tiers) and are not searchable at any tier.'],
+                ['8', 'About / summary', 'Prose the candidate wrote about themselves.'],
+                ['9', '**Work-experience descriptions**', '**Last, deliberately** — see the note below.'],
+              ],
+            },
+            items: [
+              '★ WHY THE BODY IS LAST, and the failure it prevents: a QA engineer whose description says “worked closely with designers” must never outrank an actual Designer. Flat matching is exactly how that happens, and it is the single most common way a keyword search comes to feel broken while every individual match is technically correct.',
+              '★ NEVER SEARCHED, AT ANY TIER: the candidate’s NAME, phone, email, the References block, the demographic facets, and anything admin-internal (reject reason, internal note, CV status). Name is the one people ask for — refuse it: masking a name on the row while still MATCHING it means typing a name and reading the answer off the result count, which confirms that a specific person is job-hunting. In this market the most motivated searcher is the candidate’s own employer. Recruiters lose nothing; nobody browses a paid pool by name.',
+              'THE REFERENCES BLOCK IS THIRD-PARTY DATA and stays out of the index for a second reason on top of the first: indexed, it makes a REFEREE findable through someone else’s CV — a person who never had an account and never consented to be in the pool.',
+              'ROLE IS THE WEAKEST-BACKED HIGH-VALUE FIELD, and it is the one to invest in. With no Title taxonomy, “điều dưỡng” will not find a CV that says “y tá”, and “kế toán trưởng” will not find “trưởng phòng kế toán”. Rank 1 and rank 3 are therefore both plain text. Either an alias list or an analysed/fuzzy index is needed before launch — this is a Phase-1 decision, not a tuning detail.',
+              'SEARCH THE LIVE CV, NEVER THE APPLICATION SNAPSHOT. Snapshots exist so an employer keeps what was actually sent to them; search answers who is available NOW. Indexing snapshots would return people on the strength of a CV they have since replaced.',
+            ],
+          },
+          {
+            early: true,
             heading: 'Filter rail — three groups, in this order',
             text: 'A COLLAPSIBLE LEFT RAIL beside the results, with one dropdown per field. Work preference sits first because it is what a recruiter with a specific vacancy narrows on first. Grouping by WHERE THE DATA COMES FROM still holds ACROSS the three groups — it tells the developer which fields go thin when the CV parser is not live — but no longer WITHIN Candidate information, which the PM flattened on 2026-08-22 into one eight-field list.',
             table: {

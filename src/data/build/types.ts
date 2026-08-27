@@ -170,6 +170,9 @@ export interface RequirementBlock {
    * Add the name here and draw it in ModuleDetail's FIGURES map.
    */
   figure?: 'quotation-totals'
+  /** A named FLOW drawn by the renderer — same reasoning as `figure`, but for the
+      whole-process pictures a developer reads before touching the code. */
+  diagram?: 'company-intake'
 }
 
 export type Requirement = string | RequirementBlock

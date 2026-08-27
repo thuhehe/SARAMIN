@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { BUYER_TYPE, RETAIL_BUYER, coLabel } from '@/pages/admin/data/companies'
 import type { BuyerType, Company } from '@/pages/admin/data/companies'
+import { ScreenNavCtx } from '@/pages/admin/ctx'
+import { DIRECTORY } from '@/pages/admin/data/directory'
 import { MST_ROOT_MATCHES } from '@/pages/admin/data/sales'
 import { MD_DOMAINS } from '@/pages/admin/data/system'
 import { ComboField, LField } from '@/pages/admin/ui/fields'
@@ -43,6 +45,7 @@ function MstMatchRow({ m, rel, onSet }: {
  * "Gán quan hệ mẹ / con" on the company record.
  */
 export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void; lockedParent?: Company }) {
+  const goTo = useContext(ScreenNavCtx)
   useDetailCrumb(lockedParent ? `Thêm công ty con · ${coLabel(lockedParent)}` : 'New company', onBack)
   /* Quốc tịch drives whether the Vietnamese province picker is shown at all. */
   const [country, setCountry] = useState('Việt Nam')
@@ -54,6 +57,8 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
   const [tax, setTax] = useState('')
   const [looking, setLooking] = useState(false)
   const [looked, setLooked] = useState(false)
+  /* Same number, both stores. */
+  const poolHit = DIRECTORY.find((d) => d.tax && d.tax.trim() === tax.trim() && d.state !== 'claimed')
   /* Which of the same-tax-root companies this new record links to, and in which
      direction. Keyed by company name; at most one 'child' entry can exist. */
   const [rels, setRels] = useState<Record<string, 'none' | 'parent' | 'child'>>({})
@@ -144,6 +149,22 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
                 </button>
               </div>
               <p className="mt-1 text-[10.5px] leading-relaxed text-faint">10 số, hoặc 10 số + “-001” nếu là chi nhánh.</p>
+              {/* The dedup spans BOTH stores. Free data and Company list are one
+                  company table at two completeness levels, so a check that only
+                  looked at customers would let a rep create the very duplicate the
+                  pool exists to prevent — and the pool holds tens of thousands of
+                  rows nobody reads before typing. */}
+              {poolHit && (
+                <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                  ⚠ MST này đã có trong <b>Free data</b> — <b>{poolHit.name}</b>{poolHit.addr ? ` · ${poolHit.addr}` : ''}.
+                  <span className="mt-0.5 block text-amber-800/85">
+                    Đừng tạo mới: mở dòng đó và <b>phân trực tiếp cho sales</b> (hoặc duyệt yêu cầu đang chờ) — công ty sẽ lên Company list mang theo dữ liệu danh bạ và rời khỏi Free data. Tạo mới ở đây sẽ thành hai bản ghi cho một công ty.
+                  </span>
+                  <button onClick={() => goTo('admin-company-directory', poolHit.name)} className="mt-1 rounded border border-amber-400 bg-white px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800 hover:border-amber-600">
+                    Mở dòng Free data →
+                  </button>
+                </p>
+              )}
             </div>
           )}
           {buyer === 'dn-nn' && (
