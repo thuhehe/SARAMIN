@@ -117,9 +117,13 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
       <div className="mb-5 rounded-lg border border-line bg-canvas/50 px-3.5 py-2.5">
         {/* FIVE either way since 2026-08-23 — the foreign tax code became required,
             so the count and the sentence stopped needing a branch. */}
-        <p className="text-[11.5px] font-semibold text-ink">Tạo khách hàng — bắt buộc 5 thông tin</p>
+        {/* The COUNT follows Loại công ty, because the field set does: a foreign
+            company has no Vietnamese MST to ask for, so it is four, not five.
+            Hardcoding five listed a field that is not required and contradicted
+            the requirement's own “4 thông tin (nước ngoài)”. */}
+        <p className="text-[11.5px] font-semibold text-ink">Tạo khách hàng — bắt buộc {isForeign ? 4 : 5} thông tin</p>
         <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-          <b className="text-ink/75">Tên legal</b> · <b className="text-ink/75">Mã số thuế{isForeign ? ' nước ngoài' : ''}</b> · <b className="text-ink/75">Địa chỉ đăng ký{isForeign ? '' : ' MST'}</b> · <b className="text-ink/75">Người liên hệ</b> · <b className="text-ink/75">Sales owner</b> — hồ sơ lưu xong là có chủ và được đếm vào mọi con số của CRM.
+          <b className="text-ink/75">Tên legal</b>{!isForeign && <> · <b className="text-ink/75">Mã số thuế</b></>} · <b className="text-ink/75">Địa chỉ đăng ký{isForeign ? '' : ' MST'}</b> · <b className="text-ink/75">Người liên hệ</b> · <b className="text-ink/75">Sales owner</b> — hồ sơ lưu xong là có chủ và được đếm vào mọi con số của CRM.
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted">
           Chỉ có mỗi tên công ty? Dùng <button onClick={() => goTo('admin-company-directory')} className="font-semibold text-brand hover:underline">Free data → Thêm công ty</button> — ở đó chỉ cần tên, và sales sẽ xin nhận sau.
