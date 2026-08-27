@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { AC_STATUS, coLabel, coValue, poGate } from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, coLabel, coValue, poGate } from '@/pages/admin/data/companies'
+import type { BuyerType } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { QUOTE_CATALOG, VAT_RATE } from '@/pages/admin/data/sales'
+import { PAY_METHODS, QUOTE_CATALOG, VAT_RATE } from '@/pages/admin/data/sales'
 import { endOfMonth, vnWords } from '@/pages/admin/lib/fmt'
-import { LField, Section } from '@/pages/admin/ui/fields'
+import { DerivedField, Section } from '@/pages/admin/ui/fields'
 import { Pill } from '@/pages/admin/ui/status'
 
 /* ── Tạo PO / Create sales order ───────────────────────────────────────────────
@@ -14,7 +15,16 @@ import { Pill } from '@/pages/admin/ui/status'
 export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void }) {
   const { quote } = poGate(c)
   const [terms, setTerms] = useState('100% in advance')
-  const [poNo, setPoNo] = useState('')
+  const [otherTerms, setOtherTerms] = useState('')
+  const [method, setMethod] = useState<string>(PAY_METHODS[0])
+  const [paidAt, setPaidAt] = useState('')
+  /* Who THIS document is issued to. Defaults from the company record and can be
+     changed per PO — VN practice: "xuất hóa đơn theo thông tin nào?" is asked at
+     the deal, not fixed forever at account creation. Changing it here never
+     rewrites the record; it is a per-document override. */
+  const [buyer, setBuyer] = useState<BuyerType>(c.buyerType ?? 'dn-vn')
+  const recordBuyer = c.buyerType ?? 'dn-vn'
+  const [setDefault, setSetDefault] = useState(false)
   /* Lines drive the total, never the reverse — quantity × the real catalog price.
      Back-solving a unit price from the deal value produces prices like 5,979,938,
      which is not a figure any catalog would ever quote. */
@@ -63,26 +73,113 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-3">
-              <Section title="VAT billing — snapshot from the quotation" className="mt-0" />
-              <LField label="Tên công ty / Legal name" req value={c.legalName} />
-              <LField label="Địa chỉ KKD / Billing address" req value={c.address} />
-              <LField label="Mã số thuế / Tax code" req value={c.tax} hint="Must match the e-invoice exactly — a mismatch later needs a cancel + re-issue." />
+              <Section title="VAT billing — cho PO/hóa đơn này" className="mt-0" />
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Xuất cho / Phân loại người mua</label>
+                <select value={buyer} onChange={(e) => setBuyer(e.target.value as BuyerType)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]">
+                  {(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => (
+                    <option key={k} value={k}>{BUYER_TYPE[k].vi}{k === recordBuyer ? ' — theo hồ sơ' : ''}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                  Mặc định theo hồ sơ công ty. Đổi ở đây chỉ áp dụng cho <b className="text-ink/70">PO/hóa đơn này</b> — không sửa hồ sơ. Dùng khi công ty mẹ trả tiền, sếp mua bằng tên cá nhân…
+                </p>
+                {/* An override is one-off by default — but when the rep has just
+                    discovered the customer's REAL billing party, re-entering it on
+                    every future PO is how it eventually gets entered wrong. One
+                    checkbox turns this document's choice into the record's. */}
+                {buyer !== recordBuyer && (
+                  <label className="mt-1.5 flex cursor-pointer items-start gap-2 rounded-md border border-line bg-canvas/50 px-2.5 py-2">
+                    <input type="checkbox" checked={setDefault} onChange={(e) => setSetDefault(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+                    <span className="text-[11px] leading-relaxed text-muted">
+                      <b className="text-ink/75">Đặt làm mặc định cho công ty này</b> — ghi phân loại này vào hồ sơ, các PO sau tự dùng. Bỏ trống thì chỉ áp dụng một lần cho PO này.
+                    </span>
+                  </label>
+                )}
+              </div>
+              {/* The identifier set follows the classification — same shapes as the
+                  company form, prefilled from the record when it is the record's own. */}
+              {/* NOTHING here is typed by sales. Every identifier is READ from the
+                  company record — a rep re-keying a legal name into a PO is how the
+                  PO and the e-invoice end up disagreeing by one character, which
+                  costs a cancel + re-issue. Wrong value? Fix the record, not this. */}
+              {buyer === 'dn-vn' && (
+                <>
+                  <DerivedField label="Tên công ty / Legal name" value={c.legalName} from="hồ sơ" />
+                  <DerivedField label="Địa chỉ xuất hóa đơn" value={c.address} from="hồ sơ" />
+                  <DerivedField label="Mã số thuế / Tax code" value={c.tax} from="hồ sơ" mono hint="Phải khớp từng ký tự với hóa đơn điện tử — sai là phải hủy và xuất lại. Sửa ở hồ sơ công ty, không sửa tại đây." />
+                </>
+              )}
+              {buyer === 'dn-nn' && (
+                <>
+                  <DerivedField label="Tên đơn vị / Legal name" value={c.buyerName?.trim() || c.legalName} from="hồ sơ" />
+                  <DerivedField label="Địa chỉ xuất hóa đơn" value={c.address} from="hồ sơ" hint="DN nước ngoài không có MST Việt Nam — không in mã số thuế." />
+                </>
+              )}
+              {buyer === 'ca-nhan-cccd' && (
+                <>
+                  <DerivedField label="Họ tên người mua hàng" value={c.buyerName?.trim() || '— chưa có trên hồ sơ —'} from="hồ sơ" />
+                  <DerivedField label="Số CCCD" value={c.idCard?.trim() || '— chưa có trên hồ sơ —'} from="hồ sơ" mono hint="In vào dòng “Căn cước công dân” — không dùng ô MST." />
+                  <DerivedField label="Địa chỉ xuất hóa đơn" value={c.address} from="hồ sơ" />
+                </>
+              )}
+              {buyer === 'ca-nhan' && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                  Hóa đơn chỉ in một dòng <b>“Bán cho người tiêu dùng”</b> — không MST, không CCCD, không địa chỉ. Khách <b>không dùng hạch toán chi phí / quyết toán thuế được</b> (điểm 4, Phụ lục NĐ 254/2026).
+                </p>
+              )}
             </div>
             <div className="space-y-3">
-              <Section title="Order terms" className="mt-0" />
+              {/* NOT PRINTED ON THE PO (decided 2026-08-23) — said here, at the only
+                  moment someone might expect otherwise. These are how WE track the
+                  money: they show on the PO LIST, they are the only three fields
+                  Edit PO can touch, and they legitimately change after issue. The
+                  document itself must read the same on both sides forever, so a
+                  mutable field has no place on it. */}
+              <Section title="Thanh toán — nội bộ, không in trên PO" className="mt-0" />
+              <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-muted">
+                3 mục dưới đây <b className="font-semibold text-ink/80">không hiển thị trên chứng từ PO</b> gửi khách. Chúng nằm ở cột tương ứng trong
+                danh sách PO, và là <b className="font-semibold text-ink/80">3 mục duy nhất</b> có thể sửa sau khi phát hành.
+              </p>
               <div>
                 <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Điều khoản thanh toán / Payment terms</label>
                 <select value={terms} onChange={(e) => setTerms(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]">
-                  <option>100% in advance</option><option>50 / 50</option><option>Net 30 after invoice</option>
+                  <option>100% in advance</option><option>50 / 50</option><option>Others</option>
                 </select>
-                <p className="mt-1 text-[10.5px] text-faint">Advance is the default — clause 3 activates the service only after payment.</p>
+                {/* "Others" without a place to say what it is would put the real term
+                    nowhere — and the PO is the document both sides point at later. */}
+                {terms === 'Others' && (
+                  <input
+                    value={otherTerms}
+                    onChange={(e) => setOtherTerms(e.target.value)}
+                    placeholder="Ghi rõ điều khoản — VD: 30% tạm ứng, 70% trong 15 ngày sau xuất hóa đơn"
+                    className="mt-1.5 w-full rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-ink outline-none placeholder:text-faint focus:border-brand"
+                  />
+                )}
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Trả trước là mặc định — điều 3 hợp đồng chỉ kích hoạt dịch vụ sau khi nhận tiền.</p>
               </div>
+
               <div>
-                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Customer PO number <span className="font-normal text-faint">(optional)</span></label>
-                <input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="e.g. PO-VP/2026/044" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]" />
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">If their procurement issues its own PO, record the number and attach the file. Customers without a procurement process simply confirm the order we send.</p>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Phương thức thanh toán</label>
+                <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]">
+                  {PAY_METHODS.map((m) => <option key={m}>{m}</option>)}
+                </select>
               </div>
-              <button className="w-full rounded-md border border-dashed border-line py-2 text-[11.5px] text-muted hover:border-ink/40">+ Attach their signed PO / confirmation</button>
+
+              {/* Empty at issue in the normal case — the money has not arrived yet.
+                  It is on this form only because a PO is sometimes written up after
+                  payment, and forcing that rep into Edit PO straight after issuing
+                  would be a second trip for something they already know. */}
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Ngày thu tiền <span className="font-normal text-faint">— để trống nếu chưa thu</span></label>
+                <input
+                  value={paidAt}
+                  onChange={(e) => setPaidAt(e.target.value)}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] tabular-nums outline-none placeholder:text-faint focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Trạng thái Paid · Unpaid · Overdue được tính từ ngày này.</p>
+              </div>
             </div>
           </div>
 

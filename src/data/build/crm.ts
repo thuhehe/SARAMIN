@@ -368,7 +368,7 @@ export const crm: BuildModule = {
             rows: [
               ['Company ID', 'never', '—', 'System-assigned at creation, permanent.'],
               ['Legal name', 'Yes', 'Text', 'Required. As written on the MST registration.'],
-              ['Tên hiển thị', 'Yes', 'Text', 'The brand name candidates know — first row of Thông tin cơ bản on BOTH this card and the create form. Optional: empty falls back to the legal name everywhere, so it never blocks creation. The Company page tab reads it, never edits it.'],
+              ['Tên hiển thị', 'Yes', 'Text', 'The brand name candidates know — last row of **Thông tin công ty** on BOTH this card and the create form (the identity group owns every name the record has). Optional: empty falls back to the legal name everywhere, so it never blocks creation. The Company page tab reads it, never edits it.'],
               ['Tax code (MST)', 'Yes', 'Text', 'Duplicate check on save — see the MST edge case.'],
               ['Công ty mẹ', 'Yes', 'Select — company', 'The direct parent only. Empty = standalone or group root.'],
               ['Industry', 'Yes', 'Select — Master data', 'Its own field, not joined to size. Asked here and on the create form; the Company page does not carry it.'],
@@ -393,11 +393,11 @@ export const crm: BuildModule = {
             'one Edit toggle for the whole card, not a pencil per row: Edit turns every editable row into its input, Cancel reverts all of them, Save writes all of them. Fourteen independent inline editors is fourteen chances to leave one half-saved.',
             'Read mode shows a placeholder, never a blank: Short name shows “— (falls back to the legal name)”, Công ty mẹ shows “— (không thuộc tập đoàn nào)”, and for a non-Vietnamese company the province row reads “— (không phải công ty Việt Nam · xem Address)”.',
             'THE CARD SHOWS EXACTLY WHAT THE FORM ASKS FOR — same three groups, same order, same headings, same field labels, and NOTHING MORE. If a field is not on the New-company form it is not on this card either: no “entered elsewhere” group and no placeholder for the form’s document/contact groups, both of which added rows to scan that carried no value of their own. The one exception is Company ID, which is system-assigned and therefore can never appear on a create form.',
-            'THE RULE IS BIDIRECTIONAL AND WORTH RE-CHECKING ON EVERY CHANGE: adding a field to the form adds it here, and a field that appears here without appearing there is a bug. Company tags, số nhân viên and ngày thành lập are read and edited on the Company page tab, which is why they are absent here. Tên hiển thị is on BOTH surfaces, leading Thông tin cơ bản on each — optional on the form, since every list falls back to the legal name until one is set.',
+            'THE RULE IS BIDIRECTIONAL AND WORTH RE-CHECKING ON EVERY CHANGE: adding a field to the form adds it here, and a field that appears here without appearing there is a bug. Company tags, số nhân viên and ngày thành lập are read and edited on the Company page tab, which is why they are absent here. Tên hiển thị is on BOTH surfaces, closing Thông tin công ty on each — optional on the form, since every list falls back to the legal name until one is set.',
             'The card and the New-company form must expose the same field set. When one gains a field, the other gains it in the same change — a field that can only be set at creation, or only after, is a data hole. (Loại hình, tình trạng and người đại diện were added under this rule.)',
             'CREATION ASKS FOR THE LEGAL NAME AND THE MST, and little else. Everything not needed to make the record exist is asked where it is USED: company tags on the Company page tab (“Nhận diện”), the EXACT headcount + ngày thành lập on that tab’s “Company at a glance”, and the ĐKKD facts — loại hình, tình trạng MST, người đại diện, công ty mẹ — on the Basic info card itself, because they are looked up after the fact rather than known by the rep taking the lead. None of them blocks anything: every list falls back to the legal name, and an unset ngày thành lập only leaves the public page without its years-in-business figure. Tên hiển thị, industry and company size are NOT in this group any more — they are asked at creation, because all three are list columns a rep filters on the day the record exists.',
             'THE FORM OPENS WITH THE INVOICE GROUP, because that is where the two required fields live (Tên đơn vị / Legal name and MST). A form whose first section is optional teaches the rep that sections can be skipped, and the MST lookup that auto-fills half the record is in this group — running it first means less typing everywhere after.',
-            'THE CARD MIRRORS THAT ORDER — Thông tin xuất hóa đơn → Thông tin cơ bản → Sales on both surfaces, so a rep reading one is never hunting for a field in a different place on the other. There is NO trailing “not asked at creation” group: the fields that used to sit in one are read and edited where they belong (Company page tab) or are not surfaced on this card at all, and a group of rows nobody can act on is a group nobody should have to scan.',
+            'THE CARD MIRRORS THAT ORDER — **Thông tin công ty → Thông tin xuất hóa đơn → Thông tin cơ bản → Sales** on both surfaces, so a rep reading one is never hunting for a field in a different place on the other. On the card, a DN-Việt-Nam invoice group prints ONE line — “Tên đơn vị · MST · Địa chỉ xuất hóa đơn — tự điền từ Thông tin công ty” — instead of repeating the three values, because a repeated value invites editing the copy. There is NO trailing “not asked at creation” group.',
             'COMPANY SIZE (band) AND NUMBER OF EMPLOYEES (exact) ARE NOW TWO SEPARATE STORED FIELDS, on two different surfaces — the band on this card and the create form, the exact figure on the Company page tab. They describe the same thing, so they WILL disagree: a rep picks “200–500” today, someone types 1,240 on the page next month, and nothing reconciles them. Decide one of three before build — (a) derive the band from the exact figure and drop the dropdown, (b) keep the dropdown and show the exact figure read-only with a mismatch warning, or (c) accept the drift and pick which one the search facet trusts. Doing nothing means the list filter and the public page quietly say different things about the same company.',
             'THE PUBLIC COMPANY PAGE READS THIS CARD. Its “Thông tin doanh nghiệp” section shows these same fields marked “↔ Overview” and editable from there too — one stored value, two editing surfaces. See Account management → “HQ authors the company page”.',
             'Every save is audited: field, old value, new value, who, when. Sales owner, tax code and country changes are the ones support will need to trace.',
@@ -442,8 +442,9 @@ export const crm: BuildModule = {
           table: {
             cols: ['Section', 'Holds', 'Required in it'],
             rows: [
-                        ['Thông tin cơ bản', 'Tên hiển thị, industry, company size, quốc gia đăng ký, tỉnh/thành, website. SECOND, not first — see the ordering rule.', 'None'],
-          ['Thông tin xuất hóa đơn', 'Phân loại người mua, then ONLY the identifiers that classification requires: Tên đơn vị OR Họ tên người mua · MST (Vietnamese company only) · Số CCCD (individual with ID) · Địa chỉ xuất hóa đơn. Plus the MST lookup and the same-tax-root affiliate list.', 'Phân loại · the name line · Địa chỉ xuất hóa đơn (+ MST or CCCD where they apply)'],
+                        ['Thông tin cơ bản', 'Industry, company size, quốc gia đăng ký, tỉnh/thành, website. THIRD — identity and invoice come first; see the ordering rule.', 'None'],
+          ['Thông tin công ty', '**The record’s OWN identity, always asked**. Leads with **Loại công ty** (trong nước / nước ngoài), which GATES the invoice classifications below — see the block on it. Then: Tên đơn vị / Legal name · MST (with Tra cứu, the both-store dedup and the same-tax-root affiliate list) · Địa chỉ đăng ký mã số thuế · Tên hiển thị. After a successful **Tra cứu**, legal name and địa chỉ đăng ký are shown FILLED with a “Tra cứu MST” tag instead of asked again — the registry just gave us those two, and retyping them is how the record starts disagreeing with the invoice. Still correctable: the registered address is often the head office, not where the team sits.', 'Legal name · MST · Địa chỉ đăng ký · (Tên hiển thị optional)'],
+          ['Thông tin xuất hóa đơn', 'Phân loại người mua, then: **DN Việt Nam (default) derives all three lines from Thông tin công ty** — shown prefilled with a “tự điền” tag, no second copy to drift. The other classifications collect their OWN fields, because there the invoice buyer genuinely is a different party: DN nước ngoài → tên bên nhận + địa chỉ (no MST) · Cá nhân có CCCD → họ tên + CCCD + địa chỉ · Cá nhân → the retail line only.', 'Phân loại (fields follow it)'],
               ['Company verification document', 'Business licence / tax registration / signed contract upload', 'None at creation — see below'],
               ['Primary contact', 'Name, title, phone, email', 'Name · Phone · Email'],
               ['Sales', 'Lead source, sales owner, products interested, estimated value, description', 'None'],
@@ -933,6 +934,86 @@ export const crm: BuildModule = {
         'A free job is recorded on the JOB, not on the account — one flag on the posting, written when it is created. There is no company-level free balance to keep in sync, and nothing to expire.',
       ],
       warn: 'Do NOT model this as an account-level allowance (N free slots, an expiry, a grant record). That invents rules the business does not have — a cap to enforce, a balance to top up, an expiry to chase — for something whose entire definition is the ABSENCE of a PO. The free tier is a product flagged “Always available”; posting from it is the same act as posting from a PO line, minus the PO.',
+    },
+    {
+      label: 'Tạo Company — Thông tin công ty: 3 field định danh, một field phân loại',
+      text: 'Nhóm đầu của form tạo (và của Basic-info card — luật mirror) là **định danh của chính công ty**: nó trả lời *“pháp nhân này là ai”*, tách khỏi *“hóa đơn xuất cho ai”* của nhóm dưới. Ba field định danh là bắt buộc; cộng **Người liên hệ** và **Sales owner** thành 5 field của cửa Company list — **4** với công ty nước ngoài, vì MST của họ chỉ còn là mã tham chiếu.\n\n**Điều kiện CHẶN tạo công ty chỉ có một: MST không trùng** — unique trên cả Company list lẫn Free data. Mọi thứ khác trong nhóm (Verify, chip kết quả, danh sách trùng gốc) là thông tin, không phải cổng.',
+      table: {
+        cols: ['Field', 'Bắt buộc', 'Hành vi'],
+        rows: [
+          ['**Loại công ty**', '✓ — mặc định *Công ty trong nước*', 'Hỏi ĐẦU TIÊN: nó đổi nghĩa của ô MST ngay dưới và gate các phân loại ở Thông tin xuất hóa đơn (block riêng). Đổi loại thì kết quả Verify cũ bị xóa.'],
+          ['**Tên đơn vị / Legal name**', '✓', 'Đúng như ĐKKD. Verify “có tồn tại” thì TỰ ĐIỀN từ cơ quan thuế — rep vẫn sửa được (đăng ký thuế thường ghi trụ sở, không phải nơi làm việc).'],
+          ['**Mã số thuế (MST)**', '✓ trong nước · **không bắt buộc** nước ngoài', 'Trong nước: 10 số hoặc 10 + “-001”, kèm nút **Verify**. Nước ngoài: nhãn đổi thành *Mã số thuế nước ngoài (tham chiếu)* — mã của nước sở tại, **không có nút Verify** vì không kiểm tra được trên hệ thống thuế VN; đã nhập thì giá trị vẫn chạy check trùng.'],
+          ['**Địa chỉ đăng ký MST**', '✓', 'Verify “có tồn tại” thì tự điền. Nước ngoài: nhãn là *Địa chỉ đăng ký* (nước sở tại) — in lên chứng từ thay địa chỉ đăng ký MST.'],
+          ['Tên hiển thị', '—', 'Brand name ứng viên biết; bỏ trống thì mọi danh sách dùng tên pháp lý.'],
+        ],
+      },
+      items: [
+        'Header form nói luật trước khi nhập: *“bắt buộc 5 thông tin”* (trong nước) / *“bắt buộc 4 thông tin”* (nước ngoài) — đổi Loại công ty là con số và danh sách field trong header đổi theo.',
+        'Danh sách “trùng 10 số gốc MST” (gợi ý liên kết chi nhánh / công ty mẹ) chỉ hiện với công ty trong nước — gốc MST là khái niệm của mã số thuế Việt Nam.',
+      ],
+      warn: 'MST unique so trên FULL STRING (10 số và 10+“-001” là hai giá trị khác nhau, đều hợp lệ) và quét CẢ HAI kho. Trùng Company list → chặn hẳn (banner đỏ duy nhất của form), chỉ về hồ sơ đang giữ số đó. Trùng Free data → cũng không tạo mới: banner amber mở thẳng dòng pool để phân trực tiếp — công ty lên Company list mang theo dữ liệu danh bạ, thay vì thành bản ghi thứ hai.',
+    },
+    {
+      label: 'Nút Verify — hai chip kết quả, chip nào cũng chỉ để biết',
+      text: '**Verify** cạnh ô MST hỏi hệ thống thuế đúng một câu — *số này có tồn tại không?* — và trả lời bằng **một trong hai chip** ngay dưới ô. Nó là thông tin cho người tạo, **không phải cổng kiểm duyệt**: chip nào hiện ra cũng không quyết định việc có được tạo công ty hay không. Giữ Verify tách bạch khỏi check trùng là toàn bộ điểm của block này.',
+      table: {
+        cols: ['Tình huống', 'Hiển thị', 'Chặn tạo?'],
+        rows: [
+          ['Verify → số CÓ trên hệ thống thuế', 'Chip xanh **“✓ Có tồn tại trên MST”** — đồng thời tự điền Tên đơn vị + Địa chỉ đăng ký từ cơ quan thuế', 'Không'],
+          ['Verify → số KHÔNG có', 'Chip vàng **“✕ Không có tồn tại trên MST”**, kèm câu *“vẫn tạo được công ty, miễn MST không trùng”*', '**Không** — công ty vừa đăng ký có thể chưa lên hệ thống; độ trễ đó là của registry, không phải của khách'],
+          ['Không bấm Verify', 'Không chip nào', 'Không — Verify không bắt buộc'],
+          ['Sửa ô MST / đổi Loại công ty sau khi verify', 'Chip cũ BIẾN MẤT', '— kết quả verify thuộc về đúng chuỗi đã kiểm, không phải về ô nói chung'],
+          ['Loại công ty = nước ngoài', '**Không có nút Verify**', '— không áp dụng: một nút chỉ có thể fail dạy người ta bỏ qua nút'],
+        ],
+      },
+      items: [
+        '“Tra cứu” đổi tên thành **Verify**, và banner “Đã lấy thông tin từ cơ quan thuế” cũ gộp vào chip xanh — một kết quả, một chỗ đọc.',
+        'Autofill chỉ đi cùng chip xanh. Chip vàng không điền gì và không khóa gì — form vẫn nhập tay như thường.',
+        'Nút disable đến khi ô đủ 10 chữ số — một lần bấm cho một số đọc được.',
+      ],
+      warn: 'Đừng code “Không có tồn tại trên MST” thành lỗi chặn lưu — đó chính xác là điều spec này cấm. Điều kiện chặn duy nhất của form là MST TRÙNG; Verify chỉ ghi kết quả để người tạo tự cân nhắc.',
+    },
+    {
+      label: 'Loại công ty gates the invoice classifications',
+      text: '**Loại công ty** — *trong nước* / *nước ngoài* — is asked once, first in Thông tin công ty, and it decides which of the four invoice classifications Thông tin xuất hóa đơn may offer. Offering all four everywhere invites a combination that cannot produce a legal invoice: a Vietnamese company invoiced as a foreign entity, or a foreign one invoiced against a Vietnamese MST it does not have.',
+      table: {
+        cols: ['Loại công ty', 'Phân loại người mua được phép', 'Vì sao'],
+        rows: [
+          ['**Công ty trong nước**', 'Doanh nghiệp Việt Nam · Cá nhân có CCCD · Cá nhân không có CCCD', 'MST Việt Nam là mặc định. Hai dạng cá nhân vẫn có, vì **người mua** có thể là một người ngay khi khách hàng là công ty — giám đốc tự trả tiền.'],
+          ['**Công ty nước ngoài**', 'Doanh nghiệp nước ngoài · Cá nhân có CCCD · Cá nhân không có CCCD', 'Không có MST Việt Nam để xuất, nên *Doanh nghiệp Việt Nam* không bao giờ là lựa chọn hợp lệ. Hai dạng cá nhân giữ nguyên vì lý do trên.'],
+        ],
+      },
+      items: [
+        'Đổi Loại công ty mà phân loại đang chọn không còn hợp lệ → hệ thống **tự chuyển sang phân loại đầu tiên hợp lệ** của loại mới. Để nguyên một lựa chọn đã bị vô hiệu là cách chắc chắn nhất để nó được lưu.',
+        'Hint dưới field liệt kê thẳng các lựa chọn sẽ có: “Quyết định các lựa chọn ở Thông tin xuất hóa đơn: … · … · …” — người dùng thấy hệ quả trước khi chọn, không phải sau.',
+        'Field này cũng đứng đầu nhóm trên **Basic-info card**, đúng luật mirror. Hồ sơ cũ chưa có field thì suy ra từ phân loại đang lưu (`dn-nn` → nước ngoài, còn lại → trong nước).',
+      ],
+    },
+    {
+      label: 'Thông tin xuất hóa đơn — mặc định trên hồ sơ, đổi được theo từng PO',
+      text: 'Ở Việt Nam, “xuất hóa đơn theo thông tin nào?” là câu hỏi của **từng giao dịch**, không phải cố định một lần lúc tạo khách hàng: cùng một khách có deal do công ty mẹ trả tiền, deal sếp mua bằng tên cá nhân, deal thanh toán từ pháp nhân nước ngoài. Phần mềm kế toán/bán hàng VN (MISA, Fast…) đều theo một mẫu: **hồ sơ khách giữ thông tin xuất hóa đơn MẶC ĐỊNH, mỗi chứng từ prefill từ đó và cho sửa theo từng chứng từ**.\n\nSaramin làm đúng mẫu đó, ở hai tầng:',
+      table: {
+        cols: ['Tầng', 'Ở đâu', 'Hành vi'],
+        rows: [
+          ['**Mặc định** — của hồ sơ', 'Company create / Basic info card', 'Phân loại người mua lưu trên hồ sơ. Khi người mua là **chính công ty** (DN Việt Nam trên hồ sơ trong nước, DN nước ngoài trên hồ sơ nước ngoài) thì mọi dòng hóa đơn **kế thừa từ Thông tin công ty — không nhập tay** (riêng DN nước ngoài không có dòng MST); sửa ở nguồn thì mọi nơi đổi theo, không có bản chép thứ hai. Chỉ hai dạng cá nhân mới nhập field riêng (họ tên, CCCD).'],
+          ['**Theo chứng từ** — của PO/hóa đơn', 'Dialog **Issue PO** (từ quotation)', 'Dropdown **“Xuất cho / Phân loại người mua”**, mặc định theo hồ sơ (đánh dấu “— theo hồ sơ”). Đổi loại → bộ field đổi theo đúng bốn hình dạng. **Chỉ áp dụng cho PO/hóa đơn này — không sửa ngược hồ sơ**, trừ khi tích ô “Đặt làm mặc định cho công ty này”.'],
+        ],
+      },
+      items: [
+        'Snapshot vẫn là snapshot: PO chốt thông tin người mua tại lúc phát hành, hóa đơn VAT phải khớp từng ký tự — đổi sau đó là cancel + re-issue, như luật hiện có.',
+        'Đổi theo chứng từ KHÔNG sửa hồ sơ, vì một deal đặc biệt không được phép định nghĩa lại khách hàng: lần bán sau phải quay về mặc định của hồ sơ.',
+        'Trường hợp dùng: công ty mẹ trả tiền · chủ doanh nghiệp mua bằng tên cá nhân (CCCD) · pháp nhân nước ngoài thanh toán · khách lẻ không lấy thông tin.',
+        'DIALOG ISSUE PO CHỈ CÒN NHỮNG GÌ CẦN QUYẾT: **Customer PO number** và **Attach their signed PO** đã bỏ — số PO của bên mua và file xác nhận của họ là chứng từ đến SAU, thuộc hồ sơ PO, không phải điều kiện để phát hành.',
+        'Điều khoản thanh toán có **3 lựa chọn**: `100% in advance` · `50 / 50` · `Others`. Chọn *Others* thì mở một ô ghi rõ điều khoản — một “khác” không có chỗ ghi là điều khoản thật không nằm ở đâu cả.',
+        '★ BA MỤC THANH TOÁN KHÔNG IN TRÊN CHỨNG TỪ PO (chốt 2026-08-23) — **Điều khoản thanh toán · Phương thức thanh toán · Ngày thu tiền**. Chúng hiển thị ở **danh sách PO** (mỗi mục một cột) chứ không nằm trong bản PO gửi khách. Lý do nằm ở bản chất của PO: khách đang giữ một bản y hệt, nên mọi thứ đã in — khách hàng, sản phẩm, số lượng, đơn giá, tổng tiền, ngày phát hành — phải đọc giống nhau ở hai bên mãi mãi. Còn thu tiền thế nào là **dữ liệu vận hành của mình**: nó thay đổi sau khi phát hành (chưa thu → đã thu), không ai bên ngoài giữ bản đối chiếu, và in một trường biến động lên một chứng từ bất biến là cách nhanh nhất để hai bên cầm hai bản PO khác nhau dưới cùng một số.',
+        '★ **EDIT PO CHỈ SỬA ĐÚNG BA MỤC ĐÓ**, ở mọi trạng thái kể cả Expired — tiền của một PO đã hết hạn vẫn về và vẫn phải ghi nhận. Muốn đổi bất kỳ nội dung nào trên chứng từ thì **huỷ PO và phát hành PO mới**; không có “sửa nhẹ” trên một chứng từ đã gửi đi. Dialog nói thẳng câu đó thay vì hiện các trường đã khoá dưới dạng disabled — một form đầy ô xám mời người dùng hỏi “sao không sửa được?” ở từng ô một.',
+        'NGÀY THU TIỀN LÀ *DUY NHẤT MỘT* SỰ THẬT ĐƯỢC LƯU về tiền; **Paid · Unpaid · Overdue** đều được tính ra từ nó. Không có ô trạng thái thanh toán riêng để sửa — nếu có, sẽ tới lúc trạng thái nói đã thu còn ngày thu để trống.',
+        'PHƯƠNG THỨC THANH TOÁN là danh sách cố định (`Chuyển khoản` · `Tiền mặt` · `Bù trừ công nợ` · `Khác`), không phải free text — cả điều khoản lẫn phương thức đều là thứ sẽ bị hỏi “bao nhiêu phần trăm khách còn trả tiền mặt?”, mà free text thì không đếm được.',
+        'SALES KHÔNG GÕ LẠI BẤT KỲ THÔNG TIN NGƯỜI MUA NÀO trên dialog Issue PO. Mọi định danh (legal name · MST · CCCD · địa chỉ) hiển thị dạng **giá trị đã điền, kèm nhãn “hồ sơ”** — không phải ô nhập. Một rep gõ lại tên pháp lý vào PO chính là cách PO và hóa đơn điện tử lệch nhau một ký tự, mà lệch thì phải hủy và xuất lại. Sai giá trị thì **sửa ở hồ sơ công ty**, không sửa tại chứng từ.',
+        'Ô **“Đặt làm mặc định cho công ty này”** chỉ hiện khi rep đã đổi phân loại khác với hồ sơ, và mặc định KHÔNG tích: một deal đặc biệt là ngoại lệ, không phải định nghĩa mới của khách hàng. Nhưng khi rep vừa phát hiện bên nhận hóa đơn THẬT của khách, tích một ô còn hơn nhập lại đúng thông tin đó trên mọi PO sau — nhập lại nhiều lần là nhập sai một lần.',
+        'Form tạo công ty **KHÔNG có ô “Set as default”**: phân loại chọn lúc tạo CHÍNH LÀ mặc định — một checkbox ở đó là câu hỏi chỉ có một đáp án đúng. Ô “Đặt làm mặc định” tồn tại duy nhất ở dialog **Issue PO**, thời điểm duy nhất rep chủ động lệch khỏi hồ sơ và phải quyết định độ lệch đó có ghi lại vào hồ sơ hay không. Form tạo thay checkbox bằng một câu ghi chú nói đúng luật này.',
+      ],
     },
     {
       label: 'List toolbar — Search · Filter · Sort, and nothing else',
@@ -2523,20 +2604,20 @@ export const crm: BuildModule = {
         requirements: [
           {
             label: 'ONE company table, two states — and TWO admin-only create doors',
-            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên + **MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
+            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
             diagram: 'company-intake',
             table: {
               cols: ['Cửa', 'Ai', 'Bắt buộc', 'Đích'],
               rows: [
                 ['**Free data → Thêm công ty**', 'Admin', '**1 field: tên công ty** (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
-                ['**Company list → New company**', 'Admin', '**4 field: tên · MST · người liên hệ · sales owner**', '**Company list** — có chủ, đếm vào mọi số của CRM'],
+                ['**Company list → New company**', 'Admin', '**5 field: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner**', '**Company list** — có chủ, đếm vào mọi số của CRM'],
                 ['*(không có cửa nào)*', 'Sales', '—', 'Sales **không tạo công ty**. Đường duy nhất: Xin nhận từ Free data → Admin duyệt → Sales lead duyệt.'],
               ],
             },
             items: [
-              'HAI CÁCH THIẾT KẾ, và vì sao chọn cách này. **(A) Chọn màn hình trước** — bấm tạo ở Free data thì form hỏi 1 field, bấm tạo ở Company list thì form hỏi 4 field, và bắt buộc đúng bộ đó. **(B) Một form chung, đủ thông tin thì lên Company list, thiếu thì nằm ở Free data.** Chọn (A).',
+              'HAI CÁCH THIẾT KẾ, và vì sao chọn cách này. **(A) Chọn màn hình trước** — bấm tạo ở Free data thì form hỏi 1 field, bấm tạo ở Company list thì form hỏi 5 field, và bắt buộc đúng bộ đó. **(B) Một form chung, đủ thông tin thì lên Company list, thiếu thì nằm ở Free data.** Chọn (A).',
               'Vì sao (B) hỏng: một form mà **mọi field đều tuỳ chọn** sẽ đẻ ra bản ghi mà mọi field đều trống. Người định tạo khách hàng nhưng quên chọn sales owner sẽ nhận được một dòng Free data — **im lặng**, không báo gì — rồi đi tìm khách hàng của mình trong Company list và không thấy. Và vì dòng pool không cần MST, kiểm tra trùng MST thành tuỳ chọn theo, nên đúng cái trùng cần chặn lại lọt qua.',
-              '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Company list cần 4 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Company list nêu 4 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
+              '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Company list cần 5 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Company list nêu 5 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
               'ĐIỀU KIỆN để hai cửa không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Company list kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa Company list tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
               'SALES KHÔNG CÓ CỬA TẠO — kể cả lối tắt. Ô tìm kiếm ở Companies, khi không tìm thấy gì, trước đây hiện nút “+ Tạo công ty mới”; nút đó đã bỏ, thay bằng câu chỉ đường: *“báo admin thêm vào Free data, rồi bạn gửi Xin nhận”*. Đó chính là chỗ một rep đang vội sẽ bấm, và bấm được thì công ty vào CRM mà không ai kiểm.',
               'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc MST hợp lệ + không trùng + một sales owner.',

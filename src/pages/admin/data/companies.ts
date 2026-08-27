@@ -57,6 +57,23 @@ export type Account = 'New' | 'Existing' | 'Churn'
     remember the exact wording, and a typo here lands on a filed fiscal document. */
 export const RETAIL_BUYER = 'Bán cho người tiêu dùng'
 export type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd' | 'ca-nhan'
+/* WHAT THE COMPANY IS — asked once, on identity, and it gates the invoice options.
+   A Vietnamese company can never be invoiced as a foreign entity, and a foreign one
+   has no Vietnamese MST to invoice against, so offering all four classifications
+   everywhere invites a combination that cannot produce a legal invoice. The two
+   individual shapes stay available to both: the BUYER can be a person even when the
+   customer is a company (the director pays personally). */
+export type CompanyType = 'trong-nuoc' | 'nuoc-ngoai'
+export const COMPANY_TYPE: Record<CompanyType, { vi: string; en: string; buyers: BuyerType[] }> = {
+  'trong-nuoc': { vi: 'Công ty trong nước', en: 'Vietnamese company', buyers: ['dn-vn', 'ca-nhan-cccd', 'ca-nhan'] },
+  'nuoc-ngoai': { vi: 'Công ty nước ngoài', en: 'Foreign company', buyers: ['dn-nn', 'ca-nhan-cccd', 'ca-nhan'] },
+}
+/** the classifications a company of this type may be invoiced under */
+export const buyersFor = (t: CompanyType) => COMPANY_TYPE[t].buyers
+/** which company type a stored buyer classification implies — used to derive the
+    type on records created before the field existed */
+export const typeOfBuyer = (b: BuyerType | undefined): CompanyType => (b === 'dn-nn' ? 'nuoc-ngoai' : 'trong-nuoc')
+
 export const BUYER_TYPE: Record<BuyerType, { vi: string; en: string; tax: 'req' | 'empty'; needsIdCard?: boolean; needsBuyerName?: boolean; noAddress?: boolean; hint: string }> = {
   'dn-vn': { vi: 'Doanh nghiệp Việt Nam', en: 'Vietnamese company', tax: 'req', hint: 'MST bắt buộc — in trên hóa đơn VAT.' },
   'dn-nn': { vi: 'Doanh nghiệp nước ngoài', en: 'Foreign company', tax: 'empty', hint: 'Không có MST Việt Nam — để trống. Vẫn bắt buộc tên pháp lý và địa chỉ.' },
@@ -72,6 +89,9 @@ export type Company = {
   /** Which of the four invoice shapes this buyer takes. Defaults to a Vietnamese
       company, which is the overwhelming majority. */
   buyerType?: BuyerType
+  /** Trong nước / nước ngoài. Gates which invoice classifications are offered — see
+      COMPANY_TYPE. Derived from buyerType on legacy records. */
+  companyType?: CompanyType
   /** Số CCCD — only for an individual buyer. NEVER stored in `tax`. */
   idCard?: string
   /** "Họ tên người mua hàng" on the invoice — the PERSON, which is a different line
@@ -199,7 +219,7 @@ export const COMPANIES: Company[] = [
   /* The real dn-nn case: no Vietnamese entity and no Vietnamese tax code, buying
      employer branding from abroad. `tax` is EMPTY on purpose — that is the whole
      point of the classification, and the invoice prints without an MST line. */
-  { name: 'Talently Pte. Ltd.', buyerType: 'dn-nn', shortName: 'Talently', legalName: 'Talently Pte. Ltd.', country: 'Singapore', tax: '', industry: 'CNTT', size: '50–200', address: '80 Robinson Road, Singapore 068898', contact: 'Ms. Rachel Ong · Head of Talent', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send bilingual quotation', idle: 4, note: 'No VN entity — invoice issues without MST.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'talently.sg', since: '' },
+  { name: 'Talently Pte. Ltd.', companyType: 'nuoc-ngoai', buyerType: 'dn-nn', shortName: 'Talently', legalName: 'Talently Pte. Ltd.', country: 'Singapore', tax: '', industry: 'CNTT', size: '50–200', address: '80 Robinson Road, Singapore 068898', contact: 'Ms. Rachel Ong · Head of Talent', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send bilingual quotation', idle: 4, note: 'No VN entity — invoice issues without MST.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'talently.sg', since: '' },
   { name: 'Công ty TNHH Phần mềm Rikkei', shortName: 'Rikkei', legalName: 'Công ty TNHH Phần mềm Rikkei', country: 'Nhật Bản / Japan', tax: '0344xxxxxx', industry: 'CNTT', size: '500–1000', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Đặng Minh Hoàng · TA Lead', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Ask for approval date', idle: 27, note: 'Waiting on their board.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'rikkeisoft.com', since: '—' },
   { name: 'Công ty CP Thủy sản Minh Phú', shortName: 'Minh Phú', legalName: 'Công ty Cổ phần Thủy sản Minh Phú', country: 'Việt Nam', tax: '0345xxxxxx', industry: 'Thủy sản', size: '1000–5000', address: 'Cà Mau', contact: 'Ms. Võ Kim Ngân · HR', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Escalate — likely dead', idle: 48, note: 'Stalled well past 45d.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhphu.com', since: '—' },
   { name: 'Công ty TNHH Bảo hiểm Tín Việt', shortName: 'Tín Việt', legalName: 'Công ty TNHH Bảo hiểm Tín Việt', country: 'Việt Nam', tax: '0346xxxxxx', industry: 'Tài chính', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Nguyễn Đình Phúc', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Prepare the order', idle: 7, note: 'Agreed terms verbally.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'tinviet.vn', since: '—' },

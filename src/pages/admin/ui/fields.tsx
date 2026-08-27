@@ -195,6 +195,28 @@ export function LField({ label, req, value, select, hint }: { label: string; req
   )
 }
 /**
+ * A value the system FILLED, shown where a field would be.
+ *
+ * The distinction it draws is the whole point: an input invites typing, and typing
+ * a value the record already holds is how two copies of one fact start to drift.
+ * So a derived value keeps the field's position and label — the reader still finds
+ * it where the form's rhythm says it should be — but reads as settled, with a tag
+ * naming its source so "where did this come from" never needs asking.
+ */
+export function DerivedField({ label, value, from, hint, mono }: { label: string; value: string; from: string; hint?: string; mono?: boolean }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{label}</label>
+      <div className="flex items-center gap-2 rounded-md border border-line bg-canvas/60 px-3 py-2 text-[12.5px]">
+        <span className={cn('min-w-0 flex-1 truncate text-ink/75', mono && 'font-mono text-[11.5px]')}>{value}</span>
+        <span className="shrink-0 rounded border border-line bg-surface px-1.5 py-0.5 text-[9.5px] text-faint">{from}</span>
+      </div>
+      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
+    </div>
+  )
+}
+
+/**
  * Group heading inside a detail card — the card counterpart of the create form's
  * JobGroup heading (bold title over a 2px rule), so a record reads with the same
  * landmarks as the form that filled it.

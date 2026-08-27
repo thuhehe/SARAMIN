@@ -2,13 +2,104 @@ import { useContext, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
-import { POS, PO_TONE, QUOTE_CATALOG, VAT_RATE, draftInvOf, poDraftBtn, poExpiry, poLive, poNext, poStage, poStep } from '@/pages/admin/data/sales'
-import type { Po } from '@/pages/admin/data/sales'
+import { PAY_METHODS, PAY_TERMS, POS, PO_TONE, QUOTE_CATALOG, VAT_RATE, draftInvOf, poDraftBtn, poExpiry, poLive, poNext, poStage, poStep } from '@/pages/admin/data/sales'
+import type { Po, PayMethod, PayTerms } from '@/pages/admin/data/sales'
 import { vnWords } from '@/pages/admin/lib/fmt'
 import { PayCell } from '@/pages/admin/screens/sales/_shared'
 import { InvoicePdfModal } from '@/pages/admin/screens/sales/invoicePdf'
 import { ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
+
+/* ── Edit PO — the THREE payment fields, and nothing else ──────────────────
+ *
+ * Everything a PO says about the deal — customer, product, quantity, price,
+ * totals, dates — is printed on a document the customer holds a copy of. Editing
+ * any of it after issue means two parties reading different POs under one number,
+ * so the document is FROZEN: to change it, cancel and issue a new one.
+ *
+ * What stays editable is what was never on the document: how we agreed to be
+ * paid, how the money actually arrives, and the day it landed. Those are our own
+ * operational facts, they legitimately change after issue, and no copy of them
+ * sits on the customer's side to disagree with.
+ *
+ * The dialog says so in one line rather than showing the frozen fields greyed
+ * out — a form full of disabled inputs invites the question "why can't I?" on
+ * every one of them.
+ */
+function EditPoModal({ po, onClose }: { po: Po; onClose: () => void }) {
+  const [terms, setTerms] = useState<PayTerms>(po.payTerms ?? '100% in advance')
+  const [otherTerms, setOtherTerms] = useState('')
+  const [method, setMethod] = useState<PayMethod>(po.payMethod ?? 'Chuyển khoản')
+  const [paidAt, setPaidAt] = useState(po.paidAt?.replace(/\./g, '/') ?? '')
+  const Label = ({ children }: { children: React.ReactNode }) => (
+    <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{children}</label>
+  )
+  const box = 'w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none focus:border-brand'
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-12">
+      <div className="w-full max-w-[440px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-start justify-between border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold text-ink">Sửa thông tin thanh toán</p>
+            <p className="truncate font-mono text-[11px] text-muted">{po.code}</p>
+          </div>
+          <span className="cursor-pointer pl-3 text-faint" onClick={onClose}>✕</span>
+        </div>
+
+        <div className="space-y-3 p-4">
+          <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+            Chỉ <b className="font-semibold text-ink/80">3 mục thanh toán</b> sửa được. Nội dung trên chứng từ PO —
+            khách hàng, sản phẩm, số lượng, đơn giá, tổng tiền, ngày phát hành — đã cố định vì khách đang giữ một bản
+            giống hệt. Cần đổi những mục đó thì <b className="font-semibold text-ink/80">huỷ PO và phát hành PO mới</b>.
+          </p>
+
+          <div>
+            <Label>Điều khoản thanh toán</Label>
+            <select value={terms} onChange={(e) => setTerms(e.target.value as PayTerms)} className={box}>
+              {PAY_TERMS.map((t) => <option key={t}>{t}</option>)}
+            </select>
+            {terms === 'Others' && (
+              <input
+                value={otherTerms}
+                onChange={(e) => setOtherTerms(e.target.value)}
+                placeholder="Ghi rõ điều khoản — VD: 30% tạm ứng, 70% trong 15 ngày"
+                className={cn(box, 'mt-1.5 text-[12px] placeholder:text-faint')}
+              />
+            )}
+          </div>
+
+          <div>
+            <Label>Phương thức thanh toán</Label>
+            <select value={method} onChange={(e) => setMethod(e.target.value as PayMethod)} className={box}>
+              {PAY_METHODS.map((m) => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <Label>Ngày thu tiền</Label>
+            <input
+              value={paidAt}
+              onChange={(e) => setPaidAt(e.target.value)}
+              placeholder="dd/mm/yyyy — để trống nếu chưa thu"
+              className={cn(box, 'tabular-nums placeholder:text-faint')}
+            />
+            {/* The one field with a consequence outside this dialog, so it is stated
+                where it is typed: Paid / Unpaid / Overdue are derived from this date
+                and from nothing else. */}
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+              Trạng thái <b className="text-ink/70">Paid · Unpaid · Overdue</b> được tính từ ngày này — không có ô trạng thái riêng để sửa.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-3">
+          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-ink hover:bg-canvas">Huỷ</button>
+          <button onClick={onClose} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
   useDetailCrumb(po.code, onBack)
@@ -16,6 +107,7 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
      printed in full further down the page, so a viewer for it was a second copy of
      something already on screen. */
   const [draftPdf, setDraftPdf] = useState(false)
+  const [editPay, setEditPay] = useState(false)
   const poCo = COMPANIES.find((x) => x.name === po.co)
     ?? COMPANIES.find((x) => x.name === po.customer || x.legalName === po.customer || coLabel(x) === po.customer)
   const step = poStep(po)
@@ -69,6 +161,12 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           {next?.accounting && (
             <span className="text-[11.5px] text-muted">Đang chờ <b className="text-ink/75">Kế toán</b> xuất hóa đơn chính — thao tác trên hóa đơn.</span>
           )}
+          {/* Available at EVERY step, including Expired: the money on a lapsed PO
+              still arrives and still has to be recorded. Nothing it edits is on
+              the document, so nothing it edits can be invalidated by expiry. */}
+          <button onClick={() => setEditPay(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
+            Sửa thông tin thanh toán
+          </button>
         </div>
       </div>
 
@@ -131,6 +229,7 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           the Invoice screen uses, in its draft form, so the rep is looking at the
           document that will actually exist rather than a preview of it. */}
       {draftPdf && <InvoicePdfModal inv={draftInvOf(po)} co={poCo} onClose={() => setDraftPdf(false)} />}
+      {editPay && <EditPoModal po={po} onClose={() => setEditPay(false)} />}
     </div>
   )
 }
@@ -150,7 +249,14 @@ export function AdminPOs() {
         { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.9fr' },
         // Payment sits NEXT TO the document status, never merged into it: they are
         // two independent facts and a rep reads them together.
-        { label: 'Thanh toán', w: '1.1fr' },
+        //
+        // THE THREE PAYMENT FIELDS LIVE HERE AND NOT ON THE DOCUMENT (2026-08-23).
+        // Terms, method and collection date are how WE track the money; the PO is
+        // the copy the customer holds. Putting a field that changes after issue on
+        // a document that must not is how two sides end up holding different POs.
+        { label: 'Điều khoản TT', w: '1.2fr' },
+        { label: 'Phương thức TT', w: '1.1fr' },
+        { label: 'Thanh toán · ngày thu', w: '1.3fr' },
         { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
       ]}
       rows={POS.map((p) => [
@@ -159,11 +265,15 @@ export function AdminPOs() {
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[poStep(p)]}>{poStage(poStep(p)).en}</Pill>,
+        /* An em-dash, not a blank: a PO issued before these fields existed has no
+           term recorded, which is a different thing from having none. */
+        <span className={cn('truncate', p.payTerms ? 'text-ink/80' : 'text-faint')}>{p.payTerms ?? '—'}</span>,
+        <span className={cn('truncate', p.payMethod ? 'text-ink/80' : 'text-faint')}>{p.payMethod ?? '—'}</span>,
         <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
         <span className="tabular-nums text-muted">{p.issued}</span>,
         <span className={cn('tabular-nums', poLive(poStep(p)) ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
       ])}
-      minW={1240}
+      minW={1560}
     />
   )
 }

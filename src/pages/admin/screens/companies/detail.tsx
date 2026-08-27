@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
-import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany } from '@/pages/admin/data/companies'
-import type { BuyerType, Company } from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
+import type { Company, CompanyType } from '@/pages/admin/data/companies'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
@@ -43,6 +43,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   const isPool = Boolean(pool)
   const goTo = useContext(ScreenNavCtx)
   const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
+  /* Stored on new records; derived from the buyer classification on older ones. */
+  const coType = c.companyType ?? typeOfBuyer(c.buyerType)
+  const coIsForeign = coType === 'nuoc-ngoai'
+  /* Same rule as the create form: dn-vn / dn-nn mean the buyer IS the company,
+     so the invoice block inherits instead of holding its own copy. */
+  const recBuyerIsCompany = (c.buyerType ?? 'dn-vn') === 'dn-vn' || c.buyerType === 'dn-nn'
   /* `?tab=<name>` lands on a specific tab. Same reason as `?record=`: a link to a
      demo has to open ON the thing being demonstrated, not one click away from it. */
   const [params] = useSearchParams()
@@ -415,6 +421,32 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               {isPool
                 ? <KV label="Company ID" value="chưa có — cấp khi tạo hồ sơ CRM" />
                 : <KV label="Company ID" value={companyId(coKey(c))} />}
+
+              {/* The record's OWN identity — mirrors the form's first group, field
+                  for field. Legal name and MST live HERE, once; the invoice group
+                  below only says who documents are issued to. */}
+              <CardGroup title="Thông tin công ty" first />
+              {editInfo ? (
+                <>
+                  {/* Leads the group here too — it gates which invoice classifications
+                      the group below may offer. Same order as the form. */}
+                  <SelectRow label="Loại công ty" value={COMPANY_TYPE[coType].vi} onChange={() => {}} options={(Object.keys(COMPANY_TYPE) as CompanyType[]).map((k) => COMPANY_TYPE[k].vi)} hint={`Quyết định lựa chọn ở Thông tin xuất hóa đơn: ${buyersFor(coType).map((b) => BUYER_TYPE[b].vi).join(' · ')}.`} />
+                  <EField label="Tên đơn vị / Legal name" value={c.legalName} onChange={() => {}} />
+                  <EField label={coIsForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : 'Mã số thuế (MST)'} value={c.tax} onChange={() => {}} hint={coIsForeign ? 'Tax ID nước sở tại — chỉ tham chiếu, không có Verify. Đổi vẫn chạy kiểm tra trùng cả hai kho.' : 'Đổi MST chạy lại kiểm tra trùng cả hai kho. Verify chỉ để biết — không chặn lưu.'} />
+                  <EField label="Địa chỉ đăng ký mã số thuế" value={c.address} onChange={() => {}} />
+                  <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết. Bỏ trống thì dùng tên pháp lý." />
+                </>
+              ) : (
+                <>
+                  <KV label="Loại công ty" value={COMPANY_TYPE[coType].vi} />
+                  <KV label="Tên đơn vị / Legal name" value={c.legalName} />
+                  {isPool
+                    ? <KV label="Mã số thuế (MST)" value={pool!.tax ? `${pool!.tax} ⚠ chưa xác minh` : 'chưa có — bắt buộc trước khi tạo hồ sơ CRM'} />
+                    : <KV label={coIsForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : 'Mã số thuế (MST)'} value={c.tax?.trim() || (coIsForeign ? '— (không bắt buộc)' : '—')} />}
+                  <KV label="Địa chỉ đăng ký mã số thuế" value={c.address || '—'} />
+                  <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
+                </>
+              )}
               {/* Invoice details do not exist yet for a pool row: nothing has been
                   quoted, so no buyer classification has been decided and there is no
                   legal name to invoice. Showing the group with defaults would put a
@@ -424,41 +456,47 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   <b className="text-ink/70">Thông tin xuất hóa đơn</b> chưa có — phân loại người mua, legal name và địa chỉ xuất hóa đơn được nhập khi tạo hồ sơ CRM, trước lần báo giá đầu tiên.
                 </p>
               ) : (<>
-              <CardGroup title="Thông tin xuất hóa đơn" first />
+              <CardGroup title="Thông tin xuất hóa đơn" />
               {editInfo ? (
                 <>
-                  <SelectRow label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} onChange={() => {}} options={(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => BUYER_TYPE[k].vi)} hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT." />
-                  <EField label="Tên đơn vị / Legal name" value={c.legalName} onChange={() => {}} />
-                  <EField label="Mã số thuế (MST)" value={c.tax} onChange={() => {}} />
+                  <SelectRow label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} onChange={() => {}} options={buyersFor(coType).map((k) => BUYER_TYPE[k].vi)} hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT. Khi người mua là chính công ty (DN VN / DN nước ngoài) thì các dòng dưới kế thừa từ Thông tin công ty — không nhập tay, sửa ở nhóm trên." />
                   {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
                     <>
                       <EField label="Số CCCD" value={c.idCard ?? ''} onChange={() => {}} />
                       <EField label="Họ tên người mua hàng" value={c.buyerName ?? ''} onChange={() => {}} />
                     </>
                   )}
-                  <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
+                  {!recBuyerIsCompany && !BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress && (
+                    <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
+                  )}
                 </>
               ) : (
                 <>
                   <KV label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} />
-                  <KV label="Tên đơn vị / Legal name" value={c.legalName} />
-                  {/* The identifier that applies to THIS buyer type, and only that
-                      one — MST for a company, CCCD for an individual. */}
-                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].tax === 'req'
-                    ? <KV label="Mã số thuế (MST)" value={c.tax} />
-                    : <KV label="Mã số thuế (MST)" value={c.tax?.trim() || '— (không áp dụng)'} />}
-                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
+                  {/* When the buyer is the company itself (dn-vn / dn-nn) every line
+                      INHERITS from Thông tin công ty — the card says so instead of
+                      repeating them, because a repeated value invites editing the
+                      copy. Mirrors the form's inherited panel. */}
+                  {recBuyerIsCompany ? (
+                    <p className="border-b border-line-soft py-2 text-[11px] leading-relaxed text-muted">
+                      Tên đơn vị{!coIsForeign && ' · MST'} · Địa chỉ xuất hóa đơn — <b className="text-ink/70">kế thừa từ Thông tin công ty</b> ở trên, không nhập tay.{coIsForeign && ' DN nước ngoài không in MST Việt Nam.'} Hóa đơn xuất cho bên khác thì đổi phân loại, hoặc đổi theo từng PO lúc phát hành.
+                    </p>
+                  ) : (
                     <>
-                      <KV label="Số CCCD" value={c.idCard || '—'} />
-                      <KV label="Họ tên người mua hàng" value={c.buyerName || '—'} />
+                      {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
+                        <>
+                          <KV label="Họ tên người mua hàng" value={c.buyerName || '—'} />
+                          <KV label="Số CCCD" value={c.idCard || '—'} />
+                        </>
+                      )}
+                      {c.buyerType === 'ca-nhan' && (
+                        <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
+                      )}
+                      {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
+                        ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
+                        : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                     </>
                   )}
-                  {c.buyerType === 'ca-nhan' && (
-                    <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
-                  )}
-                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
-                    ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
-                    : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                 </>
               )}
               </>)}
@@ -468,7 +506,8 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   the same rule the form uses. */}
               {editInfo ? (
                 <>
-                  <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết — hiện trên trang công ty và mọi thẻ việc làm. Bỏ trống thì dùng tên pháp lý." />
+                  {/* Tên hiển thị moved UP into Thông tin công ty — the identity
+                      group owns every name the record has. */}
                   {/* Industry and size are two different facts, filtered separately —
                       never joined into one "IT, 200–500" field. */}
                   <SelectRow label="Industry" value={c.industry} onChange={() => {}} options={MD_DOMAINS.find((d) => d.key === 'industry')?.entries ?? []} />
@@ -479,7 +518,6 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                 </>
               ) : (
                 <>
-                  <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
                   <KV label="Industry" value={c.industry} />
                   <KV label="Company size" value={c.size ? `${c.size} staff` : '—'} />
                   <KV label="Quốc gia đăng ký / Country of registration" value={c.country} />

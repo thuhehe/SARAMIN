@@ -63,7 +63,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
               ) : (
                 <>
                   <p className="font-semibold text-ink">Công ty “{s.company}” chưa có trong hệ thống</p>
-                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Company list</b> (tên · MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
+                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Company list</b> (tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
                   <button onClick={() => { onClose(); onGoCreate?.() }} className="mt-1.5 rounded border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted hover:border-brand hover:text-brand">
                     Tạo công ty trước →
                   </button>

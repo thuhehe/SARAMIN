@@ -492,9 +492,32 @@ export function payStatus(paidAt: string | undefined, poIssued: string): PayStat
 /** `invNo` is allocated by the provider the moment the FIRST draft is issued, so
     a PO that never got one has none — that is what tells the two apart. `invIssued`
     is filled only when the official invoice is filed. */
+/* THE THREE PAYMENT FIELDS — payTerms · payMethod · paidAt — are INTERNAL
+   COMMERCIAL TRACKING, not part of the PO document (decided 2026-08-23).
+
+   They live on the record and on the PO LIST, and they are the only three fields
+   Edit PO may touch. The reason is what a PO IS: the document the customer holds
+   a copy of. Once issued, its lines, totals and dates must read the same on both
+   sides forever — so nothing on the printed document is editable. How and when we
+   collect the money is our own operational fact: it changes after issue (an
+   unpaid PO becomes paid), it is nobody's copy but ours, and printing it would
+   put a mutable field on an immutable document. */
 export type Po = { code: string; customer: string; co?: string; poNo?: string; quote: string; total: number; step: PoStep; issued: string; seller: string; product: number; qty: number; invNo?: string; invIssued?: string
-  /** the date Kế toán confirmed the money arrived — the ONLY stored payment fact */
+  /** Điều khoản thanh toán — agreed at issue. Same three options as the quotation. */
+  payTerms?: PayTerms
+  /** Phương thức thanh toán — how the money actually comes in. */
+  payMethod?: PayMethod
+  /** Ngày thu tiền — the date Kế toán confirmed the money arrived. The ONLY stored
+      payment FACT; Paid / Unpaid / Overdue are all derived from it. */
   paidAt?: string }
+
+/* Fixed lists rather than free text: both are reported on (“how much of the book
+   is 50/50?”, “how many customers still pay cash?”), and a free-text field cannot
+   be counted. `Others` is the pressure valve, and it carries its own note. */
+export const PAY_TERMS = ['100% in advance', '50 / 50', 'Others'] as const
+export const PAY_METHODS = ['Chuyển khoản', 'Tiền mặt', 'Bù trừ công nợ', 'Khác'] as const
+export type PayTerms = (typeof PAY_TERMS)[number]
+export type PayMethod = (typeof PAY_METHODS)[number]
 /* A PO lapses at the end of the month it was issued in — the same end-of-month
    rule as the quotation it came from, so the two documents can never disagree
    about how long the commercial terms stand. Dates on the document are dotted. */
@@ -520,20 +543,20 @@ export const POS: Po[] = [
   // Issued inside the 14-day payment window and not yet paid — the plain Unpaid
   // case. Without a row like this the column only ever shows the two loud states
   // and nobody sees what "on time" looks like.
-  { code: 'PO-005865-08-2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
-  { code: 'PO-005864-08-2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
-  { code: 'PO-005863-08-2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
-  { code: 'PO-005862-08-2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
+  { code: 'PO-005865-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
+  { code: 'PO-005864-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
+  { code: 'PO-005863-08-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
+  { code: 'PO-005862-08-2026', payTerms: '100% in advance', payMethod: 'Tiền mặt', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
 
   /* Left at "Invoice requested" in July and never made official. Expiry beats it:
      the PO reads Expired and its invoice is Archived — the single clearest proof
      that a draft does not stop the clock. */
-  { code: 'PO-005861-07-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
+  { code: 'PO-005861-07-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
   // never got past Active — expired with no invoice at all
-  { code: 'PO-005860-07-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  { code: 'PO-005860-07-2026', payTerms: 'Others', payMethod: 'Chuyển khoản', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
   // a June draft, lapsed on 30/06 — not on a rolling 30 days
-  { code: 'PO-005859-06-2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
-  { code: 'PO-005858-06-2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'PO-005859-06-2026', payTerms: '100% in advance', payMethod: 'Bù trừ công nợ', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
+  { code: 'PO-005858-06-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
 export const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', 'draft-inv': 'draft', requested: 'schedule', invoiced: 'active', expired: 'expired' }
 

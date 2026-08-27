@@ -72,14 +72,14 @@ export function CompanyIntakeFlow() {
         <rect x={20} y={16} width={1380} height={54} rx={10} fill="var(--color-canvas)" stroke="var(--color-line)" strokeWidth={1.5} />
         <text x={38} y={40} fontSize={13} fontWeight={800} fill={INK}>MỘT bảng công ty, hai trạng thái</text>
         <text x={38} y={58} fontSize={11} fill={MUT}>
-          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Company list = thêm <tspan fontWeight={700} fill={INK}>MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
+          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Company list = thêm <tspan fontWeight={700} fill={INK}>MST + địa chỉ đăng ký MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
         </text>
 
         {/* ── ROW 1: the three doors ──────────────────────────────────────────── */}
         <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN</text>
 
         <Box x={38} y={118} w={380} h={64} title="① Admin tạo ở màn Free data" sub="1 field bắt buộc: TÊN CÔNG TY" sub2="→ nằm ở Free data, chưa có chủ" tone="pool" />
-        <Box x={448} y={118} w={400} h={64} title="② Admin tạo ở màn Company list" sub="4 field bắt buộc: tên · MST · người liên hệ · sales owner" sub2="→ thẳng vào Company list" tone="crm" />
+        <Box x={448} y={118} w={400} h={64} title="② Admin tạo ở màn Company list" sub="5 field bắt buộc — tên legal · MST · địa chỉ đăng ký MST" sub2="người liên hệ · sales owner" tone="crm" />
 
         {/* sales have no create door at all — said here, where they would look */}
         <Box x={880} y={118} w={220} h={64} title="✕ Sales KHÔNG tạo công ty" sub="đường duy nhất: xin nhận" sub2="từ Free data (2 cấp duyệt)" tone="stop" />
@@ -94,7 +94,7 @@ export function CompanyIntakeFlow() {
         <Arrow d="M 640 284 C 640 310, 900 300, 900 336" tone="brand" />
 
         <Box x={38} y={338} w={300} h={92} title="FREE DATA" sub="tên công ty · chưa ai sở hữu" sub2="không đếm vào số nào của CRM" tone="pool" />
-        <Box x={750} y={338} w={300} h={92} title="COMPANY LIST" sub="MST + người liên hệ + sales owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />
+        <Box x={750} y={338} w={300} h={92} title="COMPANY LIST" sub="MST · địa chỉ ĐKT · người liên hệ · owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />
 
         {/* ── the promotion paths between them ────────────────────────────────── */}
         <text x={370} y={330} fontSize={11} fontWeight={800} fill={MUT}>ĐƯA LÊN COMPANY LIST — 2 ĐƯỜNG</text>
