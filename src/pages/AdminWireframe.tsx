@@ -36,6 +36,13 @@ import { CopyLinkButton, useScreenParam } from '@/components/ShareLink'
 interface NavItem {
   label: string
   specId?: string
+  /* WORK WAITING on this page. The point of a badge is that a queue nobody knows
+     has work in it is the same as no queue at all — so the count belongs where the
+     admin already looks, not inside the screen they have to open first.
+
+     Only ever on a page that IS a queue: a number beside a catalogue is noise,
+     because a catalogue is never "done". CV review is the only such page today. */
+  badge?: number
 }
 
 /* ── "View full spec" target ──────────────────────────────────────────────────
@@ -184,7 +191,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Jobs', specId: 'admin-job-list' },
       { label: 'Applicants', specId: 'admin-job-applicants' },
       { label: 'Talent pool', specId: 'admin-resumes' },
-      { label: 'CV review', specId: 'admin-cv-check' },
+      { label: 'CV review', specId: 'admin-cv-check', badge: 10 },
     ],
   },
   {
@@ -793,6 +800,7 @@ function AdminSidebar({
                         <NavPage
                           label={it.label}
                           active={activeGroup === g.label && activeItem === it.label}
+                          badge={it.badge}
                           onClick={() => onSelect(g.label, it)}
                         />
                       </li>
@@ -827,6 +835,7 @@ function AdminSidebar({
                 <NavPage
                   label={it.label}
                   active={activeGroup === flyGroup.label && activeItem === it.label}
+                  badge={it.badge}
                   flush
                   onClick={() => {
                     setFly(null)
@@ -847,11 +856,13 @@ function NavPage({
   label,
   active,
   flush,
+  badge,
   onClick,
 }: {
   label: string
   active: boolean
   flush?: boolean
+  badge?: number
   onClick: () => void
 }) {
   return (
@@ -863,7 +874,15 @@ function NavPage({
         active ? 'bg-brand-soft font-medium text-brand' : 'text-ink/70 hover:bg-canvas',
       )}
     >
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {/* Zero is not rendered — an empty queue should look like nothing to do,
+          not like a page reporting in. A "0" badge trains people to ignore it. */}
+      {!!badge && (
+        <span className={cn(
+          'ml-1.5 shrink-0 rounded-full px-1.5 text-[10px] font-semibold leading-[17px]',
+          active ? 'bg-brand text-white' : 'bg-amber-100 text-amber-800',
+        )}>{badge}</span>
+      )}
     </button>
   )
 }

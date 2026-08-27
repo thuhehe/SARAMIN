@@ -4,6 +4,7 @@
  */
 import { COMPANIES } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
+import { companyOwnerHistory } from '@/pages/admin/data/companyOwner'
 import type { CoOwnerTenure } from '@/pages/admin/data/companyOwner'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 import { searchKey } from '@/pages/admin/ui/table'
@@ -306,7 +307,7 @@ export const CLAIM_REQS: ClaimReq[] = [
   { id: 23974, co: 'Công ty TNHH Logistics Đại Hưng', by: 'Nguyễn Thị Lan', when: '04/08/2026 16:40', person: 'Phòng nhân sự', phone: '0283 776 xxxx', reason: 'KH cũ của tôi, xin nhận lại.', kind: 'KH tôi từng liên hệ / bán hàng trước đây', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '05/08/2026 10:12', note: 'Chính bạn vừa trả KH này về bể — chờ khách đăng tin thật rồi xin lại.' },
   /* The claim history of a company that has ALREADY been promoted (Bình Minh,
      CO-N3V7F5Z — fromPool on its CRM record). The chain follows the company into
-     the CRM: its Owner history tab shows these two below the tenure chain, and the
+     the CRM: its own Yêu cầu nhận tab carries these two (read-only log), and the
      approved one IS the first tenure. One contest, one loser, one winner. */
   { id: 23701, co: 'Công ty CP Bình Minh', by: 'Nguyễn Thị Lan', when: '10/07/2026 09:41', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', reason: 'Thấy tin tuyển giáo viên trên website trường, chưa liên hệ được.', kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected', rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: '14/07/2026 10:30', note: 'Đã phân cho Trần Quốc Trung — bên đó có link tin đăng và đã liên hệ được HR.' },
   { id: 23702, co: 'Công ty CP Bình Minh', by: 'Trần Quốc Trung', when: '11/07/2026 14:05', person: 'Ms. Lê Thu Hằng · HR', phone: '0283 555 xxx', email: 'hr@binhminh.edu.vn', reason: 'Trường mở thêm cơ sở quận 7, cần 12 giáo viên và 3 nhân viên tuyển sinh cho kỳ 9/2026. Đã gọi HR, hẹn demo.', kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', link: 'binhminh.edu.vn/tuyen-dung-giao-vien-2026', reqs: 1, status: 'approved', adminBy: 'Lê Minh Anh (admin)', adminAt: '14/07/2026 10:30', decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: '15/07/2026 08:45', note: 'Hồ sơ đầy đủ, đã hẹn demo — triển khai sớm nhé.' },
@@ -334,3 +335,62 @@ export const CLAIM_REQS: ClaimReq[] = [
    istically (no randomness: a queue that reshuffles between renders is unreview-
    able in review). Mostly one requester per company, a few contested, evidence
    quality deliberately mixed so the triage signals have something to signal. */
+
+
+/* ── Claim history on a CUSTOMER record ─────────────────────────────────────────
+ * Requests only EXIST while a company sits in the Free-data pool, but their log
+ * FOLLOWS the company into the CRM (client, 2026-08-27): the customer record's
+ * Yêu cầu nhận tab shows how it got claimed — and the reclaim tenure in Owner
+ * history and the approved request here are the SAME EVENT seen from two sides.
+ *
+ * Companies with real fixture rows (Bình Minh) use them; everything else derives
+ * its log from the owner chain, so the two tabs can never disagree about who took
+ * the company out of the pool, or when. */
+export function companyClaimHistory(c: Company): ClaimReq[] {
+  const real = CLAIM_REQS.filter((r) => r.co === c.name)
+  if (real.length) return real
+  const reclaim = companyOwnerHistory(c).find((t) => t.claimed)
+  if (!reclaim) return []
+  const salt = c.name.length * 7 + c.tax.length * 3
+  const [mm, yy] = (reclaim.from.includes('/') ? reclaim.from.split('/').slice(-2) : ['08', '2026'])
+  const d = (day: number, hhmm: string) => `${String(day).padStart(2, '0')}/${mm}/${yy} ${hhmm}`
+  const direct = /Phân trực tiếp/.test(reclaim.reason)
+  const rival = ['Đặng Thu Hà', 'Vũ Minh Khoa', 'Hoàng Anh Tuấn'][salt % 3]
+  const base = 23300 + (salt % 400)
+
+  if (direct) {
+    /* Admin assigned without waiting — the pending request that existed was
+       auto-rejected with a note naming who got it. This is the exact interaction
+       the direct-assign panel warns about, kept visible in the log. */
+    return [{
+      id: base + 1, co: c.name, by: rival, when: d(6 + (salt % 8), '10:12'),
+      person: 'Phòng nhân sự', phone: `09${String(20 + (salt % 70))} ${String(300 + salt % 600)} xxx`,
+      reason: 'Thấy tin tuyển dụng trên website công ty, chưa liên hệ được.',
+      kind: 'Đang đăng tuyển trên thị trường', reqs: 1, status: 'rejected',
+      rejectedLevel: 'Admin', decidedBy: 'Lê Minh Anh (admin)', decidedAt: d(14 + (salt % 8), '09:00'),
+      note: `Đã phân trực tiếp cho ${reclaim.owner} — yêu cầu tự động Từ chối.`,
+    }]
+  }
+  /* The two-level approval: the winner's request (this IS the reclaim tenure), and
+     a losing rival so the contested shape is always on screen. */
+  const win: ClaimReq = {
+    id: base + 2, co: c.name, by: reclaim.owner, when: d(4 + (salt % 6), '09:15'),
+    person: 'Phòng nhân sự', phone: `09${String(20 + (salt % 70))} ${String(300 + salt % 600)} xxx`,
+    reason: 'KH đang tuyển trên thị trường, đã gọi HR và được hẹn gửi báo giá tuần này.',
+    kind: 'Đang đăng tuyển trên thị trường', link: `vietnamworks.com/${c.domain?.split('.')[0] ?? 'tin'}-tuyen-dung`,
+    reqs: 2, status: 'approved',
+    adminBy: 'Lê Minh Anh (admin)', adminAt: d(8 + (salt % 6), '09:30'),
+    decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: d(11 + (salt % 6), '10:00'),
+  }
+  const lose: ClaimReq = {
+    id: base + 1, co: c.name, by: rival, when: d(3 + (salt % 6), '16:40'),
+    person: 'Phòng nhân sự', phone: `09${String(21 + (salt % 70))} ${String(310 + salt % 600)} xxx`,
+    reason: 'đang tuyển',
+    kind: 'Chưa từng mua tin Saramin, có nhu cầu đăng tuyển', reqs: 2, status: 'rejected',
+    rejectedLevel: 'Sales lead',
+    adminBy: 'Lê Minh Anh (admin)', adminAt: d(8 + (salt % 6), '09:30'),
+    decidedBy: 'Lê Hữu Phong (Sales lead)', decidedAt: d(11 + (salt % 6), '10:00'),
+    note: `Lý do quá ngắn và không có bằng chứng — công ty phân cho ${reclaim.owner}.`,
+  }
+  return [win, lose]
+}

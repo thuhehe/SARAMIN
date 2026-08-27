@@ -16,6 +16,10 @@ export type CoOwnerTenure = {
       ownership event like any handover — the only difference is that nobody picks it
       up — so it belongs in the timeline rather than in a banner beside it. */
   released?: boolean
+  /** This tenure BEGAN by taking the company back out of the Free-data pool —
+      an approved claim, or an admin's direct assignment. The flag is what lets the
+      timeline say "⤴ Nhận từ Free data" instead of the ordinary "↔ Reassigned". */
+  claimed?: boolean
 }
 /* Wider than the three reps who currently own companies: a history that goes back
    years contains people who have since left, and a pool of three makes a six-step
@@ -35,15 +39,6 @@ const REASSIGN_REASONS = [
   'Maternity cover — returned to the original rep afterwards',
   'Merged territory after the Q3 reorg',
 ]
-const ownerSinceYear = (c: Company) => {
-  const m = /\/(\d{4})$/.exec(c.since)
-  return m ? Number(m[1]) : null
-}
-/** a rep different from `owner`, chosen deterministically by `salt`. */
-const pickPrevOwner = (owner: string, salt: number) => {
-  const others = OWNER_POOL.filter((r) => r !== owner)
-  return others[salt % others.length]
-}
 
 /* Month arithmetic on a fixed "now" (08/2026) so a record renders identically every
    time — a history that shuffled between renders would be unreadable in review. */
@@ -51,47 +46,96 @@ const NOW_M = 2026 * 12 + 7
 const mLabel = (m: number) => `${String((m % 12) + 1).padStart(2, '0')}/${Math.floor(m / 12)}`
 
 export function companyOwnerHistory(c: Company): CoOwnerTenure[] {
-  /* Promoted out of the Danh bạ: the chain does not start with "Lead created" —
-     it starts with the approved claim, naming the admin who approved it. That is
-     the join point with Lịch sử yêu cầu nhận, shown right below this chain: the
-     approved request there and the first tenure here are the same event. */
-  if (c.fromPool) {
-    return [
-      { owner: c.owner, from: '05/08/2026', to: 'now', by: 'Lê Hữu Phong (Sales lead)', reason: 'Rebalance — người nhận ban đầu chuyển vùng phụ trách' },
-      { owner: 'Trần Quốc Trung', from: c.fromPool.at, to: '05/08/2026', by: c.fromPool.by, reason: 'Yêu cầu xin nhận được duyệt', created: true },
-    ]
+  /* EVERY record gets the FULL event vocabulary (client, 2026-08-27): created →
+     reassigned (actor + reason) → RELEASED to the Free-data pool → CLAIMED back
+     (two-level approval, or an admin\u2019s direct assignment) → reassigned → current.
+     The wireframe exists so a dev can see every event type on whichever company
+     they happen to open — "never reassigned" remains a real production state, but
+     a one-row example demonstrates nothing about the layout or the vocabulary. */
+  const salt = c.name.length * 7 + c.tax.length * 3
+  const pick = (i: number, not?: string) => {
+    const pool = OWNER_POOL.filter((r) => r !== not)
+    return pool[(salt + i * 5) % pool.length]
   }
-  const yr = ownerSinceYear(c)
-  // A brand-new lead (no purchase / no activation date): one entry — whoever
-  // created it still owns it. "Never reassigned" is a real state, not a gap.
-  if (yr === null) return [{ owner: c.owner, from: 'at creation', to: 'now', by: 'Tạo lead (hệ thống)', reason: `Lead created — ${coLeadSource(c)}`, created: true }]
 
-  const salt = c.name.length + c.tax.length
-  /* How many times it changed hands. Older accounts have seen more reps, but a
-     FLOOR of three keeps the card showing a real chain even on a recently activated
-     company — the wireframe exists to be reviewed, and a two-row list never shows
-     whether the layout survives a long history. Capped at 8 so it stays a list. */
-  const age = Math.max(0, 2026 - yr)
-  const priors = Math.min(8, Math.max(4, age * 2 + (salt % 3)))
-  if (priors === 0) return [{ owner: c.owner, from: c.since, to: 'now', by: 'Tạo lead (hệ thống)', reason: 'Owner set at creation · never reassigned', created: true }]
+  const RELEASE_REASONS = [
+    'Hết tiềm năng — 3 lần báo giá không phản hồi, khách nói chưa có ngân sách',
+    'Rep phụ trách nghỉ việc, account nhỏ không phân lại — trả về bể',
+    'Khách tạm dừng tuyển 6 tháng — trả về bể chờ tín hiệu mới',
+  ]
 
-  /* Handover points, evenly spread across the account's life and walked BACKWARDS
-     from now — index 0 is when the current owner took over. */
-  const span = Math.max(priors, age * 12)
-  const at = (i: number) => mLabel(NOW_M - Math.round(((i + 1) / (priors + 1)) * span))
+  /* Month boundaries walked BACKWARDS from now, 3–5 months per segment, so dates
+     are deterministic and the chain reads oldest-at-the-bottom. */
+  let m = NOW_M
+  const back = (i: number) => { m -= 3 + ((salt + i) % 3); return mLabel(m) }
 
   const out: CoOwnerTenure[] = []
-  for (let i = 0; i <= priors; i++) {
-    const last = i === priors
+  const directReclaim = salt % 2 === 1
+
+  // ── current tenure, and 1–2 reassignments since the reclaim ────────────────
+  // 2–3 tenures since the reclaim and 1–2 before the release: 6–8 rows on every
+  // record, because the client asked for MANY changes, not a token pair
+  const sinceReclaim = 2 + (salt % 2)
+  let upper = 'now'
+  let owner = c.owner
+  for (let i = 0; i < sinceReclaim; i++) {
+    const from = c.fromPool && i === sinceReclaim - 1 ? c.fromPool.at : back(i)
     out.push({
-      owner: i === 0 ? c.owner : pickPrevOwner(c.owner, salt + i),
-      from: last ? c.since : at(i),
-      to: i === 0 ? 'now' : at(i - 1),
-      by: last ? 'Tạo lead (hệ thống)' : OWNER_LEAD,
-      reason: last ? 'Created from CRM · first owner' : REASSIGN_REASONS[(salt + i * 3) % REASSIGN_REASONS.length],
-      created: last,
+      owner, from, to: upper,
+      by: i === sinceReclaim - 1
+        ? '' // filled below — this row is the reclaim itself when the loop ends
+        : OWNER_LEAD,
+      reason: REASSIGN_REASONS[(salt + i * 3) % REASSIGN_REASONS.length],
     })
+    upper = from
+    owner = pick(i + 1, owner)
   }
+  // the OLDEST of those rows is the reclaim: it began by leaving the pool
+  const reclaim = out[out.length - 1]
+  reclaim.claimed = true
+  if (c.fromPool) {
+    // the approved request on the Yêu cầu nhận tab IS this tenure — same person,
+    // same date, or the two surfaces describe two different events
+    reclaim.owner = 'Trần Quốc Trung'
+    reclaim.by = c.fromPool.by
+    reclaim.reason = 'Yêu cầu xin nhận được duyệt (2 cấp)'
+  } else if (directReclaim) {
+    reclaim.by = 'Lê Minh Anh (admin)'
+    reclaim.reason = 'Phân trực tiếp từ Free data — không qua yêu cầu'
+  } else {
+    reclaim.by = 'Lê Minh Anh (admin) → Lê Hữu Phong (Sales lead)'
+    reclaim.reason = 'Yêu cầu xin nhận được duyệt (2 cấp)'
+  }
+
+  // ── the release that put it in the pool, dated between the two tenures ─────
+  const releasedBy = pick(7, reclaim.owner)
+  const releaseAt = back(7)
+  out.push({
+    owner: releasedBy, from: releaseAt, to: '',
+    by: releasedBy, released: true,
+    reason: RELEASE_REASONS[salt % RELEASE_REASONS.length],
+  })
+
+  // ── the earlier CRM life: 1–2 reassignments, then creation ─────────────────
+  upper = releaseAt
+  owner = releasedBy
+  const before = 1 + ((salt >> 2) % 2)
+  for (let i = 0; i < before; i++) {
+    const from = back(10 + i)
+    out.push({
+      owner, from, to: upper,
+      by: OWNER_LEAD,
+      reason: REASSIGN_REASONS[(salt + 5 + i * 3) % REASSIGN_REASONS.length],
+    })
+    upper = from
+    owner = pick(10 + i, owner)
+  }
+  out.push({
+    owner, from: back(20), to: upper,
+    by: 'Tạo lead (hệ thống)',
+    reason: `Lead created — ${coLeadSource(c)}`,
+    created: true,
+  })
   return out
 }
 

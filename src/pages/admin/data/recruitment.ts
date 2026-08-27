@@ -26,7 +26,7 @@ export const CV_COLS: Col[] = [
      Note the Applicants screen keeps "Application status" as-is: a row THERE is
      an application, so it genuinely has one. */
   { label: 'Dùng để ứng tuyển', w: '1.4fr' },
-  { label: 'Dùng cho CV search', w: '1.4fr' },
+  { label: 'CV Search status', w: '1.4fr' },
   { label: 'CV content', w: '1.2fr' },
   { label: 'Unlocks', w: '0.6fr' },
   { label: 'Updated', w: '0.8fr' },

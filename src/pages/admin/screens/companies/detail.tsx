@@ -1,8 +1,8 @@
-import { useContext, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
-import { RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
+import { RO_HINT, ReadOnlyCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
 import type { BuyerType, Company, CompanyType } from '@/pages/admin/data/companies'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
@@ -10,7 +10,7 @@ import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJ
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
 import { CLAIM_REQS, CLAIM_STATUS, DIRECTORY } from '@/pages/admin/data/directory'
-import { releaseChain } from '@/pages/admin/data/directory'
+import { companyClaimHistory, releaseChain } from '@/pages/admin/data/directory'
 import type { DirRow } from '@/pages/admin/data/directory'
 import { AssignCard, ClaimChain, DirectAssignCard, MyClaimNotice, openClaim } from '@/pages/admin/screens/directory/assign'
 import { tierOf } from '@/pages/admin/data/membership'
@@ -41,7 +41,6 @@ import { Table } from '@/pages/admin/ui/table'
    quota, no contacts and no activity to show. */
 export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void }) {
   const isPool = Boolean(pool)
-  const goTo = useContext(ScreenNavCtx)
   const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
   /* Stored on new records; derived from the buyer classification on older ones. */
   const coType = c.companyType ?? typeOfBuyer(c.buyerType)
@@ -160,11 +159,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
     // the account. In the Overview column it cost a card's height on every visit
     // to answer a question asked a few times a year.
     { key: 'Owner history', label: 'Owner history' },
-    /* Pool records only, and LAST: the claim work — two-level approval, direct
-       assign, and the request log. Its own tab because actions do not belong under
-       a tab named "history"; last per the client — the amber badge and the banner's
-       Duyệt yêu cầu button are what pull the admin in, not the position. */
-    ...(isPool ? [{ key: 'Yêu cầu nhận' as CoTab, label: 'Yêu cầu nhận', count: openClaim(c.name) ? 1 : undefined, alert: true }] : []),
+    /* On BOTH record types, LAST (client, 2026-08-27 — one rule for where things
+       live). On a pool record it is the approve/reject queue plus the log — the
+       amber badge counts the pending request. On a customer it is the LOG only,
+       followed in from the pool: requests exist only while a company is free, so
+       there is nothing to act on and the count stays neutral. */
+    ...(isPool
+      ? [{ key: 'Yêu cầu nhận' as CoTab, label: 'Yêu cầu nhận', count: openClaim(c.name) ? 1 : undefined, alert: true }]
+      : [{ key: 'Yêu cầu nhận' as CoTab, label: 'Yêu cầu nhận', count: companyClaimHistory(c).length || undefined }]),
   ]
 
 
@@ -728,38 +730,53 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
           left with a date at the far right and nothing between them. */}
       {tab === 'Owner history' && (
         <div className="max-w-[620px]">
-          {/* HISTORY ONLY — the claim work lives on the Yêu cầu nhận tab. A tab named
-              history that carries approve buttons is mislabeled, and a mislabeled
-              queue is a queue nobody finds. */}
+          {/* ONE RULE, BOTH RECORD TYPES (client, 2026-08-27): this tab carries the
+              ownership timeline AND the direct ownership action — Phân trực tiếp on
+              a pool record, Chuyển giao on a customer. Resolving a REQUEST is a
+              different act and stays on Yêu cầu nhận; giving/changing the owner by
+              hand is done here, wherever the record lives. */}
           <div className="space-y-3">
             {!isPool && <OwnerHistory c={c} />}
-            {!isPool && c.fromPool && (
-              <p className="text-[11px] leading-relaxed text-faint">
-                Chi tiết các yêu cầu xin nhận (ai xin, ai bị từ chối, note của admin) xem ở{' '}
-                <button onClick={() => goTo('admin-claim-requests')} className="font-medium text-brand hover:underline">Yêu cầu nhận công ty →</button>
-              </p>
-            )}
+            {/* the pool record's direct action, above the history it will extend —
+                the same position Chuyển giao holds on a customer */}
+            {isPool && <DirectAssignCard co={c.name} tax={pool!.tax} onFillMst={() => setTab('Overview')} />}
             {/* A released company keeps its chain, with the release as the newest
                 event in it. A fresh import has no ownership story yet — say so. */}
             {isPool && (pool!.released
               ? <OwnerHistory c={c} tenures={releaseChain(pool!)} />
-              : <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có sales phụ trách — chuỗi chủ sở hữu bắt đầu khi công ty được nhận về CRM.</p>)}
+              : <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có sales phụ trách — chuỗi chủ sở hữu bắt đầu khi công ty được nhận về CRM (phân trực tiếp ở trên, hoặc duyệt yêu cầu ở tab Yêu cầu nhận).</p>)}
           </div>
         </div>
       )}
 
-      {/* ── Yêu cầu nhận — the pool record's WORK tab ─────────────────────── */}
+      {/* ── Yêu cầu nhận — the REQUEST queue and its log ──────────────────── */}
       {tab === 'Yêu cầu nhận' && isPool && (
         <div className="max-w-[620px]">
           <div className="space-y-3">
-            {/* Decision first, then the bypass, then the log — act on today's thing,
-                then look backwards exactly once. */}
+            {/* The queue first, then the log. The direct assignment is NOT here any
+                more: it writes ownership with no request involved, so it lives with
+                the ownership timeline on Owner history — the same tab Chuyển giao
+                lives on for a customer. One pointer, so nobody hunts. */}
             {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} tax={pool!.tax} onFillMst={() => setTab('Overview')} />}
-            <DirectAssignCard co={c.name} tax={pool!.tax} onFillMst={() => setTab('Overview')} />
+            <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              Phân trực tiếp (không qua yêu cầu) → tab <button onClick={() => setTab('Owner history')} className="font-semibold text-brand hover:underline">Owner history</button>. Yêu cầu đang chờ sẽ tự động Từ chối kèm note nêu người được phân.
+            </p>
             <ClaimChain co={c.name} />
             {!openClaim(c.name) && decidedNone(c.name) && (
-              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này — sales xin bằng nút Xin nhận, hoặc admin phân trực tiếp ở trên.</p>
+              <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này — sales xin bằng nút Xin nhận, hoặc admin phân trực tiếp ở tab Owner history.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Yêu cầu nhận on a CUSTOMER — the log that followed the company in ── */}
+      {tab === 'Yêu cầu nhận' && !isPool && (
+        <div className="max-w-[620px]">
+          <div className="space-y-3">
+            <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              Yêu cầu xin nhận chỉ tồn tại khi công ty còn ở <b className="text-ink/75">Free data</b> — đây là <b className="text-ink/75">lịch sử</b> đi theo công ty vào CRM. Muốn đổi người phụ trách bây giờ: <button onClick={() => setTab('Owner history')} className="font-semibold text-brand hover:underline">Chuyển giao ở tab Owner history</button>.
+            </p>
+            <ClaimChain co={c.name} rows={companyClaimHistory(c)} />
           </div>
         </div>
       )}

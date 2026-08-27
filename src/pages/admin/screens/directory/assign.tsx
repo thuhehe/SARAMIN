@@ -227,8 +227,8 @@ export function DirectAssignCard({ co, tax, onFillMst }: { co: string; tax?: str
    It is read at the moment of the NEXT decision — an approver looking at a fresh
    request needs to see, in the same glance, that this same rep was refused two
    weeks ago with the same evidence. The "đã từ chối N lần" marker points here. */
-export function ClaimChain({ co }: { co: string }) {
-  const all = CLAIM_REQS.filter((r) => r.co === co).sort((a, b) => b.id - a.id)
+export function ClaimChain({ co, rows }: { co: string; /** override for a CUSTOMER record — its log is derived from the owner chain (companyClaimHistory), not read from the live queue */ rows?: ClaimReq[] }) {
+  const all = (rows ?? CLAIM_REQS.filter((r) => r.co === co)).sort((a, b) => b.id - a.id)
   if (all.length === 0) return null
   /* A rejection means different things depending on how the contest ended: if
      another request on this company was APPROVED, the company did not return to

@@ -1,90 +1,84 @@
 import { cn } from '@/lib/utils'
 
-/* ── "Did the candidate CHOOSE this CV, and what did our status do to it" ──
+/* ── The two derived cells on a list of CVs ────────────────────────────────
  *
- * Two cells, one shape, and the shape is the whole point. The columns these
- * replace ("Application status", "CV Search status") each collapsed two facts
- * into one word:
+ * They replaced columns called "Application status" and "CV Search status",
+ * each of which collapsed two unrelated facts into one word: a CV nobody ever
+ * applied with read "Not sent", and so did a CV whose applications we are
+ * holding. Identical value, opposite situations, and only the second is any of
+ * the reviewer's business.
  *
- *   a CV nobody ever applied with          → "Not sent"
- *   a CV whose applications we are holding → "Not sent"
+ * ONE LINE EACH, since 2026-08-23. An earlier version printed a second line
+ * spelling out the consequence ("2 đơn đang giữ lại — chờ duyệt · 5h"). It went
+ * because the CV STATUS COLUMN SITS ON THE SAME ROW and already says it: a
+ * reviewer reading "Not enough information" does not need two more cells
+ * repeating what that implies. Two lines per cell on a twelve-column table also
+ * cost twice the row height to restate a fact, which is the trade that made it
+ * obvious.
  *
- * Identical value, opposite situations, and only the second is any of the
- * reviewer's business. The first is not a status at all — it is an ABSENCE, and
- * printing a status for a record that does not exist is how a list starts lying.
- *
- * So every cell reads top-down as CHOICE then CONSEQUENCE:
- *   line 1 — what the CANDIDATE did (a fact about them, never about us)
- *   line 2 — what our CV status does to that choice (derived, and only shown
- *            when there is a choice for it to act on)
- *
- * When line 1 is "chưa chọn" there is deliberately NO line 2. That blank is
- * accurate, and it is also the fastest way to see that a queue row is harmless:
- * nothing is waiting on it.
+ * So each cell answers exactly one question and stops:
+ *   ApplyCell  — has this CV been used to apply, and how many times
+ *   SearchCell — is it showing in CV search right now
  */
 
-/** Line 1 — the candidate's own act. Faint when they have not made one. */
-function Choice({ on, label }: { on: boolean; label: string }) {
+/** Answers: has this CV been used to apply, and how many times. NOT what is
+    happening to those applications — that follows from the CV status beside it. */
+export function ApplyCell({ apps }: { apps: number }) {
   return (
-    <p className={cn('flex items-baseline gap-1 truncate text-[11.5px]', on ? 'text-ink' : 'text-faint')}>
-      <span className={cn('shrink-0', on ? 'text-emerald-600' : '')}>{on ? '✓' : '—'}</span>
-      <span className="truncate">{label}</span>
+    <p className={cn('flex items-baseline gap-1 truncate text-[11.5px]', apps ? 'text-ink' : 'text-faint')}>
+      <span className={cn('shrink-0', apps ? 'text-emerald-600' : '')}>{apps ? '✓' : '—'}</span>
+      <span className="truncate">{apps ? `${apps} đơn ứng tuyển` : 'Chưa dùng để ứng tuyển'}</span>
     </p>
   )
 }
 
-/** Line 2 — what our status does to it. Absent when there is no choice. */
-function Effect({ text, tone }: { text: string; tone: 'ok' | 'wait' | 'bad' | 'mute' }) {
-  return (
-    <p className={cn('mt-0.5 truncate text-[10.5px]',
-      tone === 'ok' ? 'text-emerald-700' : tone === 'wait' ? 'text-amber-700' : tone === 'bad' ? 'text-rose-600' : 'text-faint')}
-    >{text}</p>
-  )
-}
+/** The CV-search status. THREE readable outcomes, because "hidden" and "never
+    offered" are not the same fact:
+      Showing     — the candidate flagged this CV and it qualifies
+      Hidden      — they flagged it, our CV status is blocking it
+      — Chưa chọn — they never flagged it; there is nothing for us to block
 
-/** Answers: has this CV been used to apply, and what is happening to those applications. */
-export function ApplyCell({ apps, verdict, waited }: { apps: number; verdict: 'qualified' | 'doubt' | 'rejected'; waited?: string }) {
-  if (apps === 0) {
-    return (
-      <div className="min-w-0">
-        <Choice on={false} label="Chưa dùng để ứng tuyển" />
-      </div>
-    )
-  }
-  const eff = verdict === 'qualified'
-    ? { text: `${apps} đơn đã gửi tới NTD`, tone: 'ok' as const }
-    : verdict === 'doubt'
-      ? { text: `${apps} đơn đang giữ lại — chờ duyệt${waited && waited !== '—' ? ` · ${waited}` : ''}`, tone: 'wait' as const }
-      : { text: `${apps} đơn không được gửi / đã thu hồi`, tone: 'bad' as const }
-  return (
-    <div className="min-w-0">
-      <Choice on label={`${apps} đơn ứng tuyển`} />
-      <Effect text={eff.text} tone={eff.tone} />
-    </div>
-  )
-}
+    `picked` is the candidate's own toggle (they flag ONE of their up-to-three CVs)
+    and we never write it; visibility is picked AND Qualified. Deriving it from CV
+    status alone was the original bug: a Qualified CV nobody flagged rendered as
+    Showing.
 
-/** Answers: did the candidate flag this CV for CV search, and is it actually showing.
-    `picked` is the candidate's toggle — a jobseeker may flag ONE CV out of three, so
-    "chưa chọn" is the common and entirely healthy case, not a problem to fix. */
+    ON TALENT POOL THE THIRD STATE CANNOT OCCUR — every row there is a candidate who
+    switched CV search on — so that screen passes `picked` and gets exactly the two
+    values it should have. Same component, no variant: the screen's own data decides
+    which states are reachable. */
 export function SearchCell({ picked, verdict }: { picked: boolean; verdict: 'qualified' | 'doubt' | 'rejected' }) {
   if (!picked) {
-    return (
-      <div className="min-w-0">
-        <Choice on={false} label="Chưa chọn" />
-        <Effect text="ứng viên chỉ bật 1 CV" tone="mute" />
-      </div>
-    )
+    return <p className="truncate text-[11.5px] text-faint">— Chưa chọn</p>
   }
-  const eff = verdict === 'qualified'
-    ? { text: 'Đang hiển thị với NTD', tone: 'ok' as const }
-    : verdict === 'doubt'
-      ? { text: 'Bị ẩn — chờ duyệt', tone: 'wait' as const }
-      : { text: 'Bị ẩn — CV đã bị từ chối', tone: 'bad' as const }
+  const showing = verdict === 'qualified'
   return (
-    <div className="min-w-0">
-      <Choice on label="Đã chọn cho CV search" />
-      <Effect text={eff.text} tone={eff.tone} />
-    </div>
+    <p className={cn('truncate text-[11.5px] font-semibold', showing ? 'text-emerald-700' : 'text-faint')}>
+      {showing ? 'Showing' : 'Hidden'}
+    </p>
+  )
+}
+
+/** THE QUEUE'S VERSION — "did the candidate offer this CV to the pool at all".
+ *
+ * CV review asks a different question from Talent pool, and the split is not
+ * cosmetic. On the QUEUE the only fact a reviewer cannot work out for themselves
+ * is the candidate's CHOICE: whether the CV is currently visible follows from the
+ * CV status sitting in the next column (anything in doubt is hidden; approve a
+ * picked CV and it shows). So the cell states the choice and lets the reader do
+ * the one-step inference.
+ *
+ * On the POOL the choice is constant — everyone there switched CV search on — so
+ * that screen asks the only question left, which is whether it is actually
+ * showing. See SearchCell.
+ *
+ * Same underlying field, opposite halves of it, because the two screens know
+ * different things already. */
+export function PoolPickCell({ picked }: { picked: boolean }) {
+  return (
+    <p className={cn('flex items-baseline gap-1 truncate text-[11.5px]', picked ? 'text-ink' : 'text-faint')}>
+      <span className={cn('shrink-0', picked ? 'text-emerald-600' : '')}>{picked ? '✓' : '—'}</span>
+      <span className="truncate">{picked ? 'Đã chọn' : 'Chưa chọn'}</span>
+    </p>
   )
 }

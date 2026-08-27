@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { CV_COLS } from '@/pages/admin/data/recruitment'
 import type { CvCheckRow } from '@/pages/admin/data/recruitment'
 import { ListPage } from '@/pages/admin/ui/list'
-import { ApplyCell, SearchCell } from '@/pages/admin/ui/pickCells'
+import { ApplyCell, PoolPickCell } from '@/pages/admin/ui/pickCells'
 import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
 import { Toast, type ToastMsg } from '@/pages/admin/ui/toast'
 import { Pill } from '@/pages/admin/ui/status'
@@ -66,12 +66,6 @@ export function AdminCvCheck() {
     { name: 'Phạm Gia Huy', basic: 'Male · 12/12/2001 · Vietnamese · Single · Student · 0 yrs exp', contact: ['huy.pham@gmail.com', '0388 117 550'], pref: 'Intern · IT · Hồ Chí Minh · Negotiable · In office', file: 'anh-the-3x4.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 weeks ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
   ]
   const stateOf = (r: CvCheckRow) => decided[r.name] ?? r.state ?? 'doubt'
-  /* The three-way verdict the derived cells read. 'doubt' covers both doubt
-     states: what they do to an application and to search is identical. */
-  const verdictOf = (r: CvCheckRow): 'qualified' | 'doubt' | 'rejected' => {
-    const st = stateOf(r)
-    return st === 'approved' ? 'qualified' : st === 'rejected' ? 'rejected' : 'doubt'
-  }
   /* One click: write the status, then say what it did. The toast carries the two
      things the dialog was there for — the consequences the row cannot show, and
      the empty-extraction caveat — plus the Undo that makes skipping the
@@ -119,9 +113,9 @@ export function AdminCvCheck() {
     /* CHOICE then CONSEQUENCE — see ui/pickCells. A row with no applications and
        no search flag now reads as two blanks, which is exactly what it is: the
        decision on it releases nothing and nobody is waiting. */
-    <ApplyCell apps={r.apps} verdict={verdictOf(r)} waited={r.age} />,
-    <SearchCell picked={!!r.searchPick} verdict={verdictOf(r)} />,
-    <span className="truncate text-amber-700">{r.extracted}</span>,
+    <ApplyCell apps={r.apps} />,
+    <PoolPickCell picked={!!r.searchPick} />,
+    <span className="truncate text-muted">{r.extracted}</span>,
     <span className="text-muted">{r.updated}</span>,
     <div className="relative flex items-center justify-end">
       <button
@@ -202,7 +196,11 @@ export function AdminCvCheck() {
             ))}
           </span>
         }
-        cols={CV_COLS.filter((c) => c.label !== 'Unlocks')}
+        /* The shared column set, with ONE label overridden. "CV Search status" is
+           the right name on Talent pool, where the cell reports visibility; here
+           the cell reports the candidate's CHOICE, and a column must be named for
+           the question it answers rather than for the field behind it. */
+        cols={CV_COLS.filter((c) => c.label !== 'Unlocks').map((c) => (c.label === 'CV Search status' ? { ...c, label: 'Vào Talent pool' } : c))}
         rows={rows}
       />
       {open && <CvCheckDetail row={open} onClose={() => setOpen(null)} />}

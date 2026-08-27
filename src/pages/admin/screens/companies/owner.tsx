@@ -26,7 +26,8 @@ export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenu
      owner, so "N owners" would read as if it could hold several at once. With a
      long chain the number is the thing a lead actually wants ("this account has
      moved five times"), which is why it is worth stating at all. */
-  const moves = hist.filter((t) => !t.created && !t.released).length
+  // a reclaim from the pool is the company COMING BACK, not a handover between reps
+  const moves = hist.filter((t) => !t.created && !t.released && !t.claimed).length
   /* A CLOSED chain: the newest tenure has a real end date, which happens when the
      company was released back to the Free-data pool. Nobody owns it now, so the top
      entry must not be badged "Current" — that would name a rep who handed it back
@@ -60,7 +61,7 @@ export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenu
           <li key={i} className="relative pl-4">
             {/* The release is an ownership EVENT, not a tenure — amber dot, no date
                 range, because nothing began at that moment. */}
-            <span className={cn('absolute left-0 top-[5px] h-2 w-2 rounded-full', t.released ? 'bg-amber-500' : i === 0 ? 'bg-brand' : 'bg-line')} />
+            <span className={cn('absolute left-0 top-[5px] h-2 w-2 rounded-full', t.released ? 'bg-amber-500' : t.claimed ? 'bg-emerald-500' : i === 0 ? 'bg-brand' : 'bg-line')} />
             {i < hist.length - 1 && <span className="absolute bottom-[-10px] left-[3px] top-4 w-px bg-line-soft" />}
             <div className="flex items-center justify-between gap-2">
               <span className={cn('truncate text-[12.5px] font-medium', t.released ? 'text-amber-800' : 'text-ink')}>{t.owner}</span>
@@ -73,8 +74,9 @@ export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenu
             <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
               {!t.released && i === 0 && !closed && <span className="tabular-nums text-muted">{t.from} – now · </span>}
               {t.released
-                ? <span className="text-amber-800/80">↩ Trả về bể dữ liệu — công ty rời CRM, chờ sales khác nhận</span>
-                : t.created ? (c.fromPool ? <span className="text-ink/70">Nhận từ Free data — duyệt bởi {t.by}</span> : 'Created the lead') : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
+                ? <span className="text-amber-800/80">↩ Trả về bể dữ liệu — công ty rời CRM{i === 0 ? ', chờ sales khác nhận' : ' (sau đó được nhận lại — dòng trên)'}</span>
+                : t.claimed ? <span className="text-emerald-700">⤴ Nhận từ Free data — {t.by}</span>
+                : t.created ? 'Created the lead' : <><span className="text-ink/70">↔ Reassigned by {t.by}</span></>}
               {' · '}{t.reason}
             </p>
           </li>
