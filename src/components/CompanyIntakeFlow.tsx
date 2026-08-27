@@ -1,15 +1,25 @@
 /* ── How a company gets into the CRM, and how a sign-up user follows it ────────
  *
- * The one thing this drawing exists to settle: FREE DATA AND COMPANY LIST ARE ONE
- * TABLE. A company is not "moved between stores" — it is COMPLETED and ASSIGNED.
- * Everything else on the page follows from that:
+ * Two things this drawing exists to settle.
  *
- *   pool state     name only, no owner            → Free data
- *   customer state name + MST + contact + owner   → Company list
+ * ONE — FREE DATA AND COMPANY LIST ARE ONE TABLE. A company is not "moved between
+ * stores"; it is COMPLETED and ASSIGNED.
  *
- * Three doors write to that table, and every one of them passes the same MST dedup
- * against BOTH states. A sign-up never opens a fourth door: a user can only be moved
- * into a company that already exists, so the sign-up flow WAITS on one of the three.
+ *   pool state     name only, no owner                 → Free data
+ *   customer state name + MST + contact + sales owner  → Company list
+ *
+ * TWO — TWO CREATE DOORS, BOTH ADMIN'S, AND THE OPERATOR PICKS THE DOOR FIRST.
+ * Which screen you press "create" on declares what you are making, and the form
+ * then enforces exactly that screen's required fields. The rejected alternative was
+ * one form whose destination follows completeness — "fill what you have, we'll sort
+ * it" — which fails the moment someone means to create a customer and forgets the
+ * owner: they get a pool row, silently, and then go hunting for a customer that was
+ * never created. A form where every field is optional produces records where every
+ * field is empty.
+ *
+ * SALES NEVER CREATE A COMPANY. Their only route to owning one is xin nhận from
+ * Free data, through the two approval levels. No back door, so no company enters
+ * the CRM without an admin having looked at it.
  */
 const INK = 'var(--color-ink)'
 const MUT = 'var(--color-muted)'
@@ -62,25 +72,26 @@ export function CompanyIntakeFlow() {
         <rect x={20} y={16} width={1380} height={54} rx={10} fill="var(--color-canvas)" stroke="var(--color-line)" strokeWidth={1.5} />
         <text x={38} y={40} fontSize={13} fontWeight={800} fill={INK}>MỘT bảng công ty, hai trạng thái</text>
         <text x={38} y={58} fontSize={11} fill={MUT}>
-          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan>, chưa có sales owner · Company list = thêm <tspan fontWeight={700} fill={INK}>MST + người liên hệ + sales owner</tspan>. “Đưa lên Company list” là HOÀN THIỆN + GÁN CHỦ, không phải copy sang bảng khác.
+          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Company list = thêm <tspan fontWeight={700} fill={INK}>MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
         </text>
 
         {/* ── ROW 1: the three doors ──────────────────────────────────────────── */}
-        <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>3 CỬA TẠO CÔNG TY</text>
+        <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN</text>
 
-        <Box x={38} y={118} w={250} h={64} title="① Import / thêm tay" sub="Admin · chỉ cần tên" sub2="→ nằm ở Free data" tone="pool" />
-        <Box x={318} y={118} w={250} h={64} title="② Sales tự tạo" sub="đủ MST + contact + tự làm chủ" sub2="→ thẳng vào Company list" tone="crm" />
-        <Box x={598} y={118} w={250} h={64} title="③ Admin tạo cho sales" sub="đủ thông tin + chọn owner" sub2="→ thẳng vào Company list" tone="crm" />
+        <Box x={38} y={118} w={380} h={64} title="① Admin tạo ở màn Free data" sub="1 field bắt buộc: TÊN CÔNG TY" sub2="→ nằm ở Free data, chưa có chủ" tone="pool" />
+        <Box x={448} y={118} w={400} h={64} title="② Admin tạo ở màn Company list" sub="4 field bắt buộc: tên · MST · người liên hệ · sales owner" sub2="→ thẳng vào Company list" tone="crm" />
 
-        {/* the dedup gate every door passes */}
-        <Arrow d="M 163 182 L 163 226" tone="brand" />
-        <Arrow d="M 443 182 L 443 226" tone="brand" />
-        <Arrow d="M 723 182 L 723 226" tone="brand" />
+        {/* sales have no create door at all — said here, where they would look */}
+        <Box x={880} y={118} w={220} h={64} title="✕ Sales KHÔNG tạo công ty" sub="đường duy nhất: xin nhận" sub2="từ Free data (2 cấp duyệt)" tone="stop" />
+
+        {/* the dedup gate both doors pass */}
+        <Arrow d="M 228 182 L 228 226" tone="brand" />
+        <Arrow d="M 648 182 L 648 226" tone="brand" />
         <Box x={38} y={228} w={810} h={56} title="Kiểm tra trùng — quét CẢ HAI trạng thái (Free data + Company list)" sub="MST trùng → CHẶN, nêu công ty đang giữ + sales phụ trách · tên/domain trùng ở Free data → mở dòng đó, đừng tạo mới" tone="gate" />
 
         {/* ── ROW 2: the two states ───────────────────────────────────────────── */}
-        <Arrow d="M 163 284 L 163 336" tone="brand" />
-        <Arrow d="M 600 284 C 600 310, 900 300, 900 336" tone="brand" />
+        <Arrow d="M 190 284 L 190 336" tone="brand" />
+        <Arrow d="M 640 284 C 640 310, 900 300, 900 336" tone="brand" />
 
         <Box x={38} y={338} w={300} h={92} title="FREE DATA" sub="tên công ty · chưa ai sở hữu" sub2="không đếm vào số nào của CRM" tone="pool" />
         <Box x={750} y={338} w={300} h={92} title="COMPANY LIST" sub="MST + người liên hệ + sales owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />
@@ -130,7 +141,7 @@ export function CompanyIntakeFlow() {
         <rect x={38} y={792} width={1340} height={48} rx={10} fill="#fffbeb" stroke={AMB} strokeWidth={1.5} />
         <text x={58} y={812} fontSize={11.5} fontWeight={800} fill={AMB}>Luật bất biến</text>
         <text x={58} y={830} fontSize={11} fill={MUT}>
-          Công ty phải TỒN TẠI trong Company list trước khi bất kỳ user nào được gán vào. Sign-up không có cửa tạo công ty riêng — nếu có, cùng một công ty sẽ vào hệ thống bằng hai đường với hai bộ dữ liệu khác nhau.
+          Công ty phải TỒN TẠI trong Company list trước khi bất kỳ user nào được gán vào · Chỉ ADMIN tạo công ty · Sales chỉ có một đường sở hữu: xin nhận từ Free data, qua 2 cấp duyệt.
         </text>
       </svg>
     </div>

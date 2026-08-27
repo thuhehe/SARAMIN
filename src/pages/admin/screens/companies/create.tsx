@@ -89,6 +89,20 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
         <Pill tone="draft">Draft</Pill>
       </div>
 
+      {/* The door declares what is being made. This page creates a CUSTOMER, so it
+          names its four required fields before the first input — the operator who
+          only has a company name is on the wrong screen and should know it now, not
+          after filling four sections. */}
+      <div className="mb-5 rounded-lg border border-line bg-canvas/50 px-3.5 py-2.5">
+        <p className="text-[11.5px] font-semibold text-ink">Tạo khách hàng — bắt buộc 4 thông tin</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+          <b className="text-ink/75">Tên công ty</b> · <b className="text-ink/75">Mã số thuế</b> · <b className="text-ink/75">Người liên hệ</b> · <b className="text-ink/75">Sales owner</b> — hồ sơ lưu xong là có chủ và được đếm vào mọi con số của CRM.
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          Chỉ có mỗi tên công ty? Dùng <button onClick={() => goTo('admin-company-directory')} className="font-semibold text-brand hover:underline">Free data → Thêm công ty</button> — ở đó chỉ cần tên, và sales sẽ xin nhận sau.
+        </p>
+      </div>
+
       <div className="space-y-8">
         {/* TWO groups, because the fields answer two different questions. "Who is
             this company to us" is how a rep finds and talks about them; "what must
@@ -321,7 +335,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
         <JobGroup title="Sales">
           <div className="grid grid-cols-2 gap-3">
             <ComboField label="Lead source" value="Website sign-up" placeholder="Select or type…" options={['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']} />
-            <LField label="Sales owner" value="Nguyễn Thị Lan" select />
+            <LField label="Sales owner" req value="Nguyễn Thị Lan" select hint="Bắt buộc — một hồ sơ ở Company list luôn có chủ. Chưa biết giao ai thì công ty đó thuộc về Free data." />
           </div>
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Products interested</label>

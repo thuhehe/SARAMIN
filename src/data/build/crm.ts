@@ -2522,20 +2522,23 @@ export const crm: BuildModule = {
       detail: {
         requirements: [
           {
-            label: 'ONE company table, two states — and three doors into it',
-            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên + **MST** + **người liên hệ** + **sales owner** | có |\n\nMọi thứ khác trong module này là hệ quả của một câu đó.',
+            label: 'ONE company table, two states — and TWO admin-only create doors',
+            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên + **MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
             diagram: 'company-intake',
             table: {
-              cols: ['Cửa', 'Ai', 'Nhập gì', 'Đích'],
+              cols: ['Cửa', 'Ai', 'Bắt buộc', 'Đích'],
               rows: [
-                ['① Import / thêm tay', 'Admin', 'Chỉ tên công ty (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
-                ['② Sales tự tạo', 'Sales', 'Đủ MST + người liên hệ; người tạo tự làm chủ', '**Company list** thẳng'],
-                ['③ Admin tạo & chọn owner', 'Admin', 'Đủ thông tin + chọn sales owner', '**Company list** thẳng'],
+                ['**Free data → Thêm công ty**', 'Admin', '**1 field: tên công ty** (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
+                ['**Company list → New company**', 'Admin', '**4 field: tên · MST · người liên hệ · sales owner**', '**Company list** — có chủ, đếm vào mọi số của CRM'],
+                ['*(không có cửa nào)*', 'Sales', '—', 'Sales **không tạo công ty**. Đường duy nhất: Xin nhận từ Free data → Admin duyệt → Sales lead duyệt.'],
               ],
             },
             items: [
-              'CÂU HỎI ĐÃ TRẢ LỜI — “có cần cho tạo ở cả hai chỗ không?”: **có, giữ cả ba cửa**, vì chúng khác nhau ở dữ liệu người tạo ĐANG CÓ, không phải ở luồng. Bắt sales đang ngồi với khách sắp ký phải tạo ở Free data rồi *xin phép nhận* chính công ty họ vừa gõ là vô lý; bắt admin xử lý một sign-up công ty mới phải tạo một dòng Free data để 5 giây sau promote nó là một bước thừa sinh ra một dòng chỉ để rời đi ngay.',
-              'ĐIỀU KIỆN để giữ ba cửa mà không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Tạo công ty kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa ②③ tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
+              'HAI CÁCH THIẾT KẾ, và vì sao chọn cách này. **(A) Chọn màn hình trước** — bấm tạo ở Free data thì form hỏi 1 field, bấm tạo ở Company list thì form hỏi 4 field, và bắt buộc đúng bộ đó. **(B) Một form chung, đủ thông tin thì lên Company list, thiếu thì nằm ở Free data.** Chọn (A).',
+              'Vì sao (B) hỏng: một form mà **mọi field đều tuỳ chọn** sẽ đẻ ra bản ghi mà mọi field đều trống. Người định tạo khách hàng nhưng quên chọn sales owner sẽ nhận được một dòng Free data — **im lặng**, không báo gì — rồi đi tìm khách hàng của mình trong Company list và không thấy. Và vì dòng pool không cần MST, kiểm tra trùng MST thành tuỳ chọn theo, nên đúng cái trùng cần chặn lại lọt qua.',
+              '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Company list cần 4 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Company list nêu 4 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
+              'ĐIỀU KIỆN để hai cửa không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Company list kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa Company list tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
+              'SALES KHÔNG CÓ CỬA TẠO — kể cả lối tắt. Ô tìm kiếm ở Companies, khi không tìm thấy gì, trước đây hiện nút “+ Tạo công ty mới”; nút đó đã bỏ, thay bằng câu chỉ đường: *“báo admin thêm vào Free data, rồi bạn gửi Xin nhận”*. Đó chính là chỗ một rep đang vội sẽ bấm, và bấm được thì công ty vào CRM mà không ai kiểm.',
               'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc MST hợp lệ + không trùng + một sales owner.',
               'Xong thì dòng **rời khỏi Free data** — không xoá, giữ liên kết tới hồ sơ CRM để truy vết “công ty này vào CRM bằng đường nào”.',
             ],
@@ -3081,15 +3084,16 @@ export const crm: BuildModule = {
         behaviors: [
           'On submit the system creates a pending sign-up (holding the person’s chosen password), sends an email-verification link immediately, and runs a tax-code match.',
           'Gate 1 — email verification: when the user clicks the link, emailVerified flips true. This is automatic and does NOT resolve the row; it only makes the row actionable for HQ.',
-          'Gate 2 — HQ placement: an operator resolves each EMAIL-VERIFIED row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Company list. An unverified row is shown but not actionable ("awaiting email verification").',
+          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Company list. **Email verification no longer gates placement, only LOGIN**: an unverified person can be placed, and their login opens by itself the moment they click the link.',
           'Match is binary + informational: tax hit (Match, shows which) or not (Not match). A public email domain can’t auto-match. Match never changes the three actions.',
           'Move / Create create/attach the company membership, unlock login, and send the "you’re in — sign in" email (password already set). Archive rejects the request.',
           'The user sees a status tracker and a stated SLA throughout; trying to log in before both gates pass shows an "under review" screen, never a bare error.',
         ],
         rules: [
           'Two independent gates: (1) email verification — instant, automatic; (2) HQ placement — manual. Login unlocks only when BOTH pass.',
-          'TWO actions, not four: **Move to existing company** · **Archive**. The Match column says WHERE the company is — `Company list: {tên}` · `Free data: {tên}` · `Not match` — and that is what decides whether the row is actionable at all.',
-          'A row whose company is NOT yet in the Company list is BLOCKED here, with a link to the screen that fixes it: “Đưa công ty lên Company list →” (opens that Free-data record) or “Tạo công ty trước →” (opens the create form). A blocked row that does not point somewhere sends the operator hunting, or worse, inventing a way round.',
+          'TWO actions on EVERY row, always the same two: **Move to existing company** · **Archive**. One affordance — the ⋯ menu — on every unresolved row. A table whose rows offer four different controls makes the operator read each row before they can act on any of them.',
+          'The blockers live INSIDE the Move dialog, not on the row: company đang ở **Free data** → amber panel + “Đưa công ty lên Company list →”; công ty **chưa có ở đâu** → “Tạo công ty trước →”. The Move button stays disabled until the company exists. That keeps the table uniform while still refusing the impossible move — and each blocker names the screen that fixes it, because a refusal with no direction sends the operator hunting or inventing a way round.',
+          'EMAIL VERIFICATION MOVED: it gates LOGIN, not placement. Reasons: an unverified spam row (`x@spam.io`) must still be archivable, or junk accumulates with no way to clear it; and placing an unverified person is harmless — login stays shut until they click the link, at which point it opens and the “you’re in” email goes out automatically. The Move dialog says exactly that, and the activation note switches wording so it never claims a verified email the row does not have.',
           'REMOVED: “Create new company + move” and “Promote from Free data + move”. Both were extra doors into the company table, placed on a screen that does not ask for phân loại người mua, địa chỉ xuất hoá đơn or người liên hệ — a record created there would stall at the VAT-invoice step, by which time the company already has users signing in.',
           'The result is the invariant: **the company is always created first, then the user is assigned.** See the intake flow diagram on this page.',
           'Creating a new company makes the user its Admin; placing them into an existing company picks their role there and respects its seat cap.',

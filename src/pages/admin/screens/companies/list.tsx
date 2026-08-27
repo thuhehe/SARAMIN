@@ -254,11 +254,15 @@ export function AdminCompanyList() {
                    create action lives right here rather than back up on the toolbar. */
                 <div className="p-2.5">
                   <p className="text-[11px] text-muted">Không có công ty nào khớp “{q}” — kể cả ngoài danh sách này.</p>
-                  {/* Create is the last resort, and only when the pool has nothing
-                      either — otherwise the rep types a company that already exists
-                      as free data and it gets entered twice. */}
+                  {/* No create button. SALES DO NOT CREATE COMPANIES: their only
+                      route to owning one is Xin nhận from Free data, through the two
+                      approval levels. A create button here would be the back door
+                      that lets a company into the CRM with nobody having checked it,
+                      and it is exactly where a rep in a hurry would press it. */}
                   {inBook === 0 && pool.length === 0 && (
-                    <button onClick={() => setCreating(true)} className="mt-1.5 rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">+ Tạo công ty mới</button>
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                      Công ty chưa có trong hệ thống — <b className="text-muted">báo admin thêm vào Free data</b>, rồi bạn gửi <b className="text-muted">Xin nhận</b>. Sales không tạo công ty trực tiếp.
+                    </p>
                   )}
                 </div>
               )}

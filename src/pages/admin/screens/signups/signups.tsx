@@ -12,7 +12,7 @@ import { Pill } from '@/pages/admin/ui/status'
 
 /* The three sign-up actions, each with its own confirm flow. Move / Create both end by
    emailing the user a set-password / activation link; Archive discards the request. */
-function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void }) {
+function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }: { mode: 'move' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void; onGoPool?: (co: string) => void; onGoCreate?: () => void }) {
   const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name))))
   const [company, setCompany] = useState(s.matchName ?? targets[0] ?? '')
   const [role, setRole] = useState<CoUserRole>('Recruiter')
@@ -20,7 +20,12 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'ar
   const salesOwners = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
   const [owner, setOwner] = useState(salesOwners[0])
   const title = mode === 'move' ? `Move ${s.person} to a company` : 'Archive this sign-up?'
-  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
+  /* Placement and login are two different moments once the email gate stopped
+     blocking placement — so this note has to say which one it is describing, or it
+     contradicts the unverified warning three lines above it. */
+  const activation = s.verified
+    ? <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
+    : <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11.5px] leading-relaxed text-muted"><span>✉️</span><span>Gán xong <b className="text-ink/75">chưa mở login</b> — người này chưa xác minh email. Khi họ bấm link xác minh, hệ thống tự mở login và gửi mail <b className="text-ink/75">“you’re in — sign in”</b>.</span></p>
   const ownerField = (
     <div>
       <p className="mb-1 text-[11.5px] font-medium text-ink/80">Sales owner <span className="text-rose-500">*</span></p>
@@ -41,6 +46,40 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'ar
           <div className="rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px] text-muted">
             Signed up as <b className="text-ink/80">{s.person}</b> · <span className="font-mono">{s.email}</span> · typed company “<b className="text-ink/80">{s.company}</b>”{s.tax !== '—' ? ` · MST ${s.tax}` : ''}
           </div>
+
+          {/* The blockers live HERE, where the operator has committed to moving this
+              person — not on the row, where they would fragment the table. Each one
+              names the screen that fixes it and links to it. */}
+          {mode === 'move' && !inCompanyList(s) && (
+            <div className={cn('rounded-lg border px-3 py-2.5 text-[11.5px] leading-relaxed', s.freeDataMatch ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-line bg-canvas/60 text-muted')}>
+              {s.freeDataMatch ? (
+                <>
+                  <p className="font-semibold">⚠ Công ty này đang ở Free data — chưa phải khách hàng</p>
+                  <p className="mt-1">“<b>{s.freeDataMatch}</b>” mới là dòng danh bạ, chưa có MST và chưa có sales owner, nên chưa gán user vào được.</p>
+                  <button onClick={() => { onClose(); onGoPool?.(s.freeDataMatch!) }} className="mt-1.5 rounded border border-amber-400 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 hover:border-amber-600">
+                    Đưa công ty lên Company list →
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-ink">Công ty “{s.company}” chưa có trong hệ thống</p>
+                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Company list</b> (tên · MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
+                  <button onClick={() => { onClose(); onGoCreate?.() }} className="mt-1.5 rounded border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted hover:border-brand hover:text-brand">
+                    Tạo công ty trước →
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Gate 1 is about LOGIN, not about placement: an unverified person can be
+              placed, they simply cannot sign in until they click the link. Saying so
+              here is what makes placing one safe rather than mysterious. */}
+          {mode === 'move' && !s.verified && (
+            <p className="rounded-md border border-line bg-canvas/60 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              Người này <b className="text-ink/75">chưa xác minh email</b>. Gán vào công ty vẫn được — nhưng <b className="text-ink/75">login chỉ mở khi họ bấm link xác minh</b>. Mail “you’re in” gửi sau khi cả hai điều kiện đủ.
+            </p>
+          )}
 
           {mode === 'move' && (
             <>
@@ -74,7 +113,16 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'ar
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Cancel</button>
-          {mode === 'move' && <button onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · owner ${owner} · sign-in email sent`)} className="rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">Move + send sign-in</button>}
+          {mode === 'move' && (
+            <button
+              disabled={!inCompanyList(s)}
+              title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Company list — tạo/đưa lên trước'}
+              onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · owner ${owner}${s.verified ? ' · sign-in email sent' : ' · chờ xác minh email'}`)}
+              className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', inCompanyList(s) ? 'bg-emerald-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
+            >
+              Move{s.verified ? ' + send sign-in' : ''}
+            </button>
+          )}
           {mode === 'archive' && <button onClick={() => onConfirm('Archived', `Archived${reason.trim() ? ` · ${reason.trim()}` : ''}`)} disabled={!reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Archive sign-up</button>}
         </div>
       </div>
@@ -158,42 +206,25 @@ export function AdminSignups() {
             {s.outcome && <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.outcome}</p>}
           </div>,
           <span className="text-[11.5px] text-muted">{s.when}</span>,
+          /* ONE affordance on every row: the ⋯ menu, always the same two options.
+             Where the company is (and whether the email is verified) changes what
+             happens INSIDE the modal, not whether the row can be clicked — a table
+             whose rows offer four different controls makes the operator read each
+             row before they can act on any of them. */
           s.status !== 'New'
             ? <span className="text-[11px] text-faint">—</span>
-            : !s.verified
-              ? <span className="whitespace-nowrap text-[10.5px] text-amber-700">Awaiting email verification</span>
-              /* A user can only be moved into a company that ALREADY EXISTS in the
-                 Company list. So a row whose company is not there yet is blocked
-                 here and pointed at the one screen that fixes it — the company is
-                 created/promoted there, with its owner, and only then does this row
-                 become actionable. Two doors into one funnel, never a shortcut that
-                 creates a company from a sign-up form. */
-              : !inCompanyList(s) && s.freeDataMatch
-                ? <div className="flex flex-col items-end gap-0.5">
-                    <button onClick={() => goTo('admin-company-directory', s.freeDataMatch!)} className="whitespace-nowrap rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[10.5px] font-semibold text-amber-800 hover:border-amber-500">
-                      Đưa công ty lên Company list →
-                    </button>
-                    <span className="text-[10px] text-faint">đang ở Free data</span>
-                  </div>
-                : !inCompanyList(s)
-                  ? <div className="flex flex-col items-end gap-0.5">
-                      <button onClick={() => goTo('admin-company-list')} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[10.5px] font-semibold text-muted hover:border-brand hover:text-brand">
-                        Tạo công ty trước →
-                      </button>
-                      <span className="text-[10px] text-faint">chưa có ở đâu cả</span>
-                    </div>
-                  : <div className="flex justify-end">
-                      <SignupRowMenu
-                        onMove={() => setModal({ mode: 'move', s })}
-                        onArchive={() => setModal({ mode: 'archive', s })}
-                      />
-                    </div>,
+            : <div className="flex justify-end">
+                <SignupRowMenu
+                  onMove={() => setModal({ mode: 'move', s })}
+                  onArchive={() => setModal({ mode: 'archive', s })}
+                />
+              </div>,
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        <b>Two gates:</b> a row is actionable only once <b>Email verified</b> (gate 1, automatic) — until then it shows “awaiting email verification.” Then HQ (gate 2) picks the <b>same three choices</b> for any verified row — <b>Move to existing</b>, <b>Create + move</b>, or <b>Archive</b>. Move / Create unlock login and email the user “you’re in — sign in” (password already set). <b>A user is only ever moved into a company that already exists in the Company list</b> — this screen never creates one. A row whose company is still in <b>Free data</b> shows “Đưa công ty lên Company list →” (promote it there, with its MST and sales owner); a company that exists nowhere shows “Tạo công ty trước →”. Both doors lead through the company record, so every company enters the CRM the same way and passes the same MST dedup.
+        Every row offers the <b>same two choices</b> — <b>Move to existing company</b> or <b>Archive</b> — this screen never creates a company. <b>Email verification gates LOGIN, not placement</b>: HQ can move a row before the person verifies, they simply cannot sign in until they click the link. A company that is still in <b>Free data</b>, or exists nowhere yet, surfaces inside the Move dialog itself with a link to the screen that fixes it (“Đưa công ty lên Company list →” / “Tạo công ty trước →”), and the Move button stays locked until the company is real. Move / Create unlock login and email the user “you’re in — sign in” once verification has happened (password already set).
       </p>
-      {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} />}
+      {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} onGoPool={(co) => goTo('admin-company-directory', co)} onGoCreate={() => goTo('admin-company-list')} />}
     </div>
   )
 }
