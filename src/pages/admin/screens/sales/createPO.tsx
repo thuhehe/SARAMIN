@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AC_STATUS, BUYER_TYPE, coLabel, coValue, poGate } from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, buyersFor, coLabel, coValue, poGate, typeOfBuyer } from '@/pages/admin/data/companies'
 import type { BuyerType } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
 import { PAY_METHODS, QUOTE_CATALOG, VAT_RATE } from '@/pages/admin/data/sales'
@@ -24,6 +24,11 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
      rewrites the record; it is a per-document override. */
   const [buyer, setBuyer] = useState<BuyerType>(c.buyerType ?? 'dn-vn')
   const recordBuyer = c.buyerType ?? 'dn-vn'
+  /* The SAME gate as the company form: Loại công ty decides which classifications
+     can produce a legal invoice. Offering all four here would let a foreign company
+     be invoiced as "Doanh nghiệp Việt Nam" against a Vietnamese MST it does not
+     have — the exact combination the create form refuses. */
+  const allowed = buyersFor(c.companyType ?? typeOfBuyer(c.buyerType))
   const [setDefault, setSetDefault] = useState(false)
   /* Lines drive the total, never the reverse — quantity × the real catalog price.
      Back-solving a unit price from the deal value produces prices like 5,979,938,
@@ -77,7 +82,7 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
               <div>
                 <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Xuất cho / Phân loại người mua</label>
                 <select value={buyer} onChange={(e) => setBuyer(e.target.value as BuyerType)} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px]">
-                  {(Object.keys(BUYER_TYPE) as BuyerType[]).map((k) => (
+                  {allowed.map((k) => (
                     <option key={k} value={k}>{BUYER_TYPE[k].vi}{k === recordBuyer ? ' — theo hồ sơ' : ''}</option>
                   ))}
                 </select>
