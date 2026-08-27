@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
-import { INVOICES, QUOTE_CATALOG, VAT_RATE, invPay, invStage, payStatus } from '@/pages/admin/data/sales'
+import { INVOICES, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
 import { dateBefore, vnWords } from '@/pages/admin/lib/fmt'
 import { PayCell } from '@/pages/admin/screens/sales/_shared'
@@ -168,11 +169,22 @@ export function AdminInvoices() {
     <div>
     <ListPage
       tabs={[{ label: 'All', count: 210, active: true }, { label: 'Draft', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Archived', count: 4 }, { label: 'Activation expiring', count: 6 }]}
-      cols={[{ label: 'Invoice no.', w: '1.2fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.9fr' },
-        { label: 'Thanh toán', w: '1.1fr' },
+      cols={[{ label: 'Invoice no.', w: '1.2fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' },
+        // Named for what it is, and paired with the money's status — the same two
+        // lifecycles, and the same fix, as the PO list.
+        { label: 'Invoice status', w: '1.9fr' },
+        { label: 'Payment status', w: '1.1fr' },
+        // The three payment columns are READ FROM THE PO, not stored here. An
+        // invoice is the fiscal half of a PO, so the terms it was sold on are the
+        // PO's terms; copying them would let a correction on one document leave
+        // the other showing yesterday's answer.
+        { label: 'Điều khoản TT', w: '1.2fr' },
+        { label: 'Phương thức TT', w: '1.1fr' },
+        { label: 'Ngày thu tiền', w: '1fr' },
         { label: 'Issued', w: '0.9fr' }, { label: 'Activate by', w: '0.9fr' }]}
       rows={rows.map((i) => {
         const st = invStage(i)
+        const pay = invPayInfo(i)
         return [
           <button onClick={() => setOpen(i)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{i.code}</button>,
           <span className="truncate">{i.customer}</span>,
@@ -180,11 +192,16 @@ export function AdminInvoices() {
           <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
           <Pill tone={st.tone}>{st.en}</Pill>,
           <PayCell {...invPay(i)} />,
+          /* An em-dash, not a blank — a PO issued before these fields existed
+             recorded no term, which is not the same as having none. */
+          <span className={cn('truncate', pay.payTerms ? 'text-ink/80' : 'text-faint')}>{pay.payTerms ?? '—'}</span>,
+          <span className={cn('truncate', pay.payMethod ? 'text-ink/80' : 'text-faint')}>{pay.payMethod ?? '—'}</span>,
+          <span className={cn('tabular-nums', pay.paidAt ? 'text-ink/80' : 'text-faint')}>{pay.paidAt?.replace(/\./g, '/') ?? '—'}</span>,
           <span className="tabular-nums text-muted">{i.issued}</span>,
           <span className="tabular-nums text-muted">{i.activateBy}</span>,
         ]
       })}
-      minW={1280}
+      minW={1720}
       total={rows.length}
     />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">

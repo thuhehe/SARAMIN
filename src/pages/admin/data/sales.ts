@@ -484,6 +484,16 @@ export const invPay = (i: Inv): { paidAt?: string; poIssued: string } => {
   return { paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined), poIssued: po?.issued ?? i.issued }
 }
 
+/* The three payment fields, READ THROUGH TO THE PO — never copied onto the
+   invoice. An invoice is the fiscal half of a PO, not a second record: the money
+   was agreed once, on one document, and a rep who corrects the method on the PO
+   must not then find the invoice list still showing the old one. Same reason
+   `invPay` reaches through for the paid date rather than storing it twice. */
+export const invPayInfo = (i: Inv): { payTerms?: PayTerms; payMethod?: PayMethod; paidAt?: string } => {
+  const po = poOf(i.po)
+  return { payTerms: po?.payTerms, payMethod: po?.payMethod, paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined) }
+}
+
 export function payStatus(paidAt: string | undefined, poIssued: string): PayStatus {
   if (paidAt) return 'Paid'
   return daysFromDoc(poIssued) > PAY_TERMS_DAYS ? 'Overdue' : 'Unpaid'

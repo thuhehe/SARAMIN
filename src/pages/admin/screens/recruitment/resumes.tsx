@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { RejectDialog } from '@/pages/admin/ui/rejectDialog'
 import { Toast, type ToastMsg } from '@/pages/admin/ui/toast'
 import { CV_COLS } from '@/pages/admin/data/recruitment'
+import { SearchCell } from '@/pages/admin/ui/pickCells'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 import { AdminResumeNew } from '@/pages/admin/screens/recruitment/resumeNew/index'
 import { ListPage } from '@/pages/admin/ui/list'
@@ -137,31 +138,25 @@ export function AdminResumes() {
      cell was one fact written twice. */
   type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
   const ST_TONE: Record<CvSt, StatusTone> = { Qualified: 'active', 'Not enough information': 'pending', "Can't read": 'draft', Rejected: 'rejected' }
-  const SEARCH_OF: Record<CvSt, [string, StatusTone]> = {
-    Qualified: ['Showing', 'active'],
-    'Not enough information': ['Hidden', 'pending'],
-    "Can't read": ['Hidden', 'pending'],
-    Rejected: ['Hidden', 'rejected'],
-  }
   /* The verbs a status allows: doubt offers both, finals offer only the reversal. */
   const verbs = (st: CvSt): ('Approve' | 'Reject')[] => (st === 'Qualified' ? ['Reject'] : st === 'Rejected' ? ['Approve'] : ['Approve', 'Reject'])
-  type PoolRow = { name: string; basic: string; contact: [string, string]; pref: string; cv: string; kind: 'Saramin' | 'Upload'; st: CvSt; why?: string; content: string; unlocks: number; updated: string }
+  type PoolRow = { name: string; basic: string; contact: [string, string]; pref: string; cv: string; kind: 'Saramin' | 'Upload'; st: CvSt; why?: string; content: string; unlocks: number; updated: string; searchPick?: boolean }
   const raw: PoolRow[] = [
-    { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['an.nguyen@gmail.com', '0903 112 445'], pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', cv: 'Frontend Engineer CV', kind: 'Saramin', st: 'Qualified', content: '3 experience · 8 skills', unlocks: 7, updated: '2 days ago' },
-    { name: 'Trần Thị Bích', basic: 'Female · 03/09/1994 · Vietnamese · Married · Bachelor · 6 yrs exp', contact: ['bich.tran@gmail.com', '0912 887 330'], pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40M · Hybrid', cv: 'bich-portfolio.pdf', kind: 'Upload', st: 'Qualified', content: '2 experience · 11 skills', unlocks: 12, updated: '1 week ago' },
-    { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', contact: ['cuong.le@gmail.com', '0938 220 114'], pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', cv: 'Product Manager CV', kind: 'Saramin', st: 'Qualified', content: '4 experience · 9 skills', unlocks: 4, updated: '3 weeks ago' },
+    { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['an.nguyen@gmail.com', '0903 112 445'], pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', cv: 'Frontend Engineer CV', kind: 'Saramin', st: 'Qualified', content: '3 experience · 8 skills', unlocks: 7, searchPick: true, updated: '2 days ago' },
+    { name: 'Trần Thị Bích', basic: 'Female · 03/09/1994 · Vietnamese · Married · Bachelor · 6 yrs exp', contact: ['bich.tran@gmail.com', '0912 887 330'], pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40M · Hybrid', cv: 'bich-portfolio.pdf', kind: 'Upload', st: 'Qualified', content: '2 experience · 11 skills', unlocks: 12, searchPick: true, updated: '1 week ago' },
+    { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', contact: ['cuong.le@gmail.com', '0938 220 114'], pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', cv: 'Product Manager CV', kind: 'Saramin', st: 'Qualified', content: '4 experience · 9 skills', unlocks: 4, searchPick: true, updated: '3 weeks ago' },
     { name: 'Phạm Thu Dung', basic: 'Female · 07/02/1997 · Vietnamese · Single · Bachelor · 3 yrs exp', contact: ['dung.pham@gmail.com', '0905 664 218'], pref: 'General Accountant · Accounting · Đà Nẵng · 12–18M · In office', cv: 'thu-dung-cv.pdf', kind: 'Upload', st: 'Qualified', content: '1 experience · 3 skills', unlocks: 0, updated: '1 month ago' },
     /* Scanned Qualified, then rejected by an admin — the case the scan cannot see. */
-    { name: 'Vũ Minh Đức', basic: 'Male · 30/06/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', contact: ['duc.vu@gmail.com', '0977 145 903'], pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45M · Remote', cv: 'Backend Engineer CV', kind: 'Saramin', st: 'Rejected', why: 'Fake profile — same photo as 3 other accounts', content: '3 experience · 12 skills', unlocks: 9, updated: '2 months ago' },
+    { name: 'Vũ Minh Đức', basic: 'Male · 30/06/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', contact: ['duc.vu@gmail.com', '0977 145 903'], pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45M · Remote', cv: 'Backend Engineer CV', kind: 'Saramin', st: 'Rejected', why: 'Fake profile — same photo as 3 other accounts', content: '3 experience · 12 skills', unlocks: 9, searchPick: true, updated: '2 months ago' },
     { name: 'Lâm Thị Kiều', basic: 'Female · 18/05/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['kieu.lam@gmail.com', '0899 330 771'], pref: 'UI Designer · Design · Hồ Chí Minh · 15–20M · In office', cv: 'CV_2026_final.docx', kind: 'Upload', st: 'Not enough information', content: '2 experience · 1 skill', unlocks: 0, updated: '5 hours ago' },
     { name: 'Trương Văn Bình', basic: 'Male · 09/09/1998 · Vietnamese · Single · College · 3 yrs exp', contact: ['binh.truong@gmail.com', '0908 551 220'], pref: 'Sales Executive · Sales · Hà Nội · 12–18M · In office', cv: 'scan_0816.pdf', kind: 'Upload', st: "Can't read", content: 'No readable content', unlocks: 0, updated: '10 min ago' },
     /* Can't-read scan approved by an admin — Showing, but thin: nothing extracted. */
-    { name: 'Mai Tuấn Kiệt', basic: 'Male · 12/09/1991 · Vietnamese · Married · Master · 9 yrs exp', contact: ['kiet.mai@gmail.com', '0908 330 776'], pref: 'Solution Architect · IT · Hồ Chí Minh · 60–80M · Remote', cv: 'cv_scan_2026.pdf', kind: 'Upload', st: 'Qualified', why: 'Approved by admin — real CV, just a scan. Thin: no extracted skills', content: 'No readable content', unlocks: 2, updated: '1 day ago' },
+    { name: 'Mai Tuấn Kiệt', basic: 'Male · 12/09/1991 · Vietnamese · Married · Master · 9 yrs exp', contact: ['kiet.mai@gmail.com', '0908 330 776'], pref: 'Solution Architect · IT · Hồ Chí Minh · 60–80M · Remote', cv: 'cv_scan_2026.pdf', kind: 'Upload', st: 'Qualified', why: 'Approved by admin — real CV, just a scan. Thin: no extracted skills', content: 'No readable content', unlocks: 2, searchPick: true, updated: '1 day ago' },
     { name: 'Đỗ Thanh Hà', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['ha.do@gmail.com', '0967 004 512'], pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', cv: 'portfolio-2026.pdf', kind: 'Upload', st: 'Not enough information', content: '0 experience · 0 skills', unlocks: 0, updated: '6 days ago' },
     { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', contact: ['khanh.ngo@gmail.com', '0333 908 117'], pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', cv: 'menu_final.pdf', kind: 'Upload', st: 'Rejected', why: 'Not a CV — the file is a price list', content: '0 experience · 0 skills', unlocks: 0, updated: '2 months ago' },
     /* Doubt approved by an admin — the parser missed a two-column layout. */
-    { name: 'Lý Khánh Vy', basic: 'Female · 17/03/2000 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['vy.ly@gmail.com', '0903 887 441'], pref: 'Graphic Designer · Design · Hồ Chí Minh · 15–22M · Hybrid', cv: 'CV-KhanhVy-design.pdf', kind: 'Upload', st: 'Qualified', why: 'Approved by admin — real CV, two-column layout the parser missed', content: '0 experience · 2 skills', unlocks: 1, updated: '13 hours ago' },
-    { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', contact: ['lan.ngo@gmail.com', '0918 332 447'], pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', cv: 'lan-cv.docx', kind: 'Upload', st: 'Qualified', content: '4 experience · 10 skills', unlocks: 15, updated: '1 day ago' },
+    { name: 'Lý Khánh Vy', basic: 'Female · 17/03/2000 · Vietnamese · Single · Bachelor · 2 yrs exp', contact: ['vy.ly@gmail.com', '0903 887 441'], pref: 'Graphic Designer · Design · Hồ Chí Minh · 15–22M · Hybrid', cv: 'CV-KhanhVy-design.pdf', kind: 'Upload', st: 'Qualified', why: 'Approved by admin — real CV, two-column layout the parser missed', content: '0 experience · 2 skills', unlocks: 1, searchPick: true, updated: '13 hours ago' },
+    { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', contact: ['lan.ngo@gmail.com', '0918 332 447'], pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', cv: 'lan-cv.docx', kind: 'Upload', st: 'Qualified', content: '4 experience · 10 skills', unlocks: 15, searchPick: true, updated: '1 day ago' },
   ]
   /* The row's EFFECTIVE status — the local override first. A wireframe stand-in
      for the write, so an approve visibly moves the row instead of leaving it
@@ -193,8 +188,10 @@ export function AdminResumes() {
       <Pill tone={ST_TONE[stOf(r)]}>{stOf(r)}</Pill>
       {r.why && <p className="mt-0.5 truncate text-[10.5px] text-muted" title={r.why}>{r.why}</p>}
     </div>,
-    /* CV-search visibility — DERIVED from the status, never stored. */
-    <Pill tone={SEARCH_OF[stOf(r)][1]}>{SEARCH_OF[stOf(r)][0]}</Pill>,
+    /* CHOICE then CONSEQUENCE. The old cell derived visibility from CV STATUS
+       ALONE, which made a Qualified CV the candidate never flagged read as
+       "Showing" — wrong, and the reason this column read as meaningless. */
+    <SearchCell picked={!!r.searchPick} verdict={stOf(r) === 'Qualified' ? 'qualified' : stOf(r) === 'Rejected' ? 'rejected' : 'doubt'} />,
     <span className={cn('truncate', stOf(r) !== 'Qualified' || /^1 experience · [123] /.test(r.content) || r.content === 'No readable content' ? 'text-amber-700' : 'text-muted')}>{r.content}</span>,
     stOf(r) === 'Qualified'
       ? <span className={cn(r.unlocks === 0 ? 'text-faint' : 'font-medium text-ink/80')}>{r.unlocks}</span>

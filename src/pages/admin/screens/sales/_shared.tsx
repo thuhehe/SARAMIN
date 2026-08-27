@@ -51,7 +51,9 @@ export function PayCell({ paidAt, poIssued }: { paidAt?: string; poIssued: strin
   return (
     <span className="flex min-w-0 items-center gap-1.5" title={PAY_META[st].vi}>
       <Pill tone={PAY_META[st].tone}>{st}</Pill>
-      {st === 'Paid' && paidAt && <span className="shrink-0 text-[10px] text-faint tabular-nums">{paidAt.replace(/\./g, '/')}</span>}
+      {/* The collection DATE moved to its own column (2026-08-23). What stays here
+          is the lateness, which is not a date the rep records but a number derived
+          from one they have not — it belongs beside the status it explains. */}
       {st === 'Overdue' && <span className="shrink-0 text-[10px] font-medium text-rose-600 tabular-nums">+{late}d</span>}
     </span>
   )

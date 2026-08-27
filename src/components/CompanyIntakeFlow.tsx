@@ -76,22 +76,20 @@ export function CompanyIntakeFlow() {
         </text>
 
         {/* ── ROW 1: the three doors ──────────────────────────────────────────── */}
-        <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN</text>
+        <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN (sales không có cửa tạo — xem “Luật bất biến” dưới cùng)</text>
 
         <Box x={38} y={118} w={380} h={64} title="① Admin tạo ở màn Free data" sub="1 field bắt buộc: TÊN CÔNG TY" sub2="→ nằm ở Free data, chưa có chủ" tone="pool" />
-        <Box x={448} y={118} w={400} h={64} title="② Admin tạo ở màn Company list" sub="5 field bắt buộc — tên legal · MST · địa chỉ đăng ký MST" sub2="người liên hệ · sales owner" tone="crm" />
+        <Box x={448} y={118} w={652} h={64} title="② Admin tạo ở màn Company list" sub="5 field bắt buộc: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner" sub2="→ thẳng vào Company list, có chủ ngay" tone="crm" />
 
-        {/* sales have no create door at all — said here, where they would look */}
-        <Box x={880} y={118} w={220} h={64} title="✕ Sales KHÔNG tạo công ty" sub="đường duy nhất: xin nhận" sub2="từ Free data (2 cấp duyệt)" tone="stop" />
 
         {/* the dedup gate both doors pass */}
         <Arrow d="M 228 182 L 228 226" tone="brand" />
-        <Arrow d="M 648 182 L 648 226" tone="brand" />
+        <Arrow d="M 774 182 L 774 226" tone="brand" />
         <Box x={38} y={228} w={810} h={56} title="Kiểm tra trùng — quét CẢ HAI trạng thái (Free data + Company list)" sub="MST trùng → CHẶN, nêu công ty đang giữ + sales phụ trách · tên/domain trùng ở Free data → mở dòng đó, đừng tạo mới" tone="gate" />
 
         {/* ── ROW 2: the two states ───────────────────────────────────────────── */}
         <Arrow d="M 190 284 L 190 336" tone="brand" />
-        <Arrow d="M 640 284 C 640 310, 900 300, 900 336" tone="brand" />
+        <Arrow d="M 700 284 C 700 310, 900 300, 900 336" tone="brand" />
 
         <Box x={38} y={338} w={300} h={92} title="FREE DATA" sub="tên công ty · chưa ai sở hữu" sub2="không đếm vào số nào của CRM" tone="pool" />
         <Box x={750} y={338} w={300} h={92} title="COMPANY LIST" sub="MST · địa chỉ ĐKT · người liên hệ · owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />

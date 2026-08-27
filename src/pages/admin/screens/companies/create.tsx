@@ -52,8 +52,12 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
   /* Which invoice shape this buyer takes — it decides whether MST is required and
      whether the CCCD / buyer-name pair is asked for at all. */
   const [buyer, setBuyer] = useState<BuyerType>('dn-vn')
+  /* On by default: the classification a rep picks while CREATING the record is
+     the record's default in all but the rarest case. Unticking it is the
+     deliberate act, not ticking it. */
+  const [payDefault, setPayDefault] = useState(true)
   /** An individual buyer has no Tên đơn vị and no MST — the person replaces both. */
-  const isIndiv = buyer === 'ca-nhan-cccd' || buyer === 'ca-nhan'
+  const isIndiv = buyer === 'ca-nhan-cccd'
   const [tax, setTax] = useState('')
   const [looking, setLooking] = useState(false)
   const [coType, setCoType] = useState<CompanyType>('trong-nuoc')
@@ -111,9 +115,11 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
           only has a company name is on the wrong screen and should know it now, not
           after filling four sections. */}
       <div className="mb-5 rounded-lg border border-line bg-canvas/50 px-3.5 py-2.5">
-        <p className="text-[11.5px] font-semibold text-ink">Tạo khách hàng — bắt buộc {isForeign ? 4 : 5} thông tin</p>
+        {/* FIVE either way since 2026-08-23 — the foreign tax code became required,
+            so the count and the sentence stopped needing a branch. */}
+        <p className="text-[11.5px] font-semibold text-ink">Tạo khách hàng — bắt buộc 5 thông tin</p>
         <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-          <b className="text-ink/75">Tên legal</b>{!isForeign && <> · <b className="text-ink/75">Mã số thuế</b></>} · <b className="text-ink/75">Địa chỉ đăng ký{isForeign ? '' : ' MST'}</b> · <b className="text-ink/75">Người liên hệ</b> · <b className="text-ink/75">Sales owner</b> — hồ sơ lưu xong là có chủ và được đếm vào mọi con số của CRM.{isForeign && <> Công ty nước ngoài: MST chỉ là mã tham chiếu, <b className="text-ink/75">không bắt buộc</b>.</>}
+          <b className="text-ink/75">Tên legal</b> · <b className="text-ink/75">Mã số thuế{isForeign ? ' nước ngoài' : ''}</b> · <b className="text-ink/75">Địa chỉ đăng ký{isForeign ? '' : ' MST'}</b> · <b className="text-ink/75">Người liên hệ</b> · <b className="text-ink/75">Sales owner</b> — hồ sơ lưu xong là có chủ và được đếm vào mọi con số của CRM.
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted">
           Chỉ có mỗi tên công ty? Dùng <button onClick={() => goTo('admin-company-directory')} className="font-semibold text-brand hover:underline">Free data → Thêm công ty</button> — ở đó chỉ cần tên, và sales sẽ xin nhận sau.
@@ -162,9 +168,9 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
             ? <DerivedField label="Tên đơn vị / Legal name" value="Công ty TNHH Xây dựng Minh Khang" from="Verify MST" hint="Lấy từ cơ quan thuế — sửa được nếu giấy phép ghi khác." />
             : <LField label="Tên đơn vị / Legal name" req value="Công ty TNHH …" hint={isForeign ? 'Đúng như trên giấy đăng ký kinh doanh ở nước sở tại.' : 'Đúng như trên giấy phép kinh doanh — hoặc bấm Verify ở ô MST để tự điền.'} />}
           <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{isForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : <>Mã số thuế (MST) <span className="text-rose-500">*</span></>}</label>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{isForeign ? <>Mã số thuế nước ngoài <span className="text-rose-500">*</span></> : <>Mã số thuế (MST) <span className="text-rose-500">*</span></>}</label>
             <div className="flex gap-1.5">
-              <input value={tax} onChange={(e) => { setTax(e.target.value); setLooked(false); setVerify(null) }} placeholder={isForeign ? 'Tax ID nước sở tại (nếu có)' : '0328xxxxxx-001'} className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
+              <input value={tax} onChange={(e) => { setTax(e.target.value); setLooked(false); setVerify(null) }} placeholder={isForeign ? 'Tax ID nước sở tại' : '0328xxxxxx-001'} className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
               {/* Verify is INFORMATION, not a gate: it answers "does this number
                   exist on the tax registry?" and nothing else. The one rule that
                   blocks creation on this field is UNIQUENESS across Company list +
@@ -193,7 +199,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
                 <span className="text-[10.5px] text-faint">Chỉ là thông tin — vẫn tạo được công ty, miễn MST không trùng.</span>
               </p>
             )}
-            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{isForeign ? 'Mã số thuế ở nước sở tại, chỉ để tham chiếu — không kiểm tra được trên hệ thống thuế VN nên không có nút Verify, và không bắt buộc.' : '10 số, hoặc 10 số + “-001” nếu là chi nhánh. Verify chỉ để biết — điều kiện duy nhất chặn tạo là MST trùng hồ sơ đã có.'}</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{isForeign ? 'Mã số thuế ở nước sở tại — BẮT BUỘC (2026-08-23). Không kiểm tra được trên hệ thống thuế VN nên không có nút Verify; điều đó làm nó khó xác minh, không làm nó tùy chọn — một hồ sơ DN nước ngoài không có mã số thuế nào cả thì không đối chiếu được với hợp đồng hay chứng từ chuyển tiền về sau.' : '10 số, hoặc 10 số + “-001” nếu là chi nhánh. Verify chỉ để biết — điều kiện duy nhất chặn tạo là MST trùng hồ sơ đã có.'}</p>
             {/* The dedup spans BOTH stores. Free data and Company list are one
                 company table at two completeness levels, so a check that only
                 looked at customers would let a rep create the very duplicate the
@@ -285,9 +291,10 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
                   </div>
                 ))}
               </div>
-              <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-                Kế thừa từ <b className="text-ink/70">Thông tin công ty</b>, <b className="text-ink/70">không nhập tay</b> — sửa ở trên thì đây đổi theo, không có bản chép thứ hai.{isForeign && ' DN nước ngoài không in MST Việt Nam.'} Hóa đơn xuất cho bên khác (cá nhân mua…) thì đổi phân loại, hoặc đổi ngay lúc phát hành PO.
-              </p>
+              {/* REMOVED 2026-08-23: the paragraph explaining that these lines are
+                  inherited. Every row already carries a "tự điền" badge, and none
+                  of them is an input — the block says it is derived by being
+                  derived. */}
             </div>
           )}
 
@@ -295,20 +302,9 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
               it is the legal name; for an individual the person REPLACES it — an
               individual has no Tên đơn vị, and leaving an empty company-name field
               on the form invites someone to type the person's name into it. */}
-          {!buyerIsCompany && (isIndiv ? (
-            buyer === 'ca-nhan'
-              ? (
-                <div>
-                  <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Họ tên người mua hàng</label>
-                  <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2 text-[12.5px] text-muted">
-                    <span className="font-medium text-ink/70">{RETAIL_BUYER}</span>
-                    <span className="ml-auto shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px]">hệ thống tự điền</span>
-                  </div>
-                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Cá nhân không có CCCD — hóa đơn in đúng câu này. Không nhập tay, không sửa.</p>
-                </div>
-              )
-              : <LField label="Họ tên người mua hàng" req value="Nguyễn Văn A" hint="In vào dòng “Họ tên người mua hàng” trên hóa đơn. Cá nhân không có Tên đơn vị." />
-          ) : null)}
+          {!buyerIsCompany && isIndiv && (
+            <LField label="Họ tên người mua hàng" req value="Nguyễn Văn A" hint="In vào dòng “Họ tên người mua hàng” trên hóa đơn. Cá nhân không có Tên đơn vị." />
+          )}
 
 
           {/* CCCD is the individual's identifier and is never stored in the MST
@@ -346,9 +342,16 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
               sane answer. The checkbox lives on the Issue-PO dialog, the one moment
               a rep consciously deviates from the record and can decide whether the
               deviation should stick. */}
-          <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-            Phân loại chọn ở đây là <b className="text-ink/75">mặc định</b> của công ty — mọi báo giá và PO bắt đầu từ nó. Đổi lúc phát hành PO không sửa hồ sơ, trừ khi tick <b className="text-ink/75">“Đặt làm mặc định”</b> ngay trên dialog Issue PO.
-          </p>
+          {/* The note that used to sit here only DESCRIBED the default. A checkbox
+              SETS it, on the form that owns the record — which is also where the
+              PO dialog's own "Đặt làm mặc định" went (removed there 2026-08-23).
+              One place to set it, one place to read it. */}
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-line bg-canvas/50 px-2.5 py-2">
+            <input type="checkbox" checked={payDefault} onChange={(e) => setPayDefault(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+            <span className="text-[11px] leading-relaxed text-muted">
+              <b className="text-ink/75">Set làm mặc định xuất hóa đơn</b> — mọi báo giá và PO của công ty này bắt đầu từ phân loại trên. Đổi lúc phát hành PO chỉ áp dụng cho PO đó, không sửa hồ sơ.
+            </span>
+          </label>
 
           {lockedParent && (
             <div>

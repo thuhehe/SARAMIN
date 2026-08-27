@@ -190,10 +190,10 @@ export function AdminApplicants() {
     { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Not sent', hold: 'CV in doubt · chờ duyệt · đã đợi 18h', stage: 'New', when: '3d ago' },
     /* Applied with a CV an admin had already Rejected — never delivered. */
     { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', contact: ['khanh.ngo@gmail.com', '0964 876 684'], role: '—', years: '1 yr', loc: 'Cần Thơ', edu: 'College · Business', job: 'Sales Staff', company: 'Thế Giới Di Động', cv: ['menu_final.pdf', 'upload'], cvStatus: 'Rejected', status: 'Not sent', hold: 'CV Rejected — never delivered', stage: 'New', when: '1d ago' },
-    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Qualified', status: 'Recall', stage: 'Reviewing', when: '4d ago' },
+    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Rejected', status: 'Recall', stage: 'Reviewing', when: '4d ago' },
     { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', contact: ['lan.ngo@gmail.com', '0978 902 718'], role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '4d ago' },
     { name: 'Hoàng Văn Nam', basic: 'Male · 02/03/1993 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'DevOps Engineer · IT · Hồ Chí Minh · 35–50M · Remote', contact: ['nam.hoang@gmail.com', '0985 915 735'], role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '5d ago' },
-    { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Qualified', status: 'Blocked', stage: 'New', when: '5d ago' },
+    { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Rejected', status: 'Recall', stage: 'New', when: '5d ago' },
     { name: 'Đỗ Anh Tú', basic: 'Male · 05/05/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', pref: 'iOS Developer · IT · Hồ Chí Minh · 35–45M · In office', contact: ['tu.do@gmail.com', '0999 941 769'], role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['iOS Developer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Shortlisted', when: '6d ago' },
     { name: 'Lý Thu Trang', basic: 'Female · 22/06/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'QA Engineer · IT · Đà Nẵng · 20–28M · In office', contact: ['trang.ly@gmail.com', '0906 954 786'], role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '6d ago' },
     { name: 'Phan Văn Kiên', basic: 'Male · 15/01/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hồ Chí Minh · 12–18M · In office', contact: ['kien.phan@gmail.com', '0913 967 803'], role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Sales Executive CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1w ago' },
@@ -226,16 +226,12 @@ export function AdminApplicants() {
     <ExtLink>{a.job}</ExtLink>,
     <ExtLink>{a.company}</ExtLink>,
     <Pill tone={CV_STATUS_TONE[a.cvStatus]}>{a.cvStatus}</Pill>,
-    /* A held row carries WHY and the time left — the row explains itself, but the
-       ACTION is on the CV, so it links there instead of offering a verdict. */
-    a.hold
-      ? <div className="min-w-0">
-          <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>
-          <p className={cn('mt-0.5 text-[10.5px] leading-snug', isHeld(a.hold) ? 'text-amber-700' : 'text-rose-600')}>{a.hold}</p>
-        </div>
-      : <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
-    /* Recalled (status Recall) and Blocked CVs are off the employer's dashboard, so their funnel
-       stops moving — an em-dash says that better than a frozen badge would. */
+    /* The pill alone. It used to carry a sub-line repeating WHY (“CV in doubt · chờ
+       duyệt…”) — removed: the CV status column two cells left already says exactly
+       that, and one fact printed twice on one row is how the two copies drift. */
+    <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
+    /* Recalled CVs are off the employer's dashboard, so their funnel stops moving —
+       an em-dash says that better than a frozen badge would. */
     a.status === 'Sent'
       ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill>
       : <span className="text-faint" title={isHeld(a.hold) ? 'Not delivered yet — the employer funnel has not started' : 'Off the employer dashboard — the funnel no longer applies'}>—</span>,
@@ -288,7 +284,7 @@ export function AdminApplicants() {
         <b className="font-semibold text-ink/80">Status</b> is Saramin’s — three values. Derived from the CV:
         Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Not sent</b>, which{' '}
         <b className="font-semibold text-ink/80">waits for an admin — nothing auto-sends</b> · Rejected before delivery → <b className="font-semibold text-ink/80">Not sent</b>, now final ·
-        Rejected AFTER delivery (or user Blocked) → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer.{' '}
+        Rejected AFTER delivery → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer (blocking a user works the same way: it rejects their CVs, which recalls what was delivered).{' '}
         <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here.
         There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
         <b className="font-semibold text-ink/80">CV review</b> and one verdict resolves every application waiting on that CV.

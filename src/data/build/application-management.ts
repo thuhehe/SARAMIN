@@ -29,7 +29,9 @@ import type { BuildModule } from './types'
  *                Sent · Not sent (the CV is in doubt and waits for an admin, or
  *                was Rejected before delivery — the CV status says which) ·
  *                Recall (the CV was Rejected AFTER delivery; pulled back from
- *                the employer). Blocked is user-level and recalls everything.
+ *                the employer). Blocked is NOT an application status: it is an
+ *                account state, and it reaches applications only through CV
+ *                rejection (block → CVs Rejected as violation → Recall/Not sent).
  *   2. stage   — the employer's hiring pipeline, defaulting to New → Reviewing
  *                → Shortlisted → Interview → Hired / Rejected. Owned by the
  *                company, which can RENAME/ADD/REMOVE stages, so these six are
@@ -101,7 +103,7 @@ export const applicationManagement: BuildModule = {
             'Recall · Block user · Edit · Note',
           ],
           ['', 'Recalled', 'Admin pulled it back from the employer.', 'Note only — Recalled is final'],
-          ['', 'Blocked', 'The user was blocked; every application of theirs was recalled.', 'Unblock user · Note'],
+          ['', '(no Blocked status)', 'Blocking a user is an ACCOUNT action, not an application state: it rejects their CVs (reason: violation), which recalls every delivered application and refuses the rest. The rows read Recall / Not sent like any other rejection.', 'Block/Unblock lives on the jobseeker user record'],
           [
             'Layer 3 — Employer funnel',
             'New → Reviewing → Shortlisted → Interview → Hired / Rejected',
@@ -368,7 +370,7 @@ export const applicationManagement: BuildModule = {
             group: 'Filters',
             items: [
               { name: 'search', type: 'string', notes: 'candidate name / email / job title / company' },
-              { name: 'status', type: 'enum', notes: 'Sent · Recalled · Blocked — the Saramin-owned dimension' },
+              { name: 'status', type: 'enum', notes: 'Sent · Not sent · Recall — the Saramin-owned dimension, DERIVED from the CV status. INVARIANT: Recall ⇒ the CV is Rejected; there is no other path to Recall' },
               { name: 'stage', type: 'enum', notes: 'New · Reviewing · Shortlisted · Interview · Hired · Rejected — the employer-owned funnel' },
               { name: 'company', type: 'ref → Company', notes: 'HQ-only filter — the company side never has this' },
               { name: 'location', type: 'enum' },
@@ -384,7 +386,7 @@ export const applicationManagement: BuildModule = {
               { name: 'snapshot', type: 'derived', notes: 'role · years / location · education — enough to recognise the person without opening the CV' },
               { name: 'job / company', type: 'ref → Job / ref → Company', required: true },
               { name: 'profile & CV', type: 'file + ref → Jobseeker', notes: 'column is NOT called "CV": the cell prints the file name + kind, but opening it returns the whole candidate record — basic information, work preference and the parsed CV content — because a CV alone is not enough to judge an application. Opening is a PII action and is audited' },
-              { name: 'status', type: 'badge', required: true, notes: 'Saramin-owned: Sent · Recalled · Blocked. Labelled "Status · Saramin" in the header so the owner is unambiguous' },
+              { name: 'status', type: 'badge', required: true, notes: 'Saramin-owned: Sent · Not sent · Recall. Labelled "Application status" — the pill alone, no sub-line: the CV status column already carries the why' },
               { name: 'stage', type: 'badge', notes: 'employer-owned, read-only. Labelled "Stage · employer". Renders an EM-DASH when status ≠ Sent — a recalled or blocked CV is off the dashboard, so the funnel no longer applies' },
               { name: 'appliedAt', type: 'timestamp' },
             ],
@@ -408,8 +410,8 @@ export const applicationManagement: BuildModule = {
             items: [
               'Sent — written at apply, after two synchronous hard checks: the user is not blocked, and has no live application to this job. The employer sees it immediately.',
               'Not sent — the applied-with CV is in doubt (waiting for review) or was Rejected before delivery. Derived from the CV; the CV status column says which kind of Not sent this is.',
-              'Recall — the CV was delivered, then Rejected (or its user Blocked): HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again.',
-              'Blocked is user-level, not a fourth application status — blocking bulk-recalls every sent application the user has.',
+              'Recall — the CV was delivered, then Rejected: HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again. INVARIANT: a Recall row always shows CV status Rejected — recall has no other cause.',
+              'Blocking a user is account-level and works THROUGH the CV: it rejects their CVs (violation), which recalls delivered applications and refuses undelivered ones. No application ever reads “Blocked”.',
               'THERE IS NO SCREENING COLUMN, because there is no per-application screening fact. What holds an application is the CV’s status, and the row surfaces that as "Not sent — CV chờ duyệt" with a link to the CV, not as a status the admin can edit here. That wording is ADMIN-ONLY: the candidate on the other end of this row sees an ordinary "Đã nộp" and is told nothing about a review.',
             ],
           },

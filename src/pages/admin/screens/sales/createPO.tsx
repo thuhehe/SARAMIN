@@ -29,7 +29,6 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
      be invoiced as "Doanh nghiệp Việt Nam" against a Vietnamese MST it does not
      have — the exact combination the create form refuses. */
   const allowed = buyersFor(c.companyType ?? typeOfBuyer(c.buyerType))
-  const [setDefault, setSetDefault] = useState(false)
   /* Lines drive the total, never the reverse — quantity × the real catalog price.
      Back-solving a unit price from the deal value produces prices like 5,979,938,
      which is not a figure any catalog would ever quote. */
@@ -86,21 +85,13 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
                     <option key={k} value={k}>{BUYER_TYPE[k].vi}{k === recordBuyer ? ' — theo hồ sơ' : ''}</option>
                   ))}
                 </select>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-                  Mặc định theo hồ sơ công ty. Đổi ở đây chỉ áp dụng cho <b className="text-ink/70">PO/hóa đơn này</b> — không sửa hồ sơ. Dùng khi công ty mẹ trả tiền, sếp mua bằng tên cá nhân…
-                </p>
-                {/* An override is one-off by default — but when the rep has just
-                    discovered the customer's REAL billing party, re-entering it on
-                    every future PO is how it eventually gets entered wrong. One
-                    checkbox turns this document's choice into the record's. */}
-                {buyer !== recordBuyer && (
-                  <label className="mt-1.5 flex cursor-pointer items-start gap-2 rounded-md border border-line bg-canvas/50 px-2.5 py-2">
-                    <input type="checkbox" checked={setDefault} onChange={(e) => setSetDefault(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
-                    <span className="text-[11px] leading-relaxed text-muted">
-                      <b className="text-ink/75">Đặt làm mặc định cho công ty này</b> — ghi phân loại này vào hồ sơ, các PO sau tự dùng. Bỏ trống thì chỉ áp dụng một lần cho PO này.
-                    </span>
-                  </label>
-                )}
+                {/* REMOVED 2026-08-23: the "một lần hay mặc định?" note and the
+                    "Đặt làm mặc định cho công ty này" checkbox. Setting a record's
+                    default now belongs on the COMPANY form, where the record is —
+                    a document is a poor place to edit the thing it was copied from,
+                    and asking the question on every PO made a one-off override feel
+                    like a decision about the customer. Overriding here stays
+                    one-off, silently, which is what an override means. */}
               </div>
               {/* The identifier set follows the classification — same shapes as the
                   company form, prefilled from the record when it is the record's own. */}
@@ -127,11 +118,6 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
                   <DerivedField label="Số CCCD" value={c.idCard?.trim() || '— chưa có trên hồ sơ —'} from="hồ sơ" mono hint="In vào dòng “Căn cước công dân” — không dùng ô MST." />
                   <DerivedField label="Địa chỉ xuất hóa đơn" value={c.address} from="hồ sơ" />
                 </>
-              )}
-              {buyer === 'ca-nhan' && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
-                  Hóa đơn chỉ in một dòng <b>“Bán cho người tiêu dùng”</b> — không MST, không CCCD, không địa chỉ. Khách <b>không dùng hạch toán chi phí / quyết toán thuế được</b> (điểm 4, Phụ lục NĐ 254/2026).
-                </p>
               )}
             </div>
             <div className="space-y-3">

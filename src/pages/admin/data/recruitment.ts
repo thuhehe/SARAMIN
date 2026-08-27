@@ -15,8 +15,18 @@ export const CV_COLS: Col[] = [
   { label: 'Work preference', w: '1.5fr' },
   { label: 'Contact', w: '1.3fr' },
   { label: 'CV status', w: '1.3fr' },
-  { label: 'Application status', w: '1.3fr' },
-  { label: 'CV Search status', w: '1.3fr' },
+  /* RENAMED 2026-08-23, and it is not cosmetic. As "Application status" /
+     "CV Search status" both cells collapsed TWO different facts into one value:
+     a CV the candidate never picked read exactly like one our status blocked.
+     "Not sent" on a CV with zero applications is not a status, it is an absence —
+     there is no application for a status to describe.
+
+     On a list of CVs the honest question is the CANDIDATE'S CHOICE first, and
+     only then what our status did to it. Both cells now answer in that order.
+     Note the Applicants screen keeps "Application status" as-is: a row THERE is
+     an application, so it genuinely has one. */
+  { label: 'Dùng để ứng tuyển', w: '1.4fr' },
+  { label: 'Dùng cho CV search', w: '1.4fr' },
   { label: 'CV content', w: '1.2fr' },
   { label: 'Unlocks', w: '0.6fr' },
   { label: 'Updated', w: '0.8fr' },
@@ -44,7 +54,9 @@ export const JOB_ROWS: JobRow[] = [
  * Status model v2 — an application carries TWO status dimensions and the admin
  * list must show both, because they are owned by different people:
  *
- *   status (Layer 2, HQ-owned)   Sent · Not sent · Recall (+ Blocked, user-level)
+ *   status (Layer 2, HQ-owned)   Sent · Not sent · Recall — Blocked is NOT here:
+ *                                 it is an account state on the jobseeker user,
+ *                                 reaching applications only through CV rejection
  *   stage  (Layer 3, company-owned, read-only here)
  *                                New → Reviewing → Shortlisted → Interview → Hired / Rejected
  *
@@ -59,7 +71,7 @@ export const JOB_ROWS: JobRow[] = [
  * application now waits for a human — nothing auto-sends — so an unworked queue
  * a candidate a deadline.
  */
-export type Delivery = 'Sent' | 'Not sent' | 'Recall' | 'Blocked'
+export type Delivery = 'Sent' | 'Not sent' | 'Recall'
 
 /* THREE values, no more. “Pending” used to sit here and was removed: it was the
    CV’s doubt written a second time in a column that already reads from the CV,
@@ -67,14 +79,23 @@ export type Delivery = 'Sent' | 'Not sent' | 'Recall' | 'Blocked'
    simply reads NOT SENT; whether it is still WAITING or finally refused is
    carried in `hold`, not a fourth status. RECALL is the one legitimate addition —
    it records history (this one WAS delivered, then its CV was Rejected) that the
-   CV status alone cannot reproduce. */
+   CV status alone cannot reproduce.
+
+   BLOCKED was removed from this enum (2026-08): blocking a user is an ACCOUNT
+   action, not an application state. Its effect travels through the CV — blocking
+   rejects the person's CVs (reason: violation), which recalls what was delivered
+   and refuses what was not — so the rows it touches read Recall / Not sent like
+   any other rejection, and the account state lives on the jobseeker user record.
+
+   INVARIANT the demo data must keep: status Recall ⇒ CV status Rejected. Recall
+   exists ONLY as the consequence of rejecting a delivered CV; a Recall row showing
+   a Qualified CV would depict a state the model cannot produce. */
 export const isHeld = (hold?: string) => !!hold?.includes('chờ duyệt')
 
 export const DELIVERY_TONE: Record<Delivery, StatusTone> = {
   Sent: 'neutral',
   'Not sent': 'rejected',
   Recall: 'draft',
-  Blocked: 'rejected',
 }
 
 /* The employer funnel, in order. Tones run cool → warm → resolved so the column
@@ -212,5 +233,10 @@ export type CvCheckRow = {
   /* The queue has TWO sources: the automatic check, and CVs REPORTED by an
      employer or flagged by moderation. A reported row is the only way a CV that
      scanned Qualified ever lands here, so it is worth showing on the row. */
+  /* The candidate's own toggle: a jobseeker may flag ONE of their three CVs for
+     CV search. It is THEIR choice and we never write it — so "not picked" is the
+     common, healthy case, not a defect. Kept distinct from the derived visibility
+     because collapsing the two is what made the old column meaningless. */
+  searchPick?: boolean
   via?: 'report'
 }

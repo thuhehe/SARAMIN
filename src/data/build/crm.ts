@@ -681,8 +681,9 @@ export const crm: BuildModule = {
           },
           items: [
             'The current owner is derived from the newest history entry — it is never a standalone column that could disagree with the log.',
-            'A reassignment **is** the audited change the edit form already writes for “Sales owner” (field · old · new · who · when) — the Owner history is that audit surfaced as a readable timeline instead of a raw log row.',
-            'Only a Sales lead / admin may reassign an owner; a rep cannot quietly pass their own accounts around.',
+            'REASSIGNMENT IS ITS OWN ACTION — **“Chuyển giao”** on the Owner history tab — not a field edit on the Basic-info card. It was the card’s Sales-owner dropdown until 2026-08-27, and that had two faults the history tab made visible. It captured no REASON, so this table’s Reason column rendered a field nothing could populate. And because the card is read-only only when you are NOT the owner, the dropdown was offered to precisely the person the rule below excludes: the owning rep could move their own account, silently. The card now shows the owner read-only and points here. The audit line (field · old · new · who · when) is still written; the dialog just also demands the reason.',
+            'Only a Sales lead / admin may reassign an owner; a rep cannot quietly pass their own accounts around. ENFORCED, not just stated: the control is gated on the viewer’s ROLE (lead · manager), never on the “are you the owner” flag that gates the rest of the record — that flag would have handed the action to the one person it is meant to exclude.',
+            'THE REASON IS REQUIRED, and the dialog will not submit without it. It is the field the history is actually read for months later, when nobody remembers why an account moved — optional, it would be blank on every row that mattered.',
             'Reassigning the owner touches nothing else — contacts, deals, quota, membership tier and the customer relationship all stay put. It changes who is responsible, not what the customer has.',
             'Parent and subsidiary owners are independent (see the edge case): moving the parent’s owner never moves the subsidiary’s.',
             'A brand-new lead shows a single entry — whoever created it still owns it. “Never reassigned” is a real state, not missing history.',
@@ -980,8 +981,8 @@ export const crm: BuildModule = {
       table: {
         cols: ['Loại công ty', 'Phân loại người mua được phép', 'Vì sao'],
         rows: [
-          ['**Công ty trong nước**', 'Doanh nghiệp Việt Nam · Cá nhân có CCCD · Cá nhân không có CCCD', 'MST Việt Nam là mặc định. Hai dạng cá nhân vẫn có, vì **người mua** có thể là một người ngay khi khách hàng là công ty — giám đốc tự trả tiền.'],
-          ['**Công ty nước ngoài**', 'Doanh nghiệp nước ngoài · Cá nhân có CCCD · Cá nhân không có CCCD', 'Không có MST Việt Nam để xuất, nên *Doanh nghiệp Việt Nam* không bao giờ là lựa chọn hợp lệ. Hai dạng cá nhân giữ nguyên vì lý do trên.'],
+          ['**Công ty trong nước**', 'Doanh nghiệp Việt Nam · Cá nhân có CCCD', 'MST Việt Nam là mặc định. Dạng cá nhân vẫn có, vì **người mua** có thể là một người ngay khi khách hàng là công ty — giám đốc tự trả tiền.'],
+          ['**Công ty nước ngoài**', 'Doanh nghiệp nước ngoài · Cá nhân có CCCD', 'Không có MST Việt Nam để xuất, nên *Doanh nghiệp Việt Nam* không bao giờ là lựa chọn hợp lệ. Dạng cá nhân giữ nguyên vì lý do trên.'],
         ],
       },
       items: [
@@ -997,7 +998,7 @@ export const crm: BuildModule = {
         cols: ['Tầng', 'Ở đâu', 'Hành vi'],
         rows: [
           ['**Mặc định** — của hồ sơ', 'Company create / Basic info card', 'Phân loại người mua lưu trên hồ sơ. Khi người mua là **chính công ty** (DN Việt Nam trên hồ sơ trong nước, DN nước ngoài trên hồ sơ nước ngoài) thì mọi dòng hóa đơn **kế thừa từ Thông tin công ty — không nhập tay** (riêng DN nước ngoài không có dòng MST); sửa ở nguồn thì mọi nơi đổi theo, không có bản chép thứ hai. Chỉ hai dạng cá nhân mới nhập field riêng (họ tên, CCCD).'],
-          ['**Theo chứng từ** — của PO/hóa đơn', 'Dialog **Issue PO** (từ quotation)', 'Dropdown **“Xuất cho / Phân loại người mua”**, mặc định theo hồ sơ (đánh dấu “— theo hồ sơ”). Đổi loại → bộ field đổi theo đúng bốn hình dạng. **Chỉ áp dụng cho PO/hóa đơn này — không sửa ngược hồ sơ**, trừ khi tích ô “Đặt làm mặc định cho công ty này”.'],
+          ['**Theo chứng từ** — của PO/hóa đơn', 'Dialog **Issue PO** (từ quotation)', 'Dropdown **“Xuất cho / Phân loại người mua”**, mặc định theo hồ sơ (đánh dấu “— theo hồ sơ”). Đổi loại → bộ field đổi theo đúng hình dạng của loại đó. **Chỉ áp dụng cho PO/hóa đơn này — không sửa ngược hồ sơ**, trừ khi tích ô “Đặt làm mặc định cho công ty này”.'],
         ],
       },
       items: [
@@ -1014,6 +1015,30 @@ export const crm: BuildModule = {
         'Ô **“Đặt làm mặc định cho công ty này”** chỉ hiện khi rep đã đổi phân loại khác với hồ sơ, và mặc định KHÔNG tích: một deal đặc biệt là ngoại lệ, không phải định nghĩa mới của khách hàng. Nhưng khi rep vừa phát hiện bên nhận hóa đơn THẬT của khách, tích một ô còn hơn nhập lại đúng thông tin đó trên mọi PO sau — nhập lại nhiều lần là nhập sai một lần.',
         'Form tạo công ty **KHÔNG có ô “Set as default”**: phân loại chọn lúc tạo CHÍNH LÀ mặc định — một checkbox ở đó là câu hỏi chỉ có một đáp án đúng. Ô “Đặt làm mặc định” tồn tại duy nhất ở dialog **Issue PO**, thời điểm duy nhất rep chủ động lệch khỏi hồ sơ và phải quyết định độ lệch đó có ghi lại vào hồ sơ hay không. Form tạo thay checkbox bằng một câu ghi chú nói đúng luật này.',
       ],
+    },
+    {
+      label: 'Basic-info card — sửa hồ sơ chạy đúng luật của form tạo',
+      text: 'Card **Basic info** trên Company detail không phải bản chỉ-đọc của form tạo: nó là nơi hồ sơ được **sửa** về sau, nên nó phải chạy đúng những luật form tạo chạy. Một card mà chế độ Edit không thể hiện được luật thì luật đó sẽ không được build.\n\nNhóm và thứ tự field **giống form tạo từng dòng** — rep điền form một lần rồi đọc card này hàng năm; cùng heading, cùng thứ tự là điều làm cho câu hỏi *“cái tôi vừa nhập nằm ở đâu”* không bao giờ phải hỏi.',
+      table: {
+        cols: ['Luật', 'Trên form tạo', 'Trên Basic-info card (Edit)'],
+        rows: [
+          ['**Loại công ty** đổi nghĩa ô MST', 'Đổi label · bỏ dấu `*` · ẩn nút Verify khi là công ty nước ngoài', '**Giống hệt** — và đổi cả label *Địa chỉ đăng ký MST* → *Địa chỉ đăng ký*'],
+          ['**Loại công ty** gate phân loại người mua', 'Phân loại không hợp lệ → tự chuyển sang phân loại hợp lệ đầu tiên', '**Giống hệt**, ngay trong chế độ Edit'],
+          ['**Verify** MST', '2 chip, không chặn; sửa ô MST hoặc đổi loại công ty → chip biến mất', '**Có mặt** — số MST cũng đổi ở đây, người đổi cũng có đúng câu hỏi đó'],
+          ['**MST unique**, cả hai kho', 'Trùng Company list → banner đỏ, chặn tạo · trùng Free data → banner amber, mở dòng pool', 'Giống, **trừ một điều**: hồ sơ không được tính là trùng với chính nó — so sánh phải loại bản ghi đang sửa ra'],
+          ['**Thông tin xuất hóa đơn** kế thừa', 'Người mua là chính công ty → không có input nào', '**Không có input nào** — chỗ đó là một câu nói rõ “kế thừa từ Thông tin công ty, sửa ở nhóm trên”'],
+          ['**Không có “Set as default”**', 'Phân loại chọn lúc tạo chính là mặc định', 'Card ghi một dòng: đây là **mặc định** của công ty, từng PO đổi được lúc phát hành mà không sửa hồ sơ'],
+        ],
+      },
+      items: [
+        'NÚT SAVE BỊ CHẶN khi MST đang trùng, kèm tooltip nói vì sao — cùng một điều kiện chặn duy nhất như form tạo. Mọi thứ khác trên card (chip Verify, gợi ý trùng gốc MST) không chặn gì.',
+        'CANCEL HUỶ BẢN NHÁP: thoát Edit rồi vào lại thì mọi field, chip Verify và banner trùng đều trở về theo hồ sơ. Một giá trị còn sót từ lần sửa đã huỷ là một giá trị rồi sẽ được lưu.',
+        'BA FIELD ĐỊNH DANH mang dấu `*` ở chế độ Edit đúng như trên form — trừ MST khi là công ty nước ngoài.',
+        'PHÂN LOẠI CÁ NHÂN hỏi **họ tên trước, CCCD sau**, cùng thứ tự với form tạo; địa chỉ xuất hóa đơn là field riêng của người mua đó, không kế thừa.',
+        'HỒ SƠ CŨ chưa có `companyType` thì suy ra từ phân loại đang lưu (`dn-nn` → nước ngoài, còn lại → trong nước) — không cần migration nhập tay.',
+        'DÒNG FREE DATA (pool) không có nhóm Thông tin xuất hóa đơn: chưa báo giá thì chưa có quyết định nào về người mua, hiện nhóm với giá trị mặc định là đặt một phỏng đoán vào chỗ của một quyết định.',
+      ],
+      warn: 'Đừng làm Basic-info card thành form thứ hai với luật riêng. Hai surface này phải đọc cùng một bộ luật từ cùng một chỗ trong code — lệch nhau là cách một hồ sơ hợp lệ lúc tạo trở thành hồ sơ không hợp lệ sau một lần sửa, hoặc ngược lại.',
     },
     {
       label: 'List toolbar — Search · Filter · Sort, and nothing else',
@@ -1061,7 +1086,7 @@ export const crm: BuildModule = {
         'Search matches name, short name, legal name, MST, Company ID, contact and domain — including fields the table does not print. A box promising “MST” has to match MST.',
         '**Removed**: the earlier “Của tôi · Toàn hệ thống” toggle. A toggle makes browsing everyone a mode a rep can sit in; the dropdown makes reaching one record an act they perform.',
       ],
-      warn: 'Opening a colleague’s company is READ-only, and the record says so: a banner names the owner, states “chỉ đọc”, and offers “Yêu cầu chuyển giao”. Without the banner the read-only rule is invisible until a button silently does nothing. Who may approve a transfer — the current owner, a sales lead, either — is still the client’s decision.',
+      warn: 'Opening a colleague’s company is READ-only, and the record says so: a banner names the owner and states “chỉ đọc”. It used to carry a “Yêu cầu chuyển giao” button, which had no handler at all — the literal “a button silently does nothing” this warning was written to prevent. Replaced by a line telling the rep to ask a Sales lead, because reassignment is a lead/manager action (see Sales owner). STILL OPEN: whether a rep should be able to REQUEST a transfer and a lead approve it — that needs the client, and the direct lead-reassigns flow does not depend on the answer.',
     },
     {
       label: 'Read-only on a colleague’s company — what is actually withdrawn',
@@ -1082,7 +1107,7 @@ export const crm: BuildModule = {
       items: [
         'THE ONE THAT MATTERS: logging an activity is withdrawn even though it looks harmless. It stamps ANOTHER rep’s company with MY contact and **resets their Idle clock** — so a colleague’s account would read as freshly touched when nobody has spoken to the customer. The locked note says exactly that, rather than just greying a button.',
         'Read is never reduced to make the point. A rep who cannot see the trail, the quota or the contacts cannot tell whether the company they found is the one they were about to create.',
-        'The way back is an explicit **Yêu cầu chuyển giao**, not a silent edit. Ownership changes through the audited reassignment that already exists (see Owner history), so the trail shows who moved it and why.',
+        'The way back is a reassignment performed by a Sales lead on the **Owner history** tab, not a silent edit — the trail then shows who moved it, when, and why. A rep who wants an account asks a lead; a self-serve request/approve flow is still an open client decision.',
         'Sales-lead view is unaffected: that role legitimately spans the team, so the read-only gate keys off record ownership, not off which list the rep arrived from.',
       ],
       warn: 'Do not implement this by hiding the buttons only in the UI. Every withdrawn action must be refused server-side against the signed-in user’s ownership — a hidden button is a UI convenience, not a permission.',

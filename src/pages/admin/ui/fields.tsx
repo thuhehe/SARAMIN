@@ -40,10 +40,10 @@ export function BField({ label, req, value, onChange, placeholder }: { label: st
    show everything inline. Every ACTION on a contact lives in this panel, which is
    why the list has no Actions column. */
 /** Editable SELECT row — for fields whose values come from Master data. */
-export function SelectRow({ label, value, onChange, options, placeholder, hint }: { label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; hint?: string }) {
+export function SelectRow({ label, req, value, onChange, options, placeholder, hint }: { label: string; req?: boolean; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; hint?: string }) {
   return (
     <div className="border-b border-line-soft py-2 last:border-0">
-      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
+      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}{req && <span className="text-rose-500"> *</span>}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -58,16 +58,20 @@ export function SelectRow({ label, value, onChange, options, placeholder, hint }
 }
 
 /** Editable text row — the edit-mode counterpart of KV. */
-export function EField({ label, value, onChange, mono, hint }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean; hint?: string }) {
+export function EField({ label, req, value, onChange, mono, hint, after, trail }: { label: string; req?: boolean; value: string; onChange: (v: string) => void; mono?: boolean; hint?: string; after?: React.ReactNode; trail?: React.ReactNode }) {
   return (
     <div className="border-b border-line-soft py-2 last:border-0">
-      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn('mt-1 w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand', mono && 'font-mono text-[11.5px]')}
-      />
-      {hint && <p className="mt-1 text-[10.5px] text-faint">{hint}</p>}
+      <label className="text-[10.5px] uppercase tracking-wide text-faint">{label}{req && <span className="text-rose-500"> *</span>}</label>
+      <div className="mt-1 flex gap-1.5">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn('min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand', mono && 'font-mono text-[11.5px]')}
+        />
+        {trail}
+      </div>
+      {after}
+      {hint && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{hint}</p>}
     </div>
   )
 }

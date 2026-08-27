@@ -56,7 +56,18 @@ export type Account = 'New' | 'Existing' | 'Churn'
     legal phrase, SUPPLIED BY THE SYSTEM and never typed: the rep should not have to
     remember the exact wording, and a typo here lands on a filed fiscal document. */
 export const RETAIL_BUYER = 'Bán cho người tiêu dùng'
-export type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd' | 'ca-nhan'
+/* THREE classifications since 2026-08-23. `ca-nhan` — “Cá nhân không có CCCD”,
+   the anonymous retail buyer whose invoice prints only “Bán cho người tiêu dùng”
+   — was REMOVED from the product: this is a B2B recruitment platform, every buyer
+   signs a contract, and a customer record with no identifier at all could never be
+   reconciled against a contract or a bank transfer. An individual buyer now always
+   gives a CCCD (`ca-nhan-cccd`).
+
+   WHAT THIS GIVES UP, recorded so it is a decision and not an accident: điểm 4b,
+   Phụ lục NĐ 254/2026 does permit an invoice with no buyer identity. If a real
+   walk-in case ever appears, this is the branch to restore — not a new one to
+   invent. */
+export type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd'
 /* WHAT THE COMPANY IS — asked once, on identity, and it gates the invoice options.
    A Vietnamese company can never be invoiced as a foreign entity, and a foreign one
    has no Vietnamese MST to invoice against, so offering all four classifications
@@ -65,8 +76,8 @@ export type BuyerType = 'dn-vn' | 'dn-nn' | 'ca-nhan-cccd' | 'ca-nhan'
    customer is a company (the director pays personally). */
 export type CompanyType = 'trong-nuoc' | 'nuoc-ngoai'
 export const COMPANY_TYPE: Record<CompanyType, { vi: string; en: string; buyers: BuyerType[] }> = {
-  'trong-nuoc': { vi: 'Công ty trong nước', en: 'Vietnamese company', buyers: ['dn-vn', 'ca-nhan-cccd', 'ca-nhan'] },
-  'nuoc-ngoai': { vi: 'Công ty nước ngoài', en: 'Foreign company', buyers: ['dn-nn', 'ca-nhan-cccd', 'ca-nhan'] },
+  'trong-nuoc': { vi: 'Công ty trong nước', en: 'Vietnamese company', buyers: ['dn-vn', 'ca-nhan-cccd'] },
+  'nuoc-ngoai': { vi: 'Công ty nước ngoài', en: 'Foreign company', buyers: ['dn-nn', 'ca-nhan-cccd'] },
 }
 /** the classifications a company of this type may be invoiced under */
 export const buyersFor = (t: CompanyType) => COMPANY_TYPE[t].buyers
@@ -78,10 +89,6 @@ export const BUYER_TYPE: Record<BuyerType, { vi: string; en: string; tax: 'req' 
   'dn-vn': { vi: 'Doanh nghiệp Việt Nam', en: 'Vietnamese company', tax: 'req', hint: 'MST bắt buộc — in trên hóa đơn VAT.' },
   'dn-nn': { vi: 'Doanh nghiệp nước ngoài', en: 'Foreign company', tax: 'empty', hint: 'Không có MST Việt Nam — để trống. Vẫn bắt buộc tên pháp lý và địa chỉ.' },
   'ca-nhan-cccd': { vi: 'Cá nhân có CCCD', en: 'Individual with ID card', tax: 'empty', needsIdCard: true, needsBuyerName: true, hint: 'Không có MST. Điền số CCCD và họ tên người mua hàng.' },
-  /* Điểm 4b, Phụ lục NĐ 254/2026: when the buyer does not provide name, address and
-     số định danh cá nhân, the invoice shows only “Bán cho người tiêu dùng”. So there
-     is no address to ask for either — the whole buyer block is that one line. */
-  'ca-nhan': { vi: 'Cá nhân không có CCCD', en: 'Individual, no ID provided', tax: 'empty', noAddress: true, hint: `Không hỏi MST, CCCD và cả địa chỉ. Hóa đơn chỉ in “${RETAIL_BUYER}” ở dòng Họ tên người mua hàng.` },
 }
 
 export type Company = {
@@ -140,7 +147,7 @@ export const COMPANIES: Company[] = [
   { name: 'Shopee Việt Nam', shortName: 'Shopee', legalName: 'Công ty TNHH Shopee', country: 'Singapore', tax: '0307xxxxxx', industry: 'Bán lẻ', size: '1000–5000', address: 'Quận 1, HCMC', contact: 'Ms. Lâm Ngọc Bích · TA', owner: 'Phạm Quang Huy', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Align on package + price', idle: 5, note: 'Comparing us vs a competitor.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'shopee.vn', since: '—' },
   { name: 'Base.vn', buyerType: 'ca-nhan-cccd', idCard: '079123456789', buyerName: 'Phan Anh Tuấn', shortName: 'Base.vn', legalName: 'Công ty CP Base Enterprise', country: 'Việt Nam', tax: '0308xxxxxx', industry: 'CNTT', size: '200–500', address: 'Quận 1, HCMC', contact: 'Mr. Phan Anh Tuấn', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Book discovery call', idle: 3, note: 'Inbound from website form.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'base.vn', since: '—' },
   { name: 'Công ty CP Đông Á', shortName: '', legalName: 'Công ty Cổ phần Đông Á', country: 'Việt Nam', tax: '0318xxxxxx', industry: 'Tài chính', size: '500–1000', address: 'Quận 1, HCMC', contact: 'Ms. Hà Kiều Trang · HR', owner: 'Trần Quốc Trung', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 16, note: 'Quotation sent — gone quiet.', revenue: 0, quoteLapsed: true, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'dongabank.com.vn', since: '—' , archived: { at: '28/07/2026', by: 'Đỗ Xuân Trường — Sales manager', reason: 'banned', note: 'Đăng tin tuyển dụng sai sự thật, thu phí ứng viên — ngừng phục vụ.' } },
-  { name: 'Công ty TNHH Minh Long', buyerType: 'ca-nhan', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
+  { name: 'Công ty TNHH Minh Long', buyerType: 'ca-nhan-cccd', shortName: 'Minh Long', legalName: 'Công ty TNHH Gốm sứ Minh Long', country: 'Việt Nam', tax: '0319xxxxxx', industry: 'Sản xuất', size: '500–1000', address: 'Bình Dương', contact: 'Mr. Lý Quốc Bảo', owner: 'Nguyễn Thị Lan', status: 'Lost', account: 'Churn', lastPO: '02/06/2025', renewal: 'Lapsed', nextStep: 'Win-back next quarter', idle: 40, note: 'Budget frozen; revisit in Q4.', revenue: 60_000_000, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'minhlong.com', since: '14/03/2024' },
   { name: 'Công ty CP An Khang', shortName: 'An Khang', legalName: 'Công ty Cổ phần Dược phẩm An Khang', country: 'Việt Nam', tax: '0321xxxxxx', industry: 'Y tế', size: '200–500', address: 'Quận 10, HCMC', contact: 'Ms. Trần Mỹ Duyên · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Follow up on quotation', idle: 4, note: 'Quotation sent for Job Posting Pro.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'ankhang.vn', since: '—' },
   { name: 'Công ty TNHH Phú Thịnh', shortName: 'Phú Thịnh', legalName: 'Công ty TNHH Thương mại Phú Thịnh', country: 'Việt Nam', tax: '0322xxxxxx', industry: 'Bán lẻ', size: '50–200', address: 'Quận Tân Bình, HCMC', contact: 'Mr. Hồ Đăng Khoa · Trưởng phòng HC-NS', owner: 'Nguyễn Thị Lan', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Waiting on director approval', idle: 11, note: 'Asked for 10% discount; escalated.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'phuthinh.com.vn', since: '—' },
   { name: 'Công ty CP Thành Đạt', shortName: 'Thành Đạt', legalName: 'Công ty Cổ phần Xây dựng Thành Đạt', country: 'Việt Nam', tax: '0320xxxxxx', industry: 'Xây dựng', size: '200–500', address: 'Quận Hà Đông, Hà Nội', contact: 'Mr. Vũ Đình Khôi · HR', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '12/07/2026', renewal: '12/10/2026', nextStep: 'Onboarding check-in', idle: 53, note: 'First purchase — Job Posting.', revenue: 25_000_000, jobPosting: true, resumeSearch: false, jobLeft: 8, jobTotal: 10, cvLeft: 0, cvTotal: 0, hasPage: true, jobs: 3, domain: 'thanhdat.com.vn', since: '12/07/2026' },

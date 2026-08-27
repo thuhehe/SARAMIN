@@ -3,13 +3,13 @@ import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { RO_HINT, ReadOnlyCtx, ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
-import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
-import type { Company, CompanyType } from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
+import type { BuyerType, Company, CompanyType } from '@/pages/admin/data/companies'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
-import { CLAIM_REQS, CLAIM_STATUS } from '@/pages/admin/data/directory'
+import { CLAIM_REQS, CLAIM_STATUS, DIRECTORY } from '@/pages/admin/data/directory'
 import { releaseChain } from '@/pages/admin/data/directory'
 import type { DirRow } from '@/pages/admin/data/directory'
 import { AssignCard, ClaimChain, DirectAssignCard, MyClaimNotice, openClaim } from '@/pages/admin/screens/directory/assign'
@@ -46,9 +46,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   /* Stored on new records; derived from the buyer classification on older ones. */
   const coType = c.companyType ?? typeOfBuyer(c.buyerType)
   const coIsForeign = coType === 'nuoc-ngoai'
-  /* Same rule as the create form: dn-vn / dn-nn mean the buyer IS the company,
-     so the invoice block inherits instead of holding its own copy. */
-  const recBuyerIsCompany = (c.buyerType ?? 'dn-vn') === 'dn-vn' || c.buyerType === 'dn-nn'
+  /* EDIT MODE IS LIVE, exactly as the create form is: Loại công ty relabels the MST
+     field and re-gates the invoice classifications, and Phân loại người mua swaps
+     the field set under it. A card whose edit mode cannot show the rule the form
+     shows is a card that gets built without the rule. */
+  const [coTypeEdit, setCoTypeEdit] = useState<CompanyType>(coType)
+  const [buyerEdit, setBuyerEdit] = useState<BuyerType>(c.buyerType ?? buyersFor(coType)[0])
+  const [taxEdit, setTaxEdit] = useState(c.tax ?? '')
+  /* What Verify reported — a report, never a gate. Same contract as the form. */
+  const [verified, setVerified] = useState<null | 'found' | 'missing'>(null)
+  const [verifying, setVerifying] = useState(false)
   /* `?tab=<name>` lands on a specific tab. Same reason as `?record=`: a link to a
      demo has to open ON the thing being demonstrated, not one click away from it. */
   const [params] = useSearchParams()
@@ -61,6 +68,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   /* One Edit toggle for the whole Basic-info card, rather than a pencil per row:
      14 inline editors is 14 chances to leave one half-saved. */
   const [editInfo, setEditInfo] = useState(false)
+  /* Entering and leaving edit both reset to the record: a value left over from a
+     cancelled edit is a value that eventually gets saved. */
+  const resetEdit = () => {
+    setCoTypeEdit(coType)
+    setBuyerEdit(c.buyerType ?? buyersFor(coType)[0])
+    setTaxEdit(c.tax ?? '')
+    setVerified(null)
+  }
   /* "+ Thêm công ty con" swaps in the create PAGE with this company locked as the
      parent, rather than floating a form over the record it came from. */
   useDetailCrumb(coLabel(c), onBack)
@@ -94,6 +109,25 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   // Nobody owns a pool row, so every write is off — the same read-only rule applies,
   // not a second one.
   const ro = isPool || c.owner !== viewer
+  /* One pair of flags for the whole card: in edit mode they follow what the operator
+     just picked, otherwise they describe the stored record. */
+  const shownType: CompanyType = editInfo ? coTypeEdit : coType
+  const shownForeign = shownType === 'nuoc-ngoai'
+  const shownBuyer: BuyerType = editInfo ? buyerEdit : (c.buyerType ?? 'dn-vn')
+  const buyerIsCompany = shownBuyer === 'dn-vn' || shownBuyer === 'dn-nn'
+  /* MST unique is the ONE blocking rule, and it spans both stores — same as the
+     form. The difference here: the record must not collide with itself. */
+  const mstOther = taxEdit.trim() && COMPANIES.find((x) => x.tax?.trim() === taxEdit.trim() && coKey(x) !== coKey(c))
+  const mstPool = taxEdit.trim() && !mstOther
+    ? DIRECTORY.find((d) => d.tax?.trim() === taxEdit.trim() && d.state !== 'claimed' && d.name !== c.name)
+    : undefined
+  const verifyMst = () => {
+    setVerifying(true)
+    window.setTimeout(() => {
+      setVerifying(false)
+      setVerified(/[02468]$/.test(taxEdit.replace(/\D/g, '')) ? 'found' : 'missing')
+    }, 700)
+  }
   const noProducts = !c.jobPosting && !c.resumeSearch
   const team = companyTeam(c)
   const jobs = companyJobs(c)
@@ -172,7 +206,11 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/70 px-3 py-2 text-[11.5px]">
           <span className="text-[13px]"></span>
           <span className="text-muted">Công ty này do <b className="font-medium text-ink">{c.owner}</b> phụ trách — bạn <b className="font-medium text-ink">không sửa được thông tin</b>, nhưng vẫn <b className="font-medium text-ink">ghi nhận hoạt động</b> được.</span>
-          <button className="ml-auto shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">Yêu cầu chuyển giao</button>
+          {/* Was a button with no onClick — the exact "a button silently does nothing"
+              failure its own requirement warns about. A transfer is a lead/manager
+              action on the Owner history tab, so a rep is told who to ask instead of
+              being handed a control that does not work. */}
+          <span className="ml-auto shrink-0 text-[11px] text-faint">Cần chuyển giao? Nhờ Sales lead thực hiện ở tab Owner history.</span>
         </div>
       )}
 
@@ -402,11 +440,11 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                 editInfo
                   ? (
                     <span className="flex items-center gap-1.5">
-                      <button onClick={() => setEditInfo(false)} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">Cancel</button>
-                      <button onClick={() => setEditInfo(false)} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white hover:opacity-90">Save</button>
+                      <button onClick={() => { resetEdit(); setEditInfo(false) }} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">Cancel</button>
+                      <button disabled={Boolean(mstOther || mstPool)} title={mstOther || mstPool ? 'MST đang trùng — sửa trước khi lưu' : undefined} className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', mstOther || mstPool ? 'cursor-not-allowed bg-canvas text-faint' : 'bg-brand text-white hover:opacity-90')} onClick={() => { if (mstOther || mstPool) return; setEditInfo(false) }}>Save</button>
                     </span>
                   )
-                  : ro ? undefined : <button onClick={() => setEditInfo(true)} className="text-[11px] text-brand hover:underline">Edit</button>
+                  : ro ? undefined : <button onClick={() => { resetEdit(); setEditInfo(true) }} className="text-[11px] text-brand hover:underline">Edit</button>
               }
             >
               {/* SAME GROUPS, SAME ORDER AS THE NEW-COMPANY FORM — Thông tin xuất hóa
@@ -430,10 +468,73 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                 <>
                   {/* Leads the group here too — it gates which invoice classifications
                       the group below may offer. Same order as the form. */}
-                  <SelectRow label="Loại công ty" value={COMPANY_TYPE[coType].vi} onChange={() => {}} options={(Object.keys(COMPANY_TYPE) as CompanyType[]).map((k) => COMPANY_TYPE[k].vi)} hint={`Quyết định lựa chọn ở Thông tin xuất hóa đơn: ${buyersFor(coType).map((b) => BUYER_TYPE[b].vi).join(' · ')}.`} />
-                  <EField label="Tên đơn vị / Legal name" value={c.legalName} onChange={() => {}} />
-                  <EField label={coIsForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : 'Mã số thuế (MST)'} value={c.tax} onChange={() => {}} hint={coIsForeign ? 'Tax ID nước sở tại — chỉ tham chiếu, không có Verify. Đổi vẫn chạy kiểm tra trùng cả hai kho.' : 'Đổi MST chạy lại kiểm tra trùng cả hai kho. Verify chỉ để biết — không chặn lưu.'} />
-                  <EField label="Địa chỉ đăng ký mã số thuế" value={c.address} onChange={() => {}} />
+                  <SelectRow
+                    label="Loại công ty" req
+                    value={COMPANY_TYPE[coTypeEdit].vi}
+                    onChange={(v) => {
+                      const k = (Object.keys(COMPANY_TYPE) as CompanyType[]).find((x) => COMPANY_TYPE[x].vi === v)
+                      if (!k) return
+                      setCoTypeEdit(k)
+                      setVerified(null)
+                      // an invalid classification is SWITCHED, never left selected —
+                      // leaving it is the surest way to have it saved
+                      if (!buyersFor(k).includes(buyerEdit)) setBuyerEdit(buyersFor(k)[0])
+                    }}
+                    options={(Object.keys(COMPANY_TYPE) as CompanyType[]).map((k) => COMPANY_TYPE[k].vi)}
+                    hint={`Quyết định lựa chọn ở Thông tin xuất hóa đơn: ${buyersFor(coTypeEdit).map((b) => BUYER_TYPE[b].vi).join(' · ')}.`}
+                  />
+                  <EField label="Tên đơn vị / Legal name" req value={c.legalName} onChange={() => {}} />
+                  <EField
+                    label={shownForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : 'Mã số thuế (MST)'}
+                    req={!shownForeign}
+                    value={taxEdit}
+                    onChange={(v) => { setTaxEdit(v); setVerified(null) }}
+                    mono
+                    /* Verify sits on the card for the same reason it sits on the form:
+                       the number changes here too, and the person changing it has the
+                       same question. Domestic only — a foreign tax ID has no
+                       Vietnamese registry to be checked against. */
+                    trail={!shownForeign ? (
+                      <button
+                        onClick={verifyMst}
+                        disabled={taxEdit.replace(/\D/g, '').length < 10 || verifying}
+                        className={cn('shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold', taxEdit.replace(/\D/g, '').length >= 10 && !verifying ? 'bg-brand text-white hover:opacity-90' : 'cursor-not-allowed bg-canvas text-faint')}
+                      >
+                        {verifying ? 'Đang kiểm tra…' : 'Verify'}
+                      </button>
+                    ) : undefined}
+                    after={
+                      <>
+                        {verified === 'found' && (
+                          <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700">✓ Có tồn tại trên MST</span>
+                            <span className="text-[10.5px] text-faint">Tên đơn vị + địa chỉ đăng ký khớp cơ quan thuế.</span>
+                          </p>
+                        )}
+                        {verified === 'missing' && (
+                          <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">✕ Không có tồn tại trên MST</span>
+                            <span className="text-[10.5px] text-faint">Chỉ là thông tin — vẫn lưu được, miễn MST không trùng.</span>
+                          </p>
+                        )}
+                        {/* The one blocking rule, and the only red on this card. */}
+                        {mstOther && (
+                          <p className="mt-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
+                            ✕ MST này đã thuộc <b>{coLabel(mstOther)}</b> trên Company list — <b>không lưu được</b>. MST là duy nhất trên cả hai kho.
+                          </p>
+                        )}
+                        {mstPool && (
+                          <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                            ⚠ MST này đang là một dòng <b>Free data</b> — <b>{mstPool.name}</b>. Gộp dòng đó vào hồ sơ này (phân trực tiếp) thay vì để hai bản ghi mang cùng một MST.
+                          </p>
+                        )}
+                      </>
+                    }
+                    hint={shownForeign
+                      ? 'Tax ID nước sở tại — chỉ để tham chiếu, không kiểm tra được trên hệ thống thuế VN nên không có Verify, và không bắt buộc. Đổi vẫn chạy kiểm tra trùng cả hai kho.'
+                      : 'Verify chỉ cho biết MST có tồn tại hay không — không chặn lưu. Điều kiện chặn duy nhất là MST trùng hồ sơ khác.'}
+                  />
+                  <EField label={shownForeign ? 'Địa chỉ đăng ký' : 'Địa chỉ đăng ký mã số thuế'} req value={c.address} onChange={() => {}} hint={shownForeign ? 'Địa chỉ đăng ký ở nước sở tại — in lên chứng từ thay địa chỉ đăng ký MST.' : undefined} />
                   <EField label="Tên hiển thị" value={c.shortName} onChange={() => {}} hint="Tên thương hiệu ứng viên biết. Bỏ trống thì dùng tên pháp lý." />
                 </>
               ) : (
@@ -443,7 +544,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   {isPool
                     ? <KV label="Mã số thuế (MST)" value={pool!.tax ? `${pool!.tax} ⚠ chưa xác minh` : 'chưa có — bắt buộc trước khi tạo hồ sơ CRM'} />
                     : <KV label={coIsForeign ? 'Mã số thuế nước ngoài (tham chiếu)' : 'Mã số thuế (MST)'} value={c.tax?.trim() || (coIsForeign ? '— (không bắt buộc)' : '—')} />}
-                  <KV label="Địa chỉ đăng ký mã số thuế" value={c.address || '—'} />
+                  <KV label={coIsForeign ? 'Địa chỉ đăng ký' : 'Địa chỉ đăng ký mã số thuế'} value={c.address || '—'} />
                   <KV label="Tên hiển thị" value={c.shortName?.trim() || '— (dùng tên pháp lý)'} />
                 </>
               )}
@@ -459,16 +560,36 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               <CardGroup title="Thông tin xuất hóa đơn" />
               {editInfo ? (
                 <>
-                  <SelectRow label="Phân loại người mua" value={BUYER_TYPE[c.buyerType ?? 'dn-vn'].vi} onChange={() => {}} options={buyersFor(coType).map((k) => BUYER_TYPE[k].vi)} hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT. Khi người mua là chính công ty (DN VN / DN nước ngoài) thì các dòng dưới kế thừa từ Thông tin công ty — không nhập tay, sửa ở nhóm trên." />
-                  {BUYER_TYPE[c.buyerType ?? 'dn-vn'].needsIdCard && (
+                  <SelectRow
+                    label="Phân loại người mua" req
+                    value={BUYER_TYPE[buyerEdit].vi}
+                    onChange={(v) => {
+                      const k = buyersFor(coTypeEdit).find((x) => BUYER_TYPE[x].vi === v)
+                      if (k) setBuyerEdit(k)
+                    }}
+                    options={buyersFor(coTypeEdit).map((k) => BUYER_TYPE[k].vi)}
+                    hint="Quyết định giấy tờ nào bắt buộc và dòng nào in trên hóa đơn VAT. Khi người mua là chính công ty (DN VN / DN nước ngoài) thì các dòng dưới kế thừa từ Thông tin công ty — không nhập tay, sửa ở nhóm trên."
+                  />
+                  {/* Buyer IS the company → the invoice lines are INHERITED, so edit
+                      mode offers nothing to type either. Saying so where the inputs
+                      would have been is what stops someone adding them back. */}
+                  {buyerIsCompany ? (
+                    <p className="border-b border-line-soft py-2 text-[11px] leading-relaxed text-muted">
+                      Tên đơn vị{!shownForeign && ' · MST'} · Địa chỉ xuất hóa đơn — <b className="text-ink/70">kế thừa từ Thông tin công ty</b>, không nhập tay ở đây. Sai thì sửa ở nhóm trên.
+                    </p>
+                  ) : (
                     <>
-                      <EField label="Số CCCD" value={c.idCard ?? ''} onChange={() => {}} />
-                      <EField label="Họ tên người mua hàng" value={c.buyerName ?? ''} onChange={() => {}} />
+                      {/* Person buyer: name first, then the identifier — same order as
+                          the create form, so the two surfaces read alike. */}
+                      <EField label="Họ tên người mua hàng" req value={c.buyerName ?? ''} onChange={() => {}} />
+                      <EField label="Số CCCD" req value={c.idCard ?? ''} onChange={() => {}} mono hint="Căn cước công dân — in vào dòng “Căn cước công dân”. Không dùng ô MST." />
+                      <EField label="Địa chỉ xuất hóa đơn" req value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                     </>
                   )}
-                  {!recBuyerIsCompany && !BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress && (
-                    <EField label="Địa chỉ xuất hóa đơn" value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
-                  )}
+                  {/* The bridge to Issue PO, said on the record that holds the default. */}
+                  <p className="border-b border-line-soft py-2 text-[10.5px] leading-relaxed text-faint last:border-0">
+                    Phân loại này là <b className="text-ink/70">mặc định</b> của công ty — mọi báo giá và PO bắt đầu từ nó. Đổi lúc phát hành PO chỉ áp dụng cho chứng từ đó, trừ khi tick <b className="text-ink/70">“Đặt làm mặc định”</b> trên dialog Issue PO.
+                  </p>
                 </>
               ) : (
                 <>
@@ -477,7 +598,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                       INHERITS from Thông tin công ty — the card says so instead of
                       repeating them, because a repeated value invites editing the
                       copy. Mirrors the form's inherited panel. */}
-                  {recBuyerIsCompany ? (
+                  {buyerIsCompany ? (
                     <p className="border-b border-line-soft py-2 text-[11px] leading-relaxed text-muted">
                       Tên đơn vị{!coIsForeign && ' · MST'} · Địa chỉ xuất hóa đơn — <b className="text-ink/70">kế thừa từ Thông tin công ty</b> ở trên, không nhập tay.{coIsForeign && ' DN nước ngoài không in MST Việt Nam.'} Hóa đơn xuất cho bên khác thì đổi phân loại, hoặc đổi theo từng PO lúc phát hành.
                     </p>
@@ -489,14 +610,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                           <KV label="Số CCCD" value={c.idCard || '—'} />
                         </>
                       )}
-                      {c.buyerType === 'ca-nhan' && (
-                        <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
-                      )}
-                      {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
-                        ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
-                        : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
+                      <KV label="Địa chỉ xuất hóa đơn" value={c.address} />
                     </>
                   )}
+                  <p className="border-b border-line-soft py-2 text-[10.5px] leading-relaxed text-faint last:border-0">
+                    Đây là <b className="text-ink/70">mặc định</b> của công ty. Từng PO đổi được lúc phát hành mà không sửa hồ sơ này.
+                  </p>
                 </>
               )}
               </>)}
@@ -541,7 +660,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               {editInfo ? (
                 <>
                   <SelectRow label="Lead source" value={coLeadSource(c)} onChange={() => {}} options={LEAD_SOURCES} />
-                  <SelectRow label="Sales owner" value={c.owner} onChange={() => {}} options={[...new Set(COMPANIES.map((x) => x.owner))]} />
+                  {/* NOT editable here, deliberately. A handover needs a REASON (the
+                      Owner history renders one) and it is a lead/manager action — this
+                      card is editable by the OWNER, so a select here let a rep move
+                      their own account with no reason recorded. Both are handled by
+                      "Chuyển giao" on the Owner history tab. */}
+                  <KV label="Sales owner" value={`${c.owner} — đổi ở tab Owner history`} />
                 </>
               ) : (
                 <>

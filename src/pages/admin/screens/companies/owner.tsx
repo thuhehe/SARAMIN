@@ -5,7 +5,9 @@ import { CO_STATUS } from '@/pages/admin/data/companies'
 import type { CoStatus, Company } from '@/pages/admin/data/companies'
 import { SALES_STAGES, companyOwnerHistory } from '@/pages/admin/data/companyOwner'
 import type { CoOwnerTenure } from '@/pages/admin/data/companyOwner'
+import { SALES_DEPT, SALES_PERSONAS, ME } from '@/pages/admin/data/salesOrg'
 import { DetailCard } from '@/pages/admin/ui/fields'
+import { ReassignOwnerDialog } from '@/pages/admin/ui/reassignDialog'
 import { Pill } from '@/pages/admin/ui/status'
 
 /* `tenures` overrides the derived chain. It exists for a company that has been
@@ -13,7 +15,13 @@ import { Pill } from '@/pages/admin/ui/status'
    accumulated while it was a customer are real history and must not disappear
    because the record changed lists. */
 export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenure[] }) {
-  const hist = tenures ?? companyOwnerHistory(c)
+  const derived = tenures ?? companyOwnerHistory(c)
+  /* A reassignment done in this session prepends a tenure, so the timeline shows the
+     result immediately — the card IS the confirmation, and a handover that leaves the
+     chain unchanged until reload reads as if it failed. */
+  const [added, setAdded] = useState<CoOwnerTenure[]>([])
+  const [reassigning, setReassigning] = useState(false)
+  const hist = added.length ? [...added, { ...derived[0], to: added[added.length - 1].from }, ...derived.slice(1)] : derived
   /* The header counts HANDOVERS, not owners — a company always has exactly one
      owner, so "N owners" would read as if it could hold several at once. With a
      long chain the number is the thing a lead actually wants ("this account has
@@ -24,10 +32,28 @@ export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenu
      entry must not be badged "Current" — that would name a rep who handed it back
      as the person to call. */
   const closed = hist.length > 0 && (hist[0].released || hist[0].to !== 'now')
+  /* Reassigning is a LEAD/MANAGER action. `ro` is the wrong gate here: it means "you
+     are not the owner", so it would hand the control to precisely the person the
+     requirement excludes and withhold it from the lead who is meant to have it. */
+  const myRole = SALES_PERSONAS.find((p) => p.name === ME)?.role ?? 'rep'
+  const canReassign = myRole === 'lead' || myRole === 'manager'
   return (
     <DetailCard
       title="Owner history"
-      action={<span className="text-[11px] text-faint">{closed ? 'chuỗi đã đóng — hiện không ai phụ trách' : moves === 0 ? 'chưa chuyển giao lần nào' : `${moves} lần chuyển giao`}</span>}
+      action={
+        <span className="flex items-center gap-2">
+          <span className="text-[11px] text-faint">{closed ? 'chuỗi đã đóng — hiện không ai phụ trách' : moves === 0 ? 'chưa chuyển giao lần nào' : `${moves} lần chuyển giao`}</span>
+          {/* ONLY A LEAD OR MANAGER, and the reason is required in the dialog. The
+              gate is the requirement's own words — "a rep cannot quietly pass their
+              own accounts around" — which the old Sales-owner dropdown in the
+              Basic-info card broke, because the card is editable by the OWNER. */}
+          {canReassign && !closed && (
+            <button onClick={() => setReassigning(true)} className="shrink-0 rounded-md border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-muted hover:border-brand hover:text-brand">
+              Chuyển giao →
+            </button>
+          )}
+        </span>
+      }
     >
       <ol className="space-y-2.5">
         {hist.map((t, i) => (
@@ -54,6 +80,18 @@ export function OwnerHistory({ c, tenures }: { c: Company; tenures?: CoOwnerTenu
           </li>
         ))}
       </ol>
+      {reassigning && (
+        <ReassignOwnerDialog
+          company={c.shortName?.trim() || c.name}
+          current={hist[0]?.owner ?? c.owner}
+          owners={[...SALES_DEPT]}
+          onClose={() => setReassigning(false)}
+          onConfirm={(to, reason) => {
+            setAdded((prev) => [{ owner: to, from: '27/08/2026', to: 'now', by: `${ME} (Sales lead)`, reason }, ...prev])
+            setReassigning(false)
+          }}
+        />
+      )}
     </DetailCard>
   )
 }

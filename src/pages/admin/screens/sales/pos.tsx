@@ -246,17 +246,27 @@ export function AdminPOs() {
       tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Draft invoice', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Expired' }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
-        { label: 'Total', w: '1.1fr', align: 'r' }, { label: 'Status', w: '1.9fr' },
-        // Payment sits NEXT TO the document status, never merged into it: they are
-        // two independent facts and a rep reads them together.
+        { label: 'Total', w: '1.1fr', align: 'r' },
+        // THE TWO STATUSES SIT SIDE BY SIDE, and they are named for what each one
+        // is about. A PO carries two independent lifecycles — the document's
+        // (Active → Draft invoice → … → Expired) and the money's (Unpaid → Paid) —
+        // and a rep triages on both at once. A bare "Status" beside a "Payment
+        // status" invited the reading that one was a summary of the other.
+        { label: 'PO status', w: '1.9fr' },
+        { label: 'Payment status', w: '1.1fr' },
+        // Then the payment DETAIL, in the order it is decided: what we agreed, how
+        // it arrives, when it landed.
         //
-        // THE THREE PAYMENT FIELDS LIVE HERE AND NOT ON THE DOCUMENT (2026-08-23).
-        // Terms, method and collection date are how WE track the money; the PO is
-        // the copy the customer holds. Putting a field that changes after issue on
-        // a document that must not is how two sides end up holding different POs.
+        // ALL THREE LIVE HERE AND NOT ON THE DOCUMENT (2026-08-23). Terms, method
+        // and collection date are how WE track the money; the PO is the copy the
+        // customer holds. Putting a field that changes after issue on a document
+        // that must not is how two sides end up holding different POs.
         { label: 'Điều khoản TT', w: '1.2fr' },
         { label: 'Phương thức TT', w: '1.1fr' },
-        { label: 'Thanh toán · ngày thu', w: '1.3fr' },
+        // The collection DATE is its own column, not a suffix on the status: the
+        // status is derived FROM it, and merged the date only showed on rows
+        // already Paid — exactly the rows nobody is chasing.
+        { label: 'Ngày thu tiền', w: '1fr' },
         { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
       ]}
       rows={POS.map((p) => [
@@ -265,15 +275,16 @@ export function AdminPOs() {
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[poStep(p)]}>{poStage(poStep(p)).en}</Pill>,
+        <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
         /* An em-dash, not a blank: a PO issued before these fields existed has no
            term recorded, which is a different thing from having none. */
         <span className={cn('truncate', p.payTerms ? 'text-ink/80' : 'text-faint')}>{p.payTerms ?? '—'}</span>,
         <span className={cn('truncate', p.payMethod ? 'text-ink/80' : 'text-faint')}>{p.payMethod ?? '—'}</span>,
-        <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
+        <span className={cn('tabular-nums', p.paidAt ? 'text-ink/80' : 'text-faint')}>{p.paidAt?.replace(/\./g, '/') ?? '—'}</span>,
         <span className="tabular-nums text-muted">{p.issued}</span>,
         <span className={cn('tabular-nums', poLive(poStep(p)) ? 'font-medium text-ink/80' : 'text-faint')}>{poExpiry(p)}</span>,
       ])}
-      minW={1560}
+      minW={1680}
     />
   )
 }
