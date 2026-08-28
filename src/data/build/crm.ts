@@ -68,7 +68,7 @@ export const crm: BuildModule = {
     {
       label: 'Một công ty vừa là công ty mẹ, vừa là công ty con',
       text: 'This is normal in Vietnam, not an anomaly, and the model must not assume a company holds only one role. Điều 195 Luật Doanh nghiệp 2020 defines the mẹ/con relationship purely by control — owning >50% of charter capital / ordinary shares, or the right to appoint a majority of the Board or the Director/General Director, or the right to amend the charter — and nothing in it restricts a company to one side of that relationship. A state economic group is written out in exactly these tiers: công ty mẹ = doanh nghiệp cấp I, its subsidiary = cấp II, and that company’s subsidiary = cấp iii, so cấp II is by definition both. Private groups (Vingroup, FPT, Masan…) are not bound by that three-tier cap and often run deeper.\n\nWhat the law forbids is the cycle, not the chain: a subsidiary may not invest in, buy shares of, or contribute capital to its own parent, and subsidiaries of the same parent may not cross-own one another (stricter again where the parent is ≥65% state-owned). So A → B → C is legitimate; A → B → A is not.\n\nThe data model already answers this: parentCompanyId points only at the direct parent, so "both mẹ and con" needs no special case — it is simply a record that has a parent and also has children. The cycle guard on the link modal is therefore enforcing a legal rule, not merely protecting the ancestor walk.',
-      warn: 'DECIDED: the UI does not distinguish chi nhánh from công ty con. Every link is labelled “Công ty con”. The split was derived from the tax code and changed nothing a rep could act on — a branch and a subsidiary are both separate customers with their own MST, quota, contracts and invoices, which is the only fact the screen needs to convey. The legal difference (a branch is an đơn vị phụ thuộc with no legal personality, so it cannot own another company) still holds and can be reinstated as a validation rule if a real case demands it; it is not shown as a label. Companies sharing the 10-digit tax root are still surfaced FIRST in the link picker and badged “cùng gốc MST” — the same signal, offered as a suggestion instead of a taxonomy.',
+      warn: 'DECIDED: the UI does not distinguish chi nhánh from công ty con. Every link is labelled “Công ty con”. The split was derived from the tax code and changed nothing a rep could act on — a branch and a subsidiary are both separate customers with their own MST, quota, contracts and invoices, which is the only fact the screen needs to convey. The legal difference (a branch is an đơn vị phụ thuộc with no legal personality, so it cannot own another company) still holds and can be reinstated as a validation rule if a real case demands it; it is not shown as a label. Customers sharing the 10-digit tax root are still surfaced FIRST in the link picker and badged “cùng gốc MST” — the same signal, offered as a suggestion instead of a taxonomy.',
     },
   ],
   requirements: [
@@ -260,9 +260,13 @@ export const crm: BuildModule = {
     'On the OFFICIAL invoice being issued (not on the PO, and not on a draft invoice), hand off to Account management: create account → provision products/quota → company page for Job Posting. It runs immediately and it is the only trigger. Activation of an individual slot then follows the customer’s own use, inside the Account management module.',
   ],
   features: [
-    // 0 · Companies ───────────────────────────────────────────────────
+    // 0 · Customers ───────────────────────────────────────────────────
     {
-      name: 'Companies',
+      name: 'Customers',
+      /* Slug PINNED to the pre-rename name (2026-08-23) — a feature's URL derives
+         from its name and comment threads are keyed by pathname, so renaming
+         without pinning orphans every thread and breaks shared links. */
+      slug: 'companies',
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
@@ -271,11 +275,11 @@ export const crm: BuildModule = {
         requirements: [
         {
           label: 'Global company search — one box in the shell, reach without browse',
-          text: 'The admin shell carries a single search box in the top bar, on every page: **Search any company — name, tax code, company ID**. It answers a question a rep asks from wherever they happen to be — does this customer already exist, and where? — without first navigating to Companies.\n\nIt is deliberately **unscoped**: it searches every company in the system, not the signed-in rep\u2019s book. A rep who cannot find a customer because a colleague owns it creates it again, and a duplicate MST costs far more than the privacy of a company name.',
+          text: 'The admin shell carries a single search box in the top bar, on every page: **Search any company — name, tax code, company ID**. It answers a question a rep asks from wherever they happen to be — does this customer already exist, and where? — without first navigating to Customers.\n\nIt is deliberately **unscoped**: it searches every company in the system, not the signed-in rep\u2019s book. A rep who cannot find a customer because a colleague owns it creates it again, and a duplicate MST costs far more than the privacy of a company name.',
           table: {
             cols: ['Aspect', 'Rule'],
             rows: [
-              ['Where', 'Admin shell top bar, between the breadcrumb and the page actions. Present on every screen, not only on Companies.'],
+              ['Where', 'Admin shell top bar, between the breadcrumb and the page actions. Present on every screen, not only on Customers.'],
               ['Shortcut', '⌘K / Ctrl-K focuses it from anywhere. ↑↓ move, ↵ opens, Esc closes. The shortcut is printed in the box.'],
               ['Searches', 'Company name (short + legal), tax code (MST), Company ID, website domain, and the contact person\u2019s **name**.'],
               ['Does not search', 'The contact\u2019s job title and the city — “Trưởng phòng HC-NS” and “HCMC” sit on nearly every record, so matching them turns search into a way to page through everyone\u2019s book.'],
@@ -283,12 +287,12 @@ export const crm: BuildModule = {
               ['Result cap', 'Top 7, with the total shown (“7/11 results”) and a prompt to refine. There is no “see all”, and no listing — reach, never browse.'],
               ['Each result shows', 'Company name · customer status · pipeline status (if a deal is open) · Company ID · MST · sales owner, marked “(you)” when it is the searcher\u2019s own.'],
               ['No match', 'Says so explicitly and states that every company was checked, including other reps\u2019 — this is the line that stops a rep creating a duplicate.'],
-              ['Opening a result', 'Switches to CRM → Companies and opens that company. The breadcrumb reads Companies / {company} and Back returns to the Companies list — not to the page the search was used from.'],
-              ['Scope', 'Companies only. A quotation, PO or invoice is always reached through its company; a box that answers with four kinds of record forces the user to read every row before acting on any of them.'],
+              ['Opening a result', 'Switches to CRM → Customers and opens that company. The breadcrumb reads Customers / {company} and Back returns to the Customers screen — not to the page the search was used from.'],
+              ['Scope', 'Customers only. A quotation, PO or invoice is always reached through its company; a box that answers with four kinds of record forces the user to read every row before acting on any of them.'],
             ],
           },
           items: [
-            'The Companies list keeps its own search — that one narrows a list the rep is already looking at, and still shows out-of-book matches in a dropdown. The two are not duplicates: one filters, the other locates.',
+            'The Customers list keeps its own search — that one narrows a list the rep is already looking at, and still shows out-of-book matches in a dropdown. The two are not duplicates: one filters, the other locates.',
             'Reaching a colleague\u2019s company is a **read**, not a hand-over. Ownership does not change, and the record opens without any claim on it.',
           ],
         },
@@ -326,8 +330,8 @@ export const crm: BuildModule = {
             rows: [
               ['Company detail — header', 'Yes', 'Confirms you are on the right record; the string support quotes back'],
               ['Company detail — Basic info, first row', 'Yes', 'Copyable field, next to legal name and MST'],
-              ['Companies list — search box', 'Searchable', 'Paste an ID and the row is found'],
-              ['Companies list — as a column', 'Yes — next to the company name', 'So a rep can read back the ID of a row they are looking at, and match it against an export or a support ticket without opening the record. Rendered small and monospaced so it stays a reference, not a thing to scan by.'],
+              ['Customers list — search box', 'Searchable', 'Paste an ID and the row is found'],
+              ['Customers list — as a column', 'Yes — next to the company name', 'So a rep can read back the ID of a row they are looking at, and match it against an export or a support ticket without opening the record. Rendered small and monospaced so it stays a reference, not a thing to scan by.'],
               ['Record URL', 'Yes — /companies/CO-P9FCEPD', 'Shareable, and does not leak a sequential database key'],
               ['Exports (csv / Excel)', 'Yes', 'The join key when the client reconciles our data against theirs'],
               ['Quotation / PO / invoice PDFs', 'NO', 'Documents identify the customer by legal name + MST — those are the legally meaningful fields'],
@@ -492,7 +496,7 @@ export const crm: BuildModule = {
               ['Detach a company from its group', 'Company detail → Basic info → Edit → Công ty mẹ → clear', 'Clearing the field is what detaches; there is no separate “remove from group” action.'],
               ['See a company’s parent', 'Company detail → Basic info → Công ty mẹ', 'One row, links to the parent record.'],
               ['See a company’s subsidiaries', 'Company detail → “Công ty liên kết — Affiliated companies”', 'derived from the children — never typed. Shows the group tree with each member’s status.'],
-              ['See a whole group at once', 'Companies list → click a group tag', 'A banner appears (“🏢 Tập đoàn …”) and the list narrows to that group at every level, across sales owners, with a “Bỏ lọc” to clear it.'],
+              ['See a whole group at once', 'Customers list → click a group tag', 'A banner appears (“🏢 Tập đoàn …”) and the list narrows to that group at every level, across sales owners, with a “Bỏ lọc” to clear it.'],
             ],
           },
           items: [
@@ -577,7 +581,7 @@ export const crm: BuildModule = {
           items: [
             'Address is asked for every country — a quotation, order, invoice and contract all print it, so it can never be optional.',
             'A foreign company writes its city into the address, because a province dropdown of Vietnamese provinces cannot express “Seoul” or “Singapore”. The form says so explicitly rather than leaving an unusable empty picker on screen.',
-            'The Companies list Location column and its Location filter read the Vietnamese province. A foreign company therefore has no city to group by — that is expected, not missing data.',
+            'The Customers list Location column and its Location filter read the Vietnamese province. A foreign company therefore has no city to group by — that is expected, not missing data.',
             'MASTER DATA, three lists, and they are deliberately different sizes. COUNTRY (company): all ~196 countries, ISO 3166-1, with **Việt Nam then Hàn Quốc pinned to the top** — Korea second because Saramin’s own group and a large share of its customers are Korean. LOCATIONS: all 34 Vietnamese provincial units, with **Quốc tế / International as the LAST value**. JOBSEEKER NATIONALITY: exactly two, Việt Nam / Nước ngoài.',
             'Why the company list is long and the jobseeker list is short: a company’s country of registration is public data on its licence and it decides tax treatment, so it must be exact. A jobseeker’s nationality is sensitive personal data (NĐ 13/2023) whose only real use is “do we need to sponsor a work permit?” — a question with two answers. Splitting it per country would turn a sensitive field into a discriminatory filter, and a role needing Japanese or Korean is a LANGUAGE SKILL, not a nationality.',
             'International is the LAST value in Locations, not the first and not split per country. On a Vietnamese job board it is the exception, and listing Japan / Singapore / Korea separately produces filters that are almost always empty.',
@@ -592,7 +596,7 @@ export const crm: BuildModule = {
           table: {
             cols: ['Surface', 'Shows', 'Falls back to'],
             rows: [
-              ['Companies list', 'Short name', 'Legal name'],
+              ['Customers list', 'Short name', 'Legal name'],
               ['Pipeline board card', 'Short name', 'Legal name'],
               ['Company detail header', 'Short name', 'Legal name'],
               ['Quotation / order / invoice', 'legal name always', '— (never the short name)'],
@@ -657,7 +661,7 @@ export const crm: BuildModule = {
             'CHURN IS NEITHER OF THESE. Không gia hạn, chuyển sang đối thủ and mất liên lạc are churn: the company exists, the account still works, and it is still worth a win-back call. Churn lives on `account` and the company stays **Active and owned**. Only reach for a door when the rep has decided to stop caring.',
             'RELEASING IS THE COMMON CASE and should feel cheap — no reason, no approval, no confirmation beyond one dialog. It is how a rep hands back a lead that went nowhere, and making it heavy is how books fill with dead weight instead.',
             'ARCHIVING A COMPANY THAT SHOULD HAVE BEEN RELEASED strands a live prospect where nobody will ever see it. RELEASING ONE THAT SHOULD HAVE BEEN ARCHIVED is worse and louder: the row returns to the pool as a lead, another rep claims it, and calls a company that no longer exists — or, for a vi phạm, re-engages one we deliberately barred.',
-            'ARCHIVED COMPANIES GET THEIR OWN SCREEN — CRM → **Công ty đã lưu trữ** — not a filter on the Companies list. A state whose entire purpose is to stop a company generating work must not sit one wrong dropdown away from appearing among live customers, and an operator who wants “the archived list” should not have to find it inside a filter panel. The Companies list therefore has NO archive filter at all: it shows active companies, always.',
+            'ARCHIVED COMPANIES GET THEIR OWN SCREEN — CRM → **Công ty đã lưu trữ** — not a filter in Customers. A state whose entire purpose is to stop a company generating work must not sit one wrong dropdown away from appearing among live customers, and an operator who wants “the archived list” should not have to find it inside a filter panel. The Customers list therefore has NO archive filter at all: it shows active companies, always.',
             'IT IS A REGISTER, NOT A WORK LIST, and its columns say so: reason · note · date archived · who archived it · sales owner · total revenue. No pipeline, no idle, no last-contact — none of them mean anything for a company nobody will contact again. Sorted by date archived, newest first, because the question asked here is “what happened recently”, never “who do I call”. No “+ New” action: nothing is created on this screen.',
             'IT IS NOT SCOPED TO THE VIEWER’S BOOK. “My archived companies” is not a question anyone asks, but “was this company archived, and why” is — and it is usually asked about a company that was never yours. Search reaches every archived record regardless of owner; the owner is a column and a filter, not a gate.',
             'VI PHẠM IS THE ONE REASON RENDERED IN RED on this screen. Every other reason is a neutral fact; a barred company is the only one where re-engaging it would be a mistake, so it is the only one worth an alarm colour. This is a register, not a company row, so it does not conflict with the row-colour rule.',
@@ -698,7 +702,7 @@ export const crm: BuildModule = {
             cols: ['Hành động', 'Record', 'Tab', 'Ai'],
             rows: [
               ['**Phân trực tiếp** — gán chủ lần đầu, không qua yêu cầu', 'Free data', '**Owner history**', 'Admin'],
-              ['**Chuyển giao** — đổi người phụ trách, lý do bắt buộc', 'Company list', '**Owner history**', 'Sales lead · Manager'],
+              ['**Chuyển giao** — đổi người phụ trách, lý do bắt buộc', 'Customers', '**Owner history**', 'Sales lead · Manager'],
               ['**Duyệt / Từ chối yêu cầu xin nhận** (2 cấp)', 'Free data', '**Yêu cầu nhận**', 'Admin → Sales lead'],
               ['Đọc **lịch sử yêu cầu** (ai xin, ai bị từ chối, note)', 'CẢ HAI', '**Yêu cầu nhận**', 'mọi người — trên customer là log chỉ đọc'],
               ['Đọc **chuỗi chủ sở hữu** (tenure, release, reclaim)', 'CẢ HAI', '**Owner history**', 'mọi người'],
@@ -957,7 +961,7 @@ export const crm: BuildModule = {
     },
     {
       label: 'Tạo Company — Thông tin công ty: 3 field định danh, một field phân loại',
-      text: 'Nhóm đầu của form tạo (và của Basic-info card — luật mirror) là **định danh của chính công ty**: nó trả lời *“pháp nhân này là ai”*, tách khỏi *“hóa đơn xuất cho ai”* của nhóm dưới. Ba field định danh là bắt buộc; cộng **Người liên hệ** và **Sales owner** thành 5 field của cửa Company list — **4** với công ty nước ngoài, vì MST của họ chỉ còn là mã tham chiếu.\n\n**Điều kiện CHẶN tạo công ty chỉ có một: MST không trùng** — unique trên cả Company list lẫn Free data. Mọi thứ khác trong nhóm (Verify, chip kết quả, danh sách trùng gốc) là thông tin, không phải cổng.',
+      text: 'Nhóm đầu của form tạo (và của Basic-info card — luật mirror) là **định danh của chính công ty**: nó trả lời *“pháp nhân này là ai”*, tách khỏi *“hóa đơn xuất cho ai”* của nhóm dưới. Ba field định danh là bắt buộc; cộng **Người liên hệ** và **Sales owner** thành 5 field của cửa Customers — **4** với công ty nước ngoài, vì MST của họ chỉ còn là mã tham chiếu.\n\n**Điều kiện CHẶN tạo công ty chỉ có một: MST không trùng** — unique trên cả Customers lẫn Free data. Mọi thứ khác trong nhóm (Verify, chip kết quả, danh sách trùng gốc) là thông tin, không phải cổng.',
       table: {
         cols: ['Field', 'Bắt buộc', 'Hành vi'],
         rows: [
@@ -972,7 +976,7 @@ export const crm: BuildModule = {
         'Header form nói luật trước khi nhập: *“bắt buộc 5 thông tin”* (trong nước) / *“bắt buộc 4 thông tin”* (nước ngoài) — đổi Loại công ty là con số và danh sách field trong header đổi theo.',
         'Danh sách “trùng 10 số gốc MST” (gợi ý liên kết chi nhánh / công ty mẹ) chỉ hiện với công ty trong nước — gốc MST là khái niệm của mã số thuế Việt Nam.',
       ],
-      warn: 'MST unique so trên FULL STRING (10 số và 10+“-001” là hai giá trị khác nhau, đều hợp lệ) và quét CẢ HAI kho. Trùng Company list → chặn hẳn (banner đỏ duy nhất của form), chỉ về hồ sơ đang giữ số đó. Trùng Free data → cũng không tạo mới: banner amber mở thẳng dòng pool để phân trực tiếp — công ty lên Company list mang theo dữ liệu danh bạ, thay vì thành bản ghi thứ hai.',
+      warn: 'MST unique so trên FULL STRING (10 số và 10+“-001” là hai giá trị khác nhau, đều hợp lệ) và quét CẢ HAI kho. Trùng Customers → chặn hẳn (banner đỏ duy nhất của form), chỉ về hồ sơ đang giữ số đó. Trùng Free data → cũng không tạo mới: banner amber mở thẳng dòng pool để phân trực tiếp — công ty lên Customers mang theo dữ liệu danh bạ, thay vì thành bản ghi thứ hai.',
     },
     {
       label: 'Nút Verify — hai chip kết quả, chip nào cũng chỉ để biết',
@@ -1044,7 +1048,7 @@ export const crm: BuildModule = {
           ['**Loại công ty** đổi nghĩa ô MST', 'Đổi label · bỏ dấu `*` · ẩn nút Verify khi là công ty nước ngoài', '**Giống hệt** — và đổi cả label *Địa chỉ đăng ký MST* → *Địa chỉ đăng ký*'],
           ['**Loại công ty** gate phân loại người mua', 'Phân loại không hợp lệ → tự chuyển sang phân loại hợp lệ đầu tiên', '**Giống hệt**, ngay trong chế độ Edit'],
           ['**Verify** MST', '2 chip, không chặn; sửa ô MST hoặc đổi loại công ty → chip biến mất', '**Có mặt** — số MST cũng đổi ở đây, người đổi cũng có đúng câu hỏi đó'],
-          ['**MST unique**, cả hai kho', 'Trùng Company list → banner đỏ, chặn tạo · trùng Free data → banner amber, mở dòng pool', 'Giống, **trừ một điều**: hồ sơ không được tính là trùng với chính nó — so sánh phải loại bản ghi đang sửa ra'],
+          ['**MST unique**, cả hai kho', 'Trùng Customers → banner đỏ, chặn tạo · trùng Free data → banner amber, mở dòng pool', 'Giống, **trừ một điều**: hồ sơ không được tính là trùng với chính nó — so sánh phải loại bản ghi đang sửa ra'],
           ['**Thông tin xuất hóa đơn** kế thừa', 'Người mua là chính công ty → không có input nào', '**Không có input nào** — chỗ đó là một câu nói rõ “kế thừa từ Thông tin công ty, sửa ở nhóm trên”'],
           ['**Không có “Set as default”**', 'Phân loại chọn lúc tạo chính là mặc định', 'Card ghi một dòng: đây là **mặc định** của công ty, từng PO đổi được lúc phát hành mà không sửa hồ sơ'],
         ],
@@ -1074,7 +1078,7 @@ export const crm: BuildModule = {
         'Five selects sitting open on the toolbar spent a line of the page permanently on a narrowing that happens occasionally — and the row grew every time a filter was added. One button does not.',
         'The active-filter count is what makes collapsing safe: hiding the controls is fine, hiding the fact that a list is filtered is not — that is how a rep concludes a company is missing.',
         'Owner appears in the panel only in Sales-lead view, where rows can belong to different reps. In Sales view every row is the rep’s own, so the filter would have one option.',
-        'The default sort is the WORK, not the alphabet: Companies opens on “Chưa liên hệ lâu nhất”, Quotations on “Sắp hết hạn trước” — every quotation dies at month-end, so what runs out soonest is what a rep needs to see first.',
+        'The default sort is the WORK, not the alphabet: Customers opens on “Chưa liên hệ lâu nhất”, Quotations on “Sắp hết hạn trước” — every quotation dies at month-end, so what runs out soonest is what a rep needs to see first.',
         'Sort sits immediately after Filter, not pushed to the right edge. Narrowing a list and ordering it are the same job; a control alone on the far side reads as belonging to the table rather than to the toolbar.',
         'NO STATUS TABS anywhere. A tab strip makes status the one dimension worth narrowing by and spends a whole row saying so — status is one filter among several, so it belongs in the Filter panel like the rest. Every tab row in the admin became a Status filter with the same options.',
         'HOW THE FILTER IS BUILT when a screen does not define its own: the old tab labels become a Status filter, and any other column whose values REPEAT and come from a small set (2–8 distinct values) becomes a filter row too, up to four. A column where every row differs is an identity or a number — a dropdown of 40 unique values is not a filter, it is a second table.',
@@ -1197,7 +1201,7 @@ export const crm: BuildModule = {
           items: [
             'Resets only on real human contact: a logged activity (chat / call / meeting) or a document actually sent or confirmed to the client.',
             'Must not reset on system events: auto-reminders, provisioning, quota decrements, page publishes, housekeeping stage changes — otherwise a silent client looks healthy.',
-            'one rule everywhere — same definition, thresholds table and display on the Companies list and the Pipeline board, so a number never means two different things in two places.',
+            'one rule everywhere — same definition, thresholds table and display in Customers and the Pipeline board, so a number never means two different things in two places.',
           ],
         },
         {
@@ -1503,7 +1507,7 @@ export const crm: BuildModule = {
               { name: 'owner', type: 'ref → admin user' },
               { name: 'lastActivity', type: 'relative date', notes: 'lastMeaningfulAt = max(last clock-resetting timeline activity, stage change). Two inputs only — document events already write a timeline activity, so they are covered by the first.' },
               { name: 'awaitingReply', type: 'derived', notes: 'set when the last logged activity was inbound (customer wrote/called and nobody answered). Separate from rotting — shown as its own badge.' },
-              { name: 'idle', type: 'derived', required: true, notes: 'one field, held on the company/deal record and read unchanged by every screen — the Companies directory, the Pipeline board and any report all show the same number. There is no per-screen idle.' },
+              { name: 'idle', type: 'derived', required: true, notes: 'one field, held on the company/deal record and read unchanged by every screen — the Customers directory, the Pipeline board and any report all show the same number. There is no per-screen idle.' },
               { name: 'daysInStage', type: 'derived', notes: 'days since the card entered its current stage — context only, never drives the colour' },
               { name: 'healthDot', type: 'enum', notes: 'green (fresh) · amber (approaching the stage threshold) · red (rotting — past it). The one idle number, coloured by the stage it currently sits in. Purely a visual warning; it never moves the card.' },
               { name: 'activityBadges', type: 'counts', notes: 'linked quotes / POs / invoices / contracts' },
@@ -1534,7 +1538,7 @@ export const crm: BuildModule = {
           'Document events are not a third input — they are folded into the first, because every document action writes a timeline entry (quotation sent/revised/accepted, order sent/confirmed, payment recorded/confirmed, invoice issued). Most of them also change the stage, but two do not — a quote revision (v2/v3 while in Negotiation) and a payment (while in PO) — and those are exactly the moments a deal is most alive, so they must reset the clock.',
           'Stage change alone must reset it too: a rep who advances a card but forgets to log the call would otherwise go red for making progress, which teaches the team to distrust the colour.',
           'not every timeline entry resets the clock. Decay markers must not, or a deal resets itself and can never rot: "quotation auto-expired", "escalated to sales lead", rot-state transitions, and plain field edits are all excluded. Each activity type carries a resetsRotClock flag — human actions and inbound customer contact reset; the system noting that something lapsed does not.',
-          'one idle field, one rule. Idle is a property of the company/deal, computed once, and every screen reads that same value — the Companies directory, the Pipeline board, the deal card and any report. What varies is only the threshold applied to it, which comes from the stage the deal currently sits in. Never let a screen compute or store its own idle.',
+          'one idle field, one rule. Idle is a property of the company/deal, computed once, and every screen reads that same value — the Customers directory, the Pipeline board, the deal card and any report. What varies is only the threshold applied to it, which comes from the stage the deal currently sits in. Never let a screen compute or store its own idle.',
           'Rotting is measured against time-since-last-meaningful-event, not against days-in-stage. A deal legitimately sitting in Negotiation for weeks while the rep works it stays green; a deal sitting there untouched goes red. daysInStage is shown for context only and never drives the colour.',
           'The threshold applied is always the current stage’s. Stages may be skipped — a card dragged Proposal → Negotiation drops Qualified entirely, resets to green on the move, and is then judged by Negotiation’s 21d/45d, not Proposal’s 7d/21d.',
           'Closing a deal as Lost closes the deal, not the company. The company record stays, keeps its history, and can start a new deal any time.',
@@ -2003,7 +2007,7 @@ export const crm: BuildModule = {
           items: [
             'The list row carries the flag beside the status: **⏳ 8% · chờ Sales lead** · **✓ 10% đã duyệt** · **✕ từ chối**. A pending request is not a status — the quotation is still a Draft, it simply cannot be sent yet.',
             'The inbox control is **absent for a plain rep**, not present and permanently empty. A control that can never do anything teaches people to stop reading the toolbar.',
-            'Who the approver is comes from the SAME persona switcher and the same SALES_TEAMS org the Companies list uses — one answer to “who am I”, everywhere. A lead approves their own team’s requests; there is one department manager.',
+            'Who the approver is comes from the SAME persona switcher and the same SALES_TEAMS org the Customers screen uses — one answer to “who am I”, everywhere. A lead approves their own team’s requests; there is one department manager.',
             'A rejection **requires a reason**; an approval does not. A rep can only act on “no” if told what would be a yes, so the field is mandatory and the placeholder asks for the number that would pass.',
             'Notification is out of scope here but assumed: the approver gets one when a request routes to them, the rep gets one on the decision. The shell already carries a bell.',
           ],
@@ -2641,7 +2645,10 @@ export const crm: BuildModule = {
     // 6 · Free data (danh bạ doanh nghiệp) ───────────────────────────────────
     {
       name: 'Free data',
-      /* Slug PINNED — see the note on Invoices above. */
+      /* Slug PINNED — see the note on Invoices above. The name is still shorter
+         than the slug because this feature was renamed from “Danh bạ doanh nghiệp
+         (free company data)”; a brief spell as “Company directory” was reverted
+         2026-08-23 — “Free data” is what the team actually calls it. */
       slug: 'danh-ba-doanh-nghiep-free-company-data',
       site: 'Admin',
       scope: ['BE', 'FE'],
@@ -2655,23 +2662,23 @@ export const crm: BuildModule = {
         requirements: [
           {
             label: 'ONE company table, two states — and TWO admin-only create doors',
-            text: 'Free data và Company list **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Company list” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Company list** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
+            text: 'Free data và Customers **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Customers” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Customers** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
             diagram: 'company-intake',
             table: {
               cols: ['Cửa', 'Ai', 'Bắt buộc', 'Đích'],
               rows: [
                 ['**Free data → Thêm công ty**', 'Admin', '**1 field: tên công ty** (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
-                ['**Company list → New company**', 'Admin', '**5 field: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner**', '**Company list** — có chủ, đếm vào mọi số của CRM'],
+                ['**Customers → New company**', 'Admin', '**5 field: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner**', '**Customers** — có chủ, đếm vào mọi số của CRM'],
                 ['*(không có cửa nào)*', 'Sales', '—', 'Sales **không tạo công ty**. Đường duy nhất: Xin nhận từ Free data → Admin duyệt → Sales lead duyệt.'],
               ],
             },
             items: [
-              'HAI CÁCH THIẾT KẾ, và vì sao chọn cách này. **(A) Chọn màn hình trước** — bấm tạo ở Free data thì form hỏi 1 field, bấm tạo ở Company list thì form hỏi 5 field, và bắt buộc đúng bộ đó. **(B) Một form chung, đủ thông tin thì lên Company list, thiếu thì nằm ở Free data.** Chọn (A).',
-              'Vì sao (B) hỏng: một form mà **mọi field đều tuỳ chọn** sẽ đẻ ra bản ghi mà mọi field đều trống. Người định tạo khách hàng nhưng quên chọn sales owner sẽ nhận được một dòng Free data — **im lặng**, không báo gì — rồi đi tìm khách hàng của mình trong Company list và không thấy. Và vì dòng pool không cần MST, kiểm tra trùng MST thành tuỳ chọn theo, nên đúng cái trùng cần chặn lại lọt qua.',
-              '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Company list cần 5 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Company list nêu 5 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
-              'ĐIỀU KIỆN để hai cửa không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Company list kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa Company list tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
-              'SALES KHÔNG CÓ CỬA TẠO — kể cả lối tắt. Ô tìm kiếm ở Companies, khi không tìm thấy gì, trước đây hiện nút “+ Tạo công ty mới”; nút đó đã bỏ, thay bằng câu chỉ đường: *“báo admin thêm vào Free data, rồi bạn gửi Xin nhận”*. Đó chính là chỗ một rep đang vội sẽ bấm, và bấm được thì công ty vào CRM mà không ai kiểm.',
-              'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc **3 thông tin trên record** — MST hợp lệ + không trùng · địa chỉ đăng ký xuất hóa đơn · contact person — và một sales owner. Cùng MỘT gate (checklist ✓/✗ nêu thiếu gì, sửa ở tab Overview) trên cả hai card, vì hai đường cùng tạo một hồ sơ Company list và một hồ sơ thiếu contact là hồ sơ mà bước báo giá ngay sau đó không gọi được cho ai.',
+              'HAI CÁCH THIẾT KẾ, và vì sao chọn cách này. **(A) Chọn màn hình trước** — bấm tạo ở Free data thì form hỏi 1 field, bấm tạo ở Customers thì form hỏi 5 field, và bắt buộc đúng bộ đó. **(B) Một form chung, đủ thông tin thì lên Customers, thiếu thì nằm ở Free data.** Chọn (A).',
+              'Vì sao (B) hỏng: một form mà **mọi field đều tuỳ chọn** sẽ đẻ ra bản ghi mà mọi field đều trống. Người định tạo khách hàng nhưng quên chọn sales owner sẽ nhận được một dòng Free data — **im lặng**, không báo gì — rồi đi tìm khách hàng của mình trong Customers và không thấy. Và vì dòng pool không cần MST, kiểm tra trùng MST thành tuỳ chọn theo, nên đúng cái trùng cần chặn lại lọt qua.',
+              '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Customers cần 5 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Customers nêu 5 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
+              'ĐIỀU KIỆN để hai cửa không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Customers kiểm tra MST với Customers *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Customers mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa Customers tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
+              'SALES KHÔNG CÓ CỬA TẠO — kể cả lối tắt. Ô tìm kiếm ở Customers, khi không tìm thấy gì, trước đây hiện nút “+ Tạo công ty mới”; nút đó đã bỏ, thay bằng câu chỉ đường: *“báo admin thêm vào Free data, rồi bạn gửi Xin nhận”*. Đó chính là chỗ một rep đang vội sẽ bấm, và bấm được thì công ty vào CRM mà không ai kiểm.',
+              'Hai đường đi từ Free data lên Customers: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc **3 thông tin trên record** — MST hợp lệ + không trùng · địa chỉ đăng ký xuất hóa đơn · contact person — và một sales owner. Cùng MỘT gate (checklist ✓/✗ nêu thiếu gì, sửa ở tab Overview) trên cả hai card, vì hai đường cùng tạo một hồ sơ Customers và một hồ sơ thiếu contact là hồ sơ mà bước báo giá ngay sau đó không gọi được cho ai.',
               'Xong thì dòng **rời khỏi Free data** — không xoá, giữ liên kết tới hồ sơ CRM để truy vết “công ty này vào CRM bằng đường nào”.',
             ],
           },
@@ -2681,8 +2688,8 @@ export const crm: BuildModule = {
             table: {
               cols: ['Công ty đang ở đâu', 'Hành động trên Sign-ups', 'Vì sao'],
               rows: [
-                ['**Đã ở Company list**', '**Move to existing company** — chọn công ty + role → mở khoá login, gửi mail “you’re in”', 'Công ty đã tồn tại và đã có chủ. Đây là ca duy nhất bấm được ngay.'],
-                ['**Đang ở Free data**', '**CHẶN** — nút “Đưa công ty lên Company list →” mở thẳng dòng Free data đó', 'Phải qua đường A hoặc B trước (MST + owner). Xong quay lại Sign-ups thì row thành ca 1 và Move được.'],
+                ['**Đã ở Customers**', '**Move to existing company** — chọn công ty + role → mở khoá login, gửi mail “you’re in”', 'Công ty đã tồn tại và đã có chủ. Đây là ca duy nhất bấm được ngay.'],
+                ['**Đang ở Free data**', '**CHẶN** — nút “Đưa công ty lên Customers →” mở thẳng dòng Free data đó', 'Phải qua đường A hoặc B trước (MST + owner). Xong quay lại Sign-ups thì row thành ca 1 và Move được.'],
                 ['**Chưa có ở đâu**', '**CHẶN** — nút “Tạo công ty trước →” mở form tạo công ty', 'Tạo qua cửa ② hoặc ③, có MST + owner. Xong quay lại Move.'],
                 ['Rác / spam', '**Archive** kèm lý do', 'Không tạo gì cả.'],
               ],
@@ -2708,15 +2715,15 @@ export const crm: BuildModule = {
             },
             items: [
               'MỖI DÒNG NÓI RÕ **KHỚP VÌ ĐÂU** (`tên+đuôi email`, `đuôi email`, `MST`…). Đó chính là thứ quyết định có tin ứng viên đó hay không: khớp **đuôi email mà tên không giống** thường là công ty con; khớp **tên mà khác domain** thường là hai công ty trùng tên.',
-              'MỖI DÒNG CÓ CHIP NGUỒN: **CRM** (xanh, đã ở Company list) hoặc **Bể** (amber, còn ở Free data). Hai nguồn dẫn tới hai hành động khác nhau, nên phải phân biệt được ngay trên dòng.',
+              'MỖI DÒNG CÓ CHIP NGUỒN: **CRM** (xanh, đã ở Customers) hoặc **Bể** (amber, còn ở Free data). Hai nguồn dẫn tới hai hành động khác nhau, nên phải phân biệt được ngay trên dòng.',
               'THỨ TỰ: CRM trước Bể, rồi tới số tín hiệu khớp nhiều hơn. Đó đúng là thứ tự admin nên cân nhắc.',
-              'HYPERLINK mở thẳng bản ghi — CRM sang Company list, Bể sang Free data. Không có link thì admin phải nhớ tên rồi đi tìm ở màn khác, và sẽ đoán thay vì kiểm.',
+              'HYPERLINK mở thẳng bản ghi — CRM sang Customers, Bể sang Free data. Không có link thì admin phải nhớ tên rồi đi tìm ở màn khác, và sẽ đoán thay vì kiểm.',
               'KHÔNG KHỚP GÌ → một nhãn `Not match`. Đó là câu trả lời thật, không phải danh sách rỗng.',
               'DROPDOWN “Move into company” ĐỌC ĐÚNG DANH SÁCH ẤY: nhóm **“Khớp với sign-up này (N)”** lên đầu kèm lý do khớp, phần còn lại của sổ khách nằm dưới nhóm “Tất cả công ty”. Mặc định chọn ứng viên đầu tiên.',
               'KHỚP TỪ 2 CÔNG TY TRỞ LÊN → modal **cảnh báo**: thường là mẹ và chi nhánh dùng chung đuôi email, gán nhầm thì user thấy sai tin tuyển dụng và sai quota. Admin phải tự chọn — hệ thống không đoán hộ.',
               'CỔNG “ĐƯỢC MOVE HAY CHƯA” ĐỌC CHUNG MỘT HÀM với cột Match (có ít nhất một ứng viên CRM). Tính riêng ra hai chỗ là kiểu bug mà cột hiện một đằng, nút chặn một nẻo.',
             ],
-            warn: 'ĐỪNG LƯU kết quả match vào bản ghi sign-up. Danh sách phải được tính lại mỗi lần đọc: công ty mới được tạo, dòng Free data được đưa lên Company list, website được sửa — mọi thay đổi đó đều đổi câu trả lời. Một `matched: boolean` + `matchName` lưu sẵn sẽ đúng đúng một lần, ngay lúc ghi.',
+            warn: 'ĐỪNG LƯU kết quả match vào bản ghi sign-up. Danh sách phải được tính lại mỗi lần đọc: công ty mới được tạo, dòng Free data được đưa lên Customers, website được sửa — mọi thay đổi đó đều đổi câu trả lời. Một `matched: boolean` + `matchName` lưu sẵn sẽ đúng đúng một lần, ngay lúc ghi.',
           },
           {
             label: 'Two stores, not one flag — why the pool sits outside the CRM',
@@ -2890,7 +2897,7 @@ export const crm: BuildModule = {
           },
           {
             label: 'How the rep finds out — approval announces itself, rejection does not',
-            text: 'The two outcomes are **not symmetrical**, and that asymmetry is the whole problem.\n\n**Approval announces itself**: the company turns up in the rep’s own Companies list with their name on it, with the contact they supplied already filed. Nothing needs to tell them.\n\n**Rejection is silent.** The pool row goes back to *Chưa nhận*, which looks exactly like a company they never asked for. Without something saying otherwise, the rep’s only signal is that nothing happened — and they will either re-submit the same request or quietly assume the pool is broken.',
+            text: 'The two outcomes are **not symmetrical**, and that asymmetry is the whole problem.\n\n**Approval announces itself**: the company turns up in the rep’s own Customers list with their name on it, with the contact they supplied already filed. Nothing needs to tell them.\n\n**Rejection is silent.** The pool row goes back to *Chưa nhận*, which looks exactly like a company they never asked for. Without something saying otherwise, the rep’s only signal is that nothing happened — and they will either re-submit the same request or quietly assume the pool is broken.',
             table: {
               cols: ['Where', 'What it says'],
               rows: [
@@ -2975,8 +2982,8 @@ export const crm: BuildModule = {
             table: {
               cols: ['Surface', 'Behaviour'],
               rows: [
-                ['Global search (shell top bar)', 'Results come back in **two labelled sections**: `Companies` then `Danh bạ · chưa ai nhận`. Never mixed or ranked together — one is a customer with an owner, the other is reference data nobody holds. A pool hit offers **Xin nhận →**.'],
-                ['Companies list — out-of-book dropdown', 'Same two sections, same rule, plus the existing `Ngoài sổ của bạn` section.'],
+                ['Global search (shell top bar)', 'Results come back in **two labelled sections**: `Customers` then `Danh bạ · chưa ai nhận`. Never mixed or ranked together — one is a customer with an owner, the other is reference data nobody holds. A pool hit offers **Xin nhận →**.'],
+                ['Customers list — out-of-book dropdown', 'Same two sections, same rule, plus the existing `Ngoài sổ của bạn` section.'],
                 ['Empty state', 'Reads "checked every CRM company **and** the free Danh bạ" — and only then offers **+ Tạo công ty mới**. Create is the last resort, and is hidden while the pool has a hit.'],
                 ['Which pool rows are searchable', 'Only **Chưa nhận** rows. A row already claimed or pending would be an offer the rep cannot act on.'],
               ],
@@ -3085,7 +3092,7 @@ export const crm: BuildModule = {
             'GET /admin/crm/free-data-kinds — the 8 classifications (master data, so the list can be tuned without a release)',
             'POST /admin/crm/company-pool/import — admin only; records `source` on every row',
           ],
-          integrations: ['CRM Companies (the promotion target + the duplicate check)', 'Global company search (second result section)', 'Contacts (contact #1 written on approval)', 'Notifications (claim submitted · approved · rejected with reason)', 'Audit log (every claim decision)'],
+          integrations: ['CRM Customers (the promotion target + the duplicate check)', 'Global company search (second result section)', 'Contacts (contact #1 written on approval)', 'Notifications (claim submitted · approved · rejected with reason)', 'Audit log (every claim decision)'],
           notes: 'Approve is one transaction: company + owner + contact + pool link, or nothing. The pool table is never joined into CRM aggregate queries — keeping it a separate table is what makes that a structural guarantee rather than a filter everyone must remember.',
         },
         acceptance: [
@@ -3125,7 +3132,7 @@ export const crm: BuildModule = {
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Company-user sign-up lives here. A self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves every row with the same TWO actions — move the user into an existing company, or archive — and Move emails the user an activation link. This screen never CREATES a company: if the one they named is only in Free data, or is not on file at all, it has to reach the Company list first (Free data → claim/assign, or Admin → Create company), and only then can the user be moved into it.',
+      notes: 'Company-user sign-up lives here. A self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves every row with the same TWO actions — move the user into an existing company, or archive — and Move emails the user an activation link. This screen never CREATES a company: if the one they named is only in Free data, or is not on file at all, it has to reach the Customers first (Free data → claim/assign, or Admin → Create company), and only then can the user be moved into it.',
       mockup: 'crm-signups',
       detail: {
         requirements: [
@@ -3166,14 +3173,24 @@ export const crm: BuildModule = {
           ],
         },
         {
-          label: 'HQ resolves every sign-up with the SAME three actions',
-          text: 'The Match column is just information — the tax code either hits a company we already have (Match) or it does not (Not match). It never changes the choices. Every sign-up, matched or not, is resolved with exactly one of the same three actions.',
+          label: 'HQ resolves every sign-up with the SAME two actions',
+          /* THE DIAGRAM BELONGS HERE TOO, not only on Free data. This screen is the
+             one place the whole intake model is actually USED — an operator reading
+             "Move" and "Archive" needs to see why there is no third button, and the
+             picture answers that faster than the table under it. Same component,
+             rendered twice on purpose: one drawing, two audiences. */
+          diagram: 'company-intake',
+          text: 'The Match column is just information — the company either hits one we already have (and the row says WHICH list it is in) or it does not. It never changes the choices. Every sign-up, matched or not, is resolved with exactly one of the same TWO actions.\n\nCORRECTED 2026-08-23: a third action, "Create new company + move user", was listed here and contradicted this feature\'s own Gate-2 rule ("this screen NEVER creates a company") and the two-create-doors rule on Free data. Two actions is the live model; creating a company is a separate act on a separate screen, done first.',
           table: {
             cols: ['Action', 'What it does', 'User outcome'],
             rows: [
-              ['Move to existing company', 'Assign the user to a company we already have (the matched one, or any company HQ picks)', 'Gets the "you’re in — sign in" email; can log in with the password set at sign-up'],
-              ['Create new company + move user', 'Create a fresh company, then move the user into it as Admin', 'Gets the "you’re in — sign in" email; can log in with the password set at sign-up'],
-              ['Archive', 'Discard the sign-up (spam / junk / not real)', 'Rejected — the request is removed (reversible, audited); an optional "we couldn’t set up your account" email'],
+              ['**Move to existing company**', 'Assign the user to a company that is already in **Customers** — the matched one, or any company HQ picks', 'Gets the "you’re in — sign in" email; can log in with the password set at sign-up'],
+              ['**Archive**', 'Discard the sign-up (spam / junk / not real)', 'Rejected — the request is removed (reversible, audited); an optional "we couldn’t set up your account" email'],
+              [
+                '*(no third action)*',
+                'The company they named is only in **Free data**, or is not on file at all. Nothing on this screen can fix that: promote the Free data row, or create the company from Customers — then come back and Move.',
+                'Stays **Pending review** until the company exists. The row shows the blocked reason and links to the company that has to be dealt with first.',
+              ],
             ],
           },
           items: [
@@ -3239,7 +3256,7 @@ export const crm: BuildModule = {
         behaviors: [
           'On submit the system creates a pending sign-up (holding the person’s chosen password), sends an email-verification link immediately, and runs a tax-code match.',
           'Gate 1 — email verification: when the user clicks the link, emailVerified flips true. This is automatic and does NOT resolve the row; it only makes the row actionable for HQ.',
-          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Company list. **Email verification no longer gates placement, only LOGIN**: an unverified person can be placed, and their login opens by itself the moment they click the link.',
+          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Customers. **Email verification no longer gates placement, only LOGIN**: an unverified person can be placed, and their login opens by itself the moment they click the link.',
           'Match is binary + informational: tax hit (Match, shows which) or not (Not match). A public email domain can’t auto-match. Match never changes the three actions.',
           'Move / Create create/attach the company membership, unlock login, and send the "you’re in — sign in" email (password already set). Archive rejects the request.',
           'The user sees a status tracker and a stated SLA throughout; trying to log in before both gates pass shows an "under review" screen, never a bare error.',
@@ -3247,7 +3264,7 @@ export const crm: BuildModule = {
         rules: [
           'Two independent gates: (1) email verification — instant, automatic; (2) HQ placement — manual. Login unlocks only when BOTH pass.',
           'TWO actions on EVERY row, always the same two: **Move to existing company** · **Archive**. One affordance — the ⋯ menu — on every unresolved row. A table whose rows offer four different controls makes the operator read each row before they can act on any of them.',
-          'The blockers live INSIDE the Move dialog, not on the row: company đang ở **Free data** → amber panel + “Đưa công ty lên Company list →”; công ty **chưa có ở đâu** → “Tạo công ty trước →”. The Move button stays disabled until the company exists. That keeps the table uniform while still refusing the impossible move — and each blocker names the screen that fixes it, because a refusal with no direction sends the operator hunting or inventing a way round.',
+          'The blockers live INSIDE the Move dialog, not on the row: company đang ở **Free data** → amber panel + “Đưa công ty lên Customers →”; công ty **chưa có ở đâu** → “Tạo công ty trước →”. The Move button stays disabled until the company exists. That keeps the table uniform while still refusing the impossible move — and each blocker names the screen that fixes it, because a refusal with no direction sends the operator hunting or inventing a way round.',
           'EMAIL VERIFICATION MOVED: it gates LOGIN, not placement. Reasons: an unverified spam row (`x@spam.io`) must still be archivable, or junk accumulates with no way to clear it; and placing an unverified person is harmless — login stays shut until they click the link, at which point it opens and the “you’re in” email goes out automatically. The Move dialog says exactly that, and the activation note switches wording so it never claims a verified email the row does not have.',
           'REMOVED: “Create new company + move” and “Promote from Free data + move”. Both were extra doors into the company table, placed on a screen that does not ask for phân loại người mua, địa chỉ xuất hoá đơn or người liên hệ — a record created there would stall at the VAT-invoice step, by which time the company already has users signing in.',
           'The result is the invariant: **the company is always created first, then the user is assigned.** See the intake flow diagram on this page.',
@@ -3279,7 +3296,7 @@ export const crm: BuildModule = {
             'POST /admin/crm/signups/:id/create-and-move { companyName, taxCode, salesOwnerId } — verified only; user = Admin; assigns the CRM sales owner; send "you’re in" email',
             'POST /admin/crm/signups/:id/archive { reason } — reject the request',
           ],
-          integrations: ['Company site sign-up form (source — pending request + verification email)', 'CRM Companies (match / create / archive)', 'Account management (membership + roles)', 'Auth (pending account, email verification, login gate)', 'Notifications (verification email · "you’re in" email · SLA nudge)'],
+          integrations: ['Company site sign-up form (source — pending request + verification email)', 'CRM Customers (match / create / archive)', 'Account management (membership + roles)', 'Auth (pending account, email verification, login gate)', 'Notifications (verification email · "you’re in" email · SLA nudge)'],
           notes: 'Two gates, decoupled: verify-email is automatic and fast; HQ placement is manual. Login is unlocked only when emailVerified && placed. Uniqueness among VERIFIED companies is enforced on the tax code at verify/buy.',
         },
         acceptance: [

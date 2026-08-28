@@ -583,9 +583,9 @@ export const JOBSEEKER_SPECS: FeatureSpec[] = [
     title: 'Companies directory',
     status: 'live-wired',
     summary:
-      'Company list + rich company detail: info-at-a-glance, welfare/benefits, reviews & ratings, photos, that company’s jobs, and a follow button.',
+      'Customers + rich company detail: info-at-a-glance, welfare/benefits, reviews & ratings, photos, that company’s jobs, and a follow button.',
     description:
-      'Company list → company profile page with tabbed sections. The client’s open question is depth: "simple like Vietnamworks" vs "rich like ITviec". The rich model (ITviec/Glassdoor-style) is the current standard — company reviews with sub-ratings drive candidate trust.',
+      'Customers → company profile page with tabbed sections. The client’s open question is depth: "simple like Vietnamworks" vs "rich like ITviec". The rich model (ITviec/Glassdoor-style) is the current standard — company reviews with sub-ratings drive candidate trust.',
     uiFields: [
       {
         group: 'Profile header',

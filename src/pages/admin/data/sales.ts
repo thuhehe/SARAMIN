@@ -10,7 +10,7 @@ import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Sales / CRM ──────────────────────────────────────────────────────────────
    LEGACY board. This is an older mockup of the same Sales pipeline that the
-   Companies board (CompaniesBoard, sourced from COMPANIES) now covers, with its
+   Customers board (CompaniesBoard, sourced from COMPANIES) now covers, with its
    own stage vocabulary (Lead / Won) and its own demo rows. It shares the ONE
    idle RULE via idleOf() above, but it still carries its own `idle` numbers — so
    a company appearing in both shows two different day counts. Idle is a property
@@ -149,7 +149,7 @@ export const optionTotals = (o: QOption) => {
 export const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
 export const VAT_RATE = 8
 
-/* Companies sharing the first 10 digits of a tax code — the same legal entity's
+/* Customers sharing the first 10 digits of a tax code — the same legal entity's
    branches, or genuinely unrelated companies that happen to collide. The form does
    NOT decide which; it lists them and lets the rep link. */
 export const MST_ROOT_MATCHES = [
@@ -192,7 +192,7 @@ export type Quote = {
 }
 /* Which ROLE a special discount routes to — by amount, not by chain, so above the
    band the lead is skipped entirely. Reuses the sales org already defined for the
-   Companies list rather than inventing a second hierarchy. */
+   Customers list rather than inventing a second hierarchy. */
 export const apprRole = (pct: number): SalesRole => (pct <= SPECIAL_LEADER_MAX ? 'lead' : 'manager')
 /* Seniority, so "can this person sign their own discount?" is one comparison
    rather than a pile of special cases. Anyone whose own role is at or above the

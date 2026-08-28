@@ -33,7 +33,7 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
      re-derived here — twelve rules spread through a form is how they drift. */
   /* WHO is writing this quotation. In the product this is simply the signed-in
      user; here it is a picker so the self-approval rules can be seen working —
-     the same personas the Companies and Quotations lists use. */
+     the same personas the Customers and Quotations lists use. */
   const [creator, setCreator] = useState<SalesPersona>(SALES_PERSONAS[0])
   const [mode, setMode] = useState<DiscountMode>('newchurn')
   const allowed = modesFor(co?.account)

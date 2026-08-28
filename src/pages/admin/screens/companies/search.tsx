@@ -9,7 +9,7 @@ import { Pill } from '@/pages/admin/ui/status'
 import { searchKey } from '@/pages/admin/ui/table'
 
 /* ── Global company search ───────────────────────────────────────────────────
-   One search box in the shell, reachable from every page. The Companies list has
+   One search box in the shell, reachable from every page. The Customers list has
    its own search, but that one narrows a LIST the rep is already looking at; this
    one answers a different question — "does this customer exist at all, and where
    is it?" — from wherever they happen to be.
@@ -21,7 +21,7 @@ import { searchKey } from '@/pages/admin/ui/table'
    Browsing someone else's book is still not possible — there is no listing here,
    the result set is capped, and it dies with the query.
 
-   Companies only. A quotation or a PO is always reached THROUGH its company, and
+   Customers only. A quotation or a PO is always reached THROUGH its company, and
    a box that answers with four kinds of record needs the user to read every row
    before they can act on any of them. */
 export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, record: string) => void }) {
@@ -65,9 +65,9 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
     ? DIRECTORY.filter((d) => d.state === 'free' && searchKey([d.name, d.phone ?? '', d.web ?? '', d.tax ?? ''].join(' ')).includes(ql)).slice(0, 4)
     : []
 
-  /* Hands the shell the Company ID, not the row: the shell switches to Companies
-     and that page resolves the id, so the breadcrumb names Companies and Back
-     returns to the Companies list — not to whatever page the search was used on. */
+  /* Hands the shell the Company ID, not the row: the shell switches to Customers
+     and that page resolves the id, so the breadcrumb names Customers and Back
+     returns to the Customers screen — not to whatever page the search was used on. */
   const go = (c: Company) => {
     setOpen(false)
     setQ('')
@@ -119,7 +119,7 @@ export function GlobalCompanySearch({ onOpen }: { onOpen: (specId: string, recor
             <>
               {hits.length > 0 && (<>
               <div className="flex items-center gap-2 border-b border-line-soft bg-canvas/60 px-3 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Companies</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Customers</span>
                 <span className="ml-auto text-[10.5px] text-faint">{hits.length}/{all.length} result{all.length === 1 ? '' : 's'}</span>
               </div>
               <div className="max-h-[320px] overflow-y-auto p-1">

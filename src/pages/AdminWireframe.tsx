@@ -76,9 +76,9 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // are CRM → Purchase order, and the credit balance is the entitlement ledger on the
   // company account.
   // CRM
-  'admin-company-list': { module: 'crm', feature: 'Companies' },
+  'admin-company-list': { module: 'crm', feature: 'Customers' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
-  'admin-company-archived': { module: 'crm', feature: 'Companies' },
+  'admin-company-archived': { module: 'crm', feature: 'Customers' },
   'admin-signups': { module: 'crm', feature: 'Sign-ups' },
   // Both pool screens are specified as ONE feature — the claim flow is the spec, and
   // the queue is the second half of it. They sit on the System nav but belong to CRM.
@@ -96,7 +96,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
   'admin-issuer': { module: 'admin-system', feature: 'Company information' },
   // Configuration page → System module, like every other System nav item. The tier it
-  // configures is displayed by CRM → Companies, which cross-references back to here.
+  // configures is displayed by CRM → Customers, which cross-references back to here.
   'admin-membership': { module: 'admin-system', feature: 'Membership tiers' },
   'admin-master-data': { module: 'admin-system', feature: 'Master data' },
   // Both point at the Resume-management feature that specifies them — the weights
@@ -230,7 +230,7 @@ const NAV_GROUPS: NavGroup[] = [
     // + the anchor for the churn clock). Payments, VAT e-invoices and Contracts
     // are per-company paperwork — reached from the company record, not the nav.
     items: [
-      { label: 'Companies', specId: 'admin-company-list' },
+      { label: 'Customers', specId: 'admin-company-list' },
       { label: 'Pipeline', specId: 'admin-company-pipeline' },
       { label: 'Quotations', specId: 'admin-quotes' },
       { label: 'Purchase order', specId: 'admin-purchase-orders' },
@@ -242,7 +242,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Sign-ups', specId: 'admin-signups' },
       // The free company pool and its claim queue. They live in CRM because that is
       // where a rep looks for their next customer — the pool is the top of the same
-      // funnel Companies and Pipeline sit further down. (They remain a SEPARATE
+      // funnel Customers and Pipeline sit further down. (They remain a SEPARATE
       // STORE outside the CRM tables, which is what keeps unowned, unverified rows
       // out of every CRM count; where the nav puts them and where the data lives are
       // different questions — see Danh bạ doanh nghiệp → "Two stores, not one flag".)
@@ -253,7 +253,7 @@ const NAV_GROUPS: NavGroup[] = [
       // asked, until a notification exists. Default view: Của tôi.
       { label: 'Yêu cầu nhận công ty', specId: 'admin-claim-requests' },
       // Last: the register of companies nobody will work again. A dead end by
-      // design, so it sits at the bottom of the group and not beside Companies.
+      // design, so it sits at the bottom of the group and not beside Customers.
       { label: 'Công ty đã lưu trữ', specId: 'admin-company-archived' },
     ],
   },
@@ -566,7 +566,7 @@ export function AdminWireframe() {
             {/* One search for the whole console, in the chrome rather than on a page:
                 "does this company exist, and where is it?" is a question a rep asks
                 from wherever they are, and the answer has to be reachable without
-                first navigating to Companies. Centre column, fixed width — a search
+                first navigating to Customers. Centre column, fixed width — a search
                 box that changes width as the breadcrumb grows is a moving target. */}
             <div className="hidden w-full min-w-0 md:flex">
               <GlobalCompanySearch onOpen={goToScreen} />

@@ -22,8 +22,6 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
   const [company, setCompany] = useState(cands[0]?.name ?? targets[0] ?? '')
   const [role, setRole] = useState<CoUserRole>('Recruiter')
   const [reason, setReason] = useState('')
-  const salesOwners = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
-  const [owner, setOwner] = useState(salesOwners[0])
   const title = mode === 'move' ? `Move ${s.person} to a company` : 'Archive this sign-up?'
   /* Placement and login are two different moments once the email gate stopped
      blocking placement — so this note has to say which one it is describing, or it
@@ -31,15 +29,11 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
   const activation = s.verified
     ? <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
     : <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11.5px] leading-relaxed text-muted"><span>✉️</span><span>Gán xong <b className="text-ink/75">chưa mở login</b> — người này chưa xác minh email. Khi họ bấm link xác minh, hệ thống tự mở login và gửi mail <b className="text-ink/75">“you’re in — sign in”</b>.</span></p>
-  const ownerField = (
-    <div>
-      <p className="mb-1 text-[11.5px] font-medium text-ink/80">Sales owner <span className="text-rose-500">*</span></p>
-      <select value={owner} onChange={(e) => setOwner(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-        {salesOwners.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-      <p className="mt-1 text-[10.5px] text-faint">The rep who owns this company in the CRM.</p>
-    </div>
-  )
+  /* NO Sales-owner field (client: remove). A sign-up is only ever moved into a
+     company that already exists on the Customers list, and the promotion gate
+     guarantees every such record HAS an owner — asking again here invited the
+     operator to change it in passing, from a dialog about a person, not the
+     account. Ownership changes have one home: Chuyển giao on the company record. */
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
       <div className="my-4 w-full max-w-[480px] rounded-2xl border border-line bg-surface shadow-2xl">
@@ -62,13 +56,13 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
                   <p className="font-semibold">⚠ Công ty này đang ở Free data — chưa phải khách hàng</p>
                   <p className="mt-1">“<b>{s.freeDataMatch}</b>” mới là dòng danh bạ, chưa có MST và chưa có sales owner, nên chưa gán user vào được.</p>
                   <button onClick={() => { onClose(); onGoPool?.(s.freeDataMatch!) }} className="mt-1.5 rounded border border-amber-400 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 hover:border-amber-600">
-                    Đưa công ty lên Company list →
+                    Đưa công ty lên Customers →
                   </button>
                 </>
               ) : (
                 <>
                   <p className="font-semibold text-ink">Công ty “{s.company}” chưa có trong hệ thống</p>
-                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Company list</b> (tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
+                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Customers</b> (tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
                   <button onClick={() => { onClose(); onGoCreate?.() }} className="mt-1.5 rounded border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted hover:border-brand hover:text-brand">
                     Tạo công ty trước →
                   </button>
@@ -116,7 +110,6 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
                   {CO_ROLE_DEFS.map((r) => <option key={r.name} value={r.name}>{r.name}{r.admin ? ' (account owner)' : ''}</option>)}
                 </select>
               </div>
-              {ownerField}
               {activation}
             </>
           )}
@@ -136,8 +129,8 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
           {mode === 'move' && (
             <button
               disabled={!inCompanyList(s)}
-              title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Company list — tạo/đưa lên trước'}
-              onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · owner ${owner}${s.verified ? ' · sign-in email sent' : ' · chờ xác minh email'}`)}
+              title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Customers — tạo/đưa lên trước'}
+              onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role}${s.verified ? ' · sign-in email sent' : ' · chờ xác minh email'}`)}
               className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', inCompanyList(s) ? 'bg-emerald-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
             >
               Move{s.verified ? ' + send sign-in' : ''}
@@ -201,15 +194,19 @@ function MatchCell({ s, onOpen }: { s: Signup; onOpen: (m: SignupMatch) => void 
           title={`Mở ${m.name} — khớp ${m.why.join(' + ')}`}
           className="flex w-full min-w-0 items-center gap-1 text-left"
         >
-          <span className={cn('shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide',
+          {/* THE SOURCE, spelled out — “CRM” and “Bể” were internal shorthand for
+              the two lists the operator is about to act on, and the whole decision
+              turns on which one it is: a Customers hit can be Moved into right
+              now, a Free data hit cannot until someone promotes it. */}
+          <span className={cn('shrink-0 rounded px-1 py-px text-[9px] font-semibold',
             m.where === 'crm' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
-            {m.where === 'crm' ? 'CRM' : 'Bể'}
+            {m.where === 'crm' ? 'Customers' : 'Free data'}
           </span>
+          {/* The match REASON (“tên+đuôi email”) was removed: it explained how the
+              matcher found the row, which is our machinery, not the operator's
+              question. They open the company and look. The reason survives in the
+              hover title for the rare ambiguous case. */}
           <span className="min-w-0 flex-1 truncate text-[11.5px] text-brand hover:underline">{m.name}</span>
-          {/* WHY it matched, because that is what decides whether to trust it: a
-              domain hit with an unlike name is usually a subsidiary; a name hit on a
-              different domain is usually a different company sharing a common name. */}
-          <span className="shrink-0 text-[9.5px] text-faint">{m.why.join('+')}</span>
         </button>
       ))}
     </div>
@@ -230,9 +227,12 @@ export function AdminSignups() {
       <ListPage
         tabs={[{ label: 'All', count: 34 }, { label: 'New', count: 22, active: true }, { label: 'Resolved', count: 9 }, { label: 'Archived', count: 3 }]}
         cols={[
-          { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.2fr' }, { label: 'Phone', w: '0.8fr' },
+          { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.1fr' }, { label: 'Phone', w: '0.8fr' },
           { label: 'Tax number', w: '0.8fr' }, { label: 'Company name', w: '1fr' }, { label: 'Hiring', w: '0.5fr' },
-          { label: 'Email verified', w: '1fr' }, { label: 'Match', w: '1.6fr' }, { label: 'Status', w: '1.1fr' }, { label: 'When', w: '0.6fr' },
+          /* Match is the widest column on purpose (client: the company name was
+             truncating): it is the one cell whose content the operator actually
+             reads before acting, and it carries a source chip + the full name. */
+          { label: 'Email verified', w: '0.8fr' }, { label: 'Match', w: '2.2fr' }, { label: 'Status', w: '1fr' }, { label: 'When', w: '0.6fr' },
           { label: 'Action', w: '1.3fr', align: 'r' },
         ]}
         rows={rows.map((s) => [
@@ -267,7 +267,7 @@ export function AdminSignups() {
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Every row offers the <b>same two choices</b> — <b>Move to existing company</b> or <b>Archive</b> — this screen never creates a company. <b>Email verification gates LOGIN, not placement</b>: HQ can move a row before the person verifies, they simply cannot sign in until they click the link. A company that is still in <b>Free data</b>, or exists nowhere yet, surfaces inside the Move dialog itself with a link to the screen that fixes it (“Đưa công ty lên Company list →” / “Tạo công ty trước →”), and the Move button stays locked until the company is real. Move / Create unlock login and email the user “you’re in — sign in” once verification has happened (password already set).
+        Every row offers the <b>same two choices</b> — <b>Move to existing company</b> or <b>Archive</b> — this screen never creates a company. <b>Email verification gates LOGIN, not placement</b>: HQ can move a row before the person verifies, they simply cannot sign in until they click the link. A company that is still in <b>Free data</b>, or exists nowhere yet, surfaces inside the Move dialog itself with a link to the screen that fixes it (“Đưa công ty lên Customers →” / “Tạo công ty trước →”), and the Move button stays locked until the company is real. Move / Create unlock login and email the user “you’re in — sign in” once verification has happened (password already set).
       </p>
       {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} onGoPool={(co) => goTo('admin-company-directory', co)} onGoCreate={() => goTo('admin-company-list')} />}
     </div>

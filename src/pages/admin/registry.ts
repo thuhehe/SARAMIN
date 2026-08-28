@@ -70,7 +70,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-resumes': adminResumes,
   'admin-cv-check': adminCvCheck,
   'admin-resume-new': adminResumeNewStandalone,
-  // Companies
+  // Customers
   'admin-company-list': adminCompanyList,
   'admin-company-archived': adminCompanyArchived,
   'admin-company-pipeline': adminCompanyPipeline,

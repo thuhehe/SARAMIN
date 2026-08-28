@@ -136,7 +136,7 @@ export const MODULES: BigModule[] = [
     flow: 'Admin/CO maintain company profile → JS company directory & rich detail',
     steps: [
       { surface: 'Admin', label: 'Company records: list / detail / create', featureIds: ['admin-company-new', 'admin-company-list', 'admin-company-detail'] },
-      { surface: 'JS', label: 'Company directory + rich profile (info, welfare, reviews, jobs)', featureIds: ['js-companies'] },
+      { surface: 'JS', label: 'Free data + rich profile (info, welfare, reviews, jobs)', featureIds: ['js-companies'] },
     ],
     keyDecisions: [
       'Company detail UI depth (Vietnamworks-simple vs itviec-rich).',

@@ -16,7 +16,7 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     id: 'admin-company-list',
     code: 'ADM-CO-01',
     surface: `${S} · Companies`,
-    title: 'Company list',
+    title: 'Customers',
     status: 'be-migrated',
     summary: 'Browse / manage all companies.',
     bbNotes: [

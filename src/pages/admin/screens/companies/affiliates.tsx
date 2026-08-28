@@ -72,7 +72,7 @@ function GroupChart({ root, current, onClose, onOpen }: { root: Company; current
    resulting mẹ → con pair before saving, so nobody has to work out which record
    actually changes. Every link is simply CÔNG TY CON: the old chi-nhánh /
    công-ty-con split was derived from the tax root and changed nothing a rep could
-   act on, so it is gone. Companies sharing the 10-digit tax root are still
+   act on, so it is gone. Customers sharing the 10-digit tax root are still
    surfaced FIRST in the picker, as the strongest hint of the same legal entity. */
 function LinkAffiliateModal({ c, onClose }: { c: Company; onClose: () => void }) {
   const [dir, setDir] = useState<'parent' | 'child'>('parent')
@@ -365,7 +365,7 @@ export function AffiliatedCompanies({ c, onOpen }: { c: Company; onOpen?: (x: Co
       )}
 
       {/* One action only: LINK an existing record, either direction. A subsidiary
-          that does not exist yet is created from the Companies list like any other
+          that does not exist yet is created from the Customers screen like any other
           company — a second create path here would be a second way to make a
           duplicate, and the group link is not a reason to bypass the MST check. */}
       <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-2.5">

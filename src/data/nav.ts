@@ -84,10 +84,10 @@ export const NAV: NavModule[] = [
   // ── HQ Admin ──────────────────────────────────────────────────────────────
   {
     code: 'B1',
-    label: 'Companies',
+    label: 'Customers',
     app: 'HQ Admin',
     children: [
-      { id: 'admin-company-list', label: 'Company list' },
+      { id: 'admin-company-list', label: 'Customers' },
       { id: 'admin-company-detail', label: 'Company detail' },
       { id: 'admin-company-new', label: 'New company' },
     ],

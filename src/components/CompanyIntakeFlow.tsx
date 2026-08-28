@@ -6,7 +6,7 @@
  * stores"; it is COMPLETED and ASSIGNED.
  *
  *   pool state     name only, no owner                 → Free data
- *   customer state name + MST + contact + sales owner  → Company list
+ *   customer state name + MST + contact + sales owner  → Customers
  *
  * TWO — TWO CREATE DOORS, BOTH ADMIN'S, AND THE OPERATOR PICKS THE DOOR FIRST.
  * Which screen you press "create" on declares what you are making, and the form
@@ -72,20 +72,20 @@ export function CompanyIntakeFlow() {
         <rect x={20} y={16} width={1380} height={54} rx={10} fill="var(--color-canvas)" stroke="var(--color-line)" strokeWidth={1.5} />
         <text x={38} y={40} fontSize={13} fontWeight={800} fill={INK}>MỘT bảng công ty, hai trạng thái</text>
         <text x={38} y={58} fontSize={11} fill={MUT}>
-          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Company list = thêm <tspan fontWeight={700} fill={INK}>MST + địa chỉ đăng ký MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
+          Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Customers = thêm <tspan fontWeight={700} fill={INK}>MST + địa chỉ đăng ký MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
         </text>
 
         {/* ── ROW 1: the three doors ──────────────────────────────────────────── */}
         <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN (sales không có cửa tạo — xem “Luật bất biến” dưới cùng)</text>
 
         <Box x={38} y={118} w={380} h={64} title="① Admin tạo ở màn Free data" sub="1 field bắt buộc: TÊN CÔNG TY" sub2="→ nằm ở Free data, chưa có chủ" tone="pool" />
-        <Box x={448} y={118} w={652} h={64} title="② Admin tạo ở màn Company list" sub="5 field bắt buộc: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner" sub2="→ thẳng vào Company list, có chủ ngay" tone="crm" />
+        <Box x={448} y={118} w={652} h={64} title="② Admin tạo ở màn Customers" sub="5 field bắt buộc: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner" sub2="→ thẳng vào Customers, có chủ ngay" tone="crm" />
 
 
         {/* the dedup gate both doors pass */}
         <Arrow d="M 228 182 L 228 226" tone="brand" />
         <Arrow d="M 774 182 L 774 226" tone="brand" />
-        <Box x={38} y={228} w={810} h={56} title="Kiểm tra trùng — quét CẢ HAI trạng thái (Free data + Company list)" sub="MST trùng → CHẶN, nêu công ty đang giữ + sales phụ trách · tên/domain trùng ở Free data → mở dòng đó, đừng tạo mới" tone="gate" />
+        <Box x={38} y={228} w={810} h={56} title="Kiểm tra trùng — quét CẢ HAI trạng thái (Free data + Customers)" sub="MST trùng → CHẶN, nêu công ty đang giữ + sales phụ trách · tên/domain trùng ở Free data → mở dòng đó, đừng tạo mới" tone="gate" />
 
         {/* ── ROW 2: the two states ───────────────────────────────────────────── */}
         <Arrow d="M 190 284 L 190 336" tone="brand" />
@@ -123,12 +123,12 @@ export function CompanyIntakeFlow() {
         <Box x={308} y={642} w={240} h={52} title="hoặc ARCHIVE" sub="spam · trùng · sai công ty" tone="plain" />
 
         {/* three answers */}
-        <Arrow d="M 548 560 C 590 560, 600 545, 640 545" tone="brand" label="đã ở Company list" lx={596} ly={534} />
+        <Arrow d="M 548 560 C 590 560, 600 545, 640 545" tone="brand" label="đã ở Customers" lx={596} ly={534} />
         <Arrow d="M 548 578 L 640 646" tone="stop" label="đang ở Free data" lx={600} ly={614} />
         <Arrow d="M 548 596 L 640 748" tone="stop" label="chưa có ở đâu" lx={588} ly={706} />
 
         <Box x={642} y={518} w={300} h={54} title="Move to existing company" sub="chọn công ty + role → mở khoá login" tone="crm" />
-        <Box x={642} y={620} w={300} h={54} title="CHẶN — “Đưa công ty lên Company list →”" sub="mở dòng Free data, làm đường A hoặc B" tone="stop" />
+        <Box x={642} y={620} w={300} h={54} title="CHẶN — “Đưa công ty lên Customers →”" sub="mở dòng Free data, làm đường A hoặc B" tone="stop" />
         <Box x={642} y={722} w={300} h={54} title="CHẶN — “Tạo công ty trước →”" sub="tạo qua cửa ① hoặc ②" tone="stop" />
 
         {/* the blocked paths loop back up into the promotion machinery */}
@@ -146,7 +146,7 @@ export function CompanyIntakeFlow() {
         <rect x={38} y={792} width={1340} height={48} rx={10} fill="#fffbeb" stroke={AMB} strokeWidth={1.5} />
         <text x={58} y={812} fontSize={11.5} fontWeight={800} fill={AMB}>Luật bất biến</text>
         <text x={58} y={830} fontSize={11} fill={MUT}>
-          Công ty phải TỒN TẠI trong Company list trước khi bất kỳ user nào được gán vào · Chỉ ADMIN tạo công ty · Sales chỉ có một đường sở hữu: xin nhận từ Free data, qua 2 cấp duyệt.
+          Công ty phải TỒN TẠI trong Customers trước khi bất kỳ user nào được gán vào · Chỉ ADMIN tạo công ty · Sales chỉ có một đường sở hữu: xin nhận từ Free data, qua 2 cấp duyệt.
         </text>
       </svg>
     </div>

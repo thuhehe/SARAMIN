@@ -10,7 +10,7 @@ import { DetailCard, KV, LField, Radio } from '@/pages/admin/ui/fields'
 import { Pill } from '@/pages/admin/ui/status'
 import { Table } from '@/pages/admin/ui/table'
 
-/** Same flat no-contact thresholds as the Companies list — see idleOf above. */
+/** Same flat no-contact thresholds as the Customers screen — see idleOf above. */
 function IdlePill({ days }: { days: number }) {
   const rot = idleOf(days)
   // On a card there is no column header to carry the meaning, so the pill says it.

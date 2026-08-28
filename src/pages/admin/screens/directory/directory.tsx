@@ -146,7 +146,7 @@ export function AdminCompanyDirectory() {
      straight into the CRM as a customer is the wrong shape: it is not owned, not
      verified and not a customer yet. */
   const [adding, setAdding] = useState(false)
-  /* Same wiring as Companies: the shell owns the "+ Thêm công ty" button on the page
+  /* Same wiring as Customers: the shell owns the "+ Thêm công ty" button on the page
      title row and signals intent; the page swaps itself for the form. */
   const createSignal = useContext(CreateSignalCtx)
   useEffect(() => { if (createSignal) setAdding(true) }, [createSignal])
@@ -161,7 +161,7 @@ export function AdminCompanyDirectory() {
 
   if (adding) return <PoolCreatePage onBack={() => setAdding(false)} />
 
-  /* Same pattern as Companies: the record REPLACES the list rather than floating
+  /* Same pattern as Customers: the record REPLACES the list rather than floating
      over it, so Back means one thing and the breadcrumb stays true. */
   /* A row handed in from another screen — the claim-tracking table links a request
      to the company it is about. Matched on the pool NAME, which is the only handle a

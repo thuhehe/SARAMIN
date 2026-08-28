@@ -57,10 +57,10 @@ function PromoteGate({ r, onFill }: { r?: DirRow; onFill?: () => void }) {
   return (
     <div className="w-full space-y-1.5">
       {allOk ? (
-        <p className="text-[10.5px] text-emerald-700">✓ Đủ điều kiện đưa lên Company list — MST <span className="font-mono">{r!.tax!.trim()}</span> không trùng · địa chỉ ĐK xuất hóa đơn · contact person (tab Overview).</p>
+        <p className="text-[10.5px] text-emerald-700">✓ Đủ điều kiện đưa lên Customers — MST <span className="font-mono">{r!.tax!.trim()}</span> không trùng · địa chỉ ĐK xuất hóa đơn · contact person (tab Overview).</p>
       ) : (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-900">
-          <p>⚠ Để phân sales và đưa công ty lên <b>Company list</b> cần đủ 3 thông tin:</p>
+          <p>⚠ Để phân sales và đưa công ty lên <b>Customers</b> cần đủ 3 thông tin:</p>
           <p className="mt-0.5 flex flex-wrap gap-x-3">
             {items.map((i) => (
               <span key={i.label} className={i.ok ? 'text-emerald-700' : 'font-semibold'}>{i.ok ? '✓' : '✗'} {i.label}{i.ok ? '' : ` (${i.miss})`}</span>

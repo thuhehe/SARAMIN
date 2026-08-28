@@ -177,7 +177,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
               <input value={tax} onChange={(e) => { setTax(e.target.value); setLooked(false); setVerify(null) }} placeholder={isForeign ? 'Tax ID nước sở tại' : '0328xxxxxx-001'} className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
               {/* Verify is INFORMATION, not a gate: it answers "does this number
                   exist on the tax registry?" and nothing else. The one rule that
-                  blocks creation on this field is UNIQUENESS across Company list +
+                  blocks creation on this field is UNIQUENESS across Customers +
                   Free data. Hidden for a foreign company — its number is a foreign
                   tax ID and the Vietnamese registry has nothing to say about it;
                   a button that can only fail teaches reps to ignore buttons. */}
@@ -204,7 +204,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
               </p>
             )}
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">{isForeign ? 'Mã số thuế ở nước sở tại — BẮT BUỘC (2026-08-23). Không kiểm tra được trên hệ thống thuế VN nên không có nút Verify; điều đó làm nó khó xác minh, không làm nó tùy chọn — một hồ sơ DN nước ngoài không có mã số thuế nào cả thì không đối chiếu được với hợp đồng hay chứng từ chuyển tiền về sau.' : '10 số, hoặc 10 số + “-001” nếu là chi nhánh. Verify chỉ để biết — điều kiện duy nhất chặn tạo là MST trùng hồ sơ đã có.'}</p>
-            {/* The dedup spans BOTH stores. Free data and Company list are one
+            {/* The dedup spans BOTH stores. Free data and Customers are one
                 company table at two completeness levels, so a check that only
                 looked at customers would let a rep create the very duplicate the
                 pool exists to prevent — and the pool holds tens of thousands of
@@ -212,14 +212,14 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
             {/* The only gate on the whole form, so it is the only red on it. */}
             {crmHit && (
               <p className="mt-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
-                ✕ MST này đã thuộc <b>{coLabel(crmHit)}</b> trên Company list — <b>không tạo được</b> (MST là duy nhất trên cả hai kho). Mở hồ sơ đó để cập nhật, hoặc kiểm tra lại số.
+                ✕ MST này đã thuộc <b>{coLabel(crmHit)}</b> trên Customers — <b>không tạo được</b> (MST là duy nhất trên cả hai kho). Mở hồ sơ đó để cập nhật, hoặc kiểm tra lại số.
               </p>
             )}
             {poolHit && (
               <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
                 ⚠ MST này đã có trong <b>Free data</b> — <b>{poolHit.name}</b>{poolHit.addr ? ` · ${poolHit.addr}` : ''}.
                 <span className="mt-0.5 block text-amber-800/85">
-                  Đừng tạo mới: mở dòng đó và <b>phân trực tiếp cho sales</b> (hoặc duyệt yêu cầu đang chờ) — công ty sẽ lên Company list mang theo dữ liệu danh bạ và rời khỏi Free data. Tạo mới ở đây sẽ thành hai bản ghi cho một công ty.
+                  Đừng tạo mới: mở dòng đó và <b>phân trực tiếp cho sales</b> (hoặc duyệt yêu cầu đang chờ) — công ty sẽ lên Customers mang theo dữ liệu danh bạ và rời khỏi Free data. Tạo mới ở đây sẽ thành hai bản ghi cho một công ty.
                 </span>
                 <button onClick={() => goTo('admin-company-directory', poolHit.name)} className="mt-1 rounded border border-amber-400 bg-white px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800 hover:border-amber-600">
                   Mở dòng Free data →
@@ -457,7 +457,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
         <JobGroup title="Sales">
           <div className="grid grid-cols-2 gap-3">
             <ComboField label="Lead source" value="Website sign-up" placeholder="Select or type…" options={['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']} />
-            <LField label="Sales owner" req value="Nguyễn Thị Lan" select hint="Bắt buộc — một hồ sơ ở Company list luôn có chủ. Chưa biết giao ai thì công ty đó thuộc về Free data." />
+            <LField label="Sales owner" req value="Nguyễn Thị Lan" select hint="Bắt buộc — một hồ sơ ở Customers luôn có chủ. Chưa biết giao ai thì công ty đó thuộc về Free data." />
           </div>
           <div>
             <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Products interested</label>

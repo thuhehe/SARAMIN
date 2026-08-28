@@ -522,7 +522,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                         {/* The one blocking rule, and the only red on this card. */}
                         {mstOther && (
                           <p className="mt-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] leading-relaxed text-rose-900">
-                            ✕ MST này đã thuộc <b>{coLabel(mstOther)}</b> trên Company list — <b>không lưu được</b>. MST là duy nhất trên cả hai kho.
+                            ✕ MST này đã thuộc <b>{coLabel(mstOther)}</b> trên Customers — <b>không lưu được</b>. MST là duy nhất trên cả hai kho.
                           </p>
                         )}
                         {mstPool && (

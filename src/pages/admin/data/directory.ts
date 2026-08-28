@@ -343,7 +343,7 @@ export const CLAIM_REQS: ClaimReq[] = [
  * Yêu cầu nhận tab shows how it got claimed — and the reclaim tenure in Owner
  * history and the approved request here are the SAME EVENT seen from two sides.
  *
- * Companies with real fixture rows (Bình Minh) use them; everything else derives
+ * Customers with real fixture rows (Bình Minh) use them; everything else derives
  * its log from the owner chain, so the two tabs can never disagree about who took
  * the company out of the pool, or when. */
 export function companyClaimHistory(c: Company): ClaimReq[] {

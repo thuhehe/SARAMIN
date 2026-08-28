@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useRef } from 'react'
 
 /* ── Detail breadcrumb ───────────────────────────────────────────────────────
    A detail view publishes its own crumb (and the way back) up to the admin shell,
-   so the breadcrumb reads "CRM / Companies / Đại Dương" and IS the way back. That
+   so the breadcrumb reads "CRM / Customers / Đại Dương" and IS the way back. That
    replaces the per-page "← Back to X" button: one navigation affordance, in the
    place every admin console puts it, instead of two that can disagree. */
 export type DetailCrumb = { label: string; onBack: () => void }

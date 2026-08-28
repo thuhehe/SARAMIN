@@ -40,7 +40,7 @@ export function AdminQuotes() {
      would be a second, thinner copy of this list plus a link back to it.
      What the approver needs is a way to FIND their requests, which is a filter.
 
-     Same persona switcher as the Companies list, so "who am I" is answered once
+     Same persona switcher as the Customers screen, so "who am I" is answered once
      and the same way everywhere. */
   const [persona, setPersona] = useState<SalesPersona>(SALES_PERSONAS[1])
   const [queue, setQueue] = useState(false)
@@ -71,7 +71,7 @@ export function AdminQuotes() {
   )
 
   /* Status left the tab strip and moved into Filter, so this list carries the same
-     Search · Filter · Sort toolbar as Companies. Tabs made status the ONE dimension
+     Search · Filter · Sort toolbar as Customers. Tabs made status the ONE dimension
      worth narrowing by and spent a whole row saying so. */
   const shown = QUOTES
     .filter((q) => (queue ? mine(q) : true))
@@ -108,7 +108,7 @@ export function AdminQuotes() {
         searchHint="Tìm số báo giá, khách hàng…"
         leading={
           <span className="flex flex-wrap items-center gap-2">
-            {/* Same control as the Companies list — one answer to "who am I". */}
+            {/* Same control as the Customers screen — one answer to "who am I". */}
             <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
               <span className="text-faint">Đang xem với tư cách</span>
               <select

@@ -5,7 +5,7 @@
    company's sales owner — because whoever does the work is who the KPI counts. */
 export const ME = 'Nguyễn Thị Lan'
 
-/* ── Sales org — drives record scope on the Company list ───────────────────────
+/* ── Sales org — drives record scope in Customers ───────────────────────
  * Saramin Sales department:
  *   • A SALES MANAGER heads the department and sees every team's book.
  *   • Under the manager are (up to) 2 TEAMS, each run by a SALES LEAD.
@@ -30,7 +30,7 @@ export const SALES_MANAGER = 'Đỗ Xuân Trường'
 export type SalesRole = 'rep' | 'lead' | 'manager'
 export const SALES_ROLE_LABEL: Record<SalesRole, string> = { rep: 'Salesperson', lead: 'Sales lead', manager: 'Sales manager' }
 export type SalesPersona = { name: string; role: SalesRole }
-/* The identities you can "log in as" on the Company list to see how scope changes. */
+/* The identities you can "log in as" in Customers to see how scope changes. */
 export const SALES_PERSONAS: SalesPersona[] = [
   { name: 'Phạm Quang Huy', role: 'rep' },       // plain rep, Team A → own book only
   { name: 'Nguyễn Thị Lan', role: 'lead' },      // leads Team A + Team B → own + team view

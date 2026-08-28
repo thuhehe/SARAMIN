@@ -4,7 +4,7 @@
  */
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
-/* ── Companies ────────────────────────────────────────────────────────────── */
+/* ── Customers ────────────────────────────────────────────────────────────── */
 // Pipeline stage = the sales/document flow. Ordered Qualified → Proposal →
 // Negotiation → PO → Invoice, plus Lost. (Renewal/lapse is tracked separately by
 // the customer `account` status: New / Existing / Churn.)
@@ -15,7 +15,7 @@ import type { StatusTone } from '@/pages/admin/lib/tone'
 //   Invoice     = customer paid; Accounting issued the Invoice (deal closed)
 //   Lost        = ended without a PO (declined / lost to a competitor / budget cut / went silent)
 export type CoStatus = 'Qualified' | 'Proposal' | 'Negotiation' | 'PO' | 'Invoice' | 'Lost'
-// Customer-relationship health (shown on the Companies directory) — distinct from the
+// Customer-relationship health (shown in Customers directory) — distinct from the
 // deal lifecycle above (shown on the Pipeline board). Only real customers have one;
 // a company still being sold to (no PO yet) has account = null.
 //   New = became a customer recently (onboarding)
@@ -307,7 +307,7 @@ export function poGate(c: Company): { ok: boolean; reason?: string; quote: strin
    (auto-reminders, provisioning, page publishes) must NOT reset it.
 
    ONE rule everywhere — the same definition, thresholds table and display on the
-   Companies list and the Pipeline board. The rule is "idle vs the EXPECTED CONTACT
+   Customers list and the Pipeline board. The rule is "idle vs the EXPECTED CONTACT
    CADENCE for this relationship type", i.e. one formula reading a settings table,
    never per-stage logic sprinkled through the code. A company with an open deal
    always uses the openDeal row: the live opportunity sets the pace. */
@@ -319,7 +319,7 @@ export const IDLE_RULE: Record<Cadence, { amber: number; red: number; cadence: s
   nurture:     { amber: 30, red: 60, cadence: 'monthly' },     // New (never bought), no open deal
   churn:       { amber: 60, red: 90, cadence: 'quarterly' },   // win-back
 }
-/* Sort options for the Companies list. The default is "chưa liên hệ lâu nhất" —
+/* Sort options for the Customers screen. The default is "chưa liên hệ lâu nhất" —
    with the Needs-attention filter gone, ordering by neglect is what puts the rows a
    rep must act on at the top, without spending a colour channel on every row.
    Never-contacted (idle null) sorts first: it is the highest-priority follow-up. */
@@ -343,7 +343,7 @@ export function idleOf(days: number, k: Cadence = 'openDeal'): Rot {
   const t = IDLE_RULE[k]
   return days >= t.red ? 'red' : days >= t.amber ? 'amber' : 'fresh'
 }
-/** ONE display rule, used on both the Companies list and the Pipeline board:
+/** ONE display rule, used on both the Customers screen and the Pipeline board:
     under a month reads in days ("12d"); a month or more rolls up to months +
     remainder ("1m 18d", "3m 2d") so a long gap stays readable instead of "92d".
     Still used wherever a DURATION is what is being said ("2m 4d ago" on the
