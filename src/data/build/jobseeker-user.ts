@@ -561,6 +561,31 @@ export const jobseekerUser: BuildModule = {
         ],
         sections: [
           {
+            early: true,
+            heading: 'THREE WAYS AN ACCOUNT STOPS — Deactivated · Suspended · Deleted, and they are not interchangeable',
+            text: 'Three different states, three different actors, three different levels of reversibility — and the commonest mistake is treating any two as the same thing. Suspended in particular is NOT deactivation: the account is intact and HQ can reinstate it, the person simply cannot get in.\n\nWhat they share is the EFFECT on the two employer-facing surfaces. What differs is who did it, whether it comes back, and — the part that reaches the candidate — the words.',
+            table: {
+              cols: ['', 'Deactivated', 'Suspended (blocked)', 'Deleted'],
+              rows: [
+                ['Who does it', 'The candidate', '**HQ**, on a violation', 'The candidate'],
+                ['Reversible?', 'Yes — sign in inside the grace window', 'Yes — **HQ Reinstate**, returning it to whatever it was before', '**No.** Nothing behind it'],
+                ['The account record', 'Kept', '**Kept, intact** — this is the whole difference from deactivation', 'Removed after the legal retention period'],
+                ['Login', 'Blocked; reactivates on sign-in', 'Blocked; sessions killed immediately', 'Gone'],
+                ['CV search', 'Out immediately', 'Out immediately', 'Out immediately'],
+                ['Applications already delivered', 'STAY with the employer — the exception, because a reversible pause must not destroy them', '**Recalled**', '**Recalled**'],
+                ['What the CANDIDATE reads', '“Tài khoản đã tạm dừng — đăng nhập lại để khôi phục”', '“**Tài khoản tạm thời bị khoá**” + how to contact support', '“Tài khoản đã được xoá”'],
+                ['What the EMPLOYER reads', '— (nothing changes on their side)', '“Saramin đã thu hồi CV này” — **no reason given**', '“Saramin đã thu hồi CV này” — no reason given'],
+              ],
+            },
+            items: [
+              '★ SUSPENDED IS NOT DEACTIVATED, and the table exists mostly to stop that conflation. Deactivation is the candidate withdrawing; suspension is HQ locking a door on an account that stays exactly where it was. Reinstate returns it to whatever it was BEFORE — Active, or Pending verification — never blindly Active, because a suspended account that had not verified its email must not gain a verified one by being unblocked.',
+              '★ SUSPEND AND DELETE BEHAVE IDENTICALLY ON THE TWO EMPLOYER SURFACES — CV out of search, delivered applications recalled — and that is intentional: from an employer’s side “this candidate is gone” is one fact, and giving it two different shapes would only leak which one happened. Only the CANDIDATE-facing wording differs, because only the candidate has anything different to do about it.',
+              'THE EMPLOYER IS NEVER TOLD WHICH ONE IT WAS. A recall on an account-level action carries no reason — spelling out that a user was blocked is both a judgement about a person and a hint to whoever is testing our abuse rules. This is the one place the three states must look the same.',
+              '“TẠM THỜI” IS LOAD-BEARING IN THE CANDIDATE’S MESSAGE. A suspension that reads as permanent produces a support ticket from someone who thinks they have lost everything, and it is also untrue — the record is intact and one Reinstate away. Pair the wording with a contact route, because unlike the other two states this one has an appeal.',
+              'ONE MORE STATE EXISTS AND IS NOT ON THIS TABLE: Pending verification, before the account is usable at all. It is a state on the way IN; these three are ways out.',
+            ],
+          },
+          {
             heading: 'Status options — and what HQ may do with each',
             items: [
               'Pending verification — HQ can resend the verification email. This is the single most common support request and needs no other power.',
@@ -814,12 +839,43 @@ export const jobseekerUser: BuildModule = {
         ],
         sections: [
           {
+            heading: '⛔ PROPOSED, NOT DECIDED — DELETE ACCOUNT confirmed by email (awaiting client sign-off)',
+            text: '⛔ **NOTHING ON THIS PAGE CHANGES UNTIL THE CLIENT CONFIRMS.** The live flow is the one described in the sections and rules BELOW — an explicit confirm plus re-authentication, a confirmation email sent AFTER the fact, and a grace window. This block is a PROPOSAL drafted 2026-08-23 and parked the same day pending client confirmation; do not build from it, and do not treat the two as alternatives already chosen between.\n\nWHY IT IS KEPT RATHER THAN DELETED: the client cannot confirm a flow they have not seen. This block plus the `js-delete-account` mockup are what that conversation is held over. If the answer is no, delete both — the reasoning is captured here so it does not have to be re-derived.\n\nTHE PROPOSAL: permanent deletion is confirmed OUT OF BAND, through the user’s inbox. The order matters as much as the steps:\n\n**1 · Reason + targeted offer** — the user picks WHY (required, but “Không muốn nói” is one of the options), and the screen answers that specific reason with a fix and a link that performs it. Consequences and an explicit confirm sit below. **2 · Email sent** — verification only; nothing is deleted yet. **3 · The user opens the mail and clicks through to a confirmation page.** **4 · Deleted**, all sessions ended.\n\nMODELLED ON SARAMIN KR (Figma, node 1648-2192), with two deliberate differences: they verify with an OTP where we use a link, and they ask the reason AFTER verification where we ask it first.',
+            table: {
+              cols: ['Step', 'Where', 'What proves what', 'State of the account'],
+              rows: [
+                ['**1 · Lý do + gợi ý**', 'On site', 'Nothing yet — this step is about SAVING the account, not proving anything', 'Untouched'],
+                ['**2 · Email gửi đi**', 'Inbox', 'Opening the link proves **inbox control** — the ONLY identity check, and the direct equivalent of KR’s OTP', 'Untouched. Request expires in 24h if ignored'],
+                ['**3 · Trang xác nhận cuối**', 'On site, from the mail', 'The click proves a **human** read it — the link opens a page, it does not delete', 'Untouched until the button is pressed'],
+                ['**4 · Đã xoá**', '—', '—', 'Deleted. Every session ended, final receipt emailed'],
+              ],
+            },
+            items: [
+              '★ THE REASON IS ASKED FIRST, AND THAT IS THE WHOLE RETENTION MECHANISM. Saramin KR does not plead — pick “취업에 성공했기 때문에” (got a job) and it offers to make the CV private and keep the profile for next time; pick “메일, 알림 서비스를 받지 않기 위해” (stop the emails) and it offers to suspend notifications. Each answer is a REAL FIX for the stated problem with a link that performs it. That only works if the reason is known before the persuasion is written, which is why generic “we’ll miss you” copy — and in particular putting persuasion in the EMAIL, before any reason exists — cannot work: it persuades nobody and reads as an obstacle.',
+              'ASKING FIRST BEATS KR’s OWN ORDER on two counts. They ask after verification, so the reason is never captured from anyone who abandons; we capture every one. And the alternative is offered at the moment of doubt rather than after the user has already spent a round-trip through their inbox to get there.',
+              'THE REASON IS REQUIRED BUT NEVER A WALL — “Không muốn nói” is one of the options, answerable in one tap. A deletion conditioned on completing a survey is an obstacle; a required question with a free exit is just a question.',
+              'SOME REASONS GET NO OFFER, on purpose — “Không muốn nói” and “Khác” show nothing. Inventing an argument for someone who has declined to give a reason turns the screen into a negotiation, which is exactly what the KR pattern avoids by answering only the reasons it can actually answer.',
+              '★ NO PASSWORD / RE-AUTH STEP (removed 2026-08-23, client): Saramin KR has none either. Their identity check IS the OTP, and our email link is that same check through the same channel — adding a password on top would make our flow heavier than the reference rather than equal to it.',
+              'WHAT DROPPING RE-AUTH COSTS, recorded rather than argued away: the inbox becomes the ONLY factor, so an unattended device with the mail client also open can complete a deletion. KR carries the identical exposure — whoever can read the inbox can read the OTP — so this is parity, not a regression. It does raise the value of the mitigations that add no step: the “I didn’t request this” line in the mail, the final receipt email, and invalidating every session on completion.',
+              'ONE THINNER SPOT THAN KR, worth knowing: they verify by phone OR email, we only have email. A phone OTP is a channel genuinely separate from the browser the account is open in. Not a blocker, and a candidate for later.',
+              '★ THE EMAIL LINK MUST NOT DELETE ON CLICK. It opens a page with one button; the deletion happens on the POST from that button. A GET that destroys an account WILL be fired by machines — Outlook Safe Links, corporate mail gateways and antivirus scanners follow links to inspect them, so the account can be gone before the human opens the message. This is not a hypothetical: it is why one-click unsubscribe (RFC 8058) is specified as POST.',
+              'THE LINK IS SINGLE-USE AND EXPIRES IN 24 HOURS. An expired or already-used link lands on a page that says so and offers to start again — never a bare 404, which reads as “it worked” to someone who wanted out.',
+              'NOTHING IS ASKED AGAIN ON STEP 3 — the link already proved the inbox. That page exists for the GET problem and for a last look, not to collect anything.',
+              'THE EMAIL STAYS PURELY FUNCTIONAL — consequences and the confirm button, no retention copy. It has a second job: it is the ALARM for “someone is deleting your account”, and an email that argues with the reader is one people learn to skim. The persuasion already happened at step 1, where it could be aimed. The consequences ARE repeated in full. It may be read hours later, on a different device, by someone who has forgotten what they clicked — or who never clicked anything.',
+              '★ “I DIDN’T REQUEST THIS” IS A REQUIRED LINE in the mail, with a change-password link beside it. This is the one message whose entire purpose is to reach someone who may not have asked, and without that line a compromised account has no alarm. The client’s live reference mail has no such line.',
+              'THE FROM-ADDRESS MUST BE ON THE ACCOUNT’S OWN DOMAIN. The reference mail sends a saramin.vn deletion from `no-reply@topdev.vn` — indistinguishable from phishing, on the one email users must trust, and it trains people to ignore the real thing.',
+              'NO MARKETING IN THIS EMAIL. The reference opens with a “TẢI APP · NHẬN QUÀ TẶNG” banner; advertising to someone who is leaving reads as not having listened, and it is the wrong tone on a message about destroying their data.',
+              'RESEND HAS A VISIBLE COOLDOWN (60s) AND A WAY OUT — spam-folder hint, and a link to change the receiving address. “I pressed resend five times and got nothing” is the predictable support ticket on every verify-by-email flow.',
+            ],
+            warn: '⛔ STILL UNCONFIRMED — and the open question is not only “email or no email”. It is also WHICH BUTTON this applies to. THIS IS THE IRREVERSIBLE PATH, and it is NOT the same button as Deactivate. Deactivation is a withdrawal with a grace window — sign in within N days and it comes back — so it does NOT need this flow, and adding an email gate there would make leaving harder for no safety gain the grace window does not already provide. Delete has no grace window behind it, which is exactly why it earns the second factor. Keep the two visibly separate in the UI, or users will pick the destructive one by accident.',
+          },
+          {
             heading: 'What deactivation does — and does not — do',
             items: [
               'Sign-in stops; the account status becomes Deactivated.',
               'The CV leaves employer CV search immediately: nobody new can discover the candidate.',
               'Job alerts, application notifications and marketing email all stop.',
-              'Applications already sent stay with those employers. We cannot retract a CV a recruiter has already received, and the screen must say so rather than imply otherwise.',
+              'Applications already sent stay with those employers — DEACTIVATION IS THE EXCEPTION, and deliberately so: it is a reversible pause, and recalling every application on a break the candidate may end tomorrow destroys something they cannot get back. Delete and Suspend both DO recall (see the three-states table on User management). What none of the three can do is retrieve a CV the recruiter already downloaded — “pull the row from their dashboard” and “un-send a file” are two different promises, and conflating them is what made these pages disagree with each other.',
               'Personal data is retained only for the legally required period and then removed — the exact period is an open question for legal.',
               'Signing in inside the grace window reactivates the account and restores everything except CV-search visibility, which stays off until the candidate turns it back on.',
               'This is not the same as a data-deletion request. If the client needs a hard delete for a legal request, it is a separate, HQ-run, audited path (see User management open questions).',

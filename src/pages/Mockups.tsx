@@ -23,8 +23,7 @@ const MY_PAGE_MENU: { label: string; screen?: string }[] = [
   { label: 'My CVs', screen: 'js-my-cvs' },
   { label: 'My applications', screen: 'js-applications' },
   { label: 'Saved jobs' },
-  { label: 'Settings' },
-  { label: 'Xoá tài khoản', screen: 'js-delete-account' },
+  { label: 'Settings', screen: 'js-settings' },
 ]
 
 /** Identity card + visibility toggle + menu. Identical on every My-page screen.
@@ -3264,252 +3263,383 @@ function OnboardingScreen() {
   )
 }
 
-/* ── DELETE ACCOUNT — four steps, and the middle one is the inbox ───────────
+/* ── DELETE ACCOUNT — ⛔ PROPOSAL, PARKED PENDING CLIENT CONFIRMATION ────────
  *
- * The client asked for email confirmation before a deletion completes, and the
- * reference is Saramin VN's live mail ("[Saramin] Xác nhận yêu cầu xóa tài
- * khoản"). This screen is the whole flow on one page so it can be read end to
- * end: request → email → confirm → done, with the EMAIL ITSELF drawn rather
- * than described, because the copy is the deliverable.
+ * ⛔ NOT THE LIVE FLOW (parked 2026-08-23). The shipped behaviour is still the
+ * one in Jobseeker user → Deactivate account. This screen exists so the client
+ * has something concrete to say yes or no TO. If the answer is no, delete this
+ * screen and the matching spec block; the reasoning lives in both.
  *
- * WHY THE EMAIL IS WORTH THE EXTRA STEP HERE, when a grace window already makes
- * deactivation reversible: this path is the IRREVERSIBLE one. There is no
- * sign-in-to-restore behind it, so the confirmation email is the only thing
- * standing between a borrowed laptop and a destroyed account — and it is the
- * one check that uses a channel the attacker at the keyboard may not hold.
+ * SHAPED ON SARAMIN KR (Figma 1648-2192): Settings → a Delete button → a
+ * NOTICES dialog you must tick through → a REASON dialog whose content answers
+ * the reason you picked → verify by email → confirm → done.
  *
- * WHERE RE-AUTH SITS, and why not twice: at the FINAL step, not the request.
- * Password before + email + password after is three gates for one decision. The
- * email proves inbox control, the final page proves account ownership, and the
- * irreversible act happens on the same screen as the proof. The reference mail
- * says the same thing in one line — “Hãy đăng nhập vào đúng tài khoản”.
+ * TWO DELIBERATE DIFFERENCES FROM KR:
+ *   · they verify with an OTP, we open a link — same proof, one less thing to type;
+ *   · they ask the reason AFTER verification, we ask BEFORE. Asking first is what
+ *     lets the offer be aimed at the stated reason, and it captures a reason even
+ *     from the people who abandon — which KR never sees.
  *
- * THREE THINGS THE REFERENCE EMAIL DOES THAT THIS ONE DOES NOT:
- *   1. a “TẢI APP · NHẬN QUÀ TẶNG” marketing banner at the top of a deletion
- *      email — advertising to someone leaving reads as not listening;
- *   2. sends from no-reply@topdev.vn for a saramin.vn account, which is exactly
- *      the shape of a phishing mail and trains people to ignore the real one;
- *   3. no “I didn’t request this” path, on the one email whose whole purpose is
- *      to be read by someone who might not have asked for it.
+ * NO PASSWORD STEP, matching KR: the inbox IS the identity check. The cost is
+ * recorded on the requirement page rather than argued away here.
  */
-const DEL_STEPS = ['1 · Yêu cầu', '2 · Kiểm tra email', '3 · Xác nhận', '4 · Xong'] as const
+type DelStage = 'settings' | 'notices' | 'reason' | 'email' | 'confirm' | 'done'
+const DEL_STAGES: { id: DelStage; label: string }[] = [
+  { id: 'settings', label: '1 · Settings' },
+  { id: 'notices', label: '2 · Lưu ý' },
+  { id: 'reason', label: '3 · Lý do' },
+  { id: 'email', label: '4 · Email' },
+  { id: 'confirm', label: '5 · Xác nhận' },
+  { id: 'done', label: '6 · Xong' },
+]
+
+/* REASON → THE ANSWER TO THAT REASON. The KR flow does not plead; each reason
+   gets a real fix with a link that performs it, and the two that have no honest
+   fix get a free-text box instead of an invented argument. */
+const DEL_REASONS: { key: string; say: string; does: string[]; note?: boolean }[] = [
+  {
+    key: 'Bảo vệ thông tin cá nhân',
+    say: 'Nếu chuyển CV sang chế độ riêng tư, nhà tuyển dụng sẽ không liên hệ bạn nữa — mà hồ sơ vẫn còn để bạn dùng lại khi cần đổi việc.',
+    does: ['Chuyển CV sang riêng tư'],
+  },
+  {
+    key: 'Đã tìm được việc',
+    say: 'Chúc mừng bạn! Chuyển CV sang riêng tư thì NTD sẽ ngừng liên hệ, nhưng nội dung hồ sơ vẫn giữ nguyên — lần sau đổi việc chỉ cần cập nhật, không phải nhập lại từ đầu.',
+    does: ['Chuyển CV sang riêng tư'],
+  },
+  {
+    key: 'Không hài lòng với dịch vụ',
+    say: 'Bạn có thể cho chúng tôi biết điều gì chưa ổn — phản hồi này được đọc và là thứ giúp dịch vụ tốt lên.',
+    does: [],
+    note: true,
+  },
+  {
+    key: 'Dùng dịch vụ khác',
+    say: 'Nếu bạn để lại lý do cụ thể, chúng tôi sẽ cố gắng cải thiện dịch vụ.',
+    does: [],
+    note: true,
+  },
+]
 
 function DeleteAccountScreen() {
   const go = useNav()
-  const [step, setStep] = useState(0)
-  const [reason, setReason] = useState('')
+  const [stage, setStage] = useState<DelStage>('settings')
   const [agreed, setAgreed] = useState(false)
+  const [reason, setReason] = useState('')
+  /* WHAT THE LINK LANDS ON. A confirm-by-link flow is judged on its failure
+     states, not its happy one — three of these four are what a real user meets
+     when the mail sat unread overnight, was clicked twice, or was opened on a
+     laptop signed in as someone else. */
+  const [link, setLink] = useState<'valid' | 'expired' | 'used' | 'other'>('valid')
   const email = 'minhanh@email.com'
+  const picked = DEL_REASONS.find((r) => r.key === reason)
 
-  /* Written from OUR model, not copied from the reference mail — which claims
-     every application is withdrawn. We cannot retract a CV a recruiter already
-     received, and promising it is a promise broken on the employer's screen. */
-  const CONSEQUENCES = [
-    ['Hồ sơ và toàn bộ CV bị xoá', 'Không khôi phục được sau khi hoàn tất.'],
-    ['NTD không tìm thấy bạn nữa', 'CV rời khỏi tìm kiếm CV ngay lập tức.'],
-    ['Đơn đã gửi vẫn nằm ở phía NTD', 'Chúng tôi không thu hồi được CV mà NTD đã nhận. Bạn sẽ không theo dõi được các đơn này nữa.'],
-    ['Mất quyền dùng các tính năng', 'Tạo CV, ứng tuyển nhanh, thông báo việc làm.'],
-  ]
-  const ALTERNATIVES = [
-    ['Chỉ muốn NTD không tìm thấy?', 'Tắt “Cho NTD tìm thấy CV” — giữ tài khoản và các đơn đang theo dõi.'],
-    ['Chỉ muốn bớt email?', 'Tắt thông báo việc làm trong Cài đặt.'],
-  ]
-
-  const Card = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-xl border border-line bg-surface p-4">{children}</div>
+  const Sheet = ({ title, sub, children, foot }: { title: string; sub?: string; children: React.ReactNode; foot: React.ReactNode }) => (
+    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-6">
+      <div className="my-2 w-full max-w-[560px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="border-b border-line px-5 py-3.5">
+          <p className="text-[14px] font-bold text-ink">{title}</p>
+          {sub && <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{sub}</p>}
+        </div>
+        <div className="max-h-[420px] space-y-3 overflow-y-auto scroll-thin px-5 py-4">{children}</div>
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">{foot}</div>
+      </div>
+    </div>
+  )
+  const Notice = ({ h, lines }: { h: string; lines: string[] }) => (
+    <div>
+      <p className="text-[11.5px] font-bold text-ink">{h}</p>
+      <ul className="mt-1 space-y-1">
+        {lines.map((l) => (
+          <li key={l} className="flex gap-1.5 text-[11px] leading-relaxed text-muted"><span className="text-faint">·</span><span className="min-w-0">{l}</span></li>
+        ))}
+      </ul>
+    </div>
+  )
+  const Ghost = ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
+    <button onClick={onClick} className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">{children}</button>
   )
 
   return (
     <div className="relative">
       <JsHeader active="CV & Profile" />
       <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
-        <MyPageRail active="js-delete-account" />
+        <MyPageRail active="js-settings" />
 
         <div className="min-w-0 space-y-3">
-          {/* The stepper is the point of the mockup: the client asked for “confirm
-              by email”, and the thing to review is WHERE that step sits. */}
+          {/* ⛔ on the screen, not only in a comment — a wireframe gets screenshotted
+              into chats, and a proposal that travels without its status is read as
+              a decision. */}
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+            <b className="font-semibold">⛔ Đề xuất — chưa chốt.</b> Luồng xoá tài khoản hiện tại <b className="font-semibold">chưa thay đổi</b>. Màn này để trao đổi và chờ khách hàng xác nhận.
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {DEL_STEPS.map((label, i) => (
-              <button
-                key={label}
-                onClick={() => setStep(i)}
-                className={cn('rounded-full border px-2.5 py-1 text-[11px] font-medium',
-                  i === step ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
-              >{label}</button>
+            {DEL_STAGES.map((st) => (
+              <button key={st.id} onClick={() => setStage(st.id)}
+                className={cn('rounded-full border px-2.5 py-1 text-[11px] font-medium', stage === st.id ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
+              >{st.label}</button>
             ))}
           </div>
 
-          {/* ── 1 · REQUEST ─────────────────────────────────────────────── */}
-          {step === 0 && (
-            <>
-              <Card>
-                <p className="text-[15px] font-bold text-ink">Xoá tài khoản</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
-                  Đây là thao tác <b className="font-semibold text-rose-600">không khôi phục được</b>. Đọc kỹ phần dưới trước khi tiếp tục.
-                </p>
-              </Card>
+          {/* ── SETTINGS — the entry point. Delete sits in a DANGER ZONE at the
+               bottom, under the ordinary settings, never in the nav rail: a
+               destructive action does not belong one stray click from “My CVs”. ── */}
+          <div className="rounded-xl border border-line bg-surface">
+            <p className="border-b border-line px-4 py-3 text-[15px] font-bold text-ink">Cài đặt</p>
+            <div className="divide-y divide-line-soft">
+              {[
+                ['Thông báo việc làm', 'Email và thông báo đẩy khi có việc phù hợp', 'Bật'],
+                ['Cho NTD tìm thấy CV', 'Hồ sơ hiển thị trong tìm kiếm của nhà tuyển dụng', 'Bật'],
+                ['Đổi mật khẩu', 'Cập nhật lần cuối 12/06/2026', ''],
+              ].map(([t, d, v]) => (
+                <div key={t} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-medium text-ink">{t}</p>
+                    <p className="text-[11px] text-muted">{d}</p>
+                  </div>
+                  <span className="shrink-0 text-[11.5px] font-medium text-brand">{v || 'Sửa'}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-rose-200 bg-rose-50/40 px-4 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-semibold text-rose-700">Xoá tài khoản</p>
+                  <p className="text-[11px] leading-relaxed text-muted">Xoá vĩnh viễn hồ sơ, CV và lịch sử ứng tuyển. Không khôi phục được.</p>
+                </div>
+                <button onClick={() => { setAgreed(false); setStage('notices') }}
+                  className="shrink-0 rounded-lg border border-rose-300 bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-rose-600 hover:bg-rose-50">
+                  Xoá tài khoản
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {/* ALTERNATIVES FIRST, and above the consequences — most people
-                  pressing this want one specific thing to stop, not oblivion. */}
-              <Card>
-                <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Có thể bạn chỉ cần</p>
-                <div className="space-y-2">
-                  {ALTERNATIVES.map(([t, d]) => (
-                    <div key={t} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold text-ink">{t}</p>
-                        <p className="text-[11px] leading-snug text-muted">{d}</p>
+          {stage === 'email' && (
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <p className="text-[15px] font-bold text-ink">Kiểm tra hộp thư của bạn</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                Đã gửi email xác nhận tới <b className="font-semibold text-ink">{email}</b>. Mở email và bấm nút trong đó để hoàn tất.
+              </p>
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-800">
+                Liên kết có hiệu lực <b className="font-semibold">24 giờ</b> và chỉ dùng được một lần. Hết hạn thì yêu cầu tự huỷ, tài khoản giữ nguyên.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span className="cursor-pointer text-[11.5px] font-medium text-brand">Gửi lại email</span>
+                <span className="text-[11px] text-faint">có thể gửi lại sau 60 giây</span>
+                <span className="text-[11px] text-faint">· Không thấy? Kiểm tra Spam / Quảng cáo</span>
+              </div>
+
+              {/* The email drawn, because the copy is the deliverable. Functional
+                  only — the persuasion already happened at the reason step, where
+                  it could be aimed, and this message doubles as the alarm for
+                  “someone is deleting your account”. */}
+              <div className="mt-3 overflow-hidden rounded-xl border border-line">
+                <div className="border-b border-line bg-canvas/50 px-4 py-2.5 text-[11px] leading-relaxed">
+                  <p className="text-[12.5px] font-bold text-ink">[Saramin] Xác nhận yêu cầu xoá tài khoản</p>
+                  <p className="mt-0.5 text-muted">Saramin &lt;no-reply@<b className="font-semibold text-ink/75">saramin.vn</b>&gt; · tới {email}</p>
+                </div>
+                <div className="space-y-2.5 px-4 py-3.5 text-[11.5px] leading-relaxed text-ink/85">
+                  <p>Chào bạn <b className="font-semibold text-ink">Trần Minh Anh</b>,</p>
+                  <p>Chúng tôi nhận được yêu cầu xoá tài khoản Saramin của bạn. <b className="font-semibold text-ink">Chưa có gì bị xoá.</b></p>
+                  <p>Bấm nút dưới để xác nhận. Sau khi hoàn tất, hồ sơ và toàn bộ CV bị xoá vĩnh viễn, và các đơn đã gửi sẽ được thu hồi khỏi nhà tuyển dụng.</p>
+                  <div className="pt-1"><span className="inline-block cursor-pointer rounded-lg bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white">Xác nhận xoá tài khoản</span></div>
+                  <p className="text-[11px] text-muted">Liên kết hết hạn sau 24 giờ. Nút này mở một trang xác nhận — không xoá ngay khi bấm.</p>
+                  <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] text-muted">
+                    <b className="font-semibold text-ink/75">Bạn không yêu cầu việc này?</b> Tài khoản vẫn an toàn — bỏ qua email này và <span className="cursor-pointer font-medium text-brand">đổi mật khẩu</span> ngay.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {stage === 'confirm' && (
+            <div className="space-y-3">
+              {/* Four states on one switcher: the page a link lands on is judged on
+                  the three that are NOT the happy path. */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Trạng thái liên kết</span>
+                {([['valid', 'Hợp lệ'], ['expired', 'Hết hạn'], ['used', 'Đã dùng'], ['other', 'Sai tài khoản']] as const).map(([k, l]) => (
+                  <button key={k} onClick={() => setLink(k)}
+                    className={cn('rounded-full border px-2.5 py-1 text-[11px]', link === k ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
+                  >{l}</button>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-line bg-surface p-4">
+                <p className="text-[11px] font-medium text-faint">saramin.vn/account/delete/confirm — mở từ nút trong email</p>
+
+                {link === 'valid' && (<>
+                  <p className="mt-0.5 text-[15px] font-bold text-ink">Xác nhận lần cuối</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                    Bạn đang đăng nhập bằng <b className="font-semibold text-ink">{email}</b> — đúng tài khoản của liên kết này.
+                  </p>
+                  {/* THE LOSS, RESTATED IN NUMBERS. The same counters as the notices
+                      dialog, because this is the last moment and a figure lands
+                      where a paragraph does not. */}
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {[['CV', '1'], ['Đơn ứng tuyển', '3'], ['Việc đã lưu', '5']].map(([k, v]) => (
+                      <div key={k} className="rounded-md border border-rose-200 bg-rose-50/50 px-2.5 py-2">
+                        <p className="text-[10.5px] text-rose-700/70">{k}</p>
+                        <p className="text-[15px] font-bold tabular-nums text-rose-700">{v}</p>
                       </div>
-                      <span className="shrink-0 cursor-pointer text-[11.5px] font-medium text-brand">Mở cài đặt</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
-                <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-rose-700">Xoá tài khoản sẽ</p>
-                <div className="space-y-2">
-                  {CONSEQUENCES.map(([t, d]) => (
-                    <div key={t} className="flex items-start gap-2">
-                      <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />
-                      <p className="min-w-0 text-[11.5px] leading-snug text-ink/85"><b className="font-semibold text-ink">{t}</b> — {d}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Card>
-                {/* OPTIONAL, and it never blocks — the moment a reason is required
-                    to leave, the form is an obstacle rather than a question. */}
-                <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Lý do bạn rời đi? <span className="font-normal text-faint">— không bắt buộc</span></p>
-                <div className="flex flex-wrap gap-1.5">
-                  {['Đã tìm được việc', 'Quá nhiều email', 'Lo ngại riêng tư', 'Không hữu ích', 'Khác'].map((r) => (
-                    <button key={r} onClick={() => setReason(reason === r ? '' : r)}
-                      className={cn('rounded-full border px-2.5 py-1 text-[11px]', reason === r ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
-                    >{r}</button>
-                  ))}
-                </div>
-
-                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
-                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
-                  <span className="text-[11.5px] leading-relaxed text-ink/85">
-                    Tôi hiểu tài khoản và toàn bộ CV sẽ bị xoá vĩnh viễn, và đơn đã gửi vẫn nằm ở phía nhà tuyển dụng.
-                  </span>
-                </label>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    disabled={!agreed}
-                    onClick={() => setStep(1)}
-                    className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', agreed ? 'bg-rose-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
-                  >Gửi email xác nhận</button>
-                  <span className="text-[11px] text-faint">Chưa xoá gì cả — chúng tôi gửi một email để bạn xác nhận.</span>
-                </div>
-              </Card>
-            </>
-          )}
-
-          {/* ── 2 · CHECK INBOX ─────────────────────────────────────────── */}
-          {step === 1 && (
-            <>
-              <Card>
-                <p className="text-[15px] font-bold text-ink">Kiểm tra hộp thư của bạn</p>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-                  Chúng tôi đã gửi email xác nhận tới <b className="font-semibold text-ink">{email}</b>. Mở email và bấm nút trong đó để hoàn tất.
-                </p>
-                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-800">
-                  Liên kết có hiệu lực <b className="font-semibold">24 giờ</b>. Hết hạn thì yêu cầu này tự huỷ và tài khoản của bạn giữ nguyên.
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {/* A cooldown, not a disabled button with no explanation — the
-                      commonest support ticket on any verify-by-email flow is “I
-                      pressed resend five times and got nothing”. */}
-                  <span className="cursor-pointer text-[11.5px] font-medium text-brand">Gửi lại email</span>
-                  <span className="text-[11px] text-faint">có thể gửi lại sau 60 giây</span>
-                </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-faint">
-                  Không thấy email? Kiểm tra mục Spam / Quảng cáo, hoặc <span className="cursor-pointer font-medium text-brand">đổi email nhận</span>.
-                </p>
-              </Card>
-
-              {/* THE EMAIL ITSELF — drawn, because the copy is the deliverable and
-                  a client cannot review a sentence that only exists in a comment. */}
-              <div>
-                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand">Email gửi đi — bản nội dung</p>
-                <div className="overflow-hidden rounded-xl border border-line bg-surface">
-                  <div className="border-b border-line bg-canvas/50 px-4 py-2.5 text-[11px] leading-relaxed">
-                    <p className="text-[12.5px] font-bold text-ink">[Saramin] Xác nhận yêu cầu xoá tài khoản</p>
-                    {/* SAME DOMAIN AS THE ACCOUNT. The reference sends a saramin.vn
-                        deletion from no-reply@topdev.vn — the exact shape of a
-                        phishing mail, on the one message users must trust. */}
-                    <p className="mt-0.5 text-muted">Saramin &lt;no-reply@<b className="font-semibold text-ink/75">saramin.vn</b>&gt; · tới {email}</p>
+                    ))}
                   </div>
-                  {/* NO MARKETING BANNER. The reference opens a deletion email with
-                      “TẢI APP · NHẬN QUÀ TẶNG”; advertising to someone who is
-                      leaving reads as not having listened. */}
-                  <div className="space-y-2.5 px-4 py-3.5 text-[11.5px] leading-relaxed text-ink/85">
-                    <p>Chào bạn <b className="font-semibold text-ink">Trần Minh Anh</b>,</p>
-                    <p>Chúng tôi nhận được yêu cầu xoá tài khoản Saramin của bạn. <b className="font-semibold text-ink">Chưa có gì bị xoá.</b></p>
-                    <p className="font-semibold text-ink">Nếu bạn tiếp tục:</p>
-                    <ul className="ml-4 list-disc space-y-1">
-                      {CONSEQUENCES.map(([t, d]) => <li key={t}><b className="font-semibold text-ink">{t}</b> — {d}</li>)}
-                    </ul>
-                    <div className="pt-1">
-                      <span className="inline-block cursor-pointer rounded-lg bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white">Xác nhận xoá tài khoản</span>
-                    </div>
-                    <p className="text-[11px] text-muted">Liên kết hết hạn sau 24 giờ. Bạn cần đăng nhập đúng tài khoản muốn xoá.</p>
-                    {/* THE LINE THE REFERENCE IS MISSING, on the one email whose
-                        whole job is to be read by someone who may not have asked
-                        for this. Without it, a compromised account has no alarm. */}
-                    <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] text-muted">
-                      <b className="font-semibold text-ink/75">Bạn không yêu cầu việc này?</b> Tài khoản của bạn vẫn an toàn — hãy bỏ qua email này và <span className="cursor-pointer font-medium text-brand">đổi mật khẩu</span> ngay.
-                    </p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted">Tất cả sẽ bị xoá vĩnh viễn. Các đơn đã gửi được thu hồi khỏi nhà tuyển dụng.</p>
+                  {/* ★ THE LINK MUST NOT DELETE ON CLICK — Outlook Safe Links, mail
+                      gateways and antivirus scanners FOLLOW links to inspect them,
+                      so a GET that destroys an account can fire before the human
+                      opens the message. Deletion happens on the POST from this
+                      button, which is also why this page exists at all. */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => setStage('done')} className="rounded-lg bg-rose-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Xoá tài khoản vĩnh viễn</button>
+                    <Ghost onClick={() => setStage('settings')}>Tôi đổi ý, giữ tài khoản</Ghost>
                   </div>
-                </div>
+                </>)}
+
+                {/* EXPIRED — and the headline says the ACCOUNT IS FINE first. Someone
+                    reading this is anxious; “hết hạn” alone reads as “something went
+                    wrong with my deletion”, which is the opposite of reassuring. */}
+                {link === 'expired' && (<>
+                  <p className="mt-0.5 text-[15px] font-bold text-ink">Liên kết đã hết hạn — tài khoản của bạn vẫn nguyên vẹn</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                    Liên kết xác nhận chỉ có hiệu lực 24 giờ. Yêu cầu xoá đã tự huỷ và <b className="font-semibold text-ink">không có gì bị xoá</b>.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => { setStage('settings'); setAgreed(false); setReason('') }} className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Bắt đầu lại</button>
+                    <Ghost onClick={() => go('js-mypage')}>Về My page</Ghost>
+                  </div>
+                </>)}
+
+                {/* ALREADY USED — the one state that must never look like a failure:
+                    the person got what they asked for. A bare 404 here reads as “it
+                    did not work”, and produces a second deletion attempt. */}
+                {link === 'used' && (<>
+                  <p className="mt-0.5 text-[15px] font-bold text-ink">Liên kết này đã được sử dụng</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                    Tài khoản <b className="font-semibold text-ink">{email}</b> đã được xoá lúc <b className="font-semibold text-ink">14:32 · 23/08/2026</b>. Mỗi liên kết chỉ dùng được một lần.
+                  </p>
+                  <div className="mt-3"><Ghost onClick={() => go('js-home')}>Về trang chủ</Ghost></div>
+                </>)}
+
+                {/* WRONG ACCOUNT — the case KR warns about in its email (“hãy đăng
+                    nhập đúng tài khoản”). The link is NOT a bearer token: it only
+                    works in a session belonging to the account it was issued for, so
+                    a forwarded email cannot delete anyone. */}
+                {link === 'other' && (<>
+                  <p className="mt-0.5 text-[15px] font-bold text-ink">Liên kết này không thuộc tài khoản đang đăng nhập</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                    Bạn đang đăng nhập bằng <b className="font-semibold text-ink">huy.tran@email.com</b>, còn liên kết được gửi cho <b className="font-semibold text-ink">{email}</b>. Chúng tôi không xoá tài khoản nào cả.
+                  </p>
+                  <p className="mt-2 rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+                    Liên kết chỉ có tác dụng trong phiên đăng nhập của đúng tài khoản đó — nên một email bị chuyển tiếp <b className="text-ink/75">không thể xoá tài khoản của ai</b>.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button className="rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Đăng xuất &amp; đăng nhập lại</button>
+                    <Ghost onClick={() => go('js-mypage')}>Huỷ</Ghost>
+                  </div>
+                </>)}
               </div>
-            </>
+            </div>
           )}
 
-          {/* ── 3 · CONFIRM (reached from the email link) ───────────────── */}
-          {step === 2 && (
-            <Card>
-              <p className="text-[15px] font-bold text-ink">Xác nhận xoá tài khoản</p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-                Bạn đang đăng nhập bằng <b className="font-semibold text-ink">{email}</b>. Đây là bước cuối — sau khi bấm, tài khoản bị xoá vĩnh viễn.
-              </p>
-              {/* RE-AUTH HERE AND ONLY HERE. The email proved inbox control; this
-                  proves account ownership, on the same screen as the irreversible
-                  act. Asking for the password at step 1 as well would be a third
-                  gate for one decision. */}
-              <div className="mt-3">
-                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Nhập mật khẩu để xác nhận <span className="text-rose-500">*</span></p>
-                <div className="w-full rounded-md border border-line bg-canvas/40 px-3 py-2 text-[12.5px] text-faint">••••••••</div>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-                  Đăng nhập bằng Google/Facebook? Bạn sẽ được yêu cầu <b className="text-ink/70">nhập lại mật khẩu nhà cung cấp</b> — không phải bấm một nút rồi quay lại.
-                </p>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button onClick={() => setStep(3)} className="rounded-lg bg-rose-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Xoá tài khoản vĩnh viễn</button>
-                <button onClick={() => setStep(0)} className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Huỷ, giữ tài khoản</button>
-              </div>
-            </Card>
-          )}
-
-          {/* ── 4 · DONE ────────────────────────────────────────────────── */}
-          {step === 3 && (
-            <Card>
+          {stage === 'done' && (
+            <div className="rounded-xl border border-line bg-surface p-4">
               <p className="text-[15px] font-bold text-ink">Tài khoản đã được xoá</p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-                Bạn đã được đăng xuất khỏi mọi thiết bị. Chúng tôi đã gửi một email xác nhận cuối cùng tới {email}.
-              </p>
-              <p className="mt-2 text-[11px] leading-relaxed text-faint">
-                Dữ liệu cá nhân được xoá theo quy định lưu trữ bắt buộc. Đơn ứng tuyển đã gửi vẫn nằm ở phía nhà tuyển dụng — chúng tôi không thu hồi được.
-              </p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">Bạn đã được đăng xuất khỏi mọi thiết bị. Một email xác nhận cuối cùng đã gửi tới {email}.</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-faint">Dữ liệu cá nhân được xoá theo quy định lưu trữ bắt buộc. Các đơn đã gửi đã được thu hồi — riêng CV mà NTD đã tải về máy thì nằm ngoài tầm với của chúng tôi.</p>
               <div className="mt-3"><Btn primary onClick={() => go('js-home')}>Về trang chủ</Btn></div>
-            </Card>
+            </div>
           )}
         </div>
       </div>
+
+      {/* ── POPUP 1 · NOTICES — KR's “check the instructions” screen. The record
+           summary at the top is the part worth copying: “1 CV · 3 đơn · 5 việc đã
+           lưu” makes the loss concrete in a way a paragraph never does. ── */}
+      {stage === 'notices' && (
+        <Sheet
+          title="Vui lòng đọc kỹ trước khi xoá tài khoản"
+          foot={<>
+            <Ghost onClick={() => setStage('settings')}>Huỷ</Ghost>
+            <button disabled={!agreed} onClick={() => setStage('reason')}
+              className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', agreed ? 'bg-brand hover:opacity-90' : 'cursor-not-allowed bg-line')}
+            >Tiếp tục</button>
+          </>}
+        >
+          <div className="rounded-lg border border-line bg-canvas/40 px-3.5 py-3">
+            <p className="text-[11.5px] text-muted"><b className="font-semibold text-brand">Trần Minh Anh</b> — dữ liệu bạn đang có</p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {[['CV', '1'], ['Đơn ứng tuyển', '3'], ['Việc đã lưu', '5']].map(([k, v]) => (
+                <div key={k} className="rounded-md border border-line bg-surface px-2.5 py-2">
+                  <p className="text-[10.5px] text-faint">{k}</p>
+                  <p className="text-[15px] font-bold tabular-nums text-ink">{v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Notice h="Tài khoản đã xoá không khôi phục được" lines={[
+            'ID và toàn bộ dữ liệu không thể lấy lại sau khi xoá. Hãy cân nhắc kỹ.',
+          ]} />
+          <Notice h="Về việc xoá dữ liệu sử dụng dịch vụ" lines={[
+            'Toàn bộ CV, trạng thái ứng tuyển và lời mời từ NTD sẽ bị xoá và không khôi phục được. Hãy lưu lại những gì bạn cần trước.',
+            'Các đơn đã gửi sẽ được thu hồi khỏi nhà tuyển dụng. Riêng CV mà NTD đã tải về máy thì chúng tôi không lấy lại được.',
+            'Nếu bạn có giao dịch cần hoàn tiền, vui lòng liên hệ trước khi xoá tài khoản.',
+          ]} />
+          <Notice h="Nội dung đã đăng không xoá được" lines={[
+            'Đánh giá công ty và nội dung bạn đã đăng công khai sẽ được lưu theo thời hạn quy định rồi mới xoá.',
+            'Hãy tự xoá những nội dung bạn muốn gỡ TRƯỚC khi xoá tài khoản.',
+          ]} />
+          <Notice h="Trường hợp chưa xoá được" lines={[
+            'Không xoá được khi đang có giao dịch chưa hoàn tất.',
+          ]} />
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
+            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+            <span className="text-[11.5px] leading-relaxed text-ink/85">Tôi đã đọc và đồng ý với toàn bộ lưu ý trên.</span>
+          </label>
+        </Sheet>
+      )}
+
+      {/* ── POPUP 2 · REASON — a dropdown, and the panel under it answers the
+           reason picked. Required, but “Dùng dịch vụ khác” and “Không hài lòng”
+           take free text instead of an invented counter-argument. ── */}
+      {stage === 'reason' && (
+        <Sheet
+          title="Vì sao bạn muốn xoá tài khoản Saramin?"
+          sub="Cho chúng tôi biết lý do, dịch vụ sẽ tốt hơn cho những người sau."
+          foot={<>
+            <Ghost onClick={() => setStage('settings')}>Huỷ</Ghost>
+            <button disabled={!reason} onClick={() => setStage('email')}
+              className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', reason ? 'bg-rose-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
+            >Xác nhận xoá</button>
+          </>}
+        >
+          <div className="flex items-start gap-3">
+            <p className="mt-2 w-[92px] shrink-0 text-[11.5px] font-semibold text-ink">Lý do xoá tài khoản</p>
+            <select value={reason} onChange={(e) => setReason(e.target.value)}
+              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none focus:border-brand">
+              <option value="">Vui lòng chọn</option>
+              {DEL_REASONS.map((r) => <option key={r.key}>{r.key}</option>)}
+            </select>
+          </div>
+
+          {picked && (
+            <div className="border-t border-line pt-3">
+              <p className="text-[11.5px] leading-relaxed text-ink/85">{picked.say}</p>
+              {picked.does.map((d) => (
+                <p key={d} className="mt-2 cursor-pointer text-[11.5px] font-semibold text-brand underline decoration-brand/40 underline-offset-2">{d} ›</p>
+              ))}
+              {picked.note && (
+                <div className="mt-2 min-h-[64px] rounded-md border border-line bg-canvas/40 px-3 py-2 text-[11.5px] italic text-faint">
+                  Nhập lý do cụ thể (không bắt buộc)…
+                </div>
+              )}
+            </div>
+          )}
+        </Sheet>
+      )}
     </div>
   )
 }
@@ -3921,7 +4051,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-profile-cv', site: 'Jobseeker', title: 'My Profile', url: 'saramin.vn/my-page/profile', Comp: ProfileCvScreen },
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
   { id: 'js-applications', site: 'Jobseeker', title: 'My applications', url: 'saramin.vn/my-page/applications', Comp: MyApplicationsScreen },
-  { id: 'js-delete-account', site: 'Jobseeker', title: 'Delete account (email confirm)', url: 'saramin.vn/my-page/settings/delete', Comp: DeleteAccountScreen },
+  { id: 'js-settings', site: 'Jobseeker', title: 'Settings + delete account — ⛔ proposal', url: 'saramin.vn/my-page/settings', Comp: DeleteAccountScreen },
   { id: 'js-signup', site: 'Jobseeker', title: 'Sign up', url: 'saramin.vn/signup', Comp: SignUpScreen },
   { id: 'js-signup-social', site: 'Jobseeker', title: 'Sign up — social login completion', url: 'saramin.vn/signup/complete', Comp: SignUpSocialScreen },
   { id: 'js-onboarding', site: 'Jobseeker', title: 'Onboarding', url: 'saramin.vn/welcome', Comp: OnboardingScreen },
