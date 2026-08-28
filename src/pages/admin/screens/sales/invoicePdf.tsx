@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { BUYER_TYPE } from '@/pages/admin/data/companies'
+import { BUYER_TYPE, RETAIL_BUYER } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
 import { ISSUER, QUOTE_CATALOG, VAT_RATE, pdfNum } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
@@ -113,10 +113,12 @@ function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
         <dl className="mt-3 space-y-[3px] text-[9.5px] leading-relaxed">
           <div className="flex gap-1 border-b border-dotted border-slate-300">
             <dt className="shrink-0 text-slate-600"><InvLabel vi="Họ tên người mua hàng" en="Buyer name" /> :</dt>
-            {/* A named person when we have one; blank for a company, where the name
-                belongs on Tên đơn vị instead. The anonymous consumer-sale line was
-                dropped with the `ca-nhan` classification (2026-08-23). */}
-            <dd className="min-w-0 flex-1 font-bold">{bt.needsBuyerName ? (co?.buyerName ?? '') : ''}</dd>
+            {/* A named person when we have one; the fixed consumer-sale phrase when
+                the buyer is an individual with no CCCD; blank for a company, where
+                the name belongs on Tên đơn vị instead. */}
+            <dd className="min-w-0 flex-1 font-bold">
+              {bt.needsBuyerName ? (co?.buyerName ?? '') : (co?.buyerType ?? 'dn-vn') === 'ca-nhan' ? RETAIL_BUYER : ''}
+            </dd>
           </div>
           <div className="flex gap-1 border-b border-dotted border-slate-300">
             <dt className="shrink-0 text-slate-600"><InvLabel vi="Tên đơn vị" en="Company name" /> :</dt>

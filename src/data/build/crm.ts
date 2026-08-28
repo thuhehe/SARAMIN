@@ -1000,8 +1000,8 @@ export const crm: BuildModule = {
       table: {
         cols: ['Loại công ty', 'Phân loại người mua được phép', 'Vì sao'],
         rows: [
-          ['**Công ty trong nước**', 'Doanh nghiệp Việt Nam · Cá nhân có CCCD', 'MST Việt Nam là mặc định. Dạng cá nhân vẫn có, vì **người mua** có thể là một người ngay khi khách hàng là công ty — giám đốc tự trả tiền.'],
-          ['**Công ty nước ngoài**', 'Doanh nghiệp nước ngoài · Cá nhân có CCCD', 'Không có MST Việt Nam để xuất, nên *Doanh nghiệp Việt Nam* không bao giờ là lựa chọn hợp lệ. Dạng cá nhân giữ nguyên vì lý do trên.'],
+          ['**Công ty trong nước**', 'Doanh nghiệp Việt Nam · Cá nhân có CCCD · Cá nhân không có CCCD', 'MST Việt Nam là mặc định. Hai dạng cá nhân vẫn có, vì **người mua** có thể là một người ngay khi khách hàng là công ty — giám đốc tự trả tiền.'],
+          ['**Công ty nước ngoài**', 'Doanh nghiệp nước ngoài · Cá nhân có CCCD · Cá nhân không có CCCD', 'Không có MST Việt Nam để xuất, nên *Doanh nghiệp Việt Nam* không bao giờ là lựa chọn hợp lệ. Hai dạng cá nhân giữ nguyên vì lý do trên.'],
         ],
       },
       items: [
@@ -1017,7 +1017,7 @@ export const crm: BuildModule = {
         cols: ['Tầng', 'Ở đâu', 'Hành vi'],
         rows: [
           ['**Mặc định** — của hồ sơ', 'Company create / Basic info card', 'Phân loại người mua lưu trên hồ sơ. Khi người mua là **chính công ty** (DN Việt Nam trên hồ sơ trong nước, DN nước ngoài trên hồ sơ nước ngoài) thì mọi dòng hóa đơn **kế thừa từ Thông tin công ty — không nhập tay** (riêng DN nước ngoài không có dòng MST); sửa ở nguồn thì mọi nơi đổi theo, không có bản chép thứ hai. Chỉ hai dạng cá nhân mới nhập field riêng (họ tên, CCCD).'],
-          ['**Theo chứng từ** — của PO/hóa đơn', 'Dialog **Issue PO** (từ quotation)', 'Dropdown **“Xuất cho / Phân loại người mua”**, mặc định theo hồ sơ (đánh dấu “— theo hồ sơ”). Đổi loại → bộ field đổi theo đúng hình dạng của loại đó. **Chỉ áp dụng cho PO/hóa đơn này — không sửa ngược hồ sơ**, trừ khi tích ô “Đặt làm mặc định cho công ty này”.'],
+          ['**Theo chứng từ** — của PO/hóa đơn', 'Dialog **Issue PO** (từ quotation)', 'Dropdown **“Xuất cho / Phân loại người mua”**, mặc định theo hồ sơ (đánh dấu “— theo hồ sơ”). Đổi loại → bộ field đổi theo đúng bốn hình dạng. **Chỉ áp dụng cho PO/hóa đơn này — không sửa ngược hồ sơ**, trừ khi tích ô “Đặt làm mặc định cho công ty này”.'],
         ],
       },
       items: [
@@ -1053,7 +1053,7 @@ export const crm: BuildModule = {
         'NÚT SAVE BỊ CHẶN khi MST đang trùng, kèm tooltip nói vì sao — cùng một điều kiện chặn duy nhất như form tạo. Mọi thứ khác trên card (chip Verify, gợi ý trùng gốc MST) không chặn gì.',
         'CANCEL HUỶ BẢN NHÁP: thoát Edit rồi vào lại thì mọi field, chip Verify và banner trùng đều trở về theo hồ sơ. Một giá trị còn sót từ lần sửa đã huỷ là một giá trị rồi sẽ được lưu.',
         'BA FIELD ĐỊNH DANH mang dấu `*` ở chế độ Edit đúng như trên form — trừ MST khi là công ty nước ngoài.',
-        'PHÂN LOẠI CÁ NHÂN hỏi **họ tên trước, CCCD sau**, cùng thứ tự với form tạo; địa chỉ xuất hóa đơn là field riêng của người mua đó, không kế thừa.',
+        'PHÂN LOẠI CÁ NHÂN hỏi **họ tên trước, CCCD sau**, cùng thứ tự với form tạo; địa chỉ xuất hóa đơn là field riêng của người mua đó, không kế thừa. Riêng **Cá nhân không có CCCD** không hỏi gì cả — cả Edit lẫn view chỉ hiện một dòng “Bán cho người tiêu dùng” hệ thống tự điền, kèm cảnh báo khách không hạch toán chi phí được (điểm 4b, NĐ 254/2026).',
         'HỒ SƠ CŨ chưa có `companyType` thì suy ra từ phân loại đang lưu (`dn-nn` → nước ngoài, còn lại → trong nước) — không cần migration nhập tay.',
         'DÒNG FREE DATA (pool) không có nhóm Thông tin xuất hóa đơn: chưa báo giá thì chưa có quyết định nào về người mua, hiện nhóm với giá trị mặc định là đặt một phỏng đoán vào chỗ của một quyết định.',
       ],

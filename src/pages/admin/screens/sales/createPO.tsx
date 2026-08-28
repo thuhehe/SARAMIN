@@ -112,6 +112,11 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
                   <DerivedField label="Địa chỉ xuất hóa đơn" value={c.address} from="hồ sơ" hint="DN nước ngoài không có MST Việt Nam — không in mã số thuế." />
                 </>
               )}
+              {buyer === 'ca-nhan' && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                  Hóa đơn chỉ in một dòng <b>“Bán cho người tiêu dùng”</b> — không MST, không CCCD, không địa chỉ. Khách <b>không dùng hạch toán chi phí / quyết toán thuế được</b> (điểm 4, Phụ lục NĐ 254/2026).
+                </p>
+              )}
               {buyer === 'ca-nhan-cccd' && (
                 <>
                   <DerivedField label="Họ tên người mua hàng" value={c.buyerName?.trim() || '— chưa có trên hồ sơ —'} from="hồ sơ" />

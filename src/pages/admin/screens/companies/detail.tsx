@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { RO_HINT, ReadOnlyCtx, useDetailCrumb } from '@/pages/admin/ctx'
-import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
 import type { BuyerType, Company, CompanyType } from '@/pages/admin/data/companies'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
@@ -580,6 +580,15 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                       Tên đơn vị{!shownForeign && ' · MST'} · Địa chỉ xuất hóa đơn — <b className="text-ink/70">kế thừa từ Thông tin công ty</b>, không nhập tay ở đây. Sai thì sửa ở nhóm trên.
                     </p>
                   ) : (
+                    shownBuyer === 'ca-nhan' ? (
+                    /* Điểm 4b: a buyer who provides nothing gets one fixed line and no
+                       address, so there is nothing to edit — an input here would
+                       collect exactly what the invoice must not print. */
+                    <p className="border-b border-line-soft py-2 text-[11px] leading-relaxed text-amber-900">
+                      Khối người mua chỉ có một dòng <b>“{RETAIL_BUYER}”</b> — không MST, không CCCD, không địa chỉ, <b>hệ thống tự điền</b>.
+                      <span className="mt-0.5 block text-amber-800/85">Khách <b>không dùng hạch toán chi phí / quyết toán thuế</b> được (điểm 4, Phụ lục NĐ 254/2026).</span>
+                    </p>
+                    ) : (
                     <>
                       {/* Person buyer: name first, then the identifier — same order as
                           the create form, so the two surfaces read alike. */}
@@ -587,6 +596,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                       <EField label="Số CCCD" req value={c.idCard ?? ''} onChange={() => {}} mono hint="Căn cước công dân — in vào dòng “Căn cước công dân”. Không dùng ô MST." />
                       <EField label="Địa chỉ xuất hóa đơn" req value={c.address} onChange={() => {}} hint="In nguyên văn trên báo giá, đơn hàng và hóa đơn VAT." />
                     </>
+                    )
                   )}
                   {/* The bridge to Issue PO, said on the record that holds the default. */}
                   <p className="border-b border-line-soft py-2 text-[10.5px] leading-relaxed text-faint last:border-0">
@@ -612,7 +622,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                           <KV label="Số CCCD" value={c.idCard || '—'} />
                         </>
                       )}
-                      <KV label="Địa chỉ xuất hóa đơn" value={c.address} />
+                      {c.buyerType === 'ca-nhan' && (
+                        <KV label="Họ tên người mua hàng" value={`${RETAIL_BUYER} — hệ thống tự điền`} />
+                      )}
+                      {BUYER_TYPE[c.buyerType ?? 'dn-vn'].noAddress
+                        ? <KV label="Địa chỉ xuất hóa đơn" value="— (không in trên hóa đơn: bán cho người tiêu dùng)" />
+                        : <KV label="Địa chỉ xuất hóa đơn" value={c.address} />}
                     </>
                   )}
                   <p className="border-b border-line-soft py-2 text-[10.5px] leading-relaxed text-faint last:border-0">

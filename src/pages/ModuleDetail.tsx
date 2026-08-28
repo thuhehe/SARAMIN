@@ -19,13 +19,103 @@ import { cn } from '@/lib/utils'
    Links matter because the module page constantly refers to its own feature pages
    ("see MATCH SCORE", "the Logic pages") and a reader should not have to hunt the
    sidebar for a page the text just named. */
+/* ── Status words render as the CHIP the admin console renders them as ────────
+ *
+ * A developer reads this page with the mockups open in the next tab, and the job
+ * of a status name in prose is to point AT the thing on that screen. Set in plain
+ * bold, "Not sent" and "Recall" are two more emphasised phrases in a document full
+ * of emphasised phrases; set as the same pill, in the same colour, the connection
+ * is made without a sentence explaining it.
+ *
+ * The palette is copied value-for-value from the admin `STATUS_TONE` map, and it
+ * has to STAY copied — a status that is amber on the screen and grey here would be
+ * worse than no chip at all.
+ *
+ * Detection is deliberately NOT a scan for these words in running text: "sent",
+ * "hidden" and "rejected" are ordinary English and appear constantly in sentences
+ * that are not naming a status. It keys off the **bold** the authors already use
+ * for exactly these values, so it is opt-in, and an author who does not want a
+ * chip simply does not bold the word. */
+const STATUS_CHIP: Record<string, string> = {
+  // CV status — the stored field
+  'qualified': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'not enough information': 'bg-amber-50 text-amber-700 border-amber-200',
+  "can't read": 'bg-slate-100 text-slate-600 border-slate-200',
+  'rejected': 'bg-rose-50 text-rose-700 border-rose-200',
+  // Application status — derived, per application
+  'sent': 'bg-sky-50 text-sky-700 border-sky-200',
+  'not sent': 'bg-rose-50 text-rose-700 border-rose-200',
+  'recall': 'bg-slate-100 text-slate-600 border-slate-200',
+  // CV search status — derived, only for the CV toggled on
+  'showing': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'hidden': 'bg-slate-100 text-slate-600 border-slate-200',
+}
+/* Authors type both apostrophes, and “Can’t read” must not miss its chip over a
+   character nobody can see the difference between. */
+const chipOf = (w: string) => STATUS_CHIP[w.toLowerCase().replace(/\u2019/g, "'").trim()]
+
+/* ── Showing the ACTUAL UI inside a spec table ────────────────────────────────
+ *
+ * A matrix cell that says “Rose Chưa được duyệt + a message + Tải lên CV khác”
+ * is a developer's homework, not a specification: three UI elements described in
+ * prose, to be reconstructed by someone who has never seen them. The markers
+ * below let a cell SHOW them instead, in the same styling the mockup renders, so
+ * the table reads as a picture of the screen rather than a description of one.
+ *
+ *   {{tag:Chưa được duyệt}}   the candidate-facing tag, exactly as it appears
+ *                             (tagok / tagwarn / tagmute for the green, amber
+ *                             and grey ones)
+ *   {{note:Hệ thống không…}}  the message box under it
+ *   {{btn:Tải lên CV khác}}   the action button
+ *   {{code:Can’t read}}       an INTERNAL reason code — deliberately NOT a status
+ *                             chip, because a reason and a status are different
+ *                             fields and colouring them alike is the confusion
+ *                             this whole page exists to prevent
+ *
+ * Everything here is display-only. None of it invents a value: the strings are
+ * the same ones the mockup data holds. */
+const TAG_TONE: Record<string, string> = {
+  tag: 'border-rose-200 bg-rose-50 text-rose-600',
+  tagok: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  tagwarn: 'border-amber-200 bg-amber-50 text-amber-700',
+  tagmute: 'border-slate-200 bg-slate-100 text-slate-600',
+}
+function UiBit({ kind, value }: { kind: string; value: string }) {
+  /* The candidate-facing TAG, in the tone the mockup paints it. Four tones and no
+     more — these are the only chips a jobseeker is ever shown. */
+  if (TAG_TONE[kind]) {
+    return <span className={cn('mx-px inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-[10.5px] font-medium', TAG_TONE[kind])}>{value}</span>
+  }
+  if (kind === 'btn') {
+    return <span className="mx-px inline-flex items-center rounded-md border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-ink shadow-sm">{value}</span>
+  }
+  if (kind === 'note') {
+    return <span className="mt-0.5 block rounded-md border border-line bg-canvas/60 px-2 py-1 text-[11.5px] leading-snug text-ink/75">{value}</span>
+  }
+  /* code — an internal label, and it must not be mistaken for a status pill. No
+     colour, square corners, monospace: three signals that this is a value out of
+     our own taxonomy rather than something a user is ever shown. */
+  return <span className="mx-px inline-flex items-center whitespace-nowrap rounded border border-line bg-canvas px-1 py-px font-mono text-[10.5px] text-muted">{value}</span>
+}
+
 function Rich({ t }: { t: string }) {
-  if (!t.includes('**') && !t.includes('](')) return <>{t}</>
+  if (!t.includes('**') && !t.includes('](') && !t.includes('{{')) return <>{t}</>
   return (
     <>
-      {t.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
+      {t.split(/(\{\{[a-z]+:[^}]*\}\}|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
+        const ui = /^\{\{([a-z]+):([\s\S]*)\}\}$/.exec(part)
+        if (ui) return <UiBit key={i} kind={ui[1]} value={ui[2]} />
         if (part.startsWith('**') && part.endsWith('**')) {
-          return <b key={i} className="font-semibold text-ink">{part.slice(2, -2)}</b>
+          const word = part.slice(2, -2)
+          const chip = chipOf(word)
+          if (chip) {
+            return (
+              <span key={i} className={cn('mx-px inline-flex items-center whitespace-nowrap rounded-full border px-1.5 py-px text-[11px] font-semibold', chip)}>
+                {word}
+              </span>
+            )
+          }
+          return <b key={i} className="font-semibold text-ink">{word}</b>
         }
         const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part)
         if (link) {
@@ -38,6 +128,20 @@ function Rich({ t }: { t: string }) {
         return <span key={i}>{part}</span>
       })}
     </>
+  )
+}
+
+/* A table cell may be authored as several LINES. One line is still one line; a
+   newline stacks them, which is what lets a cell lead with the STATUS CHIP and
+   put the qualifier under it — “Rejected” is the field's value, “Không phải CV”
+   is the reason code beside it, and running them together as one bold phrase hid
+   the fact that they are two different fields. */
+function Cell({ t }: { t: string }) {
+  if (!t.includes('\n')) return <Rich t={t} />
+  return (
+    <span className="flex flex-col items-start gap-0.5">
+      {t.split('\n').map((line, i) => <span key={i} className="w-full"><Rich t={line} /></span>)}
+    </span>
   )
 }
 
@@ -67,7 +171,7 @@ function ReqTableView({ t, dense }: { t: ReqTable; dense?: boolean }) {
           className={cn('grid gap-x-4 border-t border-line-soft px-3 py-1.5', dense ? 'text-[11.5px]' : 'text-[12.5px]')}
         >
           {r.map((cell, ci) => (
-            <span key={ci} className={ci === 0 ? 'font-medium text-ink' : 'text-ink/75'}><Rich t={cell} /></span>
+            <span key={ci} className={ci === 0 ? 'font-medium text-ink' : 'text-ink/75'}><Cell t={cell} /></span>
           ))}
         </div>
       ))}

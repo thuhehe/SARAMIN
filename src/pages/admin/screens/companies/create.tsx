@@ -57,7 +57,7 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
      deliberate act, not ticking it. */
   const [payDefault, setPayDefault] = useState(true)
   /** An individual buyer has no Tên đơn vị and no MST — the person replaces both. */
-  const isIndiv = buyer === 'ca-nhan-cccd'
+  const isIndiv = buyer === 'ca-nhan-cccd' || buyer === 'ca-nhan'
   const [tax, setTax] = useState('')
   const [looking, setLooking] = useState(false)
   const [coType, setCoType] = useState<CompanyType>('trong-nuoc')
@@ -307,7 +307,18 @@ export function CompanyCreatePage({ onBack, lockedParent }: { onBack: () => void
               individual has no Tên đơn vị, and leaving an empty company-name field
               on the form invites someone to type the person's name into it. */}
           {!buyerIsCompany && isIndiv && (
-            <LField label="Họ tên người mua hàng" req value="Nguyễn Văn A" hint="In vào dòng “Họ tên người mua hàng” trên hóa đơn. Cá nhân không có Tên đơn vị." />
+            buyer === 'ca-nhan'
+              ? (
+                <div>
+                  <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Họ tên người mua hàng</label>
+                  <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2 text-[12.5px] text-muted">
+                    <span className="font-medium text-ink/70">{RETAIL_BUYER}</span>
+                    <span className="ml-auto shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px]">hệ thống tự điền</span>
+                  </div>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Cá nhân không có CCCD — hóa đơn in đúng câu này. Không nhập tay, không sửa.</p>
+                </div>
+              )
+              : <LField label="Họ tên người mua hàng" req value="Nguyễn Văn A" hint="In vào dòng “Họ tên người mua hàng” trên hóa đơn. Cá nhân không có Tên đơn vị." />
           )}
 
 

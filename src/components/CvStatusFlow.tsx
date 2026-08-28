@@ -33,9 +33,20 @@
  * console uses for Qualified / doubt / Rejected.
  */
 
+/* THE SAME FOUR COLOURS THE ADMIN CONSOLE USES, mapped status for status, because
+   a developer reads this picture and the screens side by side:
+     ok    → Qualified               = tone 'active'  (emerald)
+     doubt → Not enough information  = tone 'pending' (amber)
+     mute  → Can't read              = tone 'draft'   (slate)  ← grey, not amber
+     bad   → Rejected                = tone 'rejected'(rose)
+   The two doubt states are still identical in CONSEQUENCE — that is what the
+   derived columns show. They differ only in what an operator has to go and look
+   at, and the admin lists already colour that difference, so the diagram must
+   not invent a third scheme. */
 const C = {
   ok: { fill: '#ecfdf5', line: '#a7f3d0', text: '#047857' },
   doubt: { fill: '#fffbeb', line: '#fde68a', text: '#b45309' },
+  mute: { fill: '#f1f5f9', line: '#e2e8f0', text: '#475569' },
   bad: { fill: '#fff1f2', line: '#fecdd3', text: '#be123c' },
 } as const
 
@@ -48,8 +59,10 @@ type Tone = keyof typeof C
 
    Application status has a THIRD value the cells cannot carry: RECALL, written
    when an admin rejects a CV that was already Sent. It is a transition, not an
-   apply-time outcome — no row produces it, so it is drawn as the annotation under
-   the uploaded panel instead of squeezed into a cell it would misdescribe. */
+   apply-time outcome, so it is not a cell value — but it IS drawn on the row that
+   produces it (uploaded + Qualified), hanging dashed under the two derived cells.
+   It lived as a footnote under the panel first, and readers looking straight at a
+   “Sent” cell never connected the two: the caveat has to be where the value is. */
 type AppStatus = 'Sent' | 'Not sent'
 type SearchStatus = 'Showing' | 'Hidden'
 
@@ -66,6 +79,13 @@ type SearchStatus = 'Showing' | 'Hidden'
 type Row = {
   tone: Tone; status: string; canApply: boolean; app?: AppStatus; canToggle: boolean; search?: SearchStatus
   sees: string; seesTone?: Tone
+  /* THE ONE MOVE A CELL CANNOT HOLD. A cell carries a single value, and Recall is
+     not an apply-time outcome — it is what the SAME row becomes after the CV
+     status changes underneath it. So it is drawn as a second reading hanging off
+     the row that produces it, rather than as a footnote elsewhere on the canvas:
+     the reader who is looking at “Sent” is exactly the reader who needs to know
+     it can still be pulled back. Only the Qualified+uploaded row has one. */
+  after?: { cause: string; app: string; search: string }
 }
 
 /* Value → colour, so a status reads the same here as it does on its pill. */
@@ -73,15 +93,20 @@ const VALUE_TONE: Record<AppStatus | SearchStatus, Tone> = {
   Sent: 'ok',
   Showing: 'ok',
   'Not sent': 'bad',
-  Hidden: 'bad',
+  /* GREY, not rose. Hidden is the ordinary resting state of nine CVs out of ten —
+     nobody toggled them on — so painting it like a failure was wrong, and the
+     admin console already renders it faint. Rose stays for Not sent, which really
+     is something being withheld. */
+  Hidden: 'mute',
 }
 
 const UPLOADED: Row[] = [
-  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing', sees: 'no label — an ordinary CV' },
+  { tone: 'ok', status: 'Qualified', canApply: true, app: 'Sent', canToggle: true, search: 'Showing', sees: 'no label — an ordinary CV',
+    after: { cause: 'if an admin Rejects this CV later', app: 'Sent \u2192 Recall', search: 'Showing \u2192 Hidden' } },
   /* THE TWO DOUBT ROWS SHOW THE CANDIDATE NOTHING. The status is our uncertainty
      about our own parse, not a fact about them; announcing it would blame them for
      a failure that may be ours, before any human has confirmed it. */
-  { tone: 'doubt', status: 'Can’t read', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden', sees: 'NOTHING — renders as an ordinary CV' },
+  { tone: 'mute', status: 'Can’t read', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden', sees: 'NOTHING — renders as an ordinary CV' },
   { tone: 'doubt', status: 'Not enough information', canApply: true, app: 'Not sent', canToggle: true, search: 'Hidden', sees: 'NOTHING — renders as an ordinary CV' },
   /* Rejected is the only uploaded status that refuses the apply outright, so it is
      the only one with no application status to show — and the only one the
@@ -283,6 +308,28 @@ function Panel({
             <ApplicationCard x={colApp} y={ry} canApply={r.canApply} value={r.app} />
             <line x1={colApp + 202} y1={ry + 33} x2={colSearch - 8} y2={ry + 33} stroke={accent} strokeWidth={1.5} markerEnd={`url(#arrow-${accent.slice(1)})`} />
             <SearchCard x={colSearch} y={ry} canToggle={r.canToggle} value={r.search} />
+            {/* THE LATER READING. Dashed and hanging BELOW the cells, because it is
+                not a third column and not a different row — it is these same two
+                cells, re-read after the CV status changed. Both consequences are
+                drawn, aligned under the cell each one lands in: one event moves
+                both derived views, and showing only the application half would
+                teach that the CV stayed searchable. Still no leftward arrow —
+                the CV status changed first, and these were read off it again. */}
+            {r.after && (
+              <g>
+                <path d={`M ${colApp + 20} ${ry + 66} L ${colApp + 20} ${ry + 78}`} stroke={C.bad.line} strokeWidth={1.5} strokeDasharray="3 3" fill="none" />
+                <path d={`M ${colSearch + 20} ${ry + 66} L ${colSearch + 20} ${ry + 78}`} stroke={C.bad.line} strokeWidth={1.5} strokeDasharray="3 3" fill="none" />
+                {/* ONE line spanning both columns — the 40px row gap will not take
+                    two, and one line is truer anyway: this is a single event, not
+                    two coincidences. The hooks do the aiming. */}
+                <text x={colApp + 8} y={ry + 90} fontSize={10} fill="var(--color-faint)">
+                  ↩ {r.after.cause}:{' '}
+                  <tspan fontSize={11} fontWeight={700} fill={C.bad.text}>{r.after.app}</tspan>
+                  <tspan>{'  ·  '}</tspan>
+                  <tspan fontSize={11} fontWeight={700} fill={C.bad.text}>{r.after.search}</tspan>
+                </text>
+              </g>
+            )}
           </g>
         )
       })}
@@ -296,7 +343,7 @@ const BLUE = '#2563eb'
 export function CvStatusFlow() {
   return (
     <div className="mt-2 overflow-x-auto">
-      <svg viewBox="0 0 1500 990" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
+      <svg viewBox="0 0 1500 930" className="h-auto w-full min-w-[1040px]" role="img" aria-label="CV status drives application status and CV search status">
         <defs>
           {[RED, BLUE].map((c) => (
             <marker key={c} id={`arrow-${c.slice(1)}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto-start-reverse">
@@ -355,15 +402,15 @@ export function CvStatusFlow() {
           rows={UPLOADED}
           pitch={106}
         />
-        {/* The one move the rows can't show, because it is a TRANSITION rather than
-            an apply-time outcome: a Qualified CV that already reached employers is
-            later Rejected by an admin. Sat under the uploaded panel because only
-            that route has an admin to overturn anything. */}
+        {/* The transition itself is now drawn ON the Qualified row that produces it
+            (see `after`), so this line no longer repeats it. What is left is the
+            BOUNDARY — the mistake of reading Recall as “what rejection does”, when
+            it is only what rejection does to something already DELIVERED. */}
         <text x={826} y={560} fontSize={11} fill={C.bad.text}>
-          ↩ Rejected AFTER Qualified — an admin overturns a CV that employers already have: every application
+          ↩ Recall exists ONLY where a CV was already delivered. Rejecting a CV that is still in doubt
         </text>
         <text x={826} y={576} fontSize={11} fill={C.bad.text}>
-          already Sent flips to <tspan fontWeight={700}>Recall</tspan> (pulled back; the employer is told Saramin withdrew it). Held ones stay Not sent.
+          recalls nothing — it was never <tspan fontWeight={700}>Sent</tspan>, so it stays <tspan fontWeight={700}>Not sent</tspan> and no employer is ever notified.
         </text>
         <Panel
           x={816}
@@ -380,19 +427,11 @@ export function CvStatusFlow() {
           pitch={106}
         />
 
-        {/* the one sentence the picture is making */}
-        <text x={40} y={930} fontSize={11} fill="var(--color-muted)">
-          Every arrow points right: both statuses are READ from the CV. Nothing writes back.
-        </text>
-        {/* …and the one thing the picture CANNOT show, because it is about who is
-            looking rather than what the value is. Printed here so nobody reads a
-            “Not sent” cell as a label the candidate is shown. */}
-        <text x={40} y={954} fontSize={11} fill="var(--color-muted)">
-          These are INTERNAL values. A candidate never sees a doubt state: an uploaded CV in doubt renders like a healthy one,
-        </text>
-        <text x={40} y={970} fontSize={11} fill="var(--color-muted)">
-          and its application reads the ordinary “Đã nộp”. Only DECIDED states are ever spoken about — Qualified, or Rejected with its reason.
-        </text>
+        {/* NO FOOTER NOTES. Two sentences used to sit here — "every arrow points
+            right" and "these are INTERNAL values" — and both were already on the
+            page in prose: the first is the section's own intro line, the second is
+            the "big cells are internal values" bullet. A caption that repeats the
+            paragraph above it teaches nothing and ages independently of it. */}
       </svg>
     </div>
   )
