@@ -23,12 +23,10 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
   const [role, setRole] = useState<CoUserRole>('Recruiter')
   const [reason, setReason] = useState('')
   const title = mode === 'move' ? `Move ${s.person} to a company` : 'Archive this sign-up?'
-  /* Placement and login are two different moments once the email gate stopped
-     blocking placement — so this note has to say which one it is describing, or it
-     contradicts the unverified warning three lines above it. */
-  const activation = s.verified
-    ? <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up. (Their email is already verified.)</span></p>
-    : <p className="flex gap-2 rounded-md bg-canvas/70 px-3 py-2 text-[11.5px] leading-relaxed text-muted"><span>✉️</span><span>Gán xong <b className="text-ink/75">chưa mở login</b> — người này chưa xác minh email. Khi họ bấm link xác minh, hệ thống tự mở login và gửi mail <b className="text-ink/75">“you’re in — sign in”</b>.</span></p>
+  /* ONE note, no branch. Everyone in this list verified their email before the
+     row existed, so placement and login are the same moment again — the operator
+     never has to hold two states apart. */
+  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up.</span></p>
   /* NO Sales-owner field (client: remove). A sign-up is only ever moved into a
      company that already exists on the Customers list, and the promotion gate
      guarantees every such record HAS an owner — asking again here invited the
@@ -71,14 +69,9 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
             </div>
           )}
 
-          {/* Gate 1 is about LOGIN, not about placement: an unverified person can be
-              placed, they simply cannot sign in until they click the link. Saying so
-              here is what makes placing one safe rather than mysterious. */}
-          {mode === 'move' && !s.verified && (
-            <p className="rounded-md border border-line bg-canvas/60 px-3 py-2 text-[11px] leading-relaxed text-muted">
-              Người này <b className="text-ink/75">chưa xác minh email</b>. Gán vào công ty vẫn được — nhưng <b className="text-ink/75">login chỉ mở khi họ bấm link xác minh</b>. Mail “you’re in” gửi sau khi cả hai điều kiện đủ.
-            </p>
-          )}
+          {/* REMOVED 2026-08-23: the “chưa xác minh email” warning. Verification is
+              now a precondition for the row existing at all, so the case it warned
+              about cannot reach this dialog. */}
 
           {mode === 'move' && (
             <>
@@ -130,10 +123,10 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
             <button
               disabled={!inCompanyList(s)}
               title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Customers — tạo/đưa lên trước'}
-              onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role}${s.verified ? ' · sign-in email sent' : ' · chờ xác minh email'}`)}
+              onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · sign-in email sent`)}
               className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', inCompanyList(s) ? 'bg-emerald-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
             >
-              Move{s.verified ? ' + send sign-in' : ''}
+              Move + send sign-in
             </button>
           )}
           {mode === 'archive' && <button onClick={() => onConfirm('Archived', `Archived${reason.trim() ? ` · ${reason.trim()}` : ''}`)} disabled={!reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Archive sign-up</button>}
@@ -232,7 +225,9 @@ export function AdminSignups() {
           /* Match is the widest column on purpose (client: the company name was
              truncating): it is the one cell whose content the operator actually
              reads before acting, and it carries a source chip + the full name. */
-          { label: 'Email verified', w: '0.8fr' }, { label: 'Match', w: '2.2fr' }, { label: 'Status', w: '1fr' }, { label: 'When', w: '0.6fr' },
+          /* NO “Email verified” column (2026-08-23): every row in this list has
+             already verified, so the cell read the same value on all of them. */
+          { label: 'Match', w: '2.2fr' }, { label: 'Status', w: '1fr' }, { label: 'When', w: '0.6fr' },
           { label: 'Action', w: '1.3fr', align: 'r' },
         ]}
         rows={rows.map((s) => [
@@ -242,9 +237,6 @@ export function AdminSignups() {
           <span className="truncate font-mono text-[11px] text-muted">{s.tax}</span>,
           <span className="truncate text-[12px] text-ink/80">{s.company}</span>,
           <Pill tone={s.hiring ? 'active' : 'neutral'}>{s.hiring ? 'Yes' : 'No'}</Pill>,
-          s.verified
-            ? <Pill tone="active">✓ Verified</Pill>
-            : <Pill tone="pending">Awaiting</Pill>,
           <MatchCell s={s} onOpen={(m) => goTo(m.where === 'crm' ? 'admin-company-list' : 'admin-company-directory', m.name)} />,
           <div className="min-w-0">
             <Pill tone={SIGNUP_STATUS[s.status]}>{s.status}</Pill>
@@ -252,8 +244,8 @@ export function AdminSignups() {
           </div>,
           <span className="text-[11.5px] text-muted">{s.when}</span>,
           /* ONE affordance on every row: the ⋯ menu, always the same two options.
-             Where the company is (and whether the email is verified) changes what
-             happens INSIDE the modal, not whether the row can be clicked — a table
+             Where the company is changes what happens INSIDE the modal, not
+             whether the row can be clicked — a table
              whose rows offer four different controls makes the operator read each
              row before they can act on any of them. */
           s.status !== 'New'

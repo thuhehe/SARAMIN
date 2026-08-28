@@ -3194,7 +3194,7 @@ export const crm: BuildModule = {
             ],
           },
           items: [
-            'HQ only acts on EMAIL-VERIFIED requests (gate 1). An unverified row is not actionable — it waits for the user to verify.',
+            'EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS (gate 1, tightened 2026-08-23). An unverified sign-up is not an un-actionable row in the inbox — it is not a row at all. The request sits with the USER until they click the link, and only then does it appear for HQ. So there is no “awaiting verification” state on this screen, and no Email-verified column: every row an operator can see has already passed gate 1.',
             'Match is binary and informational only: tax code found → "Match" (shows which company); no tax match → "Not match". It hints which action fits, but the three actions are always the same.',
             'Move / Create both unlock login and send the "you’re in" email — the password was already set at sign-up, so it is a sign-in notice, not a set-password link.',
             'Placing the user into an existing company picks their role there and respects that company’s seat cap. (This placement at sign-up is the ONLY cross-company move that exists — an already-placed user is never moved, only offboarded and re-invited.)',
@@ -3226,7 +3226,7 @@ export const crm: BuildModule = {
             cols: ['Track', 'States', 'Rule'],
             rows: [
               ['User account', 'Pending email verification → Email verified · pending review → Active (or Rejected)', 'No login until BOTH gates pass. Password was set at sign-up; the final email just says "sign in now".'],
-              ['Inbox row (HQ)', 'New (awaiting email verification) → New (verified, actionable) → Resolved / Archived', 'HQ can only Move/Create/Archive a row whose email is verified; an unverified row shows "awaiting email verification".'],
+              ['Inbox row (HQ)', 'New → Resolved / Archived — two states, because the row is only created once the email is verified', 'Every visible row is actionable. There is no waiting state to read past, and no column that says the same thing on every row.'],
             ],
           },
           warn: 'Email verification is gate 1 and is automatic; it does not resolve the row. HQ placement is gate 2 and is what flips the account to Active.',
@@ -3256,7 +3256,7 @@ export const crm: BuildModule = {
         behaviors: [
           'On submit the system creates a pending sign-up (holding the person’s chosen password), sends an email-verification link immediately, and runs a tax-code match.',
           'Gate 1 — email verification: when the user clicks the link, emailVerified flips true. This is automatic and does NOT resolve the row; it only makes the row actionable for HQ.',
-          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Customers. **Email verification no longer gates placement, only LOGIN**: an unverified person can be placed, and their login opens by itself the moment they click the link.',
+          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Customers. **Verification is already done by the time a row appears** (see gate 1): placement and login are therefore the same moment — Move unlocks the login and sends the “you’re in — sign in” email. This REVERSES an earlier model in which an unverified person could be placed and their login opened later; that split made the operator hold two states apart for a case they can no longer meet.',
           'Match is binary + informational: tax hit (Match, shows which) or not (Not match). A public email domain can’t auto-match. Match never changes the three actions.',
           'Move / Create create/attach the company membership, unlock login, and send the "you’re in — sign in" email (password already set). Archive rejects the request.',
           'The user sees a status tracker and a stated SLA throughout; trying to log in before both gates pass shows an "under review" screen, never a bare error.',
@@ -3302,7 +3302,7 @@ export const crm: BuildModule = {
         acceptance: [
           'On submit, a pending sign-up is created and a verification email is sent immediately; nothing is provisioned and the person cannot log in.',
           'Clicking the verification link sets emailVerified true but does NOT grant access — the row is now actionable for HQ.',
-          'An email-unverified row is shown as "awaiting email verification" and cannot be Moved/Created/Archived-as-placed.',
+          'An email-unverified sign-up NEVER APPEARS in this inbox — the acceptance test is that the list contains no unverified row at all, not that an unverified row is disabled.',
           'Move / Create unlock login and send the "you’re in" email; the user signs in with the password set at sign-up.',
           'Trying to sign in before both gates pass shows an "under review" status screen (with the tracker + expected date), not a login error.',
           'A stated SLA is shown on the success page and the tracker; every resolution is audited.',
