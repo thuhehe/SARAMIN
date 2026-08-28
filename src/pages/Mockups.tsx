@@ -24,6 +24,7 @@ const MY_PAGE_MENU: { label: string; screen?: string }[] = [
   { label: 'My applications', screen: 'js-applications' },
   { label: 'Saved jobs' },
   { label: 'Settings' },
+  { label: 'Xoá tài khoản', screen: 'js-delete-account' },
 ]
 
 /** Identity card + visibility toggle + menu. Identical on every My-page screen.
@@ -3263,6 +3264,256 @@ function OnboardingScreen() {
   )
 }
 
+/* ── DELETE ACCOUNT — four steps, and the middle one is the inbox ───────────
+ *
+ * The client asked for email confirmation before a deletion completes, and the
+ * reference is Saramin VN's live mail ("[Saramin] Xác nhận yêu cầu xóa tài
+ * khoản"). This screen is the whole flow on one page so it can be read end to
+ * end: request → email → confirm → done, with the EMAIL ITSELF drawn rather
+ * than described, because the copy is the deliverable.
+ *
+ * WHY THE EMAIL IS WORTH THE EXTRA STEP HERE, when a grace window already makes
+ * deactivation reversible: this path is the IRREVERSIBLE one. There is no
+ * sign-in-to-restore behind it, so the confirmation email is the only thing
+ * standing between a borrowed laptop and a destroyed account — and it is the
+ * one check that uses a channel the attacker at the keyboard may not hold.
+ *
+ * WHERE RE-AUTH SITS, and why not twice: at the FINAL step, not the request.
+ * Password before + email + password after is three gates for one decision. The
+ * email proves inbox control, the final page proves account ownership, and the
+ * irreversible act happens on the same screen as the proof. The reference mail
+ * says the same thing in one line — “Hãy đăng nhập vào đúng tài khoản”.
+ *
+ * THREE THINGS THE REFERENCE EMAIL DOES THAT THIS ONE DOES NOT:
+ *   1. a “TẢI APP · NHẬN QUÀ TẶNG” marketing banner at the top of a deletion
+ *      email — advertising to someone leaving reads as not listening;
+ *   2. sends from no-reply@topdev.vn for a saramin.vn account, which is exactly
+ *      the shape of a phishing mail and trains people to ignore the real one;
+ *   3. no “I didn’t request this” path, on the one email whose whole purpose is
+ *      to be read by someone who might not have asked for it.
+ */
+const DEL_STEPS = ['1 · Yêu cầu', '2 · Kiểm tra email', '3 · Xác nhận', '4 · Xong'] as const
+
+function DeleteAccountScreen() {
+  const go = useNav()
+  const [step, setStep] = useState(0)
+  const [reason, setReason] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const email = 'minhanh@email.com'
+
+  /* Written from OUR model, not copied from the reference mail — which claims
+     every application is withdrawn. We cannot retract a CV a recruiter already
+     received, and promising it is a promise broken on the employer's screen. */
+  const CONSEQUENCES = [
+    ['Hồ sơ và toàn bộ CV bị xoá', 'Không khôi phục được sau khi hoàn tất.'],
+    ['NTD không tìm thấy bạn nữa', 'CV rời khỏi tìm kiếm CV ngay lập tức.'],
+    ['Đơn đã gửi vẫn nằm ở phía NTD', 'Chúng tôi không thu hồi được CV mà NTD đã nhận. Bạn sẽ không theo dõi được các đơn này nữa.'],
+    ['Mất quyền dùng các tính năng', 'Tạo CV, ứng tuyển nhanh, thông báo việc làm.'],
+  ]
+  const ALTERNATIVES = [
+    ['Chỉ muốn NTD không tìm thấy?', 'Tắt “Cho NTD tìm thấy CV” — giữ tài khoản và các đơn đang theo dõi.'],
+    ['Chỉ muốn bớt email?', 'Tắt thông báo việc làm trong Cài đặt.'],
+  ]
+
+  const Card = ({ children }: { children: React.ReactNode }) => (
+    <div className="rounded-xl border border-line bg-surface p-4">{children}</div>
+  )
+
+  return (
+    <div className="relative">
+      <JsHeader active="CV & Profile" />
+      <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-4 p-5">
+        <MyPageRail active="js-delete-account" />
+
+        <div className="min-w-0 space-y-3">
+          {/* The stepper is the point of the mockup: the client asked for “confirm
+              by email”, and the thing to review is WHERE that step sits. */}
+          <div className="flex flex-wrap gap-1.5">
+            {DEL_STEPS.map((label, i) => (
+              <button
+                key={label}
+                onClick={() => setStep(i)}
+                className={cn('rounded-full border px-2.5 py-1 text-[11px] font-medium',
+                  i === step ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
+              >{label}</button>
+            ))}
+          </div>
+
+          {/* ── 1 · REQUEST ─────────────────────────────────────────────── */}
+          {step === 0 && (
+            <>
+              <Card>
+                <p className="text-[15px] font-bold text-ink">Xoá tài khoản</p>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
+                  Đây là thao tác <b className="font-semibold text-rose-600">không khôi phục được</b>. Đọc kỹ phần dưới trước khi tiếp tục.
+                </p>
+              </Card>
+
+              {/* ALTERNATIVES FIRST, and above the consequences — most people
+                  pressing this want one specific thing to stop, not oblivion. */}
+              <Card>
+                <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Có thể bạn chỉ cần</p>
+                <div className="space-y-2">
+                  {ALTERNATIVES.map(([t, d]) => (
+                    <div key={t} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-ink">{t}</p>
+                        <p className="text-[11px] leading-snug text-muted">{d}</p>
+                      </div>
+                      <span className="shrink-0 cursor-pointer text-[11.5px] font-medium text-brand">Mở cài đặt</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+                <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-rose-700">Xoá tài khoản sẽ</p>
+                <div className="space-y-2">
+                  {CONSEQUENCES.map(([t, d]) => (
+                    <div key={t} className="flex items-start gap-2">
+                      <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />
+                      <p className="min-w-0 text-[11.5px] leading-snug text-ink/85"><b className="font-semibold text-ink">{t}</b> — {d}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Card>
+                {/* OPTIONAL, and it never blocks — the moment a reason is required
+                    to leave, the form is an obstacle rather than a question. */}
+                <p className="mb-1.5 text-[11.5px] font-medium text-ink/80">Lý do bạn rời đi? <span className="font-normal text-faint">— không bắt buộc</span></p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Đã tìm được việc', 'Quá nhiều email', 'Lo ngại riêng tư', 'Không hữu ích', 'Khác'].map((r) => (
+                    <button key={r} onClick={() => setReason(reason === r ? '' : r)}
+                      className={cn('rounded-full border px-2.5 py-1 text-[11px]', reason === r ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}
+                    >{r}</button>
+                  ))}
+                </div>
+
+                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2.5">
+                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+                  <span className="text-[11.5px] leading-relaxed text-ink/85">
+                    Tôi hiểu tài khoản và toàn bộ CV sẽ bị xoá vĩnh viễn, và đơn đã gửi vẫn nằm ở phía nhà tuyển dụng.
+                  </span>
+                </label>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    disabled={!agreed}
+                    onClick={() => setStep(1)}
+                    className={cn('rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white', agreed ? 'bg-rose-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
+                  >Gửi email xác nhận</button>
+                  <span className="text-[11px] text-faint">Chưa xoá gì cả — chúng tôi gửi một email để bạn xác nhận.</span>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* ── 2 · CHECK INBOX ─────────────────────────────────────────── */}
+          {step === 1 && (
+            <>
+              <Card>
+                <p className="text-[15px] font-bold text-ink">Kiểm tra hộp thư của bạn</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                  Chúng tôi đã gửi email xác nhận tới <b className="font-semibold text-ink">{email}</b>. Mở email và bấm nút trong đó để hoàn tất.
+                </p>
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-800">
+                  Liên kết có hiệu lực <b className="font-semibold">24 giờ</b>. Hết hạn thì yêu cầu này tự huỷ và tài khoản của bạn giữ nguyên.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {/* A cooldown, not a disabled button with no explanation — the
+                      commonest support ticket on any verify-by-email flow is “I
+                      pressed resend five times and got nothing”. */}
+                  <span className="cursor-pointer text-[11.5px] font-medium text-brand">Gửi lại email</span>
+                  <span className="text-[11px] text-faint">có thể gửi lại sau 60 giây</span>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                  Không thấy email? Kiểm tra mục Spam / Quảng cáo, hoặc <span className="cursor-pointer font-medium text-brand">đổi email nhận</span>.
+                </p>
+              </Card>
+
+              {/* THE EMAIL ITSELF — drawn, because the copy is the deliverable and
+                  a client cannot review a sentence that only exists in a comment. */}
+              <div>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand">Email gửi đi — bản nội dung</p>
+                <div className="overflow-hidden rounded-xl border border-line bg-surface">
+                  <div className="border-b border-line bg-canvas/50 px-4 py-2.5 text-[11px] leading-relaxed">
+                    <p className="text-[12.5px] font-bold text-ink">[Saramin] Xác nhận yêu cầu xoá tài khoản</p>
+                    {/* SAME DOMAIN AS THE ACCOUNT. The reference sends a saramin.vn
+                        deletion from no-reply@topdev.vn — the exact shape of a
+                        phishing mail, on the one message users must trust. */}
+                    <p className="mt-0.5 text-muted">Saramin &lt;no-reply@<b className="font-semibold text-ink/75">saramin.vn</b>&gt; · tới {email}</p>
+                  </div>
+                  {/* NO MARKETING BANNER. The reference opens a deletion email with
+                      “TẢI APP · NHẬN QUÀ TẶNG”; advertising to someone who is
+                      leaving reads as not having listened. */}
+                  <div className="space-y-2.5 px-4 py-3.5 text-[11.5px] leading-relaxed text-ink/85">
+                    <p>Chào bạn <b className="font-semibold text-ink">Trần Minh Anh</b>,</p>
+                    <p>Chúng tôi nhận được yêu cầu xoá tài khoản Saramin của bạn. <b className="font-semibold text-ink">Chưa có gì bị xoá.</b></p>
+                    <p className="font-semibold text-ink">Nếu bạn tiếp tục:</p>
+                    <ul className="ml-4 list-disc space-y-1">
+                      {CONSEQUENCES.map(([t, d]) => <li key={t}><b className="font-semibold text-ink">{t}</b> — {d}</li>)}
+                    </ul>
+                    <div className="pt-1">
+                      <span className="inline-block cursor-pointer rounded-lg bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white">Xác nhận xoá tài khoản</span>
+                    </div>
+                    <p className="text-[11px] text-muted">Liên kết hết hạn sau 24 giờ. Bạn cần đăng nhập đúng tài khoản muốn xoá.</p>
+                    {/* THE LINE THE REFERENCE IS MISSING, on the one email whose
+                        whole job is to be read by someone who may not have asked
+                        for this. Without it, a compromised account has no alarm. */}
+                    <p className="rounded-md border border-line bg-canvas/50 px-2.5 py-2 text-[11px] text-muted">
+                      <b className="font-semibold text-ink/75">Bạn không yêu cầu việc này?</b> Tài khoản của bạn vẫn an toàn — hãy bỏ qua email này và <span className="cursor-pointer font-medium text-brand">đổi mật khẩu</span> ngay.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── 3 · CONFIRM (reached from the email link) ───────────────── */}
+          {step === 2 && (
+            <Card>
+              <p className="text-[15px] font-bold text-ink">Xác nhận xoá tài khoản</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                Bạn đang đăng nhập bằng <b className="font-semibold text-ink">{email}</b>. Đây là bước cuối — sau khi bấm, tài khoản bị xoá vĩnh viễn.
+              </p>
+              {/* RE-AUTH HERE AND ONLY HERE. The email proved inbox control; this
+                  proves account ownership, on the same screen as the irreversible
+                  act. Asking for the password at step 1 as well would be a third
+                  gate for one decision. */}
+              <div className="mt-3">
+                <p className="mb-1 text-[11.5px] font-medium text-ink/80">Nhập mật khẩu để xác nhận <span className="text-rose-500">*</span></p>
+                <div className="w-full rounded-md border border-line bg-canvas/40 px-3 py-2 text-[12.5px] text-faint">••••••••</div>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                  Đăng nhập bằng Google/Facebook? Bạn sẽ được yêu cầu <b className="text-ink/70">nhập lại mật khẩu nhà cung cấp</b> — không phải bấm một nút rồi quay lại.
+                </p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button onClick={() => setStep(3)} className="rounded-lg bg-rose-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">Xoá tài khoản vĩnh viễn</button>
+                <button onClick={() => setStep(0)} className="rounded-lg border border-line px-3.5 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Huỷ, giữ tài khoản</button>
+              </div>
+            </Card>
+          )}
+
+          {/* ── 4 · DONE ────────────────────────────────────────────────── */}
+          {step === 3 && (
+            <Card>
+              <p className="text-[15px] font-bold text-ink">Tài khoản đã được xoá</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                Bạn đã được đăng xuất khỏi mọi thiết bị. Chúng tôi đã gửi một email xác nhận cuối cùng tới {email}.
+              </p>
+              <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                Dữ liệu cá nhân được xoá theo quy định lưu trữ bắt buộc. Đơn ứng tuyển đã gửi vẫn nằm ở phía nhà tuyển dụng — chúng tôi không thu hồi được.
+              </p>
+              <div className="mt-3"><Btn primary onClick={() => go('js-home')}>Về trang chủ</Btn></div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── My applications — the jobseeker's view of every application: where it is
    in the pipeline (incl. the HQ screening step — sold as a feature, shown
    honestly), which CV was sent, and what happened when. List + detail. */
@@ -3670,6 +3921,7 @@ export const SCREENS: Screen[] = [
   { id: 'js-profile-cv', site: 'Jobseeker', title: 'My Profile', url: 'saramin.vn/my-page/profile', Comp: ProfileCvScreen },
   { id: 'js-create-cv', site: 'Jobseeker', title: 'Create CV', url: 'saramin.vn/cv/create', Comp: CreateCvScreen },
   { id: 'js-applications', site: 'Jobseeker', title: 'My applications', url: 'saramin.vn/my-page/applications', Comp: MyApplicationsScreen },
+  { id: 'js-delete-account', site: 'Jobseeker', title: 'Delete account (email confirm)', url: 'saramin.vn/my-page/settings/delete', Comp: DeleteAccountScreen },
   { id: 'js-signup', site: 'Jobseeker', title: 'Sign up', url: 'saramin.vn/signup', Comp: SignUpScreen },
   { id: 'js-signup-social', site: 'Jobseeker', title: 'Sign up — social login completion', url: 'saramin.vn/signup/complete', Comp: SignUpSocialScreen },
   { id: 'js-onboarding', site: 'Jobseeker', title: 'Onboarding', url: 'saramin.vn/welcome', Comp: OnboardingScreen },
