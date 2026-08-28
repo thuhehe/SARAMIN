@@ -82,11 +82,11 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-signups': { module: 'crm', feature: 'Sign-ups' },
   // Both pool screens are specified as ONE feature — the claim flow is the spec, and
   // the queue is the second half of it. They sit on the System nav but belong to CRM.
-  'admin-company-directory': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
-  'admin-claim-requests': { module: 'crm', feature: 'Danh bạ doanh nghiệp (free company data)' },
+  'admin-company-directory': { module: 'crm', feature: 'Free data' },
+  'admin-claim-requests': { module: 'crm', feature: 'Free data' },
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
-  'admin-invoices': { module: 'crm', feature: 'Invoice (VAT e-invoice)' },
+  'admin-invoices': { module: 'crm', feature: 'Invoices' },
   // Account management is back in the build plan, so the Company-users screen links
   // to its authored feature page (users, roles, deactivate/offboarding, move-user).
   'admin-company-users': { module: 'account-management', feature: 'Company users & roles (on Admin)' },

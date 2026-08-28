@@ -104,16 +104,23 @@ export function CompanyIntakeFlow() {
         <Arrow d="M 722 363 C 736 363, 736 380, 748 380" tone="brand" />
         <Arrow d="M 722 411 C 736 411, 736 396, 748 396" tone="brand" />
 
-        <text x={544} y={452} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={AMB}>Cả hai đường đều bắt buộc: MST hợp lệ + không trùng, và một sales owner</text>
+        <text x={544} y={452} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={AMB}>Cả hai đường đều bắt buộc: MST hợp lệ + không trùng · địa chỉ ĐK xuất hóa đơn · contact person — và một sales owner</text>
         <text x={544} y={468} fontSize={10.5} textAnchor="middle" fill={MUT}>Xong thì dòng RỜI Free data (không xoá — giữ liên kết tới hồ sơ CRM để truy vết)</text>
 
         {/* ── ROW 3: the sign-up flow, which WAITS on the above ───────────────── */}
         <line x1={20} y1={500} x2={1400} y2={500} stroke="var(--color-line)" strokeWidth={1} strokeDasharray="5 4" />
-        <text x={38} y={528} fontSize={11} fontWeight={800} fill={MUT}>LUỒNG SIGN-UP — KHÔNG BAO GIỜ TỰ TẠO CÔNG TY</text>
+        <text x={38} y={528} fontSize={11} fontWeight={800} fill={MUT}>LUỒNG SIGN-UP — CHỈ 2 HÀNH ĐỘNG: MOVE TO EXISTING COMPANY · ARCHIVE. MÀN NÀY KHÔNG BAO GIỜ TẠO CÔNG TY</text>
 
         <Box x={38} y={546} w={230} h={64} title="Employer tự đăng ký" sub="trên trang Company" sub2="→ vào list Sign-ups" tone="plain" />
         <Arrow d="M 268 578 L 306 578" />
         <Box x={308} y={546} w={240} h={64} title="Admin mở Sign-ups" sub="công ty người này khai" sub2="đang nằm ở đâu?" tone="gate" />
+        {/* ARCHIVE is the SECOND of the only two actions the screen has, and it does
+            not depend on where the company is — spam, a duplicate request and a
+            person who named the wrong company are all archived whatever the answer
+            below. Drawn hanging off the gate rather than as a fourth branch, or the
+            picture would say it is one more outcome of the lookup. */}
+        <Arrow d="M 428 610 L 428 640" />
+        <Box x={308} y={642} w={240} h={52} title="hoặc ARCHIVE" sub="spam · trùng · sai công ty" tone="plain" />
 
         {/* three answers */}
         <Arrow d="M 548 560 C 590 560, 600 545, 640 545" tone="brand" label="đã ở Company list" lx={596} ly={534} />
@@ -122,7 +129,7 @@ export function CompanyIntakeFlow() {
 
         <Box x={642} y={518} w={300} h={54} title="Move to existing company" sub="chọn công ty + role → mở khoá login" tone="crm" />
         <Box x={642} y={620} w={300} h={54} title="CHẶN — “Đưa công ty lên Company list →”" sub="mở dòng Free data, làm đường A hoặc B" tone="stop" />
-        <Box x={642} y={722} w={300} h={54} title="CHẶN — “Tạo công ty trước →”" sub="tạo qua cửa ② hoặc ③" tone="stop" />
+        <Box x={642} y={722} w={300} h={54} title="CHẶN — “Tạo công ty trước →”" sub="tạo qua cửa ① hoặc ②" tone="stop" />
 
         {/* the blocked paths loop back up into the promotion machinery */}
         <Arrow d="M 942 647 C 1010 647, 1010 500, 900 440" tone="stop" dashed />

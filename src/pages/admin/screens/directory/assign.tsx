@@ -5,7 +5,7 @@ import { COMPANIES, coKey, coLabel } from '@/pages/admin/data/companies'
 import { companyId } from '@/lib/companyId'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { Pill } from '@/pages/admin/ui/status'
-import type { ClaimReq } from '@/pages/admin/data/directory'
+import type { ClaimReq, DirRow } from '@/pages/admin/data/directory'
 
 /* ── Phân công ty cho một sales ───────────────────────────────────────────────
    NOT its own screen. Admin works the Free-data list, filters Trạng thái = Đang
@@ -38,24 +38,46 @@ function mstCheck(tax: string): { state: 'empty' | 'dup' | 'ok'; dup?: (typeof C
   return dup ? { state: 'dup', dup } : { state: 'ok' }
 }
 
-function MstStatus({ tax, onFill }: { tax?: string; onFill?: () => void }) {
-  const chk = mstCheck(tax ?? '')
-  if (chk.state === 'ok') {
-    return <p className="w-full text-[10.5px] text-emerald-700">✓ MST <span className="font-mono">{tax!.trim()}</span> (tab Overview) — không trùng với công ty nào trong Company list.</p>
-  }
-  if (chk.state === 'dup') {
-    return (
-      <p className="w-full rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-rose-900">
-        ⚠ MST <span className="font-mono">{tax!.trim()}</span> trùng với <b>{coLabel(chk.dup!)}</b> ({companyId(coKey(chk.dup!))} · sales phụ trách <b>{chk.dup!.owner}</b>) — không tạo được hồ sơ mới.
-        Nếu đúng là công ty này, dùng <b>Yêu cầu chuyển giao</b> trên hồ sơ đó; nếu là chi nhánh, tạo từ hồ sơ công ty mẹ. Sửa MST ở tab Overview.
-      </p>
-    )
-  }
+/** The promotion gate, shared by BOTH paths (approve a claim · direct assign).
+    Three fields must exist on the record before a company can leave the pool —
+    MST, địa chỉ đăng ký xuất hóa đơn, contact person (client, 2026-08-28) — plus
+    the MST dedup. One checklist, each miss naming where it gets fixed, because a
+    disabled button with no reason teaches people to click harder. */
+export const promoteReady = (r?: DirRow) =>
+  Boolean(r) && mstCheck(r!.tax ?? '').state === 'ok' && Boolean(r!.addr?.trim()) && Boolean(r!.person?.trim())
+
+function PromoteGate({ r, onFill }: { r?: DirRow; onFill?: () => void }) {
+  const chk = mstCheck(r?.tax ?? '')
+  const items: { label: string; ok: boolean; miss: string }[] = [
+    { label: '1. MST', ok: chk.state === 'ok', miss: chk.state === 'dup' ? 'trùng' : 'chưa có' },
+    { label: '2. Địa chỉ đăng ký xuất hóa đơn', ok: Boolean(r?.addr?.trim()), miss: 'chưa có' },
+    { label: '3. Contact person', ok: Boolean(r?.person?.trim()), miss: 'chưa có' },
+  ]
+  const allOk = items.every((i) => i.ok)
   return (
-    <p className="flex w-full flex-wrap items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-900">
-      <span>⚠ Công ty <b>chưa có MST</b> — cần MST trước khi tạo hồ sơ CRM.</span>
-      {onFill && <button onClick={onFill} className="rounded border border-amber-400 bg-white px-1.5 py-0.5 font-semibold text-amber-800 hover:border-amber-600">Điền MST ở tab Overview →</button>}
-    </p>
+    <div className="w-full space-y-1.5">
+      {allOk ? (
+        <p className="text-[10.5px] text-emerald-700">✓ Đủ điều kiện đưa lên Company list — MST <span className="font-mono">{r!.tax!.trim()}</span> không trùng · địa chỉ ĐK xuất hóa đơn · contact person (tab Overview).</p>
+      ) : (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-amber-900">
+          <p>⚠ Để phân sales và đưa công ty lên <b>Company list</b> cần đủ 3 thông tin:</p>
+          <p className="mt-0.5 flex flex-wrap gap-x-3">
+            {items.map((i) => (
+              <span key={i.label} className={i.ok ? 'text-emerald-700' : 'font-semibold'}>{i.ok ? '✓' : '✗'} {i.label}{i.ok ? '' : ` (${i.miss})`}</span>
+            ))}
+          </p>
+          {onFill && <button onClick={onFill} className="mt-1 rounded border border-amber-400 bg-white px-1.5 py-0.5 font-semibold text-amber-800 hover:border-amber-600">Điền ở tab Overview →</button>}
+        </div>
+      )}
+      {/* the dup case keeps its full explanation — it is the one miss with a
+          different fix (transfer or branch), not a field to type */}
+      {chk.state === 'dup' && (
+        <p className="w-full rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-rose-900">
+          ⚠ MST <span className="font-mono">{r!.tax!.trim()}</span> trùng với <b>{coLabel(chk.dup!)}</b> ({companyId(coKey(chk.dup!))} · sales phụ trách <b>{chk.dup!.owner}</b>) — không tạo được hồ sơ mới.
+          Nếu đúng là công ty này, dùng <b>Yêu cầu chuyển giao</b> trên hồ sơ đó; nếu là chi nhánh, tạo từ hồ sơ công ty mẹ. Sửa MST ở tab Overview.
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -71,7 +93,7 @@ type Stage =
   | { at: 'admin' } | { at: 'lead'; adminBy: string; adminAt: string }
   | { done: 'approved'; adminBy: string } | { done: 'rejected'; level: 'Admin' | 'Sales lead'; note: string }
 
-export function AssignCard({ req, tax, onFillMst }: { req: ClaimReq; /** the record's own MST (tab Overview) — the single source the gate reads */ tax?: string; onFillMst?: () => void }) {
+export function AssignCard({ req, pool, onFillMst }: { req: ClaimReq; /** the pool record — the single source the gate reads (MST · địa chỉ ĐK XHĐ · contact person) */ pool?: DirRow; onFillMst?: () => void }) {
   const [stage, setStage] = useState<Stage>(
     req.status === 'admin_ok' ? { at: 'lead', adminBy: req.adminBy ?? 'Lê Minh Anh (admin)', adminAt: req.adminAt ?? '' } : { at: 'admin' },
   )
@@ -81,7 +103,7 @@ export function AssignCard({ req, tax, onFillMst }: { req: ClaimReq; /** the rec
   /* The lead's Duyệt is the write that CREATES the company, so the MST gate sits on
      that button and nowhere earlier — Admin's level-1 pass creates nothing. */
   const needMst = 'at' in stage && stage.at === 'lead'
-  const mstOk = !needMst || mstCheck(tax ?? '').state === 'ok'
+  const mstOk = !needMst || promoteReady(pool)
 
   return (
     <div className="rounded-xl border border-line bg-surface">
@@ -138,7 +160,7 @@ export function AssignCard({ req, tax, onFillMst }: { req: ClaimReq; /** the rec
           )
         ) : (
           <div className="flex flex-wrap items-center gap-1.5">
-            {needMst && <MstStatus tax={tax} onFill={onFillMst} />}
+            {needMst && <PromoteGate r={pool} onFill={onFillMst} />}
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -153,7 +175,7 @@ export function AssignCard({ req, tax, onFillMst }: { req: ClaimReq; /** the rec
             </button>
             <button
               disabled={!mstOk}
-              title={mstOk ? undefined : mstCheck(tax ?? '').state === 'dup' ? 'MST trùng với công ty đã có — không tạo được hồ sơ' : 'Điền MST ở tab Overview trước — hồ sơ CRM được tạo ở bước này'}
+              title={mstOk ? undefined : mstCheck(pool?.tax ?? '').state === 'dup' ? 'MST trùng với công ty đã có — không tạo được hồ sơ' : 'Cần đủ MST · địa chỉ ĐK xuất hóa đơn · contact person (tab Overview) — hồ sơ CRM được tạo ở bước này'}
               onClick={() => stage.at === 'admin'
                 ? setStage({ at: 'lead', adminBy: 'bạn (Admin)', adminAt: 'vừa xong' })
                 : setStage({ done: 'approved', adminBy: stage.adminBy })}
@@ -173,18 +195,18 @@ export function AssignCard({ req, tax, onFillMst }: { req: ClaimReq; /** the rec
    the same write approval ends in, minus the queue — for the case where the
    assignment is a management decision, not a rep's claim. If a request is open,
    it is auto-rejected with a note naming who got the company. */
-export function DirectAssignCard({ co, tax, onFillMst }: { co: string; tax?: string; onFillMst?: () => void }) {
+export function DirectAssignCard({ co, pool, onFillMst }: { co: string; pool?: DirRow; onFillMst?: () => void }) {
   const reps = ['Nguyễn Thị Lan', 'Trần Quốc Trung', 'Phạm Quang Huy']
   const [rep, setRep] = useState('')
   const [done, setDone] = useState(false)
   const open = openClaim(co)
-  const ok = Boolean(rep) && mstCheck(tax ?? '').state === 'ok'
+  const ok = Boolean(rep) && promoteReady(pool)
 
   if (done) {
     return (
       <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 p-3.5 text-[11.5px] leading-relaxed text-emerald-900">
         <p className="font-bold">✓ Đã phân trực tiếp cho {rep}</p>
-        <p className="mt-0.5">Hồ sơ CRM được tạo với MST <b className="font-mono">{(tax ?? '').trim()}</b>, {rep} là sales phụ trách, công ty rời khỏi danh bạ.{open && <> Yêu cầu đang chờ của <b>{open.by}</b> tự động Từ chối kèm note “Admin đã phân trực tiếp cho {rep}”.</>}</p>
+        <p className="mt-0.5">Hồ sơ CRM được tạo với MST <b className="font-mono">{(pool?.tax ?? '').trim()}</b>, {rep} là sales phụ trách, công ty rời khỏi danh bạ.{open && <> Yêu cầu đang chờ của <b>{open.by}</b> tự động Từ chối kèm note “Admin đã phân trực tiếp cho {rep}”.</>}</p>
       </div>
     )
   }
@@ -198,14 +220,14 @@ export function DirectAssignCard({ co, tax, onFillMst }: { co: string; tax?: str
       <div className="flex flex-wrap items-center gap-1.5 p-3">
         {/* Direct assign CREATES the company too, so it passes the same MST gate as
             an approval — a bypass of the queue is not a bypass of the dedup. */}
-        <MstStatus tax={tax} onFill={onFillMst} />
+        <PromoteGate r={pool} onFill={onFillMst} />
         <select value={rep} onChange={(e) => setRep(e.target.value)} className="min-w-[200px] flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px] text-ink outline-none focus:border-brand">
           <option value="">— Chọn sales —</option>
           {reps.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
         <button
           disabled={!ok}
-          title={ok ? undefined : mstCheck(tax ?? '').state === 'dup' ? 'MST trùng với công ty đã có — không tạo được hồ sơ' : 'Cần MST (tab Overview) và một sales'}
+          title={ok ? undefined : mstCheck(pool?.tax ?? '').state === 'dup' ? 'MST trùng với công ty đã có — không tạo được hồ sơ' : 'Cần đủ MST · địa chỉ ĐK xuất hóa đơn · contact person (tab Overview), và một sales'}
           onClick={() => setDone(true)}
           className={cn('rounded-md px-3 py-1.5 text-[11.5px] font-semibold text-white', ok ? 'bg-brand hover:opacity-90' : 'cursor-not-allowed bg-line')}
         >

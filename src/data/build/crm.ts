@@ -2473,7 +2473,12 @@ export const crm: BuildModule = {
     },
     // 4 · Invoice ─────────────────────────────────────────────────────────────
     {
-      name: 'Invoice (VAT e-invoice)',
+      name: 'Invoices',
+      /* Slug PINNED to the pre-rename name (2026-08-23). A feature's URL derives
+         from its name, and comment threads are keyed by pathname — renaming
+         without pinning orphans every thread on this page and breaks links
+         already shared. The ugly slug is the price of not losing them. */
+      slug: 'invoice-vat-e-invoice',
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
@@ -2633,9 +2638,11 @@ export const crm: BuildModule = {
         ],
       },
     },
-    // 6 · Danh bạ doanh nghiệp (free company data) ────────────────────────────
+    // 6 · Free data (danh bạ doanh nghiệp) ───────────────────────────────────
     {
-      name: 'Danh bạ doanh nghiệp (free company data)',
+      name: 'Free data',
+      /* Slug PINNED — see the note on Invoices above. */
+      slug: 'danh-ba-doanh-nghiep-free-company-data',
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
@@ -2664,7 +2671,7 @@ export const crm: BuildModule = {
               '(A) đắt hơn đúng một chỗ: vào nhầm màn thì phải bỏ ra làm lại. Đổi lại, luật bắt buộc là một câu ai cũng nhớ được — *“Company list cần 5 thông tin”* — và không bao giờ có bản ghi nửa vời. Để giảm cả cái giá đó, form Company list nêu 5 field bắt buộc **ngay đầu trang** kèm link sang Free data cho người chỉ có mỗi cái tên.',
               'ĐIỀU KIỆN để hai cửa không sinh trùng: **dedup phải quét CẢ HAI trạng thái**. Form Company list kiểm tra MST với Company list *và* Free data — trùng ở pool thì chặn và mở thẳng dòng đó (“đừng tạo mới: phân trực tiếp cho sales, công ty sẽ lên Company list mang theo dữ liệu danh bạ”). Không có vế thứ hai này thì cửa Company list tạo ra đúng cái trùng mà pool sinh ra để ngăn.',
               'SALES KHÔNG CÓ CỬA TẠO — kể cả lối tắt. Ô tìm kiếm ở Companies, khi không tìm thấy gì, trước đây hiện nút “+ Tạo công ty mới”; nút đó đã bỏ, thay bằng câu chỉ đường: *“báo admin thêm vào Free data, rồi bạn gửi Xin nhận”*. Đó chính là chỗ một rep đang vội sẽ bấm, và bấm được thì công ty vào CRM mà không ai kiểm.',
-              'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc MST hợp lệ + không trùng + một sales owner.',
+              'Hai đường đi từ Free data lên Company list: **A** sales xin nhận → Admin duyệt → Sales lead duyệt · **B** admin phân trực tiếp (không cần duyệt). Cả hai đều bắt buộc **3 thông tin trên record** — MST hợp lệ + không trùng · địa chỉ đăng ký xuất hóa đơn · contact person — và một sales owner. Cùng MỘT gate (checklist ✓/✗ nêu thiếu gì, sửa ở tab Overview) trên cả hai card, vì hai đường cùng tạo một hồ sơ Company list và một hồ sơ thiếu contact là hồ sơ mà bước báo giá ngay sau đó không gọi được cho ai.',
               'Xong thì dòng **rời khỏi Free data** — không xoá, giữ liên kết tới hồ sơ CRM để truy vết “công ty này vào CRM bằng đường nào”.',
             ],
           },
@@ -2681,12 +2688,35 @@ export const crm: BuildModule = {
               ],
             },
             items: [
-              'Cột **Match** giờ nói công ty đang ở ĐÂU, không chỉ “trùng MST hay không”: `Company list: {tên}` · `Free data: {tên}` · `Not match`. Đó là dữ kiện quyết định hành động, nên nó phải là thứ đọc được ngay trên dòng.',
+              'Cột **Match** là **một DANH SÁCH công ty, mỗi dòng là một hyperlink** — không phải một nhãn. Xem block “Match — một danh sách, không phải một cái tên” ngay dưới.',
               'Hai nút chặn đều là **liên kết sang màn hình đúng**, không phải thông báo lỗi. Một dòng bị chặn mà không chỉ đường thì admin sẽ đi tìm — hoặc tệ hơn, tạo công ty bằng cách nào đó khác.',
               'BỎ khỏi menu: “Create new company + move” và “Promote from Free data + move”. Cả hai đều là cửa tạo công ty thứ tư và thứ năm, đặt ở màn hình không có đủ trường (MST, người liên hệ, owner, phân loại người mua) để tạo một hồ sơ dùng được cho hoá đơn.',
               'Kết quả: **kiểu gì cũng tạo công ty trước rồi mới assign user** — đúng như luật bất biến ở cuối sơ đồ.',
             ],
             warn: 'Đừng “tiện tay” thêm lại nút tạo công ty vào Sign-ups. Màn hình đó không hỏi phân loại người mua, địa chỉ xuất hoá đơn hay người liên hệ — một hồ sơ tạo từ đó sẽ chặn ở bước xuất hoá đơn VAT, và lúc đó công ty đã có user đang đăng nhập.',
+          },
+          {
+            label: 'Match — một danh sách công ty có link, không phải một cái tên',
+            text: 'Câu hỏi *“công ty này mình đã có chưa?”* **không có một đáp án duy nhất**. Một đuôi email thường thuộc về nhiều bản ghi của mình — công ty mẹ và chi nhánh dùng chung `@truongson.vn` — còn tên công ty thì người đăng ký gõ kiểu gì cũng được (“Trường Sơn Group”).\n\nMột ô `matchName` chỉ giữ được **một** đáp án, nên nó **im lặng giấu đi** các ứng viên còn lại: admin chọn từ dropdown mà không hề biết có bản ghi thứ hai giống hệt. Vì vậy Match là **danh sách các công ty khớp**, mỗi dòng **link thẳng sang bản ghi đó**, và **suy ra lúc đọc** chứ không lưu.',
+            table: {
+              cols: ['Tín hiệu khớp', 'So sánh cái gì', 'Vì sao đủ tin'],
+              rows: [
+                ['**tên**', 'Tên công ty người dùng gõ ↔ `name` / `legalName`, đã chuẩn hóa: bỏ dấu, bỏ “Công ty · TNHH · CP · Cổ phần · Group · Corporation”, bỏ khoảng trắng', 'Bắt được “viet tien”, “Việt Tiến Logistics”, “Công ty TNHH Việt Tiến” là một'],
+                ['**đuôi email**', 'Domain của email đăng ký ↔ `website` của công ty (bỏ `http(s)://`, `www.`, path)', 'Email công ty là bằng chứng mạnh nhất — nhưng **bỏ qua mail công cộng** (gmail · yahoo · outlook · hotmail · icloud · proton): khớp mọi @gmail với mọi công ty là cách dạy admin bỏ qua cả cột'],
+                ['**MST**', 'Mã số thuế khai lúc đăng ký ↔ `taxCode`, khớp chính xác', 'Chính xác nhất, nhưng thường bỏ trống lúc sign-up'],
+              ],
+            },
+            items: [
+              'MỖI DÒNG NÓI RÕ **KHỚP VÌ ĐÂU** (`tên+đuôi email`, `đuôi email`, `MST`…). Đó chính là thứ quyết định có tin ứng viên đó hay không: khớp **đuôi email mà tên không giống** thường là công ty con; khớp **tên mà khác domain** thường là hai công ty trùng tên.',
+              'MỖI DÒNG CÓ CHIP NGUỒN: **CRM** (xanh, đã ở Company list) hoặc **Bể** (amber, còn ở Free data). Hai nguồn dẫn tới hai hành động khác nhau, nên phải phân biệt được ngay trên dòng.',
+              'THỨ TỰ: CRM trước Bể, rồi tới số tín hiệu khớp nhiều hơn. Đó đúng là thứ tự admin nên cân nhắc.',
+              'HYPERLINK mở thẳng bản ghi — CRM sang Company list, Bể sang Free data. Không có link thì admin phải nhớ tên rồi đi tìm ở màn khác, và sẽ đoán thay vì kiểm.',
+              'KHÔNG KHỚP GÌ → một nhãn `Not match`. Đó là câu trả lời thật, không phải danh sách rỗng.',
+              'DROPDOWN “Move into company” ĐỌC ĐÚNG DANH SÁCH ẤY: nhóm **“Khớp với sign-up này (N)”** lên đầu kèm lý do khớp, phần còn lại của sổ khách nằm dưới nhóm “Tất cả công ty”. Mặc định chọn ứng viên đầu tiên.',
+              'KHỚP TỪ 2 CÔNG TY TRỞ LÊN → modal **cảnh báo**: thường là mẹ và chi nhánh dùng chung đuôi email, gán nhầm thì user thấy sai tin tuyển dụng và sai quota. Admin phải tự chọn — hệ thống không đoán hộ.',
+              'CỔNG “ĐƯỢC MOVE HAY CHƯA” ĐỌC CHUNG MỘT HÀM với cột Match (có ít nhất một ứng viên CRM). Tính riêng ra hai chỗ là kiểu bug mà cột hiện một đằng, nút chặn một nẻo.',
+            ],
+            warn: 'ĐỪNG LƯU kết quả match vào bản ghi sign-up. Danh sách phải được tính lại mỗi lần đọc: công ty mới được tạo, dòng Free data được đưa lên Company list, website được sửa — mọi thay đổi đó đều đổi câu trả lời. Một `matched: boolean` + `matchName` lưu sẵn sẽ đúng đúng một lần, ngay lúc ghi.',
           },
           {
             label: 'Two stores, not one flag — why the pool sits outside the CRM',
@@ -2888,7 +2918,7 @@ export const crm: BuildModule = {
                 ['2 · Khoá', 'System', 'The pool row', 'Sending a request flips the row to **Đang chờ duyệt** and Xin nhận disappears for everyone else — the claim form hard-blocks with “mỗi công ty chỉ nhận một yêu cầu một lúc”, and says when it unlocks. The status pill on the list IS the level: *Chờ duyệt lần 1 · Admin* / *Chờ duyệt lần 2 · Sales lead*.'],
                 ['3 · Duyệt bước 1', 'Admin', 'Open the company → **tab Yêu cầu nhận** (amber badge; the banner offers “Duyệt yêu cầu ({level}) →”)', 'The request card shows lý do · bằng chứng (link/📎/⚠) · contact point, a note field, and **Duyệt · Admin / Từ chối · Admin** (role on the button, the Kế toán convention). Duyệt moves it to **Chờ Sales lead** — nothing is created yet. Từ chối ends it: công ty về Chưa nhận.'],
                 ['4 · Duyệt bước 2', 'Sales lead', 'Same card, now stamped “✓ Admin đã duyệt {when} · {who}”', 'The lead sees level 1’s pass — they never approve something with no provenance — plus **the MST field (see the MST gate below)**, their own note field, and **Duyệt · Sales lead / Từ chối · Sales lead**. Duyệt is the ONE WRITE: CRM company + owner + contact #1 + pool removal — so the MST gate sits on this button and nowhere earlier: Admin’s level-1 pass creates nothing. Từ chối ends it, and it does NOT go back to Admin.'],
-                ['(bypass) · Phân trực tiếp', 'Admin', 'The **Phân trực tiếp · Admin** card, on the pool record’s **Owner history** tab — beside the timeline it extends, the same home Chuyển giao has on a customer (moved 2026-08-27; the Yêu cầu nhận tab keeps a one-line pointer)', 'Admin enters the **MST** (same gate) and picks a rep → **Phân ngay** — no request, no level 2. A bypass of the QUEUE is not a bypass of the DEDUP: this button creates the company too. If a request is open it is auto-rejected with the note “Admin đã phân trực tiếp cho {X}”, and the card warns about that BEFORE the click.'],
+                ['(bypass) · Phân trực tiếp', 'Admin', 'The **Phân trực tiếp · Admin** card, on the pool record’s **Owner history** tab — beside the timeline it extends, the same home Chuyển giao has on a customer (moved 2026-08-27)', 'Admin fills the record to the **same 3-field gate** (MST · địa chỉ ĐK xuất hóa đơn · contact person) and picks a rep → **Phân ngay** — no request, no level 2. A bypass of the QUEUE is not a bypass of the DEDUP: this button creates the company too. If a request is open it is auto-rejected with the note “Admin đã phân trực tiếp cho {X}”, and the card warns about that BEFORE the click.'],
                 ['(gate) · MST', 'Whoever creates', 'On every button that CREATES the company — lead approve, direct assign, sign-up promote', 'The MST lives in **ONE place: the record itself** (tab Overview), where the admin fills or corrects it — the assign/approve cards **read** that value and never carry their own input, or the same number is asked for twice and the two copies drift. Three states, told inline on the card: **chưa có MST** → button disabled + a jump “Điền MST ở tab Overview →”; **trùng** → red block naming the company, its Company ID and its sales owner (“không tạo được hồ sơ mới — nếu đúng là công ty này, dùng Yêu cầu chuyển giao; nếu là chi nhánh, tạo từ hồ sơ công ty mẹ”); **hợp lệ** → “✓ MST … không trùng” và nút mở. A duplicate BLOCKS, never warns-and-allows: two records with one MST is two invoices claiming the same legal entity. (Sign-up promote is the one door that keeps an input — the record is not open on that screen.)'],
                 ['5 · Theo dõi', 'Sales', '**Yêu cầu nhận công ty** — the log, default **Của tôi**', 'Status pill + what it means (*được chọn — là sales phụ trách* / *công ty về lại Chưa nhận — xin lại được*), who decided and when, and **the admin’s note to this rep, verbatim**. Plus the banner on the company’s own record. NO action buttons here — one place to decide, or two places disagree.'],
               ],
@@ -3095,7 +3125,7 @@ export const crm: BuildModule = {
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Company-user sign-up lives here. A self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves each one with the same three actions (move the user into an existing company · create a new company + move the user in · archive), and Move/Create email the user an activation link.',
+      notes: 'Company-user sign-up lives here. A self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves every row with the same TWO actions — move the user into an existing company, or archive — and Move emails the user an activation link. This screen never CREATES a company: if the one they named is only in Free data, or is not on file at all, it has to reach the Company list first (Free data → claim/assign, or Admin → Create company), and only then can the user be moved into it.',
       mockup: 'crm-signups',
       detail: {
         requirements: [
@@ -3124,7 +3154,7 @@ export const crm: BuildModule = {
             rows: [
               ['1. Sign up (password set)', 'User', 'Instant'],
               ['2. Verify email', 'User clicks the link — sent immediately on submit', '~1 min'],
-              ['3. Pending review', 'HQ places the request: Move to existing / Create + move / Archive', 'SLA — target within 1 business day'],
+              ['3. Pending review', 'HQ places the request: Move to existing company / Archive — the only two. A company that does not exist yet is created elsewhere first', 'SLA — target within 1 business day'],
               ['4. Active (or Rejected)', 'System emails "you’re in — sign in" on approval, or a reason on rejection', 'On decision'],
             ],
           },

@@ -5,8 +5,8 @@ import { ScreenNavCtx } from '@/pages/admin/ctx'
 import { COMPANIES } from '@/pages/admin/data/companies'
 import { CO_ROLE_DEFS } from '@/pages/admin/data/companyRecord'
 import type { CoUserRole } from '@/pages/admin/data/companyRecord'
-import { SIGNUPS, SIGNUP_STATUS } from '@/pages/admin/data/signups'
-import type { Signup, SignupStatus } from '@/pages/admin/data/signups'
+import { SIGNUPS, SIGNUP_STATUS, signupMatches } from '@/pages/admin/data/signups'
+import type { Signup, SignupMatch, SignupStatus } from '@/pages/admin/data/signups'
 import { ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
 
@@ -14,7 +14,12 @@ import { Pill } from '@/pages/admin/ui/status'
    emailing the user a set-password / activation link; Archive discards the request. */
 function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }: { mode: 'move' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void; onGoPool?: (co: string) => void; onGoCreate?: () => void }) {
   const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name))))
-  const [company, setCompany] = useState(s.matchName ?? targets[0] ?? '')
+  /* The candidates the Match column showed, in the same order — the dropdown must
+     open on what the operator was already looking at, and must not silently prefer
+     one when the column offered several. */
+  const cands = signupMatches(s).filter((m) => m.where === 'crm')
+  const whyOf = (n: string) => cands.find((m) => m.name === n)?.why.join(' + ')
+  const [company, setCompany] = useState(cands[0]?.name ?? targets[0] ?? '')
   const [role, setRole] = useState<CoUserRole>('Recruiter')
   const [reason, setReason] = useState('')
   const salesOwners = ['Nguyễn Thị Lan', 'Phạm Quang Huy', 'Trần Quốc Trung']
@@ -86,9 +91,24 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
               <div>
                 <p className="mb-1 text-[11.5px] font-medium text-ink/80">Move into company <span className="text-rose-500">*</span></p>
                 <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] text-ink">
-                  {s.matchName && !targets.includes(s.matchName) && <option value={s.matchName}>{s.matchName} (tax match)</option>}
-                  {targets.map((n) => <option key={n} value={n}>{n}{n === s.matchName ? ' (tax match)' : ''}</option>)}
+                  {/* Matched companies first, labelled with WHY, then the rest of the
+                      book. A flat alphabetical list buries the two records this
+                      sign-up actually resembles somewhere in the middle. */}
+                  {cands.length > 0 && (
+                    <optgroup label={`Khớp với sign-up này (${cands.length})`}>
+                      {cands.map((m) => <option key={m.name} value={m.name}>{m.name} — khớp {m.why.join(' + ')}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="Tất cả công ty">
+                    {targets.filter((n) => !cands.some((m) => m.name === n)).map((n) => <option key={n} value={n}>{n}</option>)}
+                  </optgroup>
                 </select>
+                {cands.length > 1 && (
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800">
+                    ⚠ <b>{cands.length} công ty</b> cùng khớp — thường là công ty mẹ và chi nhánh dùng chung đuôi email. Chọn đúng pháp nhân người này thuộc về; gán nhầm thì user thấy sai tin tuyển dụng và sai quota.
+                  </p>
+                )}
+                {whyOf(company) && <p className="mt-1 text-[10.5px] text-faint">Đang chọn <b className="text-ink/70">{company}</b> — khớp {whyOf(company)}.</p>}
               </div>
               <div>
                 <p className="mb-1 text-[11.5px] font-medium text-ink/80">Role in that company <span className="text-rose-500">*</span></p>
@@ -159,10 +179,41 @@ function SignupRowMenu({ onMove, onArchive }: { onMove: () => void; onArchive: (
 }
 
 /** Is this sign-up's company already a CRM company? Only then can a user be moved
-    in — everything else is "create the company first", by one of the two doors. */
-const inCompanyList = (s: Signup) => {
-  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/công ty|cong ty|tnhh|cp|cổ phần|co phan|\s+/g, '')
-  return COMPANIES.some((c) => norm(c.name) === norm(s.company) || norm(c.legalName) === norm(s.company) || (Boolean(s.matchName) && norm(c.name) === norm(s.matchName!)))
+    in — everything else is "create the company first", by one of the two doors.
+    Reads the SAME match list the column renders: a gate computed separately from
+    what the operator was shown is a gate that eventually disagrees with it. */
+const crmMatches = (s: Signup) => signupMatches(s).filter((m) => m.where === 'crm')
+const inCompanyList = (s: Signup) => crmMatches(s).length > 0
+
+/** The Match cell: every candidate, each a link to the record it names.
+    A single pill could only ever name one company, and one email domain routinely
+    belongs to several of ours — a parent and its branches. Hiding the rest is how
+    a user gets attached to the wrong one of two records that look alike. */
+function MatchCell({ s, onOpen }: { s: Signup; onOpen: (m: SignupMatch) => void }) {
+  const ms = signupMatches(s)
+  if (ms.length === 0) return <Pill tone="neutral">Not match</Pill>
+  return (
+    <div className="min-w-0 space-y-0.5">
+      {ms.map((m) => (
+        <button
+          key={m.where + m.name}
+          onClick={() => onOpen(m)}
+          title={`Mở ${m.name} — khớp ${m.why.join(' + ')}`}
+          className="flex w-full min-w-0 items-center gap-1 text-left"
+        >
+          <span className={cn('shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide',
+            m.where === 'crm' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
+            {m.where === 'crm' ? 'CRM' : 'Bể'}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[11.5px] text-brand hover:underline">{m.name}</span>
+          {/* WHY it matched, because that is what decides whether to trust it: a
+              domain hit with an unlike name is usually a subsidiary; a name hit on a
+              different domain is usually a different company sharing a common name. */}
+          <span className="shrink-0 text-[9.5px] text-faint">{m.why.join('+')}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export function AdminSignups() {
@@ -181,7 +232,7 @@ export function AdminSignups() {
         cols={[
           { label: 'Full name', w: '1fr' }, { label: 'Email', w: '1.2fr' }, { label: 'Phone', w: '0.8fr' },
           { label: 'Tax number', w: '0.8fr' }, { label: 'Company name', w: '1fr' }, { label: 'Hiring', w: '0.5fr' },
-          { label: 'Email verified', w: '1fr' }, { label: 'Match', w: '0.9fr' }, { label: 'Status', w: '1.1fr' }, { label: 'When', w: '0.6fr' },
+          { label: 'Email verified', w: '1fr' }, { label: 'Match', w: '1.6fr' }, { label: 'Status', w: '1.1fr' }, { label: 'When', w: '0.6fr' },
           { label: 'Action', w: '1.3fr', align: 'r' },
         ]}
         rows={rows.map((s) => [
@@ -194,13 +245,7 @@ export function AdminSignups() {
           s.verified
             ? <Pill tone="active">✓ Verified</Pill>
             : <Pill tone="pending">Awaiting</Pill>,
-          inCompanyList(s)
-            ? <Pill tone="active">Company list{s.matchName ? `: ${s.matchName}` : ''}</Pill>
-            : s.freeDataMatch
-              /* Not a CRM match — but the pool has it. The hint changes which action
-                 is right: promote the pool row, do not create a duplicate of it. */
-              ? <Pill tone="pending">Free data: {s.freeDataMatch.replace(/^Công ty (TNHH|CP|Cổ phần)\s*/i, '')}</Pill>
-              : <Pill tone="neutral">Not match</Pill>,
+          <MatchCell s={s} onOpen={(m) => goTo(m.where === 'crm' ? 'admin-company-list' : 'admin-company-directory', m.name)} />,
           <div className="min-w-0">
             <Pill tone={SIGNUP_STATUS[s.status]}>{s.status}</Pill>
             {s.outcome && <p className="mt-0.5 truncate text-[10.5px] text-faint">{s.outcome}</p>}

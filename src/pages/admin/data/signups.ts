@@ -1,6 +1,8 @@
 /*
  * Inbound self-registrations waiting to be turned into a CRM company.
  */
+import { COMPANIES } from '@/pages/admin/data/companies'
+import { DIRECTORY } from '@/pages/admin/data/directory'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
 /* ── Sales / CRM — Sign-ups (inbound self-registrations) ─────────────────── */
@@ -9,7 +11,9 @@ export type Signup = {
   person: string; email: string; phone: string; tax: string; company: string; hiring: boolean; when: string
   /** gate 1 — email verified? HQ can only act on verified rows. */
   verified: boolean
-  /** MATCH is binary and informational: did the tax code match a company we already have? */
+  /** @deprecated kept only for the seed rows; the Match column is DERIVED — see
+      `signupMatches`. A stored flag could only ever hold one answer, and the real
+      answer is a list. */
   matched: boolean; matchName?: string
   /** the typed company hit a FREE-DATA row (name-normalised). A third placement
       path then applies: promote that pool row into the CRM company and move the
@@ -34,5 +38,71 @@ export const SIGNUPS: Signup[] = [
   // The Free-data hit: no CRM match, but the typed company IS a pool row. The right
   // placement is promotion, not a from-scratch create that duplicates the pool.
   { person: 'Trần Thu Hà', email: 'hr@tantien-me.vn', phone: '028 3822 145', tax: '—', company: 'Cơ điện Tân Tiến', hiring: true, when: '2h ago', verified: true, matched: false, freeDataMatch: 'Công ty TNHH Cơ điện Tân Tiến', status: 'New' },
+  /* THE MULTI-MATCH CASE, and the reason Match is a list. One email domain can
+     belong to several of our records — a parent and its branch here — and the typed
+     company name matches neither exactly. Admin has to CHOOSE, so the column has to
+     show the candidates rather than pick one and hide the rest. */
+  { person: 'Ngô Hải Đăng', email: 'tuyendung@truongson.vn', phone: '0913 664 208', tax: '—', company: 'Trường Sơn Group', hiring: true, when: '40m ago', verified: true, matched: false, status: 'New' },
   { person: 'asdf qwer', email: 'x@spam.io', phone: '—', tax: '—', company: 'zzz', hiring: false, when: '6h ago', verified: false, matched: false, status: 'Archived', outcome: 'Archived' },
 ]
+
+/* ── MATCH — a derived LIST, never a stored flag ───────────────────────────────
+   "Đã có công ty này chưa?" has more than one right answer: an email domain is
+   shared by a parent and its branches, and a typed company name is whatever the
+   person felt like typing. A single stored `matchName` could hold only one of
+   them, so it silently hid the others — and the operator picked from a dropdown
+   without knowing a second candidate existed.
+
+   Three independent signals, and the row says WHICH ones fired: the reason is what
+   tells an admin whether to trust a candidate. A domain hit on a company whose name
+   looks nothing alike is usually a subsidiary; a name hit with a different domain is
+   usually a different company with a common name. */
+export type MatchWhy = 'tên' | 'đuôi email' | 'MST'
+export type SignupMatch = { name: string; where: 'crm' | 'pool'; why: MatchWhy[] }
+
+/** Strips diacritics and the legal-form words, so "Công ty TNHH Việt Tiến" and
+    "viet tien" are the same key. */
+const normName = (x: string) =>
+  x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/công ty|cong ty|tnhh|cp|cổ phần|co phan|group|corporation|\s+/g, '')
+
+/* Free mail providers are NOT an identity: matching every @gmail.com sign-up against
+   every company that ever listed a gmail address would fill the column with noise
+   and teach the operator to ignore it. */
+const PUBLIC_MAIL = new Set(['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'proton.me', 'yopmail.com'])
+const domainOf = (email: string) => {
+  const d = email.split('@')[1]?.trim().toLowerCase()
+  return d && !PUBLIC_MAIL.has(d) ? d : undefined
+}
+const siteDomain = (web?: string) => web?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '') || undefined
+
+/**
+ * Every company — CRM or pool — that this sign-up could be. Ordered CRM first, then
+ * by how many signals agree, because that is the order an admin should consider them.
+ */
+export function signupMatches(s: Signup): SignupMatch[] {
+  const dom = domainOf(s.email)
+  const tax = s.tax?.trim() && s.tax.trim() !== '—' ? s.tax.trim() : undefined
+  const typed = normName(s.company)
+  const hits = new Map<string, SignupMatch>()
+  const add = (name: string, where: 'crm' | 'pool', why: MatchWhy) => {
+    const key = where + '::' + name
+    const at = hits.get(key)
+    if (at) { if (!at.why.includes(why)) at.why.push(why) }
+    else hits.set(key, { name, where, why: [why] })
+  }
+  for (const c of COMPANIES) {
+    const label = c.shortName?.trim() || c.name
+    if (typed && (normName(c.name) === typed || normName(c.legalName) === typed)) add(label, 'crm', 'tên')
+    if (dom && siteDomain(c.domain) === dom) add(label, 'crm', 'đuôi email')
+    if (tax && c.tax?.trim() === tax) add(label, 'crm', 'MST')
+  }
+  for (const d of DIRECTORY) {
+    if (d.state === 'claimed') continue   // already promoted — it is a CRM row now
+    if (typed && normName(d.name) === typed) add(d.name, 'pool', 'tên')
+    if (dom && siteDomain(d.web) === dom) add(d.name, 'pool', 'đuôi email')
+    if (tax && d.tax?.trim() === tax) add(d.name, 'pool', 'MST')
+  }
+  return [...hits.values()].sort((a, b) =>
+    (a.where === b.where ? 0 : a.where === 'crm' ? -1 : 1) || b.why.length - a.why.length || a.name.localeCompare(b.name))
+}

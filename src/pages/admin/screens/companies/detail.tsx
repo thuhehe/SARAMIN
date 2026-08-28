@@ -754,7 +754,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
             {!isPool && <OwnerHistory c={c} />}
             {/* the pool record's direct action, above the history it will extend —
                 the same position Chuyển giao holds on a customer */}
-            {isPool && <DirectAssignCard co={c.name} tax={pool!.tax} onFillMst={() => setTab('Overview')} />}
+            {isPool && <DirectAssignCard co={c.name} pool={pool!} onFillMst={() => setTab('Overview')} />}
             {/* A released company keeps its chain, with the release as the newest
                 event in it. A fresh import has no ownership story yet — say so. */}
             {isPool && (pool!.released
@@ -768,14 +768,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
       {tab === 'Yêu cầu nhận' && isPool && (
         <div className="max-w-[620px]">
           <div className="space-y-3">
-            {/* The queue first, then the log. The direct assignment is NOT here any
-                more: it writes ownership with no request involved, so it lives with
-                the ownership timeline on Owner history — the same tab Chuyển giao
-                lives on for a customer. One pointer, so nobody hunts. */}
-            {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} tax={pool!.tax} onFillMst={() => setTab('Overview')} />}
-            <p className="rounded-md bg-canvas/70 px-3 py-2 text-[11px] leading-relaxed text-muted">
-              Phân trực tiếp (không qua yêu cầu) → tab <button onClick={() => setTab('Owner history')} className="font-semibold text-brand hover:underline">Owner history</button>. Yêu cầu đang chờ sẽ tự động Từ chối kèm note nêu người được phân.
-            </p>
+            {/* The queue first, then the log. The direct assignment is NOT here:
+                it writes ownership with no request involved, so it lives with the
+                ownership timeline on Owner history — the same tab Chuyển giao lives
+                on for a customer. No pointer line (client: remove) — the assign card
+                itself already warns that it auto-rejects a pending request. */}
+            {openClaim(c.name) && <AssignCard req={openClaim(c.name)!} pool={pool!} onFillMst={() => setTab('Overview')} />}
             <ClaimChain co={c.name} />
             {!openClaim(c.name) && decidedNone(c.name) && (
               <p className="rounded-xl border border-dashed border-line bg-canvas/40 px-4 py-6 text-center text-[12px] text-muted">Chưa có yêu cầu nào trên công ty này — sales xin bằng nút Xin nhận, hoặc admin phân trực tiếp ở tab Owner history.</p>
