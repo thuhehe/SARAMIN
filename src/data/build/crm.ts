@@ -2714,8 +2714,8 @@ export const crm: BuildModule = {
               ],
             },
             items: [
-              'MỖI DÒNG NÓI RÕ **KHỚP VÌ ĐÂU** (`tên+đuôi email`, `đuôi email`, `MST`…). Đó chính là thứ quyết định có tin ứng viên đó hay không: khớp **đuôi email mà tên không giống** thường là công ty con; khớp **tên mà khác domain** thường là hai công ty trùng tên.',
-              'MỖI DÒNG CÓ CHIP NGUỒN: **CRM** (xanh, đã ở Customers) hoặc **Bể** (amber, còn ở Free data). Hai nguồn dẫn tới hai hành động khác nhau, nên phải phân biệt được ngay trên dòng.',
+              'MỖI DÒNG CÓ CHIP NGUỒN, GHI THẲNG TÊN LIST: **Customers** (xanh) hoặc **Free data** (amber). Hai nguồn dẫn tới hai hành động khác nhau — hit Customers thì Move được ngay, hit Free data thì phải đưa lên trước — nên đó là dữ kiện phải đọc được trên dòng. Không dùng chữ viết tắt nội bộ (“CRM”, “Bể”): operator đọc tên list mà họ sắp bấm vào.',
+              'LÝ DO KHỚP (`tên+đuôi email`, `đuôi email`, `MST`) nằm ở **hover title**, không in trên dòng: nó giải thích cách *bộ máy* tìm ra bản ghi, không phải câu hỏi của operator — họ mở công ty ra xem là biết. Vẫn giữ được cho ca mơ hồ, mà không tốn một cột chữ nhỏ trên mọi dòng.',
               'THỨ TỰ: CRM trước Bể, rồi tới số tín hiệu khớp nhiều hơn. Đó đúng là thứ tự admin nên cân nhắc.',
               'HYPERLINK mở thẳng bản ghi — CRM sang Customers, Bể sang Free data. Không có link thì admin phải nhớ tên rồi đi tìm ở màn khác, và sẽ đoán thay vì kiểm.',
               'KHÔNG KHỚP GÌ → một nhãn `Not match`. Đó là câu trả lời thật, không phải danh sách rỗng.',
