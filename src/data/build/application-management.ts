@@ -29,9 +29,10 @@ import type { BuildModule } from './types'
  *                Sent · Not sent (the CV is in doubt and waits for an admin, or
  *                was Rejected before delivery — the CV status says which) ·
  *                Recall (the CV was Rejected AFTER delivery; pulled back from
- *                the employer). Blocked is NOT an application status: it is an
- *                account state, and it reaches applications only through CV
- *                rejection (block → CVs Rejected as violation → Recall/Not sent).
+ *                the employer). Blocked is NOT an application status and does
+ *                not reach applications at all: it is purely an account state
+ *                that stops sign-in. Pulling delivered applications back is a
+ *                decision on the CV, taken separately (revised 2026-08-23).
  *   2. stage   — the employer's hiring pipeline, defaulting to New → Reviewing
  *                → Shortlisted → Interview → Hired / Rejected. Owned by the
  *                company, which can RENAME/ADD/REMOVE stages, so these six are
@@ -103,7 +104,7 @@ export const applicationManagement: BuildModule = {
             'Recall · Block user · Edit · Note',
           ],
           ['', 'Recalled', 'Admin pulled it back from the employer.', 'Note only — Recalled is final'],
-          ['', '(no Blocked status)', 'Blocking a user is an ACCOUNT action, not an application state: it rejects their CVs (reason: violation), which recalls every delivered application and refuses the rest. The rows read Recall / Not sent like any other rejection.', 'Block/Unblock lives on the jobseeker user record'],
+          ['', '(no Blocked status)', 'Blocking a user is an ACCOUNT action and nothing else: it stops them signing in. It does NOT recall, hide or change a single application — those follow the CV status, and only an admin acting on the CV changes them (revised 2026-08-23).', 'Block/Unblock lives on the jobseeker user record'],
           [
             'Layer 3 — Employer funnel',
             'New → Reviewing → Shortlisted → Interview → Hired / Rejected',
@@ -115,7 +116,7 @@ export const applicationManagement: BuildModule = {
       items: [
         'The employer can CUSTOMISE their own stages — rename them, add or remove steps. The list above is only the default set, so nothing in Saramin may assume these exact six.',
         'Pending replaces four of the client’s statuses at once (Waiting, NEI, Pending, Spam). It is the only thing that ever holds an application back.',
-        'Spam is gone as an automatic status. What is left is a manual Block user, which recalls everything that user has sent.',
+        'Spam is gone as an automatic status. What is left is a manual Block user — which stops the login and NOTHING else; pulling their applications back is a separate, deliberate act on the CV.',
         'Admin actions drop from 7 to 6: Mark as ready · Recall · Block/Unblock user · Fix information · Edit · Note.',
       ],
       warn: 'REFINED BY BLOCK 4 — Pending survives, but it is narrower and bounded than this table implies. It is written only when the applied-with CV has an unresolved verdict from upload, and it is resolved ONLY by a decision on the CV — there is no timer underneath it. Everything else in Layer 1 is still gone.',
@@ -123,7 +124,7 @@ export const applicationManagement: BuildModule = {
     {
       label: '3 · What we need you to decide',
       items: [
-        'Does blocking a user also pull back the applications already sent? We recommend YES.',
+        'ANSWERED 2026-08-23 (client): NO. Blocking pulls nothing back — it stops sign-in and nothing else. An operator who also wants the applications withdrawn rejects the CV, which is a separate act with its own screen and its own audit line. We had recommended YES; the client’s separation is cleaner, because one lever that does two things cannot be used to do only one of them.',
         'Can a candidate apply to the same job twice? We recommend one live application per job, re-apply only after a recall.',
         'When do we build screening if spam does show up? We recommend agreeing a trigger now — first abuse case, or the first promotion campaign.',
         'DECIDED (revised — the 24h auto-send is REMOVED). Both doors now fail CLOSED: neither a held application nor a held CV is released without a human. An earlier draft had them failing in opposite directions, which was harder to explain and let unreviewed CVs reach employers. The cost of the simpler rule lands on US — an unworked queue now stops candidates’ applications outright. See Resume management → “CV qualification — apply & CV search”.'
@@ -411,7 +412,7 @@ export const applicationManagement: BuildModule = {
               'Sent — written at apply, after two synchronous hard checks: the user is not blocked, and has no live application to this job. The employer sees it immediately.',
               'Not sent — the applied-with CV is in doubt (waiting for review) or was Rejected before delivery. Derived from the CV; the CV status column says which kind of Not sent this is.',
               'Recall — the CV was delivered, then Rejected: HQ pulled it from the employer dashboard and notified them to ignore it. Terminal; the candidate must apply again. INVARIANT: a Recall row always shows CV status Rejected — recall has no other cause.',
-              'Blocking a user is account-level and works THROUGH the CV: it rejects their CVs (violation), which recalls delivered applications and refuses undelivered ones. No application ever reads “Blocked”.',
+              'BLOCKING A USER IS ACCESS CONTROL, FULL STOP (revised 2026-08-23). It stops them signing in, and does not reject their CVs, recall delivered applications, or take them out of CV search. An operator who wants those too sets the CV status to Rejected — a SEPARATE, deliberate act. One lever, one meaning: block answers “can this person get IN”, CV status answers “should employers SEE this”. No application ever reads “Blocked”.',
               'THERE IS NO SCREENING COLUMN, because there is no per-application screening fact. What holds an application is the CV’s status, and the row surfaces that as "Not sent — CV chờ duyệt" with a link to the CV, not as a status the admin can edit here. That wording is ADMIN-ONLY: the candidate on the other end of this row sees an ordinary "Đã nộp" and is told nothing about a review.',
             ],
           },
@@ -443,8 +444,8 @@ export const applicationManagement: BuildModule = {
           'The list has NO status tabs — the filter row is the only way to narrow it. One control set covers every combination, instead of tabs and filters overlapping on the same field.',
           'A one-line legend above the table names both owners, because two status badges on one row is exactly where a reader guesses wrong.',
           'Recall removes the CV from the employer dashboard and notifies them; it cannot un-send the original email.',
-          'Block user is user-level: it rejects future applies and bulk-recalls every sent application the user has, across all companies.',
-          'Unblock lets the user apply again but does NOT resurrect recalled applications.',
+          'Block user is user-level and login-only: no sign-in, therefore no new applies. Applications already sent are untouched — recalling them means rejecting the CV, which is its own action on its own screen.',
+          'Unblock simply returns the login. There is nothing to resurrect, because blocking took nothing away — and if the CV was ALSO rejected alongside the block, that is a separate reversal on the CV.',
           'Opening a candidate’s CV or unmasking contact details is a PII action: it opens in a viewer and writes an audit entry (who, which candidate, when) — see Admin & access → Audit log.',
           'Every stage badge is read-only for HQ, always.',
           'Export the filtered list (CSV) — itself an audited action, since the export carries PII.',
@@ -477,7 +478,7 @@ export const applicationManagement: BuildModule = {
           endpoints: [
             'GET /admin/applications?status=&stage=&company=&location=&cvType=&from=&to=&page=',
             'POST /admin/applications/:id/recall { note? }',
-            'POST /admin/jobseekers/:id/block { reasonCode, note? } — bulk-recalls every sent application in the same transaction',
+            'POST /admin/jobseekers/:id/block { reasonCode, note? } — sets the account flag and kills sessions. Touches NO application and NO CV; there is no cascade in this transaction',
             'POST /admin/jobseekers/:id/unblock { note? }',
             'GET /admin/applications/:id/cv — streams the CV, writes a PII audit entry',
             'POST /admin/applications/export',
@@ -490,14 +491,14 @@ export const applicationManagement: BuildModule = {
           'Both status columns are visible on every row and are labelled with their owner.',
           'A recalled or blocked row shows an em-dash in the Stage column, not a stale badge.',
           'Recall removes the CV from the company list and notifies the employer; it does not claim to un-send the email.',
-          'Blocking a user recalls every one of their sent applications across all companies, in one transaction.',
-          'Unblocking a user does not resurrect recalled applications.',
+          'Blocking a user changes no application anywhere — the acceptance test is that application rows are identical before and after a block.',
+          'Unblocking restores sign-in only; any CV rejection made alongside the block has to be reversed on the CV.',
           'Block without a reason code is refused by the API, not just by the form.',
           'Opening a CV writes an audit entry naming the operator and the candidate.',
           'No HQ action can change a stage set by the company.',
         ],
         openQuestions: [
-          'Does Block recall already-sent applications, or only stop future ones? BB recommends recall — see the module’s open questions.',
+          'ANSWERED 2026-08-23 (client): Block does neither by itself — it stops sign-in, so no new applies happen because no session exists, and what was already sent is a CV decision. Superseded: BB recommends recall — see the module’s open questions.',
           'Who owns the fixed list of Block reason codes?',
           'Is the candidate told their application was recalled, or their account blocked, and in what words?',
           'Does the employer see WHY a CV was recalled, or only that it was?',
