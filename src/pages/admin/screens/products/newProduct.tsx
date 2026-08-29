@@ -24,6 +24,11 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
      right almost always, but "gói" vs "tin" on a combo is a sales-language call. */
   const UNIT_DEFAULT: Record<ProductTypeId, string> = { job: 'tin', cv: 'gói', placement: 'slot', service: 'bài đăng' }
   const [unitManual, setUnitManual] = useState('')
+  /* A Job-posting ADD-ON is a job enhancement, and there are exactly two kinds:
+     a LABEL stamped on the job card, or a DISPLAY PLACEMENT that lifts the job
+     into a premium homepage block. The kind decides what the picker below offers. */
+  const [addonKind, setAddonKind] = useState<'label' | 'placement'>('placement')
+  const jobAddon = type === 'job' && role === 'addon'
   const unit = unitManual || UNIT_DEFAULT[type]
   const [skuManual, setSkuManual] = useState('')
   const [price, setPrice] = useState('')
@@ -214,7 +219,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <Section title="3 · Fulfilment" />
+          <Section title="3 · Settings" />
           {/* Applies to EVERY type, so it comes before the branches. Three clocks
               get confused with each other constantly, so the hint below names all
               three and says which one this field is. */}
@@ -244,7 +249,82 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
               feeds are editable here, and because there is exactly one Top Job
               product (segments are a price list, not extra products), what Top Job
               grants can only be defined in one place. */}
-          {type === 'job' && (
+          {jobAddon && (
+            <>
+              {/* No Auto-refresh here: refresh cadence belongs to the TIER that owns
+                  the job. An add-on only enhances it, for its own duration. */}
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <LField label="Thời gian hiển thị (days)" req value="10 ngày" select />
+                <div>
+                  <FLabel req>Add-on type</FLabel>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {([
+                      ['label', 'Label', 'Nhãn gắn trên tin'],
+                      ['placement', 'Display placement', 'Đưa job vào vị trí premium'],
+                    ] as const).map(([id, label, hint]) => (
+                      <button
+                        key={id}
+                        onClick={() => setAddonKind(id)}
+                        className={cn('rounded-lg border px-2.5 py-1.5 text-left transition-colors', addonKind === id ? 'border-brand bg-brand-soft' : 'border-line hover:border-ink/30')}
+                      >
+                        <span className={cn('block text-[11.5px] font-medium', addonKind === id ? 'text-brand' : 'text-ink')}>{label}</span>
+                        <span className="block text-[10px] leading-tight text-faint">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {addonKind === 'placement' ? (
+                <div>
+                  <FLabel req>Placement slot<span className="ml-1 font-normal text-faint">chỉ các slot có khối premium dành cho add-on</span></FLabel>
+                  <div className="space-y-1.5">
+                    {PLACEMENTS.filter((x) => x.route === 'both').map((x, i) => {
+                      const on = i === 0
+                      return (
+                        <div key={x.id} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
+                          <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                            {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{x.name}</span>
+                            <span className="block text-[10px] text-faint">{x.page} · {x.cap}</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                    Vị trí premium là hàng có hạn (4–5 chỗ cố định) — bán add-on này phải qua kiểm tra chỗ trống, như mọi booking.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <FLabel req>Label<span className="ml-1 font-normal text-faint">nhãn hiển thị trên tin ở trang tìm kiếm & trang chủ</span></FLabel>
+                  <div className="space-y-1.5">
+                    {([
+                      ['Hot job', 'Nhãn “HOT” đỏ trên tin — theo deck: 10 ngày đầu', true],
+                      ['Super star', 'Nhãn “SUPER STAR” — tin nổi bật của tuần', false],
+                    ] as const).map(([name, hint, on]) => (
+                      <div key={name} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>
+                        <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                          {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={cn('block truncate text-[12px]', on ? 'font-medium text-brand' : 'text-ink/70')}>{name}</span>
+                          <span className="block text-[10px] text-faint">{hint}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                    Danh sách label quản lý ở Master data — thêm nhãn mới không cần sửa form này.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          {type === 'job' && !jobAddon && (
             <>
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <LField label="Thời gian hiển thị (days)" req value="30 ngày" />
@@ -293,11 +373,11 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
                     ordinary catalog products — Services, created in admin like any
                     other — that this product grants along with itself. Hence Includes. */}
                 <FLabel>Includes / Bán kèm<span className="ml-1 font-normal text-faint">products granted together with this one — create them in the catalog first</span></FLabel>
-                {/* Manual services only. The premium fixed positions were listed here
-                    too, but they are PLACEMENTS — already chosen in the section above,
-                    so offering them twice let one tier grant the same slot twice. */}
+                {/* Manual services + Job-posting add-ons (labels, premium positions).
+                    Bookable PLACEMENT products are excluded: a tier feeds registry
+                    areas via the section above, never by including a slot rental. */}
                 <div className="space-y-1.5">
-                  {CATALOG.filter((c) => c.type === 'Manual service').map((c, i) => {
+                  {CATALOG.filter((c) => c.type === 'Manual service' || (c.type === 'Job posting' && c.role === 'Add-on')).map((c, i) => {
                     const on = i < 2
                     return (
                       <div key={c.sku} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5', on ? 'border-brand bg-brand-soft' : 'border-line')}>

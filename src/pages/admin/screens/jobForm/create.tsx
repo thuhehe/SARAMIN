@@ -40,9 +40,16 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
   const NO_PO = isAdmin ? '— none (Free job) —' : '— none —'
   const [po, setPo] = useState(NO_PO)
   const hasPo = po !== NO_PO
-  const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement === 'free' && c.status === 'Active')
-  const paidProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.entitlement !== 'free' && c.status === 'Active')
+  const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.entitlement === 'free' && c.status === 'Active')
+  const paidProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.entitlement !== 'free' && c.status === 'Active')
+  /* Add-ons attach to THIS job at posting time — the natural moment, since a
+     premium position or a label has no meaning without a job to ride on. Split by
+     kind so an operator sees two small lists, not one mixed one. Both draw from
+     the PO's add-on lines, so no PO → no add-ons, even for HQ. */
+  const addonsOf = (kind: 'placement' | 'label') =>
+    CATALOG.filter((c) => c.type === 'Job posting' && c.role === 'Add-on' && c.addonKind === kind && c.status === 'Active')
   const label = (c: (typeof CATALOG)[number]) => `${c.name} · ${c.fulfilment.split(' · ')[0]}`
+  const NO_ADDON = '— không gắn —'
   /* No PO on the Company surface means NO product — never the free tier, which is
      Admin-only. An employer without an active PO has nothing to post from. */
   const productOptions = (hasPo ? paidProducts : isAdmin ? freeProducts : []).map(label)
@@ -83,13 +90,31 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
                 paid tier after the operator drops back to "no PO" */}
             <SelectField
               key={po}
-              label="Products"
+              label="Product (Main)"
               req
               value={productOptions[0] ?? '— no product available —'}
               options={productOptions}
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">{hasPo ? '— lines on the selected PO' : '— free tier (no PO)'}</span>}
             />
           </div>
+          {hasPo && (
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField
+                key={`ap-${po}`}
+                label="Product (Add-on) — Display placement"
+                value={NO_ADDON}
+                options={[NO_ADDON, ...addonsOf('placement').map(label)]}
+                extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— đưa job vào vị trí premium</span>}
+              />
+              <SelectField
+                key={`al-${po}`}
+                label="Product (Add-on) — Label"
+                value={NO_ADDON}
+                options={[NO_ADDON, ...addonsOf('label').map(label)]}
+                extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— nhãn gắn trên tin</span>}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <LabelRow label="Exposure" />
@@ -102,7 +127,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             </div>
           </div>
           <p className="text-[10.5px] leading-relaxed text-faint">
-            The product list follows the PO. With <b>no PO</b> only products flagged <b>Always available</b> on the product record are offered — HQ can post those for any company at any time, unlimited. Pick a PO (a customer can have more than one active) and the list becomes that PO’s paid lines. Expiry comes from the product’s duration. <b>Employers never see the free tier</b> — on the Company site they can only post from what they bought.
+            The product list follows the PO. With <b>no PO</b> only products flagged <b>Always available</b> on the product record are offered — HQ can post those for any company at any time, unlimited. Pick a PO (a customer can have more than one active) and the list becomes that PO’s paid lines. Expiry comes from the product’s duration. <b>Add-ons attach here, at posting</b> — each one spends a line on the same PO and runs its own clock (a 10-day premium position on a 30-day job). No PO → no add-ons, free jobs included. <b>Employers never see the free tier</b> — on the Company site they can only post from what they bought.
           </p>
         </JobGroup>
 

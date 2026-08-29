@@ -16,7 +16,10 @@ import { Pill } from '@/pages/admin/ui/status'
    The price list is the card that matters most — it is what replaces the CRM's
    the CRM's four separate Basic Plus SKUs with one product at one price. */
 function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
-  const isTier = p.type === 'Job posting'
+  /* A Job-posting ADD-ON is not a tier: it renders its own fulfilment card and
+     must not fall into the tier branches (duration/refresh/includes). */
+  const isJobAddon = p.type === 'Job posting' && p.role === 'Add-on'
+  const isTier = p.type === 'Job posting' && !isJobAddon
   const isCredit = p.type === 'CV search'
   const isPlacement = p.type === 'Placement booking'
   const isAddon = p.role === 'Add-on'
@@ -31,8 +34,7 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
     (p.sku === 'PLC-ADS-SEARCH' && x.id === 'search-adsense') ||
     (p.sku === 'PLC-TOPCOMPANY' && x.id === 'home-top-co') ||
     (p.sku === 'PLC-HOTJOBS' && x.id === 'home-super-hot') ||
-    (p.sku === 'PLC-POPULARJOBS' && x.id === 'home-popular-jobs') ||
-    (p.sku === 'PLC-HLCOMPANIES' && x.id === 'home-highlight-co') ||
+    (p.slot != null && x.id === p.slot) ||
     (p.sku === 'PLC-FEATURECO' && x.id === 'home-feature-co') ||
     (p.sku === 'PLC-SEARCH-HLCO' && x.id === 'search-highlight-co') ||
     (p.sku === 'PLC-POPUP' && x.id === 'home-popup'))
@@ -185,6 +187,17 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
                 </div>
               ) : <p className="mt-0.5 text-[12.5px] text-faint">— none</p>}
             </div>
+          </>)}
+          {isJobAddon && (<>
+            <KV label="Add-on type" value={p.addonKind === 'label' ? 'Label — nhãn gắn trên tin' : 'Display placement — đưa job vào vị trí premium'} />
+            {p.addonKind === 'placement' && (
+              <KV label="Placement slot" value={placement ? `${placement.name} — ${placement.page}` : '— chưa đặt'} link={!!placement} />
+            )}
+            <KV label="Thời gian hiển thị" value={p.fulfilment.match(/(\d+ ngày)/)?.[1] ?? '— chưa đặt'} />
+            <p className="mt-1 rounded-md bg-canvas/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-muted">
+              Gắn vào job lúc đăng tin, chạy theo thời lượng riêng của add-on. Job vẫn chạy đủ vòng đời tin đăng —
+              hai đồng hồ độc lập.
+            </p>
           </>)}
           {isCredit && (<>
             <KV label="Số lượng" value={`${p.fulfilment.match(/^(\d+) lượt/)?.[1] ?? '—'} lượt mở CV`} />

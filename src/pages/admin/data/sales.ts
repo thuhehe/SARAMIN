@@ -58,6 +58,13 @@ export const QUOTE_CATALOG = [
   { vi: 'Dịch vụ tìm kiếm hồ sơ (30 ngày)', short: 'CV Search 30d', unitVi: 'hồ sơ', unitEn: 'CV', price: 5_500_000, feats: ['Mở tối đa 50 hồ sơ trong 30 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
   { vi: 'Dịch vụ tìm kiếm hồ sơ (90 ngày)', short: 'CV Search 90d', unitVi: 'hồ sơ', unitEn: 'CV', price: 13_900_000, feats: ['Mở tối đa 200 hồ sơ trong 90 ngày', 'Lọc theo kỹ năng, kinh nghiệm, mức lương'] },
   { vi: 'Employer Branding Page', short: 'EB Page', unitVi: 'gói', unitEn: 'package', price: 15_000_000, feats: ['Trang thương hiệu tuyển dụng riêng', 'Banner + video giới thiệu'] },
+  /* ── Add-ons ────────────────────────────────────────────────────────────
+     Sellable on a quotation, but never ALONE: an add-on line is only valid in an
+     option that also carries a job-posting line for it to ride on. Same rule as
+     the catalog ("attach-only" là về đứng một mình, không phải về việc có bán). */
+  { vi: 'Vị trí premium — Popular Jobs (Add-on)', short: 'Popular premium', unitVi: 'slot', unitEn: 'slot', price: 3_000_000, addon: true, feats: ['Job vào khối 4 vị trí cố định — Popular Jobs, Trang chủ', '10 ngày', 'Gắn vào 1 tin đăng trong cùng option'] },
+  { vi: 'Vị trí premium — Highlight Companies (Add-on)', short: 'Highlight premium', unitVi: 'slot', unitEn: 'slot', price: 2_000_000, addon: true, feats: ['Job vào khối 5 vị trí cố định — Highlight Companies, Trang chủ', '10 ngày', 'Gắn vào 1 tin đăng trong cùng option'] },
+  { vi: 'Nhãn “Hot job” (Add-on)', short: 'Hot job label', unitVi: 'tin', unitEn: 'post', price: 1_500_000, addon: true, feats: ['Nhãn “HOT” đỏ trên tin — 10 ngày', 'Gắn vào 1 tin đăng trong cùng option'] },
   /* ── Trial products ─────────────────────────────────────────────────────
      The trial "discount" is not a discount at all — it is a small set of real
      products priced low, carrying `trial`. Modelling it as products rather than
@@ -69,7 +76,17 @@ export const QUOTE_CATALOG = [
   { vi: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', short: 'Trial CV 7d', unitVi: 'hồ sơ', unitEn: 'CV', price: 300_000, trial: true, feats: ['Mở tối đa 05 hồ sơ trong 07 ngày', 'Giới hạn 01 lần trên mỗi MST'] },
 ]
 /** Trial SKUs never appear in a normal quotation, and normal SKUs never in a trial. */
-export const catForMode = (m: DiscountMode) => QUOTE_CATALOG.map((c, i) => ({ c, i })).filter((x) => !!x.c.trial === (m === 'trial'))
+export const catForMode = (m: DiscountMode) =>
+  QUOTE_CATALOG.map((c, i) => ({ c, i })).filter((x) => (m === 'trial' ? !!x.c.trial : !x.c.trial))
+
+/** Job-posting mains an add-on can ride on: đơn vị "tin", not itself an add-on. */
+export const isJobMain = (c: (typeof QUOTE_CATALOG)[number]) => c.unitVi === 'tin' && !('addon' in c && c.addon)
+/** Options where an add-on line has no job line to attach to — blocks Send. */
+export const addonOrphans = (options: { lines: { cat: number; gift: boolean }[] }[]) =>
+  options.flatMap((o, oi) => {
+    const hasMain = o.lines.some((l) => isJobMain(QUOTE_CATALOG[l.cat]))
+    return o.lines.some((l) => (QUOTE_CATALOG[l.cat] as { addon?: boolean }).addon) && !hasMain ? [oi] : []
+  })
 /* ── The four ways a quotation can be discounted ──────────────────────────────
    A rep picks exactly ONE mode. Which modes are offered depends on the customer's
    status, and each mode decides — independently — what happens to the THREE

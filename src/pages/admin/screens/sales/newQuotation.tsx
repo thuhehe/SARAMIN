@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { COMPANIES, coId, coLabel } from '@/pages/admin/data/companies'
 import { programmeFor, qtyByProduct, tierPct } from '@/pages/admin/data/products'
-import { DISCOUNT_MODES, NEWCHURN_MAX_QTY, NEWCHURN_PCT, QUOTE_CATALOG, SPECIAL_LEADER_MAX, VAT_RATE, apprRole, catForMode, defaultMode, fieldCls, lineTotal, modesFor, optionTotals, selfApproves } from '@/pages/admin/data/sales'
+import { DISCOUNT_MODES, NEWCHURN_MAX_QTY, NEWCHURN_PCT, QUOTE_CATALOG, SPECIAL_LEADER_MAX, VAT_RATE, addonOrphans, apprRole, catForMode, defaultMode, fieldCls, lineTotal, modesFor, optionTotals, selfApproves } from '@/pages/admin/data/sales'
 import type { DiscountMode, QLine, QOption } from '@/pages/admin/data/sales'
 import { SALES_PERSONAS, SALES_ROLE_LABEL } from '@/pages/admin/data/salesOrg'
 import type { SalesPersona } from '@/pages/admin/data/salesOrg'
@@ -129,7 +129,10 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
   const escalated = required === 'manager' && perOption.some((r) => r === 'lead')
 
   const everyOptionPaid = options.every((o) => o.lines.some((l) => !l.gift && lineTotal(l) > 0))
-  const valid = !!co && everyOptionPaid
+  /* An add-on rides on a job line in the SAME option — alone it sells a premium
+     position for a job that does not exist on the order. */
+  const orphans = addonOrphans(options)
+  const valid = !!co && everyOptionPaid && orphans.length === 0
 
   const patch = (oid: number, li: number, d: Partial<QLine>) =>
     setOptions((os) => os.map((o) => (o.id === oid ? { ...o, lines: o.lines.map((l, i) => (i === li ? { ...l, ...d } : l)) } : o)))
@@ -255,7 +258,18 @@ export function NewQuotationModal({ onClose, company: initialCompany = '' }: { o
           )}
 
           {/* 3 · options — the heart of it */}
-          <Section title="3 · Options — alternatives, not add-ons" />
+          <Section title="3 · Options — alternatives, chọn MỘT" />
+              {orphans.length > 0 && (
+                <p className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+                  <span>⚠️</span>
+                  <span>
+                    {orphans.map((oi) => `Option ${oi + 1}`).join(' · ')} có dòng <b>Add-on</b> nhưng không có tin đăng nào để
+                    gắn vào — thêm một dòng dịch vụ tin đăng vào cùng option, hoặc bỏ dòng add-on. Add-on bán được, nhưng
+                    không bao giờ đứng một mình.
+                  </span>
+                </p>
+              )}
+
           {options.map((o, oi) => {
             /* Three discount levels — see optionTotals for the order they stack in.
                Which of them the rep may touch is decided by the MODE, not here. */

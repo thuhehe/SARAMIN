@@ -224,16 +224,24 @@ export const SLOT_CONTENT: Record<SlotContent, { vi: string; needs: string }> = 
   company: { vi: 'Logo & trang công ty', needs: 'Tự lấy logo/cover từ hồ sơ công ty' },
 }
 
-export const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean; content?: SlotContent }[] = [
+export const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean; content?: SlotContent; addonKind?: 'label' | 'placement'; slot?: string }[] = [
   // ── Job posting ───────────────────────────────────────────────────────────
   { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
   { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
-  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['PLC-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
-  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS'] },
-  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['PLC-POPULARJOBS', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
+  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['ADD-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
+  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS'] },
+  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS', 'ADD-LABEL-HOTJOB', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
   // Shorter window than the 12-month default on purpose: a giveaway that can be
   // banked for a year is a liability on the books, not an incentive to start.
   { sku: 'JOB-TRIAL', name: 'Tin đăng dùng thử (Basic Job)', type: 'Job posting', role: 'Main', price: '500,000 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
+  /* Job ENHANCEMENTS, not slot rentals: normalised from Placement booking after
+     the Add-on type (label | display placement) landed on the Job-posting form.
+     The rule that separates the two models now — a slot a customer can BOOK on its
+     own stays a Placement product (Công việc Hot hôm nay); an enhancement that only
+     ever ATTACHES to a job at posting time is a Job posting Add-on. */
+  { sku: 'ADD-POPULARJOBS', name: 'Popular Jobs — vị trí premium', type: 'Job posting', role: 'Add-on', price: '— nội bộ', fulfilment: '10 ngày · 4 vị trí cố định', status: 'Active', addonKind: 'placement', slot: 'home-popular-jobs' },
+  { sku: 'ADD-HLCOMPANIES', name: 'Highlight Companies — vị trí premium', type: 'Job posting', role: 'Add-on', price: '— nội bộ', fulfilment: '10 ngày · 5 vị trí cố định', status: 'Active', addonKind: 'placement', slot: 'home-highlight-co' },
+  { sku: 'ADD-LABEL-HOTJOB', name: 'Nhãn “Hot job”', type: 'Job posting', role: 'Add-on', price: '1,500,000 ₫', fulfilment: '10 ngày · nhãn HOT đỏ trên tin', status: 'Active', addonKind: 'label' },
   { sku: 'CV-TRIAL', name: 'Tìm kiếm hồ sơ dùng thử (7 ngày)', type: 'CV search', role: 'Main', price: '300,000 ₫', fulfilment: '5 lượt · 7 ngày · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
 
   // ── CV search ─────────────────────────────────────────────────────────────
@@ -252,8 +260,6 @@ export const CATALOG: { sku: string; name: string; type: string; role: ProductRo
   { sku: 'PLC-ADS-SEARCH', name: 'Banner adsense — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '425×160 · không giới hạn', status: 'Inactive', content: 'banner' },
   { sku: 'PLC-SEARCH-HLCO', name: 'Highlight Company — Search', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 công ty · không giới hạn', status: 'Inactive', content: 'company' },
   { sku: 'PLC-POPUP', name: 'Homepage pop-up', type: 'Placement booking', role: 'Main', price: '— price TBC', fulfilment: '1 popup · theo chiến dịch', status: 'Inactive', content: 'banner' },
-  { sku: 'PLC-POPULARJOBS', name: 'Popular Jobs — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '4 vị trí cố định', status: 'Active', content: 'job' },
-  { sku: 'PLC-HLCOMPANIES', name: 'Highlight Companies — vị trí premium', type: 'Placement booking', role: 'Add-on', price: '— nội bộ', fulfilment: '5 vị trí cố định', status: 'Active', content: 'job' },
 
   // ── Manual service ────────────────────────────────────────────────────────
   { sku: 'SVC-FB-TOPDEV', name: 'Bài đăng Facebook (fanpage TopDev)', type: 'Manual service', role: 'Main', price: '4,000,000 ₫ ⓒ', fulfilment: '1 bài đăng · 176k follower', status: 'Active' },

@@ -43,7 +43,7 @@ export const productsPackages: BuildModule = {
         rows: [
           ['Job posting', 'Basic · Basic Plus · Distinction · Top Job', 'N posting slots; publishing a job spends one. THIS product is the tier definition — display days, refresh cadence, styling and the placements it feeds all live on it.'],
           ['CV search', 'COMBO 30 / 50 / 100 / 300', 'Unlock quota + validity, decremented per CV opened.'],
-          ['Placement booking', 'Main banner · Công ty nổi bật · Top Companies · adsense (home + search) · Highlight Company (search) · homepage pop-up · the premium fixed positions', 'A time window on a named slot, capacity-capped — needs an availability calendar.'],
+          ['Placement booking', 'Main banner · Công ty nổi bật · Top Companies · adsense (home + search) · Highlight Company (search) · homepage pop-up', 'A time window on a named slot, capacity-capped — needs an availability calendar. Only for slots a customer can BOOK standalone.'],
           ['Manual service', 'Facebook fanpage post · Email Marketing / Job Alert banner', 'Ops fulfils it — opens a task (Requested → Scheduled → Delivered) with proof, NOT an auto-provisioned entitlement.'],
         ],
       },
@@ -157,7 +157,7 @@ export const productsPackages: BuildModule = {
         cols: ['Content', 'Publishing asks for', 'Examples'],
         rows: [
           ['Banner', 'A creative upload, exact slot dimensions', 'Main Banner hero · adsense Home/Search · pop-up'],
-          ['Job', 'ONE of the company’s OPEN jobs — nothing uploaded', 'Công việc Hot hôm nay · Popular Jobs premium · Highlight Companies premium'],
+          ['Job', 'ONE of the company’s OPEN jobs — nothing uploaded', 'Công việc Hot hôm nay (bookable standalone)'],
           ['Company', 'Nothing — logo/cover pulled from the company profile', 'Công ty nổi bật · Feature company · Highlight Company (Search)'],
         ],
       },
@@ -165,6 +165,8 @@ export const productsPackages: BuildModule = {
         'TWO CLOCKS, never one: the JOB runs its posting lifetime (30 ngày, from the Job posting product); the BOOKING holds the slot for its own display duration (10 ngày, from the Placement product). The booking ending does not expire the job — it keeps running on search. Conflating these two numbers is the single most likely modelling mistake here.',
         'A job-content booking is only publishable against an OPEN job. If the job closes or expires mid-booking, the booking releases its slot — it never renders a dead job on the homepage.',
         'A company-content placement blocks publish while the profile lacks a logo, because the slot would render an empty box.',
+        'NORMALISED (đã chuẩn hoá): an enhancement that only ever ATTACHES to a job at posting time is NOT a Placement product — it is a Job posting Add-on with an addonKind of LABEL (Hot job, Super star — list lives in Master data) or DISPLAY PLACEMENT (points at a premium slot in the registry: Popular Jobs ×4, Highlight Companies ×5). The dividing rule: can a customer book the slot on its own? Yes → Placement booking (Công việc Hot hôm nay). No, it rides on a job → Job posting Add-on (ADD-POPULARJOBS, ADD-HLCOMPANIES — migrated from PLC-*).',
+        'A display-placement Add-on consumes the same finite premium capacity as any booking — selling it still passes the availability check; the type changed, the slot arithmetic did not.',
       ],
     },
     {
