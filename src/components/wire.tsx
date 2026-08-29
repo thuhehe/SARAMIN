@@ -64,7 +64,20 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
         </span>
         <span className="ml-2 flex-1 rounded-md border border-line bg-surface px-3 py-1 text-[11px] text-faint">{url}</span>
       </div>
-      <div className="max-h-[640px] overflow-y-auto scroll-thin">{children}</div>
+      {/* VIEWPORT-RELATIVE, not a fixed 640. The frame starts ~136px down the page,
+          so a hard 640 did the wrong thing at both ends: on a tall monitor it left
+          a wide band of unused space and made every screen scroll inside a small
+          window, and on a short one it pushed its own bottom edge below the fold,
+          so the reader scrolled the OUTER page to reach the INNER scrollbar. Sized
+          to what is actually there, the common case is one scrollbar instead of
+          two.
+
+          THE FLOOR IS THE OLD 640, deliberately, so this can never be a
+          regression: it is the value used whenever the viewport is short — and
+          also whenever `vh` resolves to nothing, which happens in embedded and
+          hidden-pane contexts where innerHeight reports 0. Tall screen → more
+          room; anything else → exactly what it did before. */}
+      <div className="max-h-[max(640px,calc(100vh-9.5rem))] overflow-y-auto scroll-thin">{children}</div>
     </div>
   )
 }
