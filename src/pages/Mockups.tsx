@@ -1572,6 +1572,21 @@ const SKILL_SUGGESTIONS: { from: string; source: 'experience' | 'desired'; skill
   { from: 'Senior Product Designer', source: 'desired', skills: ['Prototyping'] },
 ]
 
+/* NO HARD CAP ANY MORE (decided 2026-09-02). A cap of 20 was built here for one
+   day and removed: an uploaded PDF can legitimately carry more, extraction cannot
+   be told to stop finding them, and blocking the confirm screen at 20 put OUR
+   arbitrary limit in the middle of someone else's document.
+   What replaced it is a SOFT rule that never blocks input — past SOFT_LIMIT the
+   skills score is multiplied by SOFT_LIMIT ÷ total, so a padded CV gains nothing
+   while an honest one (10-15 skills, per the requirement) never notices the rule
+   exists. The candidate is told plainly rather than stopped.
+   MIN 3 is the opposite kind of rule and the only one that BLOCKS: it is part of
+   the qualification rule, so under 3 the CV cannot be applied with and cannot
+   enter CV search. Hence the loud note for the floor, a quiet one for the soft
+   limit, and no ceiling at all. */
+const CV_SKILL_SOFT = 25
+const CV_SKILL_MIN = 3
+
 function CvSkillsField() {
   const [skills, setSkills] = useState<string[]>([
     'User Experience (UX)', 'Interaction Design', 'Design Systems', 'Product Design', 'User Research',
@@ -1586,6 +1601,7 @@ function CvSkillsField() {
      Phase-1 can ship with an empty skill_alias table. */
   const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '')
   const matches = SKILL_CATALOGUE.filter((c) => !skills.includes(c.name) && (!q.trim() || norm(c.name).includes(norm(q))))
+  const over = skills.length >= CV_SKILL_SOFT
   const add = (n: string) => { setSkills((a) => [...a, n]); setQ(''); setHi(0) }
   /* Merged in source order, deduped, already-added removed, capped at 6 — so a
      candidate with a long history never sees a wall of chips. */
@@ -1605,6 +1621,18 @@ function CvSkillsField() {
 
   return (
     <div className="mt-3">
+      {/* THE COUNTER, in the same place and the same tones the job form uses for
+          its 10 — one pattern for both sides of the same taxonomy. It only turns
+          amber AT the cap: a count that shouts from 15 trains people to ignore it. */}
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-medium text-ink/70">Kỹ năng</span>
+        {/* A COUNT, NOT A QUOTA. “5/20” reads as a limit to fill; a bare count
+            reads as information. Nothing here turns red, because nothing here is
+            wrong. */}
+        <span className={cn('text-[10.5px] tabular-nums', over ? 'font-medium text-amber-600' : 'text-faint')}>
+          {skills.length} kỹ năng
+        </span>
+      </div>
       {/* ONE combobox: the chips and the input live in the same box, so adding a
           skill is typing — no button, no mode switch. Backspace on an empty input
           removes the last chip, the way every tag field people already use works. */}
@@ -1664,6 +1692,20 @@ function CvSkillsField() {
       {/* Suggestions, grouped by where they came from — experience before desired
           role. The group label is the reason to tap, so it names the actual job the
           skills were inferred from rather than saying "common for people like you". */}
+      {/* THE FLOOR IS THE RULE THAT BITES. 20 is a guardrail nobody normal reaches;
+          3 is the qualification rule, and under it this CV cannot be applied with
+          and cannot enter CV search. So the shortfall gets the loud treatment and
+          the ceiling gets a quiet number. */}
+      {skills.length < CV_SKILL_MIN && (
+        <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800">
+          Cần tối thiểu {CV_SKILL_MIN} kỹ năng — thêm {CV_SKILL_MIN - skills.length} nữa thì CV mới ứng tuyển được và mới hiển thị trong tìm kiếm CV.
+        </p>
+      )}
+      {over && (
+        <p className="mt-1.5 text-[10.5px] leading-snug text-muted">
+          Hồ sơ tập trung được chấm cao hơn — từ kỹ năng thứ {CV_SKILL_SOFT + 1} trở đi, điểm phù hợp của bạn bắt đầu giảm. Bạn vẫn thêm được thoải mái.
+        </p>
+      )}
       {suggested.length > 0 && (
         <div className="mt-2 space-y-1.5">
           {[...new Set(suggested.map((s) => s.from))].map((from) => {
@@ -2216,14 +2258,21 @@ function MyCvsScreen() {
   /* The union is what enforces the route rule: a row typed as Saramin cannot be
      given `unreadable` or `rejected` — TypeScript refuses it. And `reason` exists
      ONLY with `state: 'rejected'`, so a rejection can never be reasonless. */
+  /* `ver` — HOW MANY TIMES THIS CV HAS BEEN REPLACED, +1. It is on the row for one
+     reason: to make it obvious that replacing a file UPDATES this CV rather than
+     creating another one, so the candidate does not burn a shelf slot trying to
+     fix a typo. The earlier applications keep the version they were sent — the
+     line under the shelf says so, because "my new CV went out to everyone" is the
+     wrong assumption to leave a candidate holding. Absent or 1 = never replaced,
+     and nothing renders. */
   type CvRow =
-    | { name: string; kind: 'Uploaded'; meta: string; icon: string; state: Exclude<UploadState, 'rejected'> }
-    | { name: string; kind: 'Uploaded'; meta: string; icon: string; state: 'rejected'; reason: RejectReason }
-    | { name: string; kind: 'Saramin'; meta: string; icon: string; state: SaraminState }
+    | { name: string; kind: 'Uploaded'; meta: string; icon: string; ver?: number; state: Exclude<UploadState, 'rejected'> }
+    | { name: string; kind: 'Uploaded'; meta: string; icon: string; ver?: number; state: 'rejected'; reason: RejectReason }
+    | { name: string; kind: 'Saramin'; meta: string; icon: string; ver?: number; state: SaraminState }
   const cvs: CvRow[] = [
-    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Uploaded 26/07/2026', icon: '📄', state: 'unreadable' },
+    { name: 'productdesign.pdf', kind: 'Uploaded', meta: 'Cập nhật 26/07/2026', icon: '📄', ver: 3, state: 'unreadable' },
     { name: 'Business Developer CV', kind: 'Saramin', meta: 'Created 26/07/2026', icon: '📄', state: 'qualified' },
-    { name: 'UX Designer CV', kind: 'Saramin', meta: 'Created 14/08/2026', icon: '📄', state: 'not_enough' },
+    { name: 'UX Designer CV', kind: 'Saramin', meta: 'Cập nhật 14/08/2026', icon: '📄', ver: 2, state: 'not_enough' },
     /* ALL THREE reject reasons are present on purpose: each one has a different
        chip, a different line and a DIFFERENT BUTTON, and that difference is the
        whole argument for three names rather than one “rejected”. A screen that
@@ -2318,7 +2367,14 @@ function MyCvsScreen() {
                     {searchable === i && c.state !== 'rejected' && c.state !== 'not_enough' && <Chip tone="green">Hiển thị trong tìm kiếm CV</Chip>}
                     {searchable === i && c.state === 'not_enough' && c.kind === 'Saramin' && <Chip tone="amber">Tạm không hiển thị</Chip>}
                   </p>
-                  <p className="text-[11px] text-faint">{c.meta}</p>
+                  <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px] text-faint">
+                    <span>{c.meta}</span>
+                    {!!c.ver && c.ver > 1 && (
+                      <span className="text-[10.5px] text-slate-500" title={`Bạn đã thay CV này ${c.ver - 1} lần. Những đơn đã nộp trước đó vẫn giữ đúng bản bạn đã gửi khi ấy.`}>
+                        · bản {c.ver} <span className="text-faint">(đã thay {c.ver - 1} lần)</span>
+                      </span>
+                    )}
+                  </p>
 
                   {/* A failing row gets ONE line and ONE button. The detail of what
                       is missing belongs in the editor — this list is for recognising
