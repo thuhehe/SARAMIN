@@ -127,7 +127,17 @@ function ApplicantDetail({ a, onClose }: { a: Applicant; onClose: () => void }) 
                     <label key={r} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]', i === 0 ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-line text-muted')}>{r}</label>
                   ))}
                 </div>
-                <p className="mt-1.5 text-[10.5px] font-medium text-rose-600">Whole user: blocks future applies and recalls all 7 sent applications across every job.</p>
+                {/* ★ THE BLAST RADIUS, STATED HONESTLY — and since 2026-08-23 it is
+                    SMALLER than operators expect, which is the dangerous direction
+                    to be wrong in. A block stops sign-in and nothing else. So the
+                    dialog also says what it does NOT do, and offers the second
+                    decision as a link: a prompt, never a cascade, so the operator
+                    takes both deliberately or takes one on purpose. */}
+                <p className="mt-1.5 text-[10.5px] font-medium text-rose-600">Chỉ chặn đăng nhập. Không thu hồi đơn, không ẩn CV.</p>
+                <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10.5px] leading-snug text-amber-900">
+                  ⚠ CV của người này <b className="font-semibold">vẫn đang hiển thị</b> trong tìm kiếm và <b className="font-semibold">7 đơn</b> vẫn nằm ở phía NTD.
+                  Muốn gỡ luôn thì <span className="cursor-pointer font-semibold underline">từ chối CV →</span> — đây là quyết định riêng.
+                </p>
               </div>
             )}
           </div>
@@ -190,10 +200,18 @@ export function AdminApplicants() {
     { name: 'Đặng Thị Hoa', basic: 'Female · 25/12/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'Product Designer · Design · Hồ Chí Minh · 20–30M · Hybrid', contact: ['hoa.dang@gmail.com', '0957 863 667'], role: 'Product Designer', years: '4 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · Design', job: 'UI/UX Designer', company: 'One Mount', cv: ['hoa-portfolio.pdf', 'upload'], cvStatus: "Can't read", status: 'Not sent', hold: 'CV in doubt · chờ duyệt · đã đợi 18h', stage: 'New', when: '3d ago' },
     /* Applied with a CV an admin had already Rejected — never delivered. */
     { name: 'Ngô Bảo Khánh', basic: 'Male · 14/07/2001 · Vietnamese · Single · College · 1 yr exp', pref: 'Sales Staff · Sales · Cần Thơ · 8–12M · In office', contact: ['khanh.ngo@gmail.com', '0964 876 684'], role: '—', years: '1 yr', loc: 'Cần Thơ', edu: 'College · Business', job: 'Sales Staff', company: 'Thế Giới Di Động', cv: ['menu_final.pdf', 'upload'], cvStatus: 'Rejected', status: 'Not sent', hold: 'CV Rejected — never delivered', stage: 'New', when: '1d ago' },
-    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Rejected', status: 'Recall', stage: 'Reviewing', when: '4d ago' },
+    { name: 'Bùi Quang Huy', basic: 'Male · 19/03/1999 · Vietnamese · Single · Bachelor · 2 yrs exp', pref: 'Data Analyst · IT · Hà Nội · 18–25M · Hybrid', contact: ['huy.bui@gmail.com', '0971 889 701'], role: 'Data Analyst', years: '2 yrs', loc: 'Hà Nội', edu: 'Bachelor · Statistics', job: 'Data Analyst', company: 'Techcombank', cv: ['Data Analyst CV', 'saramin'], cvStatus: 'Rejected', status: 'Recall', stage: 'Reviewing', when: '4d ago', ver: 2, curVer: 2 },
+    /* ★ THE ROW THE VERSION RULE EXISTS FOR — read it against Bùi Quang Huy
+       directly above, which is the same CV status with the opposite outcome.
+       Both CVs are Rejected. Huy's application carries the REJECTED version, so
+       it was pulled back. Việt's carries bản 1, sent and reviewed weeks before
+       the candidate replaced the file with the bản 2 that got rejected — so the
+       employer keeps a document that was, and still is, perfectly good. Recalling
+       it would punish them for an edit made after delivery that they never saw. */
+    { name: 'Đặng Quốc Việt', basic: 'Male · 14/06/1993 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'Marketing Manager · Marketing · Hà Nội · 35–45M · Hybrid', contact: ['viet.dang@gmail.com', '0908 447 220'], role: 'Marketing Manager', years: '7 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Marketing Manager', company: 'Tiki', cv: ['viet-cv.pdf', 'upload'], cvStatus: 'Rejected', status: 'Sent', stage: 'Interview', when: '2w ago', ver: 1, curVer: 2 },
     { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', contact: ['lan.ngo@gmail.com', '0978 902 718'], role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '4d ago' },
     { name: 'Hoàng Văn Nam', basic: 'Male · 02/03/1993 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'DevOps Engineer · IT · Hồ Chí Minh · 35–50M · Remote', contact: ['nam.hoang@gmail.com', '0985 915 735'], role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '5d ago' },
-    { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Rejected', status: 'Recall', stage: 'New', when: '5d ago' },
+    { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Rejected', status: 'Recall', stage: 'New', when: '5d ago', ver: 1, curVer: 1 },
     { name: 'Đỗ Anh Tú', basic: 'Male · 05/05/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', pref: 'iOS Developer · IT · Hồ Chí Minh · 35–45M · In office', contact: ['tu.do@gmail.com', '0999 941 769'], role: 'iOS Developer', years: '5 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · SE', job: 'Mobile Engineer (iOS)', company: 'MoMo', cv: ['iOS Developer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'Shortlisted', when: '6d ago' },
     { name: 'Lý Thu Trang', basic: 'Female · 22/06/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', pref: 'QA Engineer · IT · Đà Nẵng · 20–28M · In office', contact: ['trang.ly@gmail.com', '0906 954 786'], role: 'QA Engineer', years: '4 yrs', loc: 'Đà Nẵng', edu: 'Bachelor · IT', job: 'QA Engineer', company: 'FPT Software', cv: ['trang-qa.pdf', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '6d ago' },
     { name: 'Phan Văn Kiên', basic: 'Male · 15/01/1998 · Vietnamese · Single · College · 3 yrs exp', pref: 'Sales Executive · Sales · Hồ Chí Minh · 12–18M · In office', contact: ['kien.phan@gmail.com', '0913 967 803'], role: 'Sales Executive', years: '3 yrs', loc: 'Hồ Chí Minh', edu: 'College · Business', job: 'Sales Executive', company: 'Thế Giới Di Động', cv: ['Sales Executive CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '1w ago' },
@@ -218,7 +236,21 @@ export function AdminApplicants() {
        system: CV = name + kind pill, then Basic information and Work preference. */
     <div className="min-w-0">
       <p onClick={() => setOpen(a)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the full candidate record — basic information, work preference and CV content. PII action, logged">{a.cv[0]}</p>
-      <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
+      {/* WHICH VERSION THE EMPLOYER IS HOLDING. An application is a snapshot, so
+          this cell is not “the candidate's CV” — it is the exact document that
+          was delivered. When the candidate has since replaced it the cell says
+          so, because that gap is what explains a Rejected CV sitting next to an
+          untouched Sent: the rejected version is not the one in this row. */}
+      <span className="flex items-baseline gap-1">
+        <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
+        {!!a.ver && !!a.curVer && a.ver < a.curVer ? (
+          <span className="shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted" title={`NTD nhận bản ${a.ver}. Ứng viên đã thay CV từ đó — nay là bản ${a.curVer}. Quyết định trên bản ${a.curVer} không chạm vào đơn này.`}>
+            bản {a.ver} · đã có bản mới
+          </span>
+        ) : !!a.ver && a.ver > 1 ? (
+          <span className="shrink-0 text-[10px] text-faint">bản {a.ver}</span>
+        ) : null}
+      </span>
     </div>,
     <TwoLine top={split2(a.basic, 3)[0]} bottom={split2(a.basic, 3)[1]} />,
     <TwoLine top={split2(a.pref, 2)[0]} bottom={split2(a.pref, 2)[1]} />,
@@ -284,7 +316,7 @@ export function AdminApplicants() {
         <b className="font-semibold text-ink/80">Status</b> is Saramin’s — three values. Derived from the CV:
         Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Not sent</b>, which{' '}
         <b className="font-semibold text-ink/80">waits for an admin — nothing auto-sends</b> · Rejected before delivery → <b className="font-semibold text-ink/80">Not sent</b>, now final ·
-        Rejected AFTER delivery → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer (blocking a user works the same way: it rejects their CVs, which recalls what was delivered).{' '}
+        Rejected AFTER delivery → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer — but <b className="font-semibold text-ink/80">only if the sent CV is the version that was rejected</b>; an application delivered on an earlier version stays Sent. <b className="font-semibold text-ink/80">Blocking a user changes nothing here</b> — it only stops sign-in; pulling applications back is a separate decision on the CV.{' '}
         <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here.
         There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
         <b className="font-semibold text-ink/80">CV review</b> and one verdict resolves every application waiting on that CV.

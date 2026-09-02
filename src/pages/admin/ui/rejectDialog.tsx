@@ -19,9 +19,17 @@ import { REASON_DRAFTS, REJECT_CTAS, REJECT_REASONS, REJECT_TAG } from '@/pages/
  * it is not the reviewer's to choose — showing it as an editable field would
  * invite a per-case tag, which is exactly the coupling this design removed.
  */
-export function RejectDialog({ name, file, extracted, apps, onClose }: { name: string; file: string; extracted?: string; apps?: number; onClose: () => void }) {
+export function RejectDialog({ name, file, extracted, apps, ver, sent, sentOld, onClose }: { name: string; file: string; extracted?: string; apps?: number; ver?: number; sent?: number; sentOld?: number; onClose: () => void }) {
   const [reason, setReason] = useState<string>(REJECT_REASONS[2])
   const draft = REASON_DRAFTS[reason]
+  /* THE THREE OUTCOMES OF ONE REJECT, computed rather than assumed — see the
+     CvCheckRow comment. `kept` is the number that made this block necessary: the
+     old copy promised to recall every sent application, which punished employers
+     for an edit the candidate made after delivery. */
+  const nSent = sent ?? 0
+  const kept = sentOld ?? 0
+  const recalled = Math.max(0, nSent - kept)
+  const held = Math.max(0, (apps ?? 0) - nSent)
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-10">
       <div className="flex max-h-[640px] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
@@ -93,15 +101,57 @@ export function RejectDialog({ name, file, extracted, apps, onClose }: { name: s
             <div className="h-14 rounded-md border border-line bg-canvas/40" />
           </div>
 
+          {/* ── WHAT THIS REJECT DOES, PER VERSION ────────────────────────────
+              The reviewer is deciding on ONE version of the document, and the
+              applications behind it do not all carry that version. Printing a
+              single "everything gets recalled" line was wrong AND unfalsifiable —
+              a reviewer could not see that they were about to pull back a CV an
+              employer received months ago and had no complaint about.
+
+              So the block states the three outcomes separately and names the
+              version each group holds. The KEPT row is the one worth reading
+              twice: it is green, because leaving those alone is the correct
+              result, not a limitation. */}
           {!!apps && apps > 0 && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800">
-              ⚠ {apps} đơn ứng tuyển đang chờ sẽ chuyển thành <b className="font-semibold">Không được gửi</b>. Đơn nào đã gửi tới NTD sẽ bị <b className="font-semibold">thu hồi</b>.
-            </p>
+            <div className="rounded-lg border border-line">
+              <p className="flex items-baseline justify-between gap-2 border-b border-line-soft px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-faint">
+                <span>Quyết định này ảnh hưởng {apps} đơn</span>
+                {!!ver && <span className="font-normal normal-case tracking-normal text-ink/70">Đang từ chối <b className="font-semibold">bản {ver}</b> — bản mới nhất</span>}
+              </p>
+              <div className="divide-y divide-line-soft">
+                {held > 0 && (
+                  <p className="flex items-baseline gap-2 px-2.5 py-1.5 text-[11.5px] leading-snug text-ink">
+                    <span className="shrink-0 text-amber-600">⚠</span>
+                    <span className="flex-1"><b className="font-semibold">{held} đơn đang chờ</b> <span className="text-faint">— chưa tới NTD</span></span>
+                    <span className="shrink-0 font-semibold text-amber-700">Không được gửi</span>
+                  </p>
+                )}
+                {recalled > 0 && (
+                  <p className="flex items-baseline gap-2 px-2.5 py-1.5 text-[11.5px] leading-snug text-ink">
+                    <span className="shrink-0 text-rose-500">⚠</span>
+                    <span className="flex-1"><b className="font-semibold">{recalled} đơn đã gửi</b> <span className="text-faint">— mang đúng bản {ver ?? '—'}</span></span>
+                    <span className="shrink-0 font-semibold text-rose-600">Thu hồi</span>
+                  </p>
+                )}
+                {kept > 0 && (
+                  <p className="flex items-baseline gap-2 bg-emerald-50/50 px-2.5 py-1.5 text-[11.5px] leading-snug text-ink">
+                    <span className="shrink-0 text-emerald-600">✓</span>
+                    <span className="flex-1"><b className="font-semibold">{kept} đơn đã gửi</b> <span className="text-faint">— mang bản cũ hơn</span></span>
+                    <span className="shrink-0 font-semibold text-emerald-700">Giữ nguyên</span>
+                  </p>
+                )}
+              </div>
+              <p className="border-t border-line-soft px-2.5 py-1.5 text-[10px] leading-snug text-faint">
+                {kept > 0
+                  ? 'Một đơn chỉ bị thu hồi khi nó mang đúng bản đang bị từ chối. NTD nhận bản cũ đã nhận một tài liệu khác — không lấy lại của họ vì một thay đổi xảy ra sau đó.'
+                  : 'Một đơn chỉ bị thu hồi khi nó mang đúng bản đang bị từ chối. Ở CV này mọi đơn đã gửi đều mang bản đó.'}
+              </p>
+            </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-3">
-          <p className="text-[10.5px] text-faint">Quyết định áp lên CV — mọi đơn dùng CV này đều theo.</p>
+          <p className="max-w-[300px] text-[10.5px] leading-snug text-faint">Quyết định áp lên CV, không lên từng đơn — nhưng chỉ chạm vào đơn mang bản đang bị từ chối.</p>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-ink hover:bg-canvas">Huỷ</button>
             <button onClick={onClose} className="rounded-lg bg-rose-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-rose-700">Từ chối CV</button>

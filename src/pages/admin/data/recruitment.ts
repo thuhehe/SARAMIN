@@ -81,11 +81,13 @@ export type Delivery = 'Sent' | 'Not sent' | 'Recall'
    it records history (this one WAS delivered, then its CV was Rejected) that the
    CV status alone cannot reproduce.
 
-   BLOCKED was removed from this enum (2026-08): blocking a user is an ACCOUNT
-   action, not an application state. Its effect travels through the CV — blocking
-   rejects the person's CVs (reason: violation), which recalls what was delivered
-   and refuses what was not — so the rows it touches read Recall / Not sent like
-   any other rejection, and the account state lives on the jobseeker user record.
+   BLOCKED was removed from this enum (2026-08), and the reason got simpler again
+   in 2026-08-23: blocking a user is an ACCOUNT action that stops sign-in, and it
+   has NO effect on applications at all — not directly, and not through the CV
+   either. An operator who wants the delivered ones pulled back rejects the CV,
+   which is a separate decision on a separate screen. So a blocked user's rows are
+   byte-identical to what they were before the block, and the account state lives
+   on the jobseeker user record.
 
    INVARIANT the demo data must keep: status Recall ⇒ CV status Rejected. Recall
    exists ONLY as the consequence of rejecting a delivered CV; a Recall row showing
@@ -117,7 +119,12 @@ type CvStatus = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejecte
 /* `basic` and `pref` are the SAME field-sheet strings the Talent pool renders —
    Basic information (table 1) and Work preference (table 2). Work preference comes
    from ONBOARDING, so even a candidate whose CV was unreadable has a full one. */
-export type Applicant = { name: string; basic: string; pref: string; contact: [string, string]; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string }
+/* `ver` / `curVer` — WHICH VERSION OF THE CV THIS APPLICATION CARRIES, and which
+   one the CV is on now. They are equal on almost every row; when they differ the
+   employer is holding an older document than the one the candidate has today, and
+   that gap is the whole reason the recall rule has to compare rather than assume.
+   A reject on the CURRENT version does NOT touch a row whose `ver` is behind. */
+export type Applicant = { name: string; basic: string; pref: string; contact: [string, string]; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string; ver?: number; curVer?: number }
 
 export const CV_STATUS_TONE: Record<CvStatus, StatusTone> = {
   Qualified: 'active',
@@ -224,6 +231,15 @@ type RejectReason = (typeof REJECT_REASONS)[number]
 export type CvCheckRow = {
   name: string; basic: string; contact: [string, string]; pref: string; file: string
   kind: 'thin' | 'tech'; extracted: string; apps: number; left: string; age: string; updated: string; hint: 'likely' | 'unlikely'
+  /* THE VERSION SPLIT — what a reject actually has to act on, and the only way
+     the dialog can state its consequences honestly.
+       ver     — the version the CV is on NOW; the one being judged
+       sent    — how many of `apps` are already with an employer
+       sentOld — how many of THOSE carry an EARLIER version
+     So a reject recalls (sent − sentOld), holds back (apps − sent), and leaves
+     sentOld alone. Without the last number the dialog can only promise to recall
+     everything, which is the rule we corrected. */
+  ver?: number; sent?: number; sentOld?: number
   /* Which of the three views the row belongs to. `doubt` is the work; the other
      two are the RECORD of a human decision, kept on the same screen so a bad call
      can be rechecked and undone where it was made. */
