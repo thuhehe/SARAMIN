@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
+import { CV_STATUS_TONE, DELIVERY_TONE, STAGE_TONE } from '@/pages/admin/data/recruitment'
 import { JS_STATUS, JS_USERS } from '@/pages/admin/data/users'
 import type { JSSignup, JSStatus, JSUser } from '@/pages/admin/data/users'
-import type { StatusTone } from '@/pages/admin/lib/tone'
+import { CandidateProfileModal } from '@/pages/admin/ui/candidateProfile'
 import { DetailCard, KV, LField } from '@/pages/admin/ui/fields'
-import { ListPage, RowAction } from '@/pages/admin/ui/list'
+import { ListPage } from '@/pages/admin/ui/list'
+import { PoolPickCell } from '@/pages/admin/ui/pickCells'
 import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill } from '@/pages/admin/ui/status'
 import { Table } from '@/pages/admin/ui/table'
@@ -175,21 +177,46 @@ function NewJobseekerModal({ onCreate, onClose }: { onCreate: (name: string, ema
   )
 }
 
-/** One seeker account — what My page holds, plus their CVs and applications. */
+/** CV STATUS — the four values every CV carries; the same set the Talent pool and
+ *  CV review own. Search visibility and application delivery are DERIVED from it. */
+type CvSt = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejected'
+type Delivery = 'Sent' | 'Not sent' | 'Recall'
+
+/** One seeker account — what My page holds, plus their CVs and applications.
+ *  Basic information + Work preference mirror the candidate field sheets (the same
+ *  two tables the Talent pool renders). The CV and application tables mirror the
+ *  Talent pool and Applicant columns so HQ reads ONE shape everywhere, and the CV
+ *  filename opens the same 3-group candidate modal (basic · preference · CV content). */
 function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => void; onStatus: (s: JSStatus) => void }) {
   useDetailCrumb(u.name, onBack)
-  const CVS: [string, 'public' | 'private', string, number][] = [
-    ['CV_NguyenVanAn_Frontend_EN.pdf', 'public', 'Updated 2 days ago', 6],
-    ['CV tiếng Việt — Frontend', 'private', 'Updated 3 weeks ago', 0],
-  ]
-  const APPS: [string, string, StatusTone, string, string][] = [
-    ['Senior Frontend Engineer (ReactJS)', 'FPT Software', 'pending', 'Interview', '2h ago'],
-    ['Product Manager', 'MoMo', 'neutral', 'Screening', '5d ago'],
-    ['Backend Engineer (Go)', 'Shopee', 'rejected', 'Rejected', '2 months ago'],
-  ]
-  return (
-    <div className="max-w-[960px]">
 
+  /* This screen is ACCESS-ONLY: HQ manages the account, never the candidate's
+     content. So the CV / application tables are a READ-ONLY MIRROR — no Approve /
+     Reject here. Every CV decision is made on ONE of three pages (Talent pool ·
+     CV review · Applicants) and resolves everywhere. The only interaction is the
+     CV link, which opens the same read-only candidate modal. */
+  const [profile, setProfile] = useState(false)
+
+  const CVS: { cv: string; kind: 'Saramin' | 'Upload'; searchable: boolean; st: CvSt; content: string; unlocks: number; updated: string }[] = [
+    { cv: 'CV_NguyenVanAn_Frontend_EN.pdf', kind: 'Upload', searchable: true, st: 'Qualified', content: '3 experience · 8 skills', unlocks: 6, updated: '2 days ago' },
+    { cv: 'CV tiếng Việt — Frontend', kind: 'Saramin', searchable: false, st: 'Not enough information', content: '1 experience · 2 skills', unlocks: 0, updated: '3 weeks ago' },
+  ]
+  const APPS: { job: string; company: string; cv: string; cvSt: CvSt; status: Delivery; stage: string; when: string }[] = [
+    { job: 'Senior Frontend Engineer (ReactJS)', company: 'FPT Software', cv: 'CV_NguyenVanAn_Frontend_EN.pdf', cvSt: 'Qualified', status: 'Sent', stage: 'Interview', when: '2h ago' },
+    { job: 'Product Manager', company: 'MoMo', cv: 'CV_NguyenVanAn_Frontend_EN.pdf', cvSt: 'Qualified', status: 'Sent', stage: 'Reviewing', when: '5d ago' },
+    { job: 'Backend Engineer (Go)', company: 'Shopee', cv: 'CV tiếng Việt — Frontend', cvSt: 'Rejected', status: 'Recall', stage: 'Rejected', when: '2 months ago' },
+  ]
+
+  /* The CV name is the ONLY interactive cell — it opens the shared read-only
+     candidate modal (basic · preference · CV content). Job / company render as
+     links; the row carries no decision. */
+  const cvLink = (cv: string) => (
+    <span onClick={() => setProfile(true)} title="Opens the candidate record — basic information, work preference and CV content. PII action, logged" className="min-w-0 cursor-pointer truncate text-brand hover:underline">{cv}</span>
+  )
+  const extLink = (label: string) => <span className="min-w-0 cursor-pointer truncate text-brand hover:underline" title="Opens in a new tab">{label}</span>
+
+  return (
+    <div className="max-w-[1160px]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-[20px] font-bold tracking-tight">{u.name} <Pill tone={JS_STATUS[u.status]}>{u.status}</Pill></h2>
@@ -205,35 +232,43 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
 
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <MiniStat label="Profile" value={`${u.complete}%`} sub="completeness" tone={u.complete < 50 ? 'warn' : undefined} />
-        <MiniStat label="CVs" value={u.resumes || '—'} sub={`${CVS.filter((c) => c[1] === 'public').length} public`} />
+        <MiniStat label="CVs" value={u.resumes || '—'} sub={`${CVS.filter((c) => c.searchable).length} searchable`} />
         <MiniStat label="Applications" value={u.applications || '—'} sub="all time" />
-        <MiniStat label="CV unlocks" value="6" sub="by employers" />
+        <MiniStat label="CV unlocks" value={String(CVS.reduce((n, c) => n + c.unlocks, 0))} sub="by employers" />
         <MiniStat label="Joined" value={u.joined} sub={`via ${u.signup}`} />
         <MiniStat label="Last login" value={u.last} sub="web · Chrome" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DetailCard title="Account">
+        {/* CARD 1 — Basic information: the 9-field sign-up sheet, the same shape the
+            candidate modal and Talent pool render, plus the two account-only facts
+            (verified, sign-up) that make this the ACCOUNT view. */}
+        <DetailCard title="Basic information">
           <KV label="Full name" value={u.name} />
           <KV label="Email (login)" value={u.email} />
+          <KV label="Phone" value={u.phone} />
+          <KV label="Nationality" value="Vietnamese" />
+          <KV label="Gender" value="Male" />
+          <KV label="Marital status" value="Single" />
+          <KV label="Date of birth" value="12/04/1996" />
+          <KV label="Highest education" value="Bachelor" />
+          <KV label="Years of experience" value="4 yrs" />
           <KV label="Email verified" value={u.status === 'Unverified' ? 'No — verification pending' : 'Yes'} />
           <KV label="Sign-up method" value={u.signup === 'Email' ? 'Email + password' : `${u.signup} (social login)`} />
-          <KV label="Phone" value={u.phone} />
-          <KV label="Location" value={u.location} />
           <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
-            HQ never sees or sets a password. Password reset is a self-service email link; social-login accounts have no password at all.
+            Read-only for HQ. HQ never sees or sets a password — reset is a self-service email link; social-login accounts have no password at all.
           </p>
         </DetailCard>
 
-        <DetailCard title="My page — profile & job preferences">
+        {/* CARD 2 — Work preference: the 6-field onboarding sheet. */}
+        <DetailCard title="Work preference">
           <div className="mb-2"><Meter pct={u.complete} /></div>
-          <KV label="Headline" value={u.headline} />
-          <KV label="Desired role" value="Software Developer · IT" />
-          <KV label="Work type" value="In office" />
-            <KV label="Contract type" value="Fulltime" />
+          <KV label="Desired job role" value="Senior Frontend Engineer" />
+          <KV label="Desired job category" value="Information Technology" />
+          <KV label="Desired industry" value="IT / Software" />
+          <KV label="Desired work location" value="Hồ Chí Minh · Remote" />
           <KV label="Expected salary" value="35 – 45 tr VND / month" />
-          <KV label="Preferred locations" value="Hồ Chí Minh · Remote" />
-          <KV label="Open to offers" value="Yes — visible in Resume Search" />
+          <KV label="Desired work type" value="In office" />
           <p className="mt-2 rounded-md bg-canvas/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted">
             Read-only for HQ. The seeker edits these on My page; the vocabularies come from Master data.
           </p>
@@ -243,33 +278,54 @@ function JobseekerDetail({ u, onBack, onStatus }: { u: JSUser; onBack: () => voi
       <div className="mt-4">
         <p className="mb-2 text-[12.5px] font-bold">CVs / resumes</p>
         <Table
-          minW={640}
-          cols={[{ label: 'CV', w: '2fr' }, { label: 'Visibility', w: '0.9fr' }, { label: 'Updated', w: '1fr' }, { label: 'Unlocked by', w: '0.9fr', align: 'r' }, { label: '', w: '0.7fr', align: 'r' }]}
+          minW={880}
+          cols={[
+            { label: 'CV', w: '1.9fr' },
+            { label: 'CV status', w: '1fr' },
+            { label: 'Talent pool', w: '1fr' },
+            { label: 'CV content', w: '1.1fr' },
+            { label: 'Unlocks', w: '0.7fr', align: 'r' },
+            { label: 'Updated', w: '0.9fr', align: 'r' },
+          ]}
           rows={CVS.map((c) => [
-            <span className="truncate text-[12.5px] text-ink/85">{c[0]}</span>,
-            <Pill tone={c[1] === 'public' ? 'active' : 'draft'}>{c[1] === 'public' ? 'Public' : 'Private'}</Pill>,
-            <span className="text-[11.5px] text-muted">{c[2]}</span>,
-            <span className="tabular-nums">{c[3] ? `${c[3]} employers` : '—'}</span>,
-            <RowAction>Open CV</RowAction>,
+            cvLink(c.cv),
+            <Pill tone={CV_STATUS_TONE[c.st]}>{c.st}</Pill>,
+            <PoolPickCell picked={c.searchable} />,
+            <span className="text-[11.5px] text-muted">{c.content}</span>,
+            <span className="tabular-nums">{c.unlocks || '—'}</span>,
+            <span className="text-[11.5px] text-muted">{c.updated}</span>,
           ])}
         />
-        <p className="mt-2 text-[11px] text-faint">Opening a CV is a PII view — logged with the operator, the record and the timestamp. Private CVs never appear in Resume Search.</p>
+        <p className="mt-2 text-[11px] text-faint">Read-only mirror. Opening a CV is a PII view — logged with the operator, the record and the timestamp. Talent pool is the candidate's own choice — which one CV they flag for CV Search (Đã chọn / Chưa chọn); HQ never sets it. HQ never decides a CV here either — Approve / Reject lives on Talent pool, CV review and Applicants, and one verdict there resolves every application using the CV.</p>
       </div>
 
       <div className="mt-4">
         <p className="mb-2 text-[12.5px] font-bold">Applications</p>
         <Table
-          minW={640}
-          cols={[{ label: 'Job', w: '1.9fr' }, { label: 'Company', w: '1fr' }, { label: 'Stage', w: '0.9fr' }, { label: 'Applied', w: '0.8fr', align: 'r' }]}
+          minW={1040}
+          cols={[
+            { label: 'Job', w: '1.8fr' },
+            { label: 'Company', w: '1fr' },
+            { label: 'CV', w: '1.5fr' },
+            { label: 'CV status', w: '1fr' },
+            { label: 'Application status', w: '1fr' },
+            { label: 'Pipeline status', w: '1fr' },
+            { label: 'Applied', w: '0.7fr', align: 'r' },
+          ]}
           rows={APPS.map((a) => [
-            <span className="truncate text-[12.5px] text-ink/85">{a[0]}</span>,
-            <span className="truncate">{a[1]}</span>,
-            <Pill tone={a[2]}>{a[3]}</Pill>,
-            <span className="text-[11.5px] text-muted">{a[4]}</span>,
+            extLink(a.job),
+            extLink(a.company),
+            cvLink(a.cv),
+            <Pill tone={CV_STATUS_TONE[a.cvSt]}>{a.cvSt}</Pill>,
+            <Pill tone={DELIVERY_TONE[a.status]}>{a.status}</Pill>,
+            a.status === 'Sent' ? <Pill tone={STAGE_TONE[a.stage] ?? 'draft'}>{a.stage}</Pill> : <span className="text-faint" title="Not on the employer dashboard — the funnel no longer applies">—</span>,
+            <span className="text-[11.5px] text-muted">{a.when}</span>,
           ])}
         />
-        <p className="mt-2 text-[11px] text-faint">Read-only mirror of what the seeker sees under “Applied jobs” — HQ never moves a candidate's stage; that is the employer's call.</p>
+        <p className="mt-2 text-[11px] text-faint">Read-only mirror of the candidate's applications. Application status is Saramin's (Sent / Not sent / Recall), derived from the CV; Pipeline status is the employer's funnel. HQ makes no decision here — the CV verdict is taken on Applicants (or Talent pool / CV review).</p>
       </div>
+
+      {profile && <CandidateProfileModal name={u.name} onClose={() => setProfile(false)} />}
     </div>
   )
 }
