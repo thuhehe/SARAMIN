@@ -10,6 +10,7 @@ import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { CvLanguageLayers } from '@/components/CvLanguageLayers'
+import { CvVersionStory } from '@/components/CvVersionStory'
 import { cn } from '@/lib/utils'
 
 /* Emphasis inside spec prose. The data is plain strings, so **double asterisks**
@@ -634,6 +635,7 @@ function SectionBlock({ s }: { s: NonNullable<FeatureDetail['sections']>[number]
       )}
       {s.diagram === 'cv-status' && <CvStatusFlow />}
       {s.diagram === 'cv-language' && <CvLanguageLayers />}
+      {s.diagram === 'cv-version-story' && <CvVersionStory />}
       {s.table && <ReqTableView t={s.table} />}
       {s.items && <div className={cn(s.table && 'mt-3')}><Bullets items={s.items} /></div>}
       {s.warn && (

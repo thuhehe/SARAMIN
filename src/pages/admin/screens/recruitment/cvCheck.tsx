@@ -50,7 +50,12 @@ export function AdminCvCheck() {
     /* ── resolved: rejected by a human, with the reason CODE that makes the set
          countable — “parser failed” is a bug report against the scan ─────────── */
     { name: 'Trịnh Quốc Anh', basic: 'Male · 20/06/1993 · Vietnamese · Single · Bachelor · 7 yrs exp', contact: ['anh.trinh@gmail.com', '0977 003 221'], pref: 'Project Manager · IT · Hồ Chí Minh · 40–55M · Hybrid', file: 'bao-gia-thang-8.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 days ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
-    { name: 'Nguyễn Hải Yến', basic: 'Female · 03/03/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['yen.nguyen@gmail.com', '0912 550 883'], pref: 'Content Lead · Marketing · Hà Nội · 25–32M · Remote', file: 'yen-cv-2col.pdf', kind: 'thin', extracted: '0 experience · 1 skill', searchPick: true, apps: 3, ver: 2, sent: 3, sentOld: 1, left: 'recalled', age: '—', updated: '4 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
+    { name: 'Nguyễn Hải Yến', basic: 'Female · 03/03/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['yen.nguyen@gmail.com', '0912 550 883'], pref: 'Content Lead · Marketing · Hà Nội · 25–32M · Remote', file: 'yen-cv-2col.pdf', kind: 'thin', extracted: '0 experience · 1 skill', searchPick: true, apps: 3, ver: 2, curVer: 3, sent: 3, sentOld: 1, left: 'recalled', age: '—', updated: '4 days ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
+    /* ── the same candidate, one version later: she uploaded v.3 after the
+         rejection. The scan PASSES it (4 experience · 6 skills) and it still waits
+         here, because a new version does not launder a rejection. Read this row
+         against her v.2/3 record in Đã từ chối — two lines, two views. ────────── */
+    { name: 'Nguyễn Hải Yến', basic: 'Female · 03/03/1997 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['yen.nguyen@gmail.com', '0912 550 883'], pref: 'Content Lead · Marketing · Hà Nội · 25–32M · Remote', file: 'yen-cv-2026.pdf', kind: 'thin', extracted: '4 experience · 6 skills', searchPick: true, apps: 0, ver: 3, sent: 0, sentOld: 0, left: '—', age: '1h', updated: '1 hour ago', hint: 'likely', via: 'reupload' },
     { name: 'Đinh Công Danh', basic: 'Male · 15/02/1990 · Vietnamese · Married · College · 8 yrs exp', contact: ['danh.dinh@gmail.com', '0908 117 665'], pref: 'Driver · Logistics · Bình Dương · 10–14M · In office', file: 'cv-danh-copy.pdf', kind: 'thin', extracted: '1 experience · 0 skills', apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
     /* more APPROVED cases — the operator opened the file and found a real CV.
        The last one is the second source: a Qualified CV an employer reported,
@@ -65,23 +70,24 @@ export function AdminCvCheck() {
     { name: 'Hà Kiều Trang', basic: 'Female · 30/01/2000 · Vietnamese · Single · Bachelor · 1 yr exp', contact: ['trang.ha@gmail.com', '0966 220 771'], pref: 'Translator · Education · Hà Nội · 12–16M · Remote', file: 'trang-cv-1trang.pdf', kind: 'thin', extracted: '0 experience · 3 skills', searchPick: true, apps: 1, left: 'recalled', age: '—', updated: '1 week ago', hint: 'likely', state: 'rejected', by: 'Nam (ops)', reason: 'CV but not enough information' },
     { name: 'Phạm Gia Huy', basic: 'Male · 12/12/2001 · Vietnamese · Single · Student · 0 yrs exp', contact: ['huy.pham@gmail.com', '0388 117 550'], pref: 'Intern · IT · Hồ Chí Minh · Negotiable · In office', file: 'anh-the-3x4.pdf', kind: 'thin', extracted: '0 experience · 0 skills', apps: 0, left: '—', age: '—', updated: '2 weeks ago', hint: 'unlikely', state: 'rejected', by: 'Hà (ops)', reason: 'Not a CV' },
   ]
-  const stateOf = (r: CvCheckRow) => decided[r.name] ?? r.state ?? 'doubt'
+  const keyOf = (r: CvCheckRow) => `${r.name}|${r.file}`
+  const stateOf = (r: CvCheckRow) => decided[keyOf(r)] ?? r.state ?? 'doubt'
   /* One click: write the status, then say what it did. The toast carries the two
      things the dialog was there for — the consequences the row cannot show, and
      the empty-extraction caveat — plus the Undo that makes skipping the
      confirmation safe. */
   const approveNow = (r: CvCheckRow) => {
     const undoing = stateOf(r) === 'rejected'
-    setDecided((d) => ({ ...d, [r.name]: 'approved' }))
+    setDecided((d) => ({ ...d, [keyOf(r)]: 'approved' }))
     setToast({
       msg: undoing ? `Đã bỏ từ chối — ${r.name}` : `Đã duyệt CV — ${r.name}`,
-      sub: r.apps
-        ? `CV → Qualified · ${r.apps} đơn đang chờ đã gửi tới NTD · vào tìm kiếm CV nếu ứng viên đã bật.`
+      sub: r.apps - (r.sent ?? 0) > 0
+        ? `CV → Qualified · ${r.apps - (r.sent ?? 0)} đơn đang chờ (v.${r.ver ?? 1}) đã gửi tới NTD · vào tìm kiếm CV nếu ứng viên đã bật.`
         : 'CV → Qualified · vào tìm kiếm CV nếu ứng viên đã bật. Ứng viên không nhận thông báo nào.',
       warn: /no readable content|0 experience · 0 skills/i.test(r.extracted ?? '')
         ? 'Không trích xuất được nội dung — CV sẽ không xuất hiện khi NTD tìm theo kỹ năng. Nên nhắc ứng viên tải lên bản PDF dạng văn bản.'
         : undefined,
-      onUndo: () => setDecided((d) => { const n = { ...d }; delete n[r.name]; return n }),
+      onUndo: () => setDecided((d) => { const n = { ...d }; delete n[keyOf(r)]; return n }),
     })
   }
   const shown = raw.filter((r) => stateOf(r) === view)
@@ -90,14 +96,19 @@ export function AdminCvCheck() {
     <div className="min-w-0">
       <p onClick={() => setOpen(r)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the CV file — PII action, logged">{r.file}</p>
       {/* THE VERSION SITS ON THE DOCUMENT, not on the candidate — a reviewer is
-          opening one version of one CV, and “bản 3” is the difference between
-          judging what an employer is holding and judging something newer. Shown
-          only when there IS a history: “bản 1” on a CV uploaded once is noise. */}
+          opening one version of one CV, and “v.3” is the difference between
+          judging what an employer is holding and judging something newer. ALWAYS
+          shown, v.1 included (client, 2026-08-23: “nhẽ ra hiển thị luôn version
+          mấy”): an earlier draft hid v.1 as noise, and the reviewer had to guess.
+          ONE NOTATION ON EVERY ADMIN LIST — the fraction, judged over current
+          (client, 2026-09-03: “this should be format v.1/1”). In Cần duyệt it
+          always reads N/N — only the CURRENT version can be waiting; an older
+          version in doubt is superseded and leaves by itself. A RECORD row can be
+          behind: v.1/2 = the decision was made on v.1 and the candidate has since
+          moved on. Same notation as Talent pool and Applicants, so the three agree. */}
       <span className="flex items-baseline gap-1">
         <Pill tone="draft">Upload</Pill>
-        {!!r.ver && r.ver > 1 && (
-          <span className="shrink-0 text-[10px] text-faint" title={`Ứng viên đã thay file ${r.ver - 1} lần — các bản trước vẫn nằm sau những đơn đã gửi bằng chúng`}>bản {r.ver}</span>
-        )}
+        <span className="shrink-0 text-[10px] font-medium text-ink/70" title={(r.ver ?? 1) > 1 ? `Ứng viên đã thay file ${(r.ver ?? 1) - 1} lần — các version trước vẫn nằm sau những đơn đã gửi bằng chúng` : 'Chưa thay file lần nào'}>v.{r.ver ?? 1}/{r.curVer ?? r.ver ?? 1}</span>
       </span>
     </div>,
     <TwoLine top={split2(r.basic, 3)[0]} bottom={split2(r.basic, 3)[1]} />,
@@ -107,7 +118,15 @@ export function AdminCvCheck() {
        status (with what this decision releases), and the derived search cell
        with how long the row has sat. */
     stateOf(r) === 'doubt'
-      ? <Pill tone={r.kind === 'tech' ? 'draft' : 'pending'}>{r.kind === 'tech' ? "Can't read" : 'Not enough information'}</Pill>
+      ? (
+        <div className="min-w-0">
+          <Pill tone={r.kind === 'tech' ? 'draft' : 'pending'}>{r.kind === 'tech' ? "Can't read" : 'Not enough information'}</Pill>
+          {/* A re-upload onto a Rejected CV waits here even when the scan passes —
+              a new version never launders a rejection. The line says why a row
+              with a healthy extraction is in the queue at all. */}
+          {r.via === 'reupload' && <p className="mt-0.5 truncate text-[10.5px] text-faint" title="Version mới sau khi version trước bị từ chối — scan đạt, vẫn phải qua người duyệt">sau khi v.{(r.ver ?? 2) - 1} bị từ chối · scan đạt, vẫn chờ duyệt</p>}
+        </div>
+      )
       : (
         <div className="min-w-0">
           <Pill tone={stateOf(r) === 'approved' ? 'active' : 'rejected'}>{stateOf(r) === 'approved' ? 'Qualified' : 'Rejected'}</Pill>
@@ -122,8 +141,8 @@ export function AdminCvCheck() {
     /* CHOICE then CONSEQUENCE — see ui/pickCells. A row with no applications and
        no search flag now reads as two blanks, which is exactly what it is: the
        decision on it releases nothing and nobody is waiting. */
-    <ApplyCell apps={r.apps} />,
-    <PoolPickCell picked={!!r.searchPick} />,
+    <ApplyCell apps={r.apps - (r.sentOld ?? 0)} ver={r.ver ?? 1} older={r.sentOld} />,
+    <PoolPickCell picked={!!r.searchPick} ver={r.ver ?? 1} />,
     <span className="truncate text-muted">{r.extracted}</span>,
     <span className="text-muted">{r.updated}</span>,
     <div className="relative flex items-center justify-end">
@@ -172,6 +191,7 @@ export function AdminCvCheck() {
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
         Every CV a HUMAN has touched — the open queue plus both outcomes. A CV the scan qualified never appears here; it goes straight to{' '}
         <b className="font-semibold text-ink/80">Talent pool</b>. That is what keeps this list finite and every row a decision worth learning from.{' '}
+        A row here is a <b className="font-semibold text-ink/80">version</b>, not a CV — the version a human had to look at. Only the <b className="font-semibold text-ink/80">current</b> version can be waiting: an older version in doubt is superseded and leaves the queue by itself when the candidate moves on, while a decision already made stays in its record view and reads <b className="font-semibold text-ink/80">v.1/2</b> once the CV has moved past it. Talent pool is the opposite unit — one row per CV, always its current version.{' '}
         <b className="font-semibold text-ink/80">Cần duyệt</b> is the only count that is work, and the only one that should reach zero.{' '}
         <b className="font-semibold text-ink/80">Đã duyệt</b> and <b className="font-semibold text-ink/80">Đã từ chối</b> are kept so a call can be
         rechecked in bulk and undone where it was made — rejection is the one verdict the scan is never allowed to write, so it is the one most worth auditing.
@@ -213,7 +233,7 @@ export function AdminCvCheck() {
         rows={rows}
       />
       {open && <CvCheckDetail row={open} onClose={() => setOpen(null)} />}
-      {reject && <RejectDialog name={reject.name} file={reject.file} extracted={reject.extracted} apps={reject.apps} ver={reject.ver} sent={reject.sent} sentOld={reject.sentOld} onClose={() => setReject(null)} />}
+      {reject && <RejectDialog name={reject.name} file={reject.file} extracted={reject.extracted} ver={reject.ver} onClose={() => setReject(null)} />}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )

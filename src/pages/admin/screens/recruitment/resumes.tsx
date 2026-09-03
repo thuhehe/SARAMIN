@@ -53,11 +53,11 @@ export function AdminResumes() {
   const ST_TONE: Record<CvSt, StatusTone> = { Qualified: 'active', 'Not enough information': 'pending', "Can't read": 'draft', Rejected: 'rejected' }
   /* The verbs a status allows: doubt offers both, finals offer only the reversal. */
   const verbs = (st: CvSt): ('Approve' | 'Reject')[] => (st === 'Qualified' ? ['Reject'] : st === 'Rejected' ? ['Approve'] : ['Approve', 'Reject'])
-  type PoolRow = { name: string; basic: string; contact: [string, string]; pref: string; cv: string; kind: 'Saramin' | 'Upload'; st: CvSt; why?: string; content: string; unlocks: number; updated: string }
+  type PoolRow = { name: string; basic: string; contact: [string, string]; pref: string; cv: string; kind: 'Saramin' | 'Upload'; st: CvSt; why?: string; content: string; unlocks: number; updated: string; ver?: number }
   const raw: PoolRow[] = [
-    { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['an.nguyen@gmail.com', '0903 112 445'], pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', cv: 'Frontend Engineer CV', kind: 'Saramin', st: 'Qualified', content: '3 experience · 8 skills', unlocks: 7, updated: '2 days ago' },
+    { name: 'Nguyễn Văn An', basic: 'Male · 12/04/1996 · Vietnamese · Single · Bachelor · 4 yrs exp', contact: ['an.nguyen@gmail.com', '0903 112 445'], pref: 'Frontend Engineer · IT · Hồ Chí Minh · 25–35M · In office', cv: 'Frontend Engineer CV', kind: 'Saramin', st: 'Qualified', content: '3 experience · 8 skills', unlocks: 7, ver: 2, updated: '2 days ago' },
     { name: 'Trần Thị Bích', basic: 'Female · 03/09/1994 · Vietnamese · Married · Bachelor · 6 yrs exp', contact: ['bich.tran@gmail.com', '0912 887 330'], pref: 'Digital Marketing Lead · Marketing · Hà Nội · 30–40M · Hybrid', cv: 'bich-portfolio.pdf', kind: 'Upload', st: 'Qualified', content: '2 experience · 11 skills', unlocks: 12, updated: '1 week ago' },
-    { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', contact: ['cuong.le@gmail.com', '0938 220 114'], pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', cv: 'Product Manager CV', kind: 'Saramin', st: 'Qualified', content: '4 experience · 9 skills', unlocks: 4, updated: '3 weeks ago' },
+    { name: 'Lê Hoàng Cường', basic: 'Male · 21/11/1990 · Vietnamese · Married · Master · 8 yrs exp', contact: ['cuong.le@gmail.com', '0938 220 114'], pref: 'Product Manager · IT · Hồ Chí Minh · 50–70M · Hybrid', cv: 'Product Manager CV', kind: 'Saramin', st: 'Qualified', content: '4 experience · 9 skills', unlocks: 4, ver: 2, updated: '3 weeks ago' },
     { name: 'Phạm Thu Dung', basic: 'Female · 07/02/1997 · Vietnamese · Single · Bachelor · 3 yrs exp', contact: ['dung.pham@gmail.com', '0905 664 218'], pref: 'General Accountant · Accounting · Đà Nẵng · 12–18M · In office', cv: 'thu-dung-cv.pdf', kind: 'Upload', st: 'Qualified', content: '1 experience · 3 skills', unlocks: 0, updated: '1 month ago' },
     /* Scanned Qualified, then rejected by an admin — the case the scan cannot see. */
     { name: 'Vũ Minh Đức', basic: 'Male · 30/06/1995 · Vietnamese · Single · Bachelor · 5 yrs exp', contact: ['duc.vu@gmail.com', '0977 145 903'], pref: 'Backend Engineer · IT · Hồ Chí Minh · 35–45M · Remote', cv: 'Backend Engineer CV', kind: 'Saramin', st: 'Rejected', why: 'Fake profile — same photo as 3 other accounts', content: '3 experience · 12 skills', unlocks: 9, updated: '2 months ago' },
@@ -99,7 +99,12 @@ export function AdminResumes() {
     <span onClick={() => setSel(r.name)} className="min-w-0 cursor-pointer truncate text-brand hover:underline">{r.name}</span>,
     <div className="min-w-0">
       <p onClick={() => setSel(r.name)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the CV — PII action, logged">{r.cv}</p>
-      <Pill tone={r.kind === 'Saramin' ? 'neutral' : 'draft'}>{r.kind === 'Saramin' ? 'Saramin CV' : 'Upload'}</Pill>
+      {/* Same fraction as CV review and Applicants (client, 2026-09-03). The pool
+          only ever shows the current version, so it always reads N/N here. */}
+      <span className="flex items-baseline gap-1">
+        <Pill tone={r.kind === 'Saramin' ? 'neutral' : 'draft'}>{r.kind === 'Saramin' ? 'Saramin CV' : 'Upload'}</Pill>
+        <span className="shrink-0 text-[10px] font-medium text-ink/70">v.{r.ver ?? 1}/{r.ver ?? 1}</span>
+      </span>
     </div>,
     <TwoLine top={split2(r.basic, 3)[0]} bottom={split2(r.basic, 3)[1]} />,
     <TwoLine top={split2(r.pref, 2)[0]} bottom={split2(r.pref, 2)[1]} />,
@@ -162,7 +167,7 @@ export function AdminResumes() {
     <div>
       {/* ONE note. One status, four values, two of them interim. */}
       <p className="mb-2.5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
-        Every candidate who has switched CV search ON — so everyone here WANTS to be found. Columns come from the field sheets:{' '}
+        Every candidate who has switched CV search ON — so everyone here WANTS to be found. One row per <b className="font-semibold text-ink/80">CV</b>, always its <b className="font-semibold text-ink/80">current version</b> — the only version search ever serves; CV review is the list with a row per version. Columns come from the field sheets:{' '}
         <b className="font-semibold text-ink/80">Basic information</b> (table 1, sign-up) and <b className="font-semibold text-ink/80">Work preference</b> (table 2,
         onboarding). The scan at upload writes ONE CV status: <b className="font-semibold text-ink/80">Qualified</b> (final), or a DOUBT —{' '}
         <b className="font-semibold text-ink/80">Not enough information</b> · <b className="font-semibold text-ink/80">Can’t read</b> — which is a question, not a

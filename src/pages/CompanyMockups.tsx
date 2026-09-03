@@ -1021,7 +1021,11 @@ function ApplicantsScreen() {
                   what the panel opens on. */}
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">CV — {picked.cv} (full document)</p>
+                  {/* THE DOCUMENT IS THE SNAPSHOT (client, 2026-08-23): what the employer opens
+                      here is the version delivered with THIS application, as it was on the
+                      apply date — never the candidate's current CV, which they were never
+                      sent. Said in the header so nobody has to infer it. */}
+                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">CV — {picked.cv} <span className="font-normal normal-case tracking-normal">· version đã nộp {picked.applied} — đúng tài liệu bạn đã nhận</span></p>
                   {/* Download disappears on a recalled CV. Leaving it would let the
                       recruiter keep a copy of a document we have just told them to
                       ignore, which makes the recall decorative. */}

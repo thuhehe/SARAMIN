@@ -2375,8 +2375,8 @@ function MyCvsScreen() {
                   <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px] text-faint">
                     <span>{c.meta}</span>
                     {!!c.ver && c.ver > 1 && (
-                      <span className="text-[10.5px] text-slate-500" title={`Bạn đã thay CV này ${c.ver - 1} lần. Những đơn đã nộp trước đó vẫn giữ đúng bản bạn đã gửi khi ấy.`}>
-                        · bản {c.ver} <span className="text-faint">(đã thay {c.ver - 1} lần)</span>
+                      <span className="text-[10.5px] text-slate-500" title={`Bạn đã thay CV này ${c.ver - 1} lần. Những đơn đã nộp trước đó vẫn giữ đúng version bạn đã gửi khi ấy.`}>
+                        · v.{c.ver} <span className="text-faint">(đã thay {c.ver - 1} lần)</span>
                       </span>
                     )}
                   </p>

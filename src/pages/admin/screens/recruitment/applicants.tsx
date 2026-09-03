@@ -35,6 +35,14 @@ function ApplicantDetail({ a, onClose }: { a: Applicant; onClose: () => void }) 
             </p>
             <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
               {a.job} · {a.company} · applied {a.when} · CV: <b className="font-semibold text-ink/80">{a.cv[0]}</b>
+              {/* THE SNAPSHOT, NAMED AS SUCH (client, 2026-08-23). This detail is the
+                  application, so the document here is the one delivered with it —
+                  never the CV's current version. When the candidate has moved on,
+                  say so, and say where the current one lives; do not show it here. */}
+              <span className="text-faint">· as delivered · v.{a.ver ?? 1}/{a.curVer ?? a.ver ?? 1}</span>
+              {!!a.ver && !!a.curVer && a.ver < a.curVer && (
+                <span className="rounded border border-line bg-canvas px-1 text-[10px] text-muted">candidate's CV is now v.{a.curVer}{a.curFile ? ` · ${a.curFile}` : ''} — see CV review</span>
+              )}
               <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
             </p>
           </div>
@@ -60,7 +68,7 @@ function ApplicantDetail({ a, onClose }: { a: Applicant; onClose: () => void }) 
             </div>
             <div className="rounded-lg border border-line bg-canvas/30 p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-faint">CV content — {a.cv[0]}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-faint">CV content — {a.cv[0]} <span className="font-normal normal-case tracking-normal">· as delivered (v.{a.ver ?? 1})</span></p>
                 <span className="shrink-0 cursor-pointer text-[11px] font-medium text-brand">⬇ Download</span>
               </div>
               {/* A CV nothing could be read from has NO parsed content to show. It
@@ -180,7 +188,7 @@ export function AdminApplicants() {
   const [menuA, setMenuA] = useState<number | null>(null)
   /* THE SAME dialog component as CV review, not a copy — one decision reached
      from two screens must not grow two forms with two wordings. */
-  const [reject, setReject] = useState<{ name: string; file: string } | null>(null)
+  const [reject, setReject] = useState<{ name: string; file: string; ver?: number } | null>(null)
   const [fStatus, setFStatus] = useState('')
   const [fStage, setFStage] = useState('')
   const [fCompany, setFCompany] = useState('')
@@ -204,11 +212,11 @@ export function AdminApplicants() {
     /* ★ THE ROW THE VERSION RULE EXISTS FOR — read it against Bùi Quang Huy
        directly above, which is the same CV status with the opposite outcome.
        Both CVs are Rejected. Huy's application carries the REJECTED version, so
-       it was pulled back. Việt's carries bản 1, sent and reviewed weeks before
-       the candidate replaced the file with the bản 2 that got rejected — so the
+       it was pulled back. Việt's carries v.1, sent and reviewed weeks before
+       the candidate replaced the file with the v.2 that got rejected — so the
        employer keeps a document that was, and still is, perfectly good. Recalling
        it would punish them for an edit made after delivery that they never saw. */
-    { name: 'Đặng Quốc Việt', basic: 'Male · 14/06/1993 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'Marketing Manager · Marketing · Hà Nội · 35–45M · Hybrid', contact: ['viet.dang@gmail.com', '0908 447 220'], role: 'Marketing Manager', years: '7 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Marketing Manager', company: 'Tiki', cv: ['viet-cv.pdf', 'upload'], cvStatus: 'Rejected', status: 'Sent', stage: 'Interview', when: '2w ago', ver: 1, curVer: 2 },
+    { name: 'Đặng Quốc Việt', basic: 'Male · 14/06/1993 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'Marketing Manager · Marketing · Hà Nội · 35–45M · Hybrid', contact: ['viet.dang@gmail.com', '0908 447 220'], role: 'Marketing Manager', years: '7 yrs', loc: 'Hà Nội', edu: 'Bachelor · Marketing', job: 'Marketing Manager', company: 'Tiki', cv: ['viet-cv.pdf', 'upload'], cvStatus: 'Rejected', status: 'Sent', stage: 'Interview', when: '2w ago', ver: 1, curVer: 2, curFile: 'viet-cv-ngan.pdf' },
     { name: 'Ngô Thị Lan', basic: 'Female · 11/08/1992 · Vietnamese · Married · Bachelor · 7 yrs exp', pref: 'HR Business Partner · HR · Hồ Chí Minh · 30–40M · In office', contact: ['lan.ngo@gmail.com', '0978 902 718'], role: 'HR Generalist', years: '7 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · HRM', job: 'HR Business Partner', company: 'Grab', cv: ['lan-cv.docx', 'upload'], cvStatus: 'Qualified', status: 'Sent', stage: 'Interview', when: '4d ago' },
     { name: 'Hoàng Văn Nam', basic: 'Male · 02/03/1993 · Vietnamese · Married · Bachelor · 6 yrs exp', pref: 'DevOps Engineer · IT · Hồ Chí Minh · 35–50M · Remote', contact: ['nam.hoang@gmail.com', '0985 915 735'], role: 'DevOps Engineer', years: '6 yrs', loc: 'Hồ Chí Minh', edu: 'Bachelor · CS', job: 'DevOps Engineer', company: 'VNG', cv: ['DevOps Engineer CV', 'saramin'], cvStatus: 'Qualified', status: 'Sent', stage: 'New', when: '5d ago' },
     { name: 'Trịnh Mỹ Linh', basic: 'Female · 27/10/1998 · Vietnamese · Single · Bachelor · 3 yrs exp', pref: 'Content Writer · Marketing · Hà Nội · 12–16M · Hybrid', contact: ['linh.trinh@gmail.com', '0992 928 752'], role: 'Content Writer', years: '3 yrs', loc: 'Hà Nội', edu: 'Bachelor · Journalism', job: 'Content Marketing', company: 'Base.vn', cv: ['my-linh.pdf', 'upload'], cvStatus: 'Rejected', status: 'Recall', stage: 'New', when: '5d ago', ver: 1, curVer: 1 },
@@ -235,21 +243,23 @@ export function AdminApplicants() {
     /* Same cell shapes as Talent pool, so an operator reads the two lists as one
        system: CV = name + kind pill, then Basic information and Work preference. */
     <div className="min-w-0">
-      <p onClick={() => setOpen(a)} className="cursor-pointer truncate font-medium text-brand hover:underline" title="Opens the full candidate record — basic information, work preference and CV content. PII action, logged">{a.cv[0]}</p>
-      {/* WHICH VERSION THE EMPLOYER IS HOLDING. An application is a snapshot, so
-          this cell is not “the candidate's CV” — it is the exact document that
-          was delivered. When the candidate has since replaced it the cell says
-          so, because that gap is what explains a Rejected CV sitting next to an
-          untouched Sent: the rejected version is not the one in this row. */}
+      <p onClick={() => setOpen(a)} className="cursor-pointer truncate font-medium text-brand hover:underline" title={`Opens the CV AS DELIVERED — the version sent with this application (v.${a.ver ?? 1}), not the candidate's current CV. PII action, logged`}>{a.cv[0]}</p>
+      {/* WHICH VERSION THE EMPLOYER IS HOLDING, over which one the CV is on now
+          — “v.1/2” (client's notation, 2026-08-23). An application is a snapshot,
+          so this cell is not “the candidate's CV” — it is the exact document that
+          was delivered. Equal numbers: they hold the current one. Unequal, in the
+          bordered badge: the shelf has moved on, and that gap is what explains a
+          Rejected CV sitting next to an untouched Sent — the rejected version is
+          not the one in this row. Never a bare number, so nobody has to infer. */}
       <span className="flex items-baseline gap-1">
         <Pill tone={a.cv[1] === 'saramin' ? 'neutral' : 'draft'}>{a.cv[1] === 'saramin' ? 'Saramin CV' : 'Upload'}</Pill>
         {!!a.ver && !!a.curVer && a.ver < a.curVer ? (
-          <span className="shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted" title={`NTD nhận bản ${a.ver}. Ứng viên đã thay CV từ đó — nay là bản ${a.curVer}. Quyết định trên bản ${a.curVer} không chạm vào đơn này.`}>
-            bản {a.ver} · đã có bản mới
+          <span className="shrink-0 rounded border border-line bg-canvas px-1 text-[10px] text-muted" title={`NTD nhận v.${a.ver} (${a.cv[0]}). Ứng viên đã thay CV từ đó — nay là v.${a.curVer}${a.curFile ? ` (${a.curFile})` : ''}. Tên file và nội dung ở hàng này là của v.${a.ver}, đúng thứ NTD đang giữ. Quyết định trên v.${a.curVer} không chạm vào đơn này.`}>
+            v.{a.ver}/{a.curVer}
           </span>
-        ) : !!a.ver && a.ver > 1 ? (
-          <span className="shrink-0 text-[10px] text-faint">bản {a.ver}</span>
-        ) : null}
+        ) : (
+          <span className="shrink-0 text-[10px] font-medium text-ink/70" title={`NTD nhận v.${a.ver ?? 1} — đúng version hiện tại của CV.`}>v.{a.ver ?? 1}/{a.curVer ?? a.ver ?? 1}</span>
+        )}
       </span>
     </div>,
     <TwoLine top={split2(a.basic, 3)[0]} bottom={split2(a.basic, 3)[1]} />,
@@ -290,7 +300,10 @@ export function AdminApplicants() {
               </button>
             )}
             {a.cvStatus !== 'Rejected' && (
-              <button onClick={() => { setMenuA(null); setReject({ name: a.name, file: a.cv[0] }) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
+              <button onClick={() => { setMenuA(null); /* Rejecting from a row rejects THE CV — its CURRENT version — not
+                                                             the version this row happens to hold. On a row that is behind, that
+                                                             is exactly the case where this application ends up in the footnote. */
+                                                          setReject({ name: a.name, file: a.curFile ?? a.cv[0], ver: a.curVer ?? a.ver }) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-rose-600 hover:bg-canvas">
                 <span className="w-3.5 text-center">✕</span>
                 <span className="flex-1">Reject CV…</span>
                 <span className="shrink-0 text-[10px] text-faint">chọn lý do ở bước sau</span>
@@ -317,6 +330,7 @@ export function AdminApplicants() {
         Qualified → <b className="font-semibold text-ink/80">Sent</b> · in doubt → <b className="font-semibold text-ink/80">Not sent</b>, which{' '}
         <b className="font-semibold text-ink/80">waits for an admin — nothing auto-sends</b> · Rejected before delivery → <b className="font-semibold text-ink/80">Not sent</b>, now final ·
         Rejected AFTER delivery → <b className="font-semibold text-ink/80">Recall</b>, pulled back from the employer — but <b className="font-semibold text-ink/80">only if the sent CV is the version that was rejected</b>; an application delivered on an earlier version stays Sent. <b className="font-semibold text-ink/80">Blocking a user changes nothing here</b> — it only stops sign-in; pulling applications back is a separate decision on the CV.{' '}
+        The <b className="font-semibold text-ink/80">CV cell</b> shows the delivered version over the current one — <b className="font-semibold text-ink/80">v.1/2</b> means the employer holds v.1 and the candidate’s CV is now v.2; equal numbers mean they hold the current one.{' '}
         <b className="font-semibold text-ink/80">Stage</b> is the employer’s hiring funnel and is read-only here.
         There is no decision to make on this screen: the hold belongs to the CV, so the reviewer works{' '}
         <b className="font-semibold text-ink/80">CV review</b> and one verdict resolves every application waiting on that CV.
@@ -354,7 +368,7 @@ export function AdminApplicants() {
         rows={rows}
       />
       {open && <ApplicantDetail a={open} onClose={() => setOpen(null)} />}
-      {reject && <RejectDialog name={reject.name} file={reject.file} onClose={() => setReject(null)} />}
+      {reject && <RejectDialog name={reject.name} file={reject.file} ver={reject.ver} onClose={() => setReject(null)} />}
     </div>
   )
 }

@@ -137,7 +137,7 @@ export const applicationManagement: BuildModule = {
         cols: ['CV status at apply time', 'Application status', 'CV search'],
         rows: [
           ['Qualified (scan passed, or admin approved)', 'SENT immediately', 'Showing'],
-          ['Doubt — Not enough information · Can’t read (interim)', 'NOT SENT — until an admin approves the CV. The apply itself always succeeds; refusing it would punish the candidate for OUR parser.', 'Hidden'],
+          ['Doubt — Not enough information · Can’t read (interim)', 'NOT SENT — until the CV’s current version is Qualified: an admin approves it, or the candidate replaces it with a version the scan qualifies. A held application has no version yet — delivery is the snapshot — so it goes out on the version current at that moment. The apply itself always succeeds; refusing it would punish the candidate for OUR parser.', 'Hidden'],
           ['Rejected (an admin decided — the scan never writes this)', 'NOT SENT — never delivered, now final. New applies with this CV are refused with the reason.', 'Hidden'],
           ['Qualified, later Rejected — the admin overturns a CV that was already delivered', 'RECALL — the third status value. Pulled back from the employer, who is told Saramin withdrew it (with the reason); an unlock is auto-refunded. The candidate reads “Đã thu hồi”, never “Not selected”.', 'Hidden — it leaves the index'],
           ['Saramin CV below the rule', 'Refused BEFORE submit — greyed and unselectable, missing fields named.', 'No — toggle disabled.'],

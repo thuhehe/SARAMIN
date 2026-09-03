@@ -21,13 +21,21 @@ import { cn } from '@/lib/utils'
  *   SearchCell — is it showing in CV search right now
  */
 
-/** Answers: has this CV been used to apply, and how many times. NOT what is
-    happening to those applications — that follows from the CV status beside it. */
-export function ApplyCell({ apps }: { apps: number }) {
+/** Answers: how many applications carry the CURRENT version of this CV — the one
+    the row is about and the one a verdict lands on. NOT the whole CV (client,
+    2026-09-03: “this should be about the version, not the whole CV”): applications
+    delivered on an earlier version are untouched by any decision here, so counting
+    them would overstate what the reviewer is deciding. They survive in the tooltip
+    only, for reconciliation. */
+export function ApplyCell({ apps, ver, older }: { apps: number; ver?: number; older?: number }) {
+  const v = ver ?? 1
   return (
-    <p className={cn('flex items-baseline gap-1 truncate text-[11.5px]', apps ? 'text-ink' : 'text-faint')}>
+    <p
+      className={cn('flex items-baseline gap-1 truncate text-[11.5px]', apps ? 'text-ink' : 'text-faint')}
+      title={older ? `${older} đơn khác dùng version cũ — không bị ảnh hưởng bởi quyết định trên v.${v}` : undefined}
+    >
       <span className={cn('shrink-0', apps ? 'text-emerald-600' : '')}>{apps ? '✓' : '—'}</span>
-      <span className="truncate">{apps ? `${apps} đơn ứng tuyển` : 'Chưa dùng để ứng tuyển'}</span>
+      <span className="truncate">{apps ? `${apps} đơn dùng v.${v}` : `Chưa dùng v.${v} để ứng tuyển`}</span>
     </p>
   )
 }
@@ -74,11 +82,14 @@ export function SearchCell({ picked, verdict }: { picked: boolean; verdict: 'qua
  *
  * Same underlying field, opposite halves of it, because the two screens know
  * different things already. */
-export function PoolPickCell({ picked }: { picked: boolean }) {
+export function PoolPickCell({ picked, ver }: { picked: boolean; ver?: number }) {
+  /* Stated against the current version (client, 2026-09-03): CV search only ever
+     serves the current version, so “Đã chọn · v.3” is exactly what would show if
+     this row were approved. */
   return (
     <p className={cn('flex items-baseline gap-1 truncate text-[11.5px]', picked ? 'text-ink' : 'text-faint')}>
       <span className={cn('shrink-0', picked ? 'text-emerald-600' : '')}>{picked ? '✓' : '—'}</span>
-      <span className="truncate">{picked ? 'Đã chọn' : 'Chưa chọn'}</span>
+      <span className="truncate">{picked ? `Đã chọn · v.${ver ?? 1}` : 'Chưa chọn'}</span>
     </p>
   )
 }

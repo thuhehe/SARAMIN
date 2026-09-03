@@ -123,8 +123,11 @@ type CvStatus = 'Qualified' | 'Not enough information' | "Can't read" | 'Rejecte
    one the CV is on now. They are equal on almost every row; when they differ the
    employer is holding an older document than the one the candidate has today, and
    that gap is the whole reason the recall rule has to compare rather than assume.
-   A reject on the CURRENT version does NOT touch a row whose `ver` is behind. */
-export type Applicant = { name: string; basic: string; pref: string; contact: [string, string]; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string; ver?: number; curVer?: number }
+   A reject on the CURRENT version does NOT touch a row whose `ver` is behind.
+   `cv[0]` is the file AS DELIVERED — the name it had on the apply date. `curFile`
+   is what the candidate's shelf calls it now, when that differs: the row must
+   never quietly show the current name for a document the employer never got. */
+export type Applicant = { name: string; basic: string; pref: string; contact: [string, string]; role: string; years: string; loc: string; edu: string; job: string; company: string; cv: [string, 'saramin' | 'upload']; cvStatus: CvStatus; status: Delivery; stage: string; when: string; hold?: string; ver?: number; curVer?: number; curFile?: string }
 
 export const CV_STATUS_TONE: Record<CvStatus, StatusTone> = {
   Qualified: 'active',
@@ -240,6 +243,11 @@ export type CvCheckRow = {
      sentOld alone. Without the last number the dialog can only promise to recall
      everything, which is the rule we corrected. */
   ver?: number; sent?: number; sentOld?: number
+  /* `curVer` — where the CV is NOW, when that is past `ver`. Only meaningful on a
+     RECORD row (approved / rejected): a decision was made on v.1 and the candidate
+     has since moved to v.2, so the row reads v.1/2. A queue row is always current
+     (an older version in doubt is superseded and leaves the queue by itself). */
+  curVer?: number
   /* Which of the three views the row belongs to. `doubt` is the work; the other
      two are the RECORD of a human decision, kept on the same screen so a bad call
      can be rechecked and undone where it was made. */
@@ -254,5 +262,7 @@ export type CvCheckRow = {
      common, healthy case, not a defect. Kept distinct from the derived visibility
      because collapsing the two is what made the old column meaningless. */
   searchPick?: boolean
-  via?: 'report'
+  /* `reupload` — a NEW version uploaded onto a Rejected CV. The scan may pass it
+     and it still waits here: a new version does not launder a rejection. */
+  via?: 'report' | 'reupload'
 }
