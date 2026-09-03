@@ -155,14 +155,19 @@ function SearchScreen() {
         <div className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[12.5px] text-muted"><span className="font-semibold text-ink">1,248</span> jobs found</p>
-            <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Most recent</Chip><Chip>Relevance</Chip></div>
+            <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Mới cập nhật</Chip><Chip>Relevance</Chip><Chip>Mới nhất</Chip><Chip>Salary</Chip></div>
           </div>
+          {/* Tier banding — ONLY in the "Mới cập nhật" sort, which is why that chip is
+              the active one here. The pool is ordered Top Job → Distinction → Basic Plus
+              → Basic → Free, and auto-refresh only reorders WITHIN a band. Paid slots
+              carry the "Tin ưu tiên" badge, because a band can outrank relevance.
+              Pick Relevance / Mới nhất / Salary and the bands disappear entirely. */}
           <div className="space-y-2.5">
-            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" onClick={() => go('js-job-detail')} />
-            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" onClick={() => go('js-job-detail')} />
+            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" tier="Top Job" onClick={() => go('js-job-detail')} />
+            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" tier="Distinction" onClick={() => go('js-job-detail')} />
+            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" tier="Basic Plus" onClick={() => go('js-job-detail')} />
+            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" tier="Basic" onClick={() => go('js-job-detail')} />
             <JobCard title="Frontend Intern" company="Base.vn" salary="8 – 12 tr" onClick={() => go('js-job-detail')} />
-            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" onClick={() => go('js-job-detail')} />
-            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" onClick={() => go('js-job-detail')} />
           </div>
           <div className="mt-4 flex justify-center gap-1.5">
             {['1', '2', '3', '…', '25'].map((p) => (

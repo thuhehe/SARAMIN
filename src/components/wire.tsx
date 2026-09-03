@@ -127,6 +127,7 @@ export function JobCard({
   salary = 'Thỏa thuận',
   location = 'Hồ Chí Minh',
   rank,
+  tier,
   onClick,
 }: {
   title?: string
@@ -134,6 +135,10 @@ export function JobCard({
   salary?: string
   location?: string
   rank?: number
+  /** Posting tier, shown as the "Tin ưu tiên" disclosure badge. Paid position is
+      visible on purpose: banding lets a tier outrank relevance, so the reader is
+      told which slots were bought. Omit on Free — there is nothing to disclose. */
+  tier?: 'Top Job' | 'Distinction' | 'Basic Plus' | 'Basic'
   onClick?: () => void
 }) {
   return (
@@ -149,6 +154,7 @@ export function JobCard({
         </div>
         <p className="truncate text-[12px] text-muted">{company}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {tier && <Chip tone={tier === 'Top Job' ? 'rose' : tier === 'Distinction' ? 'amber' : 'blue'}>Tin ưu tiên · {tier}</Chip>}
           <Chip tone="green">{salary}</Chip>
           <Chip>{location}</Chip>
           <Chip>Full-time</Chip>
