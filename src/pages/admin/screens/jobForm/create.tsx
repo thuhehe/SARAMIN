@@ -163,10 +163,14 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
           <WorkingLocationsField />
 
           <div>
-            <LabelRow label="Salary range" req right={<ShowToggle />} />
+            {/* Each bound is individually OPTIONAL — at least one is required.
+                "Từ 15 triệu" is the commonest shape in this market, and demanding
+                both bounds pushes an employer who only knows their floor into
+                "Thỏa thuận", which tells the candidate nothing. */}
+            <LabelRow label="Salary band" req right={<ShowToggle />} />
             <div className={G3}>
-              <FField label="From" value="500" />
-              <FField label="To" value="1500" />
+              <FField label="From" value="500" hint="để trống = “Lên đến …”" />
+              <FField label="To" value="1500" hint="để trống = “Từ …”" />
               {/* TWO currencies, and no "create" affordance — a JPY or RUB salary
                   on a VN board is unfilterable and unrankable. USD is a DISPLAY
                   denomination: the IT / FDI segment advertises in it, and an

@@ -1921,6 +1921,7 @@ export const resumeManagement: BuildModule = {
           'As a developer touching any screen that shows or captures a salary, I want ONE place that says what shape it takes, how it is stored and how it is compared — so that the figure a candidate typed and the band an employer posted can actually be matched.',
         keyPoints: [
           { vi: 'Ứng viên nhập MỘT con số. Nhà tuyển dụng nhập một KHOẢNG. Hai hình dạng khác nhau, đừng ép chung một kiểu.', en: 'A candidate states ONE figure. An employer posts a BAND. Two different shapes — do not force one type on both.' },
+          { vi: 'KHOẢNG lương được phép hở MỘT ĐẦU: “Từ 15 triệu” hoặc “Lên đến 25 triệu” đều hợp lệ — chỉ cần có ít nhất một đầu. Bắt buộc nhập cả hai đầu là lý do nhà tuyển dụng bỏ sang “Thỏa thuận” và ta mất luôn con số.', en: 'A BAND MAY BE ONE-SIDED: “Từ 15 triệu” (min only) or “Lên đến 25 triệu” (max only) are both valid — at least one bound is all that is required. Demanding both is what pushes an employer into “Thỏa thuận”, and we lose the figure entirely.' },
           { vi: '“Thỏa thuận” là một giá trị hợp lệ ở cả hai phía, không phải ô để trống.', en: '“Thỏa thuận” (negotiable) is a valid VALUE on both sides, not an empty field.' },
           { vi: 'Không có lương thì KHÔNG bị trừ điểm — thiếu ràng buộc khác với không phù hợp.', en: 'A missing salary is never penalised in matching — absence of a constraint is not a mismatch.' },
         ],
@@ -1934,7 +1935,7 @@ export const resumeManagement: BuildModule = {
               cols: ['Surface', 'Shape', 'Stored as', 'Why this shape'],
               rows: [
                 ['1 · CANDIDATE states an expected salary (onboarding step 3 / profile edit)', 'ONE figure + period + currency, or "Thỏa thuận"', '`expectedSalary { kind, currency, min, max }` — the figure goes in `min`, `max` stays NULL', 'Nobody turns down more money, so a candidate’s upper bound is noise. One number is also the lowest-friction version of the single most-skipped field on the profile.'],
-                ['2 · EMPLOYER posts a job', 'A from–to BAND + currency, or "Thỏa thuận"', '`salaryType(negotiable|range) · salaryMin · salaryMax · salaryCurrency`', 'A hiring budget genuinely is a band, and the posted range is a marketing signal that drives applications.'],
+                ['2 · EMPLOYER posts a job', 'A BAND + currency — EITHER BOUND MAY BE OMITTED, at least one required — or "Thỏa thuận"', '`salaryType(negotiable|range) · salaryMin · salaryMax · salaryCurrency`, either bound nullable', 'A hiring budget genuinely is a band, and the posted range is a marketing signal that drives applications. Often only ONE end is known: "Từ 15 triệu" is the commonest shape in this market.'],
                 ['3 · EMPLOYER filters CV search', 'A from–to BAND + currency (client direction, 2026-08-13)', 'query only — nothing stored', 'The recruiter is screening for affordability against a budget they already have.'],
                 ['4 · JOBSEEKER filters job search', 'A from–to BAND + currency', 'query only — nothing stored', 'The mirror image of surface 3, and the one that was MISSING a currency until 2026-08-13. Same rules apply in both directions.'],
                 ['5 · SYSTEM scores CV ↔ JD', 'derived, weight 7', 'no new storage', 'Reads surfaces 1 and 2 and produces a fit signal — see the match-weights table in this module.'],
@@ -1955,6 +1956,28 @@ export const resumeManagement: BuildModule = {
             ],
             warn:
               'THE FAILURE THIS PREVENTS — comparing raw numbers across currencies produces FALSE POSITIVES, not misses, and nobody sees a false positive. "$3,000/mo asked" against "30,000,000 ₫ maximum" evaluates as 3000 ≤ 30000000 → inside the band → full marks, when the candidate is really asking ≈2.5× the budget.',
+          },
+          {
+            heading: 'A SALARY BAND MAY BE ONE-SIDED — “Từ 15 triệu” is a legal posting',
+            text:
+              'The WRITE-side half of the unset-bound rule above. Each bound is individually optional; what is required is that AT LEAST ONE is given. The same three shapes apply on surface 2 (the job posting) and on both filter surfaces.',
+            table: {
+              cols: ['Entered', 'Stored', 'Shown to the candidate'],
+              rows: [
+                ['Both bounds', 'salaryMin + salaryMax', '15 – 25 triệu'],
+                ['Minimum only', 'salaryMin, salaryMax NULL', 'Từ 15 triệu'],
+                ['Maximum only', 'salaryMax, salaryMin NULL', 'Lên đến 25 triệu'],
+                ['Neither', 'rejected on save', 'An empty band IS “Thỏa thuận” — the form makes the employer pick that rather than silently saving an infinite range.'],
+              ],
+            },
+            items: [
+              'NOTHING CHANGES ON THE READ SIDE — the canonical comparison above already defines an unset `from` as 0 and an unset `to` as +∞, so the salary filter and the match score need no new branch.',
+              'VALIDATION: `salaryMax ≥ salaryMin` applies ONLY when both are set — which is precisely why that rule was always worded “when both are set”. Both bounds still share one currency; a band can never be half VND and half USD.',
+              'SORTING BY SALARY READS THE MINIMUM, treating an unset minimum as 0. That is the figure a candidate actually compares against, and it stops a “Lên đến 50 triệu” posting outranking a real 20–25 band on the strength of a ceiling almost nobody is offered.',
+              'DISPLAY NEVER INVENTS THE MISSING HALF — never “15 – ∞”, never “0 – 25”. Same rule as everywhere else on this page: a number nobody stated must not reach a screen.',
+              'DEMANDING BOTH BOUNDS IS WHAT COSTS THE DATA. An employer who knows their floor but not their ceiling, told to supply both, picks “Thỏa thuận” — and the figure they were willing to publish is lost. Same argument as the USD field: the alternative to a one-sided band is not a two-sided one, it is an EMPTY one.',
+              'MAX-ONLY STAYS LEGAL but earns no ranking advantage. Banning it invites a fake “1 – 50 triệu”, which is worse because it looks real; the min-based sort is what removes the incentive.',
+            ],
           },
           {
             heading: 'Where each salary rule is implemented',

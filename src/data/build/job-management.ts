@@ -220,6 +220,24 @@ export const jobManagement: BuildModule = {
       warn: 'THE FAILURE THIS PREVENTS — comparing raw numbers across currencies produces FALSE POSITIVES, not misses. A candidate asking $3,000/mo against a job whose maximum is 30,000,000 ₫ evaluates as `3000 ≤ 30000000` → “ranges overlap” → full salary marks, when the candidate is really asking ≈2.5× the job’s maximum. See Resume management → match weights for the cross-currency rule that closes this.',
     },
     {
+      label: 'A SALARY BAND MAY BE ONE-SIDED — “Từ 15 triệu” is a legal posting',
+      text: 'CANONICAL RULES live in Resume management → CV data & matching architecture → “★ SALARY — the one contract”, which now carries the shapes, the display strings, the validation and the sort rule. Repeated here only as the JOB-FORM behaviour, because the form is where the rule is enforced.',
+      table: {
+        cols: ['What the employer enters', 'Stored', 'Form behaviour'],
+        rows: [
+          ['Both bounds', 'salaryMin + salaryMax', 'Normal case. `max ≥ min` checked on save, within one currency.'],
+          ['Minimum only', 'salaryMin, salaryMax NULL', 'Accepted. The To field carries a hint saying a blank To means “Từ …”.'],
+          ['Maximum only', 'salaryMax, salaryMin NULL', 'Accepted. The From field says a blank From means “Lên đến …”.'],
+          ['Neither', '— rejected on save', 'An empty band IS “Thỏa thuận”: the form makes the employer switch salaryType rather than saving an infinite band.'],
+        ],
+      },
+      items: [
+        'THE READ SIDE NEEDS NO NEW BRANCH — the canonical comparison is already `band.from ≤ figure ≤ band.to` with an unset from meaning 0 and an unset to meaning +∞, so the job-search salary filter and the match score are unchanged.',
+        'THE FORM MUST SHOW THE OPTIONALITY, not just permit it. Two empty number boxes under a required label read as “both required”; the hint on each bound is what turns a rule nobody can see into one an employer can use.',
+      ],
+      warn: 'Do NOT restate the display strings or the sort rule here. They are specified once in the canonical contract — a salary rule written in two modules is exactly the scatter that block was created to end, and it is how the candidate form once came to take one number while its own requirement said “range”.',
+    },
+    {
       label: 'JOB SKILLS — the employer half of the match',
       text: 'A job’s skills and a CV’s skills are the SAME master rows seen from two sides — that identity is the entire reason matching works, and it only holds because neither side can type free text. The taxonomy rules (master data, aliases, the request-a-skill loop, curation) are shared and live in Resume management → SKILLS on the CV; this block covers only what is specific to the JOB side.',
       table: {
@@ -329,8 +347,8 @@ export const jobManagement: BuildModule = {
               { name: '· city / province', type: 'enum (Master data)', notes: 'OPTIONAL, but the picker opens on a province rather than blank. The filterable half — search facets and the location match read this, never the address.' },
               { name: '· officeAddress', type: 'string (max 120)', notes: 'OPTIONAL. Street · building; display only.' },
               { name: 'experienceFrom / experienceTo', type: 'number (years)', notes: 'years of experience as a MIN–MAX range (not a single minimum)' },
-              { name: 'salaryType', type: 'radio', required: true, notes: 'Negotiable ("Thỏa thuận") OR a from–to range. A JOB states a BAND — the candidate side states ONE figure, and the two are compared point-in-range. Canonical rules: Resume management → CV data & matching architecture → "★ SALARY — the one contract"' },
-              { name: 'salaryMin / salaryMax', type: 'number', notes: 'required only when salaryType = range; the unit is whatever salaryCurrency says' },
+              { name: 'salaryType', type: 'radio', required: true, notes: 'Negotiable ("Thỏa thuận") OR a band. A JOB states a BAND — the candidate side states ONE figure, and the two are compared point-in-range. Canonical rules: Resume management → CV data & matching architecture → "★ SALARY — the one contract"' },
+              { name: 'salaryMin / salaryMax', type: 'number', notes: 'In band mode each bound is INDIVIDUALLY OPTIONAL — but at least ONE must be given. Three legal shapes: both (15–25tr) · min only (“Từ 15 triệu”) · max only (“Lên đến 25 triệu”). The unit is whatever salaryCurrency says. See “A SALARY BAND MAY BE ONE-SIDED”' },
               { name: 'salaryCurrency', type: 'enum VND · USD', required: true, notes: 'DECIDED 2026-08-13. Default VND. Two values only — never grows. USD is a DISPLAY denomination for the IT / FDI segment, not a payment currency; payroll settles in VND regardless. A USD job renders a settlement line to candidates' },
             ],
           },
@@ -373,7 +391,8 @@ export const jobManagement: BuildModule = {
           'Every slot previews at the real card size with the badge and star safe areas drawn on. The same photo is a good hero at 3:4 and a beheaded portrait at 3:2, and nobody discovers that from a thumbnail.',
           'Pictures are OPTIONAL to publish. A job posted without them renders on the gallery’s automatic default for its industry rather than blocking the publish — a paid posting must never be held hostage by a step the employer does not understand.',
           'An employer’s uploaded picture belongs to that job only. It is never added to the shared gallery, because we hold no right to redistribute it to another company.',
-          'salaryMax ≥ salaryMin when both are set (range mode only) — compared within ONE currency; the two bounds can never be in different currencies.',
+          'salaryMax ≥ salaryMin when both are set (band mode only) — compared within ONE currency; the two bounds can never be in different currencies.',
+          'Band mode requires AT LEAST ONE bound; either may be omitted, but not both. Both blank is “Thỏa thuận”, and the form makes the employer say so rather than saving an infinite band — see “A SALARY BAND MAY BE ONE-SIDED”.',
           'salaryCurrency is required in range mode and irrelevant in negotiable mode; a job that switches to "Thỏa thuận" keeps the stored currency rather than nulling it, so switching back does not lose the choice.',
           'experienceTo ≥ experienceFrom when both are set.',
           'deadline must be in the future on publish.',
