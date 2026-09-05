@@ -883,7 +883,7 @@ export const crm: BuildModule = {
       table: {
         cols: ['Card', 'Shows', 'Rule'],
         rows: [
-          ['Products & quota', 'One flat list **grouped by product type** — Job posting · CV search · Display/placement · Manual service — then the items with no PO', 'PRODUCT-FIRST: the product name and its quota are the headline, the PO that bought it is a small line underneath. CURRENT entitlement only — no Đang dùng / Đã kết thúc toggle, because an ended purchase is a document fact and PO history next door already carries its dates. **No grand total.**'],
+          ['Products & quota', 'One flat list **grouped by product type** — Job posting · CV search · Display/placement · Manual service — then the items with no PO', 'PRODUCT-FIRST: the product name and its quota are the headline, the PO that bought it is a small line underneath. CURRENT entitlement only — no Đang dùng / Đã kết thúc toggle, because an ended purchase is a document fact and PO history next door already carries its dates. **No grand total.** A CV pack additionally carries its activation state and the Kích hoạt button — this card is one of the two places that button exists (see Products & packages → activation).'],
           ['PO history', 'One row per PURCHASE ORDER: PO number · products in it · value · invoice date · **hạn dùng**', 'One row per thing actually bought. Order / Invoice / Payment as three separate rows was one purchase told three times. Derived from the same source list as the quota card, so the two can never disagree about which PO paid for what. Free jobs are absent from it, correctly — they have no PO.'],
         ],
       },
@@ -902,7 +902,7 @@ export const crm: BuildModule = {
         cols: ['Group', 'Contains', 'Provenance line'],
         rows: [
           ['**Job posting**', 'One row per PO that bought slots — a renewal is its own row, because it has its own expiry.', '`PO-005929-08-2026 · HĐ 15/06/2026 · hạn 31/12/2026`'],
-          ['**CV search**', 'The unlock combo, on the PO that bought it.', 'Same shape.'],
+          ['**CV search**', 'ONE ROW PER PACK, each with its own quota and its own activation state — not a merged balance. A pack carries a **Kích hoạt** button when it may be started, and the reason it may not when another pack is running.', 'Same shape, plus the activation line: which clock is running (hạn kích hoạt before, hạn dùng after) and who pressed it.'],
           ['**Display / placement**', 'One row per placement line bought (Main banner, Công ty nổi bật…), quota = lượt đặt.', 'Same shape.'],
           ['**Manual service**', 'One row per service, **plus its delivery log inline** — expandable where the quota is shown, with `+ Ghi nhận đã đăng`.', 'Same shape + “ghi nhận tay”.'],
           ['**Job free**', 'Tin Free (Admin đăng hộ) and Tặng — both are free postings with no PO. Last group, dashed amber border.', '**“N tin đã đăng”, and nothing else.** No provenance line (the heading already says there is no PO) and no status.'],
@@ -927,7 +927,8 @@ export const crm: BuildModule = {
       table: {
         cols: ['Case', 'On FPT Software'],
         rows: [
-          ['All four product types', 'Job posting (2 lines) · CV search (COMBO 400) · Display (Main Banner + Công ty nổi bật) · Manual service (Bài đăng Facebook, with its log).'],
+          ['All four product types', 'Job posting (2 lines) · CV search (2 packs — see below) · Display (Main Banner + Công ty nổi bật) · Manual service (Bài đăng Facebook, with its log).'],
+          ['**TWO CV packs, one running**', 'The activation rule shown rather than described: `COMBO 400` is **Đang dùng** (kích hoạt 02/08, hạn dùng 31/10) while `COMBO 100 (gia hạn)` sits **Chưa kích hoạt** with its button disabled and the reason on the row — mỗi lúc chỉ một gói CV được kích hoạt.'],
           ['More than one PO', '**2 live POs.** `PO-005649-07-2026` (hạn 31/10/2026) holds the original 25 slots, now **0/25 — đã dùng hết**; `PO-005929-08-2026` (hạn 31/12/2026) holds the renewal plus CV search, both placements and the manual service.'],
           ['A free job', '`Thực tập sinh Kiểm thử (QA Intern)` — no PO, sits beside 6 paid postings. The Jobs header counts it apart: “38/50 posting slots · 1 tin miễn phí (không PO, không trừ slot)”.'],
           ['A gift', '`Tin đăng Basic (Tặng)` under **Job free** — “1 tin đã đăng”. Beside it `Tin Free (Admin đăng hộ)`, also 1. Two rows, one number each.'],

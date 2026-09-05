@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { entitlements } from '@/pages/admin/data/companyRecord'
+import { CV_STATE, entitlements } from '@/pages/admin/data/companyRecord'
 import type { Ent, EntType } from '@/pages/admin/data/companyRecord'
 import { TIERS, TIER_YEAR, nextTierAt, tierAt, tierRevenue } from '@/pages/admin/data/membership'
 import type { ServiceEntitlement } from '@/pages/admin/data/services'
 import { vnd } from '@/pages/admin/lib/fmt'
 import { FLabel, LField } from '@/pages/admin/ui/fields'
-import { TierPill } from '@/pages/admin/ui/status'
+import { Pill, TierPill } from '@/pages/admin/ui/status'
 
 /* Membership block on the company record. Deliberately shows the ARITHMETIC, not
    just the badge: accumulated-in-year, the gap to the next band, and the reset date.
@@ -50,11 +50,60 @@ function QuotaBar({ left, total }: { left: number; total: number }) {
   )
 }
 
+/**
+ * The CV pack's activation line — state, the clock that is actually running, and
+ * the button when pressing it is legal.
+ *
+ * `blockedBy` is the whole point of the design: a second paid pack cannot start
+ * while another is running, so its button is disabled and SAYS WHICH pack is
+ * holding it. A disabled control with no reason reads as a broken screen, and the
+ * operator's next move is to call support.
+ */
+function CvActivation({ e, blockedBy, onActivate }: { e: Ent; blockedBy?: string; onActivate?: () => void }) {
+  const cv = e.cv!
+  const st = CV_STATE[cv.state]
+  return (
+    <div className="mt-1.5 rounded-md border border-line-soft bg-canvas/50 px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Pill tone={st.tone}>{st.vi}</Pill>
+        {/* ONE date per state — the clock that is running now. Showing both the
+            activation deadline and the validity end at once is how an operator
+            reads the wrong one and tells the customer the wrong thing. */}
+        {cv.state === 'chua-kich-hoat' && (
+          <span className="text-[10.5px] text-muted">Phải kích hoạt trước <b className="text-ink/70">{cv.activateBy}</b> · sau khi kích hoạt có <b className="text-ink/70">{cv.validDays} ngày</b></span>
+        )}
+        {cv.state === 'dang-dung' && (
+          <span className="text-[10.5px] text-muted">Hạn dùng <b className="text-ink/70">{cv.validUntil}</b> · kích hoạt {cv.activatedAt} bởi {cv.activatedBy}</span>
+        )}
+        {cv.state === 'da-ket-thuc' && (
+          <span className="text-[10.5px] text-muted">
+            {cv.endedBy === 'quota' ? 'Đã dùng hết quota' : `Hết hạn dùng ${cv.validUntil}`} · kích hoạt {cv.activatedAt}
+          </span>
+        )}
+        {cv.state === 'het-han-kich-hoat' && (
+          <span className="text-[10.5px] text-rose-700">Quá hạn kích hoạt {cv.activateBy} — quota hết hiệu lực, không hoàn tiền</span>
+        )}
+      </div>
+      {cv.state === 'chua-kich-hoat' && (
+        blockedBy ? (
+          <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800">
+            Chưa kích hoạt được: <b>{blockedBy}</b> đang chạy. Mỗi lúc chỉ một gói CV được kích hoạt — gói đó hết quota hoặc hết hạn dùng thì gói này mới bấm được.
+          </p>
+        ) : onActivate ? (
+          <button onClick={onActivate} className="mt-1 rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">
+            Kích hoạt gói
+          </button>
+        ) : null
+      )}
+    </div>
+  )
+}
+
 /* One product a company holds: the product and its quota on top, the order that
    bought it small underneath. That order is deliberate — a reader opens this card to
    answer "how many CV unlocks are left", not "which PO paid for them", so the PO is
    provenance, not the headline. */
-function EntRow({ e, expanded, onToggle }: { e: Ent; expanded: boolean; onToggle: () => void }) {
+function EntRow({ e, expanded, onToggle, blockedBy, onActivate }: { e: Ent; expanded: boolean; onToggle: () => void; blockedBy?: string; onActivate?: () => void }) {
   const noQuota = e.left === null
   const exhausted = !noQuota && e.left === 0
   const svc = e.svc
@@ -74,7 +123,11 @@ function EntRow({ e, expanded, onToggle }: { e: Ent; expanded: boolean; onToggle
                 {e.left}<span className="font-normal text-faint">/{e.total} {e.unit}</span>
               </span>}
         </div>
-        {!noQuota && <QuotaBar left={e.left!} total={e.total!} />}
+        {/* A pack that has not been activated shows NO meter: the bar would read
+            "100/100 left", which is true and completely misleading — nothing can be
+            spent from it yet. */}
+        {!noQuota && !(e.cv && e.cv.state === 'chua-kich-hoat') && <QuotaBar left={e.left!} total={e.total!} />}
+        {e.cv && <CvActivation e={e} blockedBy={blockedBy} onActivate={onActivate} />}
         {/* Provenance — only where there IS one. On a free row the group heading
             already says it has no PO, so a sentence repeating that is noise. */}
         {e.po && (
@@ -125,10 +178,52 @@ function EntRow({ e, expanded, onToggle }: { e: Ent; expanded: boolean; onToggle
   )
 }
 
+/**
+ * Activation confirm. It exists because the act is IRREVERSIBLE in effect: pressing
+ * it starts a 30- or 90-day clock that cannot be paused, and any quota left when
+ * that clock ends is gone. So the dialog states the end date it is about to create,
+ * in words, before the button.
+ */
+function ActivateCvModal({ e, company, onClose }: { e: Ent; company: string; onClose: () => void }) {
+  const cv = e.cv!
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+      <div className="my-8 w-full max-w-[460px] rounded-2xl border border-line bg-surface p-5 shadow-2xl">
+        <h3 className="text-[15px] font-bold tracking-tight text-ink">Kích hoạt gói CV search?</h3>
+        <p className="mt-1 text-[12px] text-muted">{company} · {e.name}</p>
+        <div className="mt-3 space-y-1.5 rounded-lg border border-line bg-canvas/60 px-3 py-2.5 text-[12px]">
+          {[['Quota của gói này', `${e.total} CV unlocks`],
+            ['Thời hạn dùng sau khi kích hoạt', `${cv.validDays} ngày`],
+            ['Phải kích hoạt trước', cv.activateBy]].map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between gap-2">
+              <span className="text-muted">{k}</span><span className="font-medium text-ink/80">{v}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+          Đồng hồ <b>{cv.validDays} ngày</b> chạy từ lúc bấm và <b>không dừng lại được</b>. Quota chưa dùng hết khi hết hạn sẽ mất. Trong lúc gói này chạy, các gói CV khác <b>không kích hoạt được</b>.
+        </p>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted">
+          NTD cũng tự kích hoạt được ở <b className="text-ink/75">Company site → Products</b>. Admin bấm hộ là để xử lý ca khách gọi lên nhờ, và bản ghi lưu lại ai bấm.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Huỷ</button>
+          <button onClick={onClose} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Kích hoạt</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* Products & quota block — shared by the Overview snapshot and the billing tab */
 export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean }) {
   const ents = entitlements(c)
   const [openSvc, setOpenSvc] = useState<string | null>(null)
+  const [activating, setActivating] = useState<Ent | null>(null)
+  /* THE SERIALISATION, in one place: whichever CV pack is running blocks every other
+     pack from starting. Computed from the rows the card is about to render, so the
+     button state and the reason under it can never disagree with the list above. */
+  const running = ents.find((e) => e.cv?.state === 'dang-dung')
   const [logging, setLogging] = useState<ServiceEntitlement | null>(null)
   /* The four product types, in the catalogue's own order, then the no-PO items. A
      type with nothing in it is omitted rather than shown empty — an empty heading
@@ -166,7 +261,18 @@ export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean })
               <p className={cn('mb-1 text-[10px] font-semibold uppercase tracking-wide', g.key === 'none' ? 'text-amber-800' : 'text-faint')}>{g.label}</p>
               <div className="space-y-1.5">
                 {rows.map((e) => (
-                  <EntRow key={e.name + (e.po ?? '')} e={e} expanded={openSvc === e.name} onToggle={() => setOpenSvc(openSvc === e.name ? null : e.name)} />
+                  <EntRow
+                    key={e.name + (e.po ?? '')}
+                    e={e}
+                    expanded={openSvc === e.name}
+                    onToggle={() => setOpenSvc(openSvc === e.name ? null : e.name)}
+                    blockedBy={running && running !== e ? running.name : undefined}
+                    /* The STATE shows everywhere; the button only on the full billing
+                       tab, same convention as the service log. The Overview snapshot is
+                       read at a glance, and starting an irreversible 30/90-day clock
+                       from a summary card is a misclick waiting to happen. */
+                    onActivate={compact ? undefined : () => setActivating(e)}
+                  />
                 ))}
               </div>
               {g.key === 'service' && !compact && (
@@ -183,6 +289,7 @@ export function ProductsQuota({ c, compact }: { c: Company; compact?: boolean })
         })}
       </div>
       {logging && <LogServiceDeliveryModal e={logging} company={coLabel(c)} onClose={() => setLogging(null)} />}
+      {activating && <ActivateCvModal e={activating} company={coLabel(c)} onClose={() => setActivating(null)} />}
     </>
   )
 }

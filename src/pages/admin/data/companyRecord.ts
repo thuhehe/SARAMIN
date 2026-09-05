@@ -31,6 +31,35 @@ import type { StatusTone } from '@/pages/admin/lib/tone'
    rep quotes what is left on the line that is still valid, and the lines expire on
    different days. */
 export type EntType = 'job' | 'cv' | 'placement' | 'service' | 'none'
+
+/* ── CV-SEARCH ACTIVATION ──────────────────────────────────────────────────────
+   Every other product is usable the moment the VAT invoice is issued: the buyer
+   has the activation window to spend it and nothing has to be pressed. A CV pack
+   is the exception — it does NOT run until someone presses Activate, because its
+   validity is short (30 or 90 days) and starting that clock on the invoice date
+   would burn most of it before a recruiter ever searched.
+
+   FOUR states, and the fourth is the only one that destroys paid quota. */
+export type CvState = 'chua-kich-hoat' | 'dang-dung' | 'da-ket-thuc' | 'het-han-kich-hoat'
+export const CV_STATE: Record<CvState, { vi: string; tone: StatusTone }> = {
+  'chua-kich-hoat': { vi: 'Chưa kích hoạt', tone: 'draft' },
+  'dang-dung': { vi: 'Đang dùng', tone: 'active' },
+  'da-ket-thuc': { vi: 'Đã kết thúc', tone: 'expired' },
+  'het-han-kich-hoat': { vi: 'Hết hạn kích hoạt', tone: 'expired' },
+}
+export type CvPack = {
+  state: CvState
+  /** invoiceDate + activationWindowMonths — the day unused quota dies unactivated */
+  activateBy: string
+  /** 30 or 90 — how long the pack runs ONCE activated, not before */
+  validDays: number
+  activatedAt?: string
+  activatedBy?: string
+  /** activatedAt + validDays */
+  validUntil?: string
+  /** why a finished pack finished — both endings free the next pack to activate */
+  endedBy?: 'quota' | 'validity'
+}
 export type Ent = {
   type: EntType
   name: string
@@ -44,6 +73,9 @@ export type Ent = {
   until?: string
   /** manual services carry their delivery log, so it opens where the quota is shown */
   svc?: ServiceEntitlement
+  /** CV packs only — the activation clock. Its absence is meaningful: a row with no
+      `cv` needs no activation and is spendable as soon as it is invoiced. */
+  cv?: CvPack
   /** For a FREE row there is no quota to count down, so it reports the one fact the
       quota rows also report: how many postings were made. Deliberately NOT whether
       they are still running — a posting counts the moment it goes up, here exactly as
@@ -76,6 +108,39 @@ const jobPoOf = (c: Company, i: number) =>
     a rep has to know what the customer got for nothing. */
 const GIFTS: Record<string, string[]> = { 'FPT Software': ['Tin đăng Basic (Tặng)'] }
 
+/* A SECOND CV pack, for the companies that bought a renewal before finishing the
+   first. It is the case the whole activation rule exists for: two paid packs, and
+   only one of them allowed to run. Kept to the big accounts so most records stay
+   the simple one-pack shape. */
+const CV_RENEWALS = new Set(['FPT Software', 'Tiki', 'Thế Giới Di Động', 'VNG Corporation'])
+
+/** One row per CV pack. At most one is ever `dang-dung` — see CvState. */
+function cvPacks(c: Company): Ent[] {
+  const n = poCount(c)
+  const po = jobPoOf(c, n - 1)
+  const invoiced = n > 1 ? '15/06/2026' : (c.since !== '—' ? c.since : '—')
+  const exhausted = c.cvLeft === 0
+  /* The FIRST pack is the one already running — or already finished, when its quota
+     ran out. Its validity is what the activation started, not the invoice date. */
+  const first: Ent = {
+    type: 'cv', name: `COMBO ${c.cvTotal} — mở CV`, left: c.cvLeft, total: c.cvTotal, unit: 'CV unlocks',
+    po, invoiced,
+    cv: exhausted
+      ? { state: 'da-ket-thuc', endedBy: 'quota', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/07/2026', activatedBy: 'Admin · Lê Minh Anh', validUntil: '30/09/2026' }
+      : { state: 'dang-dung', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/08/2026', activatedBy: 'NTD · Trần Thị Hà', validUntil: '31/10/2026' },
+  }
+  first.until = first.cv?.validUntil
+  if (!CV_RENEWALS.has(c.name)) return [first]
+  /* The renewal sits PAID AND WAITING. Its own 30 days have not started and will
+     not start until the pack above ends — by quota or by validity. */
+  const second: Ent = {
+    type: 'cv', name: 'COMBO 100 — mở CV (gia hạn)', left: 100, total: 100, unit: 'CV unlocks',
+    po: jobPoOf(c, n - 1), invoiced: '18/08/2026',
+    cv: { state: 'chua-kich-hoat', activateBy: '18/08/2027', validDays: 30 },
+  }
+  return [first, second]
+}
+
 export function entitlements(c: Company): Ent[] {
   const out: Ent[] = []
   const n = poCount(c)
@@ -90,13 +155,13 @@ export function entitlements(c: Company): Ent[] {
       until: i === 0 ? '31/10/2026' : '31/12/2026',
     })
   }
-  // CV search hangs off the LAST job PO, so the list answers "which order bought the
-  // unlocks?" instead of implying every order did.
+  /* CV SEARCH — one row per PACK, each with its own activation clock and its own
+     quota. Not a pooled balance: an unlock is deducted from the pack it was spent
+     under, so two packs of 100 are never "200 left". CV search hangs off the LAST
+     job PO, so the list answers "which order bought the unlocks?" instead of
+     implying every order did. */
   if (c.resumeSearch) {
-    out.push({
-      type: 'cv', name: `COMBO ${c.cvTotal} — mở CV`, left: c.cvLeft, total: c.cvTotal, unit: 'CV unlocks',
-      po: jobPoOf(c, n - 1), invoiced: n > 1 ? '15/06/2026' : (c.since !== '—' ? c.since : '—'), until: n > 1 ? '31/12/2026' : '31/10/2026',
-    })
+    for (const pk of cvPacks(c)) out.push(pk)
   }
   // Display / placement bookings — bought by the line, spent by the booking.
   for (const po of PLACEMENT_POS[c.name] ?? []) {

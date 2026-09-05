@@ -199,7 +199,7 @@ function AlertRow({ warn, text, action, onClick }: { warn?: boolean; text: React
     beside the ones it does, each with a 구매 button — the rail doubles as the
     store front. Held products show live quota instead, because for those the
     question is "how much is left", not "do I want this". */
-function RailProduct({ name, left, total, unit, until, onUse, onBuy }: {
+function RailProduct({ name, left, total, unit, until, onUse, onBuy, awaiting, onActivate, blockedBy }: {
   name: string
   left?: number
   total?: number
@@ -207,6 +207,10 @@ function RailProduct({ name, left, total, unit, until, onUse, onBuy }: {
   until?: string
   onUse?: () => void
   onBuy: () => void
+  /** paid but not activated — a third state between "not bought" and "counting down" */
+  awaiting?: { count: number; activateBy: string; validDays: number }
+  onActivate?: () => void
+  blockedBy?: string
 }) {
   const held = left !== undefined && total !== undefined
   const low = held && left / total <= 0.2
@@ -223,6 +227,22 @@ function RailProduct({ name, left, total, unit, until, onUse, onBuy }: {
           Buy
         </button>
       </div>
+      {/* PAID, NOT STARTED. No bar — there is nothing to count down yet — and the
+          call to action is Activate, not Use: pressing Use first would mean an
+          employer discovering the rule from an error message. */}
+      {awaiting && (
+        <div className="mt-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-amber-800">{awaiting.count} {unit} · kích hoạt trước {awaiting.activateBy}</span>
+            {blockedBy
+              ? <span className="shrink-0 text-[10px] text-faint" title={`${blockedBy} đang chạy`}>đang chờ</span>
+              : onActivate && <button onClick={onActivate} className="shrink-0 rounded bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">Kích hoạt</button>}
+          </div>
+          <p className="mt-0.5 text-[9.5px] leading-relaxed text-faint">
+            {blockedBy ? `${blockedBy} đang chạy — hết gói đó mới kích hoạt được gói này.` : `Kích hoạt rồi có ${awaiting.validDays} ngày để dùng hết.`}
+          </p>
+        </div>
+      )}
       {held && (
         <>
           <Bar pct={Math.round((left / total) * 100)} tone={low ? 'warn' : undefined} />
@@ -464,15 +484,16 @@ function DashboardScreen() {
             {first ? (
               <>
                 <RailProduct name="Job Posting — Pro" onBuy={() => go('co-products')} />
-                <RailProduct name="Resume Search" onBuy={() => go('co-products')} />
+                <RailProduct name="Resume Search — COMBO 100" unit="CV unlocks" awaiting={{ count: 100, activateBy: '12/09/2027', validDays: 90 }} onActivate={() => go('co-products')} onBuy={() => go('co-products')} />
                 <p className="mt-2 border-t border-line-soft pt-2 text-[10px] leading-relaxed text-faint">
-                  Paid, not started. Quota begins counting the day you activate — activate by 12/09/2026.
+                  Posting slots dùng được ngay, bất cứ lúc nào trong 12 tháng. Gói CV search phải <b className="text-ink/70">kích hoạt</b> — 90 ngày tính từ lúc bấm, nên chỉ bấm khi bắt đầu tìm CV.
                 </p>
               </>
             ) : (
               <>
                 <RailProduct name="Job Posting — Pro" left={7} total={10} unit="posting slots" until="31/12/2026" onUse={() => go('co-post-job')} onBuy={() => go('co-products')} />
-                <RailProduct name="Resume Search" left={62} total={100} unit="CV unlocks" until="31/12/2026" onUse={() => go('co-resume-search')} onBuy={() => go('co-products')} />
+                <RailProduct name="Resume Search — COMBO 100" left={62} total={100} unit="CV unlocks" until="31/10/2026" onUse={() => go('co-resume-search')} onBuy={() => go('co-products')} />
+                <RailProduct name="Resume Search (gia hạn)" unit="CV unlocks" awaiting={{ count: 100, activateBy: '18/08/2027', validDays: 30 }} blockedBy="COMBO 100" onBuy={() => go('co-products')} />
                 <RailProduct name="Homepage placement" onBuy={() => go('co-products')} />
                 <p className="mt-2 border-t border-line-soft pt-2 text-[10px] leading-relaxed text-faint">
                   Quota is pooled across your team — every spend is attributed to the member who made it.
@@ -1844,7 +1865,15 @@ function ResumeSearchScreen() {
 
   return (
     <div className="relative">
-      <PageBar title="Resume search" sub="Find and unlock candidate CVs from Saramin's talent pool." action={<Chip tone="blue">62 / 100 unlocks left</Chip>} />
+      {/* The header names the PACK the unlocks come out of, and the date it ends.
+          Unlocks are deducted from one activated pack, not from a pooled balance, so
+          "62 left" without saying left OF WHAT is the number a recruiter plans a
+          week of sourcing around and then loses. */}
+      <PageBar
+        title="Resume search"
+        sub="Find and unlock candidate CVs from Saramin's talent pool."
+        action={<Chip tone="blue">62 / 100 · COMBO 100 · đến 31/10/2026</Chip>}
+      />
       {/* ── search bar: ONE box, then the parse ───────────────────────────────
           Replaces the Saramin-KR OR / AND / NOT boxes. Operators asked the
           recruiter to resolve their intent into set logic BEFORE we had shown we
@@ -2466,19 +2495,56 @@ function ProductsQuotaScreen() {
           <p className="mt-2 text-[10.5px] text-faint">One slot is spent each time a job goes Open. Valid until 31/12/2026.</p>
           <div className="mt-3 flex gap-2"><Btn primary onClick={() => go('co-post-job')}>+ Post a job</Btn><Btn>Buy more slots</Btn></div>
         </div>
+        {/* THE ACTIVATED CV PACK. Its validity is dated from the day it was
+            activated, not from the invoice — which is the whole reason the button
+            below exists on the other card. */}
         <div className="rounded-xl border border-line p-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12.5px] font-bold">Resume Search — 6 months</p>
-            <Chip tone="green">Active</Chip>
+            <p className="text-[12.5px] font-bold">Resume Search — COMBO 100</p>
+            <Chip tone="green">Đang dùng</Chip>
           </div>
           <div className="flex justify-between text-[11.5px]"><span className="text-muted">CV unlocks left</span><b className="tabular-nums">62 / 100</b></div>
           <Bar pct={62} />
-          <p className="mt-2 text-[10.5px] text-faint">One unlock reveals a candidate's full CV + contact. Valid until 31/12/2026.</p>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+            One unlock reveals a candidate's full CV + contact, and is deducted from <b className="text-ink/70">this pack</b>.
+            Activated 02/08/2026 → <b className="text-ink/70">90 days, ends 31/10/2026</b>. Unlocks left when it ends do not carry over.
+          </p>
           <div className="mt-3 flex gap-2"><Btn primary onClick={() => go('co-resume-search')}>Search resumes</Btn><Btn>Buy more unlocks</Btn></div>
+        </div>
+
+        {/* THE PAID-AND-WAITING PACK — the case the activation rule exists for. Its
+            30 days have not started, and cannot start while the pack above runs.
+            Shown with NO meter: "100 / 100 left" would be true and useless, because
+            nothing is spendable from it yet. */}
+        <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[12.5px] font-bold">Resume Search — COMBO 100 (gia hạn)</p>
+            <Chip tone="amber">Chưa kích hoạt</Chip>
+          </div>
+          <div className="flex justify-between text-[11.5px]"><span className="text-muted">CV unlocks in this pack</span><b className="tabular-nums">100</b></div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-amber-900">
+            Đã thanh toán. Bạn có <b>đến 18/08/2027</b> để kích hoạt gói này — kích hoạt rồi thì có <b>30 ngày</b> để mở hết 100 CV.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* Disabled, and it says WHICH pack is holding it. A greyed button with
+                no reason is a screen the employer reads as broken. */}
+            <span className="inline-flex cursor-not-allowed items-center justify-center rounded-md border border-line bg-canvas px-3 py-1.5 text-[12px] font-medium text-faint">
+              Kích hoạt gói
+            </span>
+            <span className="text-[10.5px] leading-relaxed text-amber-900">
+              Gói <b>COMBO 100</b> đang chạy — mỗi lúc chỉ kích hoạt được một gói CV. Gói đó hết quota hoặc hết hạn 31/10/2026 thì gói này mới bấm được.
+            </span>
+          </div>
         </div>
       </div>
       <p className="mt-3 text-[11px] leading-relaxed text-faint">
         Quota is shared by everyone on your team. Products appear here automatically once Saramin confirms your payment — you never pick them by hand.
+      </p>
+      {/* The one asymmetry an employer has to understand, stated once where both
+          kinds of product are on screen together. */}
+      <p className="mt-1.5 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11px] leading-relaxed text-muted">
+        <b className="text-ink/75">Posting slots và placement dùng được ngay</b> sau khi Saramin xuất hóa đơn, bất cứ lúc nào trong <b className="text-ink/75">12 tháng</b> — không phải bấm gì.
+        <b className="mt-1 block text-ink/75">Gói CV search thì phải bấm “Kích hoạt”</b> — vì thời hạn dùng chỉ 30 hoặc 90 ngày, nên đồng hồ đó chỉ nên chạy khi bạn thật sự bắt đầu tìm CV. Admin Saramin cũng bấm hộ được nếu bạn gọi lên.
       </p>
 
       {/* ── usage history — every spend, who and what, so quota is never a mystery ── */}
