@@ -112,7 +112,14 @@ const GIFTS: Record<string, string[]> = { 'FPT Software': ['Tin đăng Basic (T�
    first. It is the case the whole activation rule exists for: two paid packs, and
    only one of them allowed to run. Kept to the big accounts so most records stay
    the simple one-pack shape. */
-const CV_RENEWALS = new Set(['FPT Software', 'Tiki', 'Thế Giới Di Động', 'VNG Corporation'])
+const CV_RENEWALS = new Set(['FPT Software', 'Tiki', 'Thế Giới Di Động', 'VNG Corporation', 'Công ty TNHH Kim Long Logistics'])
+
+/* THE PACK THAT RAN OUT OF TIME, not out of quota — one account carries it because
+   it is the only shape where the Kích hoạt button is actually PRESSABLE, and
+   because it shows the consequence the requirement warns about: the validity ended
+   with unlocks still on the pack, and they are forfeit. A rule whose cost is only
+   described in prose gets argued about; one a rep can see on a record does not. */
+const CV_LAPSED = new Set(['Công ty TNHH Kim Long Logistics'])
 
 /** One row per CV pack. At most one is ever `dang-dung` — see CvState. */
 function cvPacks(c: Company): Ent[] {
@@ -120,14 +127,18 @@ function cvPacks(c: Company): Ent[] {
   const po = jobPoOf(c, n - 1)
   const invoiced = n > 1 ? '15/06/2026' : (c.since !== '—' ? c.since : '—')
   const exhausted = c.cvLeft === 0
-  /* The FIRST pack is the one already running — or already finished, when its quota
-     ran out. Its validity is what the activation started, not the invoice date. */
+  const lapsed = CV_LAPSED.has(c.name)
+  /* The FIRST pack is the one already running — or already finished, by whichever of
+     its two endings came first. Its validity is what the ACTIVATION started, not the
+     invoice date; that is the whole point of the button. */
   const first: Ent = {
     type: 'cv', name: `COMBO ${c.cvTotal} — mở CV`, left: c.cvLeft, total: c.cvTotal, unit: 'CV unlocks',
     po, invoiced,
-    cv: exhausted
-      ? { state: 'da-ket-thuc', endedBy: 'quota', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/07/2026', activatedBy: 'Admin · Lê Minh Anh', validUntil: '30/09/2026' }
-      : { state: 'dang-dung', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/08/2026', activatedBy: 'NTD · Trần Thị Hà', validUntil: '31/10/2026' },
+    cv: lapsed
+      ? { state: 'da-ket-thuc', endedBy: 'validity', activateBy: '20/03/2027', validDays: 30, activatedAt: '18/06/2026', activatedBy: 'NTD · Vũ Hồng Sơn', validUntil: '18/07/2026' }
+      : exhausted
+        ? { state: 'da-ket-thuc', endedBy: 'quota', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/07/2026', activatedBy: 'Admin · Lê Minh Anh', validUntil: '30/09/2026' }
+        : { state: 'dang-dung', activateBy: '15/06/2027', validDays: 90, activatedAt: '02/08/2026', activatedBy: 'NTD · Trần Thị Hà', validUntil: '31/10/2026' },
   }
   first.until = first.cv?.validUntil
   if (!CV_RENEWALS.has(c.name)) return [first]

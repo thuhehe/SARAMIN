@@ -84,6 +84,14 @@ function CvActivation({ e, blockedBy, onActivate }: { e: Ent; blockedBy?: string
           <span className="text-[10.5px] text-rose-700">Quá hạn kích hoạt {cv.activateBy} — quota hết hiệu lực, không hoàn tiền</span>
         )}
       </div>
+      {/* A pack that ran out of TIME with unlocks still on it: say so, because the
+          number above still reads like a balance. This is the cost of the one-pack
+          rule made visible on a record instead of argued about in prose. */}
+      {cv.state === 'da-ket-thuc' && cv.endedBy === 'validity' && (e.left ?? 0) > 0 && (
+        <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800">
+          Còn <b>{e.left} {e.unit}</b> chưa dùng khi hết hạn — <b>không cộng sang gói sau</b> và không hoàn tiền.
+        </p>
+      )}
       {cv.state === 'chua-kich-hoat' && (
         blockedBy ? (
           <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800">
