@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Where /sync-doc last left off. One entry per build repo.",
+    "`lastSyncedSha` is the commit on that repo's `dev` branch that the spec",
+    "site was last reconciled against. null = never synced, so the next run",
+    "does a FULL inventory comparison instead of a commit diff.",
+    "Only /sync-doc writes this file, and only after the user approves the",
+    "doc edits — a rejected proposal must leave the baseline untouched, or the",
+    "changes it found would be silently skipped forever."
+  ],
+  "lastSyncAt": null,
+  "repos": {
+    "saramin-vn-admin": { "lastSyncedSha": null, "lastSyncedAt": null },
+    "svn-be": { "lastSyncedSha": null, "lastSyncedAt": null },
+    "svn-web": { "lastSyncedSha": null, "lastSyncedAt": null }
+  }
+}

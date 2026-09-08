@@ -264,6 +264,183 @@ export const companyUser: BuildModule = {
         ],
       },
     },
+    // MOVED from Job management (2026-09-08 page feedback): the employer's landing
+    // screen is an account-management surface, not a job surface — it aggregates
+    // products, quota and payment alerts, which is why the features below already
+    // referenced it. URL is now /m/account-management/home-dashboard-companies.
+    {
+      name: 'Home dashboard (company site)',
+      site: 'Companies',
+      slug: 'home-dashboard-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The landing screen after an employer logs in. A READ-ONLY aggregate — it owns no data of its own and every panel links into the module that does.',
+      mockup: 'co-dashboard',
+      ready: true,
+      detail: {
+        description:
+          'Where an employer lands after signing in. It answers three questions in one screen, in priority order: what is BLOCKING or expiring, who is WAITING on me, and what did we buy / how much is left. The layout follows Saramin Korea’s employer home (hiring.saramin.co.kr/home) — a wide work column beside a narrow account rail — because that split keeps daily recruiting work from competing for space with billing and settings.\n\nIt is deliberately an aggregate and nothing else. Every number is derived from a record another module owns: job status and deadline, application stage and waiting days, saved searches, pooled quota, company-page completeness, the CRM sales owner. Home has no entity, no status of its own, and no action that cannot also be done on the screen that owns it.',
+        userStory:
+          'As an HR user, I want to see what is blocking me and who is waiting on me the moment I log in, so that I do not have to open four screens to find out whether anything needs me today.',
+        keyPoints: [
+          {
+            vi: 'Home CHỈ ĐỌC. Mọi con số đều được suy ra từ module khác — không tạo thực thể, không có trạng thái riêng, không có hành động nào mà màn hình gốc không có.',
+            en: 'Home is READ-ONLY. Every number is derived from another module — it creates no entity, holds no status of its own, and offers no action the owning screen does not.',
+          },
+          {
+            vi: 'Tab "Chưa xem" dùng STAGE = New của pipeline, KHÔNG thêm cờ đã đọc/chưa đọc. Một cờ riêng cho Home sẽ tạo nguồn sự thật thứ hai cho "đã có ai xem ứng viên này chưa".',
+            en: 'The “Not reviewed” tab is pipeline STAGE = New — no read/unread flag is added. A flag owned by Home would be a second source of truth for “has anyone looked at this candidate”.',
+          },
+          {
+            vi: 'Dải cảnh báo chỉ hiện khi CÓ việc cần xử lý. Không có dòng "mọi thứ ổn" — một dải luôn hiện là một dải mắt học cách bỏ qua.',
+            en: 'The alert strip renders only when something needs action. There is no “all clear” row — a strip that is always there is one the eye learns to skip.',
+          },
+          {
+            vi: 'Không sao chép cột quảng cáo và 쿠폰/포인트 của Saramin KR: Phase 1 không bán gì ở đó và mô hình sản phẩm VN không có coupon/point.',
+            en: 'Saramin KR’s ad rail and coupon/point counters are NOT copied: Phase 1 sells nothing there, and the VN product model has no coupon or point currency.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'The alert strip — the only part that can cost money or a hire',
+            text: 'Pinned above everything. Each row is a condition that is blocking something or running out of time, plus the one action that clears it. Rows are ordered blocking-first, then by deadline. Everything here is owned elsewhere; Home only surfaces it.',
+            table: {
+              cols: ['Condition', 'Shows when', 'Action → goes to', 'Owned by'],
+              rows: [
+                ['Company page not Published', 'Account holds Job Posting AND page status ≠ Published', 'Publish page → Company page', 'Account management → Company detail'],
+                ['Product paid but not activated', 'An entitlement exists with no activation date and an activationDeadline in the future', 'Activate → Product usage', 'Products & packages · Account management → Product usage (company site)'],
+                ['Job closing soon', 'An Open job’s deadline is ≤7 days away AND it has unreviewed candidates', 'Review → Applicants', 'Job management'],
+                ['Quota low / exhausted', 'Remaining posting slots or CV unlocks ≤20% of the pack, or 0', 'Buy again → Product usage', 'Account management → Product usage (company site)'],
+                ['Order awaiting payment', 'An order is Unpaid or Overdue — no paidAt recorded by Accounting', 'View order → Payment history', 'CRM → Purchase order (payment fact) · Account management → Payment history (company site)'],
+              ],
+            },
+            warn: 'No “all clear” row, and no alert that Home alone can resolve. If a condition cannot be cleared on the screen the action links to, it does not belong in this strip.',
+          },
+          {
+            label: 'The two states Home must be designed for',
+            text: 'A first-run account and an account in flight are genuinely different screens, and the first-run one is what most new customers see for their first week. Both are specified; neither is an afterthought empty state.',
+            table: {
+              cols: ['State', 'When', 'What Home shows'],
+              rows: [
+                ['First run', 'Activated, nothing posted, no search saved', 'Alerts: publish page + activate package. Both strips show a tinted panel naming the gap and its one CTA. To-do is empty with “Post a job”. Rail shows products held but not started, with no quota bar yet.'],
+                ['In flight', 'At least one job Open or Scheduled', 'Strips list jobs and saved searches with their live counts; to-do carries the stage queues; rail shows quota bars.'],
+                ['Resume Search not owned', 'Account holds Job Posting only', 'The Saved searches strip is replaced by the product offer — the rail already lists the unowned product with a Buy path; the strip must not show an empty panel for something the account cannot use.'],
+              ],
+            },
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Alert strip (conditional — see the rule block)',
+            items: [
+              { name: 'alerts[]', type: 'derived', notes: 'each = { severity: warn | info, message, actionLabel, target screen }. Empty array → the strip does not render at all' },
+            ],
+          },
+          {
+            group: 'Jobs in progress (KR 진행중 공고)',
+            items: [
+              { name: 'count', type: 'derived', notes: 'Open + Scheduled. Draft and Closed are NOT “in progress” and are not counted' },
+              { name: 'card', type: 'composite', notes: 'title · status chip (Open / Scheduled) · deadline or go-live date · candidate count. Click → Applicants for that job' },
+              { name: 'empty state', type: 'panel', notes: 'first-run only: “Post a job and start collecting candidates · it goes live immediately” + Post a job' },
+            ],
+          },
+          {
+            group: 'Saved searches (KR 진행중 인재풀)',
+            items: [
+              { name: 'count', type: 'derived', notes: 'saved searches on the account — see Resume management → “Save this search”' },
+              { name: 'card', type: 'composite', notes: 'search name · last-run date · NEW CVs matching since that run. Click → Resume search with the search loaded' },
+              { name: 'gating', type: 'rule', notes: 'the whole strip is hidden unless the account is entitled to Resume Search' },
+            ],
+          },
+          {
+            group: 'My to-do (KR 내 할일)',
+            items: [
+              { name: 'tabs', type: 'stage counts', required: true, notes: 'Not reviewed (stage = New) · Screening · Interview · Offer. The counts ARE the pipeline stage counts — no separate computation' },
+              { name: 'row', type: 'composite', notes: 'photo · name · job applied to · match % (with its two contributing signals on hover — never a bare number) · days waiting' },
+              { name: 'sort', type: 'rule', required: true, notes: 'longest waiting first — the queue exists to surface who has been ignored, so recency sorting would defeat it' },
+              { name: 'scope', type: 'rule', notes: 'across ALL of the account’s jobs, not one posting; recalled and withdrawn applications never appear' },
+            ],
+          },
+          {
+            group: 'Account rail — company card',
+            items: [
+              { name: 'identity', type: 'composite', notes: 'logo · company display name · signed-in user with their role badge' },
+              { name: 'company page status', type: 'enum', notes: 'Draft · Published · Unpublished — the same status the Company page screen owns' },
+              { name: 'completeness', type: 'derived %', notes: 'the same figure the Company page screen shows; the CTA names the highest-value missing block rather than saying “edit”' },
+            ],
+          },
+          {
+            group: 'Account rail — products in use (KR 이용중인 상품)',
+            items: [
+              { name: 'held product', type: 'row', notes: 'name · remaining / total · progress bar · unit + valid-until · “Use →” into the screen that spends it' },
+              { name: 'unheld product', type: 'row', notes: 'listed with “—” and a Buy button — KR’s pattern: the rail doubles as the store front' },
+              { name: 'low-quota tone', type: 'rule', notes: '≤20% remaining turns the figure and bar amber; this is the same threshold that raises the quota alert' },
+            ],
+          },
+          {
+            group: 'Account rail — account manager (KR 고객센터)',
+            items: [
+              { name: 'salesOwner', type: 'ref → CRM user', notes: 'the company record’s sales owner — a named person, not a generic hotline' },
+              { name: 'contact', type: 'composite', notes: 'phone · email · working hours, plus a Help centre link' },
+              { name: 'fallback', type: 'rule', notes: 'no sales owner assigned (self-serve signup not yet placed) → the general support block is shown instead' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Home loads as ONE aggregate request; no panel fetches on its own, so the page never renders half-populated.',
+          'Every panel is a link into the owning screen. Nothing on Home mutates a record — the alert actions navigate, they do not resolve the condition in place.',
+          'A panel whose product is not entitled is hidden entirely, not shown empty: an employer without Resume Search never sees a Saved searches box.',
+          'To-do counts and the Applicants screen read the same stage data, so they cannot disagree.',
+          'The alert strip is absent — not empty — when nothing needs action.',
+        ],
+        rules: [
+          'Home owns no entity and no status. Any field a panel needs belongs to the module that owns the record.',
+          'The “Not reviewed” queue is stage = New. No read/unread flag is introduced for this screen.',
+          'Counts are scoped to the ACCOUNT, not to the signed-in user — quota is pooled and the pipeline is shared, so a personal view would misreport the team’s work.',
+          'Role permissions apply: a user without “View applications” sees no to-do queue, and one without Resume Search permissions sees no saved searches — the dashboard never leaks what the role cannot open.',
+          'A match % is never shown as a bare number; it carries its contributing signals, the same rule as Applicants and the jobseeker side.',
+        ],
+        states: [
+          'First run — activated, nothing posted, page still Draft, package not activated',
+          'In flight — jobs Open, candidates waiting, quota burning down',
+          'Job Posting only — Saved searches strip hidden, product offered on the rail',
+          'Quota exhausted — alert raised, the related CTA points at Buy rather than at the blocked action',
+          'No sales owner assigned — account-manager card falls back to general support',
+          'Loading / aggregate request failed — the page shows a single retry, never a grid of empty boxes',
+        ],
+        backend: {
+          endpoints: [
+            'GET /company/dashboard → { alerts[], jobsInProgress[], savedSearches[], todo{ byStage }, account{ page, entitlements[], salesOwner } }',
+          ],
+          integrations: [
+            'Job management (status, deadline, applicant counts)',
+            'Application management (stage counts, waiting days, match)',
+            'Resume management (saved searches + new-match counts)',
+            'Products & packages (entitlements, quota, activation deadline)',
+            'Account management (company page status + completeness, roles)',
+            'CRM (sales owner, pending-payment orders)',
+          ],
+          notes:
+            'One read-only projection assembled server-side. It is a VIEW: no dashboard table, no cached counters that can drift from the records they summarise. Permission filtering happens in this endpoint, so the client never receives a panel the role may not see.',
+        },
+        acceptance: [
+          'A first-run account sees exactly two alerts (publish page, activate package) and both strips render their CTA panel, not an empty table.',
+          'Publishing the company page removes its alert on the next load without any other change.',
+          'The “Not reviewed” count equals the number of New-stage applications across the account’s jobs, and matches the Applicants screen exactly.',
+          'The to-do list is ordered longest-waiting first.',
+          'An account without Resume Search sees no Saved searches strip, and sees Resume Search on the rail with a Buy button.',
+          'A user whose role lacks “View applications” loads Home without a to-do queue and without an application count anywhere on it.',
+          'Quota at or below 20% shows amber on the rail and raises exactly one quota alert.',
+          'No action on Home changes a record; each one navigates to the screen that owns it.',
+        ],
+        openQuestions: [
+          'Does “new CVs since last run” on a saved search require storing lastRunAt per search, or is it computed from the search’s created date until the first run? (Recommendation: store lastRunAt — otherwise the count is wrong for every search after the first visit.)',
+          'Should the job “closing soon” alert fire on deadline alone, or only when unreviewed candidates exist? Specified as the latter, so a fully-processed job closing quietly raises nothing.',
+          'Is the account manager’s direct phone shown to the customer, or only an email + the general hotline? Needs a sales decision before the field is exposed.',
+          'Should Home offer a “what changed since your last visit” marker, and if so does that need a per-user lastSeenAt — the one piece of state Home would have to own?',
+        ],
+      },
+    },
     {
       name: 'Products & quota (entitlements)',
       site: 'Admin',
@@ -293,6 +470,7 @@ export const companyUser: BuildModule = {
         ],
         rules: [
           'Entitlements come only from a paid order (or a manual grant with an audit entry).',
+          'The employer reads the SAME rows on Product usage (company site) — one entitlement record, two viewers (see “HQ sees what the employer sees”).',
           'Public company profile exists only while Job Posting is entitled.',
         ],
         states: ['No products yet (before payment)', 'Provisioned', 'Quota low', 'Quota exhausted (blocked)', 'Expired'],
@@ -312,16 +490,852 @@ export const companyUser: BuildModule = {
         ],
       },
     },
+    /* ── The employer's “Products & Payment Management” section ──────────────
+       Two Companies-site pages that READ the records the sale created: the
+       entitlements (Product usage) and the orders that paid for them (Payment
+       history). Neither page owns data — one is the employer's view of the same
+       entitlement rows the Admin “Products & quota” screen shows, the other is
+       the employer's view of CRM's PO + invoice + payment fact. Written for a
+       developer new to the project, so the first block of Product usage is a
+       glossary and every rule names the module that owns it. */
+    {
+      name: 'Product usage (company site)',
+      site: 'Companies',
+      slug: 'product-usage-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'What the account bought, as live rows the employer can act on — grouped under the order that paid for them. The employer-side view of the SAME entitlement record the Admin “Products & quota” screen shows.',
+      ready: true,
+      detail: {
+        refDocs: [
+          {
+            label: 'Figma — Product usage',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2159-35272',
+            meta: 'Figma frame · 1440 wide',
+            note: 'The screen this requirement describes — tabs, filters, the grouped list, the row anatomy and the footer notes. Demo data is dated 04/09/2026.',
+          },
+          {
+            label: 'Figma — Activate flow (CV Search 30d)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2249-9438',
+            meta: 'Figma frame',
+            note: 'What clicking “Activate” does: confirmation modal → toast → the same row in its In use state.',
+          },
+        ],
+        description:
+          'The first of the two pages under “Products & Payment Management” on the company site. It lists every product the account holds — posting slots, add-on labels, CV-search windows, the branding page, manual services — as rows the employer can act on, grouped under the order that paid for them. Nothing on it is typed by anyone: every row is an ENTITLEMENT (Products & Packages → “Entitlement is the single downstream record”), created automatically the moment Accounting issues the official VAT invoice for an order, and decremented by the screens that spend it — publishing a job, applying a label, unlocking a CV. This page is where the employer sees the balance, sees the deadline to use it, and — for the one product type that needs it — starts the clock.\n\nIf you are new to the project, read the glossary block first. “Order”, “invoice”, “entitlement”, “activation” and “usage” are five different things here, and the client’s own documents use the words loosely. The page follows the layout of Saramin Korea’s billing.saramin.co.kr/manage (a status-tab list under a left menu) because employers already know that shape; the content model underneath is ours, not KR’s.',
+        userStory:
+          'As an employer, I want to see what we bought, how much is left and until when we can use it — on one screen, per order — so that I know whether I can post today and what I must start before it lapses.',
+        keyPoints: [
+          {
+            vi: 'Mỗi dòng là một ENTITLEMENT = sản phẩm + hạn mức còn lại + hiệu lực. Không ai nhập tay: hệ thống tạo khi Kế toán xuất hóa đơn GTGT chính thức, và trừ dần khi đăng tin / gắn nhãn / mở CV.',
+            en: 'Every row is an ENTITLEMENT = product + remaining quota + validity. Nobody types it: the system creates it when Accounting issues the official VAT invoice, and the screens that publish a job, apply a label or unlock a CV decrement it.',
+          },
+          {
+            vi: 'Chỉ CV search có nút Activate. Tin đăng kích hoạt bằng cách ĐĂNG, nhãn kích hoạt bằng cách GẮN vào tin — nút trên dòng đổi theo loại sản phẩm, còn chip “Not activated” thì giống nhau.',
+            en: 'Only CV search has an Activate button. A posting slot activates by PUBLISHING, a label by being APPLIED to a job — the row’s button follows the product type, while the “Not activated” pill is the same for all.',
+          },
+          {
+            vi: 'Ba trạng thái — Not activated · In use · Completed — được SUY RA, không lưu. Lý do (Expired · Not used by … · Withdrawn) là dòng chữ xám dưới trạng thái, không phải trạng thái thứ tư.',
+            en: 'Three statuses — Not activated · In use · Completed — are DERIVED, never stored. The reason (Expired · Not used by … · Withdrawn) is a grey line under the status, not a fourth status.',
+          },
+          {
+            vi: 'Gom theo ĐƠN HÀNG (PO) đã thanh toán cho sản phẩm. Ngày trên header là ngày xuất hóa đơn chính thức — vì mọi “Activate by” trong nhóm đều tính từ ngày đó. Không gộp hạn mức giữa hai đơn.',
+            en: 'Grouped by the ORDER (PO) that paid for the products. The header date is the official invoice’s issue date, because every “Activate by” in the group counts from it. Quota is never merged across two orders.',
+          },
+          {
+            vi: 'Trang này không có tiền. Số tiền, trạng thái thanh toán và chứng từ nằm ở Payment history; ở đây header chỉ mang chip thanh toán để giải thích vì sao một nhóm có thể chưa trả tiền mà vẫn có sản phẩm.',
+            en: 'No money on this page. Amounts, payment status and documents live on Payment history; here the header only carries the payment pill, to explain why a group can be unpaid and still hold products.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'Words a new developer must know before reading on',
+            text: 'Five terms, five different records. The client’s documents — and Saramin Korea’s UI — use “invoice” for several of them; this spec does not.',
+            table: {
+              cols: ['Term', 'Means here', 'Defined in'],
+              rows: [
+                ['Order (PO · đơn hàng)', 'The commercial document the customer received and pays against — numbered **PO-…**, one per purchase. Carries the lines (product × qty), the total incl. VAT, the bank details and the 14-day payment terms. It is never edited or cancelled: it expires at the end of its issue month if no official invoice follows.', 'CRM → Purchase order'],
+                ['VAT invoice (hóa đơn GTGT)', 'The fiscal document Accounting issues for an order, with a legal number from the e-invoice provider. Issuing the **official** invoice is what provisions the products. A **draft** invoice provisions nothing and is never shown to the customer. At most one invoice per order.', 'CRM → Invoices'],
+                ['Entitlement', 'product + remaining quota + validity — one row on this page. Created by provisioning, decremented by use, never typed.', 'Products & Packages → “Entitlement is the single downstream record”'],
+                ['Provisioning', 'The system turning the order’s lines into entitlements when the official invoice is issued. Immediate, and idempotent on the invoice id (the provider’s issue event can fire twice).', 'CRM → “Provisioning — what happens when the OFFICIAL invoice is issued”'],
+                ['Activation', 'The first USE of a unit: a slot is used when a job is published, a label when it is applied, a CV-search window when the employer clicks Activate. It must happen inside the activation window — 12 months by default, per product — counted from the invoice date, or the unused quota lapses.', 'Products & Packages → activationWindowMonths · client T&C clause 4'],
+                ['Usage (validity)', 'How long an activated unit runs: 30 days for a posting, 10 days for a label, 30 / 90 days for a CV-search window, one delivery for a manual service.', 'Product fulfilment · client T&C clause 5'],
+              ],
+            },
+            items: [
+              'Provisioning ≠ activation. Buying 5 posts today provisions all 5 at once; each one activates separately when a job is published and burns its own 30 days. The page shows both clocks: “Activate by” for what is still unused, the running window for what is live.',
+              'The number on a group header is the ORDER number (PO-…), never the tax invoice’s legal number. The client’s live system labels its payment request “INV-…”; CRM renamed it PO-… precisely so the two documents cannot be confused — see CRM → “PO vs VAT invoice”.',
+            ],
+          },
+          {
+            label: 'Which products appear, and what “activate” means for each',
+            text: 'Every product type in the catalogue lands here as a row, but the clock starts differently for each — which is why the row’s button is not the same for all of them.',
+            table: {
+              cols: ['Product type', 'Examples', 'Quota unit', 'The clock starts when…', 'Row button'],
+              rows: [
+                ['Posting tier (slots)', 'Basic Job · Basic Plus Job · Top Job', 'posts', 'a job is **published** with that tier — that job then runs 30 days', '{{btn:Post a job}} — Create job opens with the tier preselected and “using 1 of N posts”'],
+                ['Add-on', 'Hot job label · Popular Jobs premium · Highlight Companies premium', 'labels · slots', 'the add-on is **applied** to one of the account’s Open jobs — it runs 10 days from then', '{{btn:Apply to a job}} — a picker of Open jobs that do not carry it yet'],
+                ['CV search', 'CV Search 30d · CV Search 90d', 'CV unlocks + a window', 'the employer clicks **Activate** and confirms — the window runs continuously from that moment', '{{btn:Activate}} → after confirming, {{btn:Search CVs}}'],
+                ['Branding', 'Employer Branding Page', '1 page', 'the company page is **published**', '{{btn:Publish page}} — the Company page editor'],
+                ['Manual service', 'Facebook fanpage post · Email marketing / Job alert banner', 'deliveries', 'Ops delivers and logs it — the employer cannot start it', '— (row shows “2 of 4 delivered” from the delivery log)'],
+                ['Free job (Always-available tier)', 'Free Job', 'posts', 'HQ publishes it for the company — an employer can never post a free job', '{{btn:View job}}'],
+              ],
+            },
+            warn: 'Only CV search has an Activate button. A posting slot has no separate activation step — publishing IS the activation — so an “Activate” button on a posting row would be an extra click that does nothing. The button label follows the product type; the “Not activated” pill is the same for every type.',
+          },
+          {
+            label: 'Row status — three values, derived, never stored',
+            text: 'REVISED 2026-09-08 (Thu): the three values are still COMPUTED — they choose the row’s action button and feed the “Expiring” filter — but they are NOT drawn as coloured pills any more, and the status tab bar is gone. A posting pack has no lifecycle of its own (each job does), so a pill on it read as a status the product does not have, while CV search rows did carry one; the page looked half-labelled. Every row now shows the same two-line STATE CELL instead — see “One state cell for every row”. The derivation below is unchanged.',
+            table: {
+              cols: ['Status', 'Means', 'Derived from', 'Shown with'],
+              rows: [
+                ['**Not activated**', 'Bought and provisioned; nothing used yet. The activation window is running.', 'quotaUsed = 0 AND no unit live AND today ≤ activateBy', '{{tagmute:Not started · 30 days}} then “Activate by dd/mm/yyyy” · the type’s start button'],
+                ['**In use**', 'Something has happened and something can still happen: units remaining, or a unit still running.', '(quotaUsed < quotaTotal AND today ≤ activateBy) OR a unit’s window has not ended', 'units remaining → “Use remaining by dd/mm/yyyy” + “n live” · last unit running → its window + “d days left” · CV search → window + days left'],
+                ['**Completed**', 'Nothing more can happen on this row.', 'quota exhausted AND no unit running · OR activateBy passed with quota unused · OR the invoice was cancelled', 'the last end date + the REASON as a grey line: {{tagmute:Expired}} · {{tagmute:Not used by 02/09/2027}} · {{tagmute:Withdrawn — invoice cancelled}} · button {{btn:Buy again}}'],
+              ],
+            },
+            items: [
+              'Reasons are not statuses. The tabs count three statuses; the grey line under Completed explains WHICH way the row ended. Adding “Expired” or “Lapsed” as a fourth tab would split one question (“can I still use this?”) across two answers.',
+              'Pill colours match the mockup: In use green · Not activated amber · Completed grey.',
+              '“Scheduled” is not a status either. A placement booked for a future period is **Not activated** with the reason line “Booked · starts dd/mm/yyyy” and no button.',
+              'A free-job row is only ever In use or Completed — HQ publishes it directly, so it is never waiting to be activated.',
+              'A group whose invoice Accounting cancelled (CRM → “A PO is never cancelled — the invoice is”) keeps its rows for the 2-year window as Completed · Withdrawn, so the employer can see what disappeared and why.',
+            ],
+          },
+          {
+            label: 'One state cell for every row — remaining on line 1, time on line 2, no pills',
+            text: 'Column 3 has the same shape on every product type, which is what makes the list read as one list. Line 1 answers “what is left” in the product’s own unit; line 2 answers “until when”. Lifecycle words appear only where a lifecycle exists (CV search: “not activated”, “ended”) and only as words in line 1, coloured amber or grey — never as a badge. Column 4 always holds exactly one button.',
+            table: {
+              cols: ['Product · state', 'Line 1 (SemiBold 13)', 'Line 2 (Regular 12, grey)', 'Button'],
+              rows: [
+                ['Posting pack · posts left', '2 posts left', 'Use by 02/09/2027 · 3 jobs live', '{{btn:Post a job}}'],
+                ['Posting pack · all posted', 'All posted', 'Last job ends 08/09/2026', '{{btn:View jobs}}'],
+                ['Add-on · labels left', '2 labels left', 'Use by 02/09/2027', '{{btn:Apply to a job}}'],
+                ['Add-on · all used', 'All used (grey)', 'Label ran 28/08 – 07/09/2026', '{{btn:View job}}'],
+                ['CV search · not activated', '50 unlocks · not activated (amber)', 'Activate by 02/09/2027', '{{btn:Activate}}'],
+                ['CV search · active', '158 unlocks left', '73 days left · ends 16/11/2026', '{{btn:Search CVs}}'],
+                ['CV search · ended', '50 unused · ended (grey) — or “0 unlocks left”', 'Window ended 03/10/2026', '{{btn:Buy again}}'],
+                ['Free job', '1 job live', 'Runs until 08/09/2026', '{{btn:View job}}'],
+                ['Any product · lapsed', 'Not used by 02/09/2027 (grey)', 'Order PO-…', '{{btn:Buy again}}'],
+              ],
+            },
+            items: [
+              'Why remaining, not used: the usage column already says “3 of 5 posts used” with a bar; repeating “used” in column 3 wastes the cell. Remaining is the number a recruiter acts on.',
+              'The three computed statuses still exist behind the scenes: they pick the button (Not activated → Activate · In use → the product’s use action · Completed → Buy again) and the “Expiring within 7 days” filter still reads line 2’s date. Only the pill and the tab bar were removed.',
+              'Colour is reserved for the two states that need a decision: amber for “not activated” (money not yet working), grey for “ended / all used” (nothing to do here but buy). Everything else is the default dark text, so a healthy list is visually quiet.',
+              'Filters that remain: the product-type select · “Expiring within 7 days” · search. If a status filter is wanted later it can return as a select, not as tabs — a select does not imply every row has a lifecycle.',
+            ],
+          },
+          {
+            label: 'The date column — one deadline per row, and the filter reads it',
+            text: 'Line 1 is a window or a deadline; line 2 is the countdown or the reason. Whatever line 2 counts down to is the row’s DEADLINE, and the “Expiring within 7 days” checkbox keeps exactly the rows whose deadline is ≤ 7 days away — so the filter can never disagree with the row.',
+            table: {
+              cols: ['Row state', 'Line 1', 'Line 2', 'Tone'],
+              rows: [
+                ['Not activated', 'Not started · 30 days (the unit’s duration)', 'Activate by 02/09/2027', 'grey'],
+                ['In use — units remaining', 'Use remaining by 01/08/2027', '3 jobs live', 'grey'],
+                ['In use — last unit running', '28/08/2026 – 07/09/2026', '3 days left', 'amber when ≤ 7 days'],
+                ['In use — CV-search window', '18/08/2026 – 16/11/2026', '73 days left', 'amber when ≤ 7 days'],
+                ['Completed', '18/08/2026 – 01/09/2026 (the last window)', 'Expired · Not used by … · Withdrawn', 'grey'],
+              ],
+            },
+            items: [
+              'The deadline of a pack with units remaining is its ACTIVATE-BY date, not the end of a running job. A pack with 2 posts left is not “expiring” because one of its jobs ends on Friday — that job’s own deadline lives on My jobs.',
+              'days left = ceil((deadline − now) / 24 h) in Asia/Ho_Chi_Minh; on the last day the line reads “Ends today”. Never negative — a passed deadline is a Completed reason, not “−3 days”.',
+              'Dates are dd/mm/yyyy everywhere on the company site.',
+            ],
+          },
+          {
+            label: 'Grouped by order — the header carries the money, the rows carry the product',
+            text: 'Rows sit under the order that paid for them, newest invoice date first. One order can carry several products (the demo order PO-2026-0912 has three), and “which order gave me these two Top Job posts?” is the question an employer asks when quota looks wrong — so the order is the group, not a tag on the row.',
+            table: {
+              cols: ['Header element', 'Shows', 'Source'],
+              rows: [
+                ['Order number', 'PO-2026-0912', 'order.code — the CRM PO series, never the tax invoice’s legal number'],
+                ['Date', '02/09/2026 — the OFFICIAL invoice’s issue date', 'invoice.issuedAt — the date every “Activate by” in the group counts from'],
+                ['Payment pill', '{{tagok:Paid 03/09/2026}} · {{tagwarn:Unpaid}} · {{tag:Overdue · 32 days}}', 'the order’s payment status — the same fact Payment history shows'],
+                ['Count', '3 products', 'rows in the group'],
+              ],
+            },
+            items: [
+              'The same product bought on two orders is two rows in two groups. Quota is NOT merged across orders, because each order has its own activate-by date and its own invoice to reverse.',
+              'Within a group, rows sort by type: Job posting → Add-on → CV search → Branding → Manual service. Across groups: invoice date, newest first. The Free group is pinned first.',
+              'Groups are never split across pages. Paginate by group, targeting ~20 rows per page; the page count line says “N products”, the tab counts follow the current filters.',
+              'The header shows no amount and no document button — money is Payment history’s job. Keeping it off this page is what lets every company user see quota without seeing prices.',
+            ],
+            warn: 'An UNPAID order can appear here. Provisioning fires when the official invoice is issued, which may be before the money arrives (CRM decision — a deviation from T&C clause 3 still to be confirmed with the client). The header then reads Unpaid or Overdue and the group carries one amber line: “Payment pending — these products are withdrawn if the invoice is cancelled.” If the client insists on activation-after-payment, the only change on this page is the trigger: a group appears at Paid instead of at Invoice issued.',
+          },
+          {
+            label: 'Free job posting — a group with no order',
+            text: 'HQ may publish a Free Job (the Always-available tier) for any company. The employer cannot post one, cannot upgrade it and never received an order for it — but it runs under their name, so it belongs on this page.',
+            table: {
+              cols: ['Element', 'Value'],
+              rows: [
+                ['Header', '“Free job posting” · {{tagmute:No invoice}} · “n products · posted for you by Saramin”'],
+                ['Row usage', '“n free posts” — no “of N”: there is no purchased quota to count against'],
+                ['Row dates', 'the job’s 30-day window · days left — the posting rules apply unchanged'],
+                ['Status', 'In use while the job is live · Completed once it closes — never Not activated'],
+                ['Button', '{{btn:View job}} — never Post a job'],
+              ],
+            },
+            items: [
+              'The group is hidden entirely when HQ has posted nothing for the account — not shown empty.',
+              'A free job closed early creates nothing to refund, and it never earns premium placement — Products & Packages → “Entitlement source”.',
+            ],
+          },
+          {
+            label: 'Clicking Activate — CV search only',
+            text: 'The one button on this page that starts a paid clock, so it confirms first and prints the end date before the click. The flow is drawn in the Figma frame “Activate flow — CV Search 30d”.',
+            table: {
+              cols: ['Step', 'What happens'],
+              rows: [
+                ['1 · Click {{btn:Activate}}', 'A confirmation modal: title “Activate CV Search 30d?” · body “Your 30-day search window starts the moment you confirm and ends on dd/mm/yyyy. It runs continuously and cannot be paused or moved.” · details box: **Included** 50 CV unlocks · 30 days — **From order** PO-2026-0912 · paid 03/09/2026 — **Activate by** 02/09/2027, after which the product lapses · buttons {{btn:Cancel}} · {{btn:Activate now}}'],
+                ['2 · Confirm', 'POST /company/entitlements/:id/activate. The server sets activatedAt = now, validFrom = now, validTo = now + durationDays, and writes an audit entry (who, when, from which IP). Idempotent: a repeated call returns the existing window instead of moving it.'],
+                ['3 · Done', 'Toast “✓ CV Search 30d is active until dd/mm/yyyy”. The row re-renders in place as **In use**: “0 of 50 CVs unlocked” · 04/09/2026 – 04/10/2026 · “30 days left” · button {{btn:Search CVs}}.'],
+              ],
+            },
+            items: [
+              'The end date is computed and shown BEFORE the click. Because the window cannot be paused, an employer who activates on a Friday evening burns a weekend — the modal is where they find that out.',
+              'Activate is offered to the account Admin only; other roles see the row with the pill and no button. Starting a paid clock is an account decision, and the 7-permission role set deliberately has no billing permission.',
+              'The server rejects activation after activateBy (the row is already Completed · Not used by …) and while the order’s invoice is cancelled.',
+            ],
+          },
+          {
+            label: 'Who can see and do what',
+            text: 'Quota is pooled across the account, so everyone with a login can read the page; what each person can click follows their role (Account management → Roles).',
+            table: {
+              cols: ['Action', 'Who', 'Why'],
+              rows: [
+                ['See the page — rows, quota, dates', 'Every company user', 'A recruiter needs to know whether they can post today. No prices are shown, so nothing here is confidential.'],
+                ['{{btn:Post a job}} · {{btn:Apply to a job}}', 'Roles with “Post jobs”', 'The button is hidden for others; the row still shows.'],
+                ['{{btn:Search CVs}}', 'Roles with “Search resumes”', 'Resume permissions are entitlement-gated — the row is what shows the entitlement exists.'],
+                ['{{btn:Activate}} (CV search)', 'Account Admin only', 'It starts a paid clock.'],
+                ['{{btn:Buy again}}', 'Every company user', 'Opens a short “Request a quotation” form prefilled with the product; the account’s sales owner receives it as a CRM task. Phase 1 has no online checkout.'],
+              ],
+            },
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Tabs and filters',
+            items: [
+              { name: 'tabs', type: 'REMOVED 2026-09-08', notes: 'the All · In use · Not activated · Completed tab bar is gone — statuses are no longer drawn, so there is nothing to tab on. Type select, Expiring filter and search remain.' },
+              { name: 'count line', type: 'derived', notes: '“8 products” — rows matching the current tab and filters, not groups' },
+              { name: 'expiring', type: 'checkbox', notes: '“Expiring within 7 days” — keeps rows whose deadline (the date line 2 counts down to) is ≤ 7 days away' },
+              { name: 'type', type: 'select', notes: 'All product types · Job posting · Add-on · CV search · Branding · Manual service' },
+              { name: 'search', type: 'text', notes: 'matches product name or order number (PO-…)' },
+            ],
+          },
+          {
+            group: 'Group header (one per order)',
+            items: [
+              { name: 'order.code', type: 'string', required: true, notes: 'PO-2026-0912 — bold' },
+              { name: 'invoice.issuedAt', type: 'date', required: true, notes: 'the official invoice’s issue date; the anchor for every Activate by in the group' },
+              { name: 'payment pill', type: 'enum', required: true, notes: 'Paid dd/mm/yyyy (green) · Unpaid (amber) · Overdue · N days (rose) — read from the order’s payment fact' },
+              { name: 'count', type: 'derived', notes: '“3 products”' },
+              { name: 'Free group', type: 'variant', notes: '“Free job posting” · pill “No invoice” · “n products · posted for you by Saramin”. Pinned first, hidden when empty.' },
+            ],
+          },
+          {
+            group: 'Row (Figma component “Product usage · row”)',
+            items: [
+              { name: 'type chip', type: 'enum', notes: 'Job posting · Add-on · CV search · Branding · Manual service — grey outline chip above the name' },
+              { name: 'product name', type: 'string', required: true, notes: 'the catalogue name — Top Job, Hot job label, CV Search 30d…' },
+              { name: 'usage text', type: 'derived', required: true, notes: '“0 of 2 posts used” · “1 of 1 used” · “42 of 200 CVs unlocked” · “2 of 4 delivered” · free job: “1 free post”' },
+              { name: 'usage bar', type: 'progress', notes: 'quotaUsed / quotaTotal; blue while In use, grey at 100 %; hidden on the free-job row' },
+              { name: 'deadline', type: 'derived', required: true, notes: 'the date line 2 counts to — the “Expiring within 7 days” filter reads it (see “The date column”)' },
+              { name: 'state cell', type: 'two lines', required: true, notes: 'line 1 = remaining in the product’s unit (amber when not activated, grey when ended / all used) · line 2 = the date it counts to — see “One state cell for every row”. No pill (REVISED 2026-09-08).' },
+              { name: 'reason wording', type: 'derived', notes: 'folded into line 1 / line 2 for ended rows: “ended” · “Not used by dd/mm/yyyy” · “Withdrawn — invoice cancelled”' },
+              { name: 'button', type: 'action', required: true, notes: 'EXACTLY ONE per row, same size, per type and state — see “One state cell for every row”; hidden when the role may not use it' },
+            ],
+          },
+          {
+            group: 'Footer notes (static)',
+            items: [
+              { name: 'note 1', type: 'text', notes: '“Usage from the last 2 years is shown here.”' },
+              { name: 'note 2', type: 'text', notes: '“Closing a posting early does not refund the unused days of a product in use.”' },
+              { name: 'note 3', type: 'text + links', notes: '“Usage & payment: [FAQ] · Help center …” — the help-center block is the account’s sales owner when one is assigned (Home dashboard rule), else the general hotline' },
+            ],
+          },
+        ],
+        behaviors: [
+          'One request loads the grouped list for the current tab and filters; the page never renders half-populated. Tab and filter changes re-query with counts.',
+          'Publishing a job spends a slot AT PUBLISH, not at draft; the row’s usage text and bar update on the next load, and the Create job form already showed “using 1 of N posts” before the click.',
+          '{{btn:Post a job}} opens Create job with this row’s tier preselected and locked to this order’s slots. {{btn:Apply to a job}} opens a picker of the account’s Open jobs that do not already carry the add-on; choosing one applies it and starts its 10 days. {{btn:Search CVs}} opens Resume search. {{btn:View job}} opens the job. {{btn:Buy again}} opens the request-a-quotation form.',
+          '{{btn:Activate}} opens the confirmation modal; Cancel closes it with no call; Activate now calls the endpoint once (the button disables while in flight) and shows the toast.',
+          'A row whose deadline is ≤ 7 days shows its line 2 in amber; the same threshold raises the “Product expiring” alert on the Home dashboard, so the two cannot disagree.',
+          'The Free group renders only when it has rows. No “all clear” or “no free jobs” header.',
+        ],
+        rules: [
+          'This page WRITES nothing except the CV-search activation. Quota is decremented by the screens that spend it, and every decrement is idempotent and attributed (Products & Packages → “Entitlement is the single downstream record”).',
+          'activateBy is snapshotted on the entitlement at provisioning (invoice.issuedAt + the product’s activationWindowMonths). Changing the product later does not move it; a customer extension is an explicit, logged change on the entitlement.',
+          'Status is computed at read time from the counters and dates in the status table. No stored status column — a stored one would go stale the day a job closes.',
+          'The number that identifies a group is the order (PO-…). The tax invoice’s legal number appears only on Payment history, next to the document it belongs to.',
+          'Nothing from Saramin Korea’s billing page that the VN product model lacks is copied: no points, no coupons, no cart, no “Scheduled” status.',
+          'Rows Completed more than 2 years ago are omitted (footer note 1). Older history stays in the account’s audit log and on Payment history, which keeps 5 years.',
+        ],
+        states: [
+          'No products yet — nothing provisioned: “No products yet” with {{btn:See products}} and the sales owner’s contact; tabs and filters hidden',
+          'First order, nothing used — every row Not activated; the Home dashboard shows its “Product paid but not activated” alert pointing here',
+          'Unpaid order already provisioned — header pill Unpaid / Overdue and the amber “Payment pending” line under it',
+          'All rows Completed — a lapsed or returning customer: {{btn:Buy again}} on every row, the empty-state offer is NOT shown (they have history)',
+          'Filters match nothing — “No products match these filters” with a reset link; the count line reads “0 products”',
+          'Loading / request failed — a single retry, never a grid of empty groups',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'id', type: 'uuid', required: true },
+            { name: 'accountId', type: 'ref → Account', required: true },
+            { name: 'orderId · orderCode', type: 'ref → PO', required: true, notes: 'the group; null only for the free-job rows' },
+            { name: 'invoiceId · invoiceIssuedAt', type: 'ref → Invoice · date', required: true, notes: 'the provisioning event; issuedAt is the header date and the activate-by anchor' },
+            { name: 'productId · productName · productType', type: 'ref → Product · string · enum', required: true, notes: 'posting-tier · add-on · cv-search · branding · manual-service · free-job' },
+            { name: 'quotaTotal · quotaUsed', type: 'int · int', required: true, notes: 'unit per type: posts · labels · slots · CV unlocks · deliveries' },
+            { name: 'unitDurationDays', type: 'int', notes: '30 postings · 10 labels · 30 / 90 CV search — from product fulfilment' },
+            { name: 'activateBy', type: 'date', required: true, notes: 'snapshot: invoiceIssuedAt + activationWindowMonths' },
+            { name: 'activatedAt · validFrom · validTo', type: 'datetime', notes: 'CV search and branding only — set by Activate / Publish' },
+            { name: 'liveUnits[]', type: 'derived', notes: 'for posting and add-on rows: the jobs currently running from this row, each with its window — drives “n live” and the last-unit countdown' },
+            { name: 'withdrawnAt', type: 'datetime', notes: 'set when the invoice is cancelled — the row becomes Completed · Withdrawn' },
+            { name: 'paymentStatus · paidAt', type: 'derived · date', notes: 'copied onto the group header from the order — see Payment history' },
+          ],
+          endpoints: [
+            'GET /company/entitlements?tab=all|in-use|not-activated|completed&type=&expiring=7&q=&page= → { counts{ byTab }, groups[ { order{ code, invoiceIssuedAt, paymentStatus, paidAt }, rows[] } ], freeGroup?{ rows[] } }',
+            'POST /company/entitlements/:id/activate → { validFrom, validTo } — CV search only · Admin only · idempotent · audited',
+            '(consumers, owned elsewhere) publish job → spends a posting slot · apply add-on → spends a label/slot · unlock CV → spends an unlock',
+          ],
+          integrations: [
+            'CRM → Invoices (provisioning trigger, invoice date, cancellation → withdrawn)',
+            'CRM → Purchase order (order code, payment fact for the header pill)',
+            'Products & Packages (product type, unit, duration, activation window)',
+            'Job management (publish spends a slot; live jobs per row; Create job preselection)',
+            'Resume management (Search CVs; unlocks spend quota)',
+            'Account management → Roles (which buttons a user sees) · Home dashboard (the alerts that link here)',
+          ],
+          notes:
+            'A projection over the entitlement ledger, grouped server-side. Status, deadline and days-left are computed in the query (or a view) — never stored — so the page and the Home dashboard alerts read the same numbers. The only write is the CV-search activation, keyed on the entitlement id so a double click cannot start two windows.',
+        },
+        acceptance: [
+          'Issuing the official invoice for an order with three lines shows one new group with three rows, all Not activated, header dated with the invoice date and pill Paid / Unpaid as CRM records it.',
+          'Publishing a Top Job from that group changes its row to “1 of 2 posts used”, status In use, line 1 “Use remaining by <invoice date + 12 months>”, line 2 “1 job live”.',
+          'Applying the last Hot job label shows “2 of 2 used”, the label’s 10-day window and “10 days left”; when it ends with no unit running, the row reads Completed · Expired and offers Buy again.',
+          'Clicking Activate on CV Search 30d shows the modal with the correct end date; confirming sets the window, shows the toast, and the row reads In use · “0 of 50 CVs unlocked” · “30 days left” · Search CVs. Calling activate again returns the same window.',
+          'A row whose activateBy passed with quota unused reads Completed · “Not used by dd/mm/yyyy” and its buttons are gone except Buy again.',
+          'The “Expiring within 7 days” checkbox returns exactly the rows whose line 2 is amber.',
+          'A user whose role lacks “Post jobs” sees the posting rows with no button; a non-Admin sees the CV-search row with no Activate.',
+          'A free job HQ posted appears in a pinned “Free job posting” group with pill No invoice, usage “1 free post”, button View job; with no free job the group is absent.',
+          'The group header never shows an amount; the search box finds a group by its PO- number.',
+        ],
+        openQuestions: [
+          'Free Job quota for employers — one live free job at a time, N per month, or a one-time trial? Today only HQ posts them and the row shows a plain count; the answer changes the usage text (“1 of 1”) and whether a Post a free job button ever exists.',
+          'Two CV-search products at once (a 30d and a 90d on the same account) — may both windows run, and if so which one an unlock is drawn from (recommendation: the window that ends first)?',
+          'Client confirmation of provisioning-before-payment (T&C clause 3 vs the CRM model). Decides whether an Unpaid group can ever appear on this page.',
+          '“Buy again” lands in CRM as a task for the sales owner (recommended — it leaves a record); the alternative is a mailto, which does not.',
+        ],
+      },
+    },
+    {
+      name: 'Payment history (company site)',
+      site: 'Companies',
+      slug: 'payment-history-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The account’s orders with their payment status and documents. One row = one order (PO). Read-only: money is recorded by Accounting in CRM, this page reflects it.',
+      ready: true,
+      detail: {
+        refDocs: [
+          {
+            label: 'Figma — Payment history',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2159-36117',
+            meta: 'Figma frame · 1440 wide',
+            note: 'Tabs, period filter, the order table with its status pills and document buttons, the empty state (hidden layer “빈 상품”) and the footer notes.',
+          },
+        ],
+        description:
+          'The second page under “Products & Payment Management”. A read-only list of the account’s ORDERS: what was bought, for how much, whether it has been paid, and the two documents the employer needs — the order itself (the payment request with the bank details) and the VAT e-invoice once Accounting has issued it. One row is one order, because an order can exist without an invoice but an invoice never exists without an order.\n\nNothing is paid on this page. Phase 1 has no online checkout: the customer transfers against the order (or pays cash, or offsets a debt), and Accounting confirms the payment in CRM. So there is no “Pay now” — the button on an unpaid row opens the order, which is the document that tells the employer where to send the money and by when.',
+        userStory:
+          'As the account Admin, I want to see every order we placed with its payment status and download the VAT invoice for our accountant, so that I never have to email Saramin for a document we already have.',
+        keyPoints: [
+          {
+            vi: 'Một dòng = một ĐƠN HÀNG (PO-…), không phải một hóa đơn. Đơn hàng có thể chưa có hóa đơn; hóa đơn không bao giờ tồn tại mà không có đơn hàng.',
+            en: 'One row = one ORDER (PO-…), not one invoice. An order can exist without an invoice; an invoice never exists without an order.',
+          },
+          {
+            vi: 'Trạng thái thanh toán là sự thật bên CRM: Paid được LƯU (paidAt, do Kế toán xác nhận); Unpaid và Overdue được SUY RA từ 14 ngày kể từ ngày xuất đơn hàng. Trang này không ghi gì.',
+            en: 'Payment status is CRM’s fact: Paid is STORED (paidAt, confirmed by Accounting); Unpaid and Overdue are DERIVED from the 14 days since the order’s issue date. This page writes nothing.',
+          },
+          {
+            vi: 'Không có nút “Pay now”. Giai đoạn 1 không thanh toán trực tuyến — nút trên dòng chưa trả mở ĐƠN HÀNG với thông tin chuyển khoản và hạn trả.',
+            en: 'No “Pay now”. Phase 1 has no online payment — the button on an unpaid row opens the ORDER with the bank details and the due date.',
+          },
+          {
+            vi: 'Chỉ hóa đơn GTGT CHÍNH THỨC được đưa cho khách. Hóa đơn nháp không bao giờ hiện ở đây; khi cần chứng từ trước hóa đơn, chứng từ đó là đơn hàng.',
+            en: 'Only the OFFICIAL VAT invoice is offered to the customer. A draft never appears here; when a document is needed before the invoice, that document is the order.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'Payment status — the same three values Accounting sees',
+            text: 'The status on a row is the order’s payment status from CRM → “Payment status — a third axis”. One stored fact (paidAt), two derived values, and the same 14-day clock — so the employer and the rep are always looking at the same answer.',
+            table: {
+              cols: ['Status', 'Means', 'Stored or derived', 'Pill'],
+              rows: [
+                ['**Paid**', 'Accounting confirmed the money arrived', 'STORED — paidAt', '{{tagok:Paid 03/09/2026}}'],
+                ['**Unpaid**', 'No payment yet, still inside the 14 days counted from the order’s issue date', 'DERIVED — no paidAt, within terms', '{{tagwarn:Unpaid · due 16/09/2026}}'],
+                ['**Overdue**', 'No payment and more than 14 days since the order was issued', 'DERIVED — turns over by itself at midnight', '{{tag:Overdue · 32 days}}'],
+                ['**Expired**', 'The order lapsed at the end of its issue month with no official invoice — there is nothing to pay', 'DERIVED from the PO status', '{{tagmute:Expired}} — All tab only'],
+              ],
+            },
+            items: [
+              'The 14 days count from the ORDER’s issue date, never the invoice’s — the customer’s obligation starts when the order is confirmed, and an invoice issued late must not reset a clock they are already behind on.',
+              'Partial payment (terms “50 / 50”) shows under Unpaid or Overdue with the remainder: “Paid 50 % · 8,450,000 ₫ remaining”. It is not a fourth tab.',
+              'Expired is a row state, not a payment status: it sits under All with a grey pill and is excluded from the three payment tabs. It stays visible so an employer who let an order lapse sees why nothing was provisioned.',
+              'The Home dashboard alert “Order awaiting payment” links here filtered to Unpaid + Overdue.',
+            ],
+            warn: 'This page never confirms a payment, never edits an amount and never creates a document. Every one of those is a Kế toán action in CRM, and the customer-facing copy must not imply otherwise (“your payment will be confirmed by our Accounting team within 1 working day of receipt”).',
+          },
+          {
+            label: 'What a row shows',
+            table: {
+              cols: ['Column', 'Content', 'Source'],
+              rows: [
+                ['Order', 'PO-2026-0912 (bold) · 02/09/2026 — the order’s issue date', 'order.code · order.issuedAt'],
+                ['Products', 'one line per order line, “Top Job × 2” · “Hot job label × 2” · “CV Search 30d × 1”; gift lines end with “(gift)”; more than 3 lines collapse to “+n more”', 'order.lines'],
+                ['Amount', '28,100,000 ₫ — the total after VAT as printed on the order; discounts are already inside it', 'order.totalAfterVat'],
+                ['Status', 'the payment pill from the table above', 'order.paidAt · order.issuedAt · PO status'],
+                ['Documents', 'one primary button — see “Documents”', 'invoice.status · order.pdf'],
+              ],
+            },
+            items: [
+              'Amounts are VND with thousands separators and the ₫ sign after the number, the same format as the quotation and the order PDF.',
+              'The row is not expandable and has no detail page in Phase 1: everything a detail page would show is on the two PDFs, and a third rendering of the same lines would drift from the documents that legally count.',
+            ],
+          },
+          {
+            label: 'Documents — which button, when',
+            text: 'Two documents matter to an employer: the order (to pay, and to show procurement) and the official VAT e-invoice (to claim VAT). Which one is the primary button depends only on whether the official invoice exists yet — never on payment status, because invoicing before payment is ordinary here.',
+            table: {
+              cols: ['Order state', 'Primary button', 'Also on the row'],
+              rows: [
+                ['Official VAT invoice issued (paid or not)', '{{btn:Invoice}} — the official e-invoice PDF, with the provider’s legal number and lookup code', 'text link “Order PDF”'],
+                ['No official invoice yet — PO Active · Draft invoice · Invoice requested', '{{btn:View order}} — the order PDF: lines, total, bank details, due date. This is how the employer pays.', 'grey note “VAT invoice pending”'],
+                ['Expired', '{{btn:View order}} — a read-only copy', 'grey note “No longer payable — ask your sales contact for a new order”'],
+              ],
+            },
+            items: [
+              'A DRAFT invoice is never offered. It has no legal force and must not be delivered to the customer as a hóa đơn GTGT (CRM → “Invoice status”). Where a customer needs a document before the official one, that document is the order.',
+              'Both PDFs are the files CRM already holds — served through short-lived signed URLs, never re-rendered for this page. Opening one is logged (who, when) on the order.',
+              'A cancelled invoice (Kế toán cancel + credit note + re-issue) shows the RE-ISSUED invoice as the button and the cancelled one as a struck-through link beneath it — both stay on record, exactly as CRM keeps them.',
+            ],
+          },
+          {
+            label: 'Tabs, period and search',
+            table: {
+              cols: ['Control', 'Values', 'Rule'],
+              rows: [
+                ['Tabs', 'All · Paid · Unpaid · Overdue', 'Counts follow the selected period. Expired rows appear under All only.'],
+                ['Period chips', '1M · 3M · 6M · 1Y', 'Default 3M. A chip fills the from–to fields; editing a field clears the chip.'],
+                ['From – to', 'dd/mm/yyyy · dd/mm/yyyy', 'Filters on the order’s issue date. Maximum reach: 5 years back (footer note 1).'],
+                ['Search', 'button', 'Applies period + tab; the count line “N payments” updates.'],
+                ['Sort', '—', 'Order issue date, newest first. No sort control.'],
+                ['Pagination', '20 rows', 'Standard pagination under the table.'],
+              ],
+            },
+          },
+          {
+            label: 'Who sees it',
+            text: 'The account Admin (Super admin) only. The VAT invoice carries the company’s tax code, legal name and billing address, and the 7-permission role set deliberately has no billing permission (Account management → Roles) — so this menu item is simply absent for custom roles.',
+            items: [
+              'Alternative considered and rejected: read-only for every user. A recruiter needs quota, not invoices — and quota is on Product usage, which every user can read.',
+              'HQ sees the same list on the company record (Account management → “HQ sees what the employer sees”), read from the same CRM documents.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Filters',
+            items: [
+              { name: 'tabs', type: 'enum + counts', required: true, notes: 'All · Paid · Unpaid · Overdue' },
+              { name: 'period chips', type: 'enum', notes: '1M · 3M · 6M · 1Y — default 3M' },
+              { name: 'from · to', type: 'date · date', notes: 'issue-date range; max 5 years back' },
+              { name: 'count line', type: 'derived', notes: '“5 payments”' },
+            ],
+          },
+          {
+            group: 'Row',
+            items: [
+              { name: 'order.code · order.issuedAt', type: 'string · date', required: true },
+              { name: 'lines[]', type: 'name × qty', required: true, notes: 'gift lines marked; >3 collapse' },
+              { name: 'totalAfterVat', type: 'money (₫)', required: true },
+              { name: 'payment pill', type: 'enum', required: true, notes: 'Paid dd/mm/yyyy · Unpaid · due dd/mm/yyyy · Overdue · N days · Expired' },
+              { name: 'primary button', type: 'action', required: true, notes: 'Invoice · View order' },
+              { name: 'secondary', type: 'link / note', notes: '“Order PDF” · “VAT invoice pending” · “No longer payable…”' },
+            ],
+          },
+          {
+            group: 'Footer notes (static)',
+            items: [
+              { name: 'note 1', type: 'text', notes: '“Orders from the last 5 years are shown. Open an invoice to see discounts, quantities and the products it covers.”' },
+              { name: 'note 2', type: 'text', notes: '“The VAT e-invoice for an order appears here once Accounting issues it — ask your sales contact if you need it sooner.”' },
+              { name: 'note 3', type: 'text + links', notes: '“Usage & payment: [FAQ] · Help center …”' },
+            ],
+          },
+        ],
+        behaviors: [
+          'The list loads for the default period (3M) on All; changing a tab, chip or date and pressing Search re-queries with counts.',
+          '{{btn:Invoice}} and {{btn:View order}} open the PDF in a new tab through a signed URL; the click is logged on the order.',
+          'An Unpaid row shows its due date; at midnight after the 14th day it reads Overdue with the day count — no job, no stored flag.',
+          'When Accounting confirms a payment in CRM, the row reads Paid dd/mm/yyyy on the next load and the Home dashboard alert clears.',
+          'Saramin Korea’s points / coupons / cart quick menu is not rendered — the VN product model has none of them.',
+        ],
+        rules: [
+          'One row per order; never one per invoice and never one per product line.',
+          'Payment status is read from CRM’s single stored fact (paidAt) and the order’s issue date. This page has no payment state of its own.',
+          'Only the OFFICIAL VAT invoice is downloadable. The draft exists for Sales and Accounting, not for the customer.',
+          'Amount = total after VAT as printed on the order. Discount lines are visible on the invoice, not recomputed here.',
+          'Visible to the account Admin only.',
+        ],
+        states: [
+          'No orders yet — “No orders yet. Products you order from Saramin appear here with their invoices.” + {{btn:See products}}; filters hidden',
+          'Unpaid order — amber pill with due date; button View order; note “VAT invoice pending” if none issued',
+          'Overdue order — rose pill with the day count; same buttons; if the invoice was issued first the products are already on Product usage with the “Payment pending” line',
+          'Expired order — grey pill, View order, “No longer payable”; excluded from the payment tabs',
+          'Cancelled + re-issued invoice — the re-issued one as the button, the cancelled one struck through beneath',
+          'Period matches nothing — “No payments in this period” with the chips still shown',
+        ],
+        backend: {
+          endpoints: [
+            'GET /company/orders?tab=all|paid|unpaid|overdue&from=&to=&page= → { counts{ byTab }, rows[ { code, issuedAt, lines[{ name, qty, gift }], totalAfterVat, paymentStatus, paidAt, dueAt, overdueDays, poStatus, invoice?{ number, issuedAt, cancelled?, reissuedFrom? } } ] }',
+            'GET /company/orders/:id/order.pdf · GET /company/orders/:id/invoice.pdf → 302 to a short-lived signed URL; 404 for a draft-only or missing invoice',
+          ],
+          integrations: [
+            'CRM → Purchase order (code, issue date, lines, total, PO status, payment fact)',
+            'CRM → Invoices (official issue date, legal number, cancellation / re-issue, PDF)',
+            'Account management → Roles (Admin-only menu item)',
+            'Home dashboard (“Order awaiting payment” alert links here)',
+          ],
+          notes:
+            'A read model over CRM’s PO + invoice + payment fact. No table of its own, no writes. Unpaid / Overdue are computed in the query from issuedAt and today, so the customer and the rep see the same value at the same moment.',
+        },
+        acceptance: [
+          'An order issued today with no payment shows Unpaid with a due date 14 days out; on the 15th morning it shows Overdue · 1 day with no other change.',
+          'Confirming the payment in CRM turns the pill to Paid dd/mm/yyyy on the next load.',
+          'A row whose official invoice exists offers Invoice as the primary button whatever its payment status; a row without one offers View order and the note “VAT invoice pending”; a draft is never downloadable.',
+          'The Amount equals the total after VAT on the order PDF to the đồng.',
+          'The 3M chip is preselected on first load and the from–to fields show the matching dates; editing a date clears the chip.',
+          'A user with a custom role does not see Payment history in the left menu and gets 403 on the endpoints.',
+          'An expired order appears under All with the grey pill and under none of the three payment tabs.',
+        ],
+        openQuestions: [
+          'Show the e-invoice lookup code (mã tra cứu) on the row so the customer can verify the invoice on the provider portal without opening the PDF? Recommended — it is the number their accountant actually types.',
+          'Should Expired orders be shown at all, or only in HQ’s view? Recommended shown — it explains a missing provisioning.',
+          'Partial payments: do we show the paid instalments as separate dates, or only the remainder? Depends on whether CRM records one paidAt or a list.',
+        ],
+      },
+    },
+    /* ── Company information (company site) ──────────────────────────────────
+       The employer's own view of the company RECORD — the legal identity, the
+       invoice defaults, the basic facts and the registration documents the CRM
+       created the account from. Not the public company page (that is HQ-authored,
+       see "HQ AUTHORS the company page"). Read-mostly: five fields save directly,
+       the fiscal ones go through HQ as a change request. */
+    {
+      name: 'Company information (company site)',
+      site: 'Companies',
+      slug: 'company-information-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The employer edits their own company record — identity, invoice defaults, basic facts, Enterprise Registration Documents. Fields that print on a VAT invoice change only through an HQ-confirmed request.',
+      ready: true,
+      detail: {
+        refDocs: [
+          {
+            label: 'Figma — Company information · view mode',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2311-10289',
+            meta: 'Figma frame · 1440 wide',
+            note: 'Four sections in Saramin Korea’s table style (label cell · value cell), one Edit button for the whole page, an Upload button on the documents section, and the FAQ.',
+          },
+          {
+            label: 'Figma — Company information · edit mode',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2313-10289',
+            meta: 'Figma frame · 1440 wide',
+            note: 'The same rows with inputs / selects, the “※” notes box, and Save changes · Cancel. Fiscal fields carry the “reviewed by Saramin” marker.',
+          },
+        ],
+        description:
+          'The first tab under “Company information management” on the company site. It shows the company RECORD the sale created — the same fields HQ reads on the CRM company card, minus what only HQ needs (Company ID, lead source, sales owner, deal value) — and lets the employer keep them current: display name, industry, size, city and website save at once; the legal identity and the invoice defaults are submitted to HQ, who confirms them against the registration documents before they take effect. The documents themselves — renamed **Enterprise Registration Documents** on the company site — can be uploaded here at any time.\n\nIt is deliberately not the public company page. That page is what jobseekers see and HQ authors it section by section (Account management → “HQ AUTHORS the company page”); this page is what the tax office and the invoice see. The layout follows Saramin Korea’s 기업정보 관리 (a label / value table under a left tab bar) because employers know the shape; every field on it is ours.',
+        userStory:
+          'As the account Admin, I want to check and correct my company’s registered details and upload our registration documents myself, so that our VAT invoices are right the first time and I do not have to email Saramin for a typo.',
+        keyPoints: [
+          {
+            vi: 'Trang này là HỒ SƠ CÔNG TY (pháp lý · xuất hóa đơn · thông tin cơ bản · giấy tờ) — không phải trang công ty công khai. Trang công khai do HQ soạn, ở tab “Company page”.',
+            en: 'This page is the COMPANY RECORD (legal · invoice · basic facts · documents) — not the public company page. The public page is HQ-authored and lives under the “Company page” tab.',
+          },
+          {
+            vi: 'Hai loại sửa. Tên hiển thị · Ngành · Quy mô · Tỉnh/Thành · Website LƯU NGAY. Loại công ty · Tên pháp lý · MST · Địa chỉ đăng ký · Phân loại người mua · Quốc gia đăng ký là YÊU CẦU THAY ĐỔI — HQ đối chiếu giấy tờ rồi mới áp dụng, vì chúng in trên hóa đơn GTGT.',
+            en: 'Two kinds of edit. Display name · Industry · Size · City · Website SAVE AT ONCE. Company type · Legal name · Tax code · Registered address · Buyer classification · Registered country are CHANGE REQUESTS — HQ checks them against the documents before applying, because they print on the VAT invoice.',
+          },
+          {
+            vi: 'Không có Company ID, không có nhóm Sales (nguồn lead, sales phụ trách, giá trị deal) và không có “người liên hệ chính” của CRM trên trang này. Người của công ty quản lý ở Users & roles.',
+            en: 'No Company ID, no Sales group (lead source, sales owner, deal value) and no CRM “primary contact” on this page. The company’s own people are managed under Users & roles.',
+          },
+          {
+            vi: 'Một nút Edit cho cả trang, không phải bút chì trên từng dòng — 20 ô sửa inline là 20 cơ hội lưu dở một ô. Save kiểm tra bắt buộc; Cancel bỏ toàn bộ bản nháp.',
+            en: 'One Edit button for the whole page, not a pencil per row — 20 inline editors are 20 chances to half-save one. Save validates the required marks; Cancel discards the whole draft.',
+          },
+          {
+            vi: 'Chỉ Admin tài khoản được Edit và tải giấy tờ. Mọi user khác xem được (nhưng không thấy Edit) — bộ 7 quyền của role cố ý không có quyền “hồ sơ công ty”.',
+            en: 'Only the account Admin can Edit and upload documents. Every other user can read (no Edit button) — the 7-permission role set deliberately has no “company record” permission.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'What the customer sees — and what never appears',
+            text: 'Field for field the CRM company card (Account management → Company detail, Admin), in the same four groups and the same order, so a rep and a customer talking on the phone are looking at the same rows. Three things on the card are HQ’s business and are left off.',
+            table: {
+              cols: ['Section', 'Rows (★ = required)', 'Edit class'],
+              rows: [
+                ['Company information', '★ Company type (Vietnamese company · Foreign company) · ★ Legal name · ★ Tax code (MST) — “Foreign tax reference, optional” for a foreign company · ★ Registered address — “Registered address” label for a foreign company · Display name', 'Display name saves at once; the four others are **change requests**'],
+                ['Invoice information', '★ Buyer classification (Vietnamese company · Foreign company · Individual with ID card · Individual, no ID) — “the default for every quotation and order” · when the buyer is the company itself: one sentence “Legal name · Tax code · Invoice address are inherited from Company information — nothing to enter” · when an individual: Buyer name · ID card number · Invoice address', 'All **change requests** — they decide the shape of the VAT invoice'],
+                ['Basic information', '★ Industry · ★ Company size · ★ Registered country · Province / City (Vietnamese companies only) · Website', 'Industry · Size · City · Website save at once; Registered country is a **change request** (it gates Company type)'],
+                ['Enterprise Registration Documents', 'One row per document: type · file · uploaded date · status chip. Types: Business registration certificate (GPKD) · Tax registration certificate · Signed contract · Other', 'Upload any time (view or edit mode); see the documents block'],
+              ],
+            },
+            items: [
+              'LEFT OFF on purpose: **Company ID** (an HQ handle, not a fact about the company), the **Sales** group (lead source · sales owner · products interested · estimated deal value · description — CRM qualification data), and the CRM **primary contact** (a sales-side contact person; the customer’s own people are Company users).',
+              'The labels follow the client’s current wording where one exists; the documents card is renamed **Enterprise Registration Documents** on the company site (the admin card keeps “Verification documents” — same records, two names, one store).',
+              'Company type drives two labels and one requirement exactly as on the CRM form: a Foreign company sees “Foreign tax reference (optional)” and “Registered address”, and its buyer classification can only be Foreign company or one of the two individual shapes (CRM → “Loại công ty gates the invoice classifications”).',
+            ],
+          },
+          {
+            label: 'Two kinds of edit — saved now, or confirmed by HQ',
+            text: 'A customer typing a new legal name or tax code is the moment the next VAT invoice can start disagreeing with the tax registry. So the fields that print on fiscal documents, or decide their shape, do not change on Save: Save records a CHANGE REQUEST that HQ confirms against the registration documents. Everything else saves immediately.',
+            table: {
+              cols: ['Class', 'Fields', 'On Save', 'Row shows afterwards'],
+              rows: [
+                ['**Saved at once**', 'Display name · Industry · Company size · Province / City · Website', 'Written to the company record; audit entry (who, when, old → new)', 'The new value'],
+                ['**Change request**', 'Company type · Legal name · Tax code · Registered address · Registered country · Buyer classification · Buyer name · ID card number · Invoice address', 'Nothing changes on the record yet. A change request is created with the old and new values, an optional note and an optional document; HQ is notified', 'The CURRENT value, plus an amber line: {{tagwarn:Pending review}} “Requested 05/09/2026 by Burning — new value: …”'],
+              ],
+            },
+            items: [
+              'A change request is reviewed on the CRM company record (Basic-info card), where HQ sees old → new side by side and clicks Apply or Decline with a reason. Apply runs the SAME rules the card’s own Edit runs — company type re-gates the buyer classification, the tax code is verified and checked for duplicates — so a customer request can never bypass a rule a rep must follow.',
+              'One open request per field. Editing a field that already has a pending request replaces the request (the customer changed their mind), it does not queue a second one.',
+              'Applying a request that changes the invoice defaults affects future quotations and orders only. Issued documents are snapshots (CRM → “Snapshot vẫn là snapshot”); a wrong issued invoice is still cancel + re-issue, never an edit.',
+              'Alternatives considered: (a) let the customer change fiscal fields freely — rejected, the invoice must match the tax registry character for character and a typo costs a cancel + re-issue; (b) lock them entirely and route everything through support email — rejected, companies do re-register addresses and a request with the document attached is faster than an email chain. The request queue is the middle path.',
+            ],
+            warn: 'The tax code (MST) and the legal name are NEVER written by the customer directly, not even when the account has no invoice yet. They are the identity the account was created from (CRM → Verify MST), and a self-serve edit would silently detach the account from the company that signed the contract.',
+          },
+          {
+            label: 'Change request status',
+            table: {
+              cols: ['Status', 'Means', 'Rule'],
+              rows: [
+                ['**Pending review**', 'Submitted, HQ has not acted', 'Shown as an amber line under the field in view mode. Only one per field; a newer edit replaces it. The customer can withdraw it (× on the line).'],
+                ['**Applied**', 'HQ confirmed; the record now carries the new value', 'The amber line disappears; the row shows the new value; the customer gets a notification “Your company information was updated”.'],
+                ['**Declined**', 'HQ refused, with a reason', 'The row shows the old value and a grey line “Declined 06/09/2026: reason” until the customer dismisses it. The reason is mandatory on the HQ side.'],
+              ],
+            },
+          },
+          {
+            label: 'Enterprise Registration Documents',
+            text: 'The files that prove the tax code is theirs — the same store the admin “Verification documents” card reads. The customer can add to it any time; only HQ can verify or remove a verified file.',
+            table: {
+              cols: ['Status', 'Means', 'Rule'],
+              rows: [
+                ['**Under review**', 'Uploaded, not yet checked by HQ', 'The customer may replace or delete it. HQ sees it in the company record with a “new document” marker.'],
+                ['**Verified**', 'HQ confirmed the document matches the record', 'Locked for the customer — no delete, no replace. Uploading a newer version keeps the old one (audit).'],
+                ['**Rejected**', 'HQ could not accept it (unreadable, wrong company, expired)', 'Reason shown under the row; the customer uploads again. The rejected file stays on record.'],
+              ],
+            },
+            items: [
+              'Types: Business registration certificate (GPKD) · Tax registration certificate · Signed contract · Other (free label). PDF, JPG, PNG — max 10 MB per file; the type is chosen at upload, not guessed from the file name.',
+              'Previous versions are kept when a company re-registers (new address, new legal name): the audit trail of who proved what, when, is the point of the card — matches the admin note “Bản cũ vẫn giữ lại cho audit”.',
+              'A change request for a fiscal field may attach one of these documents as evidence; HQ then reviews both together.',
+              'Uploading is offered in view mode too (button on the section heading). Adding a document is not an edit of the record, so it does not need Edit mode.',
+            ],
+          },
+          {
+            label: 'Edit mode — one toggle for the whole page',
+            table: {
+              cols: ['Step', 'What happens'],
+              rows: [
+                ['{{btn:Edit}} (view mode, first section heading)', 'Every row turns into its input: text fields (Legal name · Tax code · Registered address · Display name · Buyer name · ID card · Invoice address · Website), selects (Company type · Buyer classification · Industry · Company size · Registered country · Province / City). Fiscal fields carry the marker “Reviewed by Saramin before it takes effect”. The Edit button is replaced by “★ Required”.'],
+                ['Typing', 'Company type switches the tax-code label and requirement and re-gates Buyer classification live. Buyer classification switches the invoice rows between the inherited sentence and the individual fields. Registered country ≠ Việt Nam hides Province / City.'],
+                ['{{btn:Save changes}}', 'Validates required marks and formats (tax code 10 or 13 digits; website is a hostname). Saves the direct fields, files one change request per changed fiscal field, then returns to view mode with a toast: “Saved. 2 changes are waiting for Saramin’s review.”'],
+                ['{{btn:Cancel}}', 'Discards the whole draft — every input, including the “※” notes state, returns to the record. Nothing survives a cancelled edit.'],
+              ],
+            },
+            items: [
+              'A server-side pre-check on Save warns, but does not block, when the new tax code already belongs to another account: “This tax code is registered to another Saramin account — Saramin will contact you.” The block itself happens at HQ review, the same place the CRM card blocks it.',
+              'The “※” notes box above the buttons carries four fixed lines: required marks · fiscal fields are reviewed · document formats and size · no HTML in any field.',
+            ],
+          },
+          {
+            label: 'Tabs on this screen, and who can do what',
+            table: {
+              cols: ['Tab', 'Shows', 'Owned by'],
+              rows: [
+                ['Company information', 'This page', 'this feature'],
+                ['Billing information', 'Label as set on the Figma frame (05/09/2026). The billing side of the account — invoice defaults and payment documents; the Invoice information section on this page may move there. Decision pending (see open questions).', 'Products & Payment Management (Product usage · Payment history) · CRM → Invoices'],
+                ['Users & roles', 'The account’s logins and custom roles', 'Account management → Company users · Roles (on CO)'],
+              ],
+            },
+            items: [
+              'View: every company user. Edit, Save and Upload: the account Admin only — everyone else sees the page without the Edit and Upload buttons.',
+              'HQ sees the same page read-only from the company record (“HQ sees what the employer sees”), plus the pending change requests with Apply / Decline.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Page chrome',
+            items: [
+              { name: 'title', type: 'text', notes: '“Company information management”' },
+              { name: 'tabs', type: 'enum', notes: 'Company information (active) · Billing information · Users & roles — the public company page is reached from the Company page screen, not from this tab bar' },
+              { name: 'section heading', type: 'text + action', notes: 'Company information carries {{btn:Edit}} (view) / “★ Required” (edit); Enterprise Registration Documents carries {{btn:Upload document}} in both modes' },
+              { name: 'FAQ', type: 'accordion', notes: 'six questions: legal name / tax code change · which files count · effect on VAT invoices · where the public page is edited · who can edit · adding HR users' },
+            ],
+          },
+          {
+            group: 'Row (KR table style)',
+            items: [
+              { name: 'label cell', type: 'text', notes: '200 px, grey background, ★ in red when required' },
+              { name: 'value cell', type: 'text | input | select | document line', notes: 'view: value in dark text, hints in grey · edit: 500 px input / select, marker “Reviewed by Saramin before it takes effect” on fiscal fields' },
+              { name: 'pending line', type: 'derived', notes: 'view mode only: {{tagwarn:Pending review}} + “Requested dd/mm/yyyy by <user> — new value: …” + ×' },
+              { name: 'document line', type: 'composite', notes: 'file name (link) · “Uploaded dd/mm/yyyy” · status chip Verified / Under review / Rejected · × while Under review' },
+            ],
+          },
+          {
+            group: 'Edit mode footer',
+            items: [
+              { name: 'notes box', type: 'static “※” list', notes: '4 lines — see the Edit mode block' },
+              { name: 'buttons', type: 'action', notes: '{{btn:Save changes}} primary · {{btn:Cancel}} secondary, centred' },
+            ],
+          },
+        ],
+        behaviors: [
+          'The page loads the record, the documents and the open change requests in one request; pending lines render under their fields.',
+          '{{btn:Edit}} switches every section at once; there is no per-row edit. Leaving the page with unsaved changes asks for confirmation.',
+          'Company type, Buyer classification and Registered country re-render dependent rows live in edit mode, using the same gating table as the CRM form.',
+          '{{btn:Save changes}} writes direct fields and files change requests in one transaction; the toast names how many requests were filed.',
+          '{{btn:Upload document}} opens a picker (type select + file); the new row appears as Under review immediately.',
+          'Withdrawing a pending request (×) deletes it and leaves the record untouched; dismissing a Declined line hides it for that user.',
+        ],
+        rules: [
+          'Direct fields: Display name · Industry · Company size · Province / City · Website. Everything else on the page is a change request or read-only.',
+          'The tax code and the legal name are never written by the customer; only an applied change request (HQ) changes them.',
+          'Applying a request runs the CRM card’s own rules — company type gating, MST verification, MST uniqueness across Customers and Free data.',
+          'A Verified document cannot be deleted or replaced by the customer; a newer upload is a new version, the old one stays.',
+          'Every write on this page is audited: who, when, field, old → new (or file, type).',
+          'The public company page is not edited here and is never affected by a change on this page except the display name, which it reads.',
+        ],
+        states: [
+          'Default — record complete, no pending requests, documents Verified',
+          'Pending requests — amber lines under the fiscal fields; Edit still allowed for the others',
+          'Declined request — grey reason line until dismissed',
+          'Foreign company — tax code optional (“Foreign tax reference”), no Province / City, buyer classification limited to Foreign company / individual',
+          'Individual buyer default — Invoice information shows Buyer name · ID card · Invoice address instead of the inherited sentence',
+          'No documents yet — the documents table shows one row “No documents uploaded yet” and the Upload button; HQ sees the account as unverified',
+          'Non-Admin user — page renders without Edit and Upload; no pending-line × controls',
+          'Loading / failed — one retry, never a half-rendered form',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'company (read)', type: 'ref → CRM Company', required: true, notes: 'companyType · legalName · tax · address · shortName · buyerType · buyerName · idCard · industry · size · country · city · domain — the CRM record, no copy' },
+            { name: 'ChangeRequest', type: 'entity', required: true, notes: 'id · accountId · field · oldValue · newValue · note? · documentId? · status (pending · applied · declined) · requestedBy · requestedAt · decidedBy? · decidedAt? · declineReason?' },
+            { name: 'CompanyDocument', type: 'entity', required: true, notes: 'id · accountId · type (gpkd · tax-registration · contract · other) · label? · file (id, name, size, mime) · uploadedBy · uploadedAt · status (under-review · verified · rejected) · rejectReason? · supersedes? (previous version)' },
+            { name: 'audit', type: 'append-only', required: true, notes: 'every write on this page' },
+          ],
+          endpoints: [
+            'GET /company/profile → { company, documents[], changeRequests[] (open + recently decided) }',
+            'PATCH /company/profile { shortName?, industry?, size?, city?, domain? } — Admin only; any other field → 400',
+            'POST /company/profile/change-requests { field, newValue, note?, documentId? } — Admin only; replaces an open request on the same field; 409 if the field is not in the change-request class',
+            'DELETE /company/profile/change-requests/:id — withdraw while pending',
+            'POST /company/documents (multipart: type, label?, file) → Under review · DELETE /company/documents/:id — only while Under review · GET /company/documents/:id → 302 signed URL',
+            '(HQ, CRM) GET /admin/companies/:id/change-requests · POST …/:id/apply · POST …/:id/decline { reason } · POST /admin/companies/:id/documents/:docId/verify | reject',
+          ],
+          integrations: [
+            'CRM → Company record (the single store; Apply writes it with the card’s own validation)',
+            'CRM → Verify MST (tax-authority lookup on Apply) · MST uniqueness across Customers and Free data',
+            'Account management → Roles (Admin-only writes) · Company users (the Users & roles tab)',
+            'Company page (reads display name) · Notifications (request applied / declined; new document for HQ)',
+          ],
+          notes:
+            'No second company table. The company site reads the CRM record and writes only the five direct fields to it; everything fiscal goes through ChangeRequest so that one rule set (the CRM card’s) decides what the record may become. Documents are the same CompanyDocument rows the admin card lists — a rename in the UI, not a new store.',
+        },
+        acceptance: [
+          'The page shows the four sections with exactly the rows in the table above; Company ID, lead source, sales owner, deal value and the CRM primary contact appear nowhere on it.',
+          'Changing Display name and Website and saving updates the record at once with an audit entry; the toast says no review is pending.',
+          'Changing Legal name and saving leaves the record unchanged, creates one Pending review request visible under the row, notifies HQ, and the toast says “1 change is waiting for Saramin’s review”.',
+          'Editing the same field again while a request is pending replaces the request; there is never more than one open request per field.',
+          'HQ applying the request changes the record and the row; declining shows the reason under the row.',
+          'Switching Company type to Foreign company relabels the tax code as optional, relabels the address and limits Buyer classification to the allowed shapes — identical to the CRM form.',
+          'Uploading a PDF as Business registration certificate adds an Under review row immediately; the customer can delete it until HQ verifies; after Verified the × is gone and a new upload becomes a new version.',
+          'A non-Admin user loads the page read-only with no Edit or Upload buttons; PATCH and POST return 403 for them.',
+          'Cancel after edits restores every field, including dependent-row state, to the record.',
+        ],
+        openQuestions: [
+          'The second tab was renamed “Billing information” on the Figma frame while this spec was written. If it is meant to hold the invoice defaults, the Invoice information section moves off this page into that tab; if it is the payment side only (Product usage · Payment history), the section stays here. Thu to decide.',
+          'Registered country — direct field or change request? Specced as a change request because it gates Company type; if the client wants it self-serve, Company type must then be re-derived on Apply, not on Save.',
+          'Auto-apply: should a pending request apply itself after N working days without HQ action? Recommendation: no — an unreviewed fiscal change is exactly the case the queue exists for; add an HQ SLA alert instead.',
+          'Individual-buyer fields (Buyer name · ID card) are personal data of a director. Should the customer be allowed to type them here at all, or only HQ from a signed document?',
+          'HQ review surface: a banner + diff on the CRM company record’s Basic-info card is recommended; it still needs its own admin wireframe and spec lines (follow-up).',
+        ],
+      },
+    },
     {
       name: 'Roles (permission builder, on CO)',
       site: 'Companies',
       scope: ['BE', 'FE', 'UI'],
       notes: 'Admin builds/edits the account’s roles by ticking a short permission set; users are then assigned a role.',
       detail: {
+        refDocs: [
+          { label: 'Figma — Users & roles · Roles tab', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2330-10878', meta: 'Figma frame · 1440 wide', note: 'Role name (Admin locked, starter badge) · users count · permissions summary · Edit / Delete. Toolbar: Add role.' },
+          { label: 'Figma — Create role', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2332-10499', meta: 'Figma frame', note: 'Role name + the 7-permission builder in 3 groups; prerequisites auto-ticked and locked; Resume group greyed without Resume Search; Save role · Cancel.' },
+        ],
         description:
           'The Roles screen where the Admin composes a custom role from the 7-permission catalog (3 modules) and names it. Roles are then picked when inviting or editing a user. The account ships with starter custom roles (Recruiter, Viewer) so no one starts from a blank checklist; they are ordinary editable roles — Admin can edit them or add new ones. Admin itself (the Super admin) is the one fixed role and is not editable here. "Manage users & roles" is never a tickable permission — it stays on the Admin role only.',
         userStory:
           'As the Admin, I want to build a role from a short list of permissions and reuse it, so that I assign access consistently instead of configuring each person from scratch.',
+        requirements: [
+          {
+            label: 'The Roles tab',
+            table: {
+              cols: ['Column', 'Shows', 'Rule'],
+              rows: [
+                ['Role', 'Name · {{tagok:Admin}} on the fixed role · {{tagmute:Starter}} on Recruiter and Viewer', 'Admin is never editable; starter roles are ordinary editable roles'],
+                ['Users', 'How many users hold the role', 'Click → Users tab filtered by that role'],
+                ['Permissions', '“7 of 7” plus the ticked permissions as chips', 'Admin reads “All permissions + manage users & roles”'],
+                ['Actions', '{{btn:Edit}} · {{btn:Delete}}', 'Delete is disabled while any user holds the role (tooltip names the count); Admin has no actions'],
+              ],
+            },
+            items: [
+              'Toolbar: {{btn:Add role}}. No search or filter — an account has a handful of roles, and a list that fits on one screen needs neither.',
+              'VietnamWorks’ role list shows only a name and a count; the permissions column is added so the Admin can compare roles without opening each one.',
+            ],
+          },
+          {
+            label: 'Create / edit role — the 7-permission builder',
+            text: 'The whole VietnamWorks “Thêm vai trò” idea (name + checkbox groups) with the catalogue cut to 7 permissions in 3 groups — the module rule “not a 30-checkbox tree”. Prerequisites are auto-included, so a role cannot be built broken.',
+            table: {
+              cols: ['Group', 'Permission', 'Prerequisite (auto-ticked, locked)'],
+              rows: [
+                ['Job posts', 'View jobs', '—'],
+                ['', 'Post jobs', 'View jobs'],
+                ['', 'Edit jobs — edit and close a posting', 'View jobs'],
+                ['Applications', 'View applications & CVs', '—'],
+                ['', 'Manage applications — move through the pipeline, shortlist, reject', 'View applications & CVs'],
+                ['Resume search', 'Search resumes — browse masked results', '—'],
+                ['', 'View / unlock resume detail — spends 1 CV unlock, reveals contact', 'Search resumes'],
+              ],
+            },
+            items: [
+              'Ticking a higher action ticks and locks its prerequisite; unticking a prerequisite unticks what depends on it, with an inline note saying so.',
+              'The Resume search group is greyed with “Requires Resume Search — not on this account” when the entitlement is missing; the boxes still exist so a role built today works the day the product is bought.',
+              'Role name is required and unique within the account. A role must have at least one permission — a role with none is a Viewer with nothing to view.',
+              'A fixed last line reads: “Manage users & roles is part of the Admin role and cannot be added to a custom role.”',
+              '{{btn:Save role}} returns to the Roles tab; on edit, every user holding the role is re-scoped at their next action. {{btn:Cancel}} discards the draft.',
+            ],
+          },
+        ],
         uiFields: [
           {
             group: 'Role',
@@ -391,10 +1405,97 @@ export const companyUser: BuildModule = {
       scope: ['BE', 'FE', 'UI'],
       notes: 'The Admin invites the company’s users and assigns each one a role, self-serve on the Company site.',
       detail: {
+        refDocs: [
+          { label: 'Figma — Users & roles · Users tab', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2330-10191', meta: 'Figma frame · 1440 wide', note: 'One row per login: name + Admin badge + email · role as an inline select · status chip · last active · ⋯ actions. Toolbar: count + seats, search, filter, Invite user.' },
+          { label: 'Figma — Invite user', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2332-10191', meta: 'Figma frame', note: 'Email · Full name (one field) · Role select with “View permissions” · Send invitation. The seat counter is shown above the form.' },
+          { label: 'Figma — Invitations tab', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2330-10556', meta: 'Figma frame', note: 'Pending and Expired invitations with sent date, expiry, Resend and Cancel. Accepted and Cancelled rows leave the tab.' },
+        ],
         description:
           'Self-serve team management. Every user is a row with their own email/login and an ASSIGNED role (Admin, or a role built on the Roles screen). Role is a reference to a role, not a bag of per-user permissions — so editing a role re-scopes everyone on it, and changing a person’s access is just picking a different role.',
         userStory:
           'As the Admin, I want to invite my team and assign each person a role so that the right people can post jobs / search CVs without sharing one login.',
+        keyPoints: [
+          {
+            vi: 'Một dòng = một login. Mỗi dòng có MỘT ô chọn vai trò — đổi vai trò ngay trên danh sách. Không có quyền theo từng user, không có “Assigned job”: quyền là theo tài khoản, qua vai trò.',
+            en: 'One row = one login. Each row has ONE role select — change the role right on the list. No per-user permissions and no “Assigned job” column: access is account-wide, through the role.',
+          },
+          {
+            vi: 'Mời = email + Họ và tên (MỘT ô) + vai trò. Người được mời tự đặt mật khẩu qua link 7 ngày. Lời mời chiếm chỗ (seat) ngay khi gửi — huỷ hoặc hết hạn thì trả chỗ.',
+            en: 'Invite = email + Full name (ONE field) + role. The invitee sets their own password through a 7-day link. An invitation takes a seat the moment it is sent — cancelling or expiry frees it.',
+          },
+          {
+            vi: 'Trạng thái lời mời là bảng riêng: Pending · Accepted · Expired · Cancelled. Tab Invitations chỉ giữ Pending và Expired — những thứ Admin còn phải xử lý.',
+            en: 'Invitation status is its own table: Pending · Accepted · Expired · Cancelled. The Invitations tab keeps only Pending and Expired — what the Admin still has to act on.',
+          },
+          {
+            vi: 'Admin cuối cùng không bao giờ bị hạ vai trò hay vô hiệu hoá — ô chọn của họ bị khoá kèm lý do. Muốn chuyển giao thì cấp Admin cho người khác trước.',
+            en: 'The last Admin is never downgraded or disabled — their select is locked with the reason. To hand over, grant Admin to someone else first.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'The Users tab — one row per login',
+            text: 'The layout is Saramin Korea’s 멤버 권한 설정 table (name cell with a badge, per-row selects, 68 px rows); the flow is VietnamWorks’ (users → invite → invitations sent → roles). What changed from both: KR’s three per-module selects became ONE role select, and VietnamWorks’ “Assigned job” column is gone, because a role is account-wide.',
+            table: {
+              cols: ['Column', 'Shows', 'Rule'],
+              rows: [
+                ['Name', 'Full name (bold) · {{tagok:Admin}} badge on the fixed role · email underneath', 'Sorted by name; search matches name and email'],
+                ['Role', 'An inline select listing the account’s roles — Admin · Recruiter · Viewer · custom', 'Applies immediately with a toast. Locked (with tooltip) on the last active Admin and on Disabled rows'],
+                ['Status', '**Active** · **Invited** · **Disabled**', 'The account-status table above. Invited rows are the same person as their Pending invitation — one row here, one in the Invitations tab, same record'],
+                ['Last active', 'dd/mm/yyyy hh:mm of the last request', '“—” while Invited; keeps the last value when Disabled'],
+                ['Actions (⋯)', 'Resend invite (Invited) · Deactivate (Active) · Reactivate (Disabled)', 'Deactivate confirms with the offboarding wording; Reactivate is blocked at the seat cap; nothing here deletes'],
+              ],
+            },
+            items: [
+              'Toolbar: “Users 3” with “3 of 4 seats used” beside it · search (name, email) · Filter (role · status) · {{btn:Invite user}}. The button is disabled at the cap with the reason in a tooltip.',
+              'Disabled rows stay in the list, greyed, so the audit trail stays visible — they are filtered out only when the Status filter says so.',
+              'Everything on this tab is Admin-only. A non-Admin who opens the page sees the list read-only, without selects, actions or the Invite button.',
+            ],
+          },
+          {
+            label: 'Invite a user — email, one Full name, one role',
+            table: {
+              cols: ['Field', 'Rule'],
+              rows: [
+                ['Email ★', 'Their login. One email = one employer login platform-wide: an email already on THIS account says “already a member”, one on another company says “this email belongs to another company account — contact Saramin”. An email with a Pending invitation offers Resend instead of a second invitation.'],
+                ['Full name ★', 'ONE field. VietnamWorks splits Họ / Tên; the platform standard is a single Full name (see “Full name — one field”). Shown in the Users list from day one, before they accept.'],
+                ['Role ★', 'One of the account’s roles, Admin included. “View permissions” beside the select opens the role’s 7-permission summary so the Admin sees what they are granting.'],
+              ],
+            },
+            items: [
+              '{{btn:Send invitation}} creates the invitation (Pending), takes one seat, and emails a set-password link valid 7 days. Nobody types a password for anyone.',
+              'The form shows the seat counter above it. At the cap it does not open: the Users tab’s Invite button is disabled with “All 4 seats are in use — deactivate a user or cancel an invitation first”.',
+              'Granting Admin is just choosing Admin here; there is no separate transfer flow.',
+            ],
+          },
+          {
+            label: 'Invitation status',
+            table: {
+              cols: ['Status', 'Means', 'Rule'],
+              rows: [
+                ['**Pending**', 'Sent; the link is still valid (7 days)', 'Row in the Invitations tab with “Sent dd/mm · expires dd/mm” · actions {{btn:Resend}} · {{btn:Cancel}}. Holds a seat.'],
+                ['**Accepted**', 'The person opened the link and set a password', 'Becomes an **Active** user; the row leaves the Invitations tab. The seat it held is now the user’s.'],
+                ['**Expired**', '7 days passed without acceptance', 'Stays in the tab as “Expired dd/mm” with {{btn:Resend}} · {{btn:Cancel}}; the seat is freed. Resend issues a new 7-day link.'],
+                ['**Cancelled**', 'The Admin cancelled it', 'The link stops working at once; the row leaves the tab; the seat is freed; the record stays in the audit log.'],
+              ],
+            },
+            items: [
+              'Resend invalidates the previous link and restarts the 7 days; the row shows “Resent dd/mm”. There is no limit, but every resend is audited.',
+              'The tab label counts what needs attention: Invitations (Pending + Expired).',
+              'An Invited user who never accepts never becomes a row you have to deactivate — Cancel is the exit, and it frees the seat.',
+            ],
+          },
+          {
+            label: 'Changing a role inline — and the guards',
+            items: [
+              'Choosing another role in the row applies immediately: toast “Role changed to Recruiter — takes effect on their next action”. No confirmation dialog: the change is reversible with the same select.',
+              'The last active Admin’s select is locked, tooltip “Grant Admin to another user before changing this role”. The same guard blocks Deactivate on that row.',
+              'An Admin changing their OWN role to a non-Admin role is allowed only when another active Admin exists — the same rule, applied to yourself.',
+              'A Disabled user keeps their role but cannot log in; the select is locked until Reactivate.',
+              'HQ break-glass (reassign Admin when the sole Admin is gone) lives on the CRM company record, not on this page.',
+            ],
+          },
+        ],
         uiFields: [
           {
             group: 'User',
@@ -419,7 +1520,7 @@ export const companyUser: BuildModule = {
           'All users share the account’s pooled products/quota (posting slots, CV unlocks) — quota is account-level, not per user.',
           'Break-glass: if the sole Admin is gone (left / lost access / dead email), HQ can reassign Admin.',
         ],
-        states: ['Invited (pending)', 'Active', 'Disabled', 'Join request pending approval', 'Seat limit reached (4)', 'Last Admin (downgrade/disable blocked)'],
+        states: ['Invited (pending)', 'Active', 'Disabled', 'Invitation expired — Resend offered, seat freed', 'Invitation cancelled — leaves the tab, kept in audit', 'Join request pending approval', 'Seat limit reached (4) — Invite disabled with reason', 'Last Admin (downgrade/disable blocked)', 'Non-Admin viewing — read-only list, no selects or actions'],
         backend: {
           dataModel: [
             { name: 'userId', type: 'uuid' },
@@ -429,7 +1530,10 @@ export const companyUser: BuildModule = {
             { name: 'status', type: 'enum', notes: 'invited | active | disabled' },
           ],
           endpoints: [
-            'POST /company/users/invite { email, roleId }',
+            'GET /company/users?role=&status=&q= → rows { id, fullName, email, roleId, status, lastActiveAt } + seats { used, cap } (used = Active + Invited/Pending)',
+            'POST /company/invitations { email, fullName, roleId } → Pending · takes a seat · emails a 7-day set-password link',
+            'POST /company/invitations/:id/resend — new link, old one invalid, expiry reset · DELETE /company/invitations/:id — cancel, frees the seat',
+            'GET /company/invitations?status=pending|expired',
             'PATCH /company/users/:id/role { roleId } — blocked if it would leave zero Admins',
             'PATCH /company/users/:id/disable — blocked for the last Admin',
             'POST /company/join-requests/:id/approve { roleId }',
@@ -448,6 +1552,269 @@ export const companyUser: BuildModule = {
           'Confirm seat cap — still 4 total?',
           'Auto-approve join requests whose email domain matches the company’s verified domain?',
           'Which HQ roles may use the break-glass reassign, and is it always audited?',
+        ],
+      },
+    },
+    /* ── My account (company site) ────────────────────────────────────────────
+       The signed-in employer user's OWN settings: who they are, how they sign
+       in, what they are notified about, and what their role is. Everything
+       about the COMPANY lives on Company information; everything about OTHER
+       people lives on Users & roles. This page is the last screen of the
+       employer account area and the left menu on it ties the area together. */
+    {
+      name: 'My account (company site)',
+      site: 'Companies',
+      slug: 'my-account-companies',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The signed-in user’s own details, password and sessions, notification preferences and role. No self-serve “delete account” — a company login is the employer’s seat (see “Deactivate = offboarding”).',
+      ready: true,
+      detail: {
+        refDocs: [
+          {
+            label: 'Figma — My account',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2348-10253',
+            meta: 'Figma frame · 1440 wide',
+            note: 'Left menu of the account area · My details · Sign-in & security · My role · Email notifications · Leaving the company. KR 계정정보 설정 table style (label / value / action link).',
+          },
+          {
+            label: 'Figma — Change password',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2348-10729',
+            meta: 'Figma frame',
+            note: 'The modal: current password · new password with the live rule checklist · confirm · “Sign out of my other devices” · Update password.',
+          },
+        ],
+        description:
+          'The signed-in user’s page about themselves. Four things live here and nowhere else: their own details (name, login email, phone, job title, language), how they sign in (password, sessions, last sign-in), what they are emailed about, and which role they hold — read-only, because roles are assigned by the account Admin on Users & roles. The left menu is the map of the whole employer account area: My account · Change password · Notification settings · Company information · Users & roles · Products & payment · Log out.\n\nWhat is deliberately NOT here: a delete or leave button. A company login is a seat that belongs to the company, so leaving is the Admin deactivating the user (Account management → “Deactivate = offboarding”), and a personal-data request goes to Saramin support. The page says so in words, where Saramin Korea puts its 회원 탈퇴 link.',
+        userStory:
+          'As an employer user, I want to keep my own name, email and password current and choose what I am emailed about, so that my login stays mine and my inbox stays useful — without being able to change anything that belongs to the company or to my colleagues.',
+        keyPoints: [
+          {
+            vi: 'Trang này là về CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP. Thông tin công ty ở Company information; người khác và vai trò ở Users & roles — ở đây vai trò chỉ để xem.',
+            en: 'This page is about the SIGNED-IN PERSON. Company facts live on Company information; other people and roles live on Users & roles — here the role is read-only.',
+          },
+          {
+            vi: 'Một chính sách mật khẩu cho cả nền tảng: 12+ ký tự · 1 chữ hoa · 1 số · 1 ký hiệu, kiểm tra trực tiếp khi gõ. Đổi mật khẩu cần mật khẩu hiện tại, và mặc định đăng xuất các thiết bị khác.',
+            en: 'One password policy for the whole platform: 12+ characters · 1 uppercase · 1 number · 1 symbol, checked live while typing. Changing it needs the current password, and signs out other devices by default.',
+          },
+          {
+            vi: 'Đổi email đăng nhập chỉ có hiệu lực sau khi email MỚI được xác minh; email cũ nhận thông báo. Trong lúc chờ, đăng nhập vẫn bằng email cũ.',
+            en: 'A login-email change takes effect only after the NEW address is verified; the old address is told. Until then, sign-in stays on the old email.',
+          },
+          {
+            vi: 'Không có nút xoá hay rời tài khoản. Login là chỗ ngồi của công ty — Admin vô hiệu hoá (Users & roles); yêu cầu dữ liệu cá nhân gửi cho Saramin support. Trang viết rõ điều đó.',
+            en: 'No delete or leave button. The login is the company’s seat — the Admin deactivates it (Users & roles); a personal-data request goes to Saramin support. The page says exactly that.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'What is on the page — five sections and a left menu',
+            text: 'Saramin Korea’s 계정정보 설정 layout: a left menu for the account area, then sections as bordered tables of label · value · action link. The sections and the menu are ours.',
+            table: {
+              cols: ['Section', 'Rows', 'Action'],
+              rows: [
+                ['My details', 'Full name · Login email · Phone · Job title · Language (Tiếng Việt · English)', '{{btn:Edit}} per row (inline field) — Login email opens the change-email flow'],
+                ['Sign-in & security', 'Password (“Last changed dd/mm/yyyy”) · Active sessions (“2 devices”) · Last sign-in (date · city · browser)', '{{btn:Change password}} → modal · {{btn:Sign out other devices}}'],
+                ['My role in <Company>', 'Role ({{tagok:Admin}} or the role name) · Permissions summary · Company · Member since', 'read-only · link “Managed by your account Admin — Users & roles”'],
+                ['Email notifications', 'New application received · Daily applicant digest · Interview / stage reminders · Product expiring or quota low · Invoice issued / payment confirmed · Saramin news', 'toggles, saved on change'],
+                ['Leaving the company', 'One paragraph: the login is the company’s seat; the Admin deactivates it; personal-data requests go to support', 'no button'],
+              ],
+            },
+            items: [
+              'Left menu: My account (this page) · Change password (opens the modal) · Notification settings (scrolls to the section) · Company information · Users & roles · Products & payment · Log out. The same menu appears on every page of the account area.',
+              'Header of the account area: logo · “Account” · links Go to Saramin · Company site · Help center. It is the account area’s own header, not the recruiting header.',
+              'A non-Admin sees the same page; only the “My role” section differs (their role, and the note that the Admin manages it).',
+            ],
+          },
+          {
+            label: 'Change password — the platform policy',
+            text: 'The same rule set the jobseeker site uses (Jobseeker user → Sign up), so one person with two Saramin logins never meets two policies.',
+            table: {
+              cols: ['Field', 'Rule'],
+              rows: [
+                ['Current password ★', 'Required. Wrong value → one generic error “Current password is incorrect”; 5 wrong attempts in 15 minutes lock the form for 15 minutes.'],
+                ['New password ★', '12+ characters · 1 uppercase · 1 number · 1 symbol — a live checklist under the field, each line ticking as it is met. Must differ from the current password and from the login email. Never silently truncated.'],
+                ['Confirm new password ★', 'Must match; the mismatch shows on blur, not on every keystroke.'],
+                ['Sign out of my other devices', 'Checkbox, ON by default. Off keeps other sessions alive — for someone changing a password on a shared office PC while their phone stays signed in.'],
+              ],
+            },
+            items: [
+              '{{btn:Update password}} rehashes and saves, invalidates the other sessions when the box is ticked, keeps THIS session signed in, and emails “Your password was changed” to the login email with a “this wasn’t me” link to support.',
+              'The modal never shows password strength as a score or a colour bar — the checklist is the whole feedback. A bar invites “make it green”, the list says what is missing.',
+              'Forgot-password (reset by email) is on the sign-in page, not here; this modal is for a user who knows their current password.',
+              'The “Last changed” date on the row updates immediately. Every change is audited (who, when, IP).',
+            ],
+          },
+          {
+            label: 'Change login email — verified before it counts',
+            text: 'The email is the login and the invitation identity, so it changes only after the new address proves it is theirs.',
+            table: {
+              cols: ['Status', 'Means', 'Rule'],
+              rows: [
+                ['**Pending verification**', 'A new email was requested; a link was sent to it', 'The row shows “Pending: new@company.vn — check that inbox” with {{btn:Resend}} · {{btn:Cancel}}. Sign-in still uses the OLD email. The link is valid 24 hours.'],
+                ['**Verified**', 'The link was clicked', 'The login email changes; the old address receives “Your login email was changed to …” with a support link. Active sessions stay.'],
+                ['**Expired**', '24 hours passed', 'The row shows “Expired — Resend” and nothing changed.'],
+                ['**Cancelled**', 'The user cancelled, or requested a different address', 'Nothing changed; a new request replaces the old one.'],
+              ],
+            },
+            items: [
+              'The new address must be free platform-wide (one email = one employer login) and is checked when the request is made, then again at verification.',
+              'Requesting a change asks for the current password — an unattended session must not be able to redirect the login.',
+              'The Admin badge, role and seat are unaffected: the person is the same record with a new login.',
+            ],
+          },
+          {
+            label: 'Sessions and sign-in history',
+            table: {
+              cols: ['Row', 'Shows', 'Action'],
+              rows: [
+                ['Active sessions', '“N devices” — this device is always one of them', '{{btn:Sign out other devices}} — ends every session except this one, confirms with a toast'],
+                ['Last sign-in', 'dd/mm/yyyy hh:mm · city (from IP) · browser / OS', 'none — informational, so a stolen password is noticed'],
+              ],
+            },
+            items: [
+              'Session lifetime and refresh rules are platform-level (Roles & permissions module); this page only exposes “sign out the others”.',
+              'Two-factor authentication is not in Phase 1. The row is not shown greyed — a setting that cannot be turned on should not be on the page.',
+            ],
+          },
+          {
+            label: 'Email notifications — mine, not the account’s',
+            text: 'These toggles are per user. Alerts that concern the account as a whole are also sent to the account Admin regardless of these toggles, so nothing that costs money or a hire depends on one person’s inbox settings.',
+            table: {
+              cols: ['Toggle', 'Default', 'Also always sent to'],
+              rows: [
+                ['New application received', 'on', '—'],
+                ['Daily applicant digest', 'on', '—'],
+                ['Interview / stage reminders', 'on', '—'],
+                ['Product expiring or quota low', 'on', 'account Admin'],
+                ['Invoice issued / payment confirmed', 'on for Admin · off for others', 'account Admin'],
+                ['Saramin news and tips', 'off', '—'],
+              ],
+            },
+            items: [
+              'Saving is immediate per toggle with a small “Saved” confirmation; no Save button for the section.',
+              'Security emails (password changed, email changed, new device sign-in) have no toggle — they always go out.',
+            ],
+          },
+          {
+            label: 'Leaving the company — words, not a button',
+            text: 'Saramin Korea ends the page with 회원 탈퇴 (withdraw). Here the same spot carries a paragraph, because the rule is different: a company login cannot deactivate itself.',
+            table: {
+              cols: ['Who is reading', 'The paragraph says'],
+              rows: [
+                ['A non-Admin user', '“Your login is a seat on <Company>’s account. To leave, ask your account Admin to deactivate you on Users & roles. For a request about your personal data, contact Saramin support.”'],
+                ['The only Admin', '“You are the only Admin of <Company>. Grant Admin to another user on Users & roles before you can be deactivated — or contact Saramin support.”'],
+              ],
+            },
+            items: [
+              'Rule source: Account management → “Deactivate = offboarding” — the user themselves is NOT allowed to deactivate; HQ or the company Admin does. Nothing here changes that.',
+              'Log out is in the left menu, not in this section; leaving and signing out are different acts.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'My details',
+            items: [
+              { name: 'fullName', type: 'string', required: true, notes: 'ONE field — platform standard' },
+              { name: 'email', type: 'email', required: true, notes: 'login; changes through the verified flow' },
+              { name: 'phone', type: 'string', notes: 'optional; shown to colleagues on Users & roles? — no, private to the user and Saramin support' },
+              { name: 'jobTitle', type: 'string', notes: 'e.g. HR Manager — free text' },
+              { name: 'language', type: 'enum', notes: 'vi · en — the UI language for this user' },
+            ],
+          },
+          {
+            group: 'Sign-in & security',
+            items: [
+              { name: 'passwordChangedAt', type: 'date', notes: '“Last changed dd/mm/yyyy”' },
+              { name: 'sessions[]', type: 'derived', notes: 'count of active sessions; “this device” flagged' },
+              { name: 'lastSignIn', type: 'composite', notes: 'at · city · userAgent summary' },
+            ],
+          },
+          {
+            group: 'Change password modal',
+            items: [
+              { name: 'currentPassword', type: 'password', required: true },
+              { name: 'newPassword', type: 'password', required: true, notes: 'live checklist: 12+ · uppercase · number · symbol' },
+              { name: 'confirmPassword', type: 'password', required: true },
+              { name: 'signOutOthers', type: 'bool', notes: 'default true' },
+            ],
+          },
+          {
+            group: 'My role (read-only)',
+            items: [
+              { name: 'role', type: 'ref → role', notes: 'Admin badge or role name' },
+              { name: 'permissionsSummary', type: 'derived', notes: '“7 of 7” + chips, or “All permissions + manage users & roles”' },
+              { name: 'company · memberSince', type: 'string · date' },
+            ],
+          },
+          {
+            group: 'Email notifications',
+            items: [
+              { name: 'prefs{}', type: 'bool per key', notes: 'newApplication · dailyDigest · stageReminders · productExpiring · invoicePayment · news' },
+            ],
+          },
+        ],
+        behaviors: [
+          '{{btn:Edit}} on a My-details row turns that row into an inline field with Save / Cancel; other rows stay read-only. Full name and Job title save at once; Login email starts the verified flow; Language applies on save and reloads the UI.',
+          '{{btn:Change password}} opens the modal; the checklist updates on every keystroke; Update is disabled until all four rules and the match pass.',
+          '{{btn:Sign out other devices}} asks for no password (the user is signed in) but confirms with a toast naming how many sessions ended.',
+          'Toggles save on change; a failed save flips back with an error toast.',
+          'The left menu highlights the current page; Log out ends this session only.',
+        ],
+        rules: [
+          'This page edits the signed-in user’s own record only. It never shows or edits another user, and never edits the company record.',
+          'Password policy: 12+ characters · 1 uppercase · 1 number · 1 symbol; must differ from the current password; the platform never stores or displays a plaintext password.',
+          'Login email changes only after the new address is verified; one email = one employer login is enforced at request and at verification.',
+          'No self-serve deactivate or delete. The paragraph replaces the button; the rule lives in “Deactivate = offboarding”.',
+          'Security emails are not subject to notification toggles.',
+          'Every write here is audited: who, when, field, and for passwords only the fact that it changed.',
+        ],
+        states: [
+          'Default — details complete, password changed recently, 1 device',
+          'Pending email change — amber line under Login email with Resend · Cancel; sign-in still on the old email',
+          'Only Admin — the “My role” section shows the Admin badge and the Leaving paragraph names the Admin-first rule',
+          'Password form locked — 5 wrong current passwords: the modal shows “Try again in 15 minutes”',
+          'Several devices — “3 devices” with Sign out other devices; after use: “1 device” and a toast',
+          'Invoice toggle for a non-Admin — off by default, note “Payment emails always reach your account Admin”',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'user (own record)', type: 'ref → CompanyUser', required: true, notes: 'fullName · email · phone · jobTitle · language · passwordHash · passwordChangedAt · notificationPrefs · roleId · accountId · createdAt' },
+            { name: 'EmailChangeRequest', type: 'entity', notes: 'userId · newEmail · token · status (pending · verified · expired · cancelled) · requestedAt · expiresAt (24 h)' },
+            { name: 'Session', type: 'entity', notes: 'userId · createdAt · lastSeenAt · ip · city · userAgent · current flag' },
+          ],
+          endpoints: [
+            'GET /company/me → { user, sessions{ count, lastSignIn }, role{ name, permissions }, company{ name }, emailChange? }',
+            'PATCH /company/me { fullName?, phone?, jobTitle?, language? }',
+            'POST /company/me/password { currentPassword, newPassword, signOutOthers } — 401 on wrong current (rate-limited 5 / 15 min); emails a confirmation',
+            'POST /company/me/email-change { newEmail, currentPassword } → pending · POST …/resend · DELETE …/cancel · GET /verify-email?token= (24 h) → applies the change, notifies the old address',
+            'POST /company/me/sessions/sign-out-others → { ended: n }',
+            'PATCH /company/me/notifications { key: bool }',
+          ],
+          integrations: [
+            'Account management → Roles / Company users (role, Admin floor, offboarding)',
+            'Notifications (security emails, preference-gated emails, Admin-always alerts)',
+            'Jobseeker user → Sign up (shared password policy and rate-limit rules)',
+            'Audit log',
+          ],
+          notes:
+            'Everything is scoped to the caller: there is no :userId in these endpoints, so a bug cannot address someone else’s record. The email change is a separate entity so that the login email column is only ever written by the verification step.',
+        },
+        acceptance: [
+          'Editing Full name and saving updates the header name immediately and writes an audit entry.',
+          'Changing the password with a correct current password and a policy-compliant new one succeeds, keeps this session, ends the others when the box is ticked, and sends the confirmation email; a new password missing the symbol keeps Update disabled with that checklist line unticked.',
+          'Five wrong current passwords within 15 minutes lock the form and the API for 15 minutes.',
+          'Requesting a login-email change leaves sign-in on the old email until the link is clicked; clicking it switches the login and emails the old address.',
+          'A non-Admin sees their role read-only with the link to Users & roles; the only Admin sees the Admin-first paragraph under Leaving the company; nobody sees a delete or leave button.',
+          'Turning “Invoice issued / payment confirmed” off as a non-Admin stops those emails to them and leaves the Admin’s unchanged.',
+          'Sign out other devices ends every session but the current one and reports the count.',
+        ],
+        openQuestions: [
+          'Phone on the user record — visible to colleagues (Users & roles) or private? Specced private; confirm.',
+          'Language: per user (specced) or per account? Per user matches a Korean HR manager and a Vietnamese recruiter sharing one account.',
+          'Session lifetime and “remember this device” duration — platform decision, not yet written anywhere.',
+          'Two-factor authentication timing (Phase 2?) — when it arrives it lands in Sign-in & security as a row.',
         ],
       },
     },

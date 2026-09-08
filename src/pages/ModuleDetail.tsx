@@ -51,6 +51,15 @@ const STATUS_CHIP: Record<string, string> = {
   // CV search status — derived, only for the CV toggled on
   'showing': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'hidden': 'bg-slate-100 text-slate-600 border-slate-200',
+  // Entitlement row status (Product usage, company site) — derived, never stored
+  'in use': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'not activated': 'bg-amber-50 text-amber-700 border-amber-200',
+  'completed': 'bg-slate-100 text-slate-600 border-slate-200',
+  // Payment status (Payment history, company site) — CRM's payment axis
+  'paid': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'unpaid': 'bg-amber-50 text-amber-700 border-amber-200',
+  'overdue': 'bg-rose-50 text-rose-700 border-rose-200',
+  'expired': 'bg-slate-100 text-slate-600 border-slate-200',
 }
 /* Authors type both apostrophes, and “Can’t read” must not miss its chip over a
    character nobody can see the difference between. */
@@ -812,7 +821,7 @@ function FeatureDetailBlocks({ d, screenBlock }: { d: FeatureDetail; screenBlock
           <div className="flex flex-wrap gap-1.5">
             {d.states.map((s, i) => (
               <span key={i} className="rounded-md border border-line bg-canvas/50 px-2 py-0.5 text-[11.5px] text-ink/70">
-                {s}
+                <Rich t={s} />
               </span>
             ))}
           </div>

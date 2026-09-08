@@ -37,7 +37,7 @@ export const productsPackages: BuildModule = {
     },
     {
       label: 'Product types in the catalog',
-      text: 'FOUR types, derived from the client Products deck by grouping its ~24 line items on HOW each is fulfilled. The type is the discriminator: it decides which fulfilment fields apply, so the create form asks for different things per type. Each product carries a price (₫), its fulfilment and an Active / Inactive status.',
+      text: 'FOUR types, derived from the client Products deck by grouping its line items on HOW each is fulfilled. The type is the discriminator: it decides which fulfilment fields apply, so the create form asks for different things per type. Each product carries a price (₫), its fulfilment and an Active / Inactive status.',
       table: {
         cols: ['Type', 'Deck items', 'Fulfilment mechanic'],
         rows: [
@@ -47,15 +47,18 @@ export const productsPackages: BuildModule = {
           ['Manual service', 'Facebook fanpage post · Email Marketing / Job Alert banner', 'Ops fulfils it — opens a task (Requested → Scheduled → Delivered) with proof, NOT an auto-provisioned entitlement.'],
         ],
       },
+      /* Rules only. The narrative this block used to carry — how the four types were
+         derived from the client deck, and what the old CRM's Basic Plus SKUs cost —
+         was removed: it recorded how we ARRIVED at the model, which nobody building
+         from this needs. Every line below is a constraint on what may be built. */
       items: [
-        'Job-posting tiers exposed per job: Basic · Basic Plus · Distinction · Top Job (plus Free for unpaid posts) — the tier drives visibility / ranking on the jobseeker site (see Job management).',
-        'ONE product per capability. The current CRM sells Basic Plus as four separate SKUs (Basic Plus SMEs 3.949.000 · Basic Plus Enterprise 5.544.000 · Basic Plus Job 6.100.000 · Basic Plus 15 days 30.000.000). Segment and duration are a PRICE LIST on the product, not extra products — otherwise what a tier grants is defined in four places and drifts.',
-        'THERE IS NO SEPARATE TIER-CONFIG SCREEN. A Job posting product IS its tier definition: display days, auto-refresh cadence, max skill tags, title styling, the placements it feeds and for how many days. Because segments are a price list rather than extra products, there is exactly one Top Job record, so what Top Job grants can only be defined in one place.',
-        'ATTACHABILITY IS A FLAG, NOT A TYPE. “Add-on” was a fifth type until we noticed it describes how a thing is SOLD, not what it is: an email blast is a Manual service whether sold alone or included in Top Job; a premium fixed position is a Placement either way. So each product carries `standalone` — false means it exists with its own definition but may never be a quotation line on its own.',
-        'A Job posting product carries `includes[]` — references to Placement and Manual service products it grants. Top Job includes the Popular Jobs premium position, the TopDev fanpage post and the Email Marketing send. This is why the catalogue must be built BOTTOM-UP: placements and services first, then the Job posting products that reference them.',
+        'THE TIERS ARE Basic · Basic Plus · Distinction · Top Job, plus the Free tier for Admin-posted jobs (entitlementSource = Always available). The tier is what drives visibility and ranking on the jobseeker site — see Job management.',
+        'ONE PRODUCT PER CAPABILITY. Segment and duration are a PRICE LIST on the product, never extra products. Sell one tier as four SKUs and what that tier grants is defined in four places, which then drift apart.',
+        'THERE IS NO SEPARATE TIER-CONFIG SCREEN. A Job posting product IS its tier definition: display days, auto-refresh cadence, max skill tags, title styling, and the placements it feeds and for how many days. One record per tier is what keeps that definition in a single place.',
+        'ATTACHABILITY IS A FLAG, NOT A TYPE — it describes how a thing is SOLD, not what it is. An email blast is a Manual service whether sold alone or included in Top Job; a premium fixed position is a Placement either way. So each product carries `standalone`: false means it exists with its own definition but may never be a quotation line on its own.',
+        'A Job posting product carries `includes[]` — the Placement and Manual service products it grants. Top Job includes the Popular Jobs premium position, the fanpage post and the Email Marketing send. This is why the catalogue is built BOTTOM-UP: placements and services first, then the Job posting products that reference them.',
+        'AN EFFECT OF A TIER IS NOT A PRODUCT. Popular Jobs, Highlight Jobs, Job Basic, Jobs Tailored For You and Super Hot Jobs are things a posting tier already grants — making any of them sellable would bill the customer twice for one thing.',
       ],
-      warn:
-        'The deck lists ~24 “services”, but only ~14 are sellable. Popular Jobs, Highlight Jobs, Job Basic, Jobs Tailored For You and Super Hot Jobs are EFFECTS of a posting tier — the deck pitches them as benefits because that is how sales presents them. Making them products would bill twice for the same thing.',
     },
     {
       label: 'Manual service — usage is asserted, not measured',
@@ -81,128 +84,7 @@ export const productsPackages: BuildModule = {
     },
     {
       label: 'Placements — where a product surfaces on the site',
-      text: 'A placement is a display area on the jobseeker site (size, how many are shown, the rotation cap). Defined ONCE in System → Placements, so a banner sale points at a row instead of restating “1536×371, max 6, rotate 3s”. Each placement records how it gets filled — this is the product ⇄ page relationship.',
-      table: {
-        cols: ['Placement (deck §)', 'Size / cap', 'Filled by', 'Route'],
-        rows: [
-          ['Main Banner — Hero (1.1)', '1536×371 · 1 shown, max 6, rotate 3s', 'Banner placement product', 'Booked'],
-          ['Feature company (1.2)', 'Logo from profile · 6 shown, max 12', 'Feature company product', 'Booked'],
-          ['Công việc Hot hôm nay (1.3)', '4 jobs shown', 'Top Job tier (first 10 days) AND sold standalone', 'Both ⚠'],
-          ['Top Companies Hiring Now (1.4)', '2 shown, max 5, rotate 5s', 'Công ty nổi bật product (10 ngày)', 'Booked'],
-          ['Popular Jobs (1.5)', '20 postings + 4 fixed premium', 'Distinction + Top Job tiers · 4 positions as add-on', 'Both ⚠'],
-          ['Highlight Companies (1.6)', '20 postings + 5 fixed premium', 'Basic Plus tier · 5 positions as add-on', 'Both ⚠'],
-          ['Công việc mới (1.7)', 'List, bottom of page', 'Basic tier', 'Tier'],
-          ['Banner adsense — Home (1.8)', '1260×120 · 1 shown, max 6', 'Banner placement product', 'Booked'],
-          ['Jobs Tailored For You (1.9)', 'List', 'Guests: Distinction + Top Job · Logged in: personalised', 'Tier'],
-          ['Homepage pop-up (1.10)', '1 at a time, priority + frequency cap', 'Popup placement product', 'Booked'],
-          ['Highlight Company — Search (2.1)', '1 company, unlimited', 'Highlight Company product', 'Booked'],
-          ['Highlight Jobs — Search (2.2)', 'Unlimited, shuffled per search session (NOT per reload — see below)', 'Basic Plus · Distinction · Top Job', 'Tier'],
-          ['Banner adsense — Search (2.3)', '425×160 · unlimited, interleaved', 'Banner placement product', 'Booked'],
-        ],
-      },
-      items: [
-        'Tier-driven — membership is DERIVED from the job’s posting tier. Nothing is booked, nothing is assigned by hand. The site query is “jobs where tier = X, ordered by last refresh”.',
-        'THE SHUFFLE IS SEEDED PER SESSION, NOT PER RELOAD — a correctness fix, not a preference. Re-randomising on every request breaks pagination: page 2 re-shows rows from page 1 and silently drops others, and the candidate never learns they missed jobs. Seed the shuffle on (sessionId, query) so the order still varies BETWEEN searches — which is what the fairness intent behind "random" actually wants — while staying stable WITHIN one search. Paginated surfaces must have a total order.',
-        'Booked — a company buys the slot for N days. The site query is “active bookings for this slot today, rotate through them”. Capacity is a hard cap, so selling it needs an availability calendar.',
-      ],
-      warn:
-        'THREE placements have two supply routes at once. “Công việc Hot hôm nay” shows 4 jobs but is both a Top Job perk and a standalone purchase; Popular Jobs and Highlight Companies each have a fixed premium block (4 and 5 positions) sold on top of the tier-driven list. Each needs ONE resolver with an explicit priority rule, or the finite positions get oversold.',
-    },
-    {
-      label: 'Slot rotation — ⚠ PROPOSAL, under BA investigation (Lương)',
-      text: 'THE PROBLEM (settled): every capped section has more eligible jobs than visible slots (e.g. 60 eligible, 24 slots), and the client\u2019s criterion is FAIRNESS between them. THE RULE (not settled): the table below is a proposal the BA has not accepted — BA to investigate and decide. \u201cFairness\u201d alone is not decidable; it hides four choices the BA must answer first: fair BETWEEN WHOM (whole pool · same tier · same product)? in WHAT UNIT (impressions · viewable impressions · clicks)? over WHAT WINDOW (per day · booking lifetime · cumulative)? EQUAL or PROPORTIONAL (identical share · by price paid · by remaining days)? The proposal below answers per-tier / impressions / cumulative / equal — change any answer and the algorithm changes.',
-      table: {
-        cols: ['Rule', 'What it says', 'Why'],
-        rows: [
-          ['Per page load, never live', 'Rotation is evaluated once, server-side, when the page is built. A rendered page is NEVER mutated client-side; a user sees a new rotation only on their next load.', 'Content changing in front of a reading user reads as broken. Auto-animation is a different, deliberate pattern (hero banner 3s / Top Companies 5s carousels) — grids rotate per load, banners animate on a timer.'],
-          ['Deficit-balanced pick', 'Per slot section, keep an impression counter per eligible job. Each load picks the N jobs with the largest exposure deficit (target share × loads − impressions), ties random, then shuffles their order.', 'Pure random is only fair at high traffic — at a few hundred loads/day some jobs drift 30% ahead in any given week. The counter drags everyone to exactly equal, and it IS the impression figure the employer report needs anyway.'],
-          ['Rotation is per pool, per tier', 'Fixed premium positions rotate among their buyers; the tier-driven list rotates among that tier. Never one merged pool.', 'Merging pools dilutes paid exposure with free inventory — the thing the tier price bought.'],
-          ['Full rows only', 'capacity = floor(min(pool, slots) / perRow) × perRow. With 22 eligible on a 6×4 grid, render 20; the 2 cut jobs are just the tail of the same rotation, so each job is hidden 2/22 of loads — equally.', 'A half-filled last row looks broken, and without rotation the same 2 jobs would be the permanent victims of the layout.'],
-          ['Small-pool exception', 'When the pool is under ~1.5 rows short of capacity, show everything and tolerate one partial row.', 'Flooring 18 jobs to 16 hides 2 despite free slots — the full-row rule exists for rotation, not for hiding paid inventory.'],
-        ],
-      },
-      items: [
-        'The “refresh test” is a support requirement, not a nicety: an employer who does not see their job refreshes the page, and must be able to find it within a couple of loads. This is why rotation is per load and NOT time-bucketed — a 5-minute window means five minutes of refreshing without ever seeing the ad you paid for.',
-        'Hidden ≠ gone: a job cut by rotation or the full-row rule is still in search and on “view all” — rotation only governs the capped strip.',
-        'The search-results list is the one surface that must NOT re-pick per reload — it paginates, so its shuffle is seeded per (sessionId, query); see the Placements block above.',
-      ],
-      warn:
-        'STATUS: proposal only — do not build until the BA signs off the four fairness answers above. Two constraints survive ANY answer and are already settled: (1) rotation is evaluated per page load, never mutating a rendered page; (2) paginated lists never re-randomise per request (seed per sessionId + query). Everything else in this block is open.',
-    },
-    {
-      label: 'Included ≠ bundled — why Top Job is a PRODUCT, not a package',
-      text: 'Top Job comes with an email send and a fanpage post, so it looks like a bundle. It is not. The test is whether the customer could buy the pieces instead, and whether the thing maps to a single choice when publishing a job.',
-      table: {
-        cols: ['', 'Product with includes[]', 'Package'],
-        rows: [
-          ['Example', 'Tin Top Job', 'Gói Ultimate'],
-          ['Quotation shows', 'ONE line, one price — “Tin Top Job”', 'One package price, component lines visible'],
-          ['Can you buy it without a part?', 'No — the email send IS part of what Top Job means', 'Yes, every component is separately sellable'],
-          ['Provisioning', 'One posting entitlement; each include fires on top', 'One entitlement PER component, independently'],
-          ['Picked when publishing a job?', 'YES — it is a value of the job’s packageType', 'No — a package is never a job’s tier'],
-        ],
-      },
-      items: [
-        'That last row is decisive. Publishing a job is ONE selection (Basic / Basic Plus / Distinction / Top Job). If Top Job were a package, publishing would have to resolve a package into components and the job’s packageType enum would break. So a tier must stay a single product.',
-        'A Placement or Manual service product is defined ONCE and reached two ways: bought standalone (a booking on the slot) or fired as an include when a job of that tier is published. Same definition either way — which is the whole reason “Công ty nổi bật” is not duplicated.',
-        'Scaling test: a new tier → a new Job posting product, tick its slots and includes, no code. A new homepage area → a new Placements row, then any tier may reference it. A new promo service → a new Manual service, then include it where wanted. A cross-category offer → a Package.',
-      ],
-      warn:
-        'Do NOT model a tier as a package to express its extras, and do NOT model a segment price as a package (see the next block). Both mistakes produce the same failure: the same capability defined in several records that then drift apart, which is exactly what happened to Basic Plus.',
-    },
-    {
-      label: 'Placement content — a slot shows a banner, a JOB, or a company',
-      text: 'Every Placement product declares WHAT fills the slot, and that decides what publishing asks for. “Job hiển thị trên trang chủ 10 ngày” is NOT a banner sale and NOT a new product type — it is a Placement whose content is a job, sold as an Add-on riding on a Job posting product.',
-      table: {
-        cols: ['Content', 'Publishing asks for', 'Examples'],
-        rows: [
-          ['Banner', 'A creative upload, exact slot dimensions', 'Main Banner hero · adsense Home/Search · pop-up'],
-          ['Job', 'ONE of the company’s OPEN jobs — nothing uploaded', 'Công việc Hot hôm nay (bookable standalone)'],
-          ['Company', 'Nothing — logo/cover pulled from the company profile', 'Công ty nổi bật · Feature company · Highlight Company (Search)'],
-        ],
-      },
-      items: [
-        'TWO CLOCKS, never one: the JOB runs its posting lifetime (30 ngày, from the Job posting product); the BOOKING holds the slot for its own display duration (10 ngày, from the Placement product). The booking ending does not expire the job — it keeps running on search. Conflating these two numbers is the single most likely modelling mistake here.',
-        'A job-content booking is only publishable against an OPEN job. If the job closes or expires mid-booking, the booking releases its slot — it never renders a dead job on the homepage.',
-        'A company-content placement blocks publish while the profile lacks a logo, because the slot would render an empty box.',
-        'NORMALISED (đã chuẩn hoá): an enhancement that only ever ATTACHES to a job at posting time is NOT a Placement product — it is a Job posting Add-on with an addonKind of LABEL (Hot job, Super star — list lives in Master data) or DISPLAY PLACEMENT (points at a premium slot in the registry: Popular Jobs ×4, Highlight Companies ×5). The dividing rule: can a customer book the slot on its own? Yes → Placement booking (Công việc Hot hôm nay). No, it rides on a job → Job posting Add-on (ADD-POPULARJOBS, ADD-HLCOMPANIES — migrated from PLC-*).',
-        'A display-placement Add-on consumes the same finite premium capacity as any booking — selling it still passes the availability check; the type changed, the slot arithmetic did not.',
-      ],
-    },
-    {
-      label: 'Booking queue — one slot, sequential bookings (build later)',
-      text: 'Sections with 1 slot (or a small fixed pool) need a BOOKING SYSTEM: while a booking runs, the next one cannot start. A job booked for 10 days occupies the slot for exactly those 10 days; the next booking’s start date is the previous booking’s end. Selling is therefore selling the NEXT AVAILABLE WINDOW, not a date the customer picks freely.',
-      table: {
-        cols: ['Rule', 'Why'],
-        rows: [
-          ['Bookings on one slot never overlap — next start = previous end', 'One slot physically shows one thing; overlap = an oversell discovered on the live page'],
-          ['The queue is visible at the point of sale', 'Sales must quote “lên sóng từ ngày X” from the queue, not promise a date the slot cannot honour'],
-          ['A cancelled/released booking pulls the queue forward', 'An empty slot with a waiting queue is paid inventory idling'],
-          ['Publish-now is only offered when the slot is free today', 'Otherwise “đăng ngay” silently becomes “đăng khi đến lượt” and the operator was not told'],
-        ],
-      },
-      warn:
-        'PHASE-LATER, agreed — but the SALE must respect it from day one: quote the next available window, never a free-typed start date on a 1-slot placement. The availability data model (PlacementBooking with start/end per slot) already exists in this spec; the queue is a constraint query over it, not a new table.',
-    },
-    {
-      label: 'Packages are a catalogue object — but “Gói Enterprise / Gói SME” are NOT packages',
-      text: 'A PACKAGE is several catalogue products sold together at one package price, reusable across customers. The client has a real one: Gói Ultimate at 16.489.000 ₫ bundles posting + CV sourcing + email marketing + a Popular Companies logo + HackerRank + CSKH support. That earns its own admin screen, because it is defined once and quoted many times.',
-      table: {
-        cols: ['CRM group today', 'What it actually is', 'How we model it'],
-        rows: [
-          ['Gói Ultimate', 'One price covering many different products', 'PACKAGE — component lines + one package price'],
-          ['Gói Enterprise', 'Basic / Basic Plus / Distinction at Enterprise prices — identical benefit lists to the SME rows, only the price differs', 'PRICE LIST on each tier product (segment = Enterprise). NOT a package.'],
-          ['Gói SME / Startup', 'The same three tiers at SME prices', 'PRICE LIST on each tier product (segment = SME). NOT a package.'],
-          ['New 2024', 'A release batch — mixes tiers, 15-day variants and test data', 'Not a grouping we carry over; duration is a price-list variant.'],
-        ],
-      },
-      items: [
-        'A package with one component line is not a package — it is a product at a price. “Basic Plus SMEs” must be the Basic Plus product with an SME price, never a one-line bundle, or the tier’s benefits get defined once per segment and drift (they already have).',
-        'A package is a SELLING WRAPPER, not a new entitlement: paying for one provisions each component separately at the component quota, so consumption and reporting are identical whether the customer bought the package or the pieces.',
-        'A one-off deal-specific combination is still just quotation lines in CRM — a package is for a combination worth naming and reselling.',
-      ],
-      warn:
-        'Promotions and a Credits page stay dropped, for the original reason: discounting happens on the quotation line so a price can only be cut in one place, and the credit balance is the entitlement ledger read on the company account. Bringing packages back does not bring those back.',
+      text: 'A PLACEMENT is a named display area on the jobseeker site — the hero banner, a featured-company strip, a homepage job section. Each area is defined ONCE in System → Placements with its size, how many items it shows and its cap, so a product points at that row instead of restating it. An area is filled one of two ways: TIER-DRIVEN (membership is derived from a job’s posting tier — nothing is booked, nothing is assigned by hand) or BOOKED (a company buys the slot for N days, and capacity is a hard cap). The authoritative list of areas lives in the Placements registry screen, not in this document.',
     },
     {
       label: 'Entitlement is the single downstream record',
@@ -216,7 +98,6 @@ export const productsPackages: BuildModule = {
           ['At zero', 'The action is blocked, with a buy-more path. For CV search, hitting zero also ENDS that pack and frees the next one to be activated'],
         ],
       },
-      warn: 'Nothing is entitled without a paid order. Every consumption must be idempotent and attributable: the same publish or unlock can never spend quota twice, and each spend records who spent it on what — and for a CV unlock, WHICH PACK it came out of, because that is what decides whose validity it was spent against.',
     },
     {
       label: 'Kích hoạt — gói CV search phải bấm, mọi sản phẩm khác thì không',
@@ -257,28 +138,6 @@ export const productsPackages: BuildModule = {
         'HAI KIỂU KẾT THÚC GỘP VÀO MỘT TRẠNG THÁI, vì hệ thống xử lý chúng y như nhau: gói đóng lại, gói sau mở ra. Lý do (`hết quota` / `hết hạn dùng`) là một field trên bản ghi, không phải một trạng thái thứ năm — tách ra thành hai trạng thái sẽ nhân đôi mọi câu điều kiện đọc nó mà không thêm hành vi nào.',
         '“HẾT HẠN KÍCH HOẠT” TÁCH RIÊNG, dù cũng là kết thúc, vì đó là trạng thái duy nhất khách **mất tiền mà chưa dùng gì**. Gộp nó vào *Đã kết thúc* là bỏ mất đúng con số cần cảnh báo trước hạn và cần báo cáo lại cho sales.',
         'CẦN JOB NHẮC HẠN cho cả hai đồng hồ: sắp hết thời gian kích hoạt (60/30/7 ngày) và sắp hết validity (7 ngày, khi còn quota chưa dùng). Đồng hồ thứ hai gấp hơn nhiều — 90 ngày mà còn 40 CV chưa mở là một cuộc gọi của sales, không phải một email.',
-      ],
-    },
-    {
-      label: 'Admin surface — one page, under System',
-      text: 'The catalogue side only: what is sellable and at what price. It is HQ configuration, so it lives in the admin console under System → Products, alongside Company information and Master data — not in its own top-level menu.',
-      table: {
-        cols: ['Surface', 'Holds', 'Where'],
-        rows: [
-          ['Products', 'Sellable products — definition, price, fulfilment', 'System → Products'],
-        ],
-      },
-      items: [
-        'Orders are NOT a surface here: the order/payment chain is one object, owned by CRM → Purchase order (Draft → Pending payment → Paid → Fulfilled).',
-        'Discount codes are out of scope — discounting happens on the quotation line in CRM, so there is no second place a price can be cut.',
-        'Packages, Promotions and a Credits page were all dropped for the reason above — one place to define a price, one place to cut it.',
-      ],
-    },
-    {
-      label: 'Money rules that must not be broken',
-      items: [
-        'A price is NEVER edited in place once it has been sold — a price change creates a new version, so an old order always reprices to what the customer actually agreed.',
-        'Credits are a LEDGER, not a number: every grant, consumption, expiry and correction is an append-only entry and the balance is their sum. A balance is never overwritten, because it must reconcile against paid orders.',
       ],
     },
     {
