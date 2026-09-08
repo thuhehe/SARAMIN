@@ -15,13 +15,19 @@ import type { FieldGroup, BackendSpec, SpecSection, SpecTable } from '../types'
  * cross-cutting computations (scoring, salary, quality gates) that several
  * surfaces read from, so they are specced once instead of once per site.
  */
-export type Site = 'Jobseekers' | 'Companies' | 'Admin' | 'Logic'
+/* `AdminCompanies` is ONE requirement covering two surfaces, not a third surface.
+   Job list and Create job are the same screen written twice — same Job entity,
+   same fields, differing only in scope and quota — and specifying them apart is
+   how the two copies drift. Merge only where that is genuinely true; a feature
+   that merely exists on both sites still belongs to the site that owns it. */
+export type Site = 'Jobseekers' | 'Companies' | 'Admin' | 'AdminCompanies' | 'Logic'
 export type Scope = 'BE' | 'FE' | 'UI'
 
 export const SITE_META: Record<Site, { label: string; tag: string; pill: string; dot: string }> = {
   Jobseekers: { label: 'Jobseekers', tag: 'JS', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
   Companies: { label: 'Companies', tag: 'CO', pill: 'bg-sky-50 text-sky-700 border-sky-200', dot: 'bg-sky-500' },
   Admin: { label: 'Admin', tag: 'Admin', pill: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' },
+  AdminCompanies: { label: 'Admin + Companies', tag: 'Admin+CO', pill: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500' },
   Logic: { label: 'Logic', tag: 'Logic', pill: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500' },
 }
 

@@ -53,7 +53,9 @@ interface NavItem {
    A page with no authored feature yet simply shows no button. */
 const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site }> = {
   // Recruitment
-  'admin-job-list': { module: 'job-management', feature: 'Job list', site: 'Admin' },
+  // Job list is ONE requirement for Admin + Companies now, so the site tag it is
+  // matched on moved with it. Left as 'Admin' this button silently disappears.
+  'admin-job-list': { module: 'job-management', feature: 'Job list', site: 'AdminCompanies' },
   'admin-job-applicants': { module: 'application-management', feature: 'Application list', site: 'Admin' },
   'admin-resumes': { module: 'resume-management', feature: 'Resume list', site: 'Admin' },
   'admin-cv-check': { module: 'resume-management', feature: 'CV qualification — apply & CV search' },
@@ -245,7 +247,8 @@ const NAV_GROUPS: NavGroup[] = [
       // funnel Customers and Pipeline sit further down. (They remain a SEPARATE
       // STORE outside the CRM tables, which is what keeps unowned, unverified rows
       // out of every CRM count; where the nav puts them and where the data lives are
-      // different questions — see Danh bạ doanh nghiệp → "Two stores, not one flag".)
+      // different questions. (The "Two stores, not one flag" block that explained this
+      // was removed from the Free data page on 2026-09-08; the split itself still holds.)
       { label: 'Free data', specId: 'admin-company-directory' },
       // The LOG of every claim request — append-only, no action buttons. Approval
       // happens on Free data (the company's record shows all rivals side by side);

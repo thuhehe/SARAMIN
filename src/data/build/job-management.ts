@@ -311,19 +311,24 @@ export const jobManagement: BuildModule = {
     },
   ],
   features: [
-    // 0 ──────────────────────────────────────────────────────────────────────
+    /* ONE requirement for both surfaces. HQ and the employer write the SAME Job
+       entity through the same form: identical fields, identical publish rules, no
+       approval gate on either side. What differs is scope (whose company) and
+       quota (who pays), and that fits in one table — where it stays honest. Two
+       requirements for one form is how the field list drifts apart. */
     {
       name: 'Create job',
-      site: 'Admin',
-      slug: 'create-job-admin',
-      scope: ['BE', 'FE'],
+      site: 'AdminCompanies',
+      scope: ['BE', 'FE', 'UI'],
       ready: true,
+      notes: "Company user can't post job today (draft only); SVN wants company users to post by themselves.",
       mockup: 'admin-job-create',
+      mockups: ['co-create-job'],
       detail: {
         description:
-          'Admin-side job create / edit form. HQ staff can post a job on behalf of any company (data-entry / concierge posting) and it is the same Job entity the Company site writes to. Publishing goes straight to Open (or Schedule) — there is no approval gate on either surface.',
+          'The job create / edit form, written by BOTH HQ and the employer against the same Job entity. HQ staff can post on behalf of any company (data-entry / concierge posting); a company HR user posts for their own company — the key new capability against today, where a company can only save a draft. Publishing goes straight to Open (or Schedule) on both surfaces: there is no approval gate anywhere.',
         userStory:
-          'As an HQ operator, I want to create or edit a job for any company so that we can onboard postings on behalf of clients and fix bad data.',
+          'As an HQ operator I want to create or edit a job for any company so that we can onboard postings on behalf of clients and fix bad data — and as a company HR user I want to post my own job and see it go live immediately, so that I do not have to wait for HQ.',
         uiFields: [
           {
             group: 'Basics',
@@ -374,15 +379,39 @@ export const jobManagement: BuildModule = {
               { name: '· focalPointOverride', type: '{ x, y }?', notes: 'lets this job nudge the crop without touching the shared library picture' },
             ],
           },
+          {
+            // Everything above is identical on both surfaces. These three exist on
+            // the Company site only, because they are about the employer's own
+            // wallet — HQ posts against the company's PO, never against a balance.
+            group: 'Company site only',
+            items: [
+              { name: 'remaining quota', type: 'read-only count', required: true, notes: 'posting slots left for the tier being chosen, shown next to the picker. At zero the publish is blocked with a deep link to buy a package — never a silent failure, and never a publish that quietly goes over.' },
+              { name: 'featuredUpgrade', type: 'enum', notes: 'optional main-ad / rank boost bought at posting time (from Products & Packages)' },
+              { name: '(company · purchaseOrder)', type: '—', notes: 'NOT shown. The company is fixed to the signed-in user’s own, and the employer never picks a PO — the tier they can afford is derived from what they hold.' },
+            ],
+          },
         ],
         behaviors: [
-          'Save as draft at any time; validation only runs on publish.',
-          'Publish offers "Post now" (→ Open immediately) or "Schedule for later…" (→ Schedule, pick a date/time). A Scheduled job auto-publishes to Open at that time.',
-          'An Open job auto-moves to Closed when its deadline passes.',
-          'Exposure (On / Off) is independent of status: an Open job with Exposure Off stays hidden from jobseekers without changing its status. Only Open + Exposure On is publicly visible & applyable.',
-          'Bilingual fields are entered per language via a VI / EN tab; VI is required, EN optional in Phase-1.',
-          'Editing an Open job keeps it Open; a full audit entry is written (who / when / what).',
-          'The employer may keep editing an Open job freely, with ONE exception: the job title locks 72 hours after the job went live (counted in hours from `publishedAt`, not calendar days). HQ Admin has no such limit. The form shows the remaining window, then the locked reason — see “Editing an OPEN job is free — EXCEPT the job title after 72 hours (employer only)”.',
+          {
+            group: 'Both surfaces',
+            items: [
+              'Save as draft at any time; validation only runs on publish.',
+              'Publish offers "Post now" (→ Open immediately) or "Schedule for later…" (→ Schedule, pick a date/time). A Scheduled job auto-publishes to Open at that time.',
+              'An Open job auto-moves to Closed when its deadline passes.',
+              'Exposure (On / Off) is independent of status: an Open job with Exposure Off stays hidden from jobseekers without changing its status. Only Open + Exposure On is publicly visible & applyable.',
+              'Bilingual fields are entered per language via a VI / EN tab; VI is required, EN optional in Phase-1.',
+              'Editing an Open job keeps it Open; a full audit entry is written (who / when / what).',
+              'The employer may keep editing an Open job freely, with ONE exception: the job title locks 72 hours after the job went live (counted in hours from `publishedAt`, not calendar days). HQ Admin has no such limit. The form shows the remaining window, then the locked reason — see “Editing an OPEN job is free — EXCEPT the job title after 72 hours (employer only)”.',
+            ],
+          },
+          {
+            group: 'Company site only',
+            items: [
+              'Company is auto-set to the signed-in user’s company and is not selectable.',
+              'With no posting quota left, publish is blocked and the screen deep-links to purchasing a package. A draft is always allowed and consumes nothing.',
+              'Exposure Off lets the company take a live job down without closing it — the same switch HQ has.',
+            ],
+          },
         ],
         rules: [
           'A job must belong to exactly one company.',
@@ -397,8 +426,10 @@ export const jobManagement: BuildModule = {
           'experienceTo ≥ experienceFrom when both are set.',
           'deadline must be in the future on publish.',
           'Admin can post regardless of the company’s remaining posting quota (concierge override) — flagged in the audit log.',
+          'ON THE COMPANY SITE, publishing (Open or Schedule) consumes exactly one posting slot of the chosen tier; a draft consumes nothing. This is the one rule the two surfaces genuinely do not share — HQ overrides it, the employer cannot.',
+          'Only HR Manager / HR Specialist roles may create a job on the Company site (see Account management), and a company may only edit its own jobs.',
         ],
-        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Draft', 'Scheduled', 'Open (published)', 'Closed (expired)'],
+        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Draft', 'Scheduled', 'Open (published)', 'Closed (expired)', 'Quota exhausted — publish blocked (Company site)'],
         backend: {
           dataModel: [
             { name: 'id', type: 'uuid' },
@@ -423,19 +454,48 @@ export const jobManagement: BuildModule = {
             'PUT /admin/jobs/:id — edit',
             'POST /admin/jobs/:id/publish',
             'GET /admin/companies?q= — company picker',
+            'POST /company/jobs — create draft / publish (open) / schedule',
+            'PUT /company/jobs/:id',
+            'GET /company/quota — remaining posting slots',
           ],
-          notes: 'Same jobs table as the Company site; `source` distinguishes admin vs company-created.',
+          integrations: ['Products & Packages (quota)', 'Notifications (publish / scheduled confirmation)'],
+          notes: 'ONE jobs table behind both surfaces. `source` (admin | company) records which door the row came in through, and it is the only difference the data carries — the two endpoint families must never diverge in what they accept.',
         },
         acceptance: [
           'HQ can create a job for any company and it appears active on the JS site.',
+          'A company user can post a job and see it go live (Open) immediately — no approval wait.',
           'Draft → Publish transitions correctly; audit log records the actor.',
+          'A posting slot is consumed on a company publish (Open / Schedule), never on a draft.',
+          'A company can take a live job down via Exposure Off and re-expose it before the deadline.',
           'Negotiable salary renders as "Thỏa thuận" everywhere downstream.',
+        ],
+        sections: [
+          {
+            heading: 'Admin vs Company — one form, two scopes',
+            text: 'Everything not in this table is identical, and is specified once above. Read a row as "the same field, answered differently", never as a second form.',
+            table: {
+              cols: ['', 'Admin (HQ)', 'Company site (employer)'],
+              rows: [
+                ['Which company', 'Searchable picker — any company', 'Fixed to the signed-in user’s own, not selectable'],
+                ['Which tier is offered', 'Pick the PO first; that PO’s paid lines plus any Always-available tier', 'What the company holds — no PO picker, quota shown beside the choice'],
+                ['Quota', 'Overridden. HQ may post past a company’s remaining slots (concierge), and the override is audited', 'Enforced. Publish is blocked at zero, with a deep link to buy'],
+                ['Who may create', 'Any HQ operator with the job right', 'HR Manager / HR Specialist only (Account management)'],
+                ['Editing the title of an Open job', 'No time limit — correcting a bad posting is the point', 'Locked 72 hours after it went live'],
+                ['Approval before it goes live', 'None', 'None — the same rule, stated because it is the thing people assume'],
+              ],
+            },
+            items: [
+              'The Job entity, the field list and the publish lifecycle are shared. A change to any of them lands on both surfaces at once — that is the reason this is one requirement.',
+              '`source` on the row (admin | company) is the only trace of which door was used. It is a fact for the audit log, never a switch for behaviour.',
+            ],
+          },
         ],
         openQuestions: [
           'Can a job target multiple cities, or exactly one? (client to confirm — spec currently assumes multiple)',
           'Bilingual = VI + EN (assumed) or VI + KO? Is the second language required or optional in Phase-1?',
           'Which job categories/industries are the canonical list for VN? (need the master taxonomy)',
           'Is a gender / age preference field allowed by policy? (legal review)',
+          'Any post-publish spam / abuse controls now that a company can publish with no pre-publish approval gate?',
         ],
       },
     },
@@ -616,78 +676,22 @@ export const jobManagement: BuildModule = {
         ],
       },
     },
-    // 1 ──────────────────────────────────────────────────────────────────────
-    {
-      name: 'Create job',
-      site: 'Companies',
-      slug: 'create-job-companies',
-      scope: ['BE', 'FE', 'UI'],
-      notes: "Company user can't post job today (draft only); SVN wants company users to post by themselves.",
-      mockup: 'co-create-job',
-      detail: {
-        description:
-          'Self-service job posting for company (employer) users — the key new capability vs today, where companies can only save drafts. Same fields as the Admin form, constrained by the company’s package quota. No HQ approval gate — company posts go live directly (Open / Schedule), exactly like Admin.',
-        userStory:
-          'As a company HR user, I want to post a job myself and have it go live immediately, so that I don’t have to wait for HQ.',
-        uiFields: [
-          {
-            group: 'Same job fields as Admin',
-            items: [
-              { name: '(all Basics / Location / Content fields)', type: '—', notes: 'incl. bilingual title & content, exposure status, experience range, job & contract type — company is fixed to the user’s own company (not editable)' },
-            ],
-          },
-          {
-            group: 'Posting options',
-            items: [
-              { name: 'packageType', type: 'enum', required: true, notes: 'Free · Basic · Basic Plus · Distinction · Top Job — consumes the matching purchased slot' },
-              { name: 'featuredUpgrade', type: 'enum', notes: 'optional: main-ad / rank boost (from Products & Packages)' },
-            ],
-          },
-        ],
-        behaviors: [
-          'Company is auto-set to the logged-in user’s company; not selectable.',
-          '"Post now" → Open immediately; "Schedule for later…" → Schedule (auto-publishes to Open at the set time). No HQ approval step.',
-          'If no posting quota remains → block publish and deep-link to purchase a package.',
-          'Draft is always allowed and does not consume quota.',
-          'Exposure (On / Off) lets the company take a live job down without closing it.',
-        ],
-        rules: [
-          'Only HR Manager / HR Specialist roles can create jobs (see Account management).',
-          'Publishing (Open / Schedule) consumes exactly one posting slot; drafts do not.',
-          'A company can only edit its own jobs.',
-        ],
-        states: ['Draft', 'Scheduled', 'Open', 'Closed', 'Quota exhausted (blocked)'],
-        backend: {
-          endpoints: [
-            'POST /company/jobs — create draft / publish (open) / schedule',
-            'PUT /company/jobs/:id',
-            'GET /company/quota — remaining posting slots',
-          ],
-          integrations: ['Products & Packages (quota)', 'Notifications (publish / scheduled confirmation)'],
-          notes: 'Writes the same Job entity; `source = company`, `status = open` on publish (or `schedule`).',
-        },
-        acceptance: [
-          'A company user can post a job and see it go live (Open) immediately — no approval wait.',
-          'A posting slot is consumed on publish (Open / Schedule), not on draft.',
-          'Company can take a live job down via Exposure Off and re-expose it before the deadline.',
-        ],
-        openQuestions: [
-          'Any post-publish spam / abuse controls now that there is no pre-publish approval gate?',
-        ],
-      },
-    },
-    // 2 ──────────────────────────────────────────────────────────────────────
+    /* ONE requirement for both surfaces — the same query, two scopes. HQ reads
+       every job, a company reads its own; the columns, the status tabs and the
+       row actions are the same list. Status and Exposure in particular must mean
+       one thing in both places, which is exactly what two requirements lose. */
     {
       name: 'Job list',
-      site: 'Admin',
-      slug: 'job-list-admin',
-      scope: ['BE', 'FE'],
+      site: 'AdminCompanies',
+      scope: ['BE', 'FE', 'UI'],
       ready: true,
       mockup: 'admin-job-list',
+      mockups: ['co-job-list'],
       detail: {
         description:
-          'HQ master list of every job across all companies for oversight: filter, view, edit, close, or take down (Exposure) any posting. No approval queue — company posts go live directly.',
-        userStory: 'As an HQ operator, I want to see and manage every job across all companies so I can oversee and fix any posting.',
+          'The postings list, read at two scopes. HQ gets the master list of every job across all companies for oversight — filter, view, edit, close, or take down (Exposure) any posting. A company gets exactly its own jobs with live status, applicant counts and the same quick actions. No approval queue on either: company posts go live directly.',
+        userStory:
+          'As an HQ operator I want to see and manage every job across all companies so I can oversee and fix any posting — and as a company HR user I want to manage my own postings and see how many applicants each got.',
         uiFields: [
           {
             // In screen order, left to right — the list is the oversight view, so
@@ -747,9 +751,19 @@ export const jobManagement: BuildModule = {
               { name: 'view all', type: 'link', notes: 'the panel previews the most recent few and expands to the full list of savers' },
             ],
           },
+          {
+            // The company reads the same row, minus the columns that only make
+            // sense across accounts, plus the one number they ask for daily.
+            group: 'Company site — the same row, narrower',
+            items: [
+              { name: '(company · created by · category)', type: '—', notes: 'NOT shown. Every row is their own company, and “who posted it” is an oversight question, not theirs.' },
+              { name: 'days left', type: 'derived count', notes: 'shown beside the deadline — the employer’s question is “how long have I got”, not “what is the expiry date”' },
+              { name: 'Upgrade (featured)', type: 'row action', notes: 'buy a boost for a live posting; HQ has no equivalent because HQ does not spend the company’s money' },
+            ],
+          },
         ],
         behaviors: [
-          'Clicking the job title opens the job detail (same record the company sees, with HQ actions).',
+          'Clicking the job title opens the job detail (same record on both surfaces; HQ additionally gets the oversight actions).',
           'Row actions: Edit · Close · Toggle exposure (On/Off) · View applicants.',
           'The job detail offers Duplicate — it clones the posting into a new Draft (never a live copy), so the operator edits and publishes it deliberately.',
           'The job detail always exposes a link to see the posting as a jobseeker would: the draft preview while Draft/Schedule, the live post once Open.',
@@ -757,6 +771,7 @@ export const jobManagement: BuildModule = {
           'The Exposure toggle is enabled only on Open jobs; on any other status the cell is inert.',
           'Sortable on posted, expires, views, saves and applied — the ranking questions HQ actually asks.',
           'Server-side pagination + filter + sort.',
+          'ON THE COMPANY SITE the same list is scoped to the signed-in company: the same status tabs (All · Draft · Schedule · Open · Closed), the same row actions plus Upgrade (featured), and an empty state that prompts “Post your first job”.',
         ],
         rules: [
           'Status and Exposure are two independent fields and are never merged into one column: status is the lifecycle (Draft → Schedule → Open → Closed), exposure is public visibility. Only Open + Exposure On is live and applyable on the jobseeker site.',
@@ -766,8 +781,9 @@ export const jobManagement: BuildModule = {
           'The job TITLE is read-only for the employer 72 hours after the job went live (everything else stays freely editable). HQ Admin has NO time limit on any field — correcting a bad posting is the point of this screen — and every change is audited.',
           'The “Saved by” list is candidate PII: it is gated by the same permission as candidate/resume viewing, and opening a saver’s profile from here is written to the audit log. A save is never shown to the company as a contactable lead unless the candidate applied.',
           'Views / saves / applied are read-only counters here — they are never editable from this screen.',
+          'A company sees strictly its own jobs, and only Open / Scheduled ones count against its quota. The scope is enforced server-side, never by hiding rows in the client.',
         ],
-        states: ['Loading', 'Empty (no jobs)', 'Filtered-empty', 'Has jobs'],
+        states: ['Loading', 'Empty (no jobs)', 'Filtered-empty', 'Has jobs', 'No jobs yet — onboarding CTA (Company site)'],
         backend: {
           dataModel: [
             { name: 'row', type: 'projection', notes: 'jobId, title(vi), categoryId + label, companyId + name, product/packageType, createdBySource(company|admin), status, exposure, postedAt, expiresAt, viewCount, saveCount, applicationCount' },
@@ -779,12 +795,16 @@ export const jobManagement: BuildModule = {
             'GET /admin/jobs?q=&status=&exposure=&company=&category=&createdBy=&from=&to=&sort=&page= → rows + per-status counts for the tabs',
             'PATCH /admin/jobs/:id/exposure { on|off }',
             'POST /admin/jobs/:id/close',
+            'GET /company/jobs?status=&page= — the same projection, scoped to the caller’s company',
+            'POST /company/jobs/:id/close',
+            'POST /company/jobs/:id/duplicate',
           ],
-          integrations: ['Master data (Job categories & roles)', 'Application management (applied count → Applicants board)', 'Audit log'],
-          notes: 'Edit / close / exposure changes write an audit entry. The tab counts come back with the list so they cannot disagree with the rows.',
+          integrations: ['Master data (Job categories & roles)', 'Application management (applied count → Applicants board / Application list)', 'Audit log'],
+          notes: 'Edit / close / exposure changes write an audit entry. The tab counts come back with the list so they cannot disagree with the rows. The company endpoints return the SAME row projection narrowed by scope — a second shape would let the two lists disagree about a job’s status.',
         },
         acceptance: [
           'HQ can filter by status & exposure and act on any job (edit / close / toggle exposure).',
+          'A company sees only its own jobs, with accurate applicant counts, and can act on each.',
           'Company-created jobs appear as Open without any approval step.',
           'Every column in the list is populated from one request: title, category, company, created by, status, exposure, posted, expires, views, saves, applied.',
           'Exposure shows On / Off only for Open jobs and “—” for Draft / Schedule / Closed, and turning it Off hides the job from the jobseeker site without changing its status.',
@@ -824,290 +844,33 @@ export const jobManagement: BuildModule = {
               'Turning Exposure Off does not pause the deadline — the job still auto-Closes on its expiry date.',
             ],
           },
+          {
+            heading: 'Admin vs Company — one list, two scopes',
+            text: 'The row, the status tabs and the lifecycle are the same. Only these differ, and every one of them follows from scope: HQ reads across accounts, a company reads its own.',
+            table: {
+              cols: ['', 'Admin (HQ)', 'Company site (employer)'],
+              rows: [
+                ['Rows returned', 'Every job, every company', 'Its own jobs only — enforced server-side'],
+                ['Columns dropped', '—', 'Company · Created by · Category — all three answer questions only HQ asks'],
+                ['Columns added', '—', 'Days left, beside the deadline'],
+                ['Row actions', 'Edit · Close · Toggle exposure · View applicants', 'Edit · Close · Duplicate · Upgrade (featured) · View applicants'],
+                ['“Saved by” panel', 'Yes — candidate PII, permission-gated and audited', 'No. A save is never shown to a company as a contactable lead unless the candidate applied'],
+                ['Editing an Open job', 'Every field, no time limit', 'Every field except the title, which locks 72 hours after it went live'],
+              ],
+            },
+            items: [
+              'Status and Exposure mean exactly the same thing on both surfaces, and the tables above are the single definition. A surface that renders a fifth status, or merges the two fields into one column, is wrong.',
+              'The applied count links to Application management on both — the Applicants board for HQ, the company’s own Application list for the employer.',
+            ],
+          },
         ],
         openQuestions: [
           'Any post-publish moderation / takedown workflow now that there is no pre-publish approval?',
+          'Can a company re-open an expired job, or must they duplicate it? (HQ has no re-open either — the spec says duplicate.)',
           'Does the date-range filter apply to “posted” or to “expires”? (Or is it two separate filters — HQ asks both questions.)',
           'Are views / saves live counters or refreshed nightly? Live counters on a 1,200-row list is a real cost decision.',
           'Should Exposure Off pause the expiry clock? As specified it does not, so a job hidden for two weeks still expires on time.',
         ],
-      },
-    },
-    // 3 ──────────────────────────────────────────────────────────────────────
-    {
-      name: 'Job list',
-      site: 'Companies',
-      slug: 'job-list-companies',
-      scope: ['BE', 'FE', 'UI'],
-      mockup: 'co-job-list',
-      detail: {
-        description:
-          'A company’s own postings dashboard: their jobs with live status, applicant counts and quick actions (edit, close, duplicate, upgrade to featured).',
-        userStory: 'As a company HR user, I want to manage my own postings and see how many applicants each got.',
-        uiFields: [
-          {
-            group: 'Cards / rows',
-            items: [
-              { name: 'title', type: 'text' },
-              { name: 'status', type: 'badge', notes: 'Draft · Schedule · Open · Closed' },
-              { name: 'applicants', type: 'count → links to Application list (CO)' },
-              { name: 'views', type: 'count' },
-              { name: 'deadline / days left', type: 'date' },
-            ],
-          },
-        ],
-        behaviors: [
-          'Shows only the logged-in company’s jobs.',
-          'Actions per job: Edit · Close · Duplicate · Upgrade (featured) · View applicants.',
-          'Status tabs / filter: All · Draft · Schedule · Open · Closed.',
-          'Empty state prompts "Post your first job".',
-        ],
-        rules: ['Scoped strictly to the user’s company.', 'Only Open / Scheduled jobs count against quota.'],
-        states: ['Loading', 'No jobs yet (onboarding CTA)', 'Has jobs', 'Filtered-empty'],
-        backend: {
-          endpoints: ['GET /company/jobs?status=&page=', 'POST /company/jobs/:id/close', 'POST /company/jobs/:id/duplicate'],
-          integrations: ['Application management (applicant counts)'],
-        },
-        acceptance: ['A company sees only its own jobs with accurate applicant counts and can act on each.'],
-        openQuestions: ['Can a company re-open an expired job, or must they duplicate it?'],
-      },
-    },
-    // 4 ──────────────────────────────────────────────────────────────────────
-    {
-      name: 'Job list (Homepage)',
-      site: 'Jobseekers',
-      scope: ['BE', 'FE', 'UI'],
-      mockup: 'js-home',
-      detail: {
-        description:
-          'The public jobseeker homepage: hero search, curated rails (Hot jobs, Top companies, jobs by category) and Admin-managed banner slots. First impression + primary entry into search.',
-        userStory: 'As a jobseeker, I want to discover relevant jobs the moment I land, so that I can start applying quickly.',
-        uiFields: [
-          {
-            group: 'Sections',
-            items: [
-              { name: 'hero search', type: 'keyword + location + CTA' },
-              { name: 'quick category chips', type: 'links' },
-              { name: 'Hot jobs rail', type: 'JobCard[]', notes: 'featured / boosted first' },
-              { name: 'Top companies', type: 'CompanyCard[]' },
-              { name: 'banner slots', type: 'Admin-managed', notes: 'see Banners & Popups' },
-            ],
-          },
-        ],
-        behaviors: [
-          'Hero search submits into the Search-result page.',
-          'Featured / boosted jobs (from Products & Packages) rank first in Hot jobs.',
-          'Only Open jobs with Exposure On are eligible.',
-          'Personalised rails if logged in (by preferences) — otherwise popular fallback.',
-        ],
-        rules: ['Only show Open jobs with Exposure On (never Draft / Schedule / Closed, or Exposure Off).', 'Respect banner scheduling + targeting.'],
-        states: ['Guest', 'Logged-in (personalised)', 'Loading skeleton', 'No jobs (unlikely — fallback to popular)'],
-        backend: {
-          endpoints: ['GET /jobs/home — curated rails', 'GET /companies/top'],
-          integrations: ['Products & Packages (boost ranking)', 'Banners & Popups'],
-        },
-        acceptance: ['Homepage renders active jobs, boosted ones rank first, hero search routes to results.'],
-        openQuestions: ['Which rails are in Phase-1 exactly, and what drives "Hot"? (recency vs boost vs clicks)'],
-      },
-    },
-    // 5 ──────────────────────────────────────────────────────────────────────
-    {
-      name: 'Job list (Search result)',
-      site: 'Jobseekers',
-      scope: ['BE', 'FE', 'UI'],
-      mockup: 'js-search',
-      detail: {
-        description:
-          'Keyword + filter search results with facets (industry, location, salary, level, experience, employment type), sorting and pagination. The workhorse discovery surface.',
-        userStory: 'As a jobseeker, I want to filter and sort jobs so that I can zero in on the right roles.',
-        uiFields: [
-          {
-            group: 'Query & facets',
-            items: [
-              { name: 'keyword', type: 'string' },
-              { name: 'location', type: 'province multi-select' },
-              { name: 'industry / category', type: 'multi-select' },
-              { name: 'salary range', type: 'range + currency', notes: 'GAP CLOSED 2026-08-13 — this facet had no currency, which silently broke it: jobs are posted in VND OR USD, so a bare "15 – 25" band either hides every USD job or, worse, compares raw numbers and surfaces a $3,000 job as if it were 3,000 ₫. Same rules as every other salary surface — a VND · USD switch that SCOPES rather than converts, ÷12 for annual, and "Thỏa thuận" jobs always included. Say what the scope hid: "8 jobs quote USD — switch to see them." Canonical rules: Resume management → CV data & matching architecture → "★ SALARY — the one contract"' },
-              { name: 'level / experience / employmentType', type: 'multi-select' },
-              { name: 'sort', type: 'enum', notes: 'Relevance · Newest · Salary. Salary sort is WITHIN one currency — cross-currency has no defined order without a rate; place the other currency after, never interleaved (see the SALARY CURRENCY block)' },
-            ],
-          },
-          {
-            group: 'Result item',
-            items: [{ name: 'JobCard', type: 'title, company, salary, location, tags, saved ♥, posted-ago' }],
-          },
-        ],
-        behaviors: [
-          'Filters reflect in the URL (shareable / back-button safe).',
-          'Debounced keyword; facets apply instantly with result counts.',
-          'Save (scrap) a job from the card without leaving results.',
-          'Boosted jobs get limited priority but stay clearly relevant — implemented as TIER BANDING inside the “Mới cập nhật” sort only: the pool is filtered by a relevance floor first, then Top Job → Distinction → Basic Plus → Basic → Free. A tier can reorder a relevant job but can never pull an irrelevant one into the pool, and on every other sort the bands do not exist.',
-          'Ranking is QUERY-ONLY: relevance → pool → band, then a deterministic tie-break. The candidate’s CV, preferences and match score are NOT read here — the same query returns the same results logged in or out.',
-          'The SORT chooses whether the bands apply: “Mới cập nhật” bands, Relevance / Mới nhất / Salary do not. Switching sort re-orders the same jobs and never changes which jobs are returned.',
-          'Choosing Relevance, Mới nhất or Salary drops the tier banding entirely; only the tie-break remains, and Mới nhất sorts on publishedAt so auto-refresh cannot reorder it.',
-        ],
-        rules: [
-          'Only active, non-expired jobs.',
-          'Salary sort treats "Thỏa thuận" as unranked / last.',
-          'Gate = Open + Exposure On + not past deadline + moderation approved. No domain field (salary, industry, experience) may ever act as a gate — see “JOB SEARCH — gate → filter → pool → band” below.',
-          'Facet semantics are OR within a facet, AND across facets — stated because it is the commonest cause of an unexplained empty result set.',
-          'The match score never participates in search ranking, in any form. It belongs to the recommendations feed only.',
-          'No randomness in the ordering — pagination must be stable across page loads.',
-        ],
-        requirements: [
-          {
-            label: 'JOB SEARCH — gate → filter → pool → band, and relevance is ONLY what the candidate typed',
-            text: 'DECIDED: job search ranks on QUERY RELEVANCE alone. It does NOT read the candidate’s CV, preferences or match score. Search answers “how well does this job match what I typed”; the match score answers “how well does this job fit me”, and that second question belongs to the recommendations feed, not here. The consequence is a property worth having: the same query returns the SAME results for everyone, logged in or out — so a result URL is shareable, cacheable and debuggable, and “why am I seeing this?” is always answerable from the query.\n\nThe seven stages run in order. Stages 1–3 decide RELEVANCE and money touches none of them. Stages 5–6 — the paid bands — run on the “Mới cập nhật” sort and on NO other, so money owns exactly one clearly-labelled sort and every other sort stays honest.',
-            table: {
-              cols: ['Stage', 'What it does', 'Rule'],
-              rows: [
-                ['1 · GATE', 'Decides what is eligible at all — binary', 'status = Open · exposure = On · not past deadline · moderation approved. The same jobseeker-direction gate the match score uses. NEVER gate on a domain field (salary, industry, experience): every one of those can empty the result set and none can explain why.'],
-                ['2 · FILTER', 'The facets the candidate ticked — binary', 'OR within one facet, AND across facets. Location (province, multi) · category/role · level · work type · contract type · benefits · salary band. The keyword is NOT a filter — it is the input to stage 3.'],
-                ['3 · SCORE', 'Field-weighted keyword relevance', 'title → skills → role/category → company name → prose body, body last. No profile, no match score, no tier — this stage answers only “how well does this job match the words typed”.'],
-                ['4 · POOL', 'Takes the boost window — only when a keyword was typed', 'Keep every job at or above the relevance FLOOR, best relevance first, capped at the pool size (default 80). With no keyword there is no relevance to pool by, so the pool is simply everything that passed stages 1–2. This pool is the ONLY place a paid tier may reorder anything.'],
-                ['5 · BAND', '⚠️ “Mới cập nhật” SORT ONLY — groups the pool by posting tier', 'Top Job → Distinction → Basic Plus → Basic → Free. Every Top Job in the pool outranks every Distinction, and so on down. Bands are contiguous slots, not a nudge. This stage does NOT run on any other sort — see “WHICH SORT THE BANDS APPLY TO” below.'],
-                ['6 · ORDER', 'Orders WITHIN each band', 'lastRefreshedAt ↓ → publishedAt ↓ → jobId. This is the “Mới cập nhật” ordering, applied inside the band: auto-refresh moves a job up among its own tier and can never move it out of that tier.'],
-                ['7 · TAIL', 'Everything past the pool', 'Jobs beyond the pool size continue unbanded — by relevance if a keyword was typed, otherwise by lastRefreshedAt. Money reaches the first 80 results and nothing after them.'],
-              ],
-            },
-            items: [
-              'RELEVANCE IS FIELD-WEIGHTED, and the ranked field list lives in exactly one place — “WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal”, on the Job management module page. Summary: title → skills → role/category → company name → prose body, body last. Kept in one place deliberately: a field list restated in two requirements is a field list that will disagree with itself.',
-              'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — reuse the one already decided for skill typeahead: lower-casing, ASCII FOLDING (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), ranked exact → prefix → contains, with fuzzy (edit distance ≤ 1–2) on the typeahead. Do not define a second analyser for search; two analysers means “ke toan” works in one box and not the other.',
-              'DE-DUPLICATE BY COMPANY, AND DO IT BEFORE STAGE 5. One employer posting five near-identical titles must collapse to one card plus “3 vị trí tương tự tại X”. This matters far more under banding than it did under a multiplier: one company holding five Top Job slots would otherwise own the entire top band, and the whole first page with it.',
-              'THE BANDS BELONG TO ONE SORT AND ONE ONLY. Relevance, “Mới nhất” and Salary all drop stages 5–6 entirely — no tier, no bands, just the honest ordering the control names. Money owning one clearly-labelled sort is defensible; money quietly touching all four is not.\n\nAND “MỚI NHẤT” SORTS ON `publishedAt`, NEVER `lastRefreshedAt` — otherwise auto-refresh silently reorders it and the honest sort is not honest. The refresh-ordered view is the separately named “Mới cập nhật”, which is the one sort that carries the bands.',
-              'SALARY FILTER + SORT follow the already-decided currency contract — the currency SCOPES rather than converts, ÷12 for an annual figure, “Thỏa thuận” jobs are ALWAYS included, sorting is within one currency with the other placed after rather than interleaved, and the UI says what the scope hid (“8 jobs quote USD — switch to see them”).',
-              'ZERO RESULTS RELAX IN A FIXED ORDER, and always disclose it: salary → experience → contract type → province (widen to region) → keyword AND→OR. Show what was relaxed (“Không có việc nào ở Đà Nẵng — đang hiện cả miền Trung”), or the candidate believes a filter is still in force when it is not.',
-              'NO RANDOMNESS ANYWHERE. The stage-6 tie-break ends in `jobId`, so the order is total and pagination is stable across page loads.',
-            ],
-            warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score keeps exactly one home: Resume management → Recommended jobs — matched to a jobseeker’s profile.',
-          },
-          {
-            label: 'WHICH SORT THE BANDS APPLY TO — “Mới cập nhật”, and nothing else',
-            text: 'The tier bands are a property of ONE sort, not of the result set. The band order Top Job → Distinction → Basic Plus → Basic → Free exists only while the list is sorted by “Mới cập nhật” (last updated). Every other sort returns the same jobs with no tier grouping at all.\n\nThis is what makes the paid product defensible: the sort that money reorders is the sort whose NAME makes no relevance promise. “Mới cập nhật” claims to be ordered by refresh time, and the tier is what buys refresh — so the ordering matches its own label.',
-            table: {
-              cols: ['Sort', 'Bands apply?', 'Ordered by', 'What the label promises'],
-              rows: [
-                ['**Mới cập nhật** (last updated)', '✅ YES — the only one', 'band, then `lastRefreshedAt` ↓ inside the band', 'Refresh recency — and the tier is what buys refresh, so the promise holds.'],
-                ['Relevance', '❌ no', '`relevance` ↓ alone, then the tie-break', 'Best textual match. A tier must not touch it.'],
-                ['Mới nhất (newest)', '❌ no', '`publishedAt` ↓ alone', 'When it was POSTED. Never `lastRefreshedAt`.'],
-                ['Salary', '❌ no', 'salary within one currency, then the tie-break', 'Pay order. “Thỏa thuận” ranks last.'],
-              ],
-            },
-            items: [
-              'THE SAME 80 JOBS, TWO ORDERS. Switching between “Mới cập nhật” and Relevance must never change WHICH jobs are returned — only their order. The gate, the facets and the relevance floor are identical either way; stages 5–6 are the whole difference. That makes the pair directly testable: same result count, same job ids, different sequence.',
-              'THE DEFAULT SORT DECIDES WHETHER THE PAID PRODUCT IS VISIBLE AT ALL, so it is a commercial decision and not a technical one. ⚠️ ASSUMED: “Mới cập nhật” is the default, matching the VN market norm — TopCV and VietnamWorks both load a refresh-ordered list rather than a pure relevance list. Needs the client’s explicit confirmation, because choosing Relevance as the default means a Top Job buyer gets no placement on a keyword search unless the candidate changes the sort themselves.',
-              'THE SORT MUST BE IN THE URL like every other filter, and it must SURVIVE pagination. A candidate on page 3 of “Mới cập nhật” who is silently moved to relevance order between pages sees jobs repeat and jobs vanish.',
-              'WITH NO KEYWORD there is no relevance signal, so Relevance is not offered — the control is hidden or disabled rather than shown sorting by nothing. “Mới cập nhật” is the sensible default for a bare browse, and the bands still apply there.',
-            ],
-          },
-          {
-            label: 'THE PAID BANDS — tier buys the band, auto-refresh buys the place inside it',
-            text: 'DECIDED (2026-09-03): paid priority is TIER BANDING inside the “Mới cập nhật” sort — not a relevance multiplier applied to everything. Within that sort the tiers occupy contiguous slots in price order, and the job’s auto-refresh only decides where it sits among its own tier.\n\nThis REPLACES the earlier multiplicative boost (Top Job ×1.5 · Distinction ×1.3 · Basic Plus ×1.15). Banding is the stronger instrument where it applies — under the multiplier a strong Distinction match could outrank a weak Top Job, and under banding it never can — but it now applies to ONE sort instead of leaking into all four.',
-            table: {
-              cols: ['Band', 'Tier', 'Price (SME)', 'Auto-refresh cadence'],
-              rows: [
-                ['1 — top slots', 'Top Job', '13,800,000 ₫', '⚠️ NOT SPECIFIED — see the gap below'],
-                ['2', 'Distinction', '12,000,000 ₫', '⚠️ NOT SPECIFIED'],
-                ['3', 'Basic Plus', '6,100,000 ₫', 'every 10 days'],
-                ['4', 'Basic', '2,710,000 ₫', 'every 15 days'],
-                ['5 — last', 'Free', '—', 'never refreshed'],
-              ],
-            },
-            items: [
-              'THE RELEVANCE FLOOR IS MANDATORY, NOT A TUNING NICETY. Banding gives up the safety the multiplier had for free — “0 × 1.5 = 0” meant an irrelevant job could never be resurrected. With contiguous bands, the floor at stage 4 is the ONLY thing standing between the ranking and an employer who buys Top Job on a warehouse posting to own position 1 for “sales”. Ship the floor with the banding or ship neither.',
-              'NEVER PAD THE POOL. The pool size is a CAP, never a quota: if only 12 jobs clear the floor for a query, the pool is 12. Padding to 80 with weak matches converts the floor into decoration.',
-              'WHAT THIS FIXES — a free job can no longer reach position 1. Under refresh-ordered ranking a brand-new free post was, for a few minutes, the freshest record in the index and therefore sat above every 13,800,000 ₫ Top Job. Bands close that hole by construction: a Free job is structurally locked in band 5 and cannot leave it.',
-              'AUTO-REFRESH BECOMES A WITHIN-BAND LEVER, which is a far cleaner thing to sell. Before, cadence decided whether you were on top and only briefly — a sawtooth that handed the top slot to whoever refreshed last. Now the tier guarantees the band and refresh decides your position inside it, so “what did my 13.8 million buy?” has a straight answer: the top band, permanently, for the life of the posting.',
-              'DISCLOSE PAID POSITION. Banding lets money outrank relevance inside the pool, so the paid slots must be visibly marked — “Tin ưu tiên”, or the existing HOT label add-on. Candidates accept paid placement they can see and stop trusting a ranking that hides it; an undisclosed paid band is also the version most likely to attract a consumer-protection complaint.',
-              'POOL SIZE, FLOOR AND BAND ORDER ARE CONFIG, NOT CODE. All three belong in Matching settings (a System resource) so the ranking can be tuned against real queries without a release. The band ORDER especially: it is a commercial decision and it will be revisited.',
-              'OPTIONAL — RESERVE 1–2 PAGE-1 SLOTS for the highest-relevance unpaid job. Cheap insurance against the failure mode where page 1 is entirely bought: it keeps the result set credible to candidates, and stops a perfect free match landing on page 3. Recommended, but it is the client’s call.',
-              '⚠️ GAP TO CLOSE FIRST: the two most expensive tiers have NO defined refresh cadence. Only Basic (15 days) and Basic Plus (10 days) exist, and both are documented inside CRM quotation examples rather than on the tier product — even though Products & Packages states the tier product IS where cadence lives. Distinction (12,000,000 ₫) and Top Job (13,800,000 ₫) need cadences defined on the tier before stage 6 can be implemented.',
-            ],
-            warn: 'INSIDE “MỚI CẬP NHẬT”, BANDING LETS MONEY OUTRANK RELEVANCE. That is the deliberate trade, and it is held in check by exactly two things: the SORT SCOPE and the relevance FLOOR at stage 4. Neither is optional and neither may be quietly widened. Let the bands leak into the Relevance sort and the product silently becomes “paid jobs first, relevance second” — a different product, sold under the old name.',
-          },
-          {
-            label: 'Worked example — the query “sales”, 80 pooled',
-            text: 'A candidate searches **sales** with the sort left on **“Mới cập nhật”** — the one sort that bands. 1,240 jobs pass the gate and facets; 312 clear the relevance floor; the pool takes the best **80**. Those 80 are then banded. A realistic tier mix — Top Job costs 13,800,000 ₫, so there are very few of them:',
-            table: {
-              cols: ['Band', 'Tier', 'Jobs in pool', 'Positions', 'Lands on'],
-              rows: [
-                ['1', 'Top Job', '3', '1–3', 'page 1'],
-                ['2', 'Distinction', '5', '4–8', 'page 1'],
-                ['3', 'Basic Plus', '12', '9–20', 'page 1'],
-                ['4', 'Basic', '30', '21–50', 'pages 2–3'],
-                ['5', 'Free', '30', '51–80', 'pages 3–4'],
-                ['tail', 'any tier', '232', '81+', 'pages 5+, PURE relevance order'],
-              ],
-            },
-            items: [
-              'PAGE 1 IS A CLEAN PAID GRADIENT — 3 Top Job, 5 Distinction, 12 Basic Plus — which is the commercial intent. It works out this way because the expensive tiers are rare, not because anything reserves the shape; no quota per band is needed or wanted.',
-              'INSIDE BAND 3 the 12 Basic Plus jobs are ordered by `lastRefreshedAt` — this is the “Mới cập nhật” sort, so the most recently refreshed Basic Plus job leads its band. Refresh is the ordering WITHIN a band, never a way into a higher one.',
-              'SWITCH THE SORT TO RELEVANCE and this entire table collapses: the same 80 jobs re-order by relevance alone, the “Tin ưu tiên” badges remain but the grouping disappears. Same query, same 80 jobs, different sequence — which is exactly the difference QA should be testing for.',
-              'A PERFECT-MATCH FREE JOB LANDS AT POSITION 51 even if it is the single best textual match for “sales”. This is the cost of banding, stated plainly so nobody is surprised by it in UAT — and it is the reason the optional reserved page-1 slot is worth considering.',
-              'JOB 81 ONWARDS IS UNTOUCHED BY MONEY. The 232 tail jobs are ordered by relevance alone, so a candidate who pages deep gets a progressively more honest list — and the paid inventory has a hard, countable ceiling of 80 positions per query.',
-            ],
-          },
-        ],
-        states: ['Loading', 'No results (suggest broadening)', 'Has results', 'Error / retry'],
-        backend: {
-          endpoints: ['GET /jobs/search?q=&filters…&sort=&page='],
-          integrations: ['Search index (facets, relevance)', 'Scraps (saved jobs)'],
-          notes: 'Consider a search index (e.g. Meilisearch/ES) vs SQL for facets + relevance — decision needed.',
-        },
-        acceptance: ['Filters + sort + pagination work and are URL-encoded; only active jobs appear.'],
-        openQuestions: [
-          'CLOSED — relevance ranking IS in scope, and it is the ONLY ranking input: query relevance, then tier banding inside the pool on the “Mới cập nhật” sort, with no profile matching. See “JOB SEARCH — gate → filter → pool → band” above.',
-          'WHICH SORT LOADS FIRST — needs the client’s answer, and it is the single highest-value open question on this screen. The bands exist only in “Mới cập nhật”, so the default sort decides whether a Top Job buyer gets placement on a keyword search at all. Assumed “Mới cập nhật” (the TopCV / VietnamWorks norm); if the client wants Relevance as the default, say so now because it materially changes what the posting tiers are worth.',
-          'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts); still needs the client’s sign-off, and the SQL fallback costs the facet counts. See “FILTER-ONLY and NEVER-INDEXED fields” on the module page.',
-          'THE RELEVANCE FLOOR — now load-bearing, not a nicety. Under tier banding the floor is the only guardrail preventing a paid tier from taking position 1 on a query it barely matches, so it needs a real number tuned against real queries before launch, not a guess. Same for the POOL SIZE (80 is a starting proposal).',
-          'AUTO-REFRESH CADENCE for Distinction and Top Job is undefined — see “THE PAID BANDS”. Stage 6 cannot be implemented until the client sets both, and they belong on the tier product in Products & Packages.',
-          'RESERVED PAGE-1 SLOT for the best unpaid match — recommended as insurance against an entirely bought first page, but it is a commercial decision the client owns.',
-        ],
-      },
-    },
-    // 6 ──────────────────────────────────────────────────────────────────────
-    {
-      name: 'Job detail',
-      site: 'Jobseekers',
-      scope: ['BE', 'FE', 'UI'],
-      ready: true,
-      mockup: 'js-job-detail',
-      detail: {
-        description:
-          'Full job posting page: all content, company block, salary/location/deadline meta, and the primary Apply CTA. The conversion surface — everything funnels here.',
-        userStory: 'As a jobseeker, I want to read the full job and apply in one click so that applying is effortless.',
-        uiFields: [
-          {
-            group: 'Header',
-            items: [
-              { name: 'title / company (logo, link to company detail)', type: 'text' },
-              { name: 'salary · location · level · deadline', type: 'meta row' },
-              { name: 'Apply CTA · Save ♥ · Share', type: 'actions' },
-            ],
-          },
-          {
-            group: 'Body',
-            items: [
-              { name: 'description / requirements / benefits', type: 'rich text' },
-              { name: 'skills / tags', type: 'chips' },
-              { name: 'similar jobs', type: 'JobCard[]' },
-            ],
-          },
-        ],
-        behaviors: [
-          'Apply opens the Apply flow (see Application management); prompts login if guest.',
-          'Save (scrap) toggles without navigation.',
-          'Closed jobs show a notice and disable Apply.',
-          'Company block links to the public Company detail page.',
-        ],
-        rules: ['Only Open jobs (Exposure On) are publicly reachable; Closed jobs are read-only with a notice.', 'Increment a view count (deduped) for analytics.'],
-        states: ['Open (apply enabled)', 'Closed (apply disabled)', 'Guest (apply → login)', 'Already applied (show status)'],
-        backend: {
-          endpoints: ['GET /jobs/:slug', 'POST /jobs/:id/view', 'GET /jobs/:id/similar'],
-          integrations: ['Application management (Apply)', 'Scraps', 'Company detail'],
-        },
-        acceptance: ['Full job renders; Apply routes correctly (with login gate); expired jobs disable Apply.'],
-        openQuestions: ['Show "X applicants already applied" as social proof, or hide it?'],
       },
     },
   ],
