@@ -1,11 +1,12 @@
 import { Suspense, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, ExternalLink } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
+import { GUIDES, guidePath } from '@/data/guides'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
@@ -869,6 +870,28 @@ export function ModuleDetail() {
         </span>
         <span className="text-[11.5px] text-faint">{m.features.length} features</span>
       </div>
+
+      {/* The HOW next to the WHY. A module page is the requirement; when a user
+          guide exists for the module it is offered here, above the rules, because
+          an operator arriving from the admin console wants the steps first and the
+          reasoning second. Modules without a guide show nothing. */}
+      {GUIDES[m.id] && (
+        <Link
+          to={guidePath(m.id)}
+          className="group mt-5 flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition-colors hover:border-brand"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
+            <BookOpen className="h-4.5 w-4.5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold group-hover:text-brand">User guide — how to use it</span>
+            <span className="block text-[12px] text-muted">
+              Key steps on the real admin screens, with screenshots · {GUIDES[m.id].tasks.length} tasks
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-faint group-hover:text-brand" />
+        </Link>
+      )}
 
       {/* Edge cases first — the awkward real-world shapes this module answers. Pinned
           above the requirements because it is what a client checks to see whether we

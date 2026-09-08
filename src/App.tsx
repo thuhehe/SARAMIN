@@ -22,8 +22,11 @@ const BuildPlan = lazy(() => import('./pages/BuildPlan').then((m) => ({ default:
 const Mockups = lazy(() => import('./pages/Mockups').then((m) => ({ default: m.Mockups })))
 const CompanyMockups = lazy(() => import('./pages/CompanyMockups').then((m) => ({ default: m.CompanyMockups })))
 const AdminWireframe = lazy(() => import('./pages/AdminWireframe').then((m) => ({ default: m.AdminWireframe })))
+const Changelog = lazy(() => import('./pages/Changelog').then((m) => ({ default: m.Changelog })))
 const ModuleDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.ModuleDetail })))
 const FeatureDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.FeatureDetail })))
+const ModuleGuide = lazy(() => import('./pages/ModuleGuide').then((m) => ({ default: m.ModuleGuide })))
+const TestingWorkflow = lazy(() => import('./pages/TestingWorkflow').then((m) => ({ default: m.TestingWorkflow })))
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
 import { CommentsProvider, useComments } from './comments/CommentsProvider'
@@ -190,8 +193,13 @@ function Layout() {
                 <Route path="/mockups/company" element={<CompanyMockups />} />
                 <Route path="/modules" element={<Modules />} />
                 <Route path="/wireframe/admin" element={<AdminWireframe />} />
+                <Route path="/changelog" element={<Changelog />} />
                 <Route path="/legend" element={<Legend />} />
+                <Route path="/testing" element={<TestingWorkflow />} />
                 <Route path="/m/:moduleId" element={<ModuleDetail />} />
+                {/* Before :featureKey — "guide" is a reserved word in a module, never a
+                    feature slug. The user guide is the HOW next to the module's WHY. */}
+                <Route path="/m/:moduleId/guide" element={<ModuleGuide />} />
                 <Route path="/m/:moduleId/:featureKey" element={<FeatureDetail />} />
                 <Route path="/f/:id" element={<FeaturePage />} />
                 {/* Landing strip for the BB PM sign-in round trip. It

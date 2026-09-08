@@ -19,3 +19,7 @@ tsconfig.tsbuildinfo
 # Excel/Office lock files, left behind when a spreadsheet in public/docs is open.
 .~*
 
+
+# Local pre-refactor snapshots (`*.before-<change>`), written by hand before a
+# large mechanical edit so it can be diffed or reverted. Scratch, never shared.
+.backup/

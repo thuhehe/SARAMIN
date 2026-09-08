@@ -137,8 +137,11 @@ export interface BuildFeature {
    */
   mockups?: string[]
   /**
-   * Is this requirement ready for the BA to pick up? Drives the nav dot:
-   * green when true, grey otherwise. Set by hand — see READY_META.
+   * Is this requirement ready for the BA to pick up? Set by hand.
+   * NOTE: nothing renders this any more — the sidebar dot it drove was removed
+   * on 2026-09-08 (page feedback). The flag is still authored across the build
+   * files, so it is kept as data; delete it and READY_META together if the
+   * readiness signal is not coming back.
    */
   ready?: boolean
   /** deep spec — rendered on the feature detail page when present */

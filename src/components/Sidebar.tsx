@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, Monitor, Building2 } from 'lucide-react'
-import { BUILD_MODULES, SITE_META, READY_META } from '@/data/buildModules'
+import { ChevronRight, Search, X, Home, Workflow, Monitor, History, BookOpen, ClipboardCheck } from 'lucide-react'
+import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { featurePath } from '@/data/featureSlug'
+import { GUIDES, guidePath } from '@/data/guides'
 import { cn } from '@/lib/utils'
 import { useComments } from '@/comments/CommentsProvider'
 
@@ -70,10 +71,22 @@ export function Sidebar() {
         <div className="px-2 pb-1">
           <PrimaryLink to="/" icon={<Home className="h-3.5 w-3.5" />} label="Overview" exact />
           <PrimaryLink to="/modules" icon={<Workflow className="h-3.5 w-3.5" />} label="Modules" />
-          <PrimaryLink to="/plan" icon={<ListChecks className="h-3.5 w-3.5" />} label="Build plan" />
-          <PrimaryLink to="/mockups" icon={<PanelsTopLeft className="h-3.5 w-3.5" />} label="Jobseeker mockups" exact />
-          <PrimaryLink to="/mockups/company" icon={<Building2 className="h-3.5 w-3.5" />} label="Company mockups" />
+          {/* Jobseeker and Company mockups are OFF the nav: the current design for
+              both now lives in Figma, so a nav entry pointing at these grey-box
+              wireframes would send a reader to the older picture. Admin mockups
+              stays — there is no Figma for the admin console, so this is still the
+              only place those screens exist.
+
+              The ROUTES are deliberately kept. Feature pages deep-link into them
+              (see screenRegistry: a screen's `src` resolves to /mockups or
+              /mockups/company), so deleting them would break every "open this
+              screen" link on a requirement page. What is gone is the invitation to
+              browse them as a gallery.
+
+              Build plan is off the nav too, at the client's request. */}
           <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin mockups" />
+          <PrimaryLink to="/testing" icon={<ClipboardCheck className="h-3.5 w-3.5" />} label="Testing workflow" />
+          <PrimaryLink to="/changelog" icon={<History className="h-3.5 w-3.5" />} label="Document history" />
         </div>
         <div className="mx-4 my-1.5 border-t border-line-soft" />
         <p className="px-4 pt-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">
@@ -89,12 +102,10 @@ export function Sidebar() {
           />
         ))}
       </nav>
-
-      <div className="shrink-0 border-t border-line-soft px-4 py-2.5">
-        <Link to="/legend" className="text-[11px] text-muted hover:text-brand">
-          Status legend & how to read
-        </Link>
-      </div>
+      {/* The "Status legend & how to read" footer is gone. The /legend ROUTE stays:
+          the comment system titles that path, so threads left on it keep resolving,
+          and a link already shared still opens. What is removed is the permanent
+          footer strip — an every-page invitation to a page a reader needs once. */}
     </aside>
   )
 }
@@ -144,11 +155,17 @@ function ModuleRow({
 
   const modulePath = `/m/${m.id}`
   const moduleActive = activePath === modulePath
-  const hasActiveChild = visible.some(({ f }) => activePath === featurePath(m, f))
+  /* The user guide sits FIRST under a module, before its features: it is the
+     page a new operator opens, and the features are the rules behind it. Only
+     modules with a guide authored in src/data/guides get the row. */
+  const guideTo = GUIDES[m.id] ? guidePath(m.id) : null
+  const showGuide = guideTo !== null && featureMatches(m, 'User guide')
+  const guideActive = guideTo !== null && activePath === guideTo
+  const hasActiveChild = guideActive || visible.some(({ f }) => activePath === featurePath(m, f))
   const [open, setOpen] = useState(true)
   const isOpen = forceOpen || open || hasActiveChild || moduleActive
 
-  if (visible.length === 0) return null
+  if (visible.length === 0 && !showGuide) return null
 
   return (
     <div>
@@ -178,6 +195,23 @@ function ModuleRow({
       </div>
       {isOpen && (
         <ul className="pb-1">
+          {showGuide && guideTo && (
+            <li>
+              <Link
+                to={guideTo}
+                className={cn(
+                  'flex items-center gap-2 pl-[38px] pr-3 py-1.5 text-[12px] transition-colors',
+                  guideActive ? 'bg-brand-soft text-brand font-medium' : 'text-ink/80 hover:bg-canvas/70',
+                )}
+              >
+                <BookOpen className={cn('h-3 w-3 shrink-0', guideActive ? 'text-brand' : 'text-faint')} />
+                <span className="truncate">User guide</span>
+                <span className="ml-auto">
+                  <OpenComments path={guideTo} />
+                </span>
+              </Link>
+            </li>
+          )}
           {visible.map(({ f, i }) => {
             const to = featurePath(m, f)
             const active = activePath === to
@@ -190,11 +224,6 @@ function ModuleRow({
                     active ? 'bg-brand-soft text-brand font-medium' : 'text-ink/80 hover:bg-canvas/70',
                   )}
                 >
-                  {/* BA readiness, not site — the [JS]/[CO]/[Admin] tag beside it carries the site. */}
-                  <span
-                    title={f.ready ? READY_META.ready.label : READY_META.notReady.label}
-                    className={cn('h-2 w-2 shrink-0 rounded-full', (f.ready ? READY_META.ready : READY_META.notReady).dot)}
-                  />
                   <span className="font-mono text-[10px] text-faint shrink-0">[{SITE_META[f.site].tag}]</span>
                   <span className="truncate">{f.name}</span>
                   <span className="ml-auto">
