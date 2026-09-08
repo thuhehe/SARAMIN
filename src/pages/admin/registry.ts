@@ -22,7 +22,6 @@ const adminCompanyList = screen(() => import('@/pages/admin/screens/companies/li
 const adminCompanyArchived = screen(() => import('@/pages/admin/screens/companies/archived'), 'AdminCompanyArchived')
 const adminCompanyPipeline = screen(() => import('@/pages/admin/screens/companies/pipeline'), 'AdminCompanyPipeline')
 const adminJobseekers = screen(() => import('@/pages/admin/screens/users/jobseekers'), 'AdminJobseekers')
-const adminCompanyUsers = screen(() => import('@/pages/admin/screens/users/companyUsers'), 'AdminCompanyUsers')
 const adminDisplay = screen(() => import('@/pages/admin/screens/content/display'), 'AdminDisplay')
 const adminAccountUsage = screen(() => import('@/pages/admin/screens/usage/accountUsage'), 'AdminAccountUsage')
 const adminManualServices = screen(() => import('@/pages/admin/screens/usage/manualServices'), 'AdminManualServices')
@@ -76,7 +75,6 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-company-pipeline': adminCompanyPipeline,
   // User — both sides of the marketplace's people accounts
   'admin-jobseekers': adminJobseekers,
-  'admin-company-users': adminCompanyUsers,
   // Content
   'admin-banners': adminDisplay,
   'admin-account-usage': adminAccountUsage,

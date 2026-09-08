@@ -89,9 +89,6 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
   'admin-invoices': { module: 'crm', feature: 'Invoices' },
-  // Account management is back in the build plan, so the Company-users screen links
-  // to its authored feature page (users, roles, deactivate/offboarding, move-user).
-  'admin-company-users': { module: 'account-management', feature: 'Company users & roles (on Admin)' },
   // System
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
@@ -221,7 +218,11 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Users className="h-4 w-4" />,
     items: [
       { label: 'Jobseeker users', specId: 'admin-jobseekers' },
-      { label: 'Company users', specId: 'admin-company-users' },
+      /* Company users REMOVED (2026-09-08 page feedback). It was a second list of
+         data the company record already carries: Company detail → Users does seats,
+         invite, resend/cancel, change role and disable, scoped to one company. HQ
+         manages a company's logins from that company's record — see the account
+         management requirement — so this screen was upkeep without a job. */
     ],
   },
   {

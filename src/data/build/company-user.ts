@@ -1822,10 +1822,10 @@ export const companyUser: BuildModule = {
       name: 'Company users & roles (on Admin)',
       site: 'Admin',
       scope: ['BE', 'FE'],
-      notes: 'HQ concierge — same roles-and-users model as the CO side, gated + audited. There is NO cross-company move of an existing user.',
+      notes: 'HQ concierge, done on the company record — same roles-and-users model as the CO side, gated + audited. There is NO global company-users list and NO cross-company move of an existing user.',
       detail: {
         description:
-          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. The global "Company users" list is primarily an oversight/search view; role edits are best done on the company record (Company detail → Users / Roles), scoped to one company.',
+          'HQ can build a company’s roles and manage its users on their behalf (support / concierge) — the same Roles builder + assigned-role model as the Company site. It is done on the COMPANY RECORD: Company detail → Users / Roles, scoped to one company.',
         behaviors: [
           'Same build-role / invite / assign-role / deactivate actions as the CO side, but performed by HQ.',
           'Break-glass: HQ can reassign Admin for a company when the sole Admin is unavailable (left / lost access) — the one recovery path the single-Admin floor needs.',
@@ -1833,14 +1833,15 @@ export const companyUser: BuildModule = {
         rules: [
           'There is deliberately NO "move a user between companies" action for existing users. A user in the wrong company is fixed the boring way: deactivate the login there, and the right company invites their email fresh (or, for a brand-new sign-up, HQ places it correctly on the Sign-ups screen). One email = one login = one company at a time.',
           'HQ role/user edits are permission-gated (specific HQ roles) and written to the audit log.',
-          'Prefer the company-scoped Users / Roles sections for edits; keep the global list read-oriented (find a user, see which company).',
+          'THERE IS NO GLOBAL "Company users" LIST (removed 2026-09-08). Every HQ action happens on the company record, which already carries seats, invite, resend/cancel, change role and disable. A second cross-company list was a second place to maintain the same data.',
+          'WHAT THE REMOVAL GIVES UP, recorded so it is a decision and not an accident: there is no way to resolve an email address to a login without knowing its company first, and no single view of every disabled user. If support turns out to need either, the answer is one lookup — a search box that returns the user and their company — not a full list screen with tabs and its own actions.',
         ],
         acceptance: [
           'HQ can resolve support cases (build a role, invite, assign role, deactivate) with every action audited.',
           'HQ can reassign a stranded company’s Admin.',
         ],
         openQuestions: [
-          'Which HQ roles may edit company users / roles and use break-glass, and should the global list be read-only?',
+          'Which HQ roles may edit company users / roles and use break-glass?',
         ],
       },
     },
