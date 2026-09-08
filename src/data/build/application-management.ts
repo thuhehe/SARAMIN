@@ -279,6 +279,32 @@ export const applicationManagement: BuildModule = {
           'The CV is snapshotted onto the application: later edits to the candidate’s CV do not silently change what the employer already received.',
           'A match-score snapshot is written at apply time so it is stable and auditable (see Resume management → CV data & matching architecture).',
         ],
+        requirements: [
+          {
+            label: 'BULK APPLY — up to 5 postings in one action, CV auto-selected from the last application',
+            text: 'CLIENT REFERENCE (Saramin KR): “최대 5건의 공고를 선택하여 한번에 지원이 가능합니다! 이력서는 직전에 입사지원한 이력서로 자동 선택됩니다.” — *“You can select up to 5 postings and apply at once. The resume is automatically selected as the one used in your most recent application.”*\n\nTwo rules, and the second is the interesting one: bulk apply does NOT ask which CV to use. It reuses the CV from the candidate’s most recent application, which is what makes “apply to 5 jobs” a single tap instead of five screens.\n\nVN copy: “Chọn tối đa 5 tin để ứng tuyển cùng lúc! CV được tự động chọn theo CV bạn đã dùng ở lần ứng tuyển gần nhất.”',
+            table: {
+              cols: ['Rule', 'Value', 'Consequence'],
+              rows: [
+                ['Postings per action', '**Max 5**', 'A hard cap enforced server-side, not just a disabled button. Selecting a 6th is refused with the reason, never silently ignored.'],
+                ['CV', 'Auto — the CV used in the MOST RECENT application', 'No per-job CV picker. One CV goes to all 5 employers.'],
+                ['Cover message', 'Not offered', 'A per-employer note cannot be written once for five different companies. Candidates who want one use single apply.'],
+                ['Records created', 'One application PER posting', '5 selections = 5 application rows, 5 statuses, 5 review decisions. Bulk is an input convenience, never a merged application.'],
+              ],
+            },
+            items: [
+              'A FIRST-TIME APPLICANT HAS NO “LAST CV”, and this is the case the reference text does not cover. Fallback chain: ① the CV used in the most recent application · ② the CV currently switched ON for “Cho nhà tuyển dụng tìm thấy” (exactly one is searchable at a time, so this is unambiguous) · ③ if neither exists, do NOT guess — open the normal single-apply CV picker for the first job. Silently picking a CV the candidate has never chosen is the one outcome to avoid: they are sending it to five employers at once.',
+              'THE AUTO-SELECTED CV STILL FACES THE APPLY GATE. A Saramin CV below the content rule (≥1 work experience, or ≥1 education entry when there is no experience yet, plus ≥3 skills) cannot be sent — in bulk or otherwise, and the server enforces it. If the auto-selected CV fails the gate, block the whole batch and name what is missing; do not send to some employers and not others.',
+              'THE CV MUST BE CHANGEABLE ONCE, FOR THE WHOLE BATCH. Auto-selected is a default, not a lock — show which CV was chosen and let the candidate swap it in one control that applies to all 5. Showing the CV name is not optional: the candidate is authorising five deliveries and must be able to see what is being sent.',
+              'INELIGIBLE POSTINGS ARE FILTERED AT SELECTION TIME, not at submit. A job that is closed, past its deadline, has exposure off, or that this candidate has ALREADY applied to cannot be selected — the one-application-per-(jobseeker, job) rule is unchanged by bulk. Discovering at submit that 2 of 5 were invalid is the worst version of this screen.',
+              'A PARTIAL FAILURE MUST NOT FAIL THE BATCH. If 4 succeed and 1 fails (the job closed between selection and submit), keep the 4 and report the 1 by name with the reason. Rolling back four good applications because of one race is worse for the candidate than the inconsistency it avoids.',
+              'CONSENT COVERS EVERY EMPLOYER IN THE BATCH, and the confirmation must NAME all five companies. The per-employer disclosure on single apply exists because sharing a CV is a per-recipient decision; bulk does not dissolve that, it just collects it once. One checkbox, five named recipients.',
+              'FIVE APPLICATIONS, FIVE REVIEWS. In Phase-1 HQ screens applications before the employer sees them, so a bulk submit creates five independent review items — and the candidate’s “Saramin reviews this before the employer sees it” notice applies to each. Nothing about bulk shortens or merges that queue.',
+              '⚠️ CONFIRM WITH THE CLIENT whether 5 is per ACTION or per DAY. The reference sentence only establishes “5 selected at once”; a per-action cap with no daily limit still allows unlimited spray-applying, which is the behaviour employers complain about. A daily cap is the version worth having, and it is a product decision.',
+            ],
+            warn: 'Bulk apply sends ONE CV to FIVE employers on a default the candidate did not actively pick. Every safeguard above — showing the chosen CV, allowing one swap, naming all five companies, enforcing the apply gate — exists because of that. Ship the convenience without them and the first support ticket is “I did not know which CV went to whom”.',
+          },
+        ],
         states: [
           'Guest (must sign in)',
           'No CV yet (routed to Create CV)',

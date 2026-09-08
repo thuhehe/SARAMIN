@@ -128,6 +128,8 @@ export function JobCard({
   location = 'Hồ Chí Minh',
   rank,
   tier,
+  selectable,
+  selected,
   onClick,
 }: {
   title?: string
@@ -139,10 +141,18 @@ export function JobCard({
       visible on purpose: banding lets a tier outrank relevance, so the reader is
       told which slots were bought. Omit on Free — there is nothing to disclose. */
   tier?: 'Top Job' | 'Distinction' | 'Basic Plus' | 'Basic'
+  /** Bulk apply — the card carries a tick box so up to 5 jobs can be sent at once. */
+  selectable?: boolean
+  selected?: boolean
   onClick?: () => void
 }) {
   return (
     <div onClick={onClick} className={cn('flex gap-3 rounded-lg border border-line bg-surface p-3 hover:border-brand/40', onClick && 'cursor-pointer')}>
+      {selectable && (
+        <span className={cn('mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-[3px] border text-[10px] leading-none', selected ? 'border-brand bg-brand text-white' : 'border-line')}>
+          {selected ? '✓' : ''}
+        </span>
+      )}
       <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-canvas text-[10px] text-faint">LOGO</div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

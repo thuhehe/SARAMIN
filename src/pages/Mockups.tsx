@@ -162,12 +162,25 @@ function SearchScreen() {
               → Basic → Free, and auto-refresh only reorders WITHIN a band. Paid slots
               carry the "Tin ưu tiên" badge, because a band can outrank relevance.
               Pick Relevance / Mới nhất / Salary and the bands disappear entirely. */}
+          {/* BULK APPLY — max 5 postings per action, and the CV is NOT picked here:
+              it defaults to the one used in the last application. The bar names it and
+              offers a single swap for the whole batch, because one CV goes to up to
+              five employers at once. See Application management → Apply flow →
+              "BULK APPLY". */}
+          <div className="mb-2.5 flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand/[0.04] px-3 py-2">
+            <span className="text-[11.5px] font-medium text-ink">3/5 tin đã chọn</span>
+            <span className="text-[11px] text-muted">
+              CV: <span className="font-medium text-ink">Nguyen_Van_A_CV.pdf</span> <span className="text-faint">(dùng ở lần ứng tuyển gần nhất)</span>
+            </span>
+            <span className="cursor-pointer text-[11px] font-medium text-brand underline">Đổi CV</span>
+            <Btn primary className="ml-auto">Ứng tuyển 3 tin</Btn>
+          </div>
           <div className="space-y-2.5">
-            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" tier="Top Job" onClick={() => go('js-job-detail')} />
-            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" tier="Distinction" onClick={() => go('js-job-detail')} />
-            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" tier="Basic Plus" onClick={() => go('js-job-detail')} />
-            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" tier="Basic" onClick={() => go('js-job-detail')} />
-            <JobCard title="Frontend Intern" company="Base.vn" salary="8 – 12 tr" onClick={() => go('js-job-detail')} />
+            <JobCard title="Frontend Engineer (ReactJS)" company="Shopee" salary="25 – 40 tr" tier="Top Job" selectable selected onClick={() => go('js-job-detail')} />
+            <JobCard title="Senior Frontend Developer" company="Grab" salary="Thỏa thuận" tier="Distinction" selectable selected onClick={() => go('js-job-detail')} />
+            <JobCard title="Fullstack (FE-heavy)" company="Techcombank" salary="30 – 50 tr" tier="Basic Plus" selectable onClick={() => go('js-job-detail')} />
+            <JobCard title="UI Engineer" company="One Mount" salary="Up to 45 tr" tier="Basic" selectable selected onClick={() => go('js-job-detail')} />
+            <JobCard title="Frontend Intern" company="Base.vn" salary="8 – 12 tr" selectable onClick={() => go('js-job-detail')} />
           </div>
           <div className="mt-4 flex justify-center gap-1.5">
             {['1', '2', '3', '…', '25'].map((p) => (
