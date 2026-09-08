@@ -756,6 +756,7 @@ export const jobseekerUser: BuildModule = {
           'Changing the email address sends a verification link to the NEW address and keeps the old one active until it is confirmed.',
           'Turning cvVisibility to Hidden removes the candidate from employer CV search immediately; it does not affect applications already sent.',
           'A social-only account sees "set a password" rather than "change password".',
+          'Account-level rows — login email, password, linked logins, CV-search switch, notifications, deactivate / delete — open Account settings (jobseeker); My page keeps the profile, preferences and completeness.',
           'Unlinking the last remaining login method is refused, with an explanation.',
           'Uploading an avatar crops client-side and rejects oversized files before upload.',
         ],
@@ -826,6 +827,262 @@ export const jobseekerUser: BuildModule = {
       },
     },
 
+    /* ── Account settings (jobseeker) ─────────────────────────────────────────
+       The account-level half of what My page used to carry: identity, contact
+       addresses, sign-in methods, the CV-search master switch, notifications
+       and the two ways out. Profile and job preferences (what a recruiter
+       searches on) stay on My page. Layout follows Saramin Korea's 계정정보 설정
+       for jobseekers; the field set is ours. */
+    {
+      name: 'Account settings (jobseeker)',
+      site: 'Jobseekers',
+      slug: 'account-settings-jobseeker',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'Identity · contact · sign-in methods · CV-search switch · notifications · deactivate / delete. Profile facts and job preferences stay on My page.',
+      ready: true,
+      detail: {
+        refDocs: [
+          {
+            label: 'Figma — Account settings (jobseeker)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2364-10439',
+            meta: 'Figma frame · 1440 wide',
+            note: 'KR 계정정보 설정 layout: avatar, label / value / action tables, left account menu. Sections: Basic information · Contact information · Sign-in & security · Privacy & CV search · Notifications · Leaving Saramin.',
+          },
+        ],
+        description:
+          'The jobseeker’s account page — about the login, not the career. Saramin Korea’s screen has two tables (name + date of birth; phone + email) and a withdraw link; ours keeps that shape and adds what our model needs a place for: the two-email rule (login vs contact), the sign-in methods an account can hold, the CV-search master switch, notification preferences with the Zalo channel, a data-copy request, and the two distinct exits — Deactivate and Delete.\n\nWhat is NOT here, on purpose: education, years of experience, marital status, job preferences and profile completeness. Those are what recruiters search and match on, and they stay on My page next to the CVs. This page is what a person checks when they wonder “which email is this account, who can find me, and how do I leave”.',
+        userStory:
+          'As a jobseeker, I want one place to see which email and sign-in methods my account uses, whether employers can find my CV, and what I am notified about — and to leave cleanly when I am done — without touching the profile recruiters read.',
+        keyPoints: [
+          {
+            vi: 'Trang này là về TÀI KHOẢN, không phải hồ sơ. Học vấn, kinh nghiệm, mong muốn công việc ở My page — vì đó là thứ nhà tuyển dụng tìm kiếm.',
+            en: 'This page is about the ACCOUNT, not the profile. Education, experience and job preferences stay on My page — they are what recruiters search on.',
+          },
+          {
+            vi: 'Hai email, một danh tính: Login email là khoá (khoá cứng nếu đến từ Google/Facebook); Contact email là cái nhà tuyển dụng thấy — luôn sửa được, mặc định bằng login email.',
+            en: 'Two emails, one identity: Login email is the key (locked when it came from Google/Facebook); Contact email is what employers see — always editable, defaults to the login email.',
+          },
+          {
+            vi: 'Công tắc “Cho nhà tuyển dụng tìm thấy CV của tôi” là sự đồng ý rõ ràng — mặc định Ẩn, tắt là ẩn ngay. CV nào được hiển thị chọn ở My CVs.',
+            en: 'The “Let employers find my CV” switch is explicit consent — default Hidden, off hides immediately. Which CV shows is chosen on My CVs.',
+          },
+          {
+            vi: 'Luôn còn ít nhất một cách đăng nhập: không cho gỡ provider cuối cùng; tài khoản chỉ có social thấy “Đặt mật khẩu” thay cho “Đổi mật khẩu”.',
+            en: 'At least one sign-in method always remains: unlinking the last provider is refused; a social-only account sees “Set a password” instead of “Change password”.',
+          },
+          {
+            vi: 'Hai lối ra, đều tự phục vụ (khác với tài khoản công ty): Deactivate = tạm nghỉ, quay lại bằng đăng nhập; Delete = vĩnh viễn, email không đăng ký lại được. Cả hai đều có yêu cầu bản sao dữ liệu đứng trước.',
+            en: 'Two exits, both self-serve (unlike a company login): Deactivate = a break, reversed by signing in; Delete = permanent, the email can never register again. A data-copy request sits in front of both.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'What is on the page — and where each field came from',
+            text: 'KR’s two tables plus four sections our model needs. The right-hand column says whether a row is from the KR screen, from our current system, or both.',
+            table: {
+              cols: ['Section', 'Rows', 'Source'],
+              rows: [
+                ['Basic information (with avatar)', 'Full name · Date of birth · Gender · Nationality — each with {{btn:Edit}}', 'KR: name, date of birth, avatar · Ours: gender, nationality (sign-up fields 5 and 4). Education, experience, marital status → My page'],
+                ['Contact information', 'Login email ({{tagok:Verified}} badge · {{btn:Change}}, or a provider lock) · Contact email ({{btn:Edit}}) · Phone (+84 · {{btn:Edit}})', 'KR: phone, email, verified badge · Ours: the login / contact split (module rule) and the +84 picker with the “I live abroad” escape'],
+                ['Sign-in & security', 'Password (“Last changed dd/mm/yyyy” · {{btn:Change password}} — or {{btn:Set a password}} on a social-only account) · Google · Facebook ({{btn:Link}} / {{btn:Unlink}}) · Active sessions ({{btn:Sign out other devices}})', 'KR has a separate 로그인 관리 page and shows the provider icon beside the name; folded into one section here'],
+                ['Privacy & CV search', '“Let employers find my CV” toggle with which CV is showing · “Request a copy of my data” ({{btn:Request}})', 'Ours: cvVisibility (My page → Account & privacy) and the data-subject access right'],
+                ['Notifications', 'Job alerts · Application updates · Saved-job deadline reminders · Saramin news and tips — toggles · Channel: Email · Zalo', 'KR: 알림설정 menu item · Ours: the four kinds and the Zalo channel'],
+                ['Leaving Saramin', '{{btn:Deactivate account}} (a break) · {{btn:Delete account}} (permanent) — each with one line of consequence', 'KR: 회원 탈퇴 link · Ours: two features already specced — Deactivate account, Delete account'],
+              ],
+            },
+            items: [
+              'Left menu: Account settings (this page) · Change password (opens the modal) · Privacy & CV search (scrolls) · Notification settings (scrolls) · Log out. KR’s 로그인 관리 becomes the Sign-in & security section instead of a page.',
+              'Rows edit inline one at a time ({{btn:Edit}} → field + Save / Cancel), the same pattern as the employer’s My account. Toggles save on switch.',
+              'The avatar is optional (My page rule); the round frame with the small edit button is KR’s, kept as is.',
+            ],
+          },
+          {
+            label: 'Login email vs contact email — how the rule shows on this page',
+            table: {
+              cols: ['Row', 'Shows', 'Action'],
+              rows: [
+                ['Login email', 'The identity key with {{tagok:Verified}} once confirmed. Provider-supplied: shown with the provider chip (“🔒 Google”) and no Change button.', '{{btn:Change}} (email accounts only) → verification link to the NEW address, valid 24 h; the old address stays the login until the link is clicked. Pending state: “Pending: new@mail.com · Resend · Cancel”.'],
+                ['Contact email', 'What employers see on applications and unlocked CVs. Reads “Same as login email” until changed.', '{{btn:Edit}} → saves at once, no verification loop (module rule). A typo here reaches employers, so the row shows a one-line hint under the field.'],
+                ['Phone', '+84 number, or “I live abroad” with the foreign number. Shown to an employer only with an application or an unlock.', '{{btn:Edit}}. Whether an OTP confirms it is open question [C5] — the row is designed to carry a Verified badge if it ships.'],
+              ],
+            },
+          },
+          {
+            label: 'Sign-in methods — at least one must remain',
+            table: {
+              cols: ['Row', 'States', 'Rule'],
+              rows: [
+                ['Password', '“Last changed dd/mm/yyyy” · or “No password — you sign in with Google”', '{{btn:Change password}} opens the platform modal (12+ · uppercase · number · symbol, live checklist, current password required, sign out other devices on by default). Social-only accounts get {{btn:Set a password}} instead: same rules, no current password.'],
+                ['Google · Facebook', '“Linked · address” · “Not linked”', '{{btn:Link}} runs the provider flow; if the provider email matches an existing account it links to THAT account (one account per email). {{btn:Unlink}} is refused when it would leave no method — the button is disabled with “Set a password first”.'],
+                ['Active sessions', '“N devices · this one and …”', '{{btn:Sign out other devices}} ends every session but this one; a toast names the count. Last sign-in shown underneath (date · city · device).'],
+              ],
+            },
+            items: [
+              'Security emails (password set or changed, login email changed, new device) are always sent and have no toggle — the same rule as the employer account.',
+              'Which providers ship in Phase 1 (Google + Facebook drawn; LinkedIn, Zalo login open) is the Sign up feature’s question, not this page’s.',
+            ],
+          },
+          {
+            label: 'Privacy & CV search — the master switch and the per-CV choice',
+            text: 'Two levels, deliberately. The switch here is the person’s consent to be found at all; WHICH CV shows is chosen on My CVs, where the CVs are. Turning the switch off hides everything at once without touching the choice.',
+            table: {
+              cols: ['Control', 'Where', 'Rule'],
+              rows: [
+                ['“Let employers find my CV” (cvVisibility)', 'This page', 'Explicit consent: default **Hidden** for a new account; Off removes the candidate from CV search immediately; never flipped by any system action. The row says which CV is showing (“Showing: <CV name> · chosen on My CVs”) or “Hidden — employers cannot find you; applications you send are unaffected”.'],
+                ['Which CV is searchable', 'My CVs', 'One CV at a time (Resume management → searchable flag). If that CV is later rejected or incomplete, the row here reads “Temporarily not shown — see My CVs”.'],
+                ['Account status', '—', 'Independent of the switch: an Active account with a hidden CV is a normal state (module rule).'],
+              ],
+            },
+            items: [
+              'The row never shows a bare toggle: the sentence under it says what is visible right now, because “on” with no qualified CV is the confusing case.',
+              'Phone and contact email exposure is a fixed rule (application or unlock), not a setting — the Contact section states it rather than offering a switch that could be misread as “hide me”.',
+            ],
+          },
+          {
+            label: 'Your data — a copy, a break, or the door',
+            table: {
+              cols: ['Control', 'What it does', 'Rule'],
+              rows: [
+                ['{{btn:Request a copy of my data}}', 'Emails a download link to everything Saramin holds about the person (profile, CVs, applications, consents) as a zip', 'Data-subject access right (PDPL). One request per 24 h; the link expires after 7 days; the request is audited. Format proposal: JSON + the CV files.'],
+                ['{{btn:Deactivate account}}', 'A break — see Deactivate account', 'Confirm step with reason, re-authentication, consequences. Reversed by signing in within the grace window (N to confirm). CV leaves search at once; applications already sent stay.'],
+                ['{{btn:Delete account}}', 'Permanent — see Delete account', 'Confirm step with re-auth and typed confirmation. The email can never register again; employers who already have the CV keep it. Deactivate is offered on that screen first.'],
+              ],
+            },
+            items: [
+              'The two exits are self-serve because the account belongs to the person — the opposite of a company login, where the seat belongs to the company.',
+              'Both exits sit under one heading with one line of consequence each, so a person choosing “delete” when they meant “pause” sees the difference before clicking.',
+            ],
+          },
+          {
+            label: 'Notifications — four kinds, two channels',
+            table: {
+              cols: ['Toggle', 'Default', 'Sends'],
+              rows: [
+                ['Job alerts', 'on', 'New jobs matching the saved preferences — daily digest, never per job'],
+                ['Application updates', 'on', 'Stage changes and employer messages on the person’s applications'],
+                ['Saved-job deadline reminders', 'on', '3 days before a saved job closes'],
+                ['Saramin news and tips', 'off (opt-in)', 'Monthly; marketing consent recorded with its date'],
+              ],
+            },
+            items: [
+              'Channel row: Email (always available) · Zalo (ZNS to the phone on file) — Zalo is behind the notifications.zaloZNS flag (System module) and shows only when it is on.',
+              'Toggles save on switch. Security emails and application-related legal notices ignore the toggles.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Basic information',
+            items: [
+              { name: 'avatar', type: 'image', notes: 'optional, round frame with edit menu (KR); crop client-side, ≤ 2 MB' },
+              { name: 'fullName', type: 'string', required: true, notes: 'ONE field' },
+              { name: 'dateOfBirth · gender · nationality', type: 'date · enum · enum', notes: 'all optional — none is read by search or matching' },
+            ],
+          },
+          {
+            group: 'Contact information',
+            items: [
+              { name: 'loginEmail', type: 'email', required: true, notes: 'identity key; verified badge; locked with provider chip when provider-supplied; change = verified flow (24 h)' },
+              { name: 'contactEmail', type: 'email', required: true, notes: 'defaults to loginEmail; employers read THIS' },
+              { name: 'phone · livesAbroad', type: 'string (+84) · bool', notes: 'foreign number allowed when livesAbroad' },
+            ],
+          },
+          {
+            group: 'Sign-in & security',
+            items: [
+              { name: 'passwordChangedAt', type: 'date?', notes: 'null on social-only → “Set a password”' },
+              { name: 'linkedProviders[]', type: 'enum[]', notes: 'google · facebook (+ future)' },
+              { name: 'sessions · lastSignIn', type: 'derived', notes: 'count · date, city, device' },
+            ],
+          },
+          {
+            group: 'Privacy & CV search',
+            items: [
+              { name: 'cvVisibility', type: 'enum', required: true, notes: 'hidden (default) · discoverable' },
+              { name: 'searchableCv', type: 'derived', notes: 'the CV chosen on My CVs and its state (showing · temporarily not shown)' },
+              { name: 'dataExportRequestedAt', type: 'date?', notes: 'rate limit 24 h' },
+            ],
+          },
+          {
+            group: 'Notifications',
+            items: [
+              { name: 'prefs{ jobAlerts, applicationUpdates, savedJobReminders, news }', type: 'bool each' },
+              { name: 'channels{ email, zalo }', type: 'bool each', notes: 'zalo only when the flag is on and a phone exists' },
+            ],
+          },
+        ],
+        behaviors: [
+          '{{btn:Edit}} on a row opens it inline with Save / Cancel; only one row edits at a time. Full name, date of birth, gender, nationality, contact email and phone save at once.',
+          'Changing the login email starts the verified flow; the row shows the pending address with Resend · Cancel and the old address stays the login.',
+          '{{btn:Change password}} / {{btn:Set a password}} open the platform password modal; on success a confirmation email is sent and, if ticked, other sessions end.',
+          '{{btn:Link}} runs OAuth; {{btn:Unlink}} is disabled while it is the only method. The Password row and the provider rows update each other on save.',
+          'The CV-search toggle applies immediately and re-reads the sentence under it (showing / hidden / temporarily not shown).',
+          '{{btn:Request a copy of my data}} confirms, then shows “We’ll email a download link to <contact email> within 72 hours” and disables for 24 h.',
+          'Deactivate and Delete open their own confirm screens (existing features); nothing on this page deletes directly.',
+        ],
+        rules: [
+          'Only the signed-in person reads and writes this page; no HQ action appears here (HQ never sees or sets a password).',
+          'loginEmail changes only through verification of the new address; contactEmail changes freely; employer-facing surfaces read contactEmail.',
+          'At least one sign-in method must remain on the account at all times.',
+          'cvVisibility defaults to Hidden and is never changed by a system action; Off hides the candidate from CV search immediately.',
+          'Security and legal emails are not subject to notification toggles.',
+          'Every write is audited; password changes record only the fact.',
+        ],
+        states: [
+          'Email account — Password row shows “Last changed”, login email has Change',
+          'Social-only account — login email locked with the provider chip; Password row offers Set a password; Unlink disabled on the only provider',
+          'Pending login-email change — pending address with Resend · Cancel; badge on the current email stays Verified',
+          'CV hidden — toggle off, sentence “Hidden — employers cannot find you”',
+          'CV chosen but temporarily not shown — toggle on, amber sentence pointing to My CVs',
+          'Data copy requested — button disabled 24 h with the “we’ll email you” line',
+          'Zalo flag off — channel row shows Email only',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'jobseeker (own record)', type: 'ref → Jobseeker', required: true, notes: 'fullName · dateOfBirth · gender · nationality · avatarUrl · loginEmail · contactEmail · phone · livesAbroad · passwordHash? · passwordChangedAt? · linkedProviders[] · cvVisibility · notificationPrefs · notificationChannels · status' },
+            { name: 'EmailChangeRequest', type: 'entity', notes: 'pendingEmail · token · expiresAt (24 h) · status' },
+            { name: 'DataExportRequest', type: 'entity', notes: 'requestedAt · fulfilledAt? · downloadToken (7 days) · one per 24 h' },
+            { name: 'Session', type: 'entity', notes: 'createdAt · lastSeenAt · city · device · current' },
+          ],
+          endpoints: [
+            'GET /jobseeker/account → { profileBasics, contact, signIn{ hasPassword, passwordChangedAt, providers[], sessions, lastSignIn }, privacy{ cvVisibility, searchableCv }, notifications, pendingEmailChange?, dataExport? }',
+            'PATCH /jobseeker/account { fullName?, dateOfBirth?, gender?, nationality?, contactEmail?, phone?, livesAbroad? }',
+            'POST /jobseeker/email/change { email } · POST …/resend · DELETE …/cancel · GET /verify-email?token= (existing)',
+            'POST /jobseeker/password { currentPassword?, newPassword, signOutOthers } — currentPassword required unless the account has none (set)',
+            'POST /jobseeker/social/:provider/link · DELETE /jobseeker/social/:provider (existing; 409 when it is the last method)',
+            'POST /jobseeker/sessions/sign-out-others → { ended }',
+            'PATCH /jobseeker/privacy { cvVisibility } (existing) · PATCH /jobseeker/notifications (existing, adds channels)',
+            'POST /jobseeker/data-export → 202; 429 within 24 h of the last request',
+          ],
+          integrations: [
+            'Jobseeker user → Sign up (shared password policy, verification link, provider linking) · My page (profile fields stay there) · Deactivate account · Delete account',
+            'Resume management (searchable CV and its state)',
+            'Notifications (email · Zalo ZNS behind the System flag)',
+            'Audit log',
+          ],
+          notes:
+            'Everything is scoped to the caller — no :id in the paths. The page reuses the existing profile, privacy, notifications and social endpoints; the new ones are password, sessions and data export. The searchable-CV sentence is derived from Resume management, never stored here.',
+        },
+        acceptance: [
+          'A Google-created account shows the login email locked with the provider chip, “Set a password” on the Password row, and a disabled Unlink on Google with the reason.',
+          'Changing the login email on an email account leaves sign-in on the old address until the link is clicked; the row shows the pending address with Resend and Cancel.',
+          'Editing the contact email saves without verification and the next application delivers the new address.',
+          'Switching “Let employers find my CV” off removes the candidate from employer CV search on the next search; switching it on shows the CV chosen on My CVs, or the temporarily-not-shown sentence.',
+          'Setting a password on a social-only account, then unlinking Google, works; unlinking Google first is refused.',
+          'Requesting a data copy returns 202 and a second request within 24 h returns 429 with the button disabled.',
+          'The Zalo channel appears only when the notifications.zaloZNS flag is on and the account has a phone.',
+          'Deactivate and Delete open their existing confirm screens; nothing on this page changes account status directly.',
+        ],
+        openQuestions: [
+          '[C5] Phone OTP in Phase 1 — decides whether the Phone row carries a Verified badge.',
+          'Data-copy request: format (JSON + CV files proposed) and SLA (72 h proposed) — a PDPL commitment, so the client should confirm.',
+          'Zalo ZNS as a notification channel in Phase 1, or Phase 2 behind the flag?',
+          'Deactivate grace window N days — still open on the Deactivate account feature.',
+          'Confirm cvVisibility default Hidden for new accounts (spec rule “safer value”), or ask at the end of sign-up?',
+        ],
+      },
+    },
     // 3 · Exit ────────────────────────────────────────────────────────────────
     {
       name: 'Deactivate account',
