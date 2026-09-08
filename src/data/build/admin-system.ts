@@ -6,7 +6,7 @@ import type { BuildModule } from './types'
  * Everything here changes how the REST of the platform behaves, which is why it
  * sits behind the strictest role grants. Two groups of features:
  *
- *   Config    Company information (our issuer identity on every sales document),
+ *   Config    Issuer identity (ours, on every sales document),
  *             Membership tiers, Master data (every reference list).
  *   Platform  Audit log (the change trail), Environment (feature flags),
  *             Departments (internal org reference data).
@@ -31,7 +31,7 @@ export const adminSystem: BuildModule = {
       table: {
         cols: ['Page', 'What it configures', 'Who needs it'],
         rows: [
-          ['Company information', 'Our own issuer identity on every sales document', 'Finance / super admin'],
+          ['Issuer identity', 'Our own legal identity as it prints on every sales document', 'Finance / super admin'],
           ['Products', 'The catalogue — what is sellable and at what price (see Products & Packages)', 'Finance / super admin'],
           ['Membership tiers', 'The loyalty programme — tier thresholds, per year, plus a manual benefit note per tier (see CRM)', 'Sales lead / marketing'],
           ['Master data', 'Every reference list (dropdowns + search filters)', 'Operations'],
@@ -87,7 +87,7 @@ export const adminSystem: BuildModule = {
       ],
     },
     {
-      label: 'Company information — the issuer identity (Saramin, not a customer)',
+      label: 'Issuer identity — one entity, every selling document',
       text: 'Our own legal identity, set ONCE here and read by every quotation, sales order and VAT invoice. Nobody retypes it per document, and a sent document keeps the version it was sent with.',
       table: {
         cols: ['Group', 'Fields'],
@@ -186,9 +186,16 @@ export const adminSystem: BuildModule = {
     },
   ],
   features: [
-    // 1 · Company information ─────────────────────────────────────────────────
+    // 1 · Issuer identity ────────────────────────────────────────────────────
     {
-      name: 'Company information',
+      name: 'Issuer identity',
+      /* Slug PINNED to the pre-rename name (2026-09-08). Renamed from "Company
+         information" because in this console "company" means the CUSTOMER
+         everywhere else — Customers, Company users, Company documents, Company
+         page — so the old label read as customer data and needed a parenthetical
+         wherever it appeared. The slug stays put: a feature's URL derives from its
+         name, and comment threads are keyed by pathname. */
+      slug: 'company-information',
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
@@ -565,7 +572,7 @@ export const adminSystem: BuildModule = {
         ],
         rules: [
           'A flag needs a human-readable description before it can be shown here.',
-          'Flags are booleans, not config values — anything with a value belongs in Master data or Company information.',
+          'Flags are booleans, not config values — anything with a value belongs in Master data or Issuer identity.',
           'Flags are meant to be temporary: each one should have an owner and an expected removal point, or the codebase accumulates dead branches.',
         ],
         states: ['On', 'Off', 'Read-only (environment-managed)'],

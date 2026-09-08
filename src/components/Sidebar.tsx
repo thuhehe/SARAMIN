@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Search, X, Home, Workflow, Monitor, History, BookOpen, ClipboardCheck } from 'lucide-react'
+import { ChevronRight, Search, X, Home, Monitor, History, BookOpen, ClipboardCheck } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { featurePath } from '@/data/featureSlug'
@@ -70,7 +70,10 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto scroll-thin py-2">
         <div className="px-2 pb-1">
           <PrimaryLink to="/" icon={<Home className="h-3.5 w-3.5" />} label="Overview" exact />
-          <PrimaryLink to="/modules" icon={<Workflow className="h-3.5 w-3.5" />} label="Modules" />
+          {/* Modules is OFF the nav: the Modules section below IS the module list,
+              expanded and searchable, so a link to a second flat index of the same
+              thing sat directly above it. The /modules ROUTE stays — the comment
+              system titles that path, and links already shared still open. */}
           {/* Jobseeker and Company mockups are OFF the nav: the current design for
               both now lives in Figma, so a nav entry pointing at these grey-box
               wireframes would send a reader to the older picture. Admin mockups

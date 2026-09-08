@@ -69,7 +69,7 @@ function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
   return (
     <div className="mx-auto bg-white text-slate-900 shadow-xl" style={{ width: 794 }}>
       <div className="px-[44px] py-[36px]">
-        {/* seller — the issuer block is fixed, from System → Company information */}
+        {/* seller — the issuer block is fixed, from System → Issuer identity */}
         <div className="flex items-start gap-4">
           <div className="shrink-0 pt-1"><SaraminMark width={92} /></div>
           <div className="min-w-0 text-[9.5px] leading-relaxed">

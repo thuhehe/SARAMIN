@@ -126,7 +126,7 @@ export const crm: BuildModule = {
       ],
     },
     {
-      label: 'Issuer identity — one setting, every document (System → Company information)',
+      label: 'Issuer identity — one setting, every document (System → Issuer identity)',
       text: 'Everything about US that prints on a selling document is configured in one place, never typed per document and never hard-coded in a template. That covers the letterhead the customer sees first — logo, VN + EN legal name, VN + EN address, website — plus the issuer tax code, the VAT rate, the numbering formats and the bank details. Retyping any of it per quotation guarantees the same company eventually appears three different ways across three documents, and a change of office means editing every template.',
       table: {
         cols: ['Setting', 'Prints on', 'Why it must be central'],
@@ -1565,7 +1565,7 @@ export const crm: BuildModule = {
             items: [
               { name: 'quoteCode', type: 'string', required: true, notes: 'auto — QUO-{seq6}-{MM}-{YYYY}, e.g. QUO-009909-07-2026. Never editable.' },
               { name: 'version', type: 'int', required: true, notes: 'v1, v2… a re-issue after negotiation bumps the version; code stays the same' },
-              { name: 'vendorBlock', type: 'ref → Settings', required: true, notes: 'The issuer letterhead — logo, VN + EN legal name, VN + EN address, website. never typed per quotation and never hard-coded: it comes from System → Company information (issuer). One place to change it when the entity, address or logo changes, and every past quotation keeps the version it was sent with.' },
+              { name: 'vendorBlock', type: 'ref → Settings', required: true, notes: 'The issuer letterhead — logo, VN + EN legal name, VN + EN address, website. never typed per quotation and never hard-coded: it comes from System → Issuer identity (issuer). One place to change it when the entity, address or logo changes, and every past quotation keeps the version it was sent with.' },
               { name: 'proposedBy', type: 'derived', notes: '"Báo giá bởi / Proposed by: {rep name} | {rep email}" — the signed-in rep' },
               { name: 'proposalDate', type: 'date', required: true, notes: 'Ngày báo giá / Proposal Date — defaults today' },
               { name: 'expiryDate', type: 'date', required: true, notes: 'Ngày hết hạn / Expiry Date — always the last day of the month the quotation was created in (20/07/2026 → 31/07/2026). derived, never typed: every quotation raised in a month lapses together on the same date, which is what keeps pricing and promotions tied to a monthly policy cycle.' },
@@ -1883,7 +1883,7 @@ export const crm: BuildModule = {
             // blocks below the backend contract.
             early: true,
             items: [
-              '1 · Issuer letterhead — CÔNG TY TNHH daoukiwoom innovation / daoukiwoom innovation company limited, the VN and EN address and https://topdev.vn on the left; on the right the GROUP BRANDING — the Saramin wordmark in brand blue #2D65F2 above “TopDev Vietnam”: parent brand first, then the brand the customer actually buys on. From System → Company information (issuer), never typed here. The mark ships as an INLINE VECTOR, not a link to saramin.co.kr — a document must render identically offline, in print, and a year from now.',
+              '1 · Issuer letterhead — CÔNG TY TNHH daoukiwoom innovation / daoukiwoom innovation company limited, the VN and EN address and https://topdev.vn on the left; on the right the GROUP BRANDING — the Saramin wordmark in brand blue #2D65F2 above “TopDev Vietnam”: parent brand first, then the brand the customer actually buys on. From System → Issuer identity (issuer), never typed here. The mark ships as an INLINE VECTOR, not a link to saramin.co.kr — a document must render identically offline, in print, and a year from now.',
               '2 · "Báo giá bởi / Proposed by" — the signed-in rep’s name + email.',
               '3 · Title band — "báo giá / proposal" with Ngày báo giá / Proposal Date and Ngày hết hạn / Expiry Date.',
               '4 · Thông tin khách hàng / Client information — client name, email, phone.',
@@ -1913,7 +1913,7 @@ export const crm: BuildModule = {
               'File name is the quotation number: QUO-009909-07-2026.pdf. Page setup A4 portrait; the viewer states this so nobody has to check the print dialog.',
               'GIFT lines print at 0 ₫ with a “Quà tặng / Gift” marker and are never dropped from the table — they are real entitlements that provision identically (see Provisioning).',
               'Everything on the page is derived at render time — line totals, VAT, total-after-VAT, both amount-in-words strings, and the per-package benefit lists come from the catalog. Nothing on this document is typed twice.',
-              'Issuer identity (logo, VN/EN name, VN/EN address, website, support email) comes from System → Company information; the “Báo giá bởi / Proposed by” line comes from the signed-in rep. Neither is entered on the quotation.',
+              'Issuer identity (logo, VN/EN name, VN/EN address, website, support email) comes from System → Issuer identity; the “Báo giá bởi / Proposed by” line comes from the signed-in rep. Neither is entered on the quotation.',
               'The export is available on any quotation regardless of status — a Draft can be previewed before it is sent, and a Sent one can be re-downloaded. Re-exporting a sent quotation must reproduce the identical page: the issuer block, VAT rate and prices are snapshotted at send time, never re-read live.',
             ],
             warn: 'Do not “improve” the content while refining the layout. The wording, the clause order and the figures are the client’s and are already correct — a redesign that quietly rephrases a T&C clause or drops the English half of a label changes a document the customer signs against.',

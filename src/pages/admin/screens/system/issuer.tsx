@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { LField, LabelRow, TArea } from '@/pages/admin/ui/fields'
 import { JobGroup } from '@/pages/admin/ui/form'
 
-/* ── System → Company information (issuer) ────────────────────────────────────
+/* ── System → Issuer identity ─────────────────────────────────────────────────
    The ONE place the letterhead that prints on every selling document is set:
    logo, VN + EN legal name, VN + EN address, website, plus the tax identity and
    bank details the order and invoice need. Never typed per quotation — otherwise
@@ -52,7 +52,7 @@ export function AdminIssuer() {
             <LField label="Company name (EN)" req value={NAME.EN} hint="Prints on line 2 — both always print, in both languages." />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <LField label="Mã số thuế / Tax code" req value="0313545562" hint="The ISSUER’s MST — not the customer’s." />
+            <LField label="Mã số thuế / Tax code" req value="0313545562" />
             <LField label="Website" value="https://topdev.vn" />
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -93,7 +93,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
   'admin-users': { module: 'admin-access', feature: 'Operators (users)' },
-  'admin-issuer': { module: 'admin-system', feature: 'Company information' },
+  'admin-issuer': { module: 'admin-system', feature: 'Issuer identity' },
   // Configuration page → System module, like every other System nav item. The tier it
   // configures is displayed by CRM → Customers, which cross-references back to here.
   'admin-membership': { module: 'admin-system', feature: 'Membership tiers' },
@@ -304,7 +304,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Settings className="h-4 w-4" />,
     items: [
       // The issuer identity that prints on every quotation / order / invoice.
-      { label: 'Company information', specId: 'admin-issuer' },
+      { label: 'Issuer identity', specId: 'admin-issuer' },
       // Loyalty programme: the tier thresholds + reward catalogue the CRM reads.
       // Here rather than under CRM for the same reason as Products — it is HQ-only
       // configuration that changes how another module behaves.
