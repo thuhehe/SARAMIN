@@ -10,7 +10,7 @@ import type { BuildModule } from './types'
 export const jobManagement: BuildModule = {
   id: 'job-management',
   title: 'Job management',
-  owner: 'Luan',
+  owner: 'Luong',
   requirements: [
     {
       label: 'Jobs are posted from Admin AND the Company site',

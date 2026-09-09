@@ -26,7 +26,7 @@ import type { BuildModule } from './types'
 export const tools: BuildModule = {
   id: 'tools',
   title: 'Tools',
-  owner: 'Luong',
+  owner: 'Luan',
   requirements: [
     {
       label: 'Two tools, migrated from the current web',

@@ -1,4 +1,3 @@
-import { BUILD_MODULES } from '@/data/buildModules'
 import { cn } from '@/lib/utils'
 
 /**
@@ -227,14 +226,25 @@ const BBPM_HANDLE: Record<string, string> = {
   Luong: '@DucLuong',
 }
 
-/* Every module and its owner, read straight from the build plan so this table
-   cannot drift from the spec. Adding a module to build/*.ts adds a row here. */
-const OWNERS = BUILD_MODULES.map((m) => ({
-  module: m.title,
-  id: m.id,
-  owner: m.owner,
-  handle: BBPM_HANDLE[m.owner] ?? `@${m.owner}`,
-}))
+/* The Module / Module owner columns of the Summary sheet "Saramin VN × BB",
+   which is the testing scope — deliberately NOT derived from BUILD_MODULES.
+   The sheet is neither a subset nor a superset of the spec's module list: it
+   omits Account management, System and Banners & Popups (not in this testing
+   window), and it splits Email notification across two owners by site. Listing
+   only what a tester will actually meet keeps them from hunting for an owner
+   of a module nobody is testing. */
+const OWNERS: { module: string; owner: string }[] = [
+  { module: 'Products & Packages', owner: 'Luong' },
+  { module: 'CRM', owner: 'Luan' },
+  { module: 'Jobseeker management', owner: 'Luong' },
+  { module: 'Job management', owner: 'Luong' },
+  { module: 'Resume management', owner: 'Luan' },
+  { module: 'Application management', owner: 'Luong' },
+  { module: 'Admin roles & permissions', owner: 'Luong' },
+  { module: 'Tools', owner: 'Luan' },
+  { module: 'Email notification — Companies', owner: 'Luan' },
+  { module: 'Email notification — Jobseekers', owner: 'Luong' },
+]
 
 /* BBPM's own issue statuses, in the order its dropdown lists them, with the
    dot colour each one carries there — so a reader recognises the status in the
@@ -383,12 +393,13 @@ export function TestingWorkflow() {
       </p>
 
       <H2>Step 3 — Who to assign the bug to</H2>
-      <Table head={['Module', 'Owner', 'Assign to in BBPM']}>
+      <Table head={['Module', 'Module owner']}>
         {OWNERS.map((o) => (
-          <tr key={o.id} className="border-t border-line-soft align-top">
+          <tr key={o.module} className="border-t border-line-soft align-top">
             <td className="px-3 py-2">{o.module}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-muted">{o.owner}</td>
-            <td className="px-3 py-2 whitespace-nowrap font-medium">{o.handle}</td>
+            <td className="px-3 py-2 whitespace-nowrap font-medium">
+              {BBPM_HANDLE[o.owner] ?? `@${o.owner}`}
+            </td>
           </tr>
         ))}
       </Table>

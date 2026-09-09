@@ -3,7 +3,7 @@ import type { BuildModule } from './types'
 export const resumeManagement: BuildModule = {
   id: 'resume-management',
   title: 'Resume management',
-  owner: 'Luong',
+  owner: 'Luan',
   requirements: [
     {
       label: 'What gets built — five screens, and four rules that cross all of them',
