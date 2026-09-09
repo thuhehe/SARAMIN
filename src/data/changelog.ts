@@ -87,6 +87,20 @@ export const CHANGELOG: ChangeEntry[] = [
     date: '2026-09-09',
     kind: 'both',
     module: 'crm',
+    featureKey: 'sign-ups',
+    title: {
+      vi: 'Sign-up: xác minh email KHÔNG còn mở quyền đăng nhập — admin phải place user vào một công ty trước. Khôi phục lại cửa của luồng 08/2026',
+      en: 'Sign-up: verifying the email no longer opens sign-in — an admin must place the person into a company first. The 08/2026 gate is restored',
+    },
+    detail: {
+      vi: 'Bản 09/2026 cho phép bấm link email là vào console ngay, công ty được tạo tự động ở trạng thái Chưa xác minh. Nay quay lại luật cũ: link email chỉ xác thực địa chỉ và tạo MỘT dòng trên Sign-ups — chưa có login, chưa có công ty. Admin resolve dòng đó theo một trong ba cách: Move vào công ty đã có · Create công ty + đặt người đó làm Admin đầu tiên (trường hợp phổ biến) · Archive nếu là spam. Move và Create gửi email kích hoạt, và đó là lúc user đăng nhập được. Lý do khách hàng đưa ra: chỉ người thuộc một công ty mà admin đã xem qua mới được vào platform. Xác minh ERC vẫn là cửa THỨ HAI, sau khi đã vào, và vẫn chỉ chặn hai việc: đăng tin và Sales yêu cầu xuất hóa đơn chính. Hệ quả: không còn “công ty rỗng” tạo tự động rồi archive khi trùng, và SLA của màn Sign-ups giờ là lời hứa với khách (1 ngày làm việc) vì khách đang đứng ngoài cửa.',
+      en: 'The 09/2026 model let the email link itself open the console, creating the company automatically as Unverified. That is reverted: the link now only proves the address and creates ONE row on Sign-ups — no login, no company. An admin resolves the row one of three ways: Move into an existing customer · Create the company and place the person as its first Admin (the common case) · Archive as spam. Move and Create send the activation email, and that is the moment sign-in works. The client’s reason: only people who belong to a company an admin has looked at should be inside the platform. ERC verification remains the SECOND gate, after they are in, and still blocks only two things — posting a job, and Sales requesting the official invoice. Consequences: no more auto-created shell company that has to be archived when it turns out to be a duplicate, and the Sign-ups SLA is now a promise to a customer (1 business day), because the customer is waiting outside.',
+    },
+  },
+  {
+    date: '2026-09-09',
+    kind: 'both',
+    module: 'crm',
     title: {
       vi: 'Xác minh công ty — nút Verify chỉ mở khi hồ sơ đủ 3 mục (MST · địa chỉ đăng ký MST · ERC); Customers lọc và đếm được công ty đã đủ hồ sơ',
       en: 'Company verification — Verify opens only when the record has all three inputs (MST · registered address · ERC); Customers filters and counts the companies that are ready',

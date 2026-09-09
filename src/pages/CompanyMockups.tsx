@@ -2889,14 +2889,15 @@ function SignupScreen() {
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   if (step === 2) {
-    /* The tracker no longer ends in "wait for us to let you in". The link is the
-       whole gate before sign-in; what waits for Saramin is the COMPANY check, and it
-       is named as the step that unlocks posting — so the tag they meet inside the
-       console is expected, not alarming. */
+    /* THE TRACKER HAS A WAIT IN IT AGAIN (client, 09/2026): the email link proves the
+       address, and Saramin placing the person into a company is what opens sign-in.
+       Two Saramin steps, named separately, because they unlock different things —
+       step 3 lets them IN, step 5 lets them POST. Saying "you're in" here and then
+       showing a sign-in that refuses is the one thing this page must not do. */
     const track = [
       { label: 'Signed up', sub: 'Password set — you will use it in a minute', state: 'done' as const },
-      { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'} · click it and you are in`, state: 'now' as const },
-      { label: 'You’re in', sub: 'The console works right away. Your company shows a “Chưa xác minh” tag until step 5.', state: 'wait' as const },
+      { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'} · click it so we know the address is yours`, state: 'now' as const },
+      { label: 'Saramin sets up your account', sub: 'We match your tax code to our records and open your account — usually within 1 business day. You get an email with the link to sign in.', state: 'wait' as const },
       { label: 'Complete your company record', sub: erc.length ? `ERC attached ✓ (${erc.length} file${erc.length > 1 ? 's' : ''}) — add your registered address in Company information; your tax code is already there` : 'Company information → registered address + ERC (your tax code is already there). Saramin needs all three to verify.', state: 'wait' as const },
       { label: 'Saramin verifies your company', sub: 'Usually within 1 business day of the record being complete · unlocks posting jobs', state: 'wait' as const },
     ]
@@ -2907,9 +2908,9 @@ function SignupScreen() {
           <div className="rounded-2xl border border-line bg-surface p-7">
             <div className="text-center">
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[22px] text-emerald-700">✓</span>
-              <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! One click and you’re in.</p>
+              <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! Check your email.</p>
               <p className="mx-auto mt-1.5 max-w-[420px] text-[12.5px] leading-relaxed text-muted">
-                <b className="text-ink/80">Verify your email</b> — we just sent a link — and you can sign in straight away. Here’s what comes next:
+                <b className="text-ink/80">Verify your email</b> — we just sent a link. Saramin then opens your account and emails you when you can sign in. Here’s the whole path:
               </p>
             </div>
 
@@ -2928,7 +2929,7 @@ function SignupScreen() {
                     <div className="flex items-center gap-2">
                       <span className={cn('text-[12.5px] font-semibold', t.state === 'wait' ? 'text-faint' : 'text-ink')}>{t.label}</span>
                       {t.state === 'now' && <Chip tone="blue">Do this now</Chip>}
-                      {t.state === 'wait' && i === 4 && <Chip tone="amber">Saramin’s step</Chip>}
+                      {t.state === 'wait' && (i === 2 || i === 4) && <Chip tone="amber">Saramin’s step</Chip>}
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted">{t.sub}</p>
                   </div>
@@ -2937,7 +2938,7 @@ function SignupScreen() {
             </div>
 
             <div className="mx-auto mt-1 max-w-[440px] rounded-lg bg-brand-soft px-4 py-2.5 text-[11px] leading-relaxed text-brand">
-              You can sign in the moment your email is verified. <b>Posting jobs unlocks once Saramin verifies your company</b> — for that Saramin needs three things on your record: <b>tax code · registered address · ERC</b>. Until then the console shows a <b>Chưa xác minh</b> tag with a button to Company information. Everything else works.
+              <b>Sign-in opens once Saramin has opened your account</b> — we email you the link, usually within 1 business day. <b>Posting jobs unlocks later</b>, when Saramin verifies your company against three things on your record: <b>tax code · registered address · ERC</b>.
             </div>
             <div className="mt-5 flex justify-center">
               <button onClick={() => { setStep(1); setAgree(false) }} className="text-[12px] font-medium text-brand hover:underline">← Back to the form</button>

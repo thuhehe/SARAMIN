@@ -6,12 +6,11 @@
  *
  * THREE THINGS THIS DRAWING EXISTS TO SETTLE.
  *
- * ONE — the gate moved. It used to be LOGIN: a self-registered person waited until
- * an admin placed them. Now the email link is the only thing between sign-up and
- * being inside the console. What waits for the admin is VERIFICATION, and what it
- * gates is narrow: the employer posting a job, and Sales requesting the official
- * invoice. Everything else — reading, uploading the ERC, fixing company details —
- * is open while Unverified.
+ * ONE — there are TWO gates, in order (client, 09/2026). The email link only proves
+ * the address; an ADMIN PLACING the person into a company is what opens the login.
+ * Then, inside, VERIFICATION is the second gate, and it is narrow: the employer
+ * posting a job, and Sales requesting the official invoice. Everything else —
+ * reading, uploading the ERC, fixing company details — is open while Unverified.
  *
  * TWO — two states, not three. Verified / Unverified. "Was verified, then an admin
  * changed identity data" is Unverified with a reason, and the same Verify button
@@ -103,16 +102,16 @@ export function CompanyVerificationFlow() {
 
         {/* ── premise ─────────────────────────────────────────────────────────── */}
         <rect x={20} y={16} width={1380} height={58} rx={10} fill="var(--color-brand-soft)" stroke={BR} strokeWidth={1.5} />
-        <text x={36} y={39} fontSize={12.5} fontWeight={800} fill={BR}>XÁC MINH CÔNG TY (ERC) — email mở cửa ĐĂNG NHẬP, admin mở cửa ĐĂNG TIN & XUẤT HÓA ĐƠN</text>
+        <text x={36} y={39} fontSize={12.5} fontWeight={800} fill={BR}>HAI CỬA — ADMIN PLACE mở cửa ĐĂNG NHẬP, VERIFY ERC mở cửa ĐĂNG TIN & XUẤT HÓA ĐƠN</text>
         <text x={36} y={60} fontSize={11} fill={MUT}>
-          Employer: đăng ký → xác minh email → vào console ngay (công ty tạo cùng lúc, user là Admin). Admin có HAI việc độc lập: (A) ghép trùng — làm ngay nếu công ty đã có trên Customers / Free data; (B) xác minh — thong thả, miễn xong trước khi đăng tin / xuất hóa đơn.
+          Employer: đăng ký → xác minh email → CHỜ admin place (Move / Create) → nhận email kích hoạt mới vào console. Admin có HAI việc độc lập: (A) ghép trùng — làm ngay nếu công ty đã có trên Customers / Free data; (B) xác minh — thong thả, miễn xong trước khi đăng tin / xuất hóa đơn.
         </text>
 
         {/* ── lane labels ─────────────────────────────────────────────────────── */}
         <rect x={20} y={92} width={1380} height={330} rx={12} fill="var(--color-surface)" stroke="var(--color-line)" strokeWidth={1} />
         <text x={36} y={116} fontSize={11} fontWeight={800} fill={MUT}>COMPANY SITE — employer</text>
         <rect x={20} y={440} width={1380} height={330} rx={12} fill="var(--color-surface)" stroke="var(--color-line)" strokeWidth={1} />
-        <text x={36} y={464} fontSize={11} fontWeight={800} fill={MUT}>ADMIN — Saramin · hai việc độc lập nhau</text>
+        <text x={36} y={464} fontSize={11} fontWeight={800} fill={MUT}>ADMIN — Saramin · hai việc, làm theo thứ tự</text>
 
         {/* ── COMPANY LANE ────────────────────────────────────────────────────── */}
         <Box x={38} y={140} w={230} h={74} title="① Sign up" sub="Họ tên · email · SĐT · mật khẩu" sub2="MST · tên công ty · đang tuyển?" tone="plain" />
@@ -123,17 +122,17 @@ export function CompanyVerificationFlow() {
         <Arrow d="M 268 177 L 306 177" tone="brand" />
         <Box x={308} y={140} w={210} h={74} title="② Email xác minh" sub="gửi ngay khi bấm Register" sub2="bấm link → email verified" tone="gate" />
 
-        <Arrow d="M 518 177 L 556 177" tone="brand" label="ngay lập tức" lx={537} ly={166} />
-        {/* The question this box has to answer without being asked: does the person
-            belong to a company at this point? YES, always — the click that created
-            the login created the company, and the person is its first Admin. There is
-            no orphan-user state anywhere in the product. */}
-        <Box x={558} y={128} w={260} h={98} title="③ Đăng nhập & dùng console" sub="công ty TẠO NGAY · user = Admin đầu tiên" sub2="không có user mồ côi — luôn thuộc 1 công ty" tone="amber" />
+        <Arrow d="M 518 177 L 556 177" tone="brand" label="email verified" lx={537} ly={166} />
+        {/* PLACEMENT is the gate, and it is drawn in the EMPLOYER lane as what the
+            employer experiences — a wait. The admin's own two jobs are the lane
+            below. Either action creates the login inside a company, so an orphan
+            user still cannot exist. */}
+        <Box x={558} y={128} w={260} h={98} title="③ Chờ Saramin mở tài khoản" sub="admin Move / Create trên Sign-ups" sub2="có email kích hoạt → mới đăng nhập được" tone="gate" />
         <Tag x={640} y={200} verified={false} />
 
-        {/* what is locked while unverified */}
-        <Arrow d="M 688 226 L 688 262" tone="amber" />
-        <Box x={558} y={264} w={260} h={64} title="KHÓA khi chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm 3 mục còn thiếu ✓/✗ + link Company information" tone="stop" />
+        {/* what is locked once they are INSIDE — after the admin opened the account */}
+        <Arrow d="M 688 226 L 688 262" tone="amber" label="sau khi admin mở" lx={688} ly={247} />
+        <Box x={558} y={264} w={260} h={64} title="Sau khi vào: KHÓA khi chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm 3 mục còn thiếu ✓/✗ + link Company information" tone="stop" />
 
         <Arrow d="M 818 165 L 856 165" tone="brand" label="nút cạnh tag" lx={837} ly={154} />
         <Box x={858} y={128} w={250} h={74} title="④ Company information" sub="điền địa chỉ đăng ký MST · upload ERC" sub2="banner ✓/✗ 3 mục · Figma 2311 · 2313" tone="plain" />
@@ -146,7 +145,7 @@ export function CompanyVerificationFlow() {
         {/* JOB A — resolve a duplicate, RIGHT AWAY. The row appears the moment the
             email is verified, and Move / merge are enabled at once; nothing here
             waits for the ERC or for verification. */}
-        <text x={318} y={482} fontSize={10.5} fontWeight={800} fill={AMB}>VIỆC A · LÀM NGAY khi email verified — ghép trùng nếu công ty đã tồn tại</text>
+        <text x={318} y={482} fontSize={10.5} fontWeight={800} fill={AMB}>VIỆC A · CHẶN — place user (Move nếu công ty đã có · Create nếu là công ty mới) → mở login</text>
         <Box x={318} y={492} w={230} h={74} title="Sign-ups — 1 dòng xuất hiện" sub="ngay khi email verified" sub2="Match: Customers? Free data? Không?" tone="plain" />
         <Arrow d="M 548 529 L 588 529" tone="amber" />
         <Box x={590} y={492} w={250} h={94} title="Ghép trùng — không chờ verify" sub="Có trên Customers → Move user vào đó" sub2="Có ở Free data → gộp dòng vào công ty mới" tone="amber" />
@@ -157,7 +156,7 @@ export function CompanyVerificationFlow() {
 
         {/* JOB B — verify, at leisure. No deadline of its own; the two gates are the
             only hard stops, and the button opens when the three inputs are in. */}
-        <text x={866} y={482} fontSize={10.5} fontWeight={800} fill={BR}>VIỆC B · THONG THẢ — xác minh, miễn xong trước khi đăng tin / xuất hóa đơn</text>
+        <text x={866} y={482} fontSize={10.5} fontWeight={800} fill={BR}>VIỆC B · KHÔNG CHẶN VÀO — xác minh ERC, miễn xong trước khi đăng tin / xuất hóa đơn</text>
         <Box x={866} y={492} w={250} h={74} title="Customers — cột Verified" sub="filter “Unverified · ready to verify”" sub2="hàng ghi rõ thiếu gì · chip Chờ verify" tone="plain" />
 
         <Arrow d="M 991 566 L 991 604" tone="brand" />
@@ -198,7 +197,7 @@ export function CompanyVerificationFlow() {
           <tspan fontWeight={700}>Verified thì phía employer chỉ đọc</tspan> — chỉ admin sửa được định danh, và sửa là rớt cờ. Hai bên cùng sửa một định danh đã xác minh là cách hóa đơn và giấy phép lệch nhau.
         </text>
         <text x={40} y={892} fontSize={11} fill={INK}>
-          <tspan fontWeight={700}>Hai việc của admin độc lập nhau</tspan>: ghép trùng (Move / gộp Free data) làm ngay khi dòng Sign-ups xuất hiện — không chờ verify; verify không có deadline riêng, chỉ phải xong trước hai cổng trên.
+          <tspan fontWeight={700}>Hai việc của admin, theo thứ tự</tspan>: (A) place user — Move vào công ty đã có hoặc Create công ty mới — là việc CHẶN, xong mới có login (SLA 1 ngày làm việc, vì khách đang đứng ngoài); (B) verify ERC không chặn vào, chỉ phải xong trước khi đăng tin / xuất hóa đơn.
         </text>
       </svg>
     </div>

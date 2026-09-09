@@ -120,11 +120,11 @@ export function CompanyIntakeFlow() {
             THROUGH the "Move to existing company" box (282px of overlap). The
             heading has to clear the tallest thing in the row it labels. */}
         <line x1={20} y1={490} x2={1400} y2={490} stroke="var(--color-line)" strokeWidth={1} strokeDasharray="5 4" />
-        <text x={38} y={508} fontSize={11} fontWeight={800} fill={MUT}>LUỒNG SIGN-UP (đổi 09/2026) — EMAIL VERIFIED = ĐĂNG NHẬP NGAY, CÔNG TY TẠO Ở TRẠNG THÁI CHƯA XÁC MINH. SIGN-UPS = GHÉP TRÙNG · ARCHIVE</text>
+        <text x={38} y={508} fontSize={11} fontWeight={800} fill={MUT}>LUỒNG SIGN-UP (đổi 09/2026) — EMAIL VERIFIED CHỈ LÀ XÁC THỰC EMAIL. ADMIN PLACE (MOVE / CREATE) MỚI MỞ LOGIN · ARCHIVE = KHÔNG CHO VÀO</text>
 
-        <Box x={38} y={546} w={230} h={64} title="Employer tự đăng ký" sub="verify email → vào console ngay" sub2="công ty: Customers · Chưa xác minh" tone="pool" />
+        <Box x={38} y={546} w={230} h={64} title="Employer tự đăng ký" sub="verify email → CHƯA vào được" sub2="chưa có login, chưa có công ty" tone="pool" />
         <Arrow d="M 268 578 L 306 578" />
-        <Box x={308} y={546} w={240} h={64} title="Admin mở Sign-ups" sub="có trùng công ty đã có không?" sub2="(login đã mở — không chờ ở đây)" tone="gate" />
+        <Box x={308} y={546} w={240} h={64} title="Admin mở Sign-ups" sub="có trùng công ty đã có không?" sub2="(resolve xong mới mở login)" tone="gate" />
         {/* ARCHIVE is the SECOND of the only two actions the screen has, and it does
             not depend on where the company is — spam, a duplicate request and a
             person who named the wrong company are all archived whatever the answer
