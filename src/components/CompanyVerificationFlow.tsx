@@ -36,6 +36,7 @@ const MUT = 'var(--color-muted)'
 const BR = 'var(--color-brand)'
 const AMB = '#b45309'
 const BLUE = '#1d4ed8'
+const SLATE = '#475569'
 const GRN = '#047857'
 
 function Box({ x, y, w, h, title, sub, sub2, tone = 'plain' }: {
@@ -68,10 +69,13 @@ function Arrow({ d, label, lx, ly, tone = 'plain', dashed }: { d: string; label?
 
 /** the tag exactly as it renders on both sites — so the drawing and the screens agree */
 function Tag({ x, y, verified }: { x: number; y: number; verified: boolean }) {
-  const c = verified ? BLUE : AMB
-  const bg = verified ? '#eff6ff' : '#fffbeb'
-  const label = verified ? 'Verified' : 'Chưa xác minh'
-  const w = verified ? 78 : 104
+  /* Slate, not amber: at this point in the flow the company is missing paperwork,
+     which is the employer's move — amber is reserved for "Chờ xác minh", the queue
+     an admin can clear. Same split as the tag on both screens. */
+  const c = verified ? BLUE : SLATE
+  const bg = verified ? '#eff6ff' : '#f1f5f9'
+  const label = verified ? 'Verified' : 'Thiếu hồ sơ'
+  const w = verified ? 78 : 82
   return (
     <g>
       <rect x={x} y={y} width={w} height={20} rx={10} fill={bg} stroke={c} strokeWidth={1.2} />
@@ -129,7 +133,7 @@ export function CompanyVerificationFlow() {
 
         {/* what is locked while unverified */}
         <Arrow d="M 688 226 L 688 262" tone="amber" />
-        <Box x={558} y={264} w={260} h={64} title="KHÓA khi Chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm 3 mục còn thiếu ✓/✗ + link Company information" tone="stop" />
+        <Box x={558} y={264} w={260} h={64} title="KHÓA khi chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm 3 mục còn thiếu ✓/✗ + link Company information" tone="stop" />
 
         <Arrow d="M 818 165 L 856 165" tone="brand" label="nút cạnh tag" lx={837} ly={154} />
         <Box x={858} y={128} w={250} h={74} title="④ Company information" sub="điền địa chỉ đăng ký MST · upload ERC" sub2="banner ✓/✗ 3 mục · Figma 2311 · 2313" tone="plain" />

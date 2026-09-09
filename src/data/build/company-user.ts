@@ -1278,7 +1278,7 @@ export const companyUser: BuildModule = {
           'Edit → type the registered address → Save changes: the record is written with an audit entry, the row shows the address, the banner reads “còn thiếu 1” with only ERC ✗; the admin’s Customers row now reads “Thiếu: ERC”.',
           'Upload document with two PDFs: two rows appear immediately, the banner turns blue “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc”; the admin’s Customers row reads “Đủ hồ sơ — verify được” and its Verify button enables.',
           'An admin verifies the company: on next load the page shows the blue Verified tag, no banner, no Edit; Upload document still works; PATCH returns 403.',
-          'An admin edits the legal name of the verified company: the page shows Chưa xác minh · cần xác minh lại, the banner recomputed (all ✓, blue), and Edit is back.',
+          'An admin edits the legal name of the verified company: the page shows Chờ xác minh · cần xác minh lại — the documents never left the record, so nothing is missing — the banner recomputed (all ✓), and Edit is back.',
           'Switching Company type to Foreign company relabels the tax code as optional and the banner stops counting it; Registered country ≠ Việt Nam hides Province / City.',
           'Saving a tax code that belongs to another account shows the warning and still saves; the admin’s Verify on this record is blocked until the duplicate is resolved.',
           'A non-Admin user loads the page with the banner and without Edit, Upload or ×; PATCH, POST and DELETE return 403 for them.',

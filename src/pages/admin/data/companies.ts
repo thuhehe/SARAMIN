@@ -142,7 +142,10 @@ export type VerifyDisplay = 'verified' | 'waiting' | 'unverified'
 export const VERIFY_DISPLAY: Record<VerifyDisplay, { vi: string; en: string }> = {
   verified: { vi: 'Đã xác minh', en: 'Verified' },
   waiting: { vi: 'Chờ xác minh', en: 'Waiting for verify' },
-  unverified: { vi: 'Chưa xác minh', en: 'Unverified' },
+  /* "Thiếu hồ sơ", not "Chưa xác minh": next to "Chờ xác minh" the two old labels
+     were one word apart and read as the same thing at a glance. This one names the
+     CAUSE — paperwork missing — which is also the action the employer has to take. */
+  unverified: { vi: 'Thiếu hồ sơ', en: 'Unverified' },
 }
 /** Self-registered accounts arrive with no sales owner — this is the placeholder
     the record carries until an admin assigns one at verification. */

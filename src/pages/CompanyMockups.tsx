@@ -96,7 +96,7 @@ function VerifyChecklist() {
 /** The tag beside the company name — Figma 2302-44567. THREE labels, the same
     vocabulary the admin sees on Customers (client, 09/09/2026): blue shield
     Verified · amber "Chờ xác minh" once all three inputs are on file · slate
-    "Chưa xác minh" while something is still missing. `ready` is derived from the
+    "Thiếu hồ sơ" while something is still missing. `ready` is derived from the
     profile, never stored, exactly as verifyDisplayOf() does on the admin side. */
 function CoVerifiedTag({ verified, ready = false }: { verified: boolean; ready?: boolean }) {
   return verified ? (
@@ -110,7 +110,7 @@ function CoVerifiedTag({ verified, ready = false }: { verified: boolean; ready?:
     </span>
   ) : (
     <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600" title="Saramin chưa xác minh công ty này — cần đủ MST · địa chỉ đăng ký MST · ERC ở Company information">
-      Chưa xác minh
+      Thiếu hồ sơ
     </span>
   )
 }

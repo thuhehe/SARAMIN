@@ -1073,7 +1073,7 @@ export const crm: BuildModule = {
             },
           },
           {
-            label: 'Sign-up user — vào console ngay; công ty tạo ở Chưa xác minh; Sign-ups chỉ còn ghép trùng',
+            label: 'Sign-up user — vào console ngay; công ty tạo ở trạng thái chưa xác minh; Sign-ups chỉ còn ghép trùng',
             text: 'Đổi từ 09/2026. Employer tự đăng ký, **bấm link xác minh email là vào console ngay** — không chờ admin. Cú bấm đó **tạo luôn công ty** trên Customers ở trạng thái **Chưa xác minh, chưa có sales owner**, và tạo **một dòng trên Sign-ups**.\n\nThứ chờ admin không còn là *cho vào* mà là *xác minh*: bấm **Verify** ở Company detail — nút chỉ mở khi hồ sơ đủ **MST · địa chỉ đăng ký MST · ERC**; admin đối chiếu ERC với hồ sơ rồi bấm. Phân owner là việc riêng (Ownership), không chặn Verify. Chưa verify thì employer đăng nhập, đọc, cập nhật, upload đều được — chỉ **không đăng tin** (kể cả draft) và **Sales không yêu cầu xuất hóa đơn** được.',
             table: {
               cols: ['Dòng Sign-ups cho thấy', 'Hành động', 'Vì sao'],
@@ -2584,7 +2584,7 @@ export const crm: BuildModule = {
             rows: [
               ['①', 'Company site · Sign up', 'Employer', 'Fills the current fields + **ERC upload (optional, several files)**. Register sends the verification email.', '—'],
               ['②', 'Email', 'Employer', 'Clicks the link. **This is the only gate before sign-in.**', 'Login Active · company created **Unverified**, no owner · one row on Sign-ups — **the admin may Move / merge at once**'],
-              ['③', 'Company site · console', 'Employer', 'Signed in. Tag **Chưa xác minh** beside the company name with a button → Company information. **Post job disabled**, and the page lists the three inputs still owed — **MST · địa chỉ đăng ký MST · ERC** — each ✓ or ✗, with the link.', 'Unverified · missing info'],
+              ['③', 'Company site · console', 'Employer', 'Signed in. Tag **Thiếu hồ sơ** beside the company name with a button → Company information. **Post job disabled**, and the page lists the three inputs still owed — **MST · địa chỉ đăng ký MST · ERC** — each ✓ or ✗, with the link.', 'Unverified · missing info'],
               ['④', 'Company site · Company information', 'Employer', 'Completes the record: types the registered (tax) address (the MST came from sign-up), uploads the ERC (several files). Files land on the admin’s Enterprise Registration Documents card; the Customers row flips to *ready to verify*.', 'Unverified · ready to verify'],
               ['⑤', 'Admin · Customers → Company detail', 'Admin', 'Clicks **Chờ verify · n** (= filter *Unverified · ready to verify*), opens the record, reads the ERC against the MST and address on it, presses **Verify company** — the button is disabled until all three inputs are on the record. Assigning a sales owner is a separate Ownership action, not part of Verify.', '**Verified**'],
               ['⑥', 'Both sites', 'System', 'Tag turns **blue Verified**. Employer: Post job unlocked (a draft needs no invoice), Company information read-only. Sales: “Yêu cầu xuất hóa đơn chính” enabled. Sign-ups row resolves.', 'Verified'],
@@ -2649,14 +2649,14 @@ export const crm: BuildModule = {
           ],
         },
         {
-          label: 'Verification status — two values; “edited after verification” is a reason, not a third state',
+          label: 'The STORED model — two values; “edited after verification” is a reason, not a third state',
           text: 'The client asked what to call the state a company falls into when an admin edits it after verification. Answer: the same **Unverified**, carrying a **reason**. Every gate in the system reads one yes/no; a third value would double every condition for no new behaviour. What differs is the line under the tag, and the checklist telling the next admin this record has been looked at before.',
           table: {
             cols: ['State', 'EN / VI on screen', 'Means', 'Leaves the state when'],
             rows: [
               ['**verified**', 'Verified / Đã xác minh — **blue** shield pill', 'An admin read the ERC against the MST and registered address on the record and pressed Verify. Stored: `verifiedAt`, `verifiedBy`.', 'An admin saves a change to identity data (legal name · MST · registered address · company type) → unverified, reason `edited`'],
-              ['**unverified** · reason `new`', 'Unverified / Chưa xác minh — **amber** pill', 'Never checked. Every self-registered company starts here; so does an admin-created one saved without documents.', 'Admin presses Verify — possible only once MST · địa chỉ đăng ký MST · ERC are all on the record'],
-              ['**unverified** · reason `edited`', 'Unverified / Chưa xác minh **· cần xác minh lại** (EN: *re-verification needed*)', 'WAS verified; an admin then changed identity data. Stored: `wasVerifiedAt`, `editedAt`, `editedBy`.', 'Admin presses Verify again. The dialog shows what changed and when.'],
+              ['**unverified** · reason `new`', 'Two labels, by readiness: **Thiếu hồ sơ** (slate) while an input is missing, **Chờ xác minh** / *Waiting for verify* (amber) once all three are on file. Same stored value — see the status table above.', 'Never checked. Every self-registered company starts here; so does an admin-created one saved without documents.', 'Admin presses Verify — possible only once MST · địa chỉ đăng ký MST · ERC are all on the record'],
+              ['**unverified** · reason `edited`', '**Chờ xác minh · cần xác minh lại** (EN: *re-verification needed*) — the documents are still on file, so it reads as ready, with the modifier', 'WAS verified; an admin then changed identity data. Stored: `wasVerifiedAt`, `editedAt`, `editedBy`.', 'Admin presses Verify again. The dialog shows what changed and when.'],
             ],
           },
           items: [
@@ -2686,7 +2686,7 @@ export const crm: BuildModule = {
             rows: [
               ['**Verified**', 'An admin pressed Verify against the ERC', 'After Verify — until an admin edits identity data', 'Nobody. Posting a job and the official invoice are unlocked', 'Blue shield'],
               ['**Waiting for verify** · *Chờ xác minh*', 'Not verified yet, but the record carries all three inputs — MST · địa chỉ đăng ký MST · ERC', 'The moment the last input lands, without anyone setting it', '**Admin** — this is the queue the *Chờ verify · n* chip counts', 'Amber — work we can clear'],
-              ['**Unverified** · *Chưa xác minh*', 'Not verified, and at least one input is missing', 'From sign-up until the employer completes the record', '**The employer** — the row names what is missing, and the Company site says where to fill it', 'Slate — work we are waiting on'],
+              ['**Unverified** · *Thiếu hồ sơ*', 'Not verified, and at least one input is missing', 'From sign-up until the employer completes the record', '**The employer** — the row names what is missing, and the Company site says where to fill it', 'Slate — work we are waiting on'],
             ],
           },
           items: [
@@ -2840,7 +2840,10 @@ export const crm: BuildModule = {
         },
         ],
         description:
-          'Self sign-up on the Company site and the company verification it leads to, as ONE flow: the inbox for people who self-register, and the check that unlocks what they came for. Since 09/2026 the email link is the only gate before sign-in: clicking it creates the login AND the company (Customers, Verified = Unverified, no owner) and puts one row here. The row asks one question — is this a company we already have? Two actions: Move to existing company (re-attach the login to the existing record, archive the duplicate the sign-up created) or Archive (spam — deactivate the login, archive the shell). A genuinely new company needs no action here: the row resolves itself when an admin verifies the company from Company detail. Login is never gated on this screen. VERIFICATION — the admin’s check of the ERC against the MST and registered address on the record (the button opens only when all three are present; the Customers list filters and counts those as “ready to verify”), a two-valued flag on the company record shown as the same tag on both sites — unlocks the two acts that commit Saramin: the employer posting a job, and Sales requesting the official invoice.',
+          /* Kept to three sentences on purpose: the flow table, the status table and
+             the Verify-inputs table below say the rest, and an overview that
+             repeats them is a paragraph nobody reads twice. */
+          'Self sign-up and the company verification it leads to, as one flow. The email link is the only gate before sign-in — it creates the login and the company, then drops a row here whose only question is whether we already hold this company (Move · Archive); sign-in is never gated on this screen. Verification itself happens on Company detail, and it unlocks the two acts that commit Saramin: the employer posting a job, and Sales requesting the official invoice.',
         userStory:
           'As a sales/ops user, I want every email-verified sign-up matched against companies we already have and resolved with one action, so that a real one lands in the right company on Customers and spam is discarded — while the user always knows where they are in the process.',
         uiFields: [
@@ -2879,7 +2882,7 @@ export const crm: BuildModule = {
           'Two actions on a row, both about DUPLICATES and junk, never about access: **Move to existing company** re-attaches the login to the company the admin picks and archives the Unverified duplicate the sign-up created (its ERC files move across); **Archive** deactivates the login and archives the shell company. A row with no match and no problem is left alone — it resolves when the company is verified. This REVERSES the 08/2026 model in which Move unlocked login: the person is already inside.',
           'Match is informational and never changes the two actions. It is a RANKED LIST of candidate companies, not a yes/no — see the matching rule for the three signals and how ties are ordered.',
           'Move emails the person which company they now belong to. Archive emails nothing — spam gets no receipt.',
-          'The user sees the state in the console itself: the Chưa xác minh tag beside the company name, a button to Company information, and a disabled Post job that names the three inputs still owed (MST · địa chỉ đăng ký MST · ERC) with ✓ / ✗. There is no “under review” login screen any more, because there is no review before login.',
+          'The user sees the state in the console itself: the Thiếu hồ sơ tag beside the company name, a button to Company information, and a disabled Post job that names the three inputs still owed (MST · địa chỉ đăng ký MST · ERC) with ✓ / ✗. There is no “under review” login screen any more, because there is no review before login.',
         ],
         rules: [
           'ONE gate before sign-in — the email link — and it is the user’s own. Every row here has cleared it by definition, and the person behind every row is already signed in. The admin gate is VERIFICATION, it lives on Company detail, and it gates posting and invoicing, not access.',
@@ -2934,13 +2937,13 @@ export const crm: BuildModule = {
         acceptance: [
           'On submit a verification email is sent immediately; nothing exists yet — no login, no company, no row in this inbox.',
           'Clicking the link creates the login, a company on Customers with Verified = Unverified and no owner (ERC files attached if given), and ONE row here. The person can sign in at once.',
-          'Signed in, unverified: the console header shows Chưa xác minh with a button to Company information; Post job shows Publish and Save draft disabled, the three inputs listed with ✓ / ✗ and a link to Company information; Company information opens with the same banner; reading, editing Company information and uploading the ERC all work.',
+          'Signed in, unverified: the console header shows Thiếu hồ sơ with a button to Company information; Post job shows Publish and Save draft disabled, the three inputs listed with ✓ / ✗ and a link to Company information; Company information opens with the same banner; reading, editing Company information and uploading the ERC all work.',
           'The row never lists the company this sign-up created as its own match; a real duplicate on Customers or Free data does appear, with the signal that found it.',
           'Move re-attaches the login to the chosen company, archives the shell as duplicate, carries its ERC files over, and emails the person which company they belong to.',
           'A Free data match offers “Gộp dòng Free data vào công ty này”: the pool row leaves Free data and the shell keeps its data; no third record is created.',
           'Admin: Customers → the Verified filter offers Verified · Unverified · ready to verify · Unverified · missing info; a self-registered company with no address and no ERC lists under missing info with “Thiếu: Địa chỉ đăng ký MST · ERC” under its tag — in the department view even with no owner. The Chờ verify chip shows the count of ready rows and applies the ready filter in one click.',
           'Verify company on a record missing the address or the ERC → the button is disabled and its tooltip names the gap; the employer adds the address and uploads the ERC (or the admin does) → the row reads “Đủ hồ sơ — verify được”, the button enables, the dialog shows the three inputs ✓ and the legal name and owner as facts. Verify with owner = Chưa phân is allowed. Verify → tag blue on both sites, Post job enabled, Company information read-only for the employer, “Yêu cầu xuất hóa đơn chính” enabled, this row reads Resolved.',
-          'Admin edits the legal name of a verified company and saves → Chưa xác minh · cần xác minh lại on both sites; Post job disabled again; Verify company reappears.',
+          'Admin edits the legal name of a verified company and saves → Chờ xác minh · cần xác minh lại on both sites; Post job disabled again; Verify company reappears.',
         ],
         openQuestions: [
           'Who approves a Move into an EXISTING company — Saramin admin alone (current default) or that company’s own Admin (safer: an MST is public, and a wrong Move exposes the customer’s jobs, applicants and quota)? Recommendation: the company’s Admin, with Saramin override only when the company has no active Admin.',
