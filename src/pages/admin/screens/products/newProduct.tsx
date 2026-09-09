@@ -14,6 +14,10 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
   const [role, setRole] = useState<'main' | 'addon'>('main')
   /* A trial SKU is quotable only inside a trial quotation — see the catalog note. */
   const [trial, setTrial] = useState(false)
+  /* The free tier, as built: price 0, and HQ may post it for any company with no PO
+     and no quota. A STORED FLAG, never inferred from price — a promo line can be 0 ₫
+     and still have to come out of a PO, so deriving it would open a loophole. */
+  const [free, setFree] = useState(false)
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Inactive')
   const [content, setContent] = useState<SlotContent>('banner')
   const [nameVi, setNameVi] = useState('')
@@ -155,7 +159,7 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
             {role !== 'main' && (
               <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
                 Appears in the <b className="text-ink/70">Includes</b> picker when any product is created.
-                {role === 'addon' && ' Never shown as a quotation line — it reaches a customer only inside a Main product.'}
+                {role === 'addon' && ' Quotable on its own line too — the service picker lists add-ons in their own group, and it spends its own line on the PO.'}
               </p>
             )}
             {/* Sits under Role because the two answer the same question — WHERE this
@@ -488,22 +492,35 @@ export function NewProductModal({ onClose }: { onClose: () => void }) {
           {/* ONE price, every type. Segment pricing (SME / Enterprise / Standard) was
               here but is out of scope for now — see the note in the record. An Add-on
               is never quoted, so its figure is labelled internal rather than list. */}
+          {/* The free tier lives on the PRODUCT, not on the posting screen: the posting
+              form's "Free job" option is simply the products carrying this flag. */}
+          <label className="flex cursor-pointer items-start gap-2 text-[12px]">
+            <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className={cn('font-medium', free ? 'text-brand' : 'text-ink')}>Free product</span>
+              <span className="mt-0.5 block text-[10.5px] leading-relaxed text-faint">
+                Price 0, postable by HQ for any company with no PO and no quota.
+              </span>
+            </span>
+          </label>
+
           <div>
-            <FLabel req={role !== 'addon'}>
-              {role === 'addon' ? 'Giá trị nội bộ (₫)' : 'Price (₫)'}
-              {role === 'addon' && <span className="ml-1 font-normal text-faint">internal value — not quotable</span>}
+            <FLabel req={!free}>
+              Price (₫)
+              {free && <span className="ml-1 font-normal text-faint">a free product costs 0 — turn the toggle off to set a price</span>}
             </FLabel>
             <input
-              value={price}
+              value={free ? '0' : price}
               onChange={(e) => setPrice(e.target.value)}
+              disabled={free}
               inputMode="numeric"
               placeholder="3700000"
-              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-faint focus:border-brand disabled:bg-canvas/60 disabled:text-muted"
             />
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
               {priceNum > 0 && <span className="text-ink/70">{vnd(priceNum)} ₫ · </span>}
-              {role === 'addon'
-                ? 'Attributes margin inside the parent product. Never printed on a quotation.'
+              {free
+                ? 'Price is 0. HQ can post this for any company with no purchase order and no quota — it fills the “Free job” option on the posting screen. Employers never see it on the company site.'
                 : 'The catalogue list price. A quotation may discount from it; this is the anchor.'}
             </p>
           </div>

@@ -29,7 +29,7 @@ import type { BuildModule } from './types'
 export const productsPackages: BuildModule = {
   id: 'products-packages',
   title: 'Products & Packages',
-  owner: 'Luan',
+  owner: 'Luong',
   requirements: [
     {
       label: 'What this module is',
@@ -188,12 +188,13 @@ export const productsPackages: BuildModule = {
         requirements: [
           {
             label: 'Sản phẩm dùng thử — a checkbox, not a discount',
-            text: 'A product can be flagged **Sản phẩm dùng thử / Trial product** on the create form. It is a third visibility axis alongside role: role says whether a product can be quoted on its own, and this says **which quotations** may contain it at all.',
+            text: 'A product can be flagged **Sản phẩm dùng thử / Trial product** on the create form. It is a third visibility axis alongside role: role says whether a product can be quoted on its own, and this says **which quotations** may contain it at all. The switch on the other side is the quotation’s **Discount programme** — set it to **Trial package** (*Gói dùng thử*) and the service picker offers trial products and NOTHING else; leave it on anything else and it offers no trial product at all.',
             table: {
               cols: ['', 'Normal product', 'Trial product'],
               rows: [
                 ['Appears in', 'Every quotation **except** one using the Gói dùng thử programme', '**Only** a quotation using Gói dùng thử'],
                 ['Mixed with the other kind?', 'No', 'No — a trial quotation holds trial SKUs only'],
+                ['Packages', 'Offered normally', 'NOT offered. A package carries no trial flag, so it cannot match a trial quotation and drops out of the picker entirely'],
                 ['Price', 'List price', 'Its own, low, real price — 500.000 ₫ / 300.000 ₫ today'],
                 ['Discount cells on the quotation', 'Per the discount programme', 'All three locked at 0 — the price already is the concession'],
                 ['On the invoice', 'A normal line', 'A normal line. Nothing marks it as a giveaway'],
@@ -202,6 +203,7 @@ export const productsPackages: BuildModule = {
             items: [
               'This is why the trial is modelled as **products** rather than as a 95% discount: the invoice states what was actually sold at what price, and revenue reporting sees a cheap SKU instead of a write-down nobody can explain a year later. It also means a trial can be priced, versioned and withdrawn like anything else in the catalogue.',
               'Switching a quotation into or out of trial mode **resets the product on every line**, because a leftover full-price SKU inside a trial quotation would be a line the programme does not permit.',
+              'THE SPLIT IS ENFORCED SERVER-SIDE, not just in the picker: the save is refused either way. Hiding the wrong products is a courtesy to the rep — it stops a line being built that could never be sold — and never the control itself.',
               'The per-customer limit (“01 lần trên mỗi MST”) belongs to the PRODUCT, not to the discount programme — it is the same kind of rule as a quota, and it has to survive the customer being quoted twice.',
               'Trial SKUs carry an activation window like anything else, set to **3 months** rather than 12: a trial nobody starts within a quarter has stopped being a trial.',
             ],
@@ -256,44 +258,75 @@ export const productsPackages: BuildModule = {
             ],
           },
           {
-            group: 'Definition',
+            /* THE FORM AS BUILT, section by section, field names exactly as they
+               read on screen. Written from saramin-vn-admin `origin/dev` — the
+               user guide's field reference is the same source, so the two cannot
+               drift. Anything specified but NOT on the form yet is in its own
+               group at the end rather than mixed in here, where it would read as
+               something an operator can go and fill in. */
+            group: 'New product — Type',
             items: [
-              { name: 'SKU', type: 'string', required: true, notes: 'stable business key used by quotations and orders — never re-used, never edited after first sale. Shape TYPE-CAPABILITY (JOB-BASIC, CV-050, PLC-HOMEHERO, ADD-POPULARJOBS, SVC-FB-TOPDEV) so a row is self-describing in an export or a support ticket, where the Type column is not there to help. It must survive a rename — the name is marketing copy, the SKU is the reference' },
-              { name: 'name (vi / en)', type: 'i18n string', required: true, notes: 'VI required; the EN name is what appears on a bilingual quotation PDF' },
-              { name: 'type', type: 'enum', required: true, notes: 'posting_tier | placement | credit_pack | addon | manual_service — drives which fulfilment fields apply' },
-              { name: 'description (vi / en)', type: 'i18n rich text', notes: 'the benefit list printed on quotations' },
-              { name: 'status', type: 'enum', required: true, notes: 'Active · Inactive — only Active can be quoted or sold' },
-              { name: 'entitlementSource', type: 'enum', required: true, notes: 'Requires purchase (default — must be drawn from an active PO line) · Always available (Admin-only free tier: no PO, no limit). Job-posting products only. STORED, never inferred from price: a promo line can be 0 ₫ and still be consumed from a PO' },
-              { name: 'isTrial', type: 'bool', required: true, notes: 'default false. A trial SKU is offered ONLY inside a quotation whose discount programme is Gói dùng thử, and such a quotation cannot hold a normal SKU. A third visibility axis alongside role — see the rule block above' },
+              { name: 'Type', type: 'radio (4 values)', required: true, notes: 'Job posting · CV search · Placement booking · Manual service. On screen: “decides what this SKU grants — and which fulfilment fields appear below”. FOUR, not five: Add-on is a ROLE, not a type (see the next group) — an email blast is a Manual service whether it is sold alone or attached, so attachability describes how a thing is SOLD, not what it is.' },
             ],
           },
           {
-            group: 'Price',
+            group: 'New product — Identity',
             items: [
-              { name: 'listPrice', type: 'money (₫)', notes: 'the catalogue price; a quotation may discount from it but the list price is the anchor. Required EXCEPT when entitlementSource = Always available — that tier is never sold, so requiring a price would make it impossible to activate' },
-              { name: 'unit', type: 'enum', required: true, notes: 'per pack · per job · per week · per month — what the price is "per"' },
-              { name: 'vatRate', type: 'percent', required: true, notes: 'so quotation totals and the VAT e-invoice agree (see CRM → Quotations)' },
-              { name: 'version / effectiveFrom', type: 'int / date', notes: 'a price change on a sold product creates a new version rather than editing history' },
+              { name: 'Name', type: 'i18n string', required: true, notes: 'Vietnamese required (placeholder: “e.g. Tin Top Job”), English optional. Printed on the quotation, the PO and the invoice.' },
+              { name: 'Product ID', type: 'string', required: true, notes: 'THE SKU, under its on-screen name. Generated from the type and name, editable only when a specific code is needed. Shape TYPE-CAPABILITY (JOB-BASIC, CV-050, PLC-HOMEHERO, ADD-POPULARJOBS, SVC-FB-TOPDEV) so a row is self-describing in an export or a support ticket. LOCKED once the product has been sold — it is printed on those orders — and it must survive a rename: the name is marketing copy, this is the reference.' },
+              { name: 'Selling unit', type: 'enum (picker)', notes: 'The unit this is counted in — tin, lượt, gói. Printed as the quotation’s Đơn vị tính column and copied onto the PO and the invoice. DISPLAY ONLY: nothing computes from it, which is why it is not the same field as the fulfilment quantities below.' },
+              { name: 'Role', type: 'radio (Main · Add-on)', required: true, notes: 'MAIN — “sold on its own — quotable and orderable, never inside another product”. ADD-ON — “attaches on top of a main posting — quotable on its own line, and spends its own order line”. An add-on IS sold like any other product: the quotation’s service picker lists it under its own Add-ons group at its own price. What differs is where it lands — the posting screen keeps add-ons disabled until a PO and a main product are chosen.' },
+              { name: 'Add-on type', type: 'enum', notes: 'Add-on role only. LABEL — a badge printed on the posting (Hot job · Super star, from Master data); DISPLAY PLACEMENT — puts the job in a premium position, and consumes that area’s finite capacity exactly as a booking does.' },
+              { name: 'Trial product', type: 'checkbox', notes: 'Default OFF: “ordinary product — appears in every quotation EXCEPT a Trial-package quotation”. ON: it appears in exactly ONE place — a quotation whose Discount programme is set to Trial package (Gói dùng thử) — and nowhere else. A VISIBILITY AXIS, NOT A DISCOUNT: the product still carries its own low price and goes on a purchase order; what changes is that its activation window is 3 months instead of 12. See the “Sản phẩm dùng thử” rule block.' },
+              { name: 'Status', type: 'radio (Active · Inactive)', required: true, notes: 'Only Active can be quoted or sold. Inactive covers BOTH a product still being written and one withdrawn from sale, and every past order, entitlement and report that references it still resolves — this is the replacement for deleting a product. Activating is refused while the fulfilment is incomplete, and the message names the missing field.' },
+              { name: 'Product description', type: 'i18n rich text', notes: 'Vietnamese required, English optional — the benefit list printed under the line on quotations.' },
             ],
           },
           {
-            group: 'Fulfilment — the entitlement this product grants',
+            group: 'New product — Pricing',
             items: [
-              { name: 'activationWindowMonths', type: 'int', required: true, notes: 'Thời gian phải kích hoạt kể từ ngày xuất hóa đơn. How long the buyer has to START using this product, counted from the INVOICE date (T&C clause 4). Default 12; 3 · 6 · 12 · 18 · 24 offered. Stored per product, never a global setting — see the rule block. n/a where entitlementSource = Always available, because that tier is never invoiced' },
-              { name: 'activationDeadline', type: 'derived', notes: 'on the entitlement, not the product: invoiceDate + activationWindowMonths. This is the “Activate by” column on the Invoice list and the date the expiry job reads' },
-              { name: 'quotaAmount', type: 'int', notes: 'posting_tier: number of slots · credit_pack: number of CV unlocks' },
-              { name: 'validityDays / validityMonths', type: 'int', notes: 'the THIRD clock — how long one activated slot/pack runs (CV combos 30 or 90 days; a posting 30 days). Not to be confused with activationWindowMonths, which is how long it may sit unused before that clock ever starts' },
-              { name: 'requiresActivation', type: 'bool', required: true, notes: 'default FALSE — the product is usable as soon as it is invoiced. TRUE only on credit_pack (CV search): the entitlement sits at Chưa kích hoạt until Admin or the employer presses Kích hoạt, and validityDays counts from that press. STORED on the product, not derived from type, so a future short-validity product of another type can opt in without a code change. Where true, only ONE such entitlement per company may be active at a time' },
-              { name: 'postingTier', type: 'enum', notes: 'posting_tier only — Basic · Basic Plus · Distinction · Top Job, the tier the bought slots may use (see Job management)' },
-              { name: 'placementId', type: 'ref', notes: 'placement only — FK to the Placements registry. Size, items shown and rotation cap are READ from that row, never retyped here.' },
-              { name: 'bookingUnit / slotsConsumed', type: 'enum / int', notes: 'placement only — per day/week/month, and how many of the slot’s pool one sale occupies (e.g. 1 of 6 on the hero)' },
-              { name: 'creativeSource', type: 'enum', notes: 'placement only — client upload · company profile (logo auto-pulled) · job posting' },
-              { name: 'attachesTo', type: 'ref[]', notes: 'addon only — the parent tier products it may be sold with (Popular Jobs premium → Distinction + Top Job; Highlight premium → Basic Plus only). Empty = not sellable.' },
-              { name: 'capacity', type: 'int', notes: 'addon only — finite positions (4 for Popular Jobs, 5 for Highlight Companies); needs the same availability check as a placement' },
-              { name: 'slaDays / owningTeam / requiredInputs', type: 'int / enum / text', notes: 'manual_service only — fulfilment SLA, the team that does the work, and what the buyer must supply (copy, image, audience, publish date)' },
-              { name: 'displayEffects', type: 'structured', notes: 'STRUCTURED, not prose: title style · top-search on/off · benefits shown in search (count) · homepage placements + days · badges + days. Today the CRM holds these as a free-text Description list, which the site cannot query.' },
-              { name: 'entitlementPreview', type: 'derived', notes: 'a plain sentence of what a buyer gets ("10 slots at Top Job, valid 12 months") — the sanity check before activating' },
-              { name: 'avgUnitPrice', type: 'derived', notes: 'credit_pack — price ÷ unlocks, e.g. 3.700.000 ₫ / 50 = ~74.000 ₫/CV. The deck sells on this number, so it is computed and never typed.' },
+              { name: 'Price (đ)', type: 'money', notes: 'The catalogue list price. A quotation may discount from it, but this is the anchor — discounting happens on the quotation line so a price can only be cut in one place.' },
+              { name: 'Free product', type: 'toggle', notes: 'THE FREE TIER, as built. On: “price is 0, and HQ can post it for any company with no purchase order and no quota. This is what fills the Free job option on the posting screen. Employers never see it on the company site.” A STORED FLAG, never inferred from a price of 0 — a promo line can be 0 ₫ and still have to be drawn from a PO, so deriving this from price would turn every giveaway into an unlimited loophole. Turning it on forces the price to 0.' },
+              { name: '≈ per CV', type: 'derived', notes: 'CV search only — price ÷ credit amount, shown live under the price. The deck sells on this number, so it is computed and never typed.' },
+            ],
+          },
+          {
+            group: 'New product — Fulfilment (the block changes with Type)',
+            items: [
+              { name: 'Must be used within', type: 'enum (months)', required: true, notes: 'EVERY TYPE EXCEPT CV SEARCH. Counted from the invoice date; 12 months default (T&C §4). Two clocks, and this is the second: ① quota is granted the moment the invoice is issued, ② it must be used within this window or the unused balance expires. These types have no activation step, so the clause is enforced as a usage window rather than a deadline to press something.' },
+              { name: 'Display duration (days) · Auto-refresh', type: 'int · enum', notes: 'Job posting. Display duration is how long ONE published job stays live — a third clock, and what the posting screen shows beside the tier (“Top job · 30 days”). Auto-refresh is “how often a published job is bumped back to the top of the lists it appears in”; blank means never.' },
+              { name: 'Placement slots', type: 'row[]', notes: 'Job posting. “Where a job of this tier appears, and for how much of its display window.” Areas come from the Placements registry; coverage per area is Whole display window or First N days. THIS IS THE TIER DEFINITION — there is no separate tier screen, so what Top Job grants is defined here and only here.' },
+              { name: 'Includes', type: 'ref[] → Product', notes: 'Job posting. “Products granted with this one. The customer sees a single line — this is not a package.” One quotation line, one price; each include is still provisioned separately. Use a Package when the customer should see the parts priced together.' },
+              { name: 'Credit amount · Validity', type: 'int · enum (30 · 90 days)', notes: 'CV search. Credit amount is how many CVs one purchase unlocks. Validity is the term the customer buys, and it runs from the moment they press Kích hoạt. There is deliberately NO “Must be used within” field here: the activation window is fixed at 12 months from the invoice (3 for a trial) by T&C §4 and is not set per product.' },
+              { name: 'Placement · Duration (days) · Slots consumed', type: 'ref · int · int', notes: 'Placement booking. Only ACTIVE placements are offered — booking an inactive display area would have nowhere to render. Slots consumed is how many of that area’s pool one sale occupies (1 of 6 on the hero); blank means 1.' },
+              { name: 'Quantity · Unit', type: 'int · enum', notes: 'Manual service. Ops fulfils it by hand, so it provisions no entitlement at all — it opens a task. Unit is how an ops task for this service is counted (a post, a send); Quantity is how many the purchase owes.' },
+            ],
+          },
+          {
+            /* Kept OUT of the form groups above on purpose: these are specified and
+               still true, but the built form does not ask for them today. Mixing
+               them in would send an operator hunting for a field that is not there. */
+            group: 'Specified, not on the form yet',
+            items: [
+              { name: 'vatRate', type: 'percent', notes: 'so quotation totals and the VAT e-invoice agree (see CRM → Quotations). The built quotation applies 8% globally rather than reading it per product.' },
+              { name: 'version / effectiveFrom', type: 'int / date', notes: 'a price change on a sold product creates a new version rather than editing history — the rule stands, the form has no version control yet.' },
+              { name: 'attachesTo', type: 'ref[]', notes: 'add-on only — the parent tiers it may be sold with (Popular Jobs premium → Distinction + Top Job; Highlight premium → Basic Plus only). The build lets any add-on ride any posting.' },
+              { name: 'capacity', type: 'int', notes: 'add-on only — finite positions (4 for Popular Jobs, 5 for Highlight Companies); needs the same availability check as a placement booking.' },
+              { name: 'slaDays / owningTeam / requiredInputs', type: 'int / enum / text', notes: 'manual_service only — fulfilment SLA, the team that does the work, and what the buyer must supply (copy, image, audience, publish date).' },
+              { name: 'entitlementPreview', type: 'derived', notes: 'a plain sentence of what a buyer gets (“10 slots at Top Job, valid 12 months”) — the sanity check before activating.' },
+            ],
+          },
+          {
+            /* The entitlement side of the same product — what the ROW means once a
+               paid order provisions it. Kept separate from the form groups above
+               because these are consequences and derivations, not controls: an
+               operator fills in the form, the platform computes these. */
+            group: 'What the product grants, once invoiced',
+            items: [
+              { name: 'activationDeadline', type: 'derived', notes: 'on the entitlement, not the product: invoiceDate + the “Must be used within” window. This is the “Activate by” column on the Invoice list and the date the expiry job reads.' },
+              { name: 'quotaAmount', type: 'int', notes: 'how many the buyer receives — CV unlocks come from Credit amount on the product; posting slots come from the QUANTITY on the order line, not from the product, because the same tier is sold in fives and tens.' },
+              { name: 'requiresActivation', type: 'bool', notes: 'TRUE only for CV search: the entitlement sits at Chưa kích hoạt until Admin or the employer presses Kích hoạt, and Validity counts from that press. Everything else is usable the moment the invoice is issued — which is why only CV search asks for Validity instead of a usage window. Only ONE activated CV pack per company at a time.' },
+              { name: 'creativeSource', type: 'enum', notes: 'placement booking — client upload · company profile (logo auto-pulled) · job posting. Decides what publishing the booking asks the customer for; the form does not capture it yet.' },
             ],
           },
         ],

@@ -67,7 +67,59 @@ export const productsPackagesGuide: ModuleGuide = {
       ],
       shots: [
         { src: `${IMG}/product-new-type.jpg`, caption: 'Step 1 — the four types. The line under each one says what it grants.' },
-        { src: `${IMG}/product-new-fulfilment.jpg`, caption: 'Step 6 — Fulfilment for a Job posting. The three clocks are explained on the form itself.' },
+        { src: `${IMG}/product-new-fulfilment.jpg`, caption: 'Step 6 — Fulfilment for a Job posting. The clocks are explained on the form itself.' },
+      ],
+      settings: [
+        {
+          heading: 'Every product asks for these',
+          note: 'Top to bottom, in the order the form asks. **Type** first, because it decides which fulfilment fields appear at all.',
+          table: {
+            cols: ['Setting', 'What it means', 'What it decides'],
+            rows: [
+              ['Type', 'Job posting · CV search · Placement booking · Manual service — *“decides what this SKU grants”*.', 'Everything below it. A Job posting grants posting slots, CV search grants unlocks, a Placement booking holds a display area for a period, a Manual service opens an ops task instead of granting anything. Wrong type = the customer receives the wrong thing.'],
+              ['Name', 'The Vietnamese name, e.g. *Tin Top Job*. English is optional.', 'What the customer reads on the quotation, the purchase order and the invoice.'],
+              ['Product ID', 'The code, *generated from the type and name*. Change it only if you need a specific one.', 'The reference the rest of the platform matches on. **It locks after the first sale** — by then it is printed on those orders.'],
+              ['Selling unit', 'The unit this is counted in — *tin*, *lượt*, *gói*.', 'Printed as the quotation’s **Đơn vị tính** column and copied onto the PO and the invoice. Nothing computes from it; it is what the customer reads.'],
+              ['Role — Main', '*Sold on its own — quotable and orderable, never inside another product.*', 'It can be a quotation line by itself. Every posting tier is Main.'],
+              ['Role — Add-on', '*Attaches on top of a main posting — quotable on its own line, and spends its own order line.*', 'IT IS SOLD LIKE ANY OTHER PRODUCT: the quotation’s **Pick a service** picker lists it under its own **Add-ons** group, it gets its own line and its own price, and it spends its own line on the PO. What “attaches” means is where it LANDS — on the posting screen it stays disabled until a PO and a main product are chosen, because an add-on decorates a posting rather than being one.'],
+              ['Add-on type', 'Only when Role is Add-on. **Label** = a badge printed on the posting (*Hot job*, *Super star*). **Display placement** = puts the job in a premium position.', 'Which of the two an add-on actually does. A Label changes how the posting looks; a Display placement changes where it appears, and consumes that area’s finite capacity.'],
+              ['Trial product — off', 'The default. *Ordinary product: appears in every quotation EXCEPT a Trial-package quotation.*', 'Offered on every quotation whose **Discount programme** is anything other than *Trial package* — and offered on none where it is.'],
+              ['Trial product — on', '*Appears ONLY in a Trial-package quotation. Still sold normally — it can carry a price and go on a purchase order.*', 'IT SHOWS UP IN EXACTLY ONE PLACE: a quotation whose **Discount programme** is set to **Trial package** (*Gói dùng thử*). There, the **Pick a service** picker offers trial products and nothing else — no ordinary products, and no packages either, since a package has no trial flag to match on. Switching a quotation into or out of trial mode therefore resets the product on every line. It is a visibility axis, not a discount: the product still carries its own (low) price and goes on a purchase order, and what changes is that its activation window is 3 months instead of 12.'],
+              ['Description', 'Vietnamese required, English optional.', 'Prints on the quotation, under the line. This is the sales copy the customer reads.'],
+              ['Status — Active', 'Sellable.', 'It can be quoted, ordered and provisioned. Activation is refused while the fulfilment is incomplete, and the message names the missing field.'],
+              ['Status — Inactive', 'Not sellable. Covers BOTH a product still being written and one withdrawn from sale.', 'It vanishes from quotations, orders and the company purchasing surface — but every past order, entitlement and report that references it still resolves. **This is the replacement for deleting a product.**'],
+              ['Price (đ)', '*The catalogue list price. A quotation may discount from it.*', 'The starting figure on a quotation line. Discounting happens there, not here, so a price is only ever cut in one place.'],
+              ['Free product', '*Price is 0, and HQ can post it for any company with no purchase order and no quota.*', 'This is what fills the **Free job** option on the posting screen. **Employers never see it on the company site** — a free tier is an HQ concierge tool, not something a customer can help themselves to.'],
+            ],
+          },
+        },
+        {
+          heading: 'Fulfilment · Job posting',
+          note: 'A Job posting product **IS** its posting tier — there is no separate tier screen, so what Top Job grants is defined here and only here.',
+          table: {
+            cols: ['Setting', 'What it means', 'What it decides'],
+            rows: [
+              ['Must be used within', 'Counted from the invoice date; *12 months* by default (T&C §4).', 'TWO CLOCKS, and this is the second: ① quota is granted the moment the invoice is issued, ② it must be used within this window or the unused balance expires. Nothing here waits for the customer to press anything.'],
+              ['Display duration (days)', 'How long ONE published job stays live.', 'The posting’s own lifetime — a different clock again. It is what the posting screen shows beside the tier (*Top job · 30 days*), and what sets the job’s expiry.'],
+              ['Auto-refresh', '*How often a published job is bumped back to the top of the lists it appears in.*', 'The cadence that separates the tiers as much as price does. Leave it blank and the job never gets bumped.'],
+              ['Placement slots', '*Where a job of this tier appears, and for how much of its display window.* Areas come from the Placements registry.', 'The whole reason a customer pays more for a higher tier. Coverage per area is either **Whole display window** or **First N days**. If an area is not offered here, it does not exist in the registry yet.'],
+              ['Includes', '*Products granted with this one. The customer sees a single line — this is not a package.*', 'Extras that come WITH the tier — an email send, a fanpage post, a premium position. One quotation line, one price; each include is still provisioned separately. Use a **Package** instead when the customer should see the parts priced together.'],
+            ],
+          },
+        },
+        {
+          heading: 'The Fulfilment block changes with the Type',
+          note: 'Pick a different **Type** and this whole section is replaced. These are the fields each one asks for instead.',
+          table: {
+            cols: ['Type', 'Fulfilment fields', 'Worth knowing'],
+            rows: [
+              ['Job posting', 'Must be used within · Display duration · Auto-refresh · Placement slots · Includes', 'The table above.'],
+              ['CV search', 'Credit amount · Validity', '**Credit amount** is *how many CVs one purchase unlocks*. **Validity** is the term the customer buys — 30 or 90 days, running from the moment they press Kích hoạt. There is no “Must be used within” field here: the activation window is fixed at 12 months from the invoice (3 for a trial) by T&C §4, not set per product. The per-CV figure underneath is computed from price ÷ amount and is never typed.'],
+              ['Placement booking', 'Placement · Duration (days) · Slots consumed', '**Placement** points at a row in the registry, and only ACTIVE areas are offered — booking an inactive area would have nowhere to render. **Slots consumed** is how many of that area’s pool one sale occupies; blank means 1.'],
+              ['Manual service', 'Quantity · Unit', 'Ops fulfils this by hand, so it provisions no entitlement at all — it opens a task. **Unit** is *how an ops task for this service is counted* (a post, a send), and Quantity is how many the purchase owes.'],
+            ],
+          },
+        },
       ],
       tips: [
         'The **Product ID** is locked after the first sale. Check it before the product is quoted.',
@@ -191,5 +243,6 @@ export const productsPackagesGuide: ModuleGuide = {
   builtFrom: [
     { repo: 'saramin-vn-admin', branch: 'dev', commit: '07e4b68', date: '2026-09-08', note: 'screens and behaviour' },
     { repo: 'saramin-vn-admin', branch: 'dev', commit: 'deed9d0', date: '2026-09-08', note: 'docs/qa/screenshots — the pictures on this page' },
+    { repo: 'saramin-vn-admin', branch: 'dev', commit: '0b6e6e5', date: '2026-09-09', note: 'the New product field reference — read from the form’s own strings, which are NEWER than the screenshots above' },
   ],
 }

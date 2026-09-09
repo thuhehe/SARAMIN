@@ -12,6 +12,8 @@
  * never the click on "Save".
  */
 
+import type { SpecTable } from '../types'
+
 export interface GuideShot {
   /** path under public, e.g. /guide/products-packages/products-list.jpg */
   src?: string
@@ -20,6 +22,15 @@ export interface GuideShot {
   /** why there is no picture yet. Rendered as a dashed placeholder so the gap is
       visible on the page instead of silently missing. */
   pending?: string
+}
+
+/** One reference table inside a task — see `GuideTask.settings`. */
+export interface GuideSettings {
+  /** short heading, e.g. "Every product asks for these" */
+  heading: string
+  /** one line of context above the table */
+  note?: string
+  table: SpecTable
 }
 
 export interface GuideTask {
@@ -33,6 +44,16 @@ export interface GuideTask {
   /** key steps only. **bold** marks a field or button name as it appears on screen. */
   steps: string[]
   shots?: GuideShot[]
+  /**
+   * A field-by-field reference for a form-heavy task: what each control means and
+   * what it decides downstream. A TABLE rather than more bullets, because fifteen
+   * settings as a list is a wall nobody finishes, and this is read one row at a
+   * time — an operator arrives with a single field in front of them.
+   *
+   * `steps` still says what to DO. This says what the thing you are looking at IS,
+   * so the two do not have to be written into each other.
+   */
+  settings?: GuideSettings[]
   /** "Good to know" — the one to three facts that save a support call. */
   tips?: string[]
   /** slug of the feature in this module whose requirement explains the rules */

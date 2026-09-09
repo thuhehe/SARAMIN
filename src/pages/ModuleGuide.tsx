@@ -2,7 +2,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, BookOpen, Camera, Lightbulb, MapPin } from 'lucide-react'
 import { BUILD_MODULES } from '@/data/buildModules'
 import { GUIDES } from '@/data/guides'
-import type { GuideShot, GuideTask, ModuleGuide as Guide } from '@/data/guides'
+import type { GuideSettings, GuideShot, GuideTask, ModuleGuide as Guide } from '@/data/guides'
 import { featurePath, featureSlug } from '@/data/featureSlug'
 import { CopySectionLink, useHashTarget } from '@/components/ShareLink'
 import { LightboxProvider, useLightbox } from '@/components/Lightbox'
@@ -88,6 +88,48 @@ function Shot({ s }: { s: GuideShot }) {
   )
 }
 
+/* A settings reference. Cells run through Inline, so **bold** marks a control
+   exactly as it reads on screen — the same convention as the steps above it. */
+function Settings({ s }: { s: GuideSettings }) {
+  return (
+    <section className="mt-4">
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted">{s.heading}</h3>
+      {s.note && (
+        <p className="mt-1 text-[12.5px] leading-relaxed text-ink/75">
+          <Inline t={s.note} />
+        </p>
+      )}
+      {/* bg-surface on the table itself, not inherited: on a requirement page the
+          same markup sits inside a white ReqCard, but a guide task has no card
+          behind it, so without this the rows show the page's grey canvas. */}
+      <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-surface">
+        <table className="w-full border-collapse text-[12.5px]">
+          <thead>
+            <tr className="bg-canvas/70 text-left text-[11px] uppercase tracking-wide text-muted">
+              {s.table.cols.map((c, i) => (
+                <th key={i} className="px-3 py-2 font-semibold">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {s.table.rows.map((r, ri) => (
+              <tr key={ri} className="border-t border-line-soft align-top">
+                {r.map((cell, ci) => (
+                  <td key={ci} className={ci === 0 ? 'px-3 py-2 font-medium text-ink' : 'px-3 py-2 leading-relaxed text-muted'}>
+                    <Inline t={cell} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
 function Task({ m, t, n }: { m: BuildModule; t: GuideTask; n: number }) {
   const spec = t.spec ? m.features.find((f) => featureSlug(f) === t.spec) : undefined
   return (
@@ -128,6 +170,8 @@ function Task({ m, t, n }: { m: BuildModule; t: GuideTask; n: number }) {
 
       <div className="pl-10">
         {t.shots?.map((s, i) => <Shot key={i} s={s} />)}
+
+        {t.settings?.map((s, i) => <Settings key={i} s={s} />)}
 
         {t.tips && t.tips.length > 0 && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
