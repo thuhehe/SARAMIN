@@ -116,12 +116,12 @@ export type Verification =
       by?: string
       wasVerifiedAt?: string
     }
-export const VERIFICATION: Record<VerificationState, { vi: string; en: string }> = {
-  verified: { vi: 'Đã xác minh', en: 'Verified' },
-  unverified: { vi: 'Chưa xác minh', en: 'Unverified' },
-}
 /*
  * THREE LABELS ON SCREEN, TWO STATES IN THE DATA (client, 09/09/2026).
+ *
+ * VERIFY_DISPLAY below is the ONLY label map. There used to be a second one keyed
+ * by the stored state, which is how a screen ends up saying "Chưa xác minh" after
+ * the label was renamed everywhere else — two maps for one vocabulary is the drift.
  *
  * An admin reading a list asks two different questions about an unverified record —
  * "can I clear this now?" and "is the customer still owing us paperwork?" — so the

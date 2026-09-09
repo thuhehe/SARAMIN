@@ -2632,39 +2632,6 @@ export const crm: BuildModule = {
           warn: 'SECURITY — CONFIRM BEFORE BUILD. An MST is public: anyone can sign up with FPT’s tax code. The shell model makes that harmless right up to the Move — after which the person sees FPT’s jobs, applicants and quota. RECOMMENDED RULE: Move creates a JOIN REQUEST that the existing company’s own Admin approves on the Company site (the Users tab already anticipates “a self-signup requesting to join appears here for the Admin to approve”); Saramin admin decides alone only when that company has no active Admin (the break-glass case). Default written elsewhere in this spec is the simpler “Saramin admin Moves”; if the recommended rule is accepted, Move becomes “propose”, and the Company users feature gains a Pending member state.',
         },
         {
-          label: 'Sign-up form — the new field, and what the created company looks like',
-          text: 'The form keeps every current field (Full name · Email · Phone · Password · Tax number · Company name · Is your company currently hiring? · Terms). One field is added, optional, under Company information.',
-          table: {
-            cols: ['Field', 'Required', 'Rule'],
-            rows: [
-              ['**Enterprise Registration Certificate (ERC) — Giấy chứng nhận đăng ký doanh nghiệp**', 'No', '**Several files** (the certificate has pages; an amendment is its own sheet). PDF · JPG · PNG, ≤ 10 MB each. Attached to the created company’s Enterprise Registration Documents card the moment the email is verified — never kept on the sign-up row. Optional because a person signing up from their phone at a job fair may not have it; the tag and the disabled Post job will ask again inside the console.'],
-              ['Tax number', 'Yes (unchanged)', 'Becomes the company’s MST. NOT uniqueness-blocked at sign-up: a duplicate is a real HR person at an existing customer more often than fraud, and the Sign-ups Match column plus Move is how the admin merges them.'],
-              ['Company name', 'Yes (unchanged)', 'Becomes the display name; the legal name is confirmed from the ERC at verification.'],
-            ],
-          },
-          items: [
-            'WHAT THE LINK CLICK CREATES: a login (Active, role Admin of the new company), a company on Customers with `verification = unverified/new`, `owner = Chưa phân`, the ERC files if any, and one Sign-ups row.',
-            'THE SUCCESS PAGE tracker reads: Signed up ✓ → Verify your email (do this now) → **You’re in** → Complete your company record (registered address + ERC — the tax code is already there) → Saramin verifies your company (~1 business day). It says plainly that posting jobs unlocks at the last step.',
-            'A self-registered company is visible on Customers in the DEPARTMENT view even though nobody owns it — otherwise it exists and no one can find it to verify it.',
-          ],
-        },
-        {
-          label: 'The STORED model — two values; “edited after verification” is a reason, not a third state',
-          text: 'The client asked what to call the state a company falls into when an admin edits it after verification. Answer: the same **Unverified**, carrying a **reason**. Every gate in the system reads one yes/no; a third value would double every condition for no new behaviour. What differs is the line under the tag, and the checklist telling the next admin this record has been looked at before.',
-          table: {
-            cols: ['State', 'EN / VI on screen', 'Means', 'Leaves the state when'],
-            rows: [
-              ['**verified**', 'Verified / Đã xác minh — **blue** shield pill', 'An admin read the ERC against the MST and registered address on the record and pressed Verify. Stored: `verifiedAt`, `verifiedBy`.', 'An admin saves a change to identity data (legal name · MST · registered address · company type) → unverified, reason `edited`'],
-              ['**unverified** · reason `new`', 'Two labels, by readiness: **Thiếu hồ sơ** (slate) while an input is missing, **Chờ xác minh** / *Waiting for verify* (amber) once all three are on file. Same stored value — see the status table above.', 'Never checked. Every self-registered company starts here; so does an admin-created one saved without documents.', 'Admin presses Verify — possible only once MST · địa chỉ đăng ký MST · ERC are all on the record'],
-              ['**unverified** · reason `edited`', '**Chờ xác minh · cần xác minh lại** (EN: *re-verification needed*) — the documents are still on file, so it reads as ready, with the modifier', 'WAS verified; an admin then changed identity data. Stored: `wasVerifiedAt`, `editedAt`, `editedBy`.', 'Admin presses Verify again. The dialog shows what changed and when.'],
-            ],
-          },
-          items: [
-            'The employer NEVER moves this flag — not by editing (they cannot, once verified) and not by uploading (an upload is evidence, not a decision).',
-            'The tag is the same component on both sites and reads from the same field. Blue, not green: green is the CRM’s “active / bought” tone, and a company can be Verified without ever buying.',
-          ],
-        },
-        {
           label: 'What Verified gates — exactly two things',
           table: {
             cols: ['Action', 'Unverified', 'Verified', 'Why the gate sits here'],
