@@ -91,8 +91,73 @@ export const BUYER_TYPE: Record<BuyerType, { vi: string; en: string; tax: 'req' 
   'ca-nhan': { vi: 'Cá nhân không có CCCD', en: 'Individual, no ID provided', tax: 'empty', noAddress: true, hint: `Không hỏi MST, CCCD và cả địa chỉ. Hóa đơn chỉ in “${RETAIL_BUYER}” ở dòng Họ tên người mua hàng.` },
 }
 
+/* ── VERIFICATION — has Saramin checked this company is who it says it is? ──────
+   TWO states, deliberately. A company is either Verified (an admin has checked the
+   ERC — Giấy chứng nhận đăng ký doanh nghiệp — against the legal name and MST, and
+   pressed Verify) or it is not. "Was verified, then an admin edited it" is NOT a
+   third state: it is Unverified with a REASON, because every gate reads the same
+   yes/no and a third value would double every condition for no new behaviour.
+
+   What the state gates (and only this): the employer posting a job on the Company
+   site, and Sales requesting the official invoice. Logging in, reading, uploading
+   documents and fixing company information are all allowed while Unverified — the
+   point of the state is to stop paid and legal actions on an identity nobody has
+   looked at, not to lock the customer out. */
+export type VerificationState = 'verified' | 'unverified'
+export type Verification =
+  | { state: 'verified'; at: string; by: string }
+  | {
+      state: 'unverified'
+      /** `new` = never verified (self-registered, or created without documents);
+          `edited` = WAS verified and an admin then changed identity data, so the
+          check has to be done again. Same state, different line under the tag. */
+      reason: 'new' | 'edited'
+      since: string
+      by?: string
+      wasVerifiedAt?: string
+    }
+export const VERIFICATION: Record<VerificationState, { vi: string; en: string }> = {
+  verified: { vi: 'Đã xác minh', en: 'Verified' },
+  unverified: { vi: 'Chưa xác minh', en: 'Unverified' },
+}
+/*
+ * THREE LABELS ON SCREEN, TWO STATES IN THE DATA (client, 09/09/2026).
+ *
+ * An admin reading a list asks two different questions about an unverified record —
+ * "can I clear this now?" and "is the customer still owing us paperwork?" — so the
+ * amber tag was split in two. What did NOT change is the stored model: the record
+ * still holds `verified | unverified`, and "waiting" is DERIVED from the three
+ * Verify inputs on every read (see verifyDisplayOf / verifyGaps). Storing it is how
+ * a tag ends up saying "waiting" while the Verify button says "missing".
+ *
+ *   verified    · blue  · an admin pressed Verify
+ *   waiting     · amber · unverified, every input on file → OUR queue
+ *   unverified  · slate · unverified, an input missing   → THE EMPLOYER's to-do
+ *
+ * The colour split is the point: amber is work we can do, slate is work we are
+ * waiting on. `reason: 'edited'` stays a modifier on whichever of the two it lands
+ * in — "was verified, then changed" is a different sentence from "never checked".
+ */
+export type VerifyDisplay = 'verified' | 'waiting' | 'unverified'
+export const VERIFY_DISPLAY: Record<VerifyDisplay, { vi: string; en: string }> = {
+  verified: { vi: 'Đã xác minh', en: 'Verified' },
+  waiting: { vi: 'Chờ xác minh', en: 'Waiting for verify' },
+  unverified: { vi: 'Chưa xác minh', en: 'Unverified' },
+}
+/** Self-registered accounts arrive with no sales owner — this is the placeholder
+    the record carries until an admin assigns one at verification. */
+export const NO_OWNER = 'Chưa phân'
+
 export type Company = {
   name: string; shortName: string; legalName: string; tax: string; industry: string; size: string; address: string
+  /** Set on records that have been through (or fallen out of) the check. Absent on
+      legacy seeds — see verificationOf(), which treats an admin-created customer as
+      verified, because every one of them was created from signed documents. */
+  verification?: Verification
+  /** Seed override for the ERC files on record — see companyDocs(), which derives
+      the list for every legacy row. Set only where the derivation cannot know: a
+      self-registered company that uploaded before anyone verified it. */
+  docs?: { name: string; note?: string; by?: 'company' | 'admin' }[]
   /** Which of the four invoice shapes this buyer takes. Defaults to a Vietnamese
       company, which is the overwhelming majority. */
   buyerType?: BuyerType
@@ -130,10 +195,31 @@ export type Company = {
       the pool for another rep to claim. See CRM → “Ending a customer relationship”. */
   archived?: { at: string; by: string; reason: string; note?: string }
 }
+/** The verification a record is in, with the legacy default: a company an admin
+    created from documents reads Verified; only a record that says otherwise does not. */
+export function verificationOf(c: Company): Verification {
+  return c.verification ?? { state: 'verified', at: c.since && c.since !== '—' ? c.since : '01/07/2026', by: 'Admin · Lê Minh Anh' }
+}
+export const isVerified = (c: Company) => verificationOf(c).state === 'verified'
+
 export const COMPANIES: Company[] = [
   { name: 'Công ty TNHH Đại Dương', shortName: 'Đại Dương', legalName: 'Công ty TNHH Đại Dương', country: 'Việt Nam', tax: '0315xxxxxx', industry: 'Thủy sản', size: '50–200', address: 'Hải Phòng', contact: 'Mr. Nguyễn Văn Toàn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '18/06/2026', renewal: '18/12/2026', nextStep: 'Quarterly review', idle: 34, note: 'Renewal discussion started.', revenue: 55_000_000, jobPosting: true, resumeSearch: true, jobLeft: 6, jobTotal: 10, cvLeft: 45, cvTotal: 80, hasPage: true, jobs: 3, domain: 'daiduong.vn', since: '12/04/2025' },
-  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', fromPool: { at: '14/07/2026', by: 'Lê Minh Anh (admin)' }, country: 'Việt Nam', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 1, domain: 'binhminh.edu.vn', since: '—' },
+  { name: 'Công ty CP Bình Minh', shortName: 'Bình Minh', legalName: 'Công ty Cổ phần Bình Minh', fromPool: { at: '14/07/2026', by: 'Lê Minh Anh (admin)' },
+    /* THE RE-VERIFY CASE: verified on promotion, then an admin corrected the legal
+       name on 06/09 — so the check is owed again, and the tag says exactly that. */
+    verification: { state: 'unverified', reason: 'edited', since: '06/09/2026', by: 'Lê Minh Anh (admin)', wasVerifiedAt: '14/07/2026' }, country: 'Việt Nam', tax: '0316xxxxxx', industry: 'Giáo dục', size: '50–200', address: 'Quận 3, HCMC', contact: 'Ms. Lê Thu Hằng · HR', owner: 'Phạm Quang Huy', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Schedule product demo', idle: 6, note: 'Quotation sent — demo booked 29/07.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 1, domain: 'binhminh.edu.vn', since: '—' },
   { name: 'Công ty TNHH Sao Mai', shortName: 'Sao Mai', legalName: 'Công ty TNHH Sao Mai', country: 'Việt Nam', tax: '0317xxxxxx', industry: 'Sản xuất', size: '200–500', address: 'Bình Dương', contact: 'Mr. Trần Đức Anh · HR Mgr', owner: 'Trần Quốc Trung', status: 'Negotiation', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Send revised quote', idle: 12, note: 'Waiting on their board approval.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'saomai.vn', since: '—' },
+  /* UNVERIFIED, IN A REP'S OWN BOOK — the case the default view was missing. The
+     other two unverified rows are self-registered and therefore UNOWNED, so they
+     surface only in the department view; this one is owned, so a lead or rep sees
+     an Unverified tag without switching persona. Story: the employer registered
+     itself, completed the record on Company information (registered address + ERC,
+     one file), and a rep has since claimed the account but not called yet. Nothing
+     is missing, so it reads "✓ Đủ hồ sơ — verify được" and counts toward Chờ verify;
+     Verify is the admin's to press. */
+  { name: 'Công ty TNHH Nội thất Thiên An', shortName: 'Thiên An', legalName: 'Công ty TNHH Nội thất Thiên An', country: 'Việt Nam', tax: '0397xxxxxx', industry: 'Sản xuất', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Trịnh Mỹ Duyên · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Gọi lần đầu — hồ sơ đã đủ, chờ admin verify', idle: null, note: 'Tự đăng ký 04/09, đã điền địa chỉ đăng ký MST + ERC. Sales vừa nhận về book, chưa gọi.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatthienan.vn', since: '—',
+    verification: { state: 'unverified', reason: 'new', since: '04/09/2026' },
+    docs: [{ name: 'ERC-giay-chung-nhan-DKDN.pdf', note: 'Tải lên 05/09/2026', by: 'company' }] },
   { name: 'Công ty TNHH Vạn Phát', shortName: 'Vạn Phát', legalName: 'Công ty TNHH Vạn Phát', country: 'Việt Nam', tax: '0312xxxxxx', industry: 'Healthcare', size: '200–500', address: 'Quận 1, HCMC', contact: 'Ms. Vũ Thanh Linh · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Invoice', account: 'Existing', lastPO: '26/05/2026', renewal: '26/08/2026', nextStep: 'Onboarding check-in', idle: 47, note: 'Kickoff scheduled 30/07.', revenue: 37_800_000, jobPosting: true, resumeSearch: true, jobLeft: 7, jobTotal: 10, cvLeft: 62, cvTotal: 100, hasPage: true, jobs: 4, domain: 'vanphat.vn', since: '26/05/2026' },
   { name: 'FPT Software', shortName: 'FPT Software', legalName: 'Công ty TNHH Phần mềm FPT', country: 'Việt Nam', tax: '0101xxxxxx', industry: 'CNTT', size: '5000+', address: 'Cầu Giấy, Hà Nội', contact: 'Mr. Lý Văn Giang · HR Lead', owner: 'Phạm Quang Huy', status: 'Invoice', account: 'Existing', lastPO: '15/06/2026', renewal: '15/09/2026', nextStep: 'Upsell Resume Search', idle: 60, note: 'Discussed CV-search add-on.', revenue: 420_000_000, jobPosting: true, resumeSearch: true, jobLeft: 12, jobTotal: 50, cvLeft: 180, cvTotal: 400, hasPage: true, jobs: 38, domain: 'fpt.com.vn', since: '12/01/2024' },
   { name: 'Công ty CP Hoàng Gia', shortName: 'Hoàng Gia', legalName: 'Công ty Cổ phần Hoàng Gia', country: 'Việt Nam', tax: '0313xxxxxx', industry: 'Bất động sản', size: '50–200', address: 'Quận 7, HCMC', contact: 'Ms. Đỗ Thu Hà · Recruiter', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '03/03/2026', renewal: '03/09/2026', nextStep: 'Confirm CV-unlock usage', idle: 1, note: 'PO signed; awaiting payment.', revenue: 20_000_000, jobPosting: false, resumeSearch: true, jobLeft: 0, jobTotal: 0, cvLeft: 40, cvTotal: 50, hasPage: false, jobs: 0, domain: 'hoanggia.vn', since: '03/03/2026' },
@@ -248,6 +334,23 @@ export const COMPANIES: Company[] = [
   { name: 'Công ty TNHH An Toàn Lao Động Việt', shortName: 'ATLĐ Việt', legalName: 'Công ty TNHH An Toàn Lao Động Việt', country: 'Việt Nam', tax: '0362xxxxxx', industry: 'Dịch vụ', size: '50–200', address: 'Quận Bình Tân, HCMC', contact: 'Ms. Dương Kiều My', owner: 'Trần Quốc Trung', status: 'PO', account: 'Existing', lastPO: '05/07/2026', renewal: '05/10/2026', nextStep: 'Collect PO number', idle: 6, note: 'Awaiting their PO number.', revenue: 118_000_000, jobPosting: true, resumeSearch: true, jobLeft: 9, jobTotal: 30, cvLeft: 69, cvTotal: 100, hasPage: true, jobs: 4, domain: 'atldviet.vn', since: '05/07/2026' },
   { name: 'Công ty CP Khách sạn Biển Đông', shortName: 'Biển Đông', legalName: 'Công ty Cổ phần Khách sạn Biển Đông', country: 'Việt Nam', tax: '0363xxxxxx', industry: 'Du lịch', size: '500–1000', address: 'Đà Nẵng', contact: 'Mr. Nguyễn Hải Sơn · HR Manager', owner: 'Nguyễn Thị Lan', status: 'Proposal', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Confirm option 2', idle: 13, note: 'Second option preferred.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'biendonghotel.vn', since: '—' },
   { name: 'Công ty TNHH Thương mại Hoàng Long', shortName: 'Hoàng Long', legalName: 'Công ty TNHH Thương mại Hoàng Long', country: 'Việt Nam', tax: '0364xxxxxx', industry: 'Bán lẻ', size: '200–500', address: 'Quận 6, HCMC', contact: 'Ms. Đinh Thu Hà', owner: 'Phạm Quang Huy', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Qualify need & budget', idle: 3, note: 'Inbound from the website.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'hoanglongtm.vn', since: '—' },
+  /* SELF-REGISTERED (2026-09-08 flow): created by the sign-up itself the moment the
+     email was verified — no admin, no sales owner, no registered address (the
+     sign-up form has no address field), no documents yet. It is a real Customers
+     row with Verified = Unverified: the employer is logged in and can read and
+     update, but cannot post a job or be invoiced until an admin verifies. TWO of
+     the three Verify inputs are missing (address · ERC), so this is the row the
+     "Unverified · missing info" filter finds and the Verify button stays disabled
+     on. The matching Sign-ups row is Phạm Thu Trang. */
+  { name: 'Công ty CP NewCo', shortName: 'NewCo', legalName: 'Công ty Cổ phần NewCo', country: 'Việt Nam', tax: '0399xxxxxx', industry: 'CNTT', size: '10–49', address: '', contact: 'Ms. Phạm Thu Trang · HR', owner: NO_OWNER, status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Chờ hồ sơ: địa chỉ đăng ký MST + ERC', idle: null, note: 'Tự đăng ký trên Company site 08/09 — chưa có địa chỉ đăng ký MST, chưa có ERC.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'newco.vn', since: '—',
+    verification: { state: 'unverified', reason: 'new', since: '08/09/2026' } },
+  /* SELF-REGISTERED and READY: the employer finished the record the next day —
+     typed the registered address on Company information and uploaded the ERC (two
+     pages). Nothing is missing, nobody has pressed Verify yet: this is the row the
+     "Unverified · ready to verify" filter and the "Chờ verify" counter exist for. */
+  { name: 'Công ty TNHH Giải pháp Số Việt', shortName: 'Số Việt', legalName: 'Công ty TNHH Giải pháp Số Việt', country: 'Việt Nam', tax: '0398xxxxxx', industry: 'CNTT', size: '10–49', address: 'Quận Cầu Giấy, Hà Nội', contact: 'Mr. Đỗ Quang Minh · Giám đốc', owner: NO_OWNER, status: 'Lost', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Verify công ty — hồ sơ đã đủ', idle: null, note: 'Tự đăng ký 06/09 — đã điền địa chỉ đăng ký MST, ERC 2 trang; chờ admin Verify.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'sovietsolutions.vn', since: '—',
+    verification: { state: 'unverified', reason: 'new', since: '06/09/2026' },
+    docs: [{ name: 'ERC-giay-chung-nhan-DKDN-trang-1.pdf', note: 'Tải lên 07/09/2026', by: 'company' }, { name: 'ERC-giay-chung-nhan-DKDN-trang-2.pdf', note: 'Tải lên 07/09/2026', by: 'company' }] },
 ]
 
 /* Colour carries meaning, so customer status must not borrow RED. On a company row
@@ -431,7 +534,9 @@ export const coKey = (c: Company) => {
 /** City / province — the last segment of the address (the form captures both). */
 /** A Vietnamese-registered company — the only case that gets the province picker. */
 export const isVNCompany = (c: Company) => /^vi[eệ]t nam$|^vietnam$/i.test(c.country.trim())
-export const coCity = (c: Company) => c.address.split(',').pop()!.trim()
+/** City = the last comma-part of the registered address. Empty when the record has
+    no address yet — a self-registered company arrives without one. */
+export const coCity = (c: Company) => (c.address ? c.address.split(',').pop()!.trim() : '')
 /** Demo-only: a stable lead source per company, so the field is exercised without
     authoring one on every row. Real build stores this from the New-company form. */
 export const LEAD_SOURCES = ['Website sign-up', 'Inbound call', 'Referral', 'Event / job fair', 'Outbound', 'Partner']

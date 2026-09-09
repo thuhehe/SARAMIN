@@ -84,6 +84,45 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    date: '2026-09-09',
+    kind: 'both',
+    module: 'crm',
+    title: {
+      vi: 'Xác minh công ty — nút Verify chỉ mở khi hồ sơ đủ 3 mục (MST · địa chỉ đăng ký MST · ERC); Customers lọc và đếm được công ty đã đủ hồ sơ',
+      en: 'Company verification — Verify opens only when the record has all three inputs (MST · registered address · ERC); Customers filters and counts the companies that are ready',
+    },
+    detail: {
+      vi: 'Trước đây checklist Verify có 4 mục (ERC · MST khớp · tên pháp lý khớp · đã phân sales owner). Nay đúng 3 input trên hồ sơ: MST, địa chỉ đăng ký MST và ít nhất một tệp ERC — tên pháp lý và sales owner chỉ hiện để đối chiếu, không chặn. “Đủ hồ sơ” được tính từ ba trường đó mỗi lần đọc, không lưu, nên mọi màn hình nói cùng một điều: filter Verified trên Customers có 3 giá trị (Verified · Unverified · ready to verify · Unverified · missing info), chip “Chờ verify · n” lọc một click, dưới tag Unverified ghi rõ còn thiếu gì, nút Verify company ở Company detail disabled kèm lý do, và panel Sign-ups cũng báo hồ sơ đủ hay thiếu. Phía Company site: nút cạnh tag đọc “Xác minh công ty · thiếu N mục →”, trang Post job và Company information liệt kê 3 mục ✓/✗ với link đến chỗ điền; đủ 3 thì báo “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc”.',
+      en: 'The Verify checklist used to have four items (ERC · MST matches · legal name matches · sales owner assigned). It is now exactly three inputs on the record: MST, registered (tax) address and at least one ERC file — legal name and sales owner are shown to read against the certificate, not gates. “Ready” is computed from those three fields on every read, never stored, so every screen says the same thing: the Verified filter on Customers has three values (Verified · Unverified · ready to verify · Unverified · missing info), a “Chờ verify · n” chip applies the ready filter in one click, the Unverified tag on each row says what is missing, the Verify company button on Company detail is disabled with the reason, and the Sign-ups panel reports ready / missing too. On the Company site the header button reads “Xác minh công ty · thiếu N mục →”, and Post job and Company information list the three items ✓/✗ with a link to where each is filled; with all three in: “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc”.',
+    },
+  },
+  {
+    date: '2026-09-09',
+    kind: 'requirement',
+    module: 'account-management',
+    title: {
+      vi: 'Company information (Company site) — hai trạng thái: Chưa xác minh thì Admin tài khoản sửa trực tiếp mọi trường; Đã xác minh thì chỉ đọc. Bỏ hàng đợi “yêu cầu thay đổi”',
+      en: 'Company information (Company site) — two states: editable by the account Admin while Unverified, read-only once Verified. The change-request queue is gone',
+    },
+    detail: {
+      vi: 'Bản trước đưa tên pháp lý · MST · địa chỉ đăng ký · loại công ty qua yêu cầu thay đổi (Pending review → Applied / Declined) để HQ duyệt. Nay việc xác minh chính là bước duyệt: khi Chưa xác minh, Admin tài khoản điền và sửa trực tiếp (kể cả MST, địa chỉ) để đủ hồ sơ; khi Đã xác minh, trang chỉ đọc, chỉ Saramin sửa và sửa là rớt cờ, phải Verify lại. Banner “Để được xác minh, Saramin cần đủ 3 mục” hiện ở cả chế độ xem và sửa (Figma 2311-10289 · 2313-10289). Giấy tờ (Enterprise Registration Documents) không còn trạng thái theo từng tệp — tệp có hay không, cờ Verified của công ty là kết luận duy nhất; tải lên được ở cả hai trạng thái, xoá chỉ khi Chưa xác minh.',
+      en: 'The previous draft routed legal name · tax code · registered address · company type through change requests (Pending review → Applied / Declined) for HQ to confirm. Verification now is the review: while Unverified the account Admin fills and edits everything directly (tax code and address included) to complete the record; once Verified the page is read-only, only Saramin edits, and that edit drops the flag until re-verified. The banner “Để được xác minh, Saramin cần đủ 3 mục” shows in view and edit mode (Figma 2311-10289 · 2313-10289). Documents (Enterprise Registration Documents) no longer carry a per-file status — a file is on the record or not, and the company-level Verified flag is the only verdict; upload works in both states, delete only while Unverified.',
+    },
+  },
+  {
+    date: '2026-09-09',
+    kind: 'decision',
+    module: 'crm',
+    title: {
+      vi: 'Sau khi user xác minh email, admin có hai việc độc lập: ghép trùng làm ngay; xác minh công ty thong thả — miễn xong trước khi đăng tin / xuất hóa đơn',
+      en: 'After the email is verified the admin has two independent jobs: resolve a duplicate right away; verify the company at leisure — as long as it is done before posting a job or issuing an invoice',
+    },
+    detail: {
+      vi: 'Dòng Sign-ups xuất hiện ngay khi email verified, và Move (công ty đã có trên Customers) hoặc Gộp dòng Free data dùng được ngay — không chờ ERC, không chờ xác minh. Xác minh không có deadline riêng; hai cổng duy nhất là đăng tin và yêu cầu xuất hóa đơn chính. Sơ đồ trên trang Sign-up & company verification vẽ lại hai việc này thành hai nhóm tách nhau, và sơ đồ nay vừa với khổ trang (không còn phải kéo ngang mới thấy hết chữ).',
+      en: 'The Sign-ups row appears the moment the email is verified, and Move (company already on Customers) or merging a Free data row is available at once — no waiting for the ERC or for verification. Verification has no deadline of its own; the only two gates are posting a job and requesting the official invoice. The diagram on the Sign-up & company verification page now draws the two jobs as separate groups, and it fits the page width (no more horizontal scrolling to read the labels).',
+    },
+  },
+  {
     date: '2026-09-08',
     kind: 'guide',
     module: 'products-packages',

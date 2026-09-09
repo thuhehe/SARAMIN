@@ -1,7 +1,7 @@
 /*
  * Inbound self-registrations waiting to be turned into a CRM company.
  */
-import { COMPANIES } from '@/pages/admin/data/companies'
+import { COMPANIES, verificationOf } from '@/pages/admin/data/companies'
 import { DIRECTORY } from '@/pages/admin/data/directory'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
@@ -32,10 +32,12 @@ export type Signup = {
   /** what happened once resolved */
   outcome?: string
 }
-/* Two gates: (1) EMAIL VERIFIED — automatic, gates whether HQ can act; (2) HQ placement.
-   MATCH is just information. The ACTION is the SAME choices for every sign-up:
-   move to an existing company · create a new company + move · archive.
-   Move / Create unlock login + send a "you’re in" email (password already set at sign-up). */
+/* Since 09/2026 the email link is the ONLY gate before login: verifying it creates
+   the person's login AND their company (Customers, Verified = Unverified, no owner)
+   and puts one row here. The row is a DEDUP + awareness queue, not a login gate:
+   Move re-attaches the login to a company we already have and archives the shell;
+   Archive is for spam; a genuinely new company needs nothing here — the row resolves
+   when an admin verifies the company from Company detail. */
 export const SIGNUP_STATUS: Record<SignupStatus, StatusTone> = { New: 'pending', Resolved: 'active', Archived: 'expired' }
 export const SIGNUPS: Signup[] = [
   { person: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true, when: '15m ago', matched: false, status: 'New' },
@@ -100,6 +102,12 @@ export function signupMatches(s: Signup): SignupMatch[] {
     else hits.set(key, { name, where, why: [why] })
   }
   for (const c of COMPANIES) {
+    /* The company this very sign-up CREATED is not a duplicate of itself. Since
+       09/2026 the email click creates an Unverified shell with the typed name and
+       MST — without this test every self-registered row would list its own shell
+       as a match and the operator would "Move" a person into the company they are
+       already in. A shell is recognised by the three things the sign-up gave it. */
+    if (verificationOf(c).state === 'unverified' && tax && c.tax?.trim() === tax && typed && normName(c.name) === typed) continue
     const label = c.shortName?.trim() || c.name
     if (typed && (normName(c.name) === typed || normName(c.legalName) === typed)) add(label, 'crm', 'tên')
     if (dom && siteDomain(c.domain) === dom) add(label, 'crm', 'đuôi email')

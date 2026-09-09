@@ -81,7 +81,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-company-list': { module: 'crm', feature: 'Customers' },
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
   'admin-company-archived': { module: 'crm', feature: 'Customers' },
-  'admin-signups': { module: 'crm', feature: 'Sign-ups' },
+  'admin-signups': { module: 'crm', feature: 'Sign-up & company verification (ERC)' },
   // Both pool screens are specified as ONE feature — the claim flow is the spec, and
   // the queue is the second half of it. They sit on the System nav but belong to CRM.
   'admin-company-directory': { module: 'crm', feature: 'Free data' },
@@ -89,6 +89,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-quotes': { module: 'crm', feature: 'Quotations' },
   'admin-purchase-orders': { module: 'crm', feature: 'Purchase order' },
   'admin-invoices': { module: 'crm', feature: 'Invoices' },
+  'admin-company-users': { module: 'account-management', feature: 'Company users & roles (on Admin)' },
   // System
   'admin-staff': { module: 'admin-access', feature: 'Staff directory', site: 'Admin' },
   'admin-roles': { module: 'admin-access', feature: 'Roles & permissions' },
@@ -218,11 +219,12 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <Users className="h-4 w-4" />,
     items: [
       { label: 'Jobseeker users', specId: 'admin-jobseekers' },
-      /* Company users REMOVED (2026-09-08 page feedback). It was a second list of
-         data the company record already carries: Company detail → Users does seats,
-         invite, resend/cancel, change role and disable, scoped to one company. HQ
-         manages a company's logins from that company's record — see the account
-         management requirement — so this screen was upkeep without a job. */
+      /* Company users: removed on 2026-09-08 page feedback as a second list of what
+         the company record already carries, then RESTORED on 2026-09-09 page feedback.
+         It answers the two questions Company detail → Users cannot, because that tab
+         is scoped to one company you already found: resolve an email to a login
+         without knowing its company, and see disabled users across every account. */
+      { label: 'Company users', specId: 'admin-company-users' },
     ],
   },
   {

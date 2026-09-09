@@ -1,7 +1,7 @@
 /* The pills that show a state: status, days-idle, membership tier. */
 import { cn } from '@/lib/utils'
-import { IDLE_RULE, ROT_DOT, ROT_TEXT, idleOf } from '@/pages/admin/data/companies'
-import type { Cadence } from '@/pages/admin/data/companies'
+import { IDLE_RULE, ROT_DOT, ROT_TEXT, VERIFY_DISPLAY, idleOf } from '@/pages/admin/data/companies'
+import type { Cadence, Verification, VerifyDisplay } from '@/pages/admin/data/companies'
 import { TIERS, TIER_YEAR } from '@/pages/admin/data/membership'
 import type { TierRow } from '@/pages/admin/data/membership'
 import { dateBefore, revFmt } from '@/pages/admin/lib/fmt'
@@ -60,5 +60,70 @@ export function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
       {tier.vi}
       {en && <span className="text-[9.5px] opacity-70">({tier.key})</span>}
     </span>
+  )
+}
+
+/**
+ * The verification tag — the SAME mark the employer sees beside their company name
+ * on the Company site (Figma 2302-44567: a blue shield pill reading "Verified"), so
+ * an admin and a customer on the phone are looking at one symbol.
+ *
+ * THREE labels (client, 09/09/2026), two stored states — `display` is derived by
+ * verifyDisplayOf(), never held on the record:
+ *
+ *   Verified            blue  · an admin pressed Verify
+ *   Waiting for verify  amber · every input on file, nobody has verified → our queue
+ *   Unverified          slate · an input missing                         → their to-do
+ *
+ * Blue, not green, on purpose: green is the CRM's "active / bought" tone, and a
+ * company can be Verified without ever having bought anything. Amber vs slate is
+ * the load-bearing part — amber is work an admin can clear right now, slate is work
+ * we are waiting on the employer for, so a queue of amber tags is a real queue.
+ * `reason: 'edited'` is a modifier on either unverified label, because "we changed
+ * something, check it again" is a different task from "never checked".
+ */
+export function VerifiedTag({ v, display, en, showReason = true }: { v: Verification; display?: VerifyDisplay; en?: boolean; showReason?: boolean }) {
+  /* Callers that know the gaps pass `display`; the rest fall back to the stored
+     state, which can only ever say verified / unverified. */
+  const shown: VerifyDisplay = display ?? (v.state === 'verified' ? 'verified' : 'unverified')
+  const label = en ? VERIFY_DISPLAY[shown].en : VERIFY_DISPLAY[shown].vi
+  if (v.state === 'verified') {
+    return (
+      <span title={`Xác minh ${v.at} · ${v.by}`} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold text-blue-700">
+        <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden><path d="M8 1.5 2.5 3.6v3.9c0 3.3 2.4 6.2 5.5 7 3.1-.8 5.5-3.7 5.5-7V3.6L8 1.5Z" fill="currentColor" opacity=".18" /><path d="M8 1.5 2.5 3.6v3.9c0 3.3 2.4 6.2 5.5 7 3.1-.8 5.5-3.7 5.5-7V3.6L8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="m5.6 8 1.7 1.7 3.2-3.4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        {label}
+      </span>
+    )
+  }
+  const why = v.reason === 'edited' ? `Đã xác minh ${v.wasVerifiedAt}, đổi thông tin ${v.since}${v.by ? ` bởi ${v.by}` : ''} — cần xác minh lại` : `Chưa ai xác minh · từ ${v.since}`
+  const waiting = shown === 'waiting'
+  return (
+    <span
+      title={waiting ? `${why} · hồ sơ đã đủ — admin bấm Verify được` : `${why} · còn thiếu hồ sơ`}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold',
+        waiting ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-100 text-slate-600',
+      )}
+    >
+      {label}
+      {showReason && v.reason === 'edited' && (
+        <span className={cn('font-normal', waiting ? 'text-amber-700/80' : 'text-slate-500')}>· cần xác minh lại</span>
+      )}
+    </span>
+  )
+}
+
+/**
+ * Under an Unverified tag: can an admin press Verify on this record yet? Reads the
+ * gaps computed by verifyGaps() — the SAME function the Verify button reads — so a
+ * row never promises what the dialog then refuses. Green when nothing is missing,
+ * amber naming exactly what is, so the admin knows without opening the record
+ * whether it is worth opening.
+ */
+export function VerifyReadiness({ gaps }: { gaps: readonly string[] }) {
+  return gaps.length === 0 ? (
+    <span className="block truncate text-[10px] font-medium text-emerald-700" title="MST · địa chỉ đăng ký MST · ERC đều đã có — bấm Verify được">✓ Đủ hồ sơ — verify được</span>
+  ) : (
+    <span className="block truncate text-[10px] text-amber-700" title={`Còn thiếu: ${gaps.join(' · ')}`}>Thiếu: {gaps.join(' · ')}</span>
   )
 }

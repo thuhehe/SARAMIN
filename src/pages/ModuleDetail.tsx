@@ -9,6 +9,7 @@ import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { GUIDES, guidePath } from '@/data/guides'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
+import { CompanyVerificationFlow } from '@/components/CompanyVerificationFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { CvLanguageLayers } from '@/components/CvLanguageLayers'
 import { CvVersionStory } from '@/components/CvVersionStory'
@@ -313,6 +314,7 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
       {/* A whole-process flow gets the FULL width, not the reading measure — a
           diagram squeezed into a text column is a diagram nobody can follow. */}
       {r.diagram === 'company-intake' && <CompanyIntakeFlow />}
+      {r.diagram === 'company-verification' && <CompanyVerificationFlow />}
       {r.table && <ReqTableView t={r.table} dense={dense} />}
       {r.items && <ReqBullets items={r.items} dense={dense} />}
       {r.warn && (
@@ -1003,12 +1005,11 @@ export function FeatureDetail() {
       </div>
 
 
-      {f.notes && (
-        <div className="mt-5 rounded-xl border border-line bg-canvas/40 p-4">
-          <p className="text-[12px] font-semibold text-ink/70 mb-1">Notes</p>
-          <p className="text-[13px] leading-relaxed text-ink/80">{f.notes}</p>
-        </div>
-      )}
+      {/* The "Notes" box is gone (page feedback 09/09/2026). `notes` is the one-line
+          summary the MODULE page prints on its feature table; on the feature page it
+          sat between the header and the Overview and read as a second overview
+          stacked on the first — every feature has a detail, so it was never the
+          only text. One copy per rule: the module page keeps it. */}
 
       {/* rich per-feature detail — the screen is handed in so it can be placed
           after Overview + Key points rather than before them. */}

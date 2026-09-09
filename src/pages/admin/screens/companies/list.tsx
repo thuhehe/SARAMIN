@@ -2,8 +2,9 @@ import { useContext, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { CreateSignalCtx, OpenRecordCtx, ScreenNavCtx } from '@/pages/admin/ctx'
-import { AC_STATUS, COMPANIES, CO_ORDER, CO_SORTS, CO_STATUS, cadenceOf, coCity, coKey, coLabel, coLastRevenue, inPipeline } from '@/pages/admin/data/companies'
+import { AC_STATUS, COMPANIES, CO_ORDER, CO_SORTS, CO_STATUS, VERIFY_DISPLAY, cadenceOf, coCity, coKey, coLabel, coLastRevenue, inPipeline, NO_OWNER, verificationOf } from '@/pages/admin/data/companies'
 import type { CoSort, Company } from '@/pages/admin/data/companies'
+import { verifyDisplayOf, verifyGaps } from '@/pages/admin/data/companyOwner'
 import { coRoles, groupOf, groupRootOf, inGroup } from '@/pages/admin/data/companyTree'
 import { DIRECTORY } from '@/pages/admin/data/directory'
 import { TIER_YEAR, tierOf } from '@/pages/admin/data/membership'
@@ -13,9 +14,18 @@ import { revFmt } from '@/pages/admin/lib/fmt'
 import { CompanyCreatePage } from '@/pages/admin/screens/companies/create'
 import { CompanyDetail } from '@/pages/admin/screens/companies/detail'
 import { FilterBar, FilterRow, ListPage } from '@/pages/admin/ui/list'
-import { Idle, Pill, TierPill } from '@/pages/admin/ui/status'
+import { Idle, Pill, TierPill, VerifiedTag, VerifyReadiness } from '@/pages/admin/ui/status'
 import { searchKey } from '@/pages/admin/ui/table'
 import type { Col } from '@/pages/admin/ui/table'
+
+/* The Verified filter's three values ARE the three status labels (client,
+   09/09/2026) — Verified · Waiting for verify · Unverified. The split is by
+   READINESS: whether the three inputs Verify needs (MST · địa chỉ đăng ký MST ·
+   ERC) are on the record, which is the question an admin asks of this column —
+   "which can I verify right now, and which are still waiting on the employer?".
+   Derived on read (verifyGaps), never stored. */
+const WAITING = VERIFY_DISPLAY.waiting.en
+const MISSING = VERIFY_DISPLAY.unverified.en
 
 export function AdminCompanyList() {
   const [open, setOpen] = useState<Company | null>(null)
@@ -42,6 +52,7 @@ export function AdminCompanyList() {
   const [fStatus, setFStatus] = useState('')
   const [fPipeline, setFPipeline] = useState('')
   const [fOwner, setFOwner] = useState('')
+  const [fVerified, setFVerified] = useState('')
   /* Archived companies never appear here, and there is no filter to bring them
      back: a state whose purpose is to stop generating work must not be one wrong
      dropdown away from sitting among live customers. They have their own register —
@@ -70,7 +81,11 @@ export function AdminCompanyList() {
   const mine = effView === 'me'
   const teamBook = teamBookOf(me) // members of the team(s) this person leads
   const scope =
-    effView === 'dept' ? COMPANIES.filter((c) => SALES_DEPT.has(c.owner))
+    /* The department view also lists the UNOWNED rows — companies that registered
+       themselves and have no sales owner yet. Nobody's book contains them, so
+       without this they would be in Customers and visible to no one, which is the
+       one thing that must not happen to a company waiting to be verified. */
+    effView === 'dept' ? COMPANIES.filter((c) => SALES_DEPT.has(c.owner) || c.owner === NO_OWNER)
     : effView === 'team' ? COMPANIES.filter((c) => teamBook.has(c.owner))
     : COMPANIES.filter((c) => c.owner === me)
   const base = group ? groupOf(group) : scope
@@ -84,12 +99,17 @@ export function AdminCompanyList() {
       (!fLocation || coCity(c) === fLocation) &&
       (!fStatus || c.account === fStatus) &&
       (!fPipeline || (fPipeline === 'Not in pipeline' ? !inPipeline(c) : inPipeline(c) && c.status === fPipeline)) &&
-      (!fOwner || c.owner === fOwner),
+      (!fOwner || c.owner === fOwner) &&
+      (!fVerified || VERIFY_DISPLAY[verifyDisplayOf(c)].en === fVerified),
     )
     .slice()
     .sort(CO_SORTS[sort].cmp)
-  const activeFilters = [fIndustry, fLocation, fStatus, fPipeline, fOwner].filter(Boolean).length
-  const clearAll = () => { setFIndustry(''); setFLocation(''); setFStatus(''); setFPipeline(''); setFOwner('') }
+  /* THE VERIFY QUEUE, as a number: companies in this book that are Unverified with
+     every input on file — the ones an admin can clear right now. Missing-info rows
+     are NOT counted: those are the employer's to-do, not the admin's. */
+  const awaiting = base.filter((c) => !c.archived && verifyDisplayOf(c) === 'waiting').length
+  const activeFilters = [fIndustry, fLocation, fStatus, fPipeline, fOwner, fVerified].filter(Boolean).length
+  const clearAll = () => { setFIndustry(''); setFLocation(''); setFStatus(''); setFPipeline(''); setFOwner(''); setFVerified('') }
   if (creating) return <CompanyCreatePage onBack={() => setCreating(false)} />
 
   return (
@@ -150,7 +170,8 @@ export function AdminCompanyList() {
       <ListPage
         minW={showOwner ? 1640 : 1500}
         leading={
-          views.length > 1 ? (
+          <span className="inline-flex items-center gap-2">
+          {views.length > 1 ? (
             <span className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-[12px] font-medium">
               {views.map((v) => (
                 <button key={v} onClick={() => setView(v)} className={cn('rounded-md px-3 py-1 transition-colors', effView === v ? 'bg-brand text-white' : 'text-muted hover:text-ink')}>
@@ -160,7 +181,19 @@ export function AdminCompanyList() {
             </span>
           ) : (
             <span className="inline-flex items-center rounded-lg border border-line bg-surface px-3 py-1 text-[12px] font-medium text-muted">Công ty của tôi</span>
-          )
+          )}
+          {/* One click applies the "ready to verify" filter; a second clears it. The
+              chip disappears when the queue is empty — a zero here is not news. */}
+          {awaiting > 0 && (
+            <button
+              onClick={() => setFVerified(fVerified === WAITING ? '' : WAITING)}
+              title="Chưa xác minh nhưng đã đủ MST · địa chỉ đăng ký MST · ERC — bấm để lọc đúng các công ty này"
+              className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold', fVerified === WAITING ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-400')}
+            >
+              Chờ verify · {awaiting}
+            </button>
+          )}
+          </span>
         }
         sort={
           <label className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
@@ -303,9 +336,13 @@ export function AdminCompanyList() {
         filters={
           <FilterBar count={activeFilters} onClear={clearAll}>
             <FilterRow label="Industry" value={fIndustry} onChange={setFIndustry} options={uniq(base.map((c) => c.industry))} />
-            <FilterRow label="Location" value={fLocation} onChange={setFLocation} options={uniq(base.map(coCity))} />
+            <FilterRow label="Location" value={fLocation} onChange={setFLocation} options={uniq(base.map(coCity).filter(Boolean))} />
             <FilterRow label="Status" value={fStatus} onChange={setFStatus} options={Object.keys(AC_STATUS)} />
             <FilterRow label="Pipeline" value={fPipeline} onChange={setFPipeline} options={[...CO_ORDER, 'Not in pipeline']} />
+            {/* The three status labels. "Verified, then edited" is not a fourth
+                value — it is unverified with a reason, and it lands in Waiting or
+                Unverified by the same readiness test as any other unverified row. */}
+            <FilterRow label="Verified" value={fVerified} onChange={setFVerified} options={[VERIFY_DISPLAY.verified.en, WAITING, MISSING]} />
             {showOwner && <FilterRow label="Owner" value={fOwner} onChange={setFOwner} options={uniq(base.map((c) => c.owner))} />}
 
           </FilterBar>
@@ -318,6 +355,7 @@ export function AdminCompanyList() {
           { label: 'Industry', w: '0.9fr' },
           { label: 'Location', w: '0.9fr' },
           { label: 'Status', w: '0.8fr' },
+          { label: 'Verified', w: '0.9fr' },
           // The third axis, next to customer status because that is what a rep
           // compares it against: status says whether they buy, tier says how much.
           { label: `Tier ${TIER_YEAR}`, w: '1fr' },
@@ -348,8 +386,16 @@ export function AdminCompanyList() {
           </div>,
           <span className="truncate font-mono text-[11px] text-muted">{companyId(coKey(c))}</span>,
           <span className="truncate">{c.industry}</span>,
-          <span className="truncate">{c.address}</span>,
+          c.address ? <span className="truncate">{c.address}</span> : <span className="truncate text-[11px] text-amber-700" title="Tự đăng ký — chưa điền địa chỉ đăng ký MST">Chưa có địa chỉ</span>,
           <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>,
+          /* The same tag the employer sees on the Company site. Reason suppressed in
+             the list — the row is for finding, the detail is for reading why. The tag
+             now carries the readiness itself (Waiting for verify vs Unverified), so
+             the line under it only has to name WHAT is missing. */
+          <div className="min-w-0">
+            <VerifiedTag v={verificationOf(c)} display={verifyDisplayOf(c)} en showReason={false} />
+            {verifyDisplayOf(c) === 'unverified' && <VerifyReadiness gaps={verifyGaps(c)} />}
+          </div>,
           // Badge + the number it was earned on. The accumulated figure has to sit
           // next to the badge: without it the tier looks like something a rep set.
           <div className="min-w-0">
@@ -364,7 +410,7 @@ export function AdminCompanyList() {
               Báo giá hết hạn
             </span>
           ) : <span className="text-faint">—</span>,
-          ...(showOwner ? [<span className="truncate">{c.owner}</span>] : []),
+          ...(showOwner ? [c.owner === NO_OWNER ? <span className="truncate text-[11px] text-amber-700">Chưa phân — gán khi xác minh</span> : <span className="truncate">{c.owner}</span>] : []),
           // Plain date — no rot dot, no colour. Urgency lives on the Pipeline board
           // and in the sort, not as a third colour channel on every row.
           <Idle days={c.idle} kind={cadenceOf(c)} compact />,

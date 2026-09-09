@@ -2,8 +2,8 @@
  * Owner (sales) history — who held the account, who reassigned it and why — plus
  * the verification documents proving the MST belongs to them.
  */
-import { coLeadSource, isCustomer } from '@/pages/admin/data/companies'
-import type { CoStatus, Company } from '@/pages/admin/data/companies'
+import { coLeadSource, isCustomer, isVNCompany, verificationOf } from '@/pages/admin/data/companies'
+import type { CoStatus, Company, VerifyDisplay } from '@/pages/admin/data/companies'
 
 /* ── Owner (sales) history — who held the account, and who reassigned it ────
    The current owner is the newest entry; every earlier tenure records the ACTOR
@@ -139,7 +139,7 @@ export function companyOwnerHistory(c: Company): CoOwnerTenure[] {
   return out
 }
 
-/* ── Verification documents — proof the MST belongs to them (giấy phép KD, giấy
+/* ── Enterprise Registration Documents (ERC) — proof the MST belongs to them (giấy phép KD, giấy
    chứng nhận đăng ký thuế, hợp đồng đã ký). Uploaded at creation AND managed here
    on the record.
 
@@ -147,16 +147,68 @@ export function companyOwnerHistory(c: Company): CoOwnerTenure[] {
    fact is already visible from the list itself — a per-file Chờ duyệt / Đã duyệt
    badge added a second state to read without adding anything to act on, and it
    implied a review queue nobody owns. */
-export type CoDoc = { name: string; note?: string }
+export type CoDoc = { name: string; note?: string; by?: 'company' | 'admin' }
+/** ERC — Giấy chứng nhận đăng ký doanh nghiệp — and whatever else proves the MST is
+    theirs. SEVERAL files are normal (the certificate has pages; an amendment is its
+    own sheet), and either side may upload: the employer from Company information on
+    the Company site, or an admin on their behalf. `by` records which. */
 export function companyDocs(c: Company): CoDoc[] {
-  // Anyone ever invoiced has their licence on file; a churned customer keeps theirs.
+  // A seed that says what is on file wins over every derivation below.
+  if (c.docs) return c.docs
+  /* A record that IS or WAS verified has an ERC on file by definition — the
+     certificate is what the admin verified against. So the edited-after-verification
+     case (Bình Minh) carries its documents even though it never bought anything;
+     without them the re-verify dialog would be blocked by a fact that cannot be
+     true of a company that passed the check once. */
+  if (c.verification && (c.verification.state === 'verified' || c.verification.reason === 'edited')) return [
+    { name: 'ERC-giay-chung-nhan-dang-ky-doanh-nghiep.pdf', note: `Tải lên ${c.verification.state === 'verified' ? c.verification.at : c.verification.wasVerifiedAt ?? ''}`, by: 'company' },
+  ]
+  // Anyone ever invoiced has their ERC on file; a churned customer keeps theirs.
   // A deal that reached PO is collecting it. An early lead has none yet.
   if (c.account === 'Existing' || c.account === 'Churn') return [
-    { name: 'giay-phep-kinh-doanh.pdf', note: `Tải lên ${c.since}` },
-    { name: 'giay-chung-nhan-dang-ky-thue.pdf' },
+    { name: 'ERC-giay-chung-nhan-dang-ky-doanh-nghiep-trang-1.pdf', note: `Tải lên ${c.since}`, by: 'company' },
+    { name: 'ERC-giay-chung-nhan-dang-ky-doanh-nghiep-trang-2.pdf', by: 'company' },
+    { name: 'giay-chung-nhan-dang-ky-thue.pdf', by: 'admin' },
   ]
-  if (isCustomer(c)) return [{ name: 'giay-phep-kinh-doanh.pdf' }]
+  if (isCustomer(c)) return [{ name: 'ERC-giay-chung-nhan-dang-ky-doanh-nghiep.pdf', by: 'admin' }]
   return []
+}
+
+/* ── READY TO VERIFY — the three inputs the Verify button waits for ─────────────
+   An admin may press Verify only when the record carries the MST, the registered
+   (tax) address and at least one ERC file. This is NOT a third verification state
+   and it is NOT stored: it is read off the record every time, so the Customers
+   filter, the "Chờ verify" counter, the row hint, the header button and the dialog
+   can never disagree.
+
+   Why these three and no more: they are what the certificate is compared against —
+   the number, the registered office, and the certificate itself. The legal name is
+   deliberately absent: the sign-up already requires a company name, so it is never
+   empty, and reading it against the certificate IS the act of verifying rather than
+   an input to it. The sales owner is absent too: ownership is a Sales concern with
+   its own home (the Ownership actions), and a company can be verified before a rep
+   has been found for it.
+
+   A foreign company's tax reference is optional on the record (the New-company form
+   says so), so it is not asked for here — the other two still are. */
+export type VerifyInput = 'MST' | 'Địa chỉ đăng ký MST' | 'ERC'
+/** The inputs still MISSING before Verify can be pressed — empty array = ready. */
+export function verifyGaps(c: Company): VerifyInput[] {
+  const gaps: VerifyInput[] = []
+  if (isVNCompany(c) && !c.tax?.trim()) gaps.push('MST')
+  if (!c.address?.trim()) gaps.push('Địa chỉ đăng ký MST')
+  if (companyDocs(c).length === 0) gaps.push('ERC')
+  return gaps
+}
+export const readyToVerify = (c: Company) => verifyGaps(c).length === 0
+/**
+ * Which of the THREE tags this record shows. Derived here, next to the gaps it
+ * reads, so the tag, the filter, the counter and the Verify button cannot disagree
+ * — see the note on VERIFY_DISPLAY for why "waiting" is never stored.
+ */
+export function verifyDisplayOf(c: Company): VerifyDisplay {
+  if (verificationOf(c).state === 'verified') return 'verified'
+  return readyToVerify(c) ? 'waiting' : 'unverified'
 }
 /**
  * Pipeline stage, as a control rather than a read-out.

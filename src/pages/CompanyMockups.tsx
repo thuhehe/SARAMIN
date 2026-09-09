@@ -44,6 +44,77 @@ import { cn } from '@/lib/utils'
 const CoNav = createContext<(id: string) => void>(() => {})
 const useCoNav = () => useContext(CoNav)
 
+/* THE VERIFICATION STATE — the one flag that changes what the employer may do here.
+   Demo-switchable from the shell so a reviewer can see both states of every screen.
+   Defaults to UNVERIFIED, because that is what a new sign-up lands in and the state
+   every screen has to be designed around first. */
+/** The company record as the console sees it — only the three facts the verification
+    flow reads. `docs` is the Enterprise Registration Documents list. */
+type CoProfile = { tax: string; address: string; docs: string[] }
+const CoVerified = createContext<{
+  verified: boolean; setVerified: (v: boolean) => void
+  profile: CoProfile; setProfile: React.Dispatch<React.SetStateAction<CoProfile>>
+}>({ verified: true, setVerified: () => {}, profile: { tax: '', address: '', docs: [] }, setProfile: () => {} })
+const useCoVerified = () => useContext(CoVerified)
+
+/* ── THE THREE INPUTS — what Saramin needs before an admin can press Verify ────
+   MST · địa chỉ đăng ký MST · ERC. The SAME list readyToVerify() reads on the admin
+   side (admin/data/companyOwner.ts); every screen here that mentions verification
+   renders it from this one list, so the header, Post job and Company information
+   can never name a different set of things to do. */
+const VERIFY_INPUTS: { key: keyof CoProfile; label: string; where: string }[] = [
+  { key: 'tax', label: 'Mã số thuế (MST)', where: 'Company information → Edit' },
+  { key: 'address', label: 'Địa chỉ đăng ký MST', where: 'Company information → Edit' },
+  { key: 'docs', label: 'Giấy chứng nhận đăng ký doanh nghiệp (ERC)', where: 'Company information → Upload document' },
+]
+const hasInput = (p: CoProfile, k: keyof CoProfile) => (k === 'docs' ? p.docs.length > 0 : Boolean(p[k].trim()))
+const shownInput = (p: CoProfile, k: keyof CoProfile) => (k === 'docs' ? `${p.docs.length} tệp đã tải lên` : p[k])
+const coGaps = (p: CoProfile) => VERIFY_INPUTS.filter((i) => !hasInput(p, i.key))
+
+/** The ✓ / ✗ list of the three inputs — rendered wherever the console says
+    "chưa xác minh", so the employer is told the same three things everywhere. */
+function VerifyChecklist() {
+  const { profile } = useCoVerified()
+  return (
+    <ul className="grid gap-1.5 sm:grid-cols-3">
+      {VERIFY_INPUTS.map((i) => {
+        const ok = hasInput(profile, i.key)
+        return (
+          <li key={i.key} className={cn('flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-[11.5px]', ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-300 bg-white text-amber-900')}>
+            <span className="mt-px font-bold">{ok ? '✓' : '✗'}</span>
+            <span className="min-w-0">
+              <span className="block font-medium">{i.label}</span>
+              <span className="block truncate text-[10.5px] opacity-75">{ok ? shownInput(profile, i.key) : `Còn thiếu · ${i.where}`}</span>
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** The tag beside the company name — Figma 2302-44567. THREE labels, the same
+    vocabulary the admin sees on Customers (client, 09/09/2026): blue shield
+    Verified · amber "Chờ xác minh" once all three inputs are on file · slate
+    "Chưa xác minh" while something is still missing. `ready` is derived from the
+    profile, never stored, exactly as verifyDisplayOf() does on the admin side. */
+function CoVerifiedTag({ verified, ready = false }: { verified: boolean; ready?: boolean }) {
+  return verified ? (
+    <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold text-blue-700" title="Saramin đã xác minh công ty này">
+      <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden><path d="M8 1.5 2.5 3.6v3.9c0 3.3 2.4 6.2 5.5 7 3.1-.8 5.5-3.7 5.5-7V3.6L8 1.5Z" fill="currentColor" opacity=".18" /><path d="M8 1.5 2.5 3.6v3.9c0 3.3 2.4 6.2 5.5 7 3.1-.8 5.5-3.7 5.5-7V3.6L8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="m5.6 8 1.7 1.7 3.2-3.4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      Verified
+    </span>
+  ) : ready ? (
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700" title="Hồ sơ đã đủ — Saramin đang xác minh, thường trong 1 ngày làm việc">
+      Chờ xác minh
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600" title="Saramin chưa xác minh công ty này — cần đủ MST · địa chỉ đăng ký MST · ERC ở Company information">
+      Chưa xác minh
+    </span>
+  )
+}
+
 /** Small segmented / pill selector used across the Post-a-job form. */
 function Seg({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
   return (
@@ -537,21 +608,190 @@ function PostJobScreen() {
      employer is already scoped to their own company) and the free tier, because
      an employer can never post a free job — a PO is their only route to a
      product. */
+  const { verified, profile } = useCoVerified()
+  const gaps = coGaps(profile)
   return (
     <div>
       <PageBar
         title="Post a job"
-        sub="Uses 1 of your 10 posting slots · goes live immediately — no approval wait."
+        sub={verified ? 'Uses 1 of your 10 posting slots · goes live immediately — no approval wait.' : 'Công ty chưa được xác minh — chưa đăng tin được, kể cả bản nháp.'}
         action={
-          <div className="flex gap-2">
-            <Btn onClick={() => go('co-jobs')}>Save draft</Btn>
-            <Btn primary onClick={() => go('co-jobs')}>Publish</Btn>
-          </div>
+          /* THE GATE. Both actions — not just Publish — because a draft is still a
+             posting under an identity nobody has checked. Disabled spans, not hidden
+             buttons: the employer must see what they will get, and the sentence
+             above the form says what unlocks it. */
+          verified ? (
+            <div className="flex gap-2">
+              <Btn onClick={() => go('co-jobs')}>Save draft</Btn>
+              <Btn primary onClick={() => go('co-jobs')}>Publish</Btn>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <span className="inline-flex cursor-not-allowed items-center rounded-md border border-line bg-canvas px-3 py-1.5 text-[12px] font-medium text-faint" title="Công ty chưa được xác minh">Save draft</span>
+              <span className="inline-flex cursor-not-allowed items-center rounded-md bg-canvas px-3 py-1.5 text-[12px] font-medium text-faint" title="Công ty chưa được xác minh">Publish</span>
+            </div>
+          )
         }
       />
+      {!verified && (
+        /* The gate explains itself with the LIST, not a sentence: the three inputs
+           Saramin needs, each ✓ or ✗, and the one place they are filled. Once all
+           three are in, the block stops asking and states the SLA instead. */
+        <div className={cn('mx-5 mt-4 rounded-xl border px-4 py-3', gaps.length ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50')}>
+          {gaps.length ? (
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-amber-900">
+                  <b>Công ty chưa được xác minh</b> — chưa đăng tin được, kể cả bản nháp. Để được xác minh, hoàn tất <b>3 mục</b> ở Company information (còn thiếu {gaps.length}):
+                </p>
+                <Btn primary onClick={() => go('co-company-info')}>Company information →</Btn>
+              </div>
+              <div className="mt-2"><VerifyChecklist /></div>
+              <p className="mt-2 text-[11px] text-amber-900/80">Đủ 3 mục, Saramin xác minh trong <b>1 ngày làm việc</b>. Sau đó bạn đăng tin được ngay — kể cả bản nháp, chưa cần hóa đơn.</p>
+            </>
+          ) : (
+            <p className="text-[12.5px] leading-relaxed text-blue-900">
+              <b>Đủ hồ sơ</b> — MST, địa chỉ đăng ký MST và ERC đã có. Saramin xác minh trong <b>1 ngày làm việc</b>; sau đó bạn đăng tin được ngay, kể cả bản nháp, chưa cần hóa đơn.
+            </p>
+          )}
+        </div>
+      )}
       <div className="px-5 py-4">
         <AdminJobCreate surface="company" onBack={() => go('co-jobs')} />
       </div>
+    </div>
+  )
+}
+
+/* Company information — the page the "Chưa xác minh" button lands on. Full design in
+   Figma (view 2311-10289 · edit 2313-10289); this mockup keeps the shape of those
+   frames — KR label / value table, one Edit for the page, Upload on the documents
+   section — and carries what the verification flow needs to be walked end to end:
+   the banner counting the three inputs, the rows that fill them, and the read-only
+   rule once Verified. */
+function CompanyInfoScreen() {
+  const { verified, profile, setProfile } = useCoVerified()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(profile)
+  const gaps = coGaps(profile)
+  const startEdit = () => { setDraft(profile); setEditing(true) }
+  const save = () => { setProfile((p) => ({ ...p, tax: draft.tax.trim(), address: draft.address.trim() })); setEditing(false) }
+  const addDoc = () => setProfile((p) => ({ ...p, docs: [...p.docs, `ERC-giay-chung-nhan-DKDN-trang-${p.docs.length + 1}.pdf`] }))
+  const inp = 'w-full max-w-[500px] rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] outline-none focus:border-brand'
+  /* One row of the KR table. `need` marks a verification input: ★ in both modes,
+     "✗ cần cho xác minh" while empty and Unverified, and the marker under the input
+     in edit mode. A plain function, not a component — a component defined inside the
+     render would remount its <input> on every keystroke. */
+  const row = (label: string, value: string, opts: { need?: boolean; input?: React.ReactNode } = {}) => (
+    <div key={label} className="grid grid-cols-[200px_1fr] border-t border-line first:border-t-0">
+      <div className="bg-canvas/70 px-3 py-2.5 text-[11.5px] text-ink/70">{opts.need && <span className="text-red-500">★ </span>}{label}</div>
+      <div className="px-3 py-2.5 text-[12.5px] text-ink">
+        {editing && opts.input ? opts.input : value ? value : <span className="text-faint">—</span>}
+        {opts.need && !verified && !value && !(editing && opts.input) && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">✗ cần cho xác minh</span>}
+        {opts.need && editing && opts.input && <p className="mt-1 text-[10.5px] text-faint">Saramin đối chiếu với ERC khi xác minh — in trên hóa đơn GTGT.</p>}
+      </div>
+    </div>
+  )
+  return (
+    <div>
+      <PageBar
+        title="Company information management"
+        sub={verified ? 'Đã xác minh — để thay đổi thông tin công ty, liên hệ Saramin.' : 'Hồ sơ công ty của bạn — thông tin pháp lý, thông tin cơ bản và Giấy chứng nhận đăng ký doanh nghiệp.'}
+        action={<CoVerifiedTag verified={verified} ready={gaps.length === 0} />}
+      />
+      <p className="mb-3 text-[11px] text-faint">
+        Thiết kế đầy đủ trong Figma —{' '}
+        <a href="https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2311-10289" target="_blank" rel="noreferrer" className="font-medium text-brand hover:underline">view</a>
+        {' · '}
+        <a href="https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2313-10289" target="_blank" rel="noreferrer" className="font-medium text-brand hover:underline">edit</a>.
+        {' '}Mockup này giữ đúng cấu trúc và phần luồng xác minh cần.
+      </p>
+
+      {/* THE BANNER — above the first section in both modes (Figma 2311 / 2313). It
+          counts the same three inputs the header and Post job count, names each as
+          ✓ or ✗, and points at the control that fills it. Ready → blue with the SLA;
+          Verified → no banner, the tag is the statement. */}
+      {!verified && (
+        <div className={cn('mb-4 rounded-xl border px-4 py-3', gaps.length ? 'border-amber-300 bg-amber-50' : 'border-blue-200 bg-blue-50')}>
+          {gaps.length ? (
+            <>
+              <p className="text-[12.5px] font-semibold text-amber-900">Để được xác minh, Saramin cần đủ 3 mục — còn thiếu {gaps.length}</p>
+              <p className="mt-0.5 text-[11.5px] text-amber-900/85">Mã số thuế và địa chỉ đăng ký MST điền bằng nút <b>Edit</b>; ERC tải lên bằng <b>Upload document</b>. Đủ 3 mục, Saramin xác minh trong 1 ngày làm việc — sau đó đăng tin được ngay.</p>
+              <div className="mt-2"><VerifyChecklist /></div>
+            </>
+          ) : (
+            <p className="text-[12.5px] text-blue-900"><b>Đủ hồ sơ</b> — MST, địa chỉ đăng ký MST và ERC đã có. Saramin xác minh trong <b>1 ngày làm việc</b>; bạn sẽ nhận email khi công ty được xác minh.</p>
+          )}
+        </div>
+      )}
+
+      {/* Section 1 — Company information: ONE Edit for the page, and only while
+          Unverified. Verified → the button is gone (see the note at the bottom). */}
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[14px] font-bold">Company information</p>
+        {!verified && !editing && <Btn onClick={startEdit}>Edit</Btn>}
+        {editing && <span className="text-[11px] font-semibold text-red-500">★ Required</span>}
+      </div>
+      <div className="overflow-hidden rounded-lg border border-line">
+        {row('Company type', 'Vietnamese company', { need: true })}
+        {row('Legal name', 'Công ty TNHH Đại Dương', { need: true })}
+        {row('Tax code (MST)', profile.tax, { need: true, input: <input className={inp} value={draft.tax} onChange={(e) => setDraft({ ...draft, tax: e.target.value })} placeholder="10 hoặc 13 chữ số" /> })}
+        {row('Registered address', profile.address, { need: true, input: <input className={inp} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} placeholder="Địa chỉ trụ sở ghi trên Giấy chứng nhận đăng ký doanh nghiệp" /> })}
+        {row('Display name', 'Đại Dương')}
+      </div>
+
+      {/* Section 2 — Basic information, compressed: none of these touch verification. */}
+      <p className="mb-2 mt-5 text-[14px] font-bold">Basic information</p>
+      <div className="overflow-hidden rounded-lg border border-line">
+        {row('Industry', 'Thủy sản', { need: true })}
+        {row('Company size', '50–200 staff', { need: true })}
+        {row('Registered country', 'Việt Nam', { need: true })}
+        {row('Province / City', 'Hải Phòng')}
+        {row('Website', 'daiduong.vn')}
+      </div>
+
+      {/* Section 3 — the ERC. Upload stays in BOTH states — more pages of the
+          certificate never hurt, and it is how an unverified company becomes
+          verified. Delete only while Unverified: after Verify the files are what the
+          check was done against, and they are kept for audit. No per-file status —
+          the company-level tag is the only verdict. */}
+      <div className="mb-2 mt-5 flex items-center justify-between">
+        <p className="text-[14px] font-bold">Enterprise Registration Documents</p>
+        <Btn primary onClick={addDoc}>Upload document</Btn>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-line">
+        {profile.docs.length === 0 ? (
+          <p className="px-3 py-3 text-[12px] text-faint">Chưa có tệp nào. Tải lên Giấy chứng nhận đăng ký doanh nghiệp — nhiều tệp là bình thường (từng trang, bản sửa đổi). PDF, JPG, PNG · tối đa 10 MB mỗi tệp.</p>
+        ) : profile.docs.map((n, i) => (
+          <div key={n} className="flex items-center gap-3 border-t border-line px-3 py-2 text-[12px] first:border-t-0">
+            <span className="min-w-0 flex-1 truncate font-medium text-brand">{n}</span>
+            <span className="shrink-0 text-[10.5px] text-faint">Uploaded 09/09/2026 · by you</span>
+            {!verified && <button onClick={() => setProfile((p) => ({ ...p, docs: p.docs.filter((_, j) => j !== i) }))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>}
+          </div>
+        ))}
+      </div>
+
+      {editing && (
+        <>
+          {/* The "※" notes box from the edit frame — the verification rule is its first line. */}
+          <div className="mt-4 rounded-lg bg-canvas/70 px-4 py-3 text-[11px] leading-relaxed text-muted">
+            <p>※ Để được xác minh, Saramin cần đủ 3 mục: <b className="text-ink/80">Mã số thuế · Địa chỉ đăng ký MST · Giấy chứng nhận đăng ký doanh nghiệp</b>.</p>
+            <p>※ Các trường có ★ là bắt buộc. MST 10 hoặc 13 chữ số.</p>
+            <p>※ Giấy chứng nhận: PDF, JPG, PNG · tối đa 10 MB mỗi tệp · nhiều tệp là bình thường.</p>
+            <p>※ Sau khi xác minh, trang này chỉ đọc — thay đổi thông tin công ty qua Saramin.</p>
+          </div>
+          <div className="mt-3 flex justify-center gap-2">
+            <Btn onClick={() => setEditing(false)}>Cancel</Btn>
+            <Btn primary onClick={save}>Save changes</Btn>
+          </div>
+        </>
+      )}
+
+      {verified && (
+        <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-blue-900">
+          <b>Company information is read-only</b> now that Saramin has verified it. Two parties editing a verified identity is how the invoice and the certificate stop matching — to change the legal name, tax code or registered address, contact Saramin; the change is checked and re-verified by an admin. Uploading more documents is still allowed.
+        </p>
+      )}
     </div>
   )
 }
@@ -2615,7 +2855,7 @@ function OrdersInvoicesScreen() {
    and emails an activation link (Model B). Two steps: 1) fill the form → Register
    2) request submitted / check your email. */
 function StepDots({ step }: { step: 1 | 2 }) {
-  const items = ['Create account', 'Request submitted']
+  const items = ['Create account', 'Verify your email']
   return (
     <div className="mx-auto mb-5 flex max-w-[520px] items-center gap-2">
       {items.map((label, i) => {
@@ -2640,16 +2880,25 @@ function SignupScreen() {
   const [step, setStep] = useState<1 | 2>(1)
   const [f, setF] = useState({ name: 'Nguyễn Văn Toàn', email: 'toan@daiduong.vn', phone: '0903 112 456', tax: '0315xxxxxx', company: 'Công ty TNHH Đại Dương', hiring: true })
   const [agree, setAgree] = useState(false)
+  /* The new field. OPTIONAL and MULTI-FILE: a certificate has pages and an amendment
+     is its own sheet, and a person signing up from a phone at a job fair may not have
+     it at all — the console asks again, with the tag and the disabled Post job. */
+  const [erc, setErc] = useState<string[]>([])
   const inp = 'w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-[12.5px] text-ink placeholder:text-faint'
   const lbl = 'mb-1 block text-[11.5px] font-semibold text-ink/80'
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   if (step === 2) {
+    /* The tracker no longer ends in "wait for us to let you in". The link is the
+       whole gate before sign-in; what waits for Saramin is the COMPANY check, and it
+       is named as the step that unlocks posting — so the tag they meet inside the
+       console is expected, not alarming. */
     const track = [
-      { label: 'Signed up', sub: 'Account request received', state: 'done' as const },
-      { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'}`, state: 'now' as const },
-      { label: 'Company review', sub: 'Our team sets up your company — usually within 1 business day', state: 'wait' as const },
-      { label: 'Ready to sign in', sub: 'We email you — then log in with the password you just set', state: 'wait' as const },
+      { label: 'Signed up', sub: 'Password set — you will use it in a minute', state: 'done' as const },
+      { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'} · click it and you are in`, state: 'now' as const },
+      { label: 'You’re in', sub: 'The console works right away. Your company shows a “Chưa xác minh” tag until step 5.', state: 'wait' as const },
+      { label: 'Complete your company record', sub: erc.length ? `ERC attached ✓ (${erc.length} file${erc.length > 1 ? 's' : ''}) — add your registered address in Company information; your tax code is already there` : 'Company information → registered address + ERC (your tax code is already there). Saramin needs all three to verify.', state: 'wait' as const },
+      { label: 'Saramin verifies your company', sub: 'Usually within 1 business day of the record being complete · unlocks posting jobs', state: 'wait' as const },
     ]
     return (
       <div className="flex justify-center py-6">
@@ -2658,9 +2907,9 @@ function SignupScreen() {
           <div className="rounded-2xl border border-line bg-surface p-7">
             <div className="text-center">
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[22px] text-emerald-700">✓</span>
-              <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! Your request is in.</p>
+              <p className="mt-3 text-[17px] font-bold text-ink">Thanks, {f.name.split(' ').slice(-1)[0] || 'there'}! One click and you’re in.</p>
               <p className="mx-auto mt-1.5 max-w-[420px] text-[12.5px] leading-relaxed text-muted">
-                First, <b className="text-ink/80">verify your email</b> (we just sent a link). Then our team sets up your company and emails you when you can sign in — here’s where you are:
+                <b className="text-ink/80">Verify your email</b> — we just sent a link — and you can sign in straight away. Here’s what comes next:
               </p>
             </div>
 
@@ -2679,7 +2928,7 @@ function SignupScreen() {
                     <div className="flex items-center gap-2">
                       <span className={cn('text-[12.5px] font-semibold', t.state === 'wait' ? 'text-faint' : 'text-ink')}>{t.label}</span>
                       {t.state === 'now' && <Chip tone="blue">Do this now</Chip>}
-                      {t.state === 'wait' && i === 2 && <Chip tone="amber">In review</Chip>}
+                      {t.state === 'wait' && i === 4 && <Chip tone="amber">Saramin’s step</Chip>}
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted">{t.sub}</p>
                   </div>
@@ -2688,7 +2937,7 @@ function SignupScreen() {
             </div>
 
             <div className="mx-auto mt-1 max-w-[440px] rounded-lg bg-brand-soft px-4 py-2.5 text-[11px] leading-relaxed text-brand">
-              You won’t be able to log in until both your email is verified <b>and</b> our team has set up your company. We’ll email you at each step — no need to check back.
+              You can sign in the moment your email is verified. <b>Posting jobs unlocks once Saramin verifies your company</b> — for that Saramin needs three things on your record: <b>tax code · registered address · ERC</b>. Until then the console shows a <b>Chưa xác minh</b> tag with a button to Company information. Everything else works.
             </div>
             <div className="mt-5 flex justify-center">
               <button onClick={() => { setStep(1); setAgree(false) }} className="text-[12px] font-medium text-brand hover:underline">← Back to the form</button>
@@ -2724,6 +2973,28 @@ function SignupScreen() {
             <span className="font-semibold text-ink/80">Is your company currently hiring?</span>
             <button type="button" onClick={() => setF((s) => ({ ...s, hiring: true }))} className="flex items-center gap-1.5"><span className={cn('grid h-4 w-4 place-items-center rounded-full border-2', f.hiring ? 'border-brand' : 'border-line')}>{f.hiring && <span className="h-2 w-2 rounded-full bg-brand" />}</span> Yes</button>
             <button type="button" onClick={() => setF((s) => ({ ...s, hiring: false }))} className="flex items-center gap-1.5"><span className={cn('grid h-4 w-4 place-items-center rounded-full border-2', !f.hiring ? 'border-brand' : 'border-line')}>{!f.hiring && <span className="h-2 w-2 rounded-full bg-brand" />}</span> No</button>
+          </div>
+
+          {/* NEW (09/2026) — Enterprise Registration Certificate. Optional, several
+              files. Whatever is attached here lands on the company record the moment
+              the email is verified, so an admin can verify without asking twice. */}
+          <div className="mt-4">
+            <label className={lbl}>Enterprise Registration Certificate (ERC) <span className="font-normal text-faint">— optional</span></label>
+            <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-3 text-center">
+              <p className="text-[12px] text-ink/80">Drop files or <button type="button" onClick={() => setErc((d) => [...d, `ERC-giay-chung-nhan-DKDN-trang-${d.length + 1}.pdf`])} className="font-medium text-brand hover:underline">add a file</button></p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">Giấy chứng nhận đăng ký doanh nghiệp · several files are fine (each page, any amendment) · PDF, JPG, PNG, ≤ 10 MB each. You can also upload later from Company information. Saramin verifies your company from three things — tax code, registered address and this certificate; the address is added in Company information after you sign in.</p>
+            </div>
+            {erc.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {erc.map((n, i) => (
+                  <div key={n} className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11.5px]">
+                    <span className="min-w-0 flex-1 truncate text-ink/80">{n}</span>
+                    <button type="button" onClick={() => setErc((d) => d.filter((_, j) => j !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">Saramin uses this to <b className="text-muted">verify your company</b> — until that is done you can sign in and look around, but not post a job.</p>
           </div>
 
           <button type="button" onClick={() => setAgree((a) => !a)} className="mt-4 flex items-start gap-2 text-left text-[11.5px] text-muted">
@@ -2785,6 +3056,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
       { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
+      { id: 'co-company-info', label: 'Company information', Comp: CompanyInfoScreen },
       { id: 'co-company-page', label: 'Company page', Comp: CompanyPageScreen },
       { id: 'co-team', label: 'Team', Comp: TeamScreen },
       { id: 'co-roles', label: 'Roles', Comp: RolesScreen },
@@ -2829,16 +3101,32 @@ export function CompanyMockups() {
   }
 
   const isSignup = active.item.id === SIGNUP.id
+  /* Demo switch for the verification flag — see CoVerified. */
+  const [verified, setVerified] = useState(false)
+  /* The record behind the demo: MST typed at sign-up, no registered address yet (the
+     form has none), no ERC yet — two of the three inputs missing, which is where every
+     self-registered company starts. Fill them on Company information and watch the
+     header, Post job and the banner agree. */
+  const [profile, setProfile] = useState<CoProfile>({ tax: '0315xxxxxx', address: '', docs: [] })
 
   return (
+    <CoVerified.Provider value={{ verified, setVerified, profile, setProfile }}>
     <div className="max-w-[1180px] pb-16">
       <div className="mb-5 flex items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Draft wireframe</p>
           <h1 className="mt-1 text-[26px] font-bold tracking-tight">Company mockups</h1>
         </div>
-        {/* the link carries the screen on show, not just "the company mockups" */}
-        <CopyLinkButton />
+        <div className="flex items-center gap-2">
+          {/* Reviewer switch: every screen here reads this one flag. */}
+          <span className="text-[11px] text-faint">Company:</span>
+          <div className="flex overflow-hidden rounded-lg border border-line text-[11.5px] font-medium">
+            <button onClick={() => setVerified(false)} className={cn('px-2.5 py-1', !verified ? 'bg-amber-50 text-amber-800' : 'text-muted hover:bg-canvas')}>Chưa xác minh</button>
+            <button onClick={() => setVerified(true)} className={cn('border-l border-line px-2.5 py-1', verified ? 'bg-blue-50 text-blue-700' : 'text-muted hover:bg-canvas')}>Verified</button>
+          </div>
+          {/* the link carries the screen on show, not just "the company mockups" */}
+          <CopyLinkButton />
+        </div>
       </div>
 
       {/* console shell — one horizontal nav with dropdowns and a blue CTA. The grey
@@ -2882,6 +3170,7 @@ export function CompanyMockups() {
         or by Sales in the CRM. Everything here draws on the same company record and pooled quota shown in the Admin &amp; CRM mockups.
       </p>
     </div>
+    </CoVerified.Provider>
   )
 }
 
@@ -2919,6 +3208,33 @@ function CoHeader({ active, onSelect }: { active: CoActive; onSelect: (a: CoActi
           signed out → sign in / sign up, which lives on the pre-login frame below.
           The two used to render together, which is a state no real session has. */}
       <div className="ml-auto flex items-center gap-3">
+        {/* Company name + verification tag, on every page (Figma 2302-44567 puts the
+            same pair in the account dropdown). While unverified the tag carries the
+            fix beside it — the button that opens Company information — because a
+            warning with no action is a warning people learn to ignore. */}
+        {(() => {
+          const { verified, profile } = useCoVerified()
+          const gaps = coGaps(profile)
+          return (
+            <span className="flex items-center gap-2 border-r border-line pr-3 text-[12px]">
+              <span className="font-semibold text-ink/85">Công ty TNHH Đại Dương</span>
+              <CoVerifiedTag verified={verified} ready={gaps.length === 0} />
+              {!verified && (gaps.length > 0 ? (
+                <button
+                  onClick={() => { const n = resolveCoScreen('co-company-info'); if (n) onSelect(n) }}
+                  title={`Còn thiếu: ${gaps.map((g) => g.label).join(' · ')}`}
+                  className="rounded-md bg-amber-600 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:opacity-90"
+                >
+                  Xác minh công ty · thiếu {gaps.length} mục →
+                </button>
+              ) : (
+                /* Nothing left for the employer to do — so no button. A nag with no
+                   action behind it is a nag people learn to ignore. */
+                <span className="text-[10.5px] font-medium text-blue-700" title="MST · địa chỉ đăng ký MST · ERC đã đủ — Saramin xác minh trong 1 ngày làm việc">Đủ hồ sơ · chờ Saramin xác minh</span>
+              ))}
+            </span>
+          )
+        })()}
         {/* No notification bell — removed on the same call as the Admin console's:
             a badge that never changes is decoration, not a signal.
             The company name was dropped too: one company per console, and it is already

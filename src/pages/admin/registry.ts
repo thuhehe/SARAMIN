@@ -47,6 +47,7 @@ const adminSalesReport = screen(() => import('@/pages/admin/screens/analytics/re
 const adminRecruitReport = screen(() => import('@/pages/admin/screens/analytics/reports'), 'AdminRecruitReport')
 const adminRevenueReport = screen(() => import('@/pages/admin/screens/analytics/reports'), 'AdminRevenueReport')
 const adminUserBehavior = screen(() => import('@/pages/admin/screens/analytics/reports'), 'AdminUserBehavior')
+const adminCompanyUsers = screen(() => import('@/pages/admin/screens/users/companyUsers'), 'AdminCompanyUsers')
 const adminUsers = screen(() => import('@/pages/admin/screens/system/users'), 'AdminUsers')
 const adminRoles = screen(() => import('@/pages/admin/screens/system/roles'), 'AdminRoles')
 const adminStaff = screen(() => import('@/pages/admin/screens/system/staff'), 'AdminStaff')
@@ -75,6 +76,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-company-pipeline': adminCompanyPipeline,
   // User — both sides of the marketplace's people accounts
   'admin-jobseekers': adminJobseekers,
+  'admin-company-users': adminCompanyUsers,
   // Content
   'admin-banners': adminDisplay,
   'admin-account-usage': adminAccountUsage,

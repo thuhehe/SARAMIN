@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { RO_HINT, ReadOnlyCtx, useDetailCrumb } from '@/pages/admin/ctx'
-import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer} from '@/pages/admin/data/companies'
-import type { BuyerType, Company, CompanyType } from '@/pages/admin/data/companies'
+import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, coKey, coLabel, coLeadSource, coValue, inPipeline, isVNCompany, COMPANY_TYPE, buyersFor, typeOfBuyer, NO_OWNER, verificationOf } from '@/pages/admin/data/companies'
+import type { BuyerType, Company, CompanyType, Verification } from '@/pages/admin/data/companies'
+import { companyDocs, verifyDisplayOf, verifyGaps } from '@/pages/admin/data/companyOwner'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
 import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
@@ -30,7 +31,7 @@ import { NewQuotationModal } from '@/pages/admin/screens/sales/newQuotation'
 import { CardGroup, DetailCard, EField, KV, SelectRow } from '@/pages/admin/ui/fields'
 import { RowAction } from '@/pages/admin/ui/list'
 import { MiniStat } from '@/pages/admin/ui/stats'
-import { Pill, TierPill } from '@/pages/admin/ui/status'
+import { Pill, TierPill, VerifiedTag, VerifyReadiness } from '@/pages/admin/ui/status'
 import { Table } from '@/pages/admin/ui/table'
 
 /* One page for both a CRM company and a Danh bạ row.
@@ -67,6 +68,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   /* One Edit toggle for the whole Basic-info card, rather than a pencil per row:
      14 inline editors is 14 chances to leave one half-saved. */
   const [editInfo, setEditInfo] = useState(false)
+  /* Verification lives on the record and two things move it: the admin's Verify
+     button (→ verified) and the admin saving an edit to identity data on a verified
+     record (→ unverified, reason "edited"). Nothing the employer does moves it. */
+  const [verif, setVerif] = useState<Verification>(() => verificationOf(c))
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const coVerified = verif.state === 'verified'
+  const unowned = c.owner === NO_OWNER
+  /* What Verify is still waiting for — MST · địa chỉ đăng ký MST · ERC. Read from the
+     record every render, by the same function the Customers filter uses. */
+  const gaps = verifyGaps(c)
   /* Entering and leaving edit both reset to the record: a value left over from a
      cancelled edit is a value that eventually gets saved. */
   const resetEdit = () => {
@@ -229,6 +240,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               {isPool
                 ? <Pill tone={pool!.state === 'pending' ? 'pending' : 'draft'}>{pool!.state === 'pending' ? `Đang chờ duyệt${(pool!.reqs ?? 1) > 1 ? ` · ${pool!.reqs} yêu cầu` : ''}` : 'Chưa ai nhận'}</Pill>
                 : <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>}
+              {/* The verification tag — identical to the one beside the company name
+                  on the Company site, so an admin and the customer on the phone are
+                  looking at one mark. A pool row has no company yet, so no tag. */}
+              {!isPool && <VerifiedTag v={verif} display={verifyDisplayOf(c)} en />}
+              {/* Beside an Unverified tag: what the Verify button is waiting for. A
+                  "Waiting for verify" tag already says nothing is missing, so the
+                  line only appears when something is. */}
+              {!isPool && !coVerified && gaps.length > 0 && <VerifyReadiness gaps={gaps} />}
               {archived && <Pill tone="expired">Archived{archiveWhy ? ` · ${archiveReason(archiveWhy)?.vi}` : ''}</Pill>}
               {/* Grey, not amber: released is a settled lifecycle state, not something
                   needing attention today — same channel as Archived. See CRM →
@@ -275,6 +294,22 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               prospect, a renewal for an existing customer, a win-back for a churned
               one. The gated step is the PO, which is raised from an accepted
               quotation option (see the Quotations list), not from here. */}
+          {/* VERIFY — the admin act this record may be waiting on. Shown only while
+              Unverified, and DISABLED until the record carries the three inputs the
+              check reads — MST · địa chỉ đăng ký MST · ERC (verifyGaps) — so an admin
+              never opens a dialog they cannot finish; the hint beside the tag says
+              what is missing. Not gated on `ro`: verification is an ADMIN duty, not
+              the sales owner's, and the record may have no owner yet. */}
+          {!isPool && !coVerified && !archived && (
+            <button
+              disabled={gaps.length > 0}
+              onClick={() => { if (gaps.length === 0) setVerifyOpen(true) }}
+              title={gaps.length ? `Chưa bấm được — hồ sơ còn thiếu: ${gaps.join(' · ')}` : 'Đủ MST · địa chỉ đăng ký MST · ERC — mở xác nhận'}
+              className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-semibold', gaps.length ? 'cursor-not-allowed border-line bg-canvas text-faint' : 'border-blue-300 bg-blue-50 text-blue-700 hover:border-blue-500')}
+            >
+              Verify company
+            </button>
+          )}
           {/* …but still only for a company in MY book: quoting someone else's
               customer is exactly the collision the ownership rule exists to stop. */}
           {!ro && (
@@ -314,6 +349,81 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
           </div>
         </div>
       </div>
+
+      {verifyOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
+          <div className="my-4 w-full max-w-[520px] rounded-2xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <p className="text-[15px] font-bold">Verify {coLabel(c)}?</p>
+              <button onClick={() => setVerifyOpen(false)} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+            </div>
+            <div className="space-y-3 p-5">
+              <p className="text-[12px] leading-relaxed text-muted">
+                Xác minh là xác nhận <b className="text-ink/80">công ty này đúng là pháp nhân họ khai</b>. Bấm xong: tag trên Company site chuyển xanh, employer <b className="text-ink/80">đăng được tin</b> (kể cả draft, chưa cần hóa đơn), Sales <b className="text-ink/80">yêu cầu xuất hóa đơn</b> được, và employer <b className="text-ink/80">không tự sửa</b> thông tin công ty nữa.
+              </p>
+              {/* The checklist IS the definition of "verified". Each line is a fact an
+                  admin can see on this record right now, not a promise. */}
+              {(() => {
+                const docs = companyDocs(c).length
+                /* THREE inputs, and only three — the same list verifyGaps() reads for
+                   the filter, the row hint and the header button. Each is a fact ON the
+                   record; the admin's act is to read the certificate against them. */
+                const checks: [string, boolean, string][] = [
+                  ['MST', Boolean(c.tax?.trim()), c.tax?.trim() ? `${c.tax} — đối chiếu với số trên ERC` : 'Chưa có — điền ở Basic info'],
+                  ['Địa chỉ đăng ký MST', Boolean(c.address?.trim()), c.address?.trim() ? `${c.address} — đối chiếu với địa chỉ trụ sở trên ERC` : 'Chưa có — employer điền ở Company information, hoặc admin điền ở Basic info'],
+                  ['ERC (Giấy chứng nhận ĐKDN) đã có trên hồ sơ', docs > 0, docs > 0 ? `${docs} tệp ở card Enterprise Registration Documents` : 'Chưa có tệp nào — employer upload ở Company information, hoặc admin upload hộ'],
+                ]
+                /* Shown for the admin to READ, not gates: the legal name is never empty
+                   (sign-up requires a company name) and comparing it with the
+                   certificate IS the act of verifying, not an input; the sales owner is
+                   a Sales concern with its own home (Ownership) — a company can be
+                   verified before a rep is found for it. */
+                const facts: [string, string][] = [
+                  ['Tên pháp lý — đối chiếu với ERC', c.legalName],
+                  ['Sales owner', unowned ? 'Chưa phân — gán ở Ownership; không chặn Verify' : c.owner],
+                ]
+                const ok = checks.every(([, v]) => v)
+                return (
+                  <>
+                    <ul className="space-y-1.5 rounded-lg border border-line bg-canvas/60 px-3 py-2.5">
+                      {checks.map(([label, v, hint]) => (
+                        <li key={label} className="flex items-start gap-2 text-[12px]">
+                          <span className={cn('mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] font-bold', v ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{v ? '✓' : '!'}</span>
+                          <span className="min-w-0">
+                            <span className={cn('block font-medium', v ? 'text-ink' : 'text-amber-800')}>{label}</span>
+                            <span className="block text-[11px] text-faint">{hint}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <ul className="space-y-1 px-1 text-[11.5px] text-muted">
+                      {facts.map(([label, value]) => (
+                        <li key={label} className="flex gap-2"><span className="w-[210px] shrink-0 text-faint">{label}</span><span className="min-w-0 text-ink/80">{value}</span></li>
+                      ))}
+                    </ul>
+                    {verif.state === 'unverified' && verif.reason === 'edited' && (
+                      <p className="rounded-md bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                        Hồ sơ này <b>đã xác minh {verif.wasVerifiedAt}</b>, rồi được sửa {verif.since}{verif.by ? ` bởi ${verif.by}` : ''}. Kiểm tra lại đúng phần đã đổi trước khi bấm.
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button onClick={() => setVerifyOpen(false)} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-muted hover:border-ink/40">Huỷ</button>
+                      <button
+                        disabled={!ok}
+                        title={ok ? undefined : 'Hoàn tất các mục còn thiếu trước'}
+                        onClick={() => { if (!ok) return; setVerif({ state: 'verified', at: '09/09/2026', by: 'Admin · Lê Minh Anh' }); setVerifyOpen(false) }}
+                        className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold', ok ? 'bg-blue-600 text-white hover:opacity-90' : 'cursor-not-allowed bg-canvas text-faint')}
+                      >
+                        Verify
+                      </button>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {releaseOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -443,7 +553,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   ? (
                     <span className="flex items-center gap-1.5">
                       <button onClick={() => { resetEdit(); setEditInfo(false) }} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted hover:border-ink/40">Cancel</button>
-                      <button disabled={Boolean(mstOther || mstPool)} title={mstOther || mstPool ? 'MST đang trùng — sửa trước khi lưu' : undefined} className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', mstOther || mstPool ? 'cursor-not-allowed bg-canvas text-faint' : 'bg-brand text-white hover:opacity-90')} onClick={() => { if (mstOther || mstPool) return; setEditInfo(false) }}>Save</button>
+                      <button disabled={Boolean(mstOther || mstPool)} title={mstOther || mstPool ? 'MST đang trùng — sửa trước khi lưu' : undefined} className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', mstOther || mstPool ? 'cursor-not-allowed bg-canvas text-faint' : 'bg-brand text-white hover:opacity-90')} onClick={() => {
+                          if (mstOther || mstPool) return
+                          /* Identity changed under a verified flag → the check is owed
+                             again. Same state as never-verified; the reason is what
+                             tells the next admin this one has been looked at before. */
+                          if (verif.state === 'verified') setVerif({ state: 'unverified', reason: 'edited', since: '09/09/2026', by: 'Lê Minh Anh (admin)', wasVerifiedAt: verif.at })
+                          setEditInfo(false)
+                        }}>Save</button>
                     </span>
                   )
                   : ro ? undefined : <button onClick={() => { resetEdit(); setEditInfo(true) }} className="text-[11px] text-brand hover:underline">Edit</button>
@@ -687,7 +804,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               ) : (
                 <>
                   <KV label="Lead source" value={coLeadSource(c)} />
-                  <KV label="Sales owner" value={c.owner} />
+                  <KV label="Sales owner" value={unowned ? 'Chưa phân — gán khi xác minh công ty' : c.owner} />
                 </>
               )}
               {/* Captured on the New-company form as pre-sale INTENT. Kept here so it does

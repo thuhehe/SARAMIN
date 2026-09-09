@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useContext } from 'react'
 import { ScreenNavCtx } from '@/pages/admin/ctx'
 import { COMPANIES } from '@/pages/admin/data/companies'
+import { verifyGaps } from '@/pages/admin/data/companyOwner'
 import { CO_ROLE_DEFS } from '@/pages/admin/data/companyRecord'
 import type { CoUserRole } from '@/pages/admin/data/companyRecord'
 import { SIGNUPS, SIGNUP_STATUS, signupMatches } from '@/pages/admin/data/signups'
@@ -12,7 +13,7 @@ import { Pill } from '@/pages/admin/ui/status'
 
 /* The three sign-up actions, each with its own confirm flow. Move / Create both end by
    emailing the user a set-password / activation link; Archive discards the request. */
-function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }: { mode: 'move' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void; onGoPool?: (co: string) => void; onGoCreate?: () => void }) {
+function SignupActionModal({ mode, s, onConfirm, onClose, onGoRecord }: { mode: 'move' | 'archive'; s: Signup; onConfirm: (status: SignupStatus, outcome: string) => void; onClose: () => void; onGoRecord?: (co: string) => void }) {
   const targets = Array.from(new Set(COMPANIES.map((c) => (c.shortName?.trim() || c.name))))
   /* The candidates the Match column showed, in the same order — the dropdown must
      open on what the operator was already looking at, and must not silently prefer
@@ -23,10 +24,12 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
   const [role, setRole] = useState<CoUserRole>('Recruiter')
   const [reason, setReason] = useState('')
   const title = mode === 'move' ? `Move ${s.person} to a company` : 'Archive this sign-up?'
-  /* ONE note, no branch. Everyone in this list verified their email before the
-     row existed, so placement and login are the same moment again — the operator
-     never has to hold two states apart. */
-  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>✉️</span><span>This unlocks login and emails the user <b>“you’re in — sign in”</b>. They sign in with the password they set at sign-up.</span></p>
+  /* ONE note, no branch — and it no longer mentions login. Since the verification
+     flow (09/2026) the person is ALREADY signed in: the email link was the only gate,
+     and their sign-up created an Unverified company they are working in right now.
+     Move is therefore a DEDUP act: re-attach their login to the company that already
+     exists, and archive the duplicate their sign-up created. */
+  const activation = <p className="flex gap-2 rounded-md bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand"><span>🔗</span><span>The person is <b>already signed in</b> — their sign-up created <b>{s.company}</b> as an Unverified company. Move re-attaches their login to the company you pick and <b>archives that duplicate</b>; their data stays. They get an email saying which company they now belong to. <b>Do it now</b> if the match is right — this never waits for the ERC or for verification; resolving a duplicate and verifying a company are two independent jobs.</span></p>
   /* NO Sales-owner field (client: remove). A sign-up is only ever moved into a
      company that already exists on the Customers list, and the promotion gate
      guarantees every such record HAS an owner — asking again here invited the
@@ -44,25 +47,39 @@ function SignupActionModal({ mode, s, onConfirm, onClose, onGoPool, onGoCreate }
             Signed up as <b className="text-ink/80">{s.person}</b> · <span className="font-mono">{s.email}</span> · typed company “<b className="text-ink/80">{s.company}</b>”{s.tax !== '—' ? ` · MST ${s.tax}` : ''}
           </div>
 
-          {/* The blockers live HERE, where the operator has committed to moving this
-              person — not on the row, where they would fragment the table. Each one
-              names the screen that fixes it and links to it. */}
+          {/* The two "no existing customer matches" outcomes live HERE, where the
+              operator has committed to acting on this person. Neither is a blocker
+              any more: the sign-up already created the company, so there is nothing
+              to promote or create first. One is a MERGE (the pool row is absorbed into
+              the shell — never the other way, a pool row cannot hold a login); the
+              other is "leave it, verify it on the record". */}
           {mode === 'move' && !inCompanyList(s) && (
             <div className={cn('rounded-lg border px-3 py-2.5 text-[11.5px] leading-relaxed', s.freeDataMatch ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-line bg-canvas/60 text-muted')}>
               {s.freeDataMatch ? (
                 <>
-                  <p className="font-semibold">⚠ Công ty này đang ở Free data — chưa phải khách hàng</p>
-                  <p className="mt-1">“<b>{s.freeDataMatch}</b>” mới là dòng danh bạ, chưa có MST và chưa có sales owner, nên chưa gán user vào được.</p>
-                  <button onClick={() => { onClose(); onGoPool?.(s.freeDataMatch!) }} className="mt-1.5 rounded border border-amber-400 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 hover:border-amber-600">
-                    Đưa công ty lên Customers →
+                  <p className="font-semibold">Công ty này đã có một dòng ở Free data</p>
+                  <p className="mt-1">“<b>{s.freeDataMatch}</b>” là dòng danh bạ — không có login. Công ty mà sign-up vừa tạo mới là bản ghi đầy đủ hơn, nên <b>gộp dòng Free data vào đó</b>: dòng rời Free data, SĐT / địa chỉ / ngành / nguồn đổ vào các ô còn trống, yêu cầu Xin nhận đang mở (nếu có) thành ứng viên sales owner khi Verify.</p>
+                  <button onClick={() => onConfirm('Resolved', `Gộp dòng Free data “${s.freeDataMatch}” vào ${s.company}`)} className="mt-1.5 rounded border border-amber-400 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 hover:border-amber-600">
+                    Gộp dòng Free data vào công ty này
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="font-semibold text-ink">Công ty “{s.company}” chưa có trong hệ thống</p>
-                  <p className="mt-1">Admin tạo ở <b className="text-ink/75">Customers</b> (tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner), hoặc thêm vào <b className="text-ink/75">Free data</b> nếu chưa đủ thông tin.</p>
-                  <button onClick={() => { onClose(); onGoCreate?.() }} className="mt-1.5 rounded border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted hover:border-brand hover:text-brand">
-                    Tạo công ty trước →
+                  <p className="font-semibold text-ink">Không trùng công ty nào — “{s.company}” là công ty mới</p>
+                  <p className="mt-1">Sign-up đã tạo hồ sơ này trên Customers (Chưa xác minh, chưa có owner). Không có gì để Move; việc còn lại là <b className="text-ink/75">xác minh</b> ở Company detail — nút Verify chỉ mở khi hồ sơ đủ <b className="text-ink/75">MST · địa chỉ đăng ký MST · ERC</b>. Dòng này tự Resolved khi công ty được Verify.</p>
+                  {/* Whether the trip to Company detail is worth making right now — read
+                      off the shell the sign-up created, by the same function the
+                      Customers filter and the Verify button use. */}
+                  {(() => {
+                    const shell = COMPANIES.find((c) => c.name === s.company || c.shortName === s.company)
+                    if (!shell) return null
+                    const gaps = verifyGaps(shell)
+                    return gaps.length === 0
+                      ? <p className="mt-1 font-medium text-emerald-700">Hồ sơ đã đủ — verify được ngay.</p>
+                      : <p className="mt-1 text-amber-800">Hồ sơ còn thiếu: <b>{gaps.join(' · ')}</b> — employer bổ sung ở Company information; chưa cần mở Company detail.</p>
+                  })()}
+                  <button onClick={() => { onClose(); onGoRecord?.(s.company) }} className="mt-1.5 rounded border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted hover:border-brand hover:text-brand">
+                    Mở Company detail →
                   </button>
                 </>
               )}
@@ -259,9 +276,9 @@ export function AdminSignups() {
         ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Every row offers the <b>same two choices</b> — <b>Move to existing company</b> or <b>Archive</b> — this screen never creates a company. <b>Every row here has already verified its email</b>: an unverified sign-up does not appear at all, so Move unlocks login and emails “you’re in — sign in” immediately (password already set at sign-up). The <b>Match</b> column is informational — it lists candidate companies found by name, email domain or MST, and says which list each is in; it never places anyone. A company still in <b>Free data</b>, or not on file at all, surfaces inside the Move dialog with a link to the screen that fixes it (“Đưa công ty lên Customers →” / “Tạo công ty trước →”), and Move stays locked until the company is real.
+        <b>A row appears the moment the email is verified — and by then the person is already signed in.</b> Their sign-up created a company on Customers with Verified = <b>Unverified</b> and no sales owner; login was never gated here. So this screen is now about one question: <b>is this a company we already have?</b> The <b>Match</b> column lists candidates found by name, email domain or MST. If one is right → <b>Move to existing company</b> (re-attach the login, archive the duplicate). If it is spam → <b>Archive</b> (deactivates the login and archives the shell company). If it is genuinely new → nothing to do here: the row <b>resolves itself when an admin verifies the company</b> from Company detail. A candidate still in <b>Free data</b> is <b>merged into the new company</b> from inside the dialog — the pool row is absorbed, never promoted separately, or one company would have three records.
       </p>
-      {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} onGoPool={(co) => goTo('admin-company-directory', co)} onGoCreate={() => goTo('admin-company-list')} />}
+      {modal && <SignupActionModal mode={modal.mode} s={modal.s} onConfirm={resolve} onClose={() => setModal(null)} onGoRecord={(co) => goTo('admin-company-list', co)} />}
     </div>
   )
 }

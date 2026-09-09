@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
-import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
+import { COMPANIES, coLabel, isVerified } from '@/pages/admin/data/companies'
 import { INVOICES, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
 import { dateBefore, vnWords } from '@/pages/admin/lib/fmt'
@@ -66,10 +66,22 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
               button that was never rendered — "the request has not been made yet"
               is a different problem from "I lack the permission". */}
           {inv.step === 'draft' && (
-            <>
-              <span className="text-[11px] text-muted">Kế toán chỉ xuất được hóa đơn chính khi Sales đã <b className="text-ink/75">yêu cầu</b>.</span>
-              <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Yêu cầu xuất hóa đơn chính</button>
-            </>
+            /* The request is a SALES act, and it is gated on the company being
+               VERIFIED: the invoice prints the legal name and MST, and nobody has
+               checked those against the certificate yet. The reason sits on the
+               button — "I lack the permission" and "the company is not verified"
+               are different problems, and a missing button cannot tell them apart. */
+            (invCo && !isVerified(invCo)) ? (
+              <>
+                <span className="text-[11px] text-amber-800">Công ty <b>chưa được xác minh</b> — Verify ở Company detail (ERC · MST · tên pháp lý) rồi mới yêu cầu xuất hóa đơn.</span>
+                <button disabled title="Công ty chưa xác minh — không yêu cầu xuất hóa đơn được" className="cursor-not-allowed rounded-lg bg-canvas px-3 py-1.5 text-[12px] font-semibold text-faint">Yêu cầu xuất hóa đơn chính</button>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] text-muted">Kế toán chỉ xuất được hóa đơn chính khi Sales đã <b className="text-ink/75">yêu cầu</b>.</span>
+                <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Yêu cầu xuất hóa đơn chính</button>
+              </>
+            )
           )}
           {inv.step === 'requested' && (
             <button className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xuất hóa đơn chính<span className="ml-1 font-normal opacity-90">· Kế toán</span></button>

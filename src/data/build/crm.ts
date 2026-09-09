@@ -370,6 +370,23 @@ export const crm: BuildModule = {
               ],
             },
           },
+          {
+            label: 'Verified — một cột trên Customers, một nút trên Company detail, và Save làm rớt cờ',
+            text: 'Trạng thái xác minh của công ty (**CRM → Sign-up & company verification (ERC)** định nghĩa nó) hiện ở ba chỗ trong CRM, và chỉ ba.',
+            table: {
+              cols: ['Chỗ', 'Hiện gì', 'Luật'],
+              rows: [
+                ['**Customers — cột Verified**', 'Tag **Verified** (xanh, hình khiên) hoặc **Unverified** (amber) — đúng tag employer thấy trên Company site. Dưới tag Unverified một dòng nhỏ: **✓ Đủ hồ sơ — verify được** hoặc **Thiếu: Địa chỉ đăng ký MST · ERC**', 'Filter **Verified** có **3 giá trị**: Verified · *Unverified · ready to verify* · *Unverified · missing info* — “chưa xác minh” tách theo **đủ hồ sơ hay chưa** (MST · địa chỉ đăng ký MST · ERC), vì đó là câu admin hỏi cột này. Thêm chip **Chờ verify · n** trên toolbar: một click = lọc đúng các công ty bấm Verify được ngay. Ở view phòng ban, danh sách hiện luôn các công ty **chưa có owner** (tự đăng ký) — sổ của ai cũng không chứa họ, không hiện ở đây thì không ai thấy để verify.'],
+                ['**Company detail — header**', 'Cùng tag đó cạnh tên, kèm dòng đủ / thiếu hồ sơ; Unverified do sửa thì kèm *cần xác minh lại*', 'Nút **Verify company** chỉ hiện khi Unverified và **chỉ bấm được khi đủ 3 input** (MST · địa chỉ đăng ký MST · ERC) — tooltip ghi còn thiếu gì. Không gate theo owner — xác minh là việc của admin, hồ sơ có thể chưa có owner.'],
+                ['**Company detail — Verify dialog**', 'Checklist **3 input**: MST · địa chỉ đăng ký MST · ERC (≥ 1 tệp). Dưới đó hai dòng **chỉ để đọc**: tên pháp lý (đối chiếu với ERC) và sales owner', 'Nút Verify **disabled** tới khi đủ 3. Tên pháp lý và sales owner **không chặn**: tên không bao giờ trống (sign-up bắt buộc) và đối chiếu nó với ERC *là* hành động xác minh; owner là việc của Sales, có nhà riêng (Ownership). Checklist là **định nghĩa** của “đã xác minh” — mỗi dòng là một sự thật admin nhìn thấy trên hồ sơ, không phải lời hứa.'],
+                ['**Company detail — Basic info · Save**', 'Sửa định danh của hồ sơ **đang Verified** → hồ sơ về **Unverified · cần xác minh lại**', 'Cùng trạng thái với chưa-verify; lý do là thứ nói cho admin sau biết hồ sơ này đã được xem một lần. Bấm Verify lại là xóa.'],
+              ],
+            },
+            items: [
+              'CARD “ENTERPRISE REGISTRATION DOCUMENTS (ERC)” — đổi tên từ “Verification documents”. **Nhiều tệp**: giấy chứng nhận có nhiều trang, bản sửa đổi là tờ riêng. Mỗi tệp ghi ai upload: employer (Company site) hay admin upload hộ. Đây là bằng chứng checklist đối chiếu.',
+              'PHÂN OWNER LÀ MỘT MỤC CỦA CHECKLIST, không phải bước riêng: công ty đã verified là công ty Sales yêu cầu xuất hóa đơn được, mà yêu cầu là việc của người phụ trách — verified mà không có owner là một hồ sơ không ai đứng tên.',
+            ],
+          },
         {
           label: 'Company ID — format CO-XXXXXXX',
           text: 'Every company gets a permanent public identifier the moment it is created: the prefix CO- plus 7 characters. It is assigned by the system, never typed, and never changes for the life of the company (lead → customer → churn → win-back). It is not the database key — the database keeps its own bigint primary key and the ID is a reversible encoding of it.\n\nThe breakdown below is the parse contract: it tells the developer which characters decode back to the key and which one is the checksum, so validation is not guesswork.',
@@ -671,7 +688,7 @@ export const crm: BuildModule = {
           ['Xuất PO (PDF)', 'Sales', 'PO screen — every state', 'It is the PO’s own document. Available even when expired or cancelled: a copy is what gets asked for after the deal is over.'],
           ['Xuất hóa đơn nháp', 'Sales', 'PO screen — Active only', 'The PO is what a draft is produced FROM. Once the draft exists it is a row on the Invoice list with its own screen.'],
           ['Xem hóa đơn nháp / chính', 'Anyone', 'Invoice screen', 'The invoice screen owns the invoice. One button, and its label names which document it opens.'],
-          ['Yêu cầu xuất hóa đơn chính', 'Sales', 'PO screen', 'Asking is a sales act.'],
+          ['Yêu cầu xuất hóa đơn chính', 'Sales', 'PO screen', 'Asking is a sales act — and it is **disabled while the company is Unverified**, with the reason on the button: an invoice prints the legal name and MST, and nobody has checked those against the certificate yet. Verify first (Company detail), then request.'],
           ['Xuất hóa đơn chính', 'KẾ TOÁN', 'Invoice screen ONLY, and ONLY from status “Invoice requested”', 'Issuing is the fiscal act: it must happen where the number, the signature and the tax code are visible, and only after Sales has asked for it. The PO screen shows “Đang chờ Kế toán” instead of a button.'],
           ['Hủy hóa đơn', 'KẾ TOÁN', 'Invoice screen ONLY', 'Undoing a sale is a fiscal act on the document that granted the quota.'],
         ],
@@ -789,7 +806,7 @@ export const crm: BuildModule = {
           ['Header', 'Edit · Tạo báo giá · View on jobseeker', 'View on jobseeker only — quoting someone else’s customer is the exact collision ownership exists to prevent'],
           ['Basic info', 'Edit toggle turns the card into fields', 'No Edit; fields render as values'],
           ['Company tags', 'Multi-select picker', 'Disabled, with the reason on hover'],
-          ['Verification documents', 'Upload · remove', '“Chỉ xem tài liệu” — list stays readable, no upload, no ✕'],
+          ['Enterprise Registration Documents (ERC)', 'Upload · remove', '“Chỉ xem tài liệu” — list stays readable, no upload, no ✕'],
           ['Affiliated companies', 'Gán quan hệ mẹ / con', 'Tree and badges stay; the link action is gone'],
           ['Contacts · Users', '+ Add contact · + Invite user · row actions', 'Lists stay; the Actions cell collapses to “—”'],
           ['Company page', 'Save changes · Publish', 'Editor and preview stay; a “chỉ đọc” note replaces the buttons'],
@@ -1043,36 +1060,36 @@ export const crm: BuildModule = {
         requirements: [
           {
             label: 'ONE company table, two states — and TWO admin-only create doors',
-            text: 'Free data và Customers **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Customers” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Customers** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo, **cả hai đều của Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt.',
+            text: 'Free data và Customers **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Customers” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Customers** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo của **Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. Từ 09/2026 có thêm **cửa thứ ba: employer tự đăng ký** — ra thẳng Customers nhưng ở trạng thái **Chưa xác minh, chưa có owner**, và bất động cho tới khi admin Verify (không đăng tin, không xuất hóa đơn). **Sales vẫn không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt, hoặc được phân khi admin verify một công ty tự đăng ký.',
             diagram: 'company-intake',
             table: {
               cols: ['Cửa', 'Ai', 'Bắt buộc', 'Đích'],
               rows: [
                 ['**Free data → Thêm công ty**', 'Admin', '**1 field: tên công ty** (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
                 ['**Customers → New company**', 'Admin', '**5 field: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner**', '**Customers** — có chủ, đếm vào mọi số của CRM'],
+                ['**Company site → Sign up** (cửa ③, từ 09/2026)', 'Employer tự đăng ký', '**Họ tên · email · SĐT · mật khẩu · MST · tên công ty** (+ ERC tuỳ chọn). Cửa mở khi bấm link xác minh email', '**Customers — Chưa xác minh, chưa có owner.** Đăng nhập được ngay; đăng tin và xuất hóa đơn khóa tới khi admin Verify (xem CRM → Sign-up & company verification)'],
                 ['*(không có cửa nào)*', 'Sales', '—', 'Sales **không tạo công ty**. Đường duy nhất: Xin nhận từ Free data → Admin duyệt → Sales lead duyệt.'],
               ],
             },
           },
           {
-            label: 'Sign-up user — luôn WAIT, không bao giờ tự tạo công ty',
-            text: 'Một employer tự đăng ký trên trang Company sẽ vào list **Sign-ups**. Ở đó admin chỉ trả lời **một câu hỏi**: *công ty người này khai đang nằm ở đâu?* — và chỉ có một hành động tạo giá trị (**Move to existing company**) cộng với **Archive**.\n\nMàn hình này **không có cửa tạo công ty**. Nếu có, cùng một công ty sẽ vào hệ thống bằng hai đường với hai bộ dữ liệu khác nhau.',
+            label: 'Sign-up user — vào console ngay; công ty tạo ở Chưa xác minh; Sign-ups chỉ còn ghép trùng',
+            text: 'Đổi từ 09/2026. Employer tự đăng ký, **bấm link xác minh email là vào console ngay** — không chờ admin. Cú bấm đó **tạo luôn công ty** trên Customers ở trạng thái **Chưa xác minh, chưa có sales owner**, và tạo **một dòng trên Sign-ups**.\n\nThứ chờ admin không còn là *cho vào* mà là *xác minh*: bấm **Verify** ở Company detail — nút chỉ mở khi hồ sơ đủ **MST · địa chỉ đăng ký MST · ERC**; admin đối chiếu ERC với hồ sơ rồi bấm. Phân owner là việc riêng (Ownership), không chặn Verify. Chưa verify thì employer đăng nhập, đọc, cập nhật, upload đều được — chỉ **không đăng tin** (kể cả draft) và **Sales không yêu cầu xuất hóa đơn** được.',
             table: {
-              cols: ['Công ty đang ở đâu', 'Hành động trên Sign-ups', 'Vì sao'],
+              cols: ['Dòng Sign-ups cho thấy', 'Hành động', 'Vì sao'],
               rows: [
-                ['**Đã ở Customers**', '**Move to existing company** — chọn công ty + role → mở khoá login, gửi mail “you’re in”', 'Công ty đã tồn tại và đã có chủ. Đây là ca duy nhất bấm được ngay.'],
-                ['**Đang ở Free data**', '**CHẶN** — nút “Đưa công ty lên Customers →” mở thẳng dòng Free data đó', 'Phải qua đường A hoặc B trước (MST + owner). Xong quay lại Sign-ups thì row thành ca 1 và Move được.'],
-                ['**Chưa có ở đâu**', '**CHẶN** — nút “Tạo công ty trước →” mở form tạo công ty', 'Tạo qua cửa ② hoặc ③, có MST + owner. Xong quay lại Move.'],
-                ['Rác / spam', '**Archive** kèm lý do', 'Không tạo gì cả.'],
+                ['**Trùng một công ty đã có** trên Customers (Match)', '**Move to existing company** — ghép login vào công ty đó, archive bản Chưa xác minh vừa tạo', 'Một nhân sự HR mới ở khách hàng cũ. Không có Move thì hệ thống có hai bản ghi cho một pháp nhân.'],
+                ['**Trùng một dòng Free data**', '**Gộp dòng Free data vào công ty vừa tạo** — một nút trong dialog. Dòng rời Free data, dữ liệu đổ vào ô trống, Xin nhận đang mở thành ứng viên owner', 'Chiều gộp là pool → công ty mới, không bao giờ ngược lại: dòng pool không chứa được login. Đưa dòng pool lên Customers riêng lẻ — như luật cũ — sẽ thành BA bản ghi cho một pháp nhân.'],
+                ['**Không trùng gì** — công ty mới thật', '**Không làm gì ở đây.** Dòng tự Resolved khi admin **Verify** công ty ở Company detail', 'Việc cần làm là xác minh, và nó nằm ở hồ sơ công ty — nơi có ERC, MST và ô phân owner. Bắt admin bấm thêm một nút “xác nhận” ở đây là hai lần cho một quyết định.'],
+                ['Rác / spam', '**Archive** — vô hiệu login, archive công ty vỏ', 'Không tạo gì cả, và không gửi mail.'],
               ],
             },
             items: [
-              'Cột **Match** là **một DANH SÁCH công ty, mỗi dòng là một hyperlink** — không phải một nhãn. Xem block “Match — một danh sách, không phải một cái tên” ngay dưới.',
-              'Hai nút chặn đều là **liên kết sang màn hình đúng**, không phải thông báo lỗi. Một dòng bị chặn mà không chỉ đường thì admin sẽ đi tìm — hoặc tệ hơn, tạo công ty bằng cách nào đó khác.',
-              'BỎ khỏi menu: “Create new company + move” và “Promote from Free data + move”. Cả hai đều là cửa tạo công ty thứ tư và thứ năm, đặt ở màn hình không có đủ trường (MST, người liên hệ, owner, phân loại người mua) để tạo một hồ sơ dùng được cho hoá đơn.',
-              'Kết quả: **kiểu gì cũng tạo công ty trước rồi mới assign user** — đúng như luật bất biến ở cuối sơ đồ.',
+              'Cột **Match** vẫn là **danh sách công ty có link** — xem block “Match — một danh sách, không phải một cái tên”.',
+              'KHÔNG CÒN GATE LOGIN Ở ĐÂY. Cụm “Move mở khoá login, gửi mail you’re in” đã bỏ: người này đang đăng nhập rồi. Dòng để lâu không xử lý thì cái trễ là **xác minh công ty**, và chỗ đuổi là filter *Unverified* trên Customers.',
+              'Cửa tạo công ty thứ ba này **an toàn vì bản ghi nó tạo là bất động**: không đăng tin, không xuất hóa đơn, không owner — nên không đổi con số nào mà sales bị đo. Đừng cho nó làm gì hơn thế trước khi admin nhìn.',
             ],
-            warn: 'Đừng “tiện tay” thêm lại nút tạo công ty vào Sign-ups. Màn hình đó không hỏi phân loại người mua, địa chỉ xuất hoá đơn hay người liên hệ — một hồ sơ tạo từ đó sẽ chặn ở bước xuất hoá đơn VAT, và lúc đó công ty đã có user đang đăng nhập.',
+            warn: 'Đừng “tiện tay” thêm nút tạo công ty vào Sign-ups. Sign-up đã tạo công ty rồi — thêm nút nữa là hai bản ghi. Và đừng khóa login lại: employer chưa đăng được tin đã đủ để họ hiểu phải upload ERC, không cần khóa cả cửa.',
           },
           {
             label: 'Pool state — TWO states, and there is no “Từ chối” among them',
@@ -2535,18 +2552,195 @@ export const crm: BuildModule = {
     // 6 · Free data (danh bạ doanh nghiệp) ───────────────────────────────────
     // 5 · Sign-ups ────────────────────────────────────────────────────────────
     {
-      name: 'Sign-ups',
-      site: 'Admin',
+      name: 'Sign-up & company verification (ERC)',
+      /* Slug PINNED to the pre-merge name (2026-09-09). This page absorbed the
+         Company verification feature from Account management — the sign-up and the
+         verification it leads to are one flow, and the admin's Sign-ups screen is
+         where its row is worked. Comment threads and shared links keep resolving. */
+      slug: 'sign-ups',
+      site: 'AdminCompanies',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Company-user sign-up lives here. A self-serve sign-up is a PENDING request — it provisions nothing on its own. HQ resolves every row with the same TWO actions — move the user into an existing company, or archive — and Move emails the user an activation link. This screen never CREATES a company: if the one they named is only in Free data, or is not on file at all, it has to reach the Customers first (Free data → claim/assign, or Admin → Create company), and only then can the user be moved into it.',
+      notes: 'Company-user sign-up AND the company verification it leads to — one flow, two sides. The email link is the only gate before sign-in: it creates the login and the company (Customers, Verified = Unverified, no owner) and puts one row here. This screen is about duplicates — Move into an existing customer, merge a Free data row, archive spam; a genuinely new company needs nothing here and is verified from Company detail — Verify opens only when the record carries MST · registered (tax) address · ERC, which the Customers list filters and counts as “ready to verify”. Verified gates exactly two things: the employer posting a job, and Sales requesting the official invoice.',
       mockup: 'crm-signups',
+      mockups: ['co-signup', 'co-post-job', 'admin-company-list'],
       detail: {
         requirements: [
           /* MOVED here from Free data (2026-09-08 page feedback): matching is a
              SIGN-UP concern — this screen is where a typed company name has to be
              resolved against what we already hold. The Free-data page only consumed
              the result. `matchResult` on the Sign-up entity is the field it governs. */
+        {
+          label: 'The flow — employer on the Company site, admin in the console, one flag between them',
+          text: 'The gate MOVED. Until 08/2026 a self-registered person waited for an admin to place them before they could sign in. Now the email link is the only thing between sign-up and the console; what waits for the admin is **verification**, and what verification gates is narrow: **posting a job** (even a draft) and **Sales requesting the official invoice**. Signing in, reading, uploading the certificate and correcting company information are all open while Unverified — the state exists to stop paid and legal actions on an identity nobody has looked at, not to lock a customer out.',
+          diagram: 'company-verification',
+          items: [
+            'THE SUCCESS PAGE sets expectations honestly: (1) verify your email — then you are in; (2) complete your company record — tax code · registered address · ERC; (3) Saramin verifies your company, usually within 1 business day of the record being complete — until then you can look around but not post.',
+            'STATE THE SLA AND HONOR IT: a company that is READY (all three inputs on file) and still Unverified after the SLA nudges the admin queue (the Chờ verify chip / *ready to verify* filter on Customers), not the customer. A company still missing an input is nudged the other way — the employer is the one who owes something, and the nudge names what.',
+            'TWO ADMIN JOBS, INDEPENDENT AND TIMED DIFFERENTLY (page feedback 09/09/2026). **(A) Ghép trùng — right away.** The moment the row appears (email verified) the admin may place the person into a company that already exists: on Customers → *Move to existing company*; in Free data → *Gộp dòng Free data vào công ty này*. This never waits for the ERC, for the record to be complete, or for verification. **(B) Xác minh — thong thả.** Verification has no deadline of its own; the only hard stops are Post job and the official invoice, and the button opens whenever the three inputs are in. Neither job blocks the other: a Move onto an existing customer simply retires the shell with whatever flag it had, and a Verify before any Move is harmless. The diagram draws them as two groups with a divider, not as one chain.',
+          ],
+          table: {
+            cols: ['#', 'Where', 'Who', 'What happens', 'State after'],
+            rows: [
+              ['①', 'Company site · Sign up', 'Employer', 'Fills the current fields + **ERC upload (optional, several files)**. Register sends the verification email.', '—'],
+              ['②', 'Email', 'Employer', 'Clicks the link. **This is the only gate before sign-in.**', 'Login Active · company created **Unverified**, no owner · one row on Sign-ups — **the admin may Move / merge at once**'],
+              ['③', 'Company site · console', 'Employer', 'Signed in. Tag **Chưa xác minh** beside the company name with a button → Company information. **Post job disabled**, and the page lists the three inputs still owed — **MST · địa chỉ đăng ký MST · ERC** — each ✓ or ✗, with the link.', 'Unverified · missing info'],
+              ['④', 'Company site · Company information', 'Employer', 'Completes the record: types the registered (tax) address (the MST came from sign-up), uploads the ERC (several files). Files land on the admin’s Enterprise Registration Documents card; the Customers row flips to *ready to verify*.', 'Unverified · ready to verify'],
+              ['⑤', 'Admin · Customers → Company detail', 'Admin', 'Clicks **Chờ verify · n** (= filter *Unverified · ready to verify*), opens the record, reads the ERC against the MST and address on it, presses **Verify company** — the button is disabled until all three inputs are on the record. Assigning a sales owner is a separate Ownership action, not part of Verify.', '**Verified**'],
+              ['⑥', 'Both sites', 'System', 'Tag turns **blue Verified**. Employer: Post job unlocked (a draft needs no invoice), Company information read-only. Sales: “Yêu cầu xuất hóa đơn chính” enabled. Sign-ups row resolves.', 'Verified'],
+              ['⑦', 'Admin · Company detail · Save', 'Admin', 'Edits identity data on a Verified record.', '**Unverified · cần xác minh lại** — back to ⑤'],
+            ],
+          },
+        },
+        {
+          label: 'Does the person need a company to sign in? Yes — always. There are no orphan users',
+          text: 'Asked on the diagram (09/09/2026) and worth its own block. The click on the verification link creates **two things at once**: the login, and the company — Unverified, no sales owner — with this person as its **first Admin**. Nobody is ever signed in without a company. That is the existing rule (“one email = one login = one company at a time”) applied to the new flow, and it is why the sign-up form already requires **Tax number** and **Company name**: they are what the company is created from.',
+          table: {
+            cols: ['', 'Company created at link-click (chosen)', 'Orphan user, placed by an admin later (rejected)'],
+            rows: [
+              ['After signing in the person can…', 'Upload the ERC into *their* company, read the console, fix company information', 'Nothing — there is no company to upload into, no jobs, no quota, no Company information page'],
+              ['“They can set up the platform right now”', 'True', 'False — they wait, which is the 08/2026 model behind a different wall'],
+              ['Console screens', 'Work as designed: tag + disabled Post job carry the state', 'Every screen needs a “no company yet” mode'],
+              ['Duplicates', 'Possible — a new HR person at an existing customer creates a shell. The shell is INERT (cannot post, cannot be invoiced, no owner) and Sign-ups → Move re-attaches the login and archives it', 'None — at the price of everything above'],
+              ['Tax number + Company name on the form', 'Are what the company is created from', 'Collected, then unused until placement'],
+            ],
+          },
+          items: [
+            'THE PERSON IS THE SHELL’S FIRST ADMIN. That is what lets them upload the ERC and edit Company information while Unverified. If an admin later Moves them into an existing company, they arrive there with the role picked in the Move dialog, not as Admin.',
+            'A SHELL THAT TURNS OUT TO BE A DUPLICATE IS ARCHIVED, NOT DELETED — same rule as every other company. Its ERC files move to the surviving record.',
+          ],
+          warn: 'ALTERNATIVE HELD FOR LATER, not built: when the sign-up MST exactly matches an existing VERIFIED company, attach the person to it as a pending member for that company’s Admin to approve, instead of creating a shell. The Users tab already anticipates a “self-signup requesting to join”. It is a second mechanism for the same moment; the shell + Move path covers the case with one. Revisit if duplicate shells turn out to be frequent.',
+        },
+        {
+          label: 'When the sign-up duplicates a company we already have — two cases, two different fixes',
+          text: 'The price of creating the company at link-click is that the company may already exist. It exists in one of two places, and the two are resolved in OPPOSITE directions: an existing Customers record absorbs the login and the shell is archived; a Free data row is absorbed INTO the shell, because the shell is the better record — it has a login and possibly an ERC, and pool rows have neither. Until an admin acts the person works inside the shell, which is safe because the shell is inert: cannot post, cannot be invoiced, cannot see any other company’s data.',
+          table: {
+            cols: ['The real company is…', 'Sign-ups shows', 'Action', 'What happens to the shell', 'Sales owner'],
+            rows: [
+              ['**On Customers, with a Sales owner**', 'Match → *Customers: X* (by MST · email domain · name)', '**Move to existing company** — pick the role', '**Archived as duplicate.** Its ERC files move to X. Anything the person typed into the shell’s Company information is discarded — X keeps its own verified data', 'Unchanged. X’s owner is **notified** that a login joined their customer'],
+              ['**In Free data** (pool row, no owner)', 'Match → *Free data: X*', '**Merge the pool row into this company** — one click', '**Survives.** The pool row leaves Free data (state → linked to this company); its phone / address / industry / source fill the shell’s empty fields; any open *Xin nhận* on the pool row becomes an owner candidate on the shell', 'Still none until Verify. A rep who had requested the pool row is the obvious pick at Verify'],
+              ['**Nowhere**', 'Not match', 'Nothing here — Verify from Company detail', 'It IS the company', 'Assigned at Verify'],
+            ],
+          },
+          items: [
+            'WHEN: IMMEDIATELY. Move and merge are enabled the moment the row appears — right after email verification — and do not wait for the ERC, for the record to be complete, or for verification. Resolving the duplicate early is cheaper than late: nothing has been typed into the shell yet, and the person lands in the right company before they start working in the wrong one.',
+            'DIRECTION IS NOT SYMMETRIC. Customers ← shell (login moves, shell dies). Pool → shell (data moves, pool row dies). Never shell → pool: a pool row cannot hold a login.',
+            'THE OLD “Đưa công ty lên Customers → rồi mới Move” PATH IS GONE. Promoting the pool row separately, with a shell already on Customers, would create a THIRD record for one company. The merge replaces it.',
+            'THE SHELL NEVER SHOWS AS ITS OWN MATCH. The Match column skips the Unverified company that carries this sign-up’s exact MST and typed name — otherwise every self-registered row would offer to Move the person into the company they are already in.',
+            'MATCH SIGNAL STRENGTH, for the operator deciding a Move: **email domain** is the one that says the PERSON belongs there; **MST** and **name** only say the COMPANY is the same. An MST-only match on a customer with a different email domain is the case to slow down on.',
+          ],
+          warn: 'SECURITY — CONFIRM BEFORE BUILD. An MST is public: anyone can sign up with FPT’s tax code. The shell model makes that harmless right up to the Move — after which the person sees FPT’s jobs, applicants and quota. RECOMMENDED RULE: Move creates a JOIN REQUEST that the existing company’s own Admin approves on the Company site (the Users tab already anticipates “a self-signup requesting to join appears here for the Admin to approve”); Saramin admin decides alone only when that company has no active Admin (the break-glass case). Default written elsewhere in this spec is the simpler “Saramin admin Moves”; if the recommended rule is accepted, Move becomes “propose”, and the Company users feature gains a Pending member state.',
+        },
+        {
+          label: 'Sign-up form — the new field, and what the created company looks like',
+          text: 'The form keeps every current field (Full name · Email · Phone · Password · Tax number · Company name · Is your company currently hiring? · Terms). One field is added, optional, under Company information.',
+          table: {
+            cols: ['Field', 'Required', 'Rule'],
+            rows: [
+              ['**Enterprise Registration Certificate (ERC) — Giấy chứng nhận đăng ký doanh nghiệp**', 'No', '**Several files** (the certificate has pages; an amendment is its own sheet). PDF · JPG · PNG, ≤ 10 MB each. Attached to the created company’s Enterprise Registration Documents card the moment the email is verified — never kept on the sign-up row. Optional because a person signing up from their phone at a job fair may not have it; the tag and the disabled Post job will ask again inside the console.'],
+              ['Tax number', 'Yes (unchanged)', 'Becomes the company’s MST. NOT uniqueness-blocked at sign-up: a duplicate is a real HR person at an existing customer more often than fraud, and the Sign-ups Match column plus Move is how the admin merges them.'],
+              ['Company name', 'Yes (unchanged)', 'Becomes the display name; the legal name is confirmed from the ERC at verification.'],
+            ],
+          },
+          items: [
+            'WHAT THE LINK CLICK CREATES: a login (Active, role Admin of the new company), a company on Customers with `verification = unverified/new`, `owner = Chưa phân`, the ERC files if any, and one Sign-ups row.',
+            'THE SUCCESS PAGE tracker reads: Signed up ✓ → Verify your email (do this now) → **You’re in** → Complete your company record (registered address + ERC — the tax code is already there) → Saramin verifies your company (~1 business day). It says plainly that posting jobs unlocks at the last step.',
+            'A self-registered company is visible on Customers in the DEPARTMENT view even though nobody owns it — otherwise it exists and no one can find it to verify it.',
+          ],
+        },
+        {
+          label: 'Verification status — two values; “edited after verification” is a reason, not a third state',
+          text: 'The client asked what to call the state a company falls into when an admin edits it after verification. Answer: the same **Unverified**, carrying a **reason**. Every gate in the system reads one yes/no; a third value would double every condition for no new behaviour. What differs is the line under the tag, and the checklist telling the next admin this record has been looked at before.',
+          table: {
+            cols: ['State', 'EN / VI on screen', 'Means', 'Leaves the state when'],
+            rows: [
+              ['**verified**', 'Verified / Đã xác minh — **blue** shield pill', 'An admin read the ERC against the MST and registered address on the record and pressed Verify. Stored: `verifiedAt`, `verifiedBy`.', 'An admin saves a change to identity data (legal name · MST · registered address · company type) → unverified, reason `edited`'],
+              ['**unverified** · reason `new`', 'Unverified / Chưa xác minh — **amber** pill', 'Never checked. Every self-registered company starts here; so does an admin-created one saved without documents.', 'Admin presses Verify — possible only once MST · địa chỉ đăng ký MST · ERC are all on the record'],
+              ['**unverified** · reason `edited`', 'Unverified / Chưa xác minh **· cần xác minh lại** (EN: *re-verification needed*)', 'WAS verified; an admin then changed identity data. Stored: `wasVerifiedAt`, `editedAt`, `editedBy`.', 'Admin presses Verify again. The dialog shows what changed and when.'],
+            ],
+          },
+          items: [
+            'The employer NEVER moves this flag — not by editing (they cannot, once verified) and not by uploading (an upload is evidence, not a decision).',
+            'The tag is the same component on both sites and reads from the same field. Blue, not green: green is the CRM’s “active / bought” tone, and a company can be Verified without ever buying.',
+          ],
+        },
+        {
+          label: 'What Verified gates — exactly two things',
+          table: {
+            cols: ['Action', 'Unverified', 'Verified', 'Why the gate sits here'],
+            rows: [
+              ['Employer posts a job (Publish **or Save draft**)', '**Disabled** — the page says “Công ty chưa được xác minh” and lists the three inputs still owed (MST · địa chỉ đăng ký MST · ERC, each ✓ / ✗) with a button to Company information; once all three are in: “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc”', '**Enabled.** A draft needs no invoice, no PO, no product', 'A posting carries the company’s name in public. Nobody should be able to publish under an identity Saramin has not checked.'],
+              ['Sales requests the official invoice (“Yêu cầu xuất hóa đơn chính”)', '**Disabled**, reason on the button', 'Enabled', 'The invoice prints the legal name and MST. Issuing one against an unchecked identity is a cancel-and-reissue waiting to happen.'],
+              ['Sign in · read the console · upload ERC · edit Company information', 'Allowed', 'Allowed — except editing Company information (see below)', 'None of these commit Saramin to anything.'],
+              ['Admin posts on the company’s behalf (concierge)', 'Allowed', 'Allowed', 'HQ is the party doing the checking; the gate is on the customer’s own hand.'],
+              ['Quotation · PO', 'Allowed', 'Allowed', 'A quotation is an offer, a PO is the customer’s agreement — neither is a filed document. The filed one is the invoice, and that is where the gate is.'],
+            ],
+          },
+          warn: 'Do not gate anything else on Verified. The temptation will be to lock the whole console “until they upload”. That turns a one-day admin check into a customer who cannot even see what they are being asked for — and the page that asks them for it is INSIDE the console.',
+        },
+        {
+          label: 'Verification status — three labels an admin can act on',
+          text: 'Client decision, 09/09/2026. The tag beside a company name has **three** values, not two, because an unverified record raises two different questions — *can I clear this now?* and *is the customer still owing us paperwork?* — and one amber tag answered neither. The same three labels render on the admin’s Customers list, on Company detail, and beside the company name on the Company site, so an admin and a customer on the phone read one vocabulary.',
+          table: {
+            cols: ['Status', 'Means', 'When it shows', 'Whose move', 'Tone'],
+            rows: [
+              ['**Verified**', 'An admin pressed Verify against the ERC', 'After Verify — until an admin edits identity data', 'Nobody. Posting a job and the official invoice are unlocked', 'Blue shield'],
+              ['**Waiting for verify** · *Chờ xác minh*', 'Not verified yet, but the record carries all three inputs — MST · địa chỉ đăng ký MST · ERC', 'The moment the last input lands, without anyone setting it', '**Admin** — this is the queue the *Chờ verify · n* chip counts', 'Amber — work we can clear'],
+              ['**Unverified** · *Chưa xác minh*', 'Not verified, and at least one input is missing', 'From sign-up until the employer completes the record', '**The employer** — the row names what is missing, and the Company site says where to fill it', 'Slate — work we are waiting on'],
+            ],
+          },
+          items: [
+            'THE TWO UNVERIFIED LABELS ARE ONE STATE in the data (`unverified`) told apart by the three inputs, computed on read. That is what keeps the tag, the filter, the counter and the Verify button from ever disagreeing — see the warning below.',
+            'AMBER vs SLATE IS THE LOAD-BEARING PART: amber means an admin can act today, slate means we are waiting on the customer. A screen full of amber is a real queue; if both unverified cases shared a colour, the queue would be unreadable — which is why the split exists at all.',
+            '“Verified, then an admin edited it” is NOT a fourth status. It lands in Waiting for verify (nothing is missing — the documents are still on file) with the modifier *· cần xác minh lại* and its own tooltip, because re-checking a changed record is a different task from checking a new one.',
+            'There is no “Rejected”: an admin who cannot verify a company does not stamp it — the record stays Unverified and the reason lives in the activity log. Archiving is what ends a company that should not be pursued.',
+          ],
+        },
+        {
+          label: 'Admin verifies — three inputs open the button, and “ready to verify” is how the admin finds them',
+          text: '“Verify company” is a button on Company detail, shown only while Unverified — and **disabled until the record carries three inputs: MST · địa chỉ đăng ký MST · ERC (at least one file)**. Nothing else opens it. The dialog behind it lists the three as the evidence the admin is confirming against, plus two facts to read (legal name · sales owner) that do not gate. Whether a record is ready is **derived from those three fields on every read, never stored** — so the filter, the counter, the row hint, the header button and the dialog can never disagree.',
+          table: {
+            cols: ['Input', 'Read from', 'Missing when', 'Who fills it'],
+            rows: [
+              ['**MST**', 'Thông tin công ty · Mã số thuế', 'Empty. (A foreign company’s tax reference is optional on the record and is not asked for.)', 'Typed at sign-up, so almost never missing; an admin corrects it in Basic info'],
+              ['**Địa chỉ đăng ký MST**', 'Thông tin công ty · Địa chỉ đăng ký mã số thuế', 'Empty — every self-registered company starts this way: the sign-up form has no address field', 'The employer, on Company information (Edit → Save); or an admin in Basic info'],
+              ['**ERC**', 'Enterprise Registration Documents card — at least one file', 'No file', 'The employer, at sign-up or on Company information (Upload document); or an admin uploads on their behalf'],
+            ],
+          },
+          items: [
+            'NOT INPUTS, SHOWN TO READ: **legal name** (never empty — the sign-up requires a company name; reading it against the certificate *is* the act of verifying) and **sales owner** (Chưa phân is allowed — ownership is a Sales concern with its own home, the Ownership actions, and a company can be verified before a rep is found). Earlier drafts gated on both; both were removed because neither is something the record can be missing.',
+            'WHERE “READY” SHOWS — one derived value on five surfaces: (1) Customers · Verified filter, whose three values ARE the three status labels; (2) Customers toolbar chip **Chờ verify · n** — one click filters to *Waiting for verify*, a second clears it, hidden when n = 0; (3) the tag itself on every row, which now says *Waiting for verify* or *Unverified*, with *Thiếu: Địa chỉ đăng ký MST · ERC* under it only in the second case; (4) Company detail header: the same tag, and the Verify button disabled with the gaps in its tooltip; (5) Sign-ups · Move dialog, no-match panel: the same line, so the operator does not open a record nothing can be done with.',
+            'WHY A FILTER VALUE AND NOT A COLUMN: the admin’s question is not “how complete is each record” but “which ones can I clear right now”. Splitting Unverified into ready / missing answers it in one pick; the row hint then says what each missing one is waiting for — which is the employer’s to-do, not the admin’s.',
+            'Pressing Verify writes `verifiedAt`, `verifiedBy`, flips the tag blue on both sites, enables Post job on the Company site and the invoice request in the CRM, and resolves the Sign-ups row if one is open.',
+            'Verify is an ADMIN duty, not the sales owner’s: the button is not hidden on a colleague’s record, and it works on a record with no owner.',
+            'Admin may also upload the ERC on the employer’s behalf (customer emailed it) — same card, marked “Admin upload hộ” — and may type the address in Basic info; either fills the same input the employer would.',
+          ],
+          warn: 'READY IS A LABEL, NOT A STORED STATE. The record still holds `verified | unverified` only; do NOT add a third value to the enum or persist `readyToVerify`. It is a function of three fields that already exist, and storing it is how a tag says “Waiting for verify” while the button says “missing”. Compute it where it is read — on both sites.',
+        },
+        {
+          label: 'After Verified — the employer’s Company information is read-only; an admin edit drops the flag',
+          table: {
+            cols: ['Who edits identity data', 'Unverified company', 'Verified company'],
+            rows: [
+              ['Employer (Company site · Company information)', '**Allowed** — Edit / Save changes / Upload document all shown', '**Read-only.** Edit and Save are gone; Upload document stays (more pages of the ERC never hurt). The page says: “Đã xác minh — để thay đổi thông tin công ty, liên hệ Saramin.”'],
+              ['Admin (Company detail · Basic info)', 'Allowed', 'Allowed — **and Save drops the flag to Unverified · cần xác minh lại**, with who/when recorded. The same Verify button clears it.'],
+            ],
+            },
+          items: [
+            'WHY FREEZE THE EMPLOYER: two parties editing a verified identity independently is how the invoice and the certificate stop matching. One editor (admin), one consequence (re-check), one button.',
+            'IDENTITY DATA = the fields the checklist reads: legal name · MST · registered address · company type. Basic facts (industry, size, website) and Company page content do not touch the flag.',
+          ],
+          warn: 'The re-verify drop is on SAVE, not on opening the editor — and it is silent by design except for the tag and the reason line. An admin correcting a typo has done the right thing; the flag simply says the check is owed again, and the same admin can press Verify in the next click.',
+        },
+        {
+          label: 'The tag on the Company site — where it shows and what sits beside it',
+          items: [
+            'BESIDE THE COMPANY NAME in the account dropdown (Figma [2302-44567](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2302-44567)), and in the console header, on every page. Verified: blue shield pill “Verified”. Unverified: amber pill “Chưa xác minh” **plus a button “Xác minh công ty · thiếu N mục →”** that opens Company information; once the three inputs are in, the button becomes a quiet line “Đủ hồ sơ · chờ Saramin xác minh” — a nag with nothing left to do behind it is a nag people learn to ignore.',
+            'ON POST JOB: in place of the disabled actions — “Công ty chưa được xác minh — chưa đăng tin được, kể cả bản nháp. Để được xác minh, hoàn tất 3 mục ở Company information:” followed by the three inputs, each ✓ or ✗ (Mã số thuế · Địa chỉ đăng ký MST · Giấy chứng nhận ĐKDN), and the button “Company information →”. All three in: “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc; sau đó bạn đăng tin được ngay.” The form is still visible; only Publish and Save draft are disabled.',
+            'ON COMPANY INFORMATION (Figma [view 2311-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2311-10289) · [edit 2313-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2313-10289)): an amber banner above the first section while Unverified — “Để được xác minh, Saramin cần đủ 3 mục — còn thiếu N” with the same ✓ / ✗ list and one line naming the controls that fill them (Edit for MST and address, Upload document for the ERC). In edit mode the three rows carry the marker “Saramin đối chiếu với ERC khi xác minh” and the “※” notes box repeats the rule as its first line. Ready: the banner turns blue — “Đủ hồ sơ — Saramin xác minh trong 1 ngày làm việc”. Verified: no banner, the page is read-only (next block). Full page spec: Account management → Company information (company site).',
+            'ON THE SIGN-UP SUCCESS PAGE: the tracker names the step (“Saramin verifies your company”) so the tag is expected, not alarming, when they first see it.',
+          ],
+        },
           {
             label: 'Match — một danh sách công ty có link, không phải một cái tên',
             text: 'Câu hỏi *“công ty này mình đã có chưa?”* **không có một đáp án duy nhất**. Một đuôi email thường thuộc về nhiều bản ghi của mình — công ty mẹ và chi nhánh dùng chung `@truongson.vn` — còn tên công ty thì người đăng ký gõ kiểu gì cũng được (“Trường Sơn Group”).\n\nMột ô `matchName` chỉ giữ được **một** đáp án, nên nó **im lặng giấu đi** các ứng viên còn lại: admin chọn từ dropdown mà không hề biết có bản ghi thứ hai giống hệt. Vì vậy Match là **danh sách các công ty khớp**, mỗi dòng **link thẳng sang bản ghi đó**, và **suy ra lúc đọc** chứ không lưu.',
@@ -2571,67 +2765,45 @@ export const crm: BuildModule = {
             warn: 'ĐỪNG LƯU kết quả match vào bản ghi sign-up. Danh sách phải được tính lại mỗi lần đọc: công ty mới được tạo, dòng Free data được đưa lên Customers, website được sửa — mọi thay đổi đó đều đổi câu trả lời. Một `matched: boolean` + `matchName` lưu sẵn sẽ đúng đúng một lần, ngay lúc ghi.',
           },
         {
-          label: 'Sign-up = a self-serve request, cleared through TWO gates',
-          text: 'Anyone can self-register on the Company site. The form captures the person (full name, email, phone, password set here) and their company (tax number, company name, "is your company currently hiring?" yes/no) + a Terms agreement. On submit it creates a PENDING sign-up — no company, no access, no products. It then passes two independent gates before the person can sign in: (1) email verification, sent immediately and self-serve; (2) HQ placement — an operator decides which company the person belongs to.',
+          label: 'Sign-up creates the login AND an Unverified company — email is the only gate before sign-in',
+          text: 'Anyone can self-register on the Company site. The form captures the person (full name, email, phone, password set here), their company (tax number, company name, “is your company currently hiring?”), a Terms agreement — and, **new since 09/2026, an optional ERC upload** (Giấy chứng nhận đăng ký doanh nghiệp, several files allowed).\n\nOn submit a verification email goes out immediately. **Clicking the link is the whole gate**: it creates the login, creates the company on Customers with **Verified = Unverified** and no sales owner, and the person is inside the console at once. What waits for an admin is not access — it is **verification**, and verification gates exactly two things: posting a job and being invoiced. See the flow blocks at the top of this page.',
           table: {
             cols: ['Action', 'Result'],
             rows: [
-              ['Sign up (new email)', 'A PENDING sign-up is created + an email-verification link is sent immediately. No company, no access yet.'],
-              ['Sign up with an already-registered employer email', 'Blocked — "this email already has an account, sign in instead".'],
+              ['Sign up (new email)', 'Verification email sent immediately. Nothing exists yet — no login, no company.'],
+              ['Click the verification link', '**Login created · company created (Unverified, no owner) · one row appears on Sign-ups.** The person lands in the console with the Chưa xác minh tag and a button to Company information.'],
+              ['Sign up with an already-registered employer email', 'Blocked — “this email already has an account, sign in instead”.'],
+              ['Sign up with an MST that already belongs to a Customers row', 'Allowed — the row still appears, and the Match column flags the existing company so the admin can Move the person into it and archive the duplicate. Blocking here would stop a real new HR person at a real customer from getting in.'],
             ],
           },
           items: [
-            'One email = one employer login = at most one company at a time, separate from the jobseeker site (Phase-1). A second sign-up on the same email is blocked.',
-            'The two gates are independent: email verification is instant/automated (filters spam before a human looks); HQ placement is manual and slower. Keep them decoupled so the user can finish gate 1 immediately while gate 2 is queued.',
-            'The password is set at sign-up. The final "you’re in" email is a notification (sign in now), not a set-password link — the person already has a password.',
+            'One email = one employer login = at most one company at a time, separate from the jobseeker site. A second sign-up on the same email is blocked.',
+            'THIS REVERSES THE 08/2026 MODEL, in which the person waited for HQ placement before they could sign in. The wait moved: the person no longer waits to get in, the COMPANY waits to be verified. What an unverified employer can do: sign in, read everything, edit Company information, upload the ERC. What they cannot: post a job (not even a draft), and Sales cannot request an invoice for them.',
+            'The password is set at sign-up. No “you’re in” email is needed any more — they are in the moment the link is clicked.',
           ],
-          warn: 'A sign-up is a REQUEST, not an account with access. No company or products are created at sign-up — the company comes from HQ (existing or newly created), and login is unlocked only after BOTH gates pass.',
+          warn: 'A self-registration is the THIRD create door for a company, and the only one not operated by an admin. It is safe because the record it creates is inert until verified: it cannot post, cannot be invoiced, and carries no owner — so it changes no CRM number a rep is measured on. Do not let it do anything more than that before an admin has looked at it.',
         },
         {
-          label: 'Sign-up lifecycle — the two gates + the wait',
-          text: 'Because gate 2 (HQ placement) is a manual step, the flow can be slow. The design keeps the user informed at every stage with a status tracker, a stated SLA, and an email at each transition — so "waiting" reads as "in progress", never "broken".',
-          table: {
-            cols: ['Stage', 'Who / gate', 'Speed'],
-            rows: [
-              ['1. Sign up (password set)', 'User', 'Instant'],
-              ['2. Verify email', 'User clicks the link — sent immediately on submit', '~1 min'],
-              ['3. Pending review', 'HQ places the request: Move to existing company / Archive — the only two. A company that does not exist yet is created elsewhere first', 'SLA — target within 1 business day'],
-              ['4. Active (or Rejected)', 'System emails "you’re in — sign in" on approval, or a reason on rejection', 'On decision'],
-            ],
-          },
-          items: [
-            'Verify email FIRST, then HQ reviews only email-verified requests — so the queue never wastes an operator on a fake or typo’d email.',
-            'The sign-up success page sets expectations: (1) verify your email, (2) we set up your company — usually within 1 business day, (3) we email you to sign in.',
-            'A status tracker (Signed up ✓ · Email verified ✓ · Company review ⏳ · Ready to sign in) is shown after verifying and if the user tries to log in early — never a bare login error while under review.',
-            'State the SLA and honor it; if it slips, auto-send a "still reviewing" nudge.',
-          ],
-        },
-        {
-          label: 'HQ resolves every sign-up with the SAME two actions',
-          /* THE DIAGRAM BELONGS HERE TOO, not only on Free data. This screen is the
-             one place the whole intake model is actually USED — an operator reading
-             "Move" and "Archive" needs to see why there is no third button, and the
-             picture answers that faster than the table under it. Same component,
-             rendered twice on purpose: one drawing, two audiences. */
+          label: 'The Sign-ups screen — two actions and a merge, and no “create” button',
+          /* THE INTAKE DRAWING BELONGS HERE TOO, not only on Free data: this screen is
+             where its sign-up row is actually worked. Same component, rendered twice
+             on purpose — one drawing, two audiences. */
           diagram: 'company-intake',
-          text: 'The Match column is just information — the company either hits one we already have (and the row says WHICH list it is in) or it does not. It never changes the choices. Every sign-up, matched or not, is resolved with exactly one of the same TWO actions.\n\nCORRECTED 2026-08-23: a third action, "Create new company + move user", was listed here and contradicted this feature\'s own Gate-2 rule ("this screen NEVER creates a company") and the two-create-doors rule on Free data. Two actions is the live model; creating a company is a separate act on a separate screen, done first.',
+          text: 'The Match column is information: it lists the companies this sign-up might already be, and which list each is in. What the operator DOES is one of three things — and none of them is “create a company”, because the sign-up already did that.',
           table: {
-            cols: ['Action', 'What it does', 'User outcome'],
+            cols: ['Action', 'When', 'What it does', 'The person'],
             rows: [
-              ['**Move to existing company**', 'Assign the user to a company that is already in **Customers** — the matched one, or any company HQ picks', 'Gets the "you’re in — sign in" email; can log in with the password set at sign-up'],
-              ['**Archive**', 'Discard the sign-up (spam / junk / not real)', 'Rejected — the request is removed (reversible, audited); an optional "we couldn’t set up your account" email'],
-              [
-                '*(no third action)*',
-                'The company they named is only in **Free data**, or is not on file at all. Nothing on this screen can fix that: promote the Free data row, or create the company from Customers — then come back and Move.',
-                'Stays **Pending review** until the company exists. The row shows the blocked reason and links to the company that has to be dealt with first.',
-              ],
+              ['**Move to existing company**', 'Match names a **Customers** record', 'Re-attach the login to that company with the role picked here; **archive the shell** the sign-up created as a duplicate; its ERC files move across', 'Already signed in. Emailed which company they now belong to. The destination’s roles and seat cap apply'],
+              ['**Gộp dòng Free data vào công ty này**', 'Match names a **Free data** row', 'The pool row leaves Free data; its phone / address / industry / source fill the shell’s empty fields; any open Xin nhận on it becomes an owner candidate for Verify. Direction is pool → shell, never the reverse — a pool row cannot hold a login', 'Unchanged — still in their (now richer) company'],
+              ['**Archive**', 'Spam, junk, not real', 'Deactivates the login and archives the shell. Reversible, audited', 'Cannot sign in. No email — spam gets no receipt'],
+              ['*(nothing)*', 'Not match — a genuinely new company', 'Leave it. The row resolves itself when an admin **verifies** the company from Company detail', 'Signed in, working, waiting for verification to unlock posting'],
             ],
           },
           items: [
-            'EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS (gate 1, tightened 2026-08-23). An unverified sign-up is not an un-actionable row in the inbox — it is not a row at all. The request sits with the USER until they click the link, and only then does it appear for HQ. So there is no “awaiting verification” state on this screen, and no Email-verified column: every row an operator can see has already passed gate 1.',
-            'Match is INFORMATIONAL ONLY and never changes the two actions — but it is not binary and it is not tax-only. See “COMPANY MATCHING — three signals, two lists” below for what it actually reads.',
-            'Move / Create both unlock login and send the "you’re in" email — the password was already set at sign-up, so it is a sign-in notice, not a set-password link.',
-            'Placing the user into an existing company picks their role there and respects that company’s seat cap. (This placement at sign-up is the ONLY cross-company move that exists — an already-placed user is never moved, only offboarded and re-invited.)',
+            'EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS. An unverified sign-up is not a row here — it is nothing yet. So there is no “awaiting verification” state on this screen and no Email-verified column: every visible row has passed it, and the person behind it is already signed in.',
+            'THE SHELL NEVER APPEARS AS ITS OWN MATCH — the column skips the Unverified company carrying this sign-up’s exact MST and typed name.',
+            'NO “YOU’RE IN” EMAIL ANY MORE: they were in the moment they clicked the link. The only email this screen sends is “you now belong to X”, after a Move.',
+            'NO CREATE BUTTON — for the opposite reason to the 08/2026 model: not because this screen must not create a company, but because the sign-up already has. A create button here would make two.',
           ],
         },
         {
@@ -2654,20 +2826,21 @@ export const crm: BuildModule = {
           warn: 'To retire a duplicate company: OFFBOARD its users first (deactivate there; the surviving company invites their emails fresh), THEN archive the empty one — never archive a company that still has active users or paid products without resolving them. And never archive a churned customer: they are still Active, still assigned, still worth a win-back call.',
         },
         {
-          label: 'Sign-up status — two tracks: the account and the inbox row',
-          text: 'Keep two states in mind. The USER ACCOUNT walks the two gates (verify email, then HQ placement). The INBOX ROW is what the operator sees — and it only becomes actionable once email is verified.',
+          label: 'Sign-up status — three tracks now: the login, the company, the inbox row',
+          text: 'Three things move, and they must not be confused: the LOGIN (does the email work?), the COMPANY (has an admin verified it?) and the INBOX ROW (has the admin dealt with this sign-up?). The old model tied the first to the third; now only the second waits for an admin.',
           table: {
             cols: ['Track', 'States', 'Rule'],
             rows: [
-              ['User account', 'Pending email verification → Email verified · pending review → Active (or Rejected)', 'No login until BOTH gates pass. Password was set at sign-up; the final email just says "sign in now".'],
-              ['Inbox row (HQ)', 'New → Resolved / Archived — two states, because the row is only created once the email is verified', 'Every visible row is actionable. There is no waiting state to read past, and no column that says the same thing on every row.'],
+              ['Login', 'Pending email verification → **Active**', 'Active the moment the link is clicked. Password was set at sign-up. Archive on Sign-ups deactivates it.'],
+              ['Company', '**Unverified → Verified** (and back to Unverified if an admin edits identity data)', 'Two states — see “Verification status” above. This is the only track an admin gates.'],
+              ['Inbox row (Sign-ups)', 'New → Resolved (moved · merged · verified) / Archived', 'Move / merge are available **at once** — right after email verification, independent of the company track. Resolves by Move (duplicate of an existing company), by merge (Free data row absorbed), by Archive (spam), or **automatically when the company is verified** — a genuinely new company needs no click on this screen.'],
             ],
           },
-          warn: 'Email verification is gate 1 and is automatic; it does not resolve the row. HQ placement is gate 2 and is what flips the account to Active.',
+          warn: 'Do NOT re-introduce a login gate here. If a row stays open for a week, the person has been working in their console for a week; the thing that is late is the company check, and the place to chase it is the Unverified filter on Customers.',
         },
         ],
         description:
-          'The inbox for people who self-register on the Company site. A sign-up clears two gates IN SEQUENCE: (1) email verification — sent immediately, self-serve, and it must pass BEFORE the request appears here at all; (2) HQ placement — an operator resolves each visible row with one of exactly two actions: move the user into a company that already exists on Customers, or archive it. This screen never creates a company; if the one they named is only in Free data or is not on file, it has to reach Customers first and the Move button stays disabled until it does. Move unlocks login and sends the “you’re in — sign in” email.',
+          'Self sign-up on the Company site and the company verification it leads to, as ONE flow: the inbox for people who self-register, and the check that unlocks what they came for. Since 09/2026 the email link is the only gate before sign-in: clicking it creates the login AND the company (Customers, Verified = Unverified, no owner) and puts one row here. The row asks one question — is this a company we already have? Two actions: Move to existing company (re-attach the login to the existing record, archive the duplicate the sign-up created) or Archive (spam — deactivate the login, archive the shell). A genuinely new company needs no action here: the row resolves itself when an admin verifies the company from Company detail. Login is never gated on this screen. VERIFICATION — the admin’s check of the ERC against the MST and registered address on the record (the button opens only when all three are present; the Customers list filters and counts those as “ready to verify”), a two-valued flag on the company record shown as the same tag on both sites — unlocks the two acts that commit Saramin: the employer posting a job, and Sales requesting the official invoice.',
         userStory:
           'As a sales/ops user, I want every email-verified sign-up matched against companies we already have and resolved with one action, so that a real one lands in the right company on Customers and spam is discarded — while the user always knows where they are in the process.',
         uiFields: [
@@ -2680,25 +2853,38 @@ export const crm: BuildModule = {
               { name: 'companyNameTyped', type: 'string', required: true, notes: 'the company name the person entered at sign-up' },
               { name: 'taxCode (MST)', type: 'string', notes: 'the match key; also what verifies the company later' },
               { name: 'hiring', type: 'bool', notes: '"is your company currently hiring?" from the form — a priority signal, not a disposition' },
-              { name: 'emailVerified', type: 'bool', notes: 'gate 1 — set true when the user clicks the verification link. The request appears in the inbox only once true, so it reads true on every row HQ can see.' },
+              { name: 'emailVerified', type: 'bool', notes: 'set true when the user clicks the link — which is also the moment the login and the Unverified company are created and the row appears. Reads true on every row HQ can see.' },
+              { name: 'companyId', type: 'ref → Company', notes: 'the Unverified company the sign-up created. Move re-points the login to another company and archives this one; Verify on Company detail resolves the row.' },
+              { name: 'ercFiles', type: 'file[]', notes: 'optional at sign-up, several files. Attached to the created company’s Enterprise Registration Documents card — never held on the sign-up row itself.' },
               { name: 'matchResult', type: 'derived (bool)', notes: 'derived, NOT stored — a RANKED LIST of candidate companies from three signals (name · email domain · MST) across Customers and Free data, each carrying which list it is in. Never binary, never tax-only, and it never changes the two actions. See the matching rule.' },
               { name: 'receivedAt', type: 'timestamp' },
-              { name: 'status', type: 'enum', notes: 'New (visible = already verified) → Resolved (moved to existing) / Archived' },
+              { name: 'status', type: 'enum', notes: 'New → Resolved (moved to existing · company verified) / Archived. Resolution by verification is automatic.' },
+            ],
+          },
+          {
+            group: 'Company · verification (stored on the company, shown on both sites)',
+            items: [
+              { name: 'verificationState', type: 'enum', required: true, notes: 'verified | unverified — exactly two. Default unverified on self sign-up.' },
+              { name: 'verifiedAt / verifiedBy', type: 'timestamp / ref → admin', notes: 'set by Verify; cleared when the flag drops' },
+              { name: 'unverifiedReason', type: 'enum', notes: 'new | edited — the line under the amber tag; `edited` carries wasVerifiedAt · editedAt · editedBy' },
+              { name: 'salesOwner', type: 'ref → admin user?', notes: 'nullable — a self-registered company has none until Sales assigns one (Ownership). Shown as “Chưa phân”. NOT a Verify input.' },
+              { name: 'ercDocuments', type: 'file[]', notes: 'several; each with uploadedBy (company | admin) and uploadedAt. Never deleted on re-upload.' },
+              { name: 'readyToVerify · gaps[]', type: 'derived — never stored', notes: 'tax present (Vietnamese company) ∧ registered address present ∧ ≥ 1 ERC file. Drives the Customers filter split, the Chờ verify chip, the row hint, the disabled Verify company button and the Company-site banner. One function, both sites.' },
             ],
           },
         ],
         behaviors: [
-          'On submit the system creates a pending sign-up (holding the person’s chosen password) and sends an email-verification link immediately. The three-signal company match (name · email domain · MST) runs when the row appears.',
-          'Gate 1 — email verification: when the user clicks the link, emailVerified flips true and the request APPEARS in this inbox — before that it is not a row HQ can see at all.',
-          'Gate 2 — HQ placement: an operator resolves EVERY row with **Move to existing company** or **Archive**, and nothing else. This screen NEVER creates a company — a user can only be moved into one that already exists in the Customers. **Verification is already done by the time a row appears** (see gate 1): placement and login are therefore the same moment — Move unlocks the login and sends the “you’re in — sign in” email. This REVERSES an earlier model in which an unverified person could be placed and their login opened later; that split made the operator hold two states apart for a case they can no longer meet.',
+          'On submit the system holds the form (person, company, chosen password, any ERC files) and sends an email-verification link immediately. Nothing else exists yet.',
+          'Clicking the link does THREE things at once: creates the login (Active), creates the company on Customers (Verified = Unverified, sales owner = Chưa phân, ERC files attached to its Enterprise Registration Documents card), and creates the row here. The three-signal company match (name · email domain · MST) runs as the row appears.',
+          'Two actions on a row, both about DUPLICATES and junk, never about access: **Move to existing company** re-attaches the login to the company the admin picks and archives the Unverified duplicate the sign-up created (its ERC files move across); **Archive** deactivates the login and archives the shell company. A row with no match and no problem is left alone — it resolves when the company is verified. This REVERSES the 08/2026 model in which Move unlocked login: the person is already inside.',
           'Match is informational and never changes the two actions. It is a RANKED LIST of candidate companies, not a yes/no — see the matching rule for the three signals and how ties are ordered.',
-          'Move attaches the company membership, unlocks login, and sends the "you’re in — sign in" email (password already set). Archive rejects the request.',
-          'The user sees a status tracker and a stated SLA throughout; trying to log in before both gates pass shows an "under review" screen, never a bare error.',
+          'Move emails the person which company they now belong to. Archive emails nothing — spam gets no receipt.',
+          'The user sees the state in the console itself: the Chưa xác minh tag beside the company name, a button to Company information, and a disabled Post job that names the three inputs still owed (MST · địa chỉ đăng ký MST · ERC) with ✓ / ✗. There is no “under review” login screen any more, because there is no review before login.',
         ],
         rules: [
-          'Two gates IN SEQUENCE, not in parallel: (1) email verification — instant, automatic, and it must pass before the request appears to HQ at all; (2) HQ placement — manual. A row in this inbox has already cleared gate 1 by definition.',
+          'ONE gate before sign-in — the email link — and it is the user’s own. Every row here has cleared it by definition, and the person behind every row is already signed in. The admin gate is VERIFICATION, it lives on Company detail, and it gates posting and invoicing, not access.',
           'TWO actions on EVERY row, always the same two: **Move to existing company** · **Archive**. One affordance — the ⋯ menu — on every unresolved row. A table whose rows offer four different controls makes the operator read each row before they can act on any of them.',
-          'The blockers live INSIDE the Move dialog, not on the row: company đang ở **Free data** → amber panel + “Đưa công ty lên Customers →”; công ty **chưa có ở đâu** → “Tạo công ty trước →”. The Move button stays disabled until the company exists. That keeps the table uniform while still refusing the impossible move — and each blocker names the screen that fixes it, because a refusal with no direction sends the operator hunting or inventing a way round.',
+          'THE TWO “NO CUSTOMER MATCH” OUTCOMES LIVE INSIDE THE MOVE DIALOG, and neither is a blocker any more (09/2026 — the sign-up already created the company). Company đang ở **Free data** → amber panel with **Gộp dòng Free data vào công ty này**: the pool row is absorbed into the shell (leaves Free data, fills empty fields, its open Xin nhận becomes an owner candidate) — never the reverse. No match at all → “đây là công ty mới”, with **Mở Company detail →**; the row resolves when the company is verified. The old “Đưa công ty lên Customers → / Tạo công ty trước →” blockers are gone: with a shell already on Customers they would have produced a third record.',
           '★ EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS (tightened 2026-08-23). An unverified sign-up is not a disabled row in this inbox — it is not a row at all; the request sits with the USER until they click the link. Consequences that follow, and each one removes something from the screen: there is no “awaiting verification” state, no Email-verified column (it would read the same value on every row), and no branch in the Move dialog. Placement and login are the same moment again — Move unlocks the login and sends the “you’re in” email. This REVERSES the earlier model in which an unverified person could be placed and their login opened later; that split made the operator hold two states apart for a case they can no longer meet. Spam never reaches the queue either, which is what the old rule was protecting against by keeping it archivable.',
           'REMOVED: “Create new company + move” and “Promote from Free data + move”. Both were extra doors into the company table, placed on a screen that does not ask for phân loại người mua, địa chỉ xuất hoá đơn or người liên hệ — a record created there would stall at the VAT-invoice step, by which time the company already has users signing in.',
           'The result is the invariant: **the company is always created first, then the user is assigned.** See the intake flow diagram on this page.',
@@ -2714,45 +2900,54 @@ export const crm: BuildModule = {
           'NO AUTO-PLACEMENT ON A MATCH, ever, however many signals agree. A confident match still only pre-selects the company in the Move dialog — a person is being given access to a company’s candidate pipeline, and that is not a decision to make on a string comparison. The operator confirms.',
           'THE SOURCE IS SHOWN, THE REASON IS NOT (2026-08-23). Each match renders as its list badge — **Customers** or **Free data** — plus the company name. The old cell also printed WHY it matched (“tên+đuôi email”); that described our matcher rather than answering the operator’s question, and the operator answers it by opening the company. The reason survives in the hover title for the genuinely ambiguous case.',
         ],
-        states: ['Pending email verification — user-side; NOT a row in this inbox', 'New — visible, already verified, awaiting placement', 'Resolved (moved to existing company)', 'Archived / rejected', 'Active (login unlocked)'],
+        states: ['Login: Pending email verification → Active — the moment the link is clicked', 'Company: Unverified (new) → Verified → Unverified (edited) → Verified', 'Inbox row: New → Resolved (moved · merged · verified) / Archived'],
         backend: {
           dataModel: [
             { name: 'signupId', type: 'uuid', required: true },
             { name: 'personName / phone', type: 'string' },
             { name: 'email', type: 'string', required: true, notes: 'unique across employer logins' },
             { name: 'companyNameTyped', type: 'string', required: true },
-            { name: 'taxCode', type: 'string?' },
+            { name: 'taxCode', type: 'string', required: true, notes: 'NOT uniqueness-blocked at sign-up — a duplicate is a new HR person at an existing customer more often than fraud; Match + Move resolves it. Uniqueness is enforced at Verify' },
             { name: 'hiring', type: 'bool' },
-            { name: 'emailVerified', type: 'bool', notes: 'gate 1' },
-            { name: 'matched', type: 'bool (derived)', notes: 'tax code hit a company' },
-            { name: 'matchedCompanyId', type: 'uuid?', notes: 'the tax-matched company, if any' },
-            { name: 'outcome', type: 'enum?', notes: 'moved_to_existing | created_and_moved | archived' },
-            { name: 'status', type: 'enum', required: true, notes: 'new | resolved | archived' },
+            { name: 'ercFiles', type: 'file[]', notes: 'optional at sign-up; attached to the created company when the email is verified — never kept on the row' },
+            { name: 'emailVerified', type: 'bool', notes: 'the ONLY gate before sign-in. Flipping it creates the login and the company' },
+            { name: 'companyId', type: 'uuid', notes: 'the Unverified company this sign-up created. Move re-points the login elsewhere and archives it' },
+            { name: 'outcome', type: 'enum?', notes: 'moved_to_existing | merged_pool_row | verified | archived' },
+            { name: 'status', type: 'enum', required: true, notes: 'new | resolved | archived — resolved by Move, by merge, or automatically when the company is verified' },
+            { name: 'company.verification', type: 'enum + audit', required: true, notes: 'ON THE COMPANY, not the row: verified | unverified, with verifiedAt/verifiedBy, or unverifiedReason (new | edited) + wasVerifiedAt/editedAt/editedBy. The row is resolved and forgotten; the flag lives for the life of the record' },
+            { name: 'company.salesOwner', type: 'ref?', notes: 'nullable — the only place a Customers row may have no owner. Shown as Chưa phân; assigned through Ownership, not by Verify' },
           ],
           endpoints: [
-            'POST /company/signup — creates the pending sign-up + sends verification email',
-            'GET /company/signup/verify?token= — gate 1: marks emailVerified true',
-            'GET /admin/crm/signups?status=&verified=',
-            'POST /admin/crm/signups/:id/move-to-existing { companyId, role, salesOwnerId } — verified only; unlock login; send "you’re in" email',
-            'POST /admin/crm/signups/:id/create-and-move { companyName, taxCode, salesOwnerId } — verified only; user = Admin; assigns the CRM sales owner; send "you’re in" email',
-            'POST /admin/crm/signups/:id/archive { reason } — reject the request',
+            'POST /company/signup — holds the form (+ ERC files), sends the verification email; nothing exists yet',
+            'GET /company/signup/verify?token= — creates the login (Active, Admin of the new company), the company (unverified/new, owner null, ERC attached) and the Sign-ups row; runs the three-signal match',
+            'GET /admin/crm/signups?status=',
+            'POST /admin/crm/signups/:id/move-to-existing { companyId, role } — re-point the login, archive the shell as duplicate, move its ERC files, email “you now belong to X”',
+            'POST /admin/crm/signups/:id/merge-pool-row { poolRowId } — pool row leaves Free data, fills the shell’s empty fields, its open claim requests become owner candidates',
+            'POST /admin/crm/signups/:id/archive { reason } — deactivate the login, archive the shell',
+            'POST /admin/crm/companies/:id/verify — 409 unless the record carries MST (Vietnamese company) · registered address · ≥ 1 ERC file, the same readyToVerify() the list filters on; sets verifiedAt/verifiedBy; resolves the Sign-ups row',
+            'GET /admin/crm/companies?verified=unverified&ready=true|false — the Customers filter split and the Chờ verify count; `ready` is computed in the query from the three fields, never read from a column',
+            'PATCH /admin/crm/companies/:id (identity fields) — on a verified company sets unverified/edited with wasVerifiedAt · editedAt · editedBy',
           ],
-          integrations: ['Company site sign-up form (source — pending request + verification email)', 'CRM Customers (match / create / archive)', 'Account management (membership + roles)', 'Auth (pending account, email verification, login gate)', 'Notifications (verification email · "you’re in" email · SLA nudge)'],
-          notes: 'Two gates, decoupled: verify-email is automatic and fast; HQ placement is manual. Login is unlocked only when emailVerified && placed. Uniqueness among VERIFIED companies is enforced on the tax code at verify/buy.',
+          integrations: ['Company site — sign-up form (source) · Company information (ERC upload; read-only when verified) · the header tag', 'CRM Customers — Verified column + filter, Verify button, Enterprise Registration Documents card', 'Job management — Create job on the Company site reads the flag', 'Invoices — “Yêu cầu xuất hóa đơn chính” reads the flag', 'Auth — email verification creates the login; no placement gate', 'Notifications — verification email · “you now belong to X” · verify-queue SLA nudge'],
+          notes: 'ONE gate before sign-in (email) and ONE admin gate after it (verification), gating different things: the first gates access, the second gates posting and invoicing. Store the verification state on the COMPANY, never on the sign-up row.',
         },
         acceptance: [
-          'On submit, a pending sign-up is created and a verification email is sent immediately; nothing is provisioned and the person cannot log in.',
-          'Clicking the verification link sets emailVerified true but does NOT grant access — the row is now actionable for HQ.',
-          'An email-unverified sign-up NEVER APPEARS in this inbox — the acceptance test is that the list contains no unverified row at all, not that an unverified row is disabled.',
-          'Move / Create unlock login and send the "you’re in" email; the user signs in with the password set at sign-up.',
-          'Trying to sign in before both gates pass shows an "under review" status screen (with the tracker + expected date), not a login error.',
-          'A stated SLA is shown on the success page and the tracker; every resolution is audited.',
+          'On submit a verification email is sent immediately; nothing exists yet — no login, no company, no row in this inbox.',
+          'Clicking the link creates the login, a company on Customers with Verified = Unverified and no owner (ERC files attached if given), and ONE row here. The person can sign in at once.',
+          'Signed in, unverified: the console header shows Chưa xác minh with a button to Company information; Post job shows Publish and Save draft disabled, the three inputs listed with ✓ / ✗ and a link to Company information; Company information opens with the same banner; reading, editing Company information and uploading the ERC all work.',
+          'The row never lists the company this sign-up created as its own match; a real duplicate on Customers or Free data does appear, with the signal that found it.',
+          'Move re-attaches the login to the chosen company, archives the shell as duplicate, carries its ERC files over, and emails the person which company they belong to.',
+          'A Free data match offers “Gộp dòng Free data vào công ty này”: the pool row leaves Free data and the shell keeps its data; no third record is created.',
+          'Admin: Customers → the Verified filter offers Verified · Unverified · ready to verify · Unverified · missing info; a self-registered company with no address and no ERC lists under missing info with “Thiếu: Địa chỉ đăng ký MST · ERC” under its tag — in the department view even with no owner. The Chờ verify chip shows the count of ready rows and applies the ready filter in one click.',
+          'Verify company on a record missing the address or the ERC → the button is disabled and its tooltip names the gap; the employer adds the address and uploads the ERC (or the admin does) → the row reads “Đủ hồ sơ — verify được”, the button enables, the dialog shows the three inputs ✓ and the legal name and owner as facts. Verify with owner = Chưa phân is allowed. Verify → tag blue on both sites, Post job enabled, Company information read-only for the employer, “Yêu cầu xuất hóa đơn chính” enabled, this row reads Resolved.',
+          'Admin edits the legal name of a verified company and saves → Chưa xác minh · cần xác minh lại on both sites; Post job disabled again; Verify company reappears.',
         ],
         openQuestions: [
-          'What is the SLA for HQ placement (target — e.g. within 1 business day), and the auto-nudge threshold if it slips?',
-          'Fast-path: when the sign-up’s email domain matches an already-VERIFIED company, route approval to that company’s Admin (or auto-approve) instead of HQ — cutting the manual queue. In scope for Phase-1?',
-          'When moving a user into an existing company, does that company’s Admin approve first, or does HQ place them directly?',
-          'Should stale email-verified rows auto-nudge/auto-archive after N days?',
+          'Who approves a Move into an EXISTING company — Saramin admin alone (current default) or that company’s own Admin (safer: an MST is public, and a wrong Move exposes the customer’s jobs, applicants and quota)? Recommendation: the company’s Admin, with Saramin override only when the company has no active Admin.',
+          'Fast-path: when the sign-up’s email domain matches an already-verified company, auto-propose the Move (or attach as a pending member) instead of waiting for an operator?',
+          'Should an admin-created company (Customers → New company) be Verified at creation when an ERC is attached, or always start Unverified? Recommendation: Verified-at-creation — that admin has just done the checklist.',
+          'Grace period on the re-verify drop for a typo fixed by the same admin within minutes? Recommendation: no — one rule, one button.',
+          'Should stale Unverified companies still missing an input after N days nudge the employer (naming the missing item), and stale Sign-ups rows auto-archive?',
         ],
       },
     },
