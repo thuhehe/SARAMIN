@@ -711,7 +711,6 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
       ready: true,
-      mockup: 'js-search',
       detail: {
         description:
           'Keyword + facet search results with three sorts and pagination — the workhorse discovery surface. Ranking is decided by what the candidate TYPED and by the posting tier the employer PAID for, in that order of construction: relevance decides which jobs qualify and how they order inside a band; the tier decides which band. The candidate’s profile and match score never enter.',
@@ -808,52 +807,6 @@ export const jobManagement: BuildModule = {
               'The chosen sort is part of the URL and stays when the candidate pages forward.',
             ],
           },
-          {
-            label: 'THE PAID BANDS — tier buys the band, relevance then refresh buy the place inside it',
-            text: 'What a paid tier buys: a place in a higher group in the Recommended sort. Inside the group, relevance decides first, then auto-refresh. Money never buys a place above a better match in the same group — and never touches the other two sorts.',
-            table: {
-              cols: ['Group', 'Tier', 'Price (SME)', 'Auto-refresh'],
-              rows: [
-                ['1 — top', 'Top Job', '13,800,000 ₫', '⚠️ not set yet'],
-                ['2', 'Distinction', '12,000,000 ₫', '⚠️ not set yet'],
-                ['3', 'Basic Plus', '6,100,000 ₫', 'every 10 days'],
-                ['4', 'Basic', '2,710,000 ₫', 'every 15 days'],
-                ['5 — last group', 'Free', '—', 'never'],
-                ['After all groups', 'Any tier — matched only in description / requirements', '—', 'no paid effect'],
-              ],
-            },
-            items: [
-              'Why description-only matches stay out of the groups: without this rule, a Top Job that only MENTIONS “kế toán” in its description would sit above a Distinction job TITLED “Kế toán tổng hợp”. The top group would fill with jobs that do not look relevant, and candidates would stop trusting the badge.',
-              'Auto-refresh only moves a job inside its own group, among jobs that matched equally well. It never lifts a job into a higher group.',
-              'Editing a job is NOT a refresh. Only the paid refresh (or a refresh the employer explicitly buys) counts.',
-              'Paid position is always shown: a “Tin ưu tiên · <tier>” badge on every paid card, and — recommended — a heading where each group starts, like the KR reference does.',
-              'Group order and the tier list are settings (Matching settings), not code.',
-              'Optional: keep 1–2 slots on page 1 for the best-matching unpaid job, so page 1 is never 100% paid. A business decision for the client.',
-              '⚠️ Gap: Top Job and Distinction have no auto-refresh interval yet. Step 5 cannot be built for those two tiers until the client sets them.',
-            ],
-            warn: 'In Recommended, a paid tier can outrank a better match from a lower tier. That is intended. Three things keep it fair: description-only matches never join a group, paid cards are always marked, and the other two sorts ignore tiers entirely.',
-          },
-          {
-            label: 'Worked example — the query “kế toán”, sort Recommended',
-            text: 'A candidate types “kế toán” and leaves the sort on Recommended. Suppose 1,240 live jobs pass the filters and 440 contain the word. 300 match in title, skills, category or company — these are grouped by tier. 140 match only in the description — these go to the end. The numbers are made up; the shape is what matters.',
-            table: {
-              cols: ['Group', 'Tier', 'Jobs', 'Positions', 'Order inside'],
-              rows: [
-                ['1', 'Top Job', '4', '1–4', 'title matches first, then skills, then category, then company; ties by newest refresh'],
-                ['2', 'Distinction', '6', '5–10', 'same'],
-                ['3', 'Basic Plus', '15', '11–25', 'same'],
-                ['4', 'Basic', '75', '26–100', 'same'],
-                ['5', 'Free', '200', '101–300', 'same'],
-                ['End', 'Any tier — description only', '140', '301–440', 'newest refresh first; no groups'],
-              ],
-            },
-            items: [
-              'Page 1 shows 4 Top Job, 6 Distinction, then the first Basic Plus jobs — paid tiers first, as intended. Inside group 1, the two jobs TITLED “Kế toán…” come first.',
-              'A Free job titled exactly “Kế toán tổng hợp” lands at position 101 — after every paid job that matched a declared field. This is the price of grouping by tier, said plainly so nobody is surprised in a demo.',
-              'A Top Job that only mentions “kế toán” in its description lands at 301 or later — not on page 1. This is what the description rule buys.',
-              'Switch to “Date posted” and the groups vanish: the same 440 jobs, newest posting first, badges still shown.',
-            ],
-          },
         ],
         states: ['Loading', 'No results (relaxation offered, and what was relaxed shown)', 'Has results — banded (Recommended)', 'Has results — flat (Date posted / Closing soonest)', 'Error / retry'],
         backend: {
@@ -869,7 +822,7 @@ export const jobManagement: BuildModule = {
         ],
         openQuestions: [
           'SALARY SORT — absent in this version. Intentional? The currency contract already defines its behaviour; adding it later is cheap.',
-          'AUTO-REFRESH CADENCE for Distinction and Top Job is undefined — see “THE PAID BANDS”. Stage 5 cannot ship for those tiers until the client sets both.',
+          'AUTO-REFRESH CADENCE for Distinction and Top Job is undefined (only Basic = 15 days and Basic Plus = 10 days exist). Step 5 cannot ship for those two tiers until the client sets both.',
           'BAND SECTION HEADERS (labelled groups as in the KR reference) vs badges only — recommended, but a UI decision for the client.',
           'RESERVED PAGE-1 SLOT for the best unpaid declared-field match — recommended as insurance, but a commercial decision the client owns.',
           'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts + per-hit best-field). The SQL fallback costs the facet counts.',
