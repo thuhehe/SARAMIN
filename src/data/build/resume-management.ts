@@ -1067,7 +1067,7 @@ export const resumeManagement: BuildModule = {
           {
             early: true,
             heading: 'CV SEARCH — the four stages, and where each one is specified',
-            text: 'The same pipeline as [JOB SEARCH](/m/job-management#job-search-gate-filter-rank-and-relevance-is-only-what-the-candidate-typed), deliberately: one search model on the platform, one text analyser, one vocabulary for the same ideas.\n\nThis block is a MAP plus the CV-side differences. It does not restate the stages that already have their own section below — the page was drifting into three descriptions of the same rail, and a rule written twice is a rule that will disagree with itself.',
+            text: 'The same pipeline as [JOB SEARCH](/m/job-management/job-list-search-result#job-search-gate-filter-score-band-order-tail-and-relevance-is-only-what-the-candidate-typed), deliberately: one search model on the platform, one text analyser, one vocabulary for the same ideas.\n\nThis block is a MAP plus the CV-side differences. It does not restate the stages that already have their own section below — the page was drifting into three descriptions of the same rail, and a rule written twice is a rule that will disagree with itself.',
             table: {
               cols: ['Stage', 'What it does', 'Specified in'],
               rows: [

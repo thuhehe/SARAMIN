@@ -702,6 +702,172 @@ export const jobManagement: BuildModule = {
        job — so they belong beside the job features that surface them. The slugs are
        unchanged; only the module segment of the URL moved, and every cross-link to
        them in Resume management was rewritten to match. */
+    // Jobseeker search — restored 2026-09-11. The 5ee4358 merge of the Admin and
+    // Company job lists also removed this feature, which was never a duplicate of
+    // either, and resume-management kept linking to it. Rewritten to the decided
+    // "Recommended" model: tier band → field priority → refresh, body-only hits in a tail.
+    {
+      name: 'Job list (Search result)',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      ready: true,
+      mockup: 'js-search',
+      detail: {
+        description:
+          'Keyword + facet search results with three sorts and pagination — the workhorse discovery surface. Ranking is decided by what the candidate TYPED and by the posting tier the employer PAID for, in that order of construction: relevance decides which jobs qualify and how they order inside a band; the tier decides which band. The candidate’s profile and match score never enter.',
+        userStory: 'As a jobseeker, I want to type what I am looking for and get jobs that actually match it — with the paid placements clearly marked — so I can trust the list and zero in on the right roles.',
+        uiFields: [
+          {
+            group: 'Query & facets',
+            items: [
+              { name: 'keyword', type: 'string', notes: 'matched against the searchable fields only — see the module block “WHICH FIELDS THE KEYWORD MATCHES”. Every WORD must hit somewhere; the fields it may hit are title · skills · role/category · company · body' },
+              { name: 'location', type: 'province multi-select' },
+              { name: 'job category / role', type: 'multi-select', notes: 'master data — the same two-level taxonomy the job form writes' },
+              { name: 'level · experience', type: 'multi-select · range' },
+              { name: 'work type · contract type', type: 'two multi-selects', notes: 'two axes, never one list — see “WORK TYPE and CONTRACT TYPE are TWO fields”' },
+              { name: 'benefits', type: 'multi-select', notes: 'the 12 typed benefits — a facet, never a keyword target' },
+              { name: 'salary range', type: 'range + currency', notes: 'the currency SCOPES rather than converts; ÷12 for annual; “Thỏa thuận” jobs always included; say what the scope hid. Canonical rules: Resume management → “★ SALARY — the one contract”' },
+              { name: 'sort', type: 'enum', required: true, notes: 'Recommended · Date posted · Closing soonest. Recommended is the DEFAULT and the ONLY sort that bands by tier — see “THE THREE SORTS”' },
+            ],
+          },
+          {
+            group: 'Result item',
+            items: [
+              { name: 'JobCard', type: 'title · company · salary · location · tier badge · saved ♥ · refreshed-ago' },
+              { name: 'tier badge', type: '“Tin ưu tiên · <tier>”', required: true, notes: 'on every paid card in Recommended — a band can outrank relevance, so the reader is owed the disclosure' },
+              { name: 'band header', type: 'section label', notes: 'RECOMMENDED — render each band as a labelled section (“Top Job”, “Distinction”…) on the page where the band starts, as the KR reference does, rather than one flat list with badges. Makes the paid structure legible at a glance' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Filters AND the sort reflect in the URL (shareable / back-button safe) and survive pagination — a candidate on page 3 is never silently moved to another sort.',
+          'Debounced keyword; facets apply instantly with live result counts.',
+          'Save a job from the card without leaving results.',
+          'RANKING IS QUERY-ONLY: every word must hit a searchable field → tier band (Recommended only) → field priority inside the band → last refreshed. The candidate’s CV, preferences and match score are NOT read — the same query returns the same results logged in or out.',
+          'BODY-ONLY MATCHES ARE NEVER BANDED. A job whose only hit is in the description or requirements goes to an unbanded tail after all bands, so a Top Job that merely mentions the keyword cannot sit above a Distinction job titled with it.',
+          'Switching sort re-orders the same jobs and never changes WHICH jobs are returned. Date posted and Closing soonest carry no bands.',
+          'ZERO RESULTS RELAX IN A FIXED ORDER and always disclose it: salary → experience → contract type → province (widen to region) → keyword AND→OR. Show what was relaxed (“Không có việc nào ở Đà Nẵng — đang hiện cả miền Trung”).',
+          'DE-DUPLICATE BY COMPANY BEFORE BANDING: one employer posting five near-identical titles collapses to one card plus “3 vị trí tương tự tại X”.',
+        ],
+        rules: [
+          'Gate = Open + Exposure On + not past deadline + moderation approved. No domain field (salary, industry, experience) may ever act as a gate.',
+          'Retrieval: a job qualifies when EVERY word of the query hits at least one searchable field — any field per word (OR across fields, AND across words). Relax to OR across words only when the AND set is empty, and say so.',
+          'Facets: OR within one facet, AND across facets — stated because it is the commonest cause of an unexplained empty result.',
+          'The match score never participates in search ranking, in any form. It belongs to the recommendations feed only.',
+          '“Last refreshed” means the AUTO-REFRESH timestamp (the paid cadence, or an explicit refresh the employer buys). EDITING A JOB NEVER BUMPS IT — otherwise employers edit-spam to the top of their band.',
+          'No randomness anywhere. Every ordering ends in `jobId`, so the order is total and pagination is stable across page loads.',
+        ],
+        requirements: [
+          {
+            label: 'JOB SEARCH — gate → filter → score → band → order → tail, and relevance is ONLY what the candidate typed',
+            text: 'DECIDED (2026-09-11): job search ranks on QUERY RELEVANCE and POSTING TIER, and on nothing else. It does not read the candidate’s CV, preferences or match score — search answers “how well does this job match what I typed”; “how well does it fit me” belongs to the recommendations feed. Money enters at exactly one stage (4), on exactly one sort (Recommended), and only for jobs that already match a declared field.',
+            table: {
+              cols: ['Stage', 'What it does', 'Rule'],
+              rows: [
+                ['1 · GATE', 'Decides what is eligible at all — binary', 'status = Open · exposure = On · not past deadline · moderation approved. NEVER a domain field: every one of those can empty the result set and none can explain why.'],
+                ['2 · FILTER', 'The facets the candidate ticked — binary', 'OR within one facet, AND across facets. The keyword is NOT a filter — it is the input to stage 3.'],
+                ['3 · RETRIEVE + SCORE', 'Which jobs qualify, and how relevant each is', 'A job qualifies when EVERY word of the query hits at least one searchable field (any field per word). Relevance = the best field it hit, in this priority: title → skills → role/category → company → body (the list lives once, in “WHICH FIELDS THE KEYWORD MATCHES”).'],
+                ['4 · BAND', 'RECOMMENDED SORT ONLY — groups by posting tier', 'Top Job → Distinction → Basic Plus → Basic → Free — but ONLY for jobs whose best hit is a DECLARED field (title · skills · role/category · company). A job whose only hit is in the body skips banding and goes to stage 6.'],
+                ['5 · ORDER', 'Orders WITHIN each band', 'field priority ↓ (title first … company last) → `lastRefreshedAt` ↓ → `publishedAt` ↓ → `jobId`. Relevance first, so a title match leads its band; refresh second, so the paid cadence still buys the place among equals.'],
+                ['6 · TAIL', 'Body-only matches, after every band', 'Unbanded. `lastRefreshedAt` ↓ → `publishedAt` ↓ → `jobId`. Money never reaches the tail — this is the relevance floor, and it is one sentence to explain to the client.'],
+              ],
+            },
+            items: [
+              'THE FIELD LIST LIVES IN ONE PLACE — the module block “WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal”. This table only says how the priority is USED; restating the list here is how two copies start to disagree.',
+              'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — the one already decided for skill typeahead: lower-casing, ASCII folding (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), exact → prefix → contains.',
+              'WORDS ARE AND-ED, FIELDS ARE OR-ED. “kế toán Hà Nội” requires both words to land somewhere — each may land in a different field — or “Hà Nội” alone drags in every job in the city. Relax to OR only when the AND set is empty, and disclose it.',
+              'DE-DUPLICATE BY COMPANY BEFORE STAGE 4. One employer with five Top Job posts must not own the entire top band and the first page with it.',
+              'SALARY FILTER follows the already-decided currency contract — scope, never convert; “Thỏa thuận” always included; say what the scope hid.',
+              'NO RANDOMNESS ANYWHERE. Every ordering ends in `jobId`, so the order is total and pagination is stable across page loads.',
+            ],
+            warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The score keeps exactly two homes: employer CV search and the jobseeker recommendations feed.',
+          },
+          {
+            label: 'THE THREE SORTS — bands belong to Recommended, and nothing else',
+            text: 'The tier bands are a property of ONE sort, not of the result set. The default is “Recommended” — renamed from “Mới cập nhật” on 2026-09-11, because ordering a band by relevance first and refresh second is exactly what “recommended” promises and exactly what “last updated” does not. The other two sorts are pure: no tier, no relevance re-ordering, or their names are lies.',
+            table: {
+              cols: ['Sort', 'Bands apply?', 'Ordered by', 'What the label promises'],
+              rows: [
+                ['**Recommended** (default)', '✅ YES — the only one', 'tier band → field priority → `lastRefreshedAt` ↓ → `publishedAt` ↓ → `jobId`; body-only hits in an unbanded tail', 'Our best pick for your query — which is honestly what tier + relevance + freshness is.'],
+                ['Date posted', '❌ no', '`publishedAt` ↓ alone, then `jobId`', 'When it was POSTED. Never `lastRefreshedAt` — a “newest” that auto-refresh silently reorders is not honest.'],
+                ['Closing soonest', '❌ no', 'application deadline ↑, then `jobId`', 'Urgency. Jobs without a deadline sort last.'],
+              ],
+            },
+            items: [
+              'THE SAME JOBS, THREE ORDERS. Switching sort must never change WHICH jobs are returned — only their order. The gate, facets and retrieval run before any sort is consulted.',
+              'THERE IS NO PURE-RELEVANCE SORT, so there is NO money-free ordering anywhere on this screen. That is a deliberate commercial choice (decided 2026-09-11), and it is what makes the “Tin ưu tiên” badge mandatory rather than nice: disclosure is the only remaining guardrail.',
+              'THERE IS NO SALARY SORT in this version. ⚠️ Flagged, not decided by us: most VN boards offer one, and the currency contract already defines how it would behave (within one currency, “Thỏa thuận” last). Confirm with the client whether its absence is intentional.',
+              'THE SORT LIVES IN THE URL like every other filter, and survives pagination.',
+            ],
+          },
+          {
+            label: 'THE PAID BANDS — tier buys the band, relevance then refresh buy the place inside it',
+            text: 'Paid priority is TIER BANDING inside the Recommended sort — never a multiplier applied to every sort. Inside a band, the ORDER is relevance first (a title match beats a skills match beats a category match), then auto-refresh recency, so the paid refresh cadence still decides the place among equally relevant jobs.',
+            table: {
+              cols: ['Band', 'Tier', 'Price (SME)', 'Auto-refresh cadence'],
+              rows: [
+                ['1 — top', 'Top Job', '13,800,000 ₫', '⚠️ NOT SPECIFIED — see the gap below'],
+                ['2', 'Distinction', '12,000,000 ₫', '⚠️ NOT SPECIFIED'],
+                ['3', 'Basic Plus', '6,100,000 ₫', 'every 10 days'],
+                ['4', 'Basic', '2,710,000 ₫', 'every 15 days'],
+                ['5 — last band', 'Free', '—', 'never refreshed'],
+                ['tail', 'any tier, body-only hit', '—', 'unbanded; money does not reach it'],
+              ],
+            },
+            items: [
+              'THE FLOOR IS “BODY-ONLY GOES TO THE TAIL”, and it is load-bearing. Banding lets money outrank relevance, so without a floor a Top Job that merely MENTIONS “kế toán” in its description would sit above a Distinction job TITLED “Kế toán tổng hợp” — the top band fills with jobs that do not look relevant, and the badge stops being trusted. Requiring a declared-field hit to enter a band is the simplest floor there is, and one sentence to explain.',
+              'AUTO-REFRESH IS A WITHIN-BAND LEVER. Cadence no longer decides whether you are on top, only your place among the equally relevant jobs in your own band — a cleaner thing to sell than a sawtooth of brief peaks.',
+              'EDITING NEVER BUMPS `lastRefreshedAt`. Only the paid cadence (and any explicit refresh the employer buys) moves it. Without this rule employers edit-spam to the top of their band.',
+              'DISCLOSE PAID POSITION twice: a “Tin ưu tiên · <tier>” badge on every paid card, and — recommended — labelled band sections on the page where a band starts, as the KR reference renders its “Super star” / “Hot job” groups. A band can outrank relevance; the reader is owed the disclosure.',
+              'BAND ORDER AND THE TIER LIST ARE CONFIG, NOT CODE — they belong in Matching settings (a System resource) so the ranking can be tuned without a release.',
+              'OPTIONAL — RESERVE 1–2 PAGE-1 SLOTS for the best unpaid declared-field match. Cheap insurance against a first page that is entirely bought; a commercial call the client owns.',
+              '⚠️ GAP TO CLOSE FIRST: the two most expensive tiers have NO defined refresh cadence. Only Basic (15 days) and Basic Plus (10 days) exist. Stage 5 cannot be implemented for Top Job and Distinction until the client sets both.',
+            ],
+            warn: 'INSIDE “RECOMMENDED”, BANDING LETS MONEY OUTRANK RELEVANCE. That is the deliberate trade, and it is held in check by exactly three things: the floor (body-only hits never band), the badge (paid position is disclosed), and the two other sorts (which money never touches).',
+          },
+          {
+            label: 'Worked example — the query “kế toán”, sort Recommended',
+            text: 'A candidate searches **kế toán** with the default sort. 1,240 jobs pass the gate and facets; 440 contain the word somewhere. 300 hit a DECLARED field (title 90 · skills 60 · role/category 100 · company 50) and are banded by tier; 140 hit only the body and go to the tail. Numbers are illustrative — the SHAPE is the point.',
+            table: {
+              cols: ['Band', 'Tier', 'Jobs', 'Positions', 'Ordered inside by'],
+              rows: [
+                ['1', 'Top Job', '4', '1–4', 'title hits first, then skills, then category; refresh breaks ties'],
+                ['2', 'Distinction', '6', '5–10', 'same'],
+                ['3', 'Basic Plus', '15', '11–25', 'same'],
+                ['4', 'Basic', '75', '26–100', 'same'],
+                ['5', 'Free', '200', '101–300', 'same'],
+                ['tail', 'any tier — body-only hit', '140', '301–440', 'refresh, then posted, then id — no bands'],
+              ],
+            },
+            items: [
+              'PAGE 1 IS A CLEAN PAID GRADIENT — 4 Top Job, 6 Distinction, and the first Basic Plus jobs — which is the commercial intent. Inside band 1 the two jobs TITLED “Kế toán…” lead, then the one tagged with an accounting skill, then the one in the accounting category.',
+              'A PERFECT-MATCH FREE JOB TITLED “Kế toán tổng hợp” LANDS AT POSITION 101 — after every paid job that matched a declared field. This is the cost of banding, stated plainly so nobody discovers it in a demo.',
+              'A TOP JOB THAT ONLY MENTIONS “kế toán” IN ITS DESCRIPTION LANDS AT 301+, in the tail — not on page 1. This is what the floor buys: the top band cannot be filled with paid jobs that do not look relevant.',
+              'SWITCH TO “DATE POSTED” and this table collapses to one column: the same 440 jobs by `publishedAt`, badges still on the paid cards, no grouping at all.',
+            ],
+          },
+        ],
+        states: ['Loading', 'No results (relaxation offered, and what was relaxed shown)', 'Has results — banded (Recommended)', 'Has results — flat (Date posted / Closing soonest)', 'Error / retry'],
+        backend: {
+          endpoints: ['GET /jobs/search?q=&filters…&sort=recommended|posted|closing&page='],
+          integrations: ['Search index — facets with counts, VN ASCII folding, field-weighted relevance (see the module block “FILTER-ONLY and NEVER-INDEXED fields” for the index recommendation)', 'Saved jobs'],
+          notes: 'The index returns, per hit, WHICH field matched best (title/skills/category/company/body) — stage 5 orders on that, and stage 4 needs it to decide band vs tail. A job leaves the index synchronously on Close / expiry / Exposure Off.',
+        },
+        acceptance: [
+          'Every word of the query hits at least one searchable field for every returned job; body-only matches appear after all banded results.',
+          'On Recommended, results are grouped Top Job → Distinction → Basic Plus → Basic → Free, ordered inside each band by field priority then last refreshed; paid cards carry the tier badge.',
+          'Date posted and Closing soonest show no grouping and are unaffected by tier.',
+          'Filters + sort + page are URL-encoded; the same URL yields the same order logged in or out; the order is stable across reloads.',
+        ],
+        openQuestions: [
+          'SALARY SORT — absent in this version. Intentional? The currency contract already defines its behaviour; adding it later is cheap.',
+          'AUTO-REFRESH CADENCE for Distinction and Top Job is undefined — see “THE PAID BANDS”. Stage 5 cannot ship for those tiers until the client sets both.',
+          'BAND SECTION HEADERS (labelled groups as in the KR reference) vs badges only — recommended, but a UI decision for the client.',
+          'RESERVED PAGE-1 SLOT for the best unpaid declared-field match — recommended as insurance, but a commercial decision the client owns.',
+          'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts + per-hit best-field). The SQL fallback costs the facet counts.',
+        ],
+      },
+    },
     {
       name: 'Recommended jobs — matched to a jobseeker’s profile',
       site: 'Logic',

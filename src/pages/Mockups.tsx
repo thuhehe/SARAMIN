@@ -155,13 +155,15 @@ function SearchScreen() {
         <div className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[12.5px] text-muted"><span className="font-semibold text-ink">1,248</span> jobs found</p>
-            <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Mới cập nhật</Chip><Chip>Relevance</Chip><Chip>Mới nhất</Chip><Chip>Salary</Chip></div>
+            <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Recommended</Chip><Chip>Date posted</Chip><Chip>Closing soonest</Chip></div>
           </div>
-          {/* Tier banding — ONLY in the "Mới cập nhật" sort, which is why that chip is
-              the active one here. The pool is ordered Top Job → Distinction → Basic Plus
-              → Basic → Free, and auto-refresh only reorders WITHIN a band. Paid slots
-              carry the "Tin ưu tiên" badge, because a band can outrank relevance.
-              Pick Relevance / Mới nhất / Salary and the bands disappear entirely. */}
+          {/* Tier banding — ONLY in the "Recommended" sort (the default, which is why
+              that chip is active). Bands run Top Job → Distinction → Basic Plus → Basic
+              → Free; inside a band, relevance first (title hit > skills > category >
+              company), then last refreshed. Body-only hits are never banded — they sit in
+              a tail after every band. Paid cards carry "Tin ưu tiên · <tier>", because a
+              band can outrank relevance. Date posted / Closing soonest have no bands.
+              See Job management → Job list (Search result). */}
           {/* BULK APPLY — max 5 postings per action, and the CV is NOT picked here:
               it defaults to the one used in the last application. The bar names it and
               offers a single swap for the whole batch, because one CV goes to up to
