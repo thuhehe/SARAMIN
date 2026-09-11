@@ -72,8 +72,8 @@ export function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
  * verifyDisplayOf(), never held on the record:
  *
  *   Verified            blue  · an admin pressed Verify
- *   Waiting for verify  amber · every input on file, nobody has verified → our queue
- *   Unverified          slate · an input missing                         → their to-do
+ *   Waiting to verify   amber · ERC on file, nobody has verified → our queue
+ *   No paperwork        slate · no ERC yet                        → their to-do
  *
  * Blue, not green, on purpose: green is the CRM's "active / bought" tone, and a
  * company can be Verified without ever having bought anything. Amber vs slate is
@@ -99,7 +99,7 @@ export function VerifiedTag({ v, display, en, showReason = true }: { v: Verifica
   const waiting = shown === 'waiting'
   return (
     <span
-      title={waiting ? `${why} · hồ sơ đã đủ — admin bấm Verify được` : `${why} · còn thiếu hồ sơ`}
+      title={waiting ? `${why} · đã có ERC trên hồ sơ — admin bấm Verify được` : `${why} · chưa có ERC trên hồ sơ`}
       className={cn(
         'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold',
         waiting ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-100 text-slate-600',
@@ -114,16 +114,14 @@ export function VerifiedTag({ v, display, en, showReason = true }: { v: Verifica
 }
 
 /**
- * Under an Unverified tag: can an admin press Verify on this record yet? Reads the
- * gaps computed by verifyGaps() — the SAME function the Verify button reads — so a
- * row never promises what the dialog then refuses. Green when nothing is missing,
- * amber naming exactly what is, so the admin knows without opening the record
- * whether it is worth opening.
+ * Under a No-paperwork tag: what the admin is waiting on. Reads the gaps computed by
+ * verifyGaps() — the SAME function the Verify button reads — so a row never promises
+ * what the dialog then refuses. Today the only possible gap is the certificate.
  */
 export function VerifyReadiness({ gaps }: { gaps: readonly string[] }) {
   return gaps.length === 0 ? (
-    <span className="block truncate text-[10px] font-medium text-emerald-700" title="MST · địa chỉ đăng ký MST · ERC đều đã có — bấm Verify được">✓ Đủ hồ sơ — verify được</span>
+    <span className="block truncate text-[10px] font-medium text-emerald-700" title="ERC đã có trên hồ sơ — bấm Verify được">✓ Có ERC — verify được</span>
   ) : (
-    <span className="block truncate text-[10px] text-amber-700" title={`Còn thiếu: ${gaps.join(' · ')}`}>Thiếu: {gaps.join(' · ')}</span>
+    <span className="block truncate text-[10px] text-amber-700" title="Employer upload ở Company information, hoặc admin upload hộ ở card Enterprise Registration Documents">Chưa có ERC — chờ employer upload</span>
   )
 }

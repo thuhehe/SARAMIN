@@ -375,14 +375,29 @@ export function CvStatusFlow() {
         <text x={561} y={462} fontSize={11} fontWeight={700} textAnchor="middle" fill="var(--color-brand)">
           Điều kiện tối thiểu CV được gửi đi
         </text>
-        <text x={561} y={496} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">AND [</text>
-        <text x={561} y={516} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
+        {/* THE SKILLS CLAUSE WAS DROPPED (2026-09-11). It read
+              AND [ OR [ Work experience, AND [ Education, Projects ] ], 3 skills ]
+            and the third condition could not be met by a whole class of honest
+            candidates: the skill master is IT-heavy and the non-IT groups are thin,
+            so a nurse or an accountant often cannot find three taxonomy skills that
+            exist. The gate was rejecting the TAXONOMY's gaps, not the CV's.
+
+            MAKING EDUCATION MANDATORY was considered the same day and rejected: it
+            would gate on the WEAKEST signal we hold (education level buys 3 of the
+            100 match points, against 30% for work experience) and would reject the
+            driver or foreman with twenty years behind them who never filled the
+            field in. Work experience still stands alone.
+
+            Skills did not become unimportant — they went from a GATE to a RANKING
+            input. They are still 38 of the 40 CV-content match points and still the
+            main CV-search filter, so a CV with none qualifies but ranks nowhere.
+            That trade is deliberate: unfindable is recoverable, rejected is not. */}
+        <text x={561} y={512} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
           OR [ Work experience,
         </text>
-        <text x={561} y={534} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
-          AND [ Education, Projects ] ],
+        <text x={561} y={536} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
+          AND [ Education, Projects ] ]
         </text>
-        <text x={561} y={556} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">3 skills ]</text>
 
         <path d="M 722 470 C 768 470, 768 284, 812 284" fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#arrow-${RED.slice(1)})`} />
         <path d="M 722 542 C 768 542, 768 753, 812 753" fill="none" stroke={BLUE} strokeWidth={2} markerEnd={`url(#arrow-${BLUE.slice(1)})`} />

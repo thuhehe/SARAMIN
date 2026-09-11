@@ -244,9 +244,9 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   on the Company site, so an admin and the customer on the phone are
                   looking at one mark. A pool row has no company yet, so no tag. */}
               {!isPool && <VerifiedTag v={verif} display={verifyDisplayOf(c)} en />}
-              {/* Beside an Unverified tag: what the Verify button is waiting for. A
-                  "Waiting for verify" tag already says nothing is missing, so the
-                  line only appears when something is. */}
+              {/* Beside a No-paperwork tag: what the Verify button is waiting for. A
+                  "Waiting to verify" tag already says the ERC is on file, so the
+                  line only appears when it is not. */}
               {!isPool && !coVerified && gaps.length > 0 && <VerifyReadiness gaps={gaps} />}
               {archived && <Pill tone="expired">Archived{archiveWhy ? ` · ${archiveReason(archiveWhy)?.vi}` : ''}</Pill>}
               {/* Grey, not amber: released is a settled lifecycle state, not something
@@ -295,16 +295,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
               one. The gated step is the PO, which is raised from an accepted
               quotation option (see the Quotations list), not from here. */}
           {/* VERIFY — the admin act this record may be waiting on. Shown only while
-              Unverified, and DISABLED until the record carries the three inputs the
-              check reads — MST · địa chỉ đăng ký MST · ERC (verifyGaps) — so an admin
-              never opens a dialog they cannot finish; the hint beside the tag says
-              what is missing. Not gated on `ro`: verification is an ADMIN duty, not
-              the sales owner's, and the record may have no owner yet. */}
+              Unverified, and DISABLED until an ERC is on the record (verifyGaps) —
+              the "No paperwork" state has nothing to rule on, and the hint beside the
+              tag says so. Enabled = "Waiting to verify". Not gated on `ro`:
+              verification is an ADMIN duty, not the sales owner's, and the record may
+              have no owner yet. */}
           {!isPool && !coVerified && !archived && (
             <button
               disabled={gaps.length > 0}
               onClick={() => { if (gaps.length === 0) setVerifyOpen(true) }}
-              title={gaps.length ? `Chưa bấm được — hồ sơ còn thiếu: ${gaps.join(' · ')}` : 'Đủ MST · địa chỉ đăng ký MST · ERC — mở xác nhận'}
+              title={gaps.length ? 'No paperwork — chưa có ERC trên hồ sơ: employer upload ở Company information, hoặc admin upload hộ ở card Enterprise Registration Documents' : 'Waiting to verify — ERC đã có trên hồ sơ, mở xác nhận'}
               className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-semibold', gaps.length ? 'cursor-not-allowed border-line bg-canvas text-faint' : 'border-blue-300 bg-blue-50 text-blue-700 hover:border-blue-500')}
             >
               Verify company
@@ -365,20 +365,20 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
                   admin can see on this record right now, not a promise. */}
               {(() => {
                 const docs = companyDocs(c).length
-                /* THREE inputs, and only three — the same list verifyGaps() reads for
-                   the filter, the row hint and the header button. Each is a fact ON the
-                   record; the admin's act is to read the certificate against them. */
+                /* ONE input — the same rule verifyGaps() reads for the filter, the row
+                   hint and the header button: the certificate is on the record. The
+                   admin's act is to read it against the record below. */
                 const checks: [string, boolean, string][] = [
-                  ['MST', Boolean(c.tax?.trim()), c.tax?.trim() ? `${c.tax} — đối chiếu với số trên ERC` : 'Chưa có — điền ở Basic info'],
-                  ['Địa chỉ đăng ký MST', Boolean(c.address?.trim()), c.address?.trim() ? `${c.address} — đối chiếu với địa chỉ trụ sở trên ERC` : 'Chưa có — employer điền ở Company information, hoặc admin điền ở Basic info'],
                   ['ERC (Giấy chứng nhận ĐKDN) đã có trên hồ sơ', docs > 0, docs > 0 ? `${docs} tệp ở card Enterprise Registration Documents` : 'Chưa có tệp nào — employer upload ở Company information, hoặc admin upload hộ'],
                 ]
-                /* Shown for the admin to READ, not gates: the legal name is never empty
-                   (sign-up requires a company name) and comparing it with the
-                   certificate IS the act of verifying, not an input; the sales owner is
-                   a Sales concern with its own home (Ownership) — a company can be
-                   verified before a rep is found for it. */
+                /* Shown for the admin to READ against the certificate, not gates: the
+                   MST and the address were required when the company was created, the
+                   legal name is never empty, and the sales owner is a Sales concern with
+                   its own home (Ownership) — a company can be verified before a rep is
+                   found for it. */
                 const facts: [string, string][] = [
+                  ['MST — đối chiếu với số trên ERC', c.tax?.trim() || '—'],
+                  ['Địa chỉ đăng ký MST — đối chiếu với trụ sở trên ERC', c.address?.trim() || '—'],
                   ['Tên pháp lý — đối chiếu với ERC', c.legalName],
                   ['Sales owner', unowned ? 'Chưa phân — gán ở Ownership; không chặn Verify' : c.owner],
                 ]

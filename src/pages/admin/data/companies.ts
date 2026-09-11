@@ -126,13 +126,14 @@ export type Verification =
  * An admin reading a list asks two different questions about an unverified record —
  * "can I clear this now?" and "is the customer still owing us paperwork?" — so the
  * amber tag was split in two. What did NOT change is the stored model: the record
- * still holds `verified | unverified`, and "waiting" is DERIVED from the three
- * Verify inputs on every read (see verifyDisplayOf / verifyGaps). Storing it is how
- * a tag ends up saying "waiting" while the Verify button says "missing".
+ * still holds `verified | unverified`, and "waiting" is DERIVED on every read from
+ * whether an ERC is on file (see verifyDisplayOf / verifyGaps) — the same rule the
+ * build derives it from (svn-be V482: the verdict plus any non-rejected document).
+ * Storing it is how a tag ends up saying "waiting" while the button says "no paperwork".
  *
  *   verified    · blue  · an admin pressed Verify
- *   waiting     · amber · unverified, every input on file → OUR queue
- *   unverified  · slate · unverified, an input missing   → THE EMPLOYER's to-do
+ *   waiting     · amber · unverified, ERC on file       → OUR queue (Verify opens)
+ *   unverified  · slate · unverified, no ERC yet        → THE EMPLOYER's to-do
  *
  * The colour split is the point: amber is work we can do, slate is work we are
  * waiting on. `reason: 'edited'` stays a modifier on whichever of the two it lands
@@ -141,11 +142,12 @@ export type Verification =
 export type VerifyDisplay = 'verified' | 'waiting' | 'unverified'
 export const VERIFY_DISPLAY: Record<VerifyDisplay, { vi: string; en: string }> = {
   verified: { vi: 'Đã xác minh', en: 'Verified' },
-  waiting: { vi: 'Chờ xác minh', en: 'Waiting for verify' },
-  /* "Thiếu hồ sơ", not "Chưa xác minh": next to "Chờ xác minh" the two old labels
-     were one word apart and read as the same thing at a glance. This one names the
-     CAUSE — paperwork missing — which is also the action the employer has to take. */
-  unverified: { vi: 'Thiếu hồ sơ', en: 'Unverified' },
+  waiting: { vi: 'Chờ xác minh', en: 'Waiting to verify' },
+  /* "No paperwork", not "Unverified" — the build's own label (client, 11/09/2026).
+     Next to "Waiting to verify" the old pair read as the same thing at a glance;
+     this one names the CAUSE — no certificate on file — which is also the action
+     the employer has to take. */
+  unverified: { vi: 'Chưa có hồ sơ', en: 'No paperwork' },
 }
 /** Self-registered accounts arrive with no sales owner — this is the placeholder
     the record carries until an admin assigns one at verification. */
@@ -216,10 +218,10 @@ export const COMPANIES: Company[] = [
      other two unverified rows are self-registered and therefore UNOWNED, so they
      surface only in the department view; this one is owned, so a lead or rep sees
      an Unverified tag without switching persona. Story: the employer registered
-     itself, completed the record on Company information (registered address + ERC,
-     one file), and a rep has since claimed the account but not called yet. Nothing
-     is missing, so it reads "✓ Đủ hồ sơ — verify được" and counts toward Chờ verify;
-     Verify is the admin's to press. */
+     itself, was placed by an admin, uploaded its ERC (one file) on Company
+     information, and a rep has since claimed the account but not called yet. The
+     certificate is on file, so it reads "Waiting to verify" and counts toward Chờ
+     verify; Verify is the admin's to press. */
   { name: 'Công ty TNHH Nội thất Thiên An', shortName: 'Thiên An', legalName: 'Công ty TNHH Nội thất Thiên An', country: 'Việt Nam', tax: '0397xxxxxx', industry: 'Sản xuất', size: '50–200', address: 'Quận Tân Phú, HCMC', contact: 'Ms. Trịnh Mỹ Duyên · HR', owner: 'Nguyễn Thị Lan', status: 'Qualified', account: 'New', lastPO: '—', renewal: '—', nextStep: 'Gọi lần đầu — hồ sơ đã đủ, chờ admin verify', idle: null, note: 'Tự đăng ký 04/09, admin place vào book của sales — đã điền địa chỉ đăng ký MST + ERC. Chưa gọi lần nào.', revenue: 0, jobPosting: false, resumeSearch: false, jobLeft: 0, jobTotal: 0, cvLeft: 0, cvTotal: 0, hasPage: false, jobs: 0, domain: 'noithatthienan.vn', since: '—',
     verification: { state: 'unverified', reason: 'new', since: '04/09/2026' },
     docs: [{ name: 'ERC-giay-chung-nhan-DKDN.pdf', note: 'Tải lên 05/09/2026', by: 'company' }] },

@@ -1,8 +1,9 @@
+import { Fragment } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, BookOpen, Camera, Lightbulb, MapPin } from 'lucide-react'
 import { BUILD_MODULES } from '@/data/buildModules'
 import { GUIDES } from '@/data/guides'
-import type { GuideSettings, GuideShot, GuideTask, ModuleGuide as Guide } from '@/data/guides'
+import type { GuideSettings, GuideShot, GuideTask, ModuleGuide as Guide, GuideFlowStep } from '@/data/guides'
 import { featurePath, featureSlug } from '@/data/featureSlug'
 import { CopySectionLink, useHashTarget } from '@/components/ShareLink'
 import { LightboxProvider, useLightbox } from '@/components/Lightbox'
@@ -88,6 +89,52 @@ function Shot({ s }: { s: GuideShot }) {
   )
 }
 
+/* A WORKFLOW as a hand-off table (client, 11/09/2026: "which page, which action,
+   who does it" — per step). Six fixed columns, and the screenshot of each step sits
+   directly under its row, so the picture is never separated from the words it
+   illustrates. The row's number column repeats a marker such as 'alt' for
+   branches, which is why it is text rather than an index. */
+function Flow({ rows }: { rows: GuideFlowStep[] }) {
+  const cols = ['#', 'Who', 'Platform', 'Page (path)', 'Action', 'Result']
+  return (
+    <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
+      <table className="w-full border-collapse text-[12.5px]">
+        <thead>
+          <tr className="bg-canvas/70 text-left text-[11px] uppercase tracking-wide text-muted">
+            {cols.map((c) => (
+              <th key={c} className="px-3 py-2 font-semibold">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <Fragment key={i}>
+              <tr className="border-t border-line align-top">
+                <td className="px-3 py-2 font-mono text-[11px] font-semibold text-muted">{r.n}</td>
+                <td className="px-3 py-2 font-medium text-ink"><Inline t={r.who} /></td>
+                <td className="px-3 py-2 text-ink/80"><Inline t={r.platform} /></td>
+                <td className="px-3 py-2 text-ink/80"><Inline t={r.page} /></td>
+                <td className="px-3 py-2 leading-relaxed text-ink/90"><Inline t={r.action} /></td>
+                <td className="px-3 py-2 leading-relaxed text-muted"><Inline t={r.result} /></td>
+              </tr>
+              {r.shot && (
+                <tr className="border-t border-line-soft bg-canvas/30">
+                  <td />
+                  <td colSpan={5} className="px-3 pb-3 pt-1">
+                    <Shot s={r.shot} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 /* A settings reference. Cells run through Inline, so **bold** marks a control
    exactly as it reads on screen — the same convention as the steps above it. */
 function Settings({ s }: { s: GuideSettings }) {
@@ -155,6 +202,9 @@ function Task({ m, t, n }: { m: BuildModule; t: GuideTask; n: number }) {
         </div>
       </header>
 
+      {t.flow && t.flow.length > 0 && <Flow rows={t.flow} />}
+
+      {t.steps && t.steps.length > 0 && (
       <ol className="mt-4 space-y-2 pl-10">
         {t.steps.map((s, i) => (
           <li key={i} className="flex gap-3">
@@ -167,6 +217,7 @@ function Task({ m, t, n }: { m: BuildModule; t: GuideTask; n: number }) {
           </li>
         ))}
       </ol>
+      )}
 
       <div className="pl-10">
         {t.shots?.map((s, i) => <Shot key={i} s={s} />)}

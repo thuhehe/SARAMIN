@@ -22,7 +22,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
   const [company, setCompany] = useState(cands[0]?.name ?? targets[0] ?? '')
   const [role, setRole] = useState<CoUserRole>('Recruiter')
   const [reason, setReason] = useState('')
-  const title = mode === 'move' ? `Move ${s.person} to a company` : mode === 'create' ? `Create “${s.company}” and place ${s.person}` : 'Archive this sign-up?'
+  const title = mode === 'move' ? `Move ${s.person} to a company` : mode === 'create' ? `Create “${s.company}” & activate ${s.person}` : 'Archive this sign-up?'
   /* ONE note, no branch — and it is about LOGIN again. Since the client restored the
      placement gate (09/2026) the person is NOT signed in: the email link only proved
      the address. Move and Create are what create the login and send the activation
@@ -119,7 +119,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
           {mode === 'move' && (
             <button
               disabled={!inCompanyList(s)}
-              title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Customers — dùng “Create company + place” thay vì Move'}
+              title={inCompanyList(s) ? undefined : 'Công ty chưa có trong Customers — dùng “Create company & activate” thay vì Move'}
               onClick={() => onConfirm('Resolved', `Moved to ${company} as ${role} · sign-in email sent`)}
               className={cn('rounded-lg px-4 py-2 text-[13px] font-semibold text-white', inCompanyList(s) ? 'bg-emerald-600 hover:opacity-90' : 'cursor-not-allowed bg-line')}
             >
@@ -133,7 +133,7 @@ function SignupActionModal({ mode, s, onConfirm, onClose }: { mode: 'move' | 'cr
                 : `Tạo “${s.company}” (Chưa xác minh) · ${s.person} là Admin đầu tiên · gửi email kích hoạt`)}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
             >
-              {s.freeDataMatch ? 'Promote + place + send' : 'Create + place + send'}
+              {s.freeDataMatch ? 'Promote & activate' : 'Create company & activate'}
             </button>
           )}
           {mode === 'archive' && <button onClick={() => onConfirm('Archived', `Archived${reason.trim() ? ` · ${reason.trim()}` : ''}`)} disabled={!reason.trim()} className="rounded-lg bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Archive sign-up</button>}
@@ -166,7 +166,7 @@ function SignupRowMenu({ onMove, onCreate, onArchive }: { onMove: () => void; on
             {/* CREATE is back (client, 09/2026) and it is the common case: most
                 sign-ups are genuinely new companies, and nothing exists until an
                 admin makes it here. */}
-            <button onClick={() => { setOpen(false); onCreate() }} className={cn(item, 'border-t border-line text-ink')}>Create company + place</button>
+            <button onClick={() => { setOpen(false); onCreate() }} className={cn(item, 'border-t border-line text-ink')}>Create company & activate</button>
             <button onClick={() => { setOpen(false); onArchive() }} className={cn(item, 'border-t border-line text-rose-600')}>Archive sign-up</button>
           </div>
         </>

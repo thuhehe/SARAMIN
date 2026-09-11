@@ -57,26 +57,34 @@ const CoVerified = createContext<{
 }>({ verified: true, setVerified: () => {}, profile: { tax: '', address: '', docs: [] }, setProfile: () => {} })
 const useCoVerified = () => useContext(CoVerified)
 
-/* ── THE THREE INPUTS — what Saramin needs before an admin can press Verify ────
-   MST · địa chỉ đăng ký MST · ERC. The SAME list readyToVerify() reads on the admin
-   side (admin/data/companyOwner.ts); every screen here that mentions verification
-   renders it from this one list, so the header, Post job and Company information
-   can never name a different set of things to do. */
+/* ── THE ONE INPUT — what Saramin needs before an admin can press Verify ───────
+   The ERC. (Client, 11/09/2026 — supersedes the 09/09 three-input list: a company
+   is created by an admin through the full Create company form, so the MST and the
+   address are never missing; the certificate is the only thing the employer still
+   owes.) The SAME rule readyToVerify() reads on the admin side; every screen here
+   renders from this one list, so the header, Post job and Company information can
+   never name a different thing to do. Kept as a list so a second input can return
+   without rewriting the screens. */
+/* THE DOCUMENT'S NAME AS THE USER KNOWS IT. "ERC" is our shorthand — an HR person
+   in Vietnam recognises "giấy chứng nhận đăng ký doanh nghiệp", so every string the
+   employer reads leads with that and carries the acronym only in parentheses, once
+   per screen. Defined here so the sign-up form, the checklist, the banner and the
+   upload card cannot drift into three different names for one file. */
+const ERC_VI = 'Giấy chứng nhận đăng ký doanh nghiệp'
+const ERC_LABEL = `${ERC_VI} (ERC)`
 const VERIFY_INPUTS: { key: keyof CoProfile; label: string; where: string }[] = [
-  { key: 'tax', label: 'Mã số thuế (MST)', where: 'Company information → Edit' },
-  { key: 'address', label: 'Địa chỉ đăng ký MST', where: 'Company information → Edit' },
-  { key: 'docs', label: 'Giấy chứng nhận đăng ký doanh nghiệp (ERC)', where: 'Company information → Upload document' },
+  { key: 'docs', label: ERC_LABEL, where: 'Company information → Upload document' },
 ]
 const hasInput = (p: CoProfile, k: keyof CoProfile) => (k === 'docs' ? p.docs.length > 0 : Boolean(p[k].trim()))
 const shownInput = (p: CoProfile, k: keyof CoProfile) => (k === 'docs' ? `${p.docs.length} tệp đã tải lên` : p[k])
 const coGaps = (p: CoProfile) => VERIFY_INPUTS.filter((i) => !hasInput(p, i.key))
 
-/** The ✓ / ✗ list of the three inputs — rendered wherever the console says
-    "chưa xác minh", so the employer is told the same three things everywhere. */
+/** The ✓ / ✗ list of what Saramin still needs — rendered wherever the console says
+    "No paperwork", so the employer is told the same thing everywhere. */
 function VerifyChecklist() {
   const { profile } = useCoVerified()
   return (
-    <ul className="grid gap-1.5 sm:grid-cols-3">
+    <ul className="grid gap-1.5">
       {VERIFY_INPUTS.map((i) => {
         const ok = hasInput(profile, i.key)
         return (
@@ -94,10 +102,10 @@ function VerifyChecklist() {
 }
 
 /** The tag beside the company name — Figma 2302-44567. THREE labels, the same
-    vocabulary the admin sees on Customers (client, 09/09/2026): blue shield
-    Verified · amber "Chờ xác minh" once all three inputs are on file · slate
-    "Thiếu hồ sơ" while something is still missing. `ready` is derived from the
-    profile, never stored, exactly as verifyDisplayOf() does on the admin side. */
+    vocabulary the admin sees on Customers (the build's, client 11/09/2026): blue
+    shield Verified · amber "Waiting to verify" once the ERC is on file · slate
+    "No paperwork" until then. `ready` is derived from the profile, never stored,
+    exactly as verifyDisplayOf() does on the admin side. */
 function CoVerifiedTag({ verified, ready = false }: { verified: boolean; ready?: boolean }) {
   return verified ? (
     <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold text-blue-700" title="Saramin đã xác minh công ty này">
@@ -105,12 +113,12 @@ function CoVerifiedTag({ verified, ready = false }: { verified: boolean; ready?:
       Verified
     </span>
   ) : ready ? (
-    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700" title="Hồ sơ đã đủ — Saramin đang xác minh, thường trong 1 ngày làm việc">
-      Chờ xác minh
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700" title="Đã có giấy chứng nhận đăng ký doanh nghiệp trên hồ sơ — Saramin xác minh trong 1 ngày làm việc">
+      Waiting to verify
     </span>
   ) : (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600" title="Saramin chưa xác minh công ty này — cần đủ MST · địa chỉ đăng ký MST · ERC ở Company information">
-      Thiếu hồ sơ
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600" title="Chưa có giấy chứng nhận đăng ký doanh nghiệp trên hồ sơ — tải lên ở Company information để Saramin xác minh">
+      No paperwork
     </span>
   )
 }
@@ -136,11 +144,11 @@ function Seg({ options, value, onChange }: { options: string[]; value: string; o
 }
 
 /* ── shared bits ─────────────────────────────────────────────────────────── */
-function PageBar({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
+function PageBar({ title, sub, action }: { title: React.ReactNode; sub?: string; action?: React.ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
       <div>
-        <h3 className="text-[17px] font-semibold">{title}</h3>
+        <h3 className="flex flex-wrap items-center gap-2 text-[17px] font-semibold">{title}</h3>
         {sub && <p className="mt-0.5 text-[11.5px] text-muted">{sub}</p>}
       </div>
       {action}
@@ -634,24 +642,24 @@ function PostJobScreen() {
         }
       />
       {!verified && (
-        /* The gate explains itself with the LIST, not a sentence: the three inputs
-           Saramin needs, each ✓ or ✗, and the one place they are filled. Once all
-           three are in, the block stops asking and states the SLA instead. */
+        /* The gate explains itself with the LIST, not a sentence: the certificate
+           Saramin needs, ✓ or ✗, and the one place it is uploaded. Once it is in,
+           the block stops asking and states the SLA instead. */
         <div className={cn('mx-5 mt-4 rounded-xl border px-4 py-3', gaps.length ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50')}>
           {gaps.length ? (
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-amber-900">
-                  <b>Công ty chưa được xác minh</b> — chưa đăng tin được, kể cả bản nháp. Để được xác minh, hoàn tất <b>3 mục</b> ở Company information (còn thiếu {gaps.length}):
+                  <b>Công ty chưa được xác minh</b> — chưa đăng tin được, kể cả bản nháp. Để được xác minh, tải lên <b>{ERC_LABEL}</b> ở Company information:
                 </p>
                 <Btn primary onClick={() => go('co-company-info')}>Company information →</Btn>
               </div>
               <div className="mt-2"><VerifyChecklist /></div>
-              <p className="mt-2 text-[11px] text-amber-900/80">Đủ 3 mục, Saramin xác minh trong <b>1 ngày làm việc</b>. Sau đó bạn đăng tin được ngay — kể cả bản nháp, chưa cần hóa đơn.</p>
+              <p className="mt-2 text-[11px] text-amber-900/80">Có giấy rồi, trạng thái chuyển sang <b>Waiting to verify</b> và Saramin xác minh trong <b>1 ngày làm việc</b>. Sau đó bạn đăng tin được ngay — kể cả bản nháp, chưa cần hóa đơn.</p>
             </>
           ) : (
             <p className="text-[12.5px] leading-relaxed text-blue-900">
-              <b>Đủ hồ sơ</b> — MST, địa chỉ đăng ký MST và ERC đã có. Saramin xác minh trong <b>1 ngày làm việc</b>; sau đó bạn đăng tin được ngay, kể cả bản nháp, chưa cần hóa đơn.
+              <b>Waiting to verify</b> — {ERC_VI.toLowerCase()} đã có trên hồ sơ. Saramin xác minh trong <b>1 ngày làm việc</b>; sau đó bạn đăng tin được ngay, kể cả bản nháp, chưa cần hóa đơn.
             </p>
           )}
         </div>
@@ -667,8 +675,8 @@ function PostJobScreen() {
    Figma (view 2311-10289 · edit 2313-10289); this mockup keeps the shape of those
    frames — KR label / value table, one Edit for the page, Upload on the documents
    section — and carries what the verification flow needs to be walked end to end:
-   the banner counting the three inputs, the rows that fill them, and the read-only
-   rule once Verified. */
+   the banner asking for the certificate, the upload that files it, and the
+   read-only rule once Verified. */
 function CompanyInfoScreen() {
   const { verified, profile, setProfile } = useCoVerified()
   const [editing, setEditing] = useState(false)
@@ -688,16 +696,23 @@ function CompanyInfoScreen() {
       <div className="px-3 py-2.5 text-[12.5px] text-ink">
         {editing && opts.input ? opts.input : value ? value : <span className="text-faint">—</span>}
         {opts.need && !verified && !value && !(editing && opts.input) && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">✗ cần cho xác minh</span>}
-        {opts.need && editing && opts.input && <p className="mt-1 text-[10.5px] text-faint">Saramin đối chiếu với ERC khi xác minh — in trên hóa đơn GTGT.</p>}
+        {opts.need && editing && opts.input && <p className="mt-1 text-[10.5px] text-faint">Saramin đối chiếu với {ERC_VI.toLowerCase()} khi xác minh — in trên hóa đơn GTGT.</p>}
       </div>
     </div>
   )
   return (
     <div>
+      {/* THE TITLE IS THE COMPANY, and the verification tag sits beside its name
+          (client, 09/2026 · Figma 2311-10289) — the same pair as the account menu.
+          A page called "Company information management" with the tag pushed to the
+          far right made the state read as a page property; beside the name it reads
+          as a property of the company, which is what it is. */}
       <PageBar
-        title="Company information management"
+        title={<>Công ty TNHH Đại Dương <CoVerifiedTag verified={verified} ready={gaps.length === 0} /></>}
         sub={verified ? 'Đã xác minh — để thay đổi thông tin công ty, liên hệ Saramin.' : 'Hồ sơ công ty của bạn — thông tin pháp lý, thông tin cơ bản và Giấy chứng nhận đăng ký doanh nghiệp.'}
-        action={<CoVerifiedTag verified={verified} ready={gaps.length === 0} />}
+        action={!verified && gaps.length > 0
+          ? <Btn primary onClick={() => { const el = document.getElementById('co-erc'); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>Tải lên ERC để được xác minh →</Btn>
+          : undefined}
       />
       <p className="mb-3 text-[11px] text-faint">
         Thiết kế đầy đủ trong Figma —{' '}
@@ -715,12 +730,12 @@ function CompanyInfoScreen() {
         <div className={cn('mb-4 rounded-xl border px-4 py-3', gaps.length ? 'border-amber-300 bg-amber-50' : 'border-blue-200 bg-blue-50')}>
           {gaps.length ? (
             <>
-              <p className="text-[12.5px] font-semibold text-amber-900">Để được xác minh, Saramin cần đủ 3 mục — còn thiếu {gaps.length}</p>
-              <p className="mt-0.5 text-[11.5px] text-amber-900/85">Mã số thuế và địa chỉ đăng ký MST điền bằng nút <b>Edit</b>; ERC tải lên bằng <b>Upload document</b>. Đủ 3 mục, Saramin xác minh trong 1 ngày làm việc — sau đó đăng tin được ngay.</p>
+              <p className="text-[12.5px] font-semibold text-amber-900">No paperwork — để được xác minh, Saramin cần {ERC_LABEL}</p>
+              <p className="mt-0.5 text-[11.5px] text-amber-900/85">Tải {ERC_VI.toLowerCase()} lên bằng <b>Upload document</b> — nhiều trang là bình thường. Có giấy rồi, trạng thái chuyển sang <b>Waiting to verify</b> và Saramin xác minh trong 1 ngày làm việc; sau đó đăng tin được ngay.</p>
               <div className="mt-2"><VerifyChecklist /></div>
             </>
           ) : (
-            <p className="text-[12.5px] text-blue-900"><b>Đủ hồ sơ</b> — MST, địa chỉ đăng ký MST và ERC đã có. Saramin xác minh trong <b>1 ngày làm việc</b>; bạn sẽ nhận email khi công ty được xác minh.</p>
+            <p className="text-[12.5px] text-blue-900"><b>Waiting to verify</b> — {ERC_VI.toLowerCase()} đã có trên hồ sơ. Saramin xác minh trong <b>1 ngày làm việc</b>; bạn sẽ nhận email khi công ty được xác minh.</p>
           )}
         </div>
       )}
@@ -755,12 +770,26 @@ function CompanyInfoScreen() {
           verified. Delete only while Unverified: after Verify the files are what the
           check was done against, and they are kept for audit. No per-file status —
           the company-level tag is the only verdict. */}
-      <div className="mb-2 mt-5 flex items-center justify-between">
-        <p className="text-[14px] font-bold">Enterprise Registration Documents</p>
+      <div id="co-erc" className="mb-2 mt-5 flex items-center justify-between scroll-mt-6">
+        <p className="flex items-center gap-2 text-[14px] font-bold">
+          {ERC_LABEL}
+          {!verified && profile.docs.length === 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">Bắt buộc để xác minh</span>}
+        </p>
         <Btn primary onClick={addDoc}>Upload document</Btn>
       </div>
       <div className="overflow-hidden rounded-lg border border-line">
-        {profile.docs.length === 0 ? (
+        {profile.docs.length === 0 && !verified ? (
+          /* THE UPLOAD IS THE POINT OF THIS PAGE for an unverified company, so the
+             empty state is a dropzone that says what to upload and why — not a grey
+             "no files" line. This is the one control that moves the company from
+             No paperwork to Waiting to verify. */
+          <button onClick={addDoc} className="flex w-full flex-col items-center gap-1 border border-dashed border-brand/40 bg-brand-soft/30 px-4 py-6 text-center hover:bg-brand-soft/60">
+            <span className="text-[18px]">⬆</span>
+            <span className="text-[12.5px] font-semibold text-brand">Tải lên {ERC_VI.toLowerCase()}</span>
+            <span className="text-[11.5px] text-muted">Kéo thả hoặc bấm để chọn tệp · PDF hoặc ảnh · nhiều trang là bình thường</span>
+            <span className="text-[11px] text-faint">Saramin đối chiếu giấy này với hồ sơ công ty ở trên, rồi xác minh trong 1 ngày làm việc.</span>
+          </button>
+        ) : profile.docs.length === 0 ? (
           <p className="px-3 py-3 text-[12px] text-faint">Chưa có tệp nào. Tải lên Giấy chứng nhận đăng ký doanh nghiệp — nhiều tệp là bình thường (từng trang, bản sửa đổi). PDF, JPG, PNG · tối đa 10 MB mỗi tệp.</p>
         ) : profile.docs.map((n, i) => (
           <div key={n} className="flex items-center gap-3 border-t border-line px-3 py-2 text-[12px] first:border-t-0">
@@ -2898,8 +2927,8 @@ function SignupScreen() {
       { label: 'Signed up', sub: 'Password set — you will use it in a minute', state: 'done' as const },
       { label: 'Verify your email', sub: `Link sent to ${f.email || 'your email'} · click it so we know the address is yours`, state: 'now' as const },
       { label: 'Saramin sets up your account', sub: 'We match your tax code to our records and open your account — usually within 1 business day. You get an email with the link to sign in.', state: 'wait' as const },
-      { label: 'Complete your company record', sub: erc.length ? `ERC attached ✓ (${erc.length} file${erc.length > 1 ? 's' : ''}) — add your registered address in Company information; your tax code is already there` : 'Company information → registered address + ERC (your tax code is already there). Saramin needs all three to verify.', state: 'wait' as const },
-      { label: 'Saramin verifies your company', sub: 'Usually within 1 business day of the record being complete · unlocks posting jobs', state: 'wait' as const },
+      { label: 'Upload your business registration certificate (ERC)', sub: erc.length ? `Certificate attached ✓ (${erc.length} file${erc.length > 1 ? 's' : ''}) — Saramin already has it` : 'Company information → Upload document — the one thing Saramin still needs from you; your tax code and address are filled in at placement.', state: erc.length ? ('done' as const) : ('wait' as const) },
+      { label: 'Saramin verifies your company', sub: 'Usually within 1 business day of the certificate arriving · unlocks posting jobs', state: 'wait' as const },
     ]
     return (
       <div className="flex justify-center py-6">
@@ -2938,7 +2967,7 @@ function SignupScreen() {
             </div>
 
             <div className="mx-auto mt-1 max-w-[440px] rounded-lg bg-brand-soft px-4 py-2.5 text-[11px] leading-relaxed text-brand">
-              <b>Sign-in opens once Saramin has opened your account</b> — we email you the link, usually within 1 business day. <b>Posting jobs unlocks later</b>, when Saramin verifies your company against three things on your record: <b>tax code · registered address · ERC</b>.
+              <b>Sign-in opens once Saramin has opened your account</b> — we email you the link, usually within 1 business day. <b>Posting jobs unlocks later</b>, when Saramin verifies your company from the <b>business registration certificate (ERC)</b> you upload in Company information.
             </div>
             <div className="mt-5 flex justify-center">
               <button onClick={() => { setStep(1); setAgree(false) }} className="text-[12px] font-medium text-brand hover:underline">← Back to the form</button>
@@ -2980,10 +3009,12 @@ function SignupScreen() {
               files. Whatever is attached here lands on the company record the moment
               the email is verified, so an admin can verify without asking twice. */}
           <div className="mt-4">
-            <label className={lbl}>Enterprise Registration Certificate (ERC) <span className="font-normal text-faint">— optional</span></label>
+            {/* The label a Vietnamese HR user recognises. "ERC" alone was the
+                internal name for it and told them nothing. */}
+            <label className={lbl}>{ERC_LABEL} <span className="font-normal text-faint">— không bắt buộc</span></label>
             <div className="rounded-lg border border-dashed border-line bg-canvas/40 px-3 py-3 text-center">
               <p className="text-[12px] text-ink/80">Drop files or <button type="button" onClick={() => setErc((d) => [...d, `ERC-giay-chung-nhan-DKDN-trang-${d.length + 1}.pdf`])} className="font-medium text-brand hover:underline">add a file</button></p>
-              <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">Giấy chứng nhận đăng ký doanh nghiệp · several files are fine (each page, any amendment) · PDF, JPG, PNG, ≤ 10 MB each. You can also upload later from Company information. Saramin verifies your company from three things — tax code, registered address and this certificate; the address is added in Company information after you sign in.</p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">Nhiều tệp là bình thường (từng trang, bản thay đổi) · PDF, JPG, PNG, ≤ 10 MB each. You can also upload later from Company information. Saramin verifies your company from this certificate once your account is set up; you can also upload it later from Company information.</p>
             </div>
             {erc.length > 0 && (
               <div className="mt-2 space-y-1">
@@ -3104,11 +3135,11 @@ export function CompanyMockups() {
   const isSignup = active.item.id === SIGNUP.id
   /* Demo switch for the verification flag — see CoVerified. */
   const [verified, setVerified] = useState(false)
-  /* The record behind the demo: MST typed at sign-up, no registered address yet (the
-     form has none), no ERC yet — two of the three inputs missing, which is where every
-     self-registered company starts. Fill them on Company information and watch the
-     header, Post job and the banner agree. */
-  const [profile, setProfile] = useState<CoProfile>({ tax: '0315xxxxxx', address: '', docs: [] })
+  /* The record behind the demo: MST and address filled in when the admin created the
+     company (the Create company form requires both), no ERC yet — the one thing
+     every newly placed company still owes. Upload it on Company information and
+     watch the header, Post job and the banner agree. */
+  const [profile, setProfile] = useState<CoProfile>({ tax: '0315xxxxxx', address: 'Hải Phòng', docs: [] })
 
   return (
     <CoVerified.Provider value={{ verified, setVerified, profile, setProfile }}>
@@ -3122,7 +3153,7 @@ export function CompanyMockups() {
           {/* Reviewer switch: every screen here reads this one flag. */}
           <span className="text-[11px] text-faint">Company:</span>
           <div className="flex overflow-hidden rounded-lg border border-line text-[11.5px] font-medium">
-            <button onClick={() => setVerified(false)} className={cn('px-2.5 py-1', !verified ? 'bg-amber-50 text-amber-800' : 'text-muted hover:bg-canvas')}>Chưa xác minh</button>
+            <button onClick={() => setVerified(false)} className={cn('px-2.5 py-1', !verified ? 'bg-amber-50 text-amber-800' : 'text-muted hover:bg-canvas')}>No paperwork</button>
             <button onClick={() => setVerified(true)} className={cn('border-l border-line px-2.5 py-1', verified ? 'bg-blue-50 text-blue-700' : 'text-muted hover:bg-canvas')}>Verified</button>
           </div>
           {/* the link carries the screen on show, not just "the company mockups" */}
@@ -3224,14 +3255,19 @@ function CoHeader({ active, onSelect }: { active: CoActive; onSelect: (a: CoActi
                 <button
                   onClick={() => { const n = resolveCoScreen('co-company-info'); if (n) onSelect(n) }}
                   title={`Còn thiếu: ${gaps.map((g) => g.label).join(' · ')}`}
-                  className="rounded-md bg-amber-600 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:opacity-90"
+                  className="shrink-0 whitespace-nowrap rounded-md bg-amber-600 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:opacity-90"
                 >
-                  Xác minh công ty · thiếu {gaps.length} mục →
+                  {/* THE VERB IS THE EMPLOYER'S, NOT SARAMIN'S (client, 09/2026).
+                      "Verify your company" asks them to do something only Saramin
+                      can do; what they can do is complete the record. Short form in
+                      this strip — it has one line; the full sentence is the link in
+                      the account menu and the button on Company information. */}
+                  Tải lên ERC để được xác minh →
                 </button>
               ) : (
                 /* Nothing left for the employer to do — so no button. A nag with no
                    action behind it is a nag people learn to ignore. */
-                <span className="text-[10.5px] font-medium text-blue-700" title="MST · địa chỉ đăng ký MST · ERC đã đủ — Saramin xác minh trong 1 ngày làm việc">Đủ hồ sơ · chờ Saramin xác minh</span>
+                <span className="text-[10.5px] font-medium text-blue-700" title="Đã có giấy chứng nhận đăng ký doanh nghiệp trên hồ sơ — Saramin xác minh trong 1 ngày làm việc">Waiting to verify · Saramin xác minh trong 1 ngày làm việc</span>
               ))}
             </span>
           )

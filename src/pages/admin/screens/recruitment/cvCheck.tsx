@@ -259,7 +259,7 @@ function CvCheckDetail({ row, onClose }: { row: CvCheckRow; onClose: () => void 
             <div>
               <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-faint">What we extracted</p>
               <p className={cn('rounded-md border px-2 py-1.5 text-[11.5px]', row.kind === 'tech' ? 'border-line bg-canvas/60 text-muted' : 'border-amber-200 bg-amber-50 text-amber-800')}>
-                {row.extracted}{row.kind === 'thin'  && ' — below the minimum (≥1 experience and ≥3 skills)'}
+                {row.extracted}{row.kind === 'thin'  && ' — below the minimum (≥1 experience, or education + a project)'}
               </p>
             </div>
             <div>

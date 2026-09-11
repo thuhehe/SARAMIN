@@ -22,7 +22,8 @@
  *     two, which is exactly backwards — the point is that storage and reach are
  *     the same fact seen twice.
  *  4. LAYER 1 CAN COME BACK EMPTY, and that is the failure nobody plans for: an
- *     unextractable language yields 0 skills, which the qualification rule reads
+ *     unextractable language yields no readable experience or education, which
+ *     the qualification rule reads
  *     as "not enough information" and blames on the candidate. Drawn as a CHAIN
  *     rather than a paragraph, because the first version stated the conclusion
  *     and readers could not see how it followed.
@@ -170,8 +171,8 @@ export function CvLanguageLayers() {
         <text x={62} y={720} fontSize={11.5} fontWeight={700} fill={WARN.text}>⚠ LAYER 1 RỖNG → CV BỊ CHẶN, không phải vì CV yếu</text>
         <line x1={68} y1={732} x2={68} y2={820} stroke={WARN.line} strokeWidth={2} />
         <text x={82} y={748} fontSize={11} fill="var(--color-ink)">CV tiếng Hàn, extraction không nhận ra <tspan fontFamily={MONO}>리액트</tspan></text>
-        <text x={82} y={768} fontSize={11} fill="var(--color-ink)">→ Layer 1 nhận về <tspan fontWeight={700}>0 skill</tspan></text>
-        <text x={82} y={788} fontSize={11} fill="var(--color-ink)">→ Luật qualify cần ≥ 3 skill, nên ghi <tspan fontFamily={MONO}>Not enough information</tspan></text>
+        <text x={82} y={768} fontSize={11} fill="var(--color-ink)">→ Layer 1 nhận về <tspan fontWeight={700}>0 kinh nghiệm, 0 học vấn</tspan></text>
+        <text x={82} y={788} fontSize={11} fill="var(--color-ink)">→ Luật qualify cần ≥ 1 kinh nghiệm, nên ghi <tspan fontFamily={MONO}>Not enough information</tspan></text>
         <text x={82} y={808} fontSize={11} fill="var(--color-ink)">→ CV bị chặn: không apply được, không lên CV search</text>
         <text x={62} y={836} fontSize={10.5} fill={WARN.text}>Ứng viên nhận thông báo “hồ sơ chưa đủ thông tin” — sai, lỗi là mình không đọc được.</text>
 

@@ -2,7 +2,7 @@
  * Owner (sales) history — who held the account, who reassigned it and why — plus
  * the verification documents proving the MST belongs to them.
  */
-import { coLeadSource, isCustomer, isVNCompany, verificationOf } from '@/pages/admin/data/companies'
+import { coLeadSource, isCustomer, verificationOf } from '@/pages/admin/data/companies'
 import type { CoStatus, Company, VerifyDisplay } from '@/pages/admin/data/companies'
 
 /* ── Owner (sales) history — who held the account, and who reassigned it ────
@@ -174,31 +174,25 @@ export function companyDocs(c: Company): CoDoc[] {
   return []
 }
 
-/* ── READY TO VERIFY — the three inputs the Verify button waits for ─────────────
-   An admin may press Verify only when the record carries the MST, the registered
-   (tax) address and at least one ERC file. This is NOT a third verification state
-   and it is NOT stored: it is read off the record every time, so the Customers
-   filter, the "Chờ verify" counter, the row hint, the header button and the dialog
-   can never disagree.
+/* ── READY TO VERIFY — paperwork on file opens the Verify button ──────────────
+   An admin may press Verify only when the company has at least one ERC (Giấy chứng
+   nhận đăng ký doanh nghiệp) on its Enterprise Registration Documents card. This is
+   NOT a third verification state and it is NOT stored: it is read off the record
+   every time, so the Customers filter, the "Chờ verify" counter, the row hint, the
+   header button and the dialog can never disagree — the same derivation the build
+   uses (svn-be V482: `verified_at` plus any non-rejected company_document).
 
-   Why these three and no more: they are what the certificate is compared against —
-   the number, the registered office, and the certificate itself. The legal name is
-   deliberately absent: the sign-up already requires a company name, so it is never
-   empty, and reading it against the certificate IS the act of verifying rather than
-   an input to it. The sales owner is absent too: ownership is a Sales concern with
-   its own home (the Ownership actions), and a company can be verified before a rep
-   has been found for it.
-
-   A foreign company's tax reference is optional on the record (the New-company form
-   says so), so it is not asked for here — the other two still are. */
-export type VerifyInput = 'MST' | 'Địa chỉ đăng ký MST' | 'ERC'
-/** The inputs still MISSING before Verify can be pressed — empty array = ready. */
+   Why only the certificate (client, 11/09/2026 — supersedes the 09/09 three-input
+   rule): a company is created by an admin through the ordinary Create company form,
+   which already requires the legal name, the MST and the invoice address, so none of
+   those can be missing on a record that exists. What the employer still owes is the
+   certificate, and what the admin does is read it against the record. Legal name and
+   sales owner are shown in the dialog to read, never as gates. Kept as a list so a
+   second input can return without rewriting the screens that consume it. */
+export type VerifyInput = 'ERC'
+/** What is still MISSING before Verify can be pressed — empty array = waiting to verify. */
 export function verifyGaps(c: Company): VerifyInput[] {
-  const gaps: VerifyInput[] = []
-  if (isVNCompany(c) && !c.tax?.trim()) gaps.push('MST')
-  if (!c.address?.trim()) gaps.push('Địa chỉ đăng ký MST')
-  if (companyDocs(c).length === 0) gaps.push('ERC')
-  return gaps
+  return companyDocs(c).length === 0 ? ['ERC'] : []
 }
 export const readyToVerify = (c: Company) => verifyGaps(c).length === 0
 /**

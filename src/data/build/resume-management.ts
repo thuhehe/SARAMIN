@@ -28,6 +28,25 @@ export const resumeManagement: BuildModule = {
       warn: 'The four Logic pages are the ones most likely to be skipped in a read-through, and they are exactly where the cross-screen bugs come from — a filter that means one thing in CV search and another in the match score, or a salary compared in the wrong currency.',
     },
     {
+      label: 'CV SEARCH — ba mức truy cập, và 10 lượt xem miễn phí cho công ty chưa mua gói',
+      text: 'The commercial gate of the whole module, in three rows. Added to the module page 2026-09-09 because it is the rule most often asked about and it was only reachable inside a feature section. Full detail — masking field by field, how the 10 are counted, what resets them — lives in [Resume list · Companies](/m/resume-management/resume-list-companies#10-luot-xem-mien-phi-a-company-with-no-active-package-can-read-10-cvs-contact-still-masked).',
+      table: {
+        cols: ['Trạng thái công ty', 'Xem CV chi tiết', 'Thông tin liên hệ'],
+        rows: [
+          ['**Chưa mua gói**', '**10 CV đầu: đọc được đầy đủ.** Từ CV thứ 11: **bản mờ**, không đọc được', 'Che'],
+          ['**Đã kích hoạt gói** (chưa unlock)', 'Đọc được đầy đủ — **tất cả CV**', 'Che'],
+          ['**Đã kích hoạt gói + unlock** (1 credit)', 'Đọc được đầy đủ — tất cả CV', '**Hiện**'],
+        ],
+      },
+      items: [
+        '1 lượt = 1 CV KHÁC NHAU, trừ ở lần mở đầu tiên của CV đó. Mở lại CV đã xem: không trừ. Đang có gói chạy: không trừ lượt nào — 10 lượt chỉ áp dụng khi công ty không có gói.',
+        '10 lượt tính theo CÔNG TY, dùng chung cho mọi tài khoản — giống quota unlock. Tính theo user thì 10 tài khoản thành 100 lượt.',
+        'ĐƯỢC CẤP LẠI 10 LƯỢT khi công ty rơi về trạng thái không có gói: lúc mới tạo công ty, và mỗi lần một gói KẾT THÚC. Là **reset về 10**, không cộng dồn — lượt thừa của kỳ trước không mang sang.',
+        '**Công ty không bao giờ mua thì chỉ có 10 lượt, một lần duy nhất.** Muốn có 10 lượt nữa thì phải qua một vòng mua gói. Đây là điểm chống lạm dụng của thiết kế.',
+        'Đã mua nhưng CHƯA kích hoạt: xem như hàng 2 — CV đọc được đầy đủ, liên hệ vẫn che tới khi kích hoạt, và không trừ lượt miễn phí nào.',
+      ],
+    },
+    {
       label: 'TWO TYPES OF CV — and the Saramin one has two ways in',
       text: 'A candidate ends up with one of exactly TWO kinds of CV, and getting this distinction right is what keeps the rest of the module consistent.',
       table: {
@@ -128,7 +147,7 @@ export const resumeManagement: BuildModule = {
       items: [
         'NO ACCEPTANCE GATE ON CONTENT — superseded. An earlier draft refused a file whose parse found no work experience and no education; that rule is GONE. The site never blocks an upload or an apply: whatever the candidate uploads is saved as a CV and is usable immediately. A blank page, an image-only scan or an unrelated document is caught at UPLOAD by the qualification rule, which writes a DOUBT status on the CV: the file is still saved, the apply still succeeds, but DELIVERY waits for an admin to approve the CV, and the CV stays out of CV search until then — see “CV qualification — apply & CV search”. Only TYPE and SIZE are still checked at the picker, because those are facts about the file rather than a judgement of its contents.',
         'Saving an uploaded PDF as the CV document also SAVES the filled-in missing fields to the CV record — the structured layer is captured either way; “keep my PDF” never means “skip the data”.',
-        'Two tiers of missing fields in Review, and NEITHER stops the candidate saving: the RED tier is what the qualification rule reads — ≥ 1 work experience, or (for a fresher) education AND at least one project, plus ≥ 3 skills, which decide the CV’s STATUS and therefore both whether it can be applied with and whether it can enter CV search; the RECOMMENDED tier is the ranking boosters (more skills, languages, desired salary) shown with an impact hint. Desired title and visibility consent are NOT review fields — the first is Work preference on the Profile, the second is one account-level switch.',
+        'Two tiers of missing fields in Review, and NEITHER stops the candidate saving: the RED tier is what the qualification rule reads — ≥ 1 work experience, or (for a fresher) education AND at least one project, which decide the CV’s STATUS and therefore both whether it can be applied with and whether it can enter CV search; the RECOMMENDED tier is the ranking boosters (more skills, languages, desired salary) shown with an impact hint. Desired title and visibility consent are NOT review fields — the first is Work preference on the Profile, the second is one account-level switch.',
         'One profile, many documents: the Standard Resume (the searchable / matchable layer) is SINGULAR and authoritative; a candidate may hold several CV DOCUMENTS (their original PDF + a Saramin version) and pick which to attach per application. This is the answer to “why not save two files?” — yes to two documents, no to two profiles.',
       ],
     },
@@ -440,6 +459,14 @@ export const resumeManagement: BuildModule = {
       scope: ['BE', 'FE', 'UI'],
       mockup: 'js-create-cv',
       detail: {
+        refDocs: [
+          {
+            label: 'Figma — Create Saramin CV (jobseeker)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=3030-24396',
+            meta: 'Figma frame · 1440 wide · English copy',
+            note: 'The builder with the state-reactive section tags, the route-aware placeholders and the “What this CV needs” rail card. The three-state tag board sits to its right (node 3059-11664).',
+          },
+        ],
         description:
           'How a candidate gets a CV onto the platform. Two routes into the same object: UPLOAD an existing CV (the primary path, and the one the whole data strategy is built around) or BUILD one online for candidates who have no file. Either way the outcome is a CV document plus an extracted structured Candidate Profile — the upload path gets that profile from AI extraction, the builder path gets it from the fields as typed. The screen is deliberately light: we do not ask for what a CV already contains.',
         userStory:
@@ -460,7 +487,7 @@ export const resumeManagement: BuildModule = {
               { name: 'summary', type: 'rich text', notes: 'short "about me"' },
               { name: 'workHistory', type: 'repeatable', notes: 'company, title, from–to (or current), description — the section that drives years-of-experience' },
               { name: 'education', type: 'repeatable', notes: 'school, degree/major, from–to' },
-              { name: 'skills', type: 'CvSkill[] → Skill taxonomy', required: true, notes: 'skillId only — a pure tag. Autocomplete against the taxonomy, never free strings; see the module SKILLS block' },
+              { name: 'skills', type: 'CvSkill[] → Skill taxonomy', notes: 'skillId only — a pure tag. Autocomplete against the taxonomy, never free strings; see the module SKILLS block. NOT required since 2026-09-11 — skills left the qualification rule and are a ranking nudge; the section header carries no tag' },
               { name: 'languages / certificates', type: 'repeatable', notes: 'optional' },
               { name: 'optional sections', type: 'repeatable ×6', notes: 'Foreign Language · Highlight projects · Certificates · Awards · Activities · References — the SAME set as My Profile, added from the completeness rail. Each renders its real field form (one shared field catalogue with the profile edit sheets). DROPPED: Publications (not a search facet, near-zero fill rate on a general VN job board — Saramin KR and VietnamWorks have none; papers go under Highlight projects) and Recommendations (a request-and-wait flow that depends on a third party replying — too much machinery for a 1% signal in Phase 1)' },
               { name: 'template', type: 'enum', notes: 'a small set of layouts for the generated PDF' },
@@ -485,8 +512,8 @@ export const resumeManagement: BuildModule = {
               'UPLOAD · 3a. Pick the file → the PDF preview shows on the left, what-happens-next on the right → "Save my PDF" → the file is in My CVs, byte-identical, usable for applying right away.',
               'UPLOAD · 4a. An OFFER follows (never a step in the way): "Also create a Saramin CV from it?" — decline and you are done; accept and AI reads the file.',
               'UPLOAD · 5a. CV COMPARE screen — your PDF on the LEFT, the same information restructured as a Saramin CV on the RIGHT. Gaps are inline editable fields; AI suggests skills as one-tap chips. Save as original PDF, or as a Saramin CV.',
-              'CREATE · 3b. The CV builder opens (Saramin-KR layout): profile header on top, stacked section forms, right rail with CV completeness + the item list (＋/− optional sections).',
-              'CREATE · 4b. Fill Education (essential) · Work experience · Skills · About, add optional sections from the rail, name the CV in the bottom bar → "Completed".',
+              'CREATE · 3b. The CV builder opens (Saramin-KR layout): profile header on top, stacked section forms, right rail with the readiness card (“What this CV needs”) + the item list (＋/− optional sections). There is no “are you a fresher or experienced?” question — the form reads what is typed.',
+              'CREATE · 4b. Fill Work experience — or, if you have never worked, Education + one Highlight project — then Skills · About. The three section headers carry the tags that say which (see “THE FIELDS POINT AT THEMSELVES”). Add optional sections from the rail, name the CV in the bottom bar → "Completed".',
               '6. Either route lands back in My CVs with the new CV in the list.',
               '→ Next: CV management (which CV is searchable) · Apply (Application management).',
             ],
@@ -499,6 +526,48 @@ export const resumeManagement: BuildModule = {
               'The post-upload convert offer and the Builder’s pre-fill option are two entrances to the SAME extraction flow and the same review/compare screen — one pipeline, never two.',
               'Downstream, nothing cares which route was used: an application attaches a CV document, and search reads the Candidate Profile. Keeping that boundary clean is what allows Phase-1 to ship without AI at all.',
               'Phase-1 without AI: an upload still produces a CV; the structured profile is then only what the candidate confirms in the light review step. Phase-2 turns extraction on and the review step gets shorter, not longer.',
+            ],
+          },
+          {
+            heading: '★ THE RAIL SHOWS THE RULE, NOT A PERCENTAGE — and Save never blocks',
+            text: 'The builder’s right rail used to read “CV completeness 100% · your CV is ready!” — on a page where every section was empty. That is not a copy bug, it is a structural one: a PERCENTAGE CANNOT EXPRESS AN OR-RULE. No number can say “you need X, or Y and Z together”, so the bar was always going to disagree with the gate. The rail now shows the qualification rule itself as a two-branch checklist, and the word “completeness” is gone from the page (decided 2026-09-11).\n\nCREATING IS UNCONDITIONAL; READINESS IS SHOWN, NOT ENFORCED. The candidate can add sections in any order and Save always succeeds. What the rule decides is whether the saved CV can be USED — sent with an application, found in CV search — and that is said in two places only: the rail while editing, and a sheet right after Save.',
+            table: {
+              cols: ['Where', 'What it shows', 'State it takes'],
+              rows: [
+                ['**Right rail — “Điều kiện để dùng CV”**', 'A status pill, one line of consequence, then the rule as TWO ROWS: `○ Kinh nghiệm làm việc` — *hoặc* — `○ Học vấn và ○ Dự án`. The word **và** sits between the two circles of the second row, so AND and OR are both visible without a sentence. Each unmet row carries a `Thêm →` link into its section.', 'Not ready → amber pill “Chưa đủ điều kiện” + “Chưa gửi ứng tuyển được, NTD chưa tìm thấy bạn.” Ready → green “Đủ điều kiện” + “Sẵn sàng ứng tuyển và hiển thị với NTD.”; the satisfied branch gets a filled check, the unused branch fades to 45% but STAYS — the rule must remain legible after it is met, not vanish.'],
+                ['**Post-save sheet**', 'First fact: **Đã lưu CV** with the CV title — the save is never in question. Second: the readiness pill and one sentence. Third: the rule row again. Two exits that both keep the save.', 'Not ready → “Chưa dùng được để ứng tuyển” · “CV cần có kinh nghiệm làm việc — hoặc học vấn kèm một dự án nếu bạn chưa đi làm. Bạn có thể bổ sung ngay, hoặc để sau: CV vẫn được lưu.” · `Để sau` / `Bổ sung ngay`. Ready → “Sẵn sàng ứng tuyển và hiển thị với NTD” · the skills nudge · `Xem CV` / `Về My CVs`.'],
+                ['**CV detail — top banner**', 'The same readiness, as a full-width banner above the content. Amber when the rule is unmet, naming what is missing; green when met.', 'A detail page whose banner says “bổ sung kinh nghiệm” while two experience entries sit below it (the state the design shipped in) is exactly the disagreement this section removes: the banner READS the rule, it is never typed by hand.'],
+              ],
+            },
+            items: [
+              'ONE EVALUATION OF THE LOGIC, MANY RENDERINGS. The rail, the section tags (added 2026-09-11 — next block), the post-save sheet and the CV-detail banner all read ONE derived readiness state: the qualification rule evaluated on the entries as typed. None of them is authored by hand, so none can drift. Three-way contradictions (rail 100% · banner “not finished” · entries present) were the result of the rule being TYPED in three places — not of it being SHOWN in three places.',
+              'SKILLS ARE A NUDGE HERE, NOT A GATE. They left the qualification rule on 2026-09-11 (thin master data); they remain the largest match weight and the main CV-search filter, so both the ready-state rail and the ready-state sheet end with the same line: “Thêm kỹ năng để NTD dễ tìm thấy bạn hơn — đó là tiêu chí họ lọc nhiều nhất.” Promise of reach, never threat of refusal.',
+              'THE FRESHER PATH IS SPELLED OUT wherever the experience branch is unmet: “Chưa đi làm bao giờ? Điền Học vấn + một Dự án là thay được.” A student who reads only “còn thiếu kinh nghiệm làm việc” concludes they are ineligible and leaves; the second branch exists for exactly that person.',
+              'DERIVED NUMBERS ARE COMPUTED, NEVER TYPED. “Tổng kinh nghiệm” is the sum of the entries’ durations — two entries of 2 months cannot read “10 years”. The detail page shipped with that mismatch; the chip now says “4 tháng”.',
+              'SECTION EMPTY-STATES ARE PER SECTION. Certificates, Awards and Activities shared one pasted placeholder (“Showcase your projects, plus volunteering…”) and Foreign languages carried the Certificates one; each now describes its own section in one line.',
+            ],
+          },
+          {
+            heading: '★ THE FIELDS POINT AT THEMSELVES — section tags that react, placeholders that carry the other path',
+            text: 'The rail names the rule, but a candidate scrolling a twelve-section form still has to map “one of the two” onto section headers. Decided 2026-09-11 (approved as “1 + 2”; built in Figma frame 3030:24396 “Create Saramin CV”, with a three-state board beside it): the THREE sections the rule reads carry a tag that changes as the candidate types, and their empty-state placeholders spell out the other path. The “Fresher / Experienced” self-declaration that used to switch the required marks is gone.\n\nEverything below is a RENDERING of the same derived state the rail shows — see “ONE EVALUATION OF THE LOGIC, MANY RENDERINGS” above. Nothing here is typed by hand.',
+            table: {
+              cols: ['Surface', 'Copy (EN frame · VN build)', 'How it reacts'],
+              rows: [
+                ['**Section tag — Work experience**', '`Add at least 1` · “Thêm ít nhất 1”', 'Amber while the CV has no work entry and the other branch is incomplete. Turns green `✓ Done` (“✓ Đã có”) on the first entry. LEAVES entirely once Education + a project are both filled — the branch is no longer needed.'],
+                ['**Section tag — Education**', '`Or: with Projects` · “Hoặc: cùng Dự án”', 'Amber while no branch is complete. `✓ Done` as soon as an education entry exists — even if the project is still missing; the Highlight projects tag then carries the remaining obligation. LEAVES the moment a work entry is added.'],
+                ['**Section tag — Highlight projects**', '`Or: with Education` · “Hoặc: cùng Học vấn”', 'Mirror of the Education tag — the two tags of the second branch render the same AND, so they always agree.'],
+                ['**Placeholder — Work experience**', '“Add at least one role, internship or paid job. Never worked? Fill Education and one Highlight project instead.” · “Thêm ít nhất một vị trí, kỳ thực tập hoặc công việc có lương. Chưa đi làm bao giờ? Điền Học vấn và một Dự án nổi bật thay thế.”', 'Static. A placeholder is read BEFORE anything is typed, so it carries the fresher path in full; the tag does the reacting.'],
+                ['**Placeholder — Education**', '“…If you have no work experience, this and a Highlight project together stand in for it.” · “…Nếu chưa có kinh nghiệm làm việc, mục này cùng một Dự án nổi bật sẽ thay cho kinh nghiệm.”', 'Static.'],
+                ['**Placeholder — Highlight projects**', '“Describe a project you did — an outcome beats a description. If you have no work experience, this and Education together stand in for it.” · “Mô tả một dự án bạn đã làm — kết quả đáng giá hơn mô tả. Nếu chưa có kinh nghiệm làm việc, mục này cùng Học vấn sẽ thay cho kinh nghiệm.”', 'Static.'],
+                ['**Rail card — “What this CV needs”** (“Điều kiện để dùng CV”)', 'The two-branch checklist from the block above, retitled; the word “completeness” and the 100% are gone from the page.', 'Pill `Not ready yet` → `Ready` at the same instant the tags flip; the satisfied branch gets a filled check, the unused branch fades but stays — the rail is the one place the whole rule remains legible.'],
+              ],
+            },
+            items: [
+              'THE BOARD SHOWS THREE END STATES. ① EMPTY CV → all three tags amber (Add at least 1 · Or: with Projects · Or: with Education), rail “Not ready yet”. ② ONE WORK ENTRY → Work experience `✓ Done`; Education and Highlight projects carry NO tag; rail “Ready”. ③ NEVER WORKED, Education + one project → Education and Highlight projects `✓ Done`; Work experience carries NO tag; rail “Ready”. In between — one half of the second branch filled, no work entry — the filled half reads `✓ Done`, the other half stays amber, the rail stays “Not ready yet”. A satisfied OR has no remaining obligations, which is why the other branch’s tags leave rather than fade.',
+              'NO FRESHER / EXPERIENCED SWITCH (dropped 2026-09-11). The builder shipped with a “Bạn là… Fresher / Experienced” dropdown that changed which sections were marked required. It asked the candidate to classify themselves before typing anything, it created a second source of truth (a self-declared persona beside what the CV actually contains), and the OR-rule already serves both people without a question. The form reads the entries, never an answer about the entries.',
+              'ONLY THE THREE SECTIONS IN THE RULE EVER CARRY A TAG. Skills, Foreign languages, Certificates, Awards, Activities, References and About stay untagged — a “Recommended” tag that sits still on every visit is decoration, and it dilutes the three that matter. Skills keep their nudge in the rail and the post-save sheet, not on the header.',
+              'A TAG THAT NEVER CHANGES IS A LABEL, NOT A STATE. The value of these tags is that they move: the candidate watches the form answer them as they type, which is what makes an OR legible without a sentence. Implement them as a pure function of the current entries — the same `qualifies(cv)` the rail and the apply gate use — re-evaluated on every edit, never stored.',
+              'WHY NOT ASTERISKS. A * on Work experience says “mandatory” to the student who has none; a * on Education says “mandatory” to the foreman who never filled it in. Neither is true under an OR. A tag with a verb (“Add at least 1”, “Or: with Projects”) can say what an asterisk cannot.',
             ],
           },
           {
@@ -1026,7 +1095,7 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['Field', 'Dòng kết quả — chưa mua gói', 'Mở CV — đã mua gói', 'Sau khi unlock'],
               rows: [
-                ['**Mở được CV chi tiết**', '**Chỉ bản khoá** (REVISED 2026-09-06): trang mở với header + phần CV làm mờ, không đọc được; thẻ khoá và cột phải bán gói', '**✓**', '✓'],
+                ['**Mở được CV chi tiết**', '**10 lượt đầu: đọc được đầy đủ** (2026-09-09) — xem mục *10 lượt xem miễn phí*. Hết 10 lượt → **bản khoá**: header + phần CV làm mờ, thẻ khoá và cột phải bán gói', '**✓**', '✓'],
                 ['Họ tên', 'Che — họ + ○○ (“Trần ○○”)', 'Che — vẫn “Trần ○○”', '**Đầy đủ**'],
                 ['Ảnh đại diện', 'Ẩn', '**Hiện** (quyết định 2026-08-23)', 'Hiện'],
                 ['Giới tính · tuổi', 'Hiện, nếu ứng viên có điền', 'Hiện', 'Hiện'],
@@ -1049,7 +1118,7 @@ export const resumeManagement: BuildModule = {
               ],
             },
             items: [
-              'REVISED 2026-09-06 (Thu): a recruiter WITHOUT a package can now open the CV detail page, but only as a LOCKED PREVIEW — the header line (masked name · years · updated) plus the CV body blurred and unreadable, a lock card in the body (“Full CVs open with a CV Search package” · Request a quotation) and the Not-purchased product card on the rail. The intent of tier 1 is unchanged: nothing of the CV is readable without a package; what changed is that the sales moment happens on the page the recruiter tried to open, not on the list they were sent back to. Header action per state: no package → “Get CV Search”; bought, not activated → “Activate CV Search 90d” (the masked CV is readable, contact stays masked until the pack is active); active → “Unlock · 1 credit”.',
+              'REVISED 2026-09-06 (Thu): a recruiter WITHOUT a package can now open the CV detail page, but only as a LOCKED PREVIEW — the header line (masked name · years · updated) plus the CV body blurred and unreadable, a lock card in the body (“Full CVs open with a CV Search package” · Request a quotation) and the Not-purchased product card on the rail. What changed is that the sales moment happens on the page the recruiter tried to open, not on the list they were sent back to. NARROWED 2026-09-09: the blurred page is what they meet on view **11** — the first 10 CVs open readable (contact still masked), see the section below. Header action per state: no package → “Get CV Search”; bought, not activated → “Activate CV Search 90d” (the masked CV is readable, contact stays masked until the pack is active); active → “Unlock · 1 credit”.',
               '★ THE THIRD CATEGORY IS THE ONE USUALLY MISSED — LINKS. Phone and email are obviously contact channels; a portfolio URL or a LinkedIn profile is an IDENTITY RESOLVER, which is worse: it names the person, and a named person is reachable on every channel at once. So masking links is not only privacy, it closes a **revenue leak** — every resolver left visible is an unlock the employer never has to buy.',
               '★ TIER 2 CANNOT SHOW THE UPLOADED PDF, AND THAT IS AN ARCHITECTURAL CONSTRAINT, NOT A PREFERENCE. A candidate’s own PDF carries their name, phone, email and links in a layout we do not control, and redaction inside an arbitrary PDF is not reliable. A package-holder therefore reads the STRUCTURED view — the same Saramin Standard render used everywhere else, with the masked fields masked — and the original file unlocks only at tier 3. Any “preview the file” affordance at tier 2 defeats every row of this table at once.',
               'MASK THE SHAPE, NOT THE EXISTENCE — `🔗 3 liên kết · mở khoá để xem`, never a blank. A masked field that shows something IS there is what makes the credit worth spending; an empty space makes the candidate look thin and the price look wrong. Same reason the name is “Trần ○○” rather than “Ứng viên #4821”.',
@@ -1063,6 +1132,31 @@ export const resumeManagement: BuildModule = {
               '★ THE LIVE LINK STOPS WHEN CONSENT DOES, and the employer keeps a FROZEN COPY of what they paid for. If the candidate turns CV search off, deactivates, or deletes, the unlocked row stops following their edits and shows the last version seen, tagged (see the three states on Jobseeker user → User management). This is the only resolution that respects both sides: the employer is not robbed of a purchase, and the candidate is not published live for ever because someone once spent a credit.',
               'THE FILE THEY DOWNLOADED IS BEYOND ALL OF THIS. Every rule here governs what our screens show; a PDF already saved to a recruiter’s laptop is gone from our control, which is exactly why the tiering spends its effort on preventing the download rather than on pretending we can reach it afterwards.',
             ],
+          },
+          {
+            early: true,
+            heading: '10 LƯỢT XEM MIỄN PHÍ — a company with no active package can read 10 CVs, contact still masked',
+            text: 'DECIDED 2026-09-09 (Thu). A company holding no active CV Search package gets **10 free CV detail views**. What those 10 buy is exactly the package-holder view — the full structured CV, readable — and never contact: phone, email, links and the original PDF stay masked, and there is no way to unlock at this tier because unlock credits only arrive with a package. It is a taste of the product, not a hole in it.\n\nThis narrows the 2026-09-06 locked preview rather than replacing it: the blurred page is now what a recruiter meets on view **11**, not on view 1.',
+            table: {
+              cols: ['Trạng thái công ty', 'Xem CV chi tiết', 'Thông tin liên hệ'],
+              rows: [
+                ['**Chưa mua gói**', '**10 CV đầu: đọc được đầy đủ.** Từ CV thứ 11: **bản mờ**, không đọc được', 'Che'],
+                ['**Đã kích hoạt gói** (chưa unlock)', 'Đọc được đầy đủ — **tất cả CV**', 'Che'],
+                ['**Đã kích hoạt gói + unlock** (1 credit)', 'Đọc được đầy đủ — tất cả CV', '**Hiện**'],
+              ],
+            },
+            items: [
+              'CÁCH ĐẾM 10 LƯỢT: 1 lượt = 1 CV khác nhau, tính ở lần mở ĐẦU TIÊN của CV đó. Mở lại CV đã xem thì không trừ lượt. Gói đang chạy thì xem bao nhiêu cũng không trừ — 10 lượt chỉ áp dụng khi công ty không có gói.',
+              'ĐÃ MUA NHƯNG CHƯA KÍCH HOẠT nằm chung hàng 2: CV đã đọc được đầy đủ, liên hệ vẫn che tới khi kích hoạt. Không trừ lượt miễn phí nào.',
+              '★ RE-OPENING A CV YOU ALREADY SPENT ON IS FREE, FOREVER — in this window and every later one. The unit is a DISTINCT CV, not a page load, so a misclick, a back button or a second look next month costs nothing. Without this rule an allowance of 10 is really an allowance of about 6, and the recruiter learns to be afraid of the product we are trying to sell them.',
+              'THE ALLOWANCE IS PER COMPANY, POOLED ACROSS USERS — same scoping as the unlock quota (`unlockedByCompany` is already companyId-scoped, never per user). Per-user would make 10 accounts worth 100 views.',
+              'A NEW 10 IS GRANTED WHEN THE COMPANY ENTERS “no active package” — at company creation, and again each time a pack **ends** (rail state 4: window expired, or bought-but-never-activated and lapsed). It is a RESET to 10, not a top-up: unused views from the previous window do not carry over and never stack.',
+              '★ SO A COMPANY THAT NEVER BUYS GETS 10, ONCE, EVER. A second 10 costs a purchase — that is the whole anti-abuse property of this design, and it is why the trigger is “a pack ended”, not “time passed”. Credits running out mid-window does NOT re-open the allowance: the pack is still active, so detail viewing is still unlimited, which is strictly better than 10.',
+              'NO CONFIRM DIALOG. The counter is the warning — “Còn 7/10 lượt xem CV miễn phí” on the results rail and the detail header, amber at 2, and the locked preview at 0. A modal in front of a free trial is friction in the one funnel that has to feel generous.',
+              'THE SERVER DECIDES THE TIER, NEVER THE CLIENT. `GET /cv/:id` returns the masked projection for the caller’s company and decrements only on the first view of that cvId. A client-side counter is a client-side bypass.',
+              'DATA — one table: `CvFreeView { companyId, cvId, windowId, viewedAt }`, unique on (companyId, cvId). Remaining = 10 − count(rows in the current `windowId`). Already-viewed = a row exists for (companyId, cvId) in ANY window. `windowId` increments on each grant, so “which window did they spend it in” stays answerable and the count never has to be reset destructively.',
+            ],
+            warn: 'OPEN — “xài xong hoặc gói hết hạn” read as ONE trigger: the company has no active package. If the client instead means credits-exhausted-while-still-in-date should also re-open the allowance, say so before build — that case currently gives unlimited masked viewing under the live pack, so granting 10 there would be a downgrade, not a gift.',
           },
           {
             early: true,
@@ -1259,10 +1353,10 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['State', 'Card shows', 'Primary action', 'Where it appears'],
               rows: [
-                ['**1 · Not purchased**', '“Unlock full CVs and contact details…” · the two packs with unlocks · days · list price (CV Search 30d: 50 · 30 · 5,500,000 ₫; CV Search 90d: 200 · 90 · 13,900,000 ₫) · trial note (7 days · 5 unlocks, first purchase) · three rules: 1 unlock = one candidate for good · activate when ready, within 12 months of the invoice · quota shared by the account · the account’s sales contact', '{{btn:Request a quotation}} — sales-led, lands as a CRM task for the sales owner (no online checkout) · secondary “How CV Search works”', 'Results page, and the CV detail in its LOCKED-PREVIEW state (REVISED 2026-09-06): body blurred, lock card, header action “Get CV Search”'],
+                ['**1 · Not purchased**', '“Unlock full CVs and contact details…” · the two packs with unlocks · days · list price (CV Search 30d: 50 · 30 · 5,500,000 ₫; CV Search 90d: 200 · 90 · 13,900,000 ₫) · trial note (7 days · 5 unlocks, first purchase) · three rules: 1 unlock = one candidate for good · activate when ready, within 12 months of the invoice · quota shared by the account · the account’s sales contact', '{{btn:Request a quotation}} — sales-led, lands as a CRM task for the sales owner (no online checkout) · secondary “How CV Search works”', 'Results page, and the CV detail. Card also carries the free-view counter (“Còn N/10 lượt xem CV miễn phí”). The detail is readable for the first 10 CVs; from the 11th it is the LOCKED-PREVIEW state: body blurred, lock card, header action “Get CV Search”'],
                 ['**2 · Bought, not activated**', 'Pack name · “200 unlocks · 90 days — paid and ready” · Order PO-… · paid date · **Activate by dd/mm/yyyy — after that the pack lapses** · the window rule (starts on activation, runs continuously, cannot be paused; unlocks come out only after activation)', '{{btn:Activate CV Search 90d}} → the existing confirmation modal (Product usage → “Clicking Activate”) · secondary “Usage details”', 'Results page and CV detail — the masked CV is readable (tier 2), the header action is Activate and the contact lines read “Activate to unlock”'],
                 ['**3 · Active**', 'Big number **unlocks left of total** · consumption bar · “42 used · by 3 teammates · shared quota” · **days left** with the window dates and a time bar · one pace line (“21% of unlocks used, 19% of the window gone — on track”) · rules: re-opening is free · a recalled CV refunds the credit', '{{btn:Unlock this candidate · 1 credit}} on the detail · {{btn:Search CVs}} on the results page · secondary “Usage details”', 'Results page and CV detail'],
-                ['**4 · Ended** (extra)', '“Window ended dd/mm · N unlocks unused” or “All 200 unlocks used” · bar full/grey · Used · Unused (not carried over) · “Your unlocked CVs stay available — one unlock is for good” · lapsed variant: “Not activated by dd/mm/yyyy — this pack lapsed”', '{{btn:Buy again}} (= request a quotation) · secondary “Usage details”', 'Results page and CV detail — until a new pack is provisioned'],
+                ['**4 · Ended** (extra)', '“Window ended dd/mm · N unlocks unused” or “All 200 unlocks used” · bar full/grey · Used · Unused (not carried over) · “Your unlocked CVs stay available — one unlock is for good” · **a fresh 10 free CV views is granted when the window ends** (2026-09-09) · lapsed variant: “Not activated by dd/mm/yyyy — this pack lapsed”', '{{btn:Buy again}} (= request a quotation) · secondary “Usage details”', 'Results page and CV detail — until a new pack is provisioned'],
               ],
             },
             items: [
@@ -2149,7 +2243,7 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['', 'Saramin CV (typed)', 'Uploaded PDF (parsed into the same fields)'],
               rows: [
-                ['What the scan checks', '`AND [ OR [ Work experience, AND [ Education, Projects ] ], 3 skills ]`', 'The same rule, on the fields extracted from the file'],
+                ['What the scan checks', '`OR [ Work experience, AND [ Education, Projects ] ]`', 'The same rule, on the fields extracted from the file'],
                 ['If it meets the rule', 'CV status = **Qualified**', 'CV status = **Qualified**'],
                 ['If it does NOT meet the rule', 'CV status = **Not enough information**', 'CV status = **Not enough information** — or **Can’t read**, when the file has no text layer to check at all'],
                 ['A Qualified CV can…', 'be applied with → **Sent** · be toggled on → **Showing**', 'be applied with → **Sent** · be toggled on → **Showing**'],
@@ -2173,16 +2267,16 @@ export const resumeManagement: BuildModule = {
             table: {
               cols: ['Must have', 'Why'],
               rows: [
-                ['≥ 1 work experience — OR, for a fresher, ≥ 1 education entry **AND** ≥ 1 project', 'It is the body of the document. Zero entries means a name and white space. The fresher path now needs BOTH halves: an education row alone is a school name and a date, which tells an employer nothing about what the person can do. A project is the evidence a fresher has instead of a job.'],
-                ['≥ 3 skills, from the taxonomy', 'What CV search and matching join on. Free-typed strings do not count.'],
+                ['≥ 1 work experience — OR, for a fresher, ≥ 1 education entry **AND** ≥ 1 project', 'It is the body of the document. Zero entries means a name and white space. The fresher path needs BOTH halves: an education row alone is a school name and a date, which tells an employer nothing about what the person can do. A project is the evidence a fresher has instead of a job.\n\nMAKING EDUCATION MANDATORY FOR EVERYONE was considered on 2026-09-11 and REJECTED: it would gate on the weakest signal we hold — education level buys 3 of the 100 match points against 30% for work experience — and would reject the driver, foreman or salesperson with twenty years behind them who simply never filled the field in.'],
+                ['**CUT — ≥ 3 skills, from the taxonomy** (dropped 2026-09-11)', 'The skill master is IT-heavy and its non-IT groups are thin, so a nurse or an accountant often cannot find three taxonomy skills THAT EXIST. The gate was rejecting the taxonomy’s gaps, not the CV’s. Skills are not demoted in importance — they move from a GATE to a RANKING input, still the main CV-search filter and the largest CV-content match weight. A CV with none now qualifies but ranks nowhere, which is the deliberate trade: **unfindable is recoverable, rejected is not.**'],
               ],
             },
             items: [
               'WHAT THE SCAN CAN WRITE, and nothing else: **Qualified** when both lines are met · **Not enough information** when the file was read but falls short · **Can’t read** when there is no text layer to read at all. Rejected is NOT in this list — only a human writes that.',
               'IT READS FIELDS, NOT PROVENANCE — extracted or typed by hand counts the same. So a thin extraction is something the candidate can fix in seconds, without anyone approving it.',
               'NEVER A PERCENTAGE — a score rewards photo, About and awards, so a CV could hit 70% with an empty Experience.',
-              'IT RE-RUNS ON EVERY SAVE, which is why most exits from doubt need no admin: adding the third skill re-runs the scan and writes Qualified on the spot.',
-              '⚠ THE RULE INHERITS THE EXTRACTOR’S LANGUAGE COVERAGE, and this is the failure mode nobody sees. The scan reads EXTRACTED fields; a CV in a language extraction does not handle yields nothing → 0 skills → **Not enough information**, and the candidate is told their CV is incomplete when the truth is that WE could not read it. Whatever languages we do not extract, we silently reject — and those CVs then queue for an admin who has to read that language. Name the covered languages as a product commitment, not a model detail. Full argument: Resume list → “CV LANGUAGE — the filter rail is cross-language, the keyword bar is NOT”.',
+              'IT RE-RUNS ON EVERY SAVE, which is why most exits from doubt need no admin: adding the missing project re-runs the scan and writes Qualified on the spot.',
+              '⚠ THE RULE INHERITS THE EXTRACTOR’S LANGUAGE COVERAGE, and this is the failure mode nobody sees. The scan reads EXTRACTED fields; a CV in a language extraction does not handle yields nothing → no experience, no education → **Not enough information**, and the candidate is told their CV is incomplete when the truth is that WE could not read it. Whatever languages we do not extract, we silently reject — and those CVs then queue for an admin who has to read that language. Name the covered languages as a product commitment, not a model detail. Full argument: Resume list → “CV LANGUAGE — the filter rail is cross-language, the keyword bar is NOT”.',
             ],
           },
           {
@@ -2289,7 +2383,7 @@ export const resumeManagement: BuildModule = {
                 ],
                 [
                   '{{code:CV but not enough information}}',
-                  'A real CV, readable, but under the rule (≥ 1 experience, or education + projects, AND ≥ 3 skills). The rule was right.',
+                  'A real CV, readable, but under the rule (≥ 1 experience, or education + projects). The rule was right.',
                   'Scan raises it · admin confirms',
                   'The healthy case. Rising ALONGSIDE a rising Approve rate means the rule is set too high.',
                 ],
@@ -2361,7 +2455,7 @@ export const resumeManagement: BuildModule = {
                 ],
                 [
                   '**Rejected**\n{{code:CV but not enough information}}',
-                  '{{tag:Chưa được duyệt}}\n{{note:Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. Bạn bổ sung kinh nghiệm làm việc và ít nhất 3 kỹ năng giúp nhé.}}\n{{btn:Cập nhật hồ sơ}}',
+                  '{{tag:Chưa được duyệt}}\n{{note:Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. Bạn bổ sung kinh nghiệm làm việc giúp nhé.}}\n{{btn:Cập nhật hồ sơ}}',
                   'Như trên.',
                   '{{tag:Đã thu hồi}}\n{{note:Saramin đã thu hồi CV này — hồ sơ chưa đủ thông tin.}}',
                   'Như trên.',
@@ -2396,6 +2490,24 @@ export const resumeManagement: BuildModule = {
               '★ ONLY ONE DOOR REFUNDS (folded up from a deleted section, because it is a money rule). A CV reaches an employer two ways. By APPLICATION: receiving applications is not metered, so a recall pulls the row and refunds NOTHING — there is no charge to reverse. By CV SEARCH: the employer spent an unlock credit, so a recall pulls it back AND refunds the credit automatically, stated on the row as “hoàn 1 lượt unlock”. The same CV can be both, and then both apply.',
               'THE RECALLED ROW IS NEVER SILENTLY DELETED — the recruiter may already have read the CV or phoned the candidate. It stays in its pipeline stage, greyed, name struck through, match score replaced by an em-dash, with a rose banner naming SARAMIN as the remover. The CV body renders BLURRED and **Download CV disappears** — leaving it would let them keep a copy of a document we just told them to ignore. A bell + email notification goes out too: a recall that only exists inside a screen nobody reopens is a recall that did not happen.',
               'THE CONFIRM MUST SHOW WHAT IT UNDOES — not just “12 applications dropped, 3 recalled” but “1 employer has moved this candidate to Interview”. An operator must not discover afterwards that they pulled someone out of a live hiring process.',
+            ],
+          },
+          {
+            heading: '★ “SHOWN TO EMPLOYERS” — the one setting at the bottom of every CV detail',
+            text: 'ONE of a jobseeker’s three CVs is the searchable one, and that is a SELECTION, not a toggle: switching it on here switches it off somewhere else. A control shaped like a switch hides that, so the block is TWO CARDS — the LEFT is always what is true now, the RIGHT is always the CV being viewed. The candidate learns the shape once and it holds in every state.\n\nIt is a SETTING, not an interruption: the heading never changes and the block always renders at the bottom of CV detail. Only the status line beneath it moves.',
+            table: {
+              cols: ['State', 'LEFT card — what is true now', 'RIGHT card — the CV being viewed'],
+              rows: [
+                ['**Another CV is shown** (the common case)', '◉ Giữ CV đang dùng · chip **NTD thấy CV này** · the other CV’s name and date', '○ Đổi sang CV này — “NTD sẽ xem CV bạn đang mở, CV kia tự động ẩn đi.” The word **đổi/instead** is load-bearing: it says on the button, before the click, that turning this on turns the other off.'],
+                ['**This CV is shown**', '◉ Tiếp tục hiển thị CV này · chip **NTD thấy CV này**', '○ Ẩn khỏi nhà tuyển dụng — “Sẽ không CV nào hiển thị cho tới khi bạn chọn CV khác.”'],
+                ['**No CV is shown**', '◉ Không hiển thị CV nào — “NTD không tìm thấy bạn trong tìm kiếm CV.”', '○ Hiển thị CV này với NTD — “NTD sẽ tìm thấy bạn trong tìm kiếm CV.”'],
+              ],
+            },
+            items: [
+              '⚠ THE TRAP SARAMIN KR DOES NOT HAVE, because they have no qualification rule: swapping a working CV for an UNFINISHED one leaves NOTHING visible — the candidate turns off something that works to turn on something that cannot. So whenever the RIGHT card would result in nothing being shown, it carries an amber line naming the cost: “CV này chưa hoàn thiện — còn thiếu 2 kỹ năng. Đổi bây giờ thì NTD sẽ không thấy CV nào cho tới khi bạn bổ sung xong.” NOT BLOCKED — it is their call — but never sprung on them.',
+              'THE FOOTER IS NOT THE KOREAN ONE, and this is the copy mistake to avoid. Saramin KR reassures that contact details stay hidden “until you accept”, which is true of their OFFERS model — it has an accept step. Ours has none: an employer pays an unlock and sees the contact immediately, so translating that line promises something we do not do. The question a candidate actually has here is “if I pick this one, do the others leak?”, so the footer answers THAT: “Các CV còn lại vẫn riêng tư — NTD chỉ thấy đúng CV bạn chọn.”',
+              'VOCABULARY, and it is one set everywhere: the chip is **NTD thấy CV này** (*Employers see this*), turning on is **Hiển thị CV này với NTD** (*Show CV to employers*), turning off is **Ẩn khỏi nhà tuyển dụng** (*Hide CV from employers*). Do NOT reuse “Make profile searchable” — that names the ACCOUNT switch (Discoverable · Hidden), which is a different control; two controls with one name is a support ticket waiting to happen. Do not reuse “Open to work” either: that is a statement about the PERSON, not about which CV is shown.',
+              'THE BLOCK SITS LAST on CV detail. Everything above it DESCRIBES the CV; this is the only thing that DECIDES anything — so it is what the candidate does after reading, not before.',
             ],
           },
           {

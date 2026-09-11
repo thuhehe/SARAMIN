@@ -156,7 +156,7 @@ const STEPS: Step[] = [
   {
     date: '01/07', actor: 'Ứng viên', title: 'Tải CV lên — v.1',
     event: 'Minh Anh tải lên CV_TranMinhAnh.pdf, 2 trang. Hệ thống đọc được 3 kinh nghiệm · 8 kỹ năng.',
-    rule: ['Quy tắc đủ điều kiện (≥1 kinh nghiệm/học vấn + ≥3 kỹ năng) → đạt → **Qualified**. Không cần người duyệt.', 'CV Qualified không bao giờ vào hàng đợi CV review.'],
+    rule: ['Quy tắc đủ điều kiện (≥1 kinh nghiệm — hoặc học vấn + dự án nếu chưa đi làm) → đạt → **Qualified**. Không cần người duyệt.', 'CV Qualified không bao giờ vào hàng đợi CV review.'],
     cv: { label: 'Qualified', tone: 'ok', sub: 'v.1' }, a1: NONE, a2: NONE,
     sees: {
       js: <MyCv meta="Tải lên 01/07/2026" />,
@@ -189,7 +189,7 @@ const STEPS: Step[] = [
   {
     date: '20/07', actor: 'Ứng viên', title: 'Thay file — v.2, mỏng hơn',
     event: 'Minh Anh thay file bằng một “bản rút gọn” 1 trang — với CV tải lên, đây chính là “xoá bớt trường”. Hệ thống đọc được 1 kinh nghiệm · 2 kỹ năng.',
-    rule: ['Bản mới **luôn được quét lại** → không đạt (<3 kỹ năng) → **Not enough information**. CV tải lên đang nghi ngờ → **vào hàng đợi CV review**.', 'Đơn #1 là snapshot của v.1 → **không đổi**. FPT vẫn giữ bản 2 trang. Trạng thái nghi ngờ **không bao giờ thu hồi** gì.'],
+    rule: ['Bản mới **luôn được quét lại** → không đạt (không còn kinh nghiệm nào đọc được) → **Not enough information**. CV tải lên đang nghi ngờ → **vào hàng đợi CV review**.', 'Đơn #1 là snapshot của v.1 → **không đổi**. FPT vẫn giữ bản 2 trang. Trạng thái nghi ngờ **không bao giờ thu hồi** gì.'],
     cv: { label: 'Not enough information', tone: 'doubt', sub: 'v.2' }, a1: { ...A1_SENT, sub: 'v.1 · Interview' }, a2: NONE,
     sees: {
       js: <><MyCv meta="Cập nhật 20/07/2026" ver={2} /><p className="text-[10px] italic text-faint">Không chip, không “chờ duyệt” — nghi ngờ trên CV tải lên là việc của chúng ta, ứng viên không thấy.</p></>,
@@ -226,7 +226,7 @@ const STEPS: Step[] = [
     cv: { label: 'Rejected', tone: 'bad', sub: 'v.2' }, a1: { label: 'Sent', tone: 'sent', sub: 'v.1 · Interview' }, a2: { label: 'Not sent', tone: 'bad', sub: 'chốt' },
     sees: {
       js: <>
-        <MyCv meta="Cập nhật 20/07/2026" ver={2} chip="Chưa được duyệt — Thiếu thông tin" why="Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. Bạn bổ sung kinh nghiệm làm việc và ít nhất 3 kỹ năng giúp nhé." cta="Tải lên CV khác" />
+        <MyCv meta="Cập nhật 20/07/2026" ver={2} chip="Chưa được duyệt — Thiếu thông tin" why="Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. CV cần có ít nhất một kinh nghiệm làm việc — hoặc học vấn kèm một dự án nếu bạn chưa đi làm." cta="Tải lên CV khác" />
         <MyApp job="Senior Product Designer" co="FPT" chip="Interview" tone="stage" note="Không đổi — đơn này mang v.1" />
         <MyApp job="Product Designer" co="Tiki" chip="Không được gửi" tone="bad" note="Hồ sơ chưa đủ thông tin — cập nhật hồ sơ rồi ứng tuyển lại" />
       </>,
@@ -343,7 +343,7 @@ export function CvVersionStory() {
         <div className="rounded-md border border-line bg-surface p-2.5">
           <p className="text-[10px] font-bold uppercase tracking-wide text-faint">Biến thể — khi nào mới có <span className="text-rose-600">Thu hồi</span></p>
           <p className="mt-1 text-[11px] leading-snug text-ink/80">
-            Giả sử v.2 <b className="font-semibold">vẫn đạt</b> quy tắc (3 kỹ năng, ít kinh nghiệm) → Qualified → Đơn #2 <b className="font-semibold">Sent</b> tới Tiki. Tiki mở ra, thấy nội dung không phải CV thật, <b className="font-semibold">báo cáo</b>. Hà xét v.2 → từ chối “Not a CV”.
+            Giả sử v.2 <b className="font-semibold">vẫn đạt</b> quy tắc (vẫn còn kinh nghiệm đọc được) → Qualified → Đơn #2 <b className="font-semibold">Sent</b> tới Tiki. Tiki mở ra, thấy nội dung không phải CV thật, <b className="font-semibold">báo cáo</b>. Hà xét v.2 → từ chối “Not a CV”.
             Lúc này Đơn #2 mang đúng v.2 → <b className="font-semibold text-rose-600">Thu hồi</b>. Đơn #1 vẫn mang v.1 → <b className="font-semibold text-emerald-700">Giữ nguyên</b>. Thu hồi chỉ xảy ra khi <b className="font-semibold">một version đã được gửi đi</b> rồi mới bị từ chối.
           </p>
         </div>

@@ -357,7 +357,7 @@ function ApplyScreen() {
                   </label>
                 ))}
                 {/* The SAME qualification rule as every other CV (≥1 experience — or
-                    ≥1 education entry for a fresher — and ≥3 skills), but the strict
+                    ≥1 education entry AND ≥1 project for a fresher), but the strict
                     consequence: a SARAMIN CV below it cannot be sent, because we
                     generate that document ourselves. VNW pattern — greyed,
                     unselectable, missing fields NAMED, one link into the editor. */}
@@ -1224,26 +1224,45 @@ function CreateCvScreen() {
           })}
         </div>
 
-        {/* ── right rail — completeness + item list (the KR reference) ── */}
+        {/* ── right rail — THE RULE, not a percentage, then the item list ──
+            "CV completeness 85%" is gone (2026-09-11). A percentage cannot express
+            an OR-rule — nothing a bar can show says "you need X, or Y and Z
+            together" — so it was always going to disagree with the gate; the
+            design shipped reading "100% · your CV is ready!" over ten empty
+            sections. The rail now draws the rule itself: two rows, "hoặc" between
+            them, "và" inside the second. One representation, so it cannot drift. */}
         <div className="space-y-3 self-start">
           <div className="rounded-xl border border-line bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[13px] font-bold text-ink">CV completeness</p>
-              <p className="text-[15px] font-bold text-brand">85%</p>
+            <p className="text-[13px] font-bold text-ink">Điều kiện để dùng CV</p>
+            <span className="mt-2 inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Chưa đủ điều kiện</span>
+            <p className="mt-1.5 text-[11px] leading-snug text-muted">Chưa gửi ứng tuyển được, nhà tuyển dụng chưa tìm thấy bạn.</p>
+            <p className="mt-3 text-[9.5px] font-semibold uppercase tracking-wide text-faint">Cần một trong hai</p>
+            <div className="mt-1 flex items-center justify-between text-[12px] text-ink">
+              <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Kinh nghiệm làm việc</span>
+              <span className="cursor-pointer text-[11px] font-semibold text-brand">Thêm →</span>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line"><div className="h-full w-[85%] rounded-full bg-brand" /></div>
-            {/* the weights are not arbitrary — say what they mean, in the UI */}
-            <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-              Each section is worth what it adds to being <b className="font-medium text-ink/70">found and shortlisted</b> — the % is how much employer search and job matching read it.
+            <p className="my-0.5 text-[10.5px] text-faint">hoặc</p>
+            <div className="flex items-center justify-between text-[12px] text-ink">
+              <span className="flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Học vấn
+                <span className="text-[10.5px] text-faint">và</span>
+                <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Dự án
+              </span>
+              <span className="cursor-pointer text-[11px] font-semibold text-brand">Thêm →</span>
+            </div>
+            {/* Skills are a NUDGE here, not a gate — left the rule 2026-09-11. Still
+                the main CV-search filter, so the line promises reach, never refusal. */}
+            <p className="mt-3 rounded-md bg-canvas/60 px-2 py-1.5 text-[10.5px] leading-snug text-muted">
+              Thêm kỹ năng để NTD dễ tìm thấy bạn hơn — đó là tiêu chí họ lọc nhiều nhất.
             </p>
 
             {/* the item list — ONE pattern for every section: a green check when it
                 has content. No "required" chip: the CV sections read the same way,
                 and completeness already says what is missing. */}
             <div className="mt-3 space-y-0.5 border-t border-line-soft pt-3">
-              {CORE_CV_SECTIONS.map(({ title, pct }) => (
+              {CORE_CV_SECTIONS.map(({ title }) => (
                 <div key={title} className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-[12px] text-ink/80">{title} <span className="text-[10px] text-faint">{pct}</span></span>
+                  <span className="text-[12px] text-ink/80">{title}</span>
                   <span className="text-[11px] text-emerald-500">✓</span>
                 </div>
               ))}
@@ -1605,7 +1624,8 @@ const SKILL_SUGGESTIONS: { from: string; source: 'experience' | 'desired'; skill
    enter CV search. Hence the loud note for the floor, a quiet one for the soft
    limit, and no ceiling at all. */
 const CV_SKILL_SOFT = 25
-const CV_SKILL_MIN = 3
+/* A NUDGE, not a gate — see the note at the hint below. */
+const CV_SKILL_SUGGEST = 3
 
 function CvSkillsField() {
   const [skills, setSkills] = useState<string[]>([
@@ -1716,9 +1736,15 @@ function CvSkillsField() {
           3 is the qualification rule, and under it this CV cannot be applied with
           and cannot enter CV search. So the shortfall gets the loud treatment and
           the ceiling gets a quiet number. */}
-      {skills.length < CV_SKILL_MIN && (
-        <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800">
-          Cần tối thiểu {CV_SKILL_MIN} kỹ năng — thêm {CV_SKILL_MIN - skills.length} nữa thì CV mới ứng tuyển được và mới hiển thị trong tìm kiếm CV.
+      {/* NO LONGER A GATE (2026-09-11) — skills were dropped from the qualification
+          rule because the skill master is IT-heavy and its non-IT groups are thin,
+          so the condition was rejecting the TAXONOMY's gaps rather than thin CVs.
+          They still decide RANKING: the largest CV-content match weight and the main
+          CV-search filter. So the line stays, and it now promises reach rather than
+          threatening refusal — a CV with none qualifies, it just ranks nowhere. */}
+      {skills.length < CV_SKILL_SUGGEST && (
+        <p className="mt-1.5 rounded-md border border-line bg-canvas/50 px-2 py-1 text-[11px] leading-snug text-muted">
+          Thêm {CV_SKILL_SUGGEST - skills.length} kỹ năng nữa để NTD dễ tìm thấy bạn hơn — kỹ năng là tiêu chí họ lọc nhiều nhất.
         </p>
       )}
       {over && (
@@ -2201,13 +2227,13 @@ function MyCvsScreen() {
      which is the reason the row shows them at all: it is how a candidate compares
      their CVs and decides which one employers should find. */
   /* `missing` = the APPLY-ELIGIBLE gate (see Resume management): a Saramin CV
-     needs ≥1 experience (or ≥1 education entry for a fresher) and ≥3 skills
+     needs ≥1 experience (or ≥1 education entry AND ≥1 project for a fresher)
      before it can be SENT with an application. The label shows HERE, on the
      shelf, so the candidate learns it before the apply modal greys the row.
      It does not touch the searchable flag — an incomplete CV can still be
      the one employers find. */
-  /* `indexStatus` — CV SEARCH only. ONE rule qualifies a CV (≥1 experience or
-     education entry + ≥3 skills), read off the fields an upload is parsed into
+  /* `indexStatus` — CV SEARCH only. ONE rule qualifies a CV (≥1 experience, or
+     education + a project for a fresher), read off the fields an upload is parsed into
      at UPLOAD time. An uploaded CV that fails is NOT blocked from applying —
      that would punish the candidate for our parser — it simply waits outside
      the index until a reviewer clears it. Decided: no auto-pass, so the
@@ -2519,18 +2545,68 @@ function MyCvsScreen() {
    in DOUBT reaches this page with NO panel at all: it renders as a plain CV,
    because our own uncertainty about our own parse is not something the candidate
    is told about. See My CVs for the full rule. ── */
+/* ── "Shown to employers" — the settings block at the bottom of every CV ────
+ *
+ * ONE CV of the three is the searchable one, and that is a SELECTION, not a
+ * toggle: switching it on here switches it off somewhere else. A control shaped
+ * like a switch hides that, so this is two cards — LEFT is always what is true
+ * now, RIGHT is always the CV you are looking at. The candidate learns the shape
+ * once and it holds in all three states.
+ *
+ * The heading never changes, because this is a SETTING, not an interruption that
+ * appears when something is wrong. Only the status line under it moves.
+ *
+ * THE FOOTER IS NOT THE KOREAN ONE. Saramin KR reassures that contact details
+ * stay hidden "until you accept" — true of their offers model, which has an
+ * accept step. Ours has none: an employer pays an unlock and sees the contact
+ * immediately. The real question a candidate has on this screen is different —
+ * "if I pick this one, do the others leak?" — so the footer answers that.
+ */
+type VisState = 'other' | 'this' | 'none'
+type VisCard = { title: string; chip?: string; meta?: string; body?: string; warn?: string }
+const VIS: Record<VisState, { status: React.ReactNode; left: VisCard; right: VisCard }> = {
+  /* Another CV holds the slot — the common case, and the only one where choosing
+     the right-hand card silently turns something else off. */
+  other: {
+    status: <>Đang hiển thị: <b className="font-semibold text-ink">Thu Minh CV</b></>,
+    left: { title: 'Giữ CV đang dùng', chip: 'NTD thấy CV này', meta: 'Thu Minh CV · 10.09.26' },
+    right: {
+      title: 'Đổi sang CV này',
+      body: 'NTD sẽ xem CV bạn đang mở, CV kia tự động ẩn đi.',
+      /* The trap Saramin KR never has, because they have no qualification rule:
+         swapping a working CV for an unfinished one leaves NOTHING visible. Not
+         blocked — it is their call — but never sprung on them. */
+      warn: 'CV này chưa hoàn thiện — còn thiếu 2 kỹ năng. Đổi bây giờ thì NTD sẽ không thấy CV nào cho tới khi bạn bổ sung xong.',
+    },
+  },
+  this: {
+    status: 'CV này đang hiển thị với nhà tuyển dụng.',
+    left: { title: 'Tiếp tục hiển thị CV này', chip: 'NTD thấy CV này', meta: 'Đang trong tìm kiếm CV' },
+    right: { title: 'Ẩn khỏi nhà tuyển dụng', body: 'Sẽ không CV nào hiển thị cho tới khi bạn chọn CV khác.' },
+  },
+  none: {
+    status: 'Chưa CV nào hiển thị với nhà tuyển dụng.',
+    left: { title: 'Không hiển thị CV nào', body: 'NTD không tìm thấy bạn trong tìm kiếm CV.' },
+    right: {
+      title: 'Hiển thị CV này với NTD',
+      body: 'NTD sẽ tìm thấy bạn trong tìm kiếm CV.',
+      warn: 'CV này chưa hoàn thiện — còn thiếu 2 kỹ năng. Bật bây giờ thì NTD vẫn chưa thấy gì cho tới khi bạn bổ sung xong.',
+    },
+  },
+}
+
 function CvDetailScreen() {
   const go = useNav()
+  const [vis, setVis] = useState<VisState>('other')
   /* The state this screen is demonstrating. Every failure reason lands here with
      its own heading, body and action — the list is the summary, this is the full
      explanation, and the two must never disagree. */
   const st = {
     chip: '⚠ Chưa đủ thông tin',
     heading: 'Hồ sơ chưa đủ điều kiện hiển thị và ứng tuyển',
-    body: 'Để bật cho phép tìm kiếm và dùng để ứng tuyển, hồ sơ cần có ít nhất 1 kinh nghiệm làm việc (hoặc học vấn + dự án nếu bạn chưa đi làm) và 3 kỹ năng.',
+    body: 'Để bật cho phép tìm kiếm và dùng để ứng tuyển, hồ sơ cần có ít nhất 1 kinh nghiệm làm việc — hoặc học vấn kèm 1 dự án nếu bạn chưa đi làm.',
     todo: [
-      { label: 'Kinh nghiệm làm việc', hint: 'Chưa có kinh nghiệm? Điền Học vấn + Dự án thay thế' },
-      { label: 'Kỹ năng — đang có 1/3', hint: 'Thêm 2 kỹ năng nữa' },
+      { label: 'Kinh nghiệm làm việc', hint: 'Chưa đi làm bao giờ? Điền Học vấn + một Dự án là thay được' },
     ],
     action: 'Cập nhật hồ sơ',
   }
@@ -2625,6 +2701,63 @@ function CvDetailScreen() {
               <span className="cursor-pointer text-[11.5px] font-medium text-brand">🔗 Tải xuống PDF</span>
               <span className="cursor-pointer text-[11.5px] font-medium text-brand">Xem như nhà tuyển dụng</span>
             </div>
+          </Section>
+
+          {/* The only SETTING on this page — everything above it describes the CV,
+              this decides who can find it. Last, because it is what you do after
+              reading, not before. */}
+          <Section title="4 · Hiển thị với nhà tuyển dụng">
+            {/* mockup-only: flip the three states this block has to serve */}
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wide text-faint">Trạng thái:</span>
+              {(['other', 'this', 'none'] as VisState[]).map((k) => (
+                <span
+                  key={k}
+                  onClick={() => setVis(k)}
+                  className={cn('cursor-pointer rounded-md border px-2 py-0.5 text-[10.5px]', vis === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line text-muted')}
+                >{k === 'other' ? 'CV khác đang hiển thị' : k === 'this' ? 'CV này đang hiển thị' : 'Chưa CV nào'}</span>
+              ))}
+            </div>
+
+            <p className="mb-3 flex flex-wrap items-baseline gap-x-1.5 rounded-lg bg-brand-soft/40 px-3 py-2 text-[11.5px] text-ink/80">
+              <span>Mỗi lần chỉ <b className="font-semibold text-ink">một CV</b> hiển thị trong tìm kiếm CV.</span>
+              <span className="text-muted">{VIS[vis].status}</span>
+              <span className="ml-auto cursor-pointer font-medium text-brand">Cách NTD tìm thấy bạn →</span>
+            </p>
+
+            {/* LEFT is what is true now, RIGHT is the CV being viewed — the same
+                two roles in every state, so the shape is learnable once. */}
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {([['left', true], ['right', false]] as const).map(([side, on]) => {
+                const c = VIS[vis][side]
+                return (
+                  <div key={side} className={cn('rounded-lg border p-3', on ? 'border-brand bg-brand-soft/20' : 'border-line bg-surface')}>
+                    <p className="flex items-start gap-2">
+                      <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-brand' : 'border-line')}>
+                        {on && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                      </span>
+                      <span className={cn('text-[12.5px]', on ? 'font-semibold text-ink' : 'text-ink/85')}>{c.title}</span>
+                    </p>
+                    <div className="mt-1.5 pl-[22px]">
+                      {c.chip && <Chip tone="green">{c.chip}</Chip>}
+                      {c.meta && <p className="mt-1 text-[11px] text-muted">{c.meta}</p>}
+                      {c.body && <p className="text-[11.5px] leading-snug text-muted">{c.body}</p>}
+                      {c.warn && (
+                        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800">
+                          ⚠ {c.warn}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Answers the question they actually have here — not the Korean one
+                about contact details, which our model cannot promise. */}
+            <p className="mt-2.5 text-[11px] text-faint">
+              ⓘ Các CV còn lại vẫn riêng tư — NTD chỉ thấy đúng CV bạn chọn.
+            </p>
           </Section>
         </div>
       </div>

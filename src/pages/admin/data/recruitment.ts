@@ -221,7 +221,7 @@ export const REJECT_TAG = 'Chưa được duyệt'
 export const REASON_DRAFTS: Record<string, { msg: string; cta: string }> = {
   'Can’t read': { msg: 'Hệ thống không đọc được nội dung trong file này. Bạn thử tải lên bản PDF xuất trực tiếp từ Word hoặc Google Docs giúp nhé.', cta: 'Tải lên CV khác' },
   'Not a CV': { msg: 'File bạn tải lên không phải một CV. Bạn kiểm tra và tải lại đúng file giúp nhé.', cta: 'Tải lên CV khác' },
-  'CV but not enough information': { msg: 'Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. Bạn bổ sung kinh nghiệm làm việc và ít nhất 3 kỹ năng giúp nhé.', cta: 'Cập nhật hồ sơ' },
+  'CV but not enough information': { msg: 'Hồ sơ chưa đủ thông tin để gửi tới nhà tuyển dụng. CV cần có ít nhất một kinh nghiệm làm việc — hoặc học vấn kèm một dự án nếu bạn chưa đi làm. Bạn tải lên bản đầy đủ hơn, hoặc tạo CV trên Saramin giúp nhé.', cta: 'Cập nhật hồ sơ' },
   'Khác': { msg: '', cta: 'Cập nhật hồ sơ' },
 }
 

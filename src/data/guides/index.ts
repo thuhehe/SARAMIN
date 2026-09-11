@@ -8,7 +8,7 @@ import { crmGuide } from './crm'
 import { jobManagementGuide } from './job-management'
 import { productsPackagesGuide } from './products-packages'
 
-export type { ModuleGuide, GuideTask, GuideShot, GuideSettings, GuideSource } from './types'
+export type { ModuleGuide, GuideTask, GuideShot, GuideSettings, GuideSource, GuideFlowStep } from './types'
 
 export const GUIDES: Record<string, ModuleGuide> = Object.fromEntries(
   [productsPackagesGuide, crmGuide, jobManagementGuide].map((g) => [g.moduleId, g]),

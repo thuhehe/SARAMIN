@@ -84,6 +84,32 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    date: '2026-09-11',
+    kind: 'guide',
+    module: 'crm',
+    title: {
+      vi: 'Hướng dẫn CRM có 4 workflow đầu-cuối — mỗi bước ghi rõ ai làm · trên platform nào · trang nào · thao tác gì · kết quả gì, kèm ảnh chụp từng bước',
+      en: 'The CRM guide opens with four end-to-end workflows — each step names who acts, on which platform and page, doing what, with what result, with a screenshot per step',
+    },
+    detail: {
+      vi: 'Theo yêu cầu của khách hàng (“trang nào, thao tác nào, ai làm”): (1) Company user đăng ký → Admin xem dòng Sign-ups → Move · Create company & activate · Archive — chỉ sau Move/Create user mới đăng nhập được; (2) Xác minh công ty: No paperwork → Waiting to verify → Verified; (3) Báo giá có chiết khấu tổng đơn: ≤ 10% Sales lead duyệt, > 10% Sales manager duyệt; (4) Sales xin nhận công ty từ Free data qua hai cấp duyệt. Đường dẫn lấy từ build (employer site dev.hiring.svn.topdev.asia: /auth/sign-up · /company-join · /jobs/new; admin: /crm/sign-ups · /crm/companies · /crm/free-data · /crm/company-claims · /crm/quotations). Ảnh chụp từ mockup của tài liệu này, sẽ thay bằng ảnh môi trường QA khi có.',
+      en: 'At the client’s request (“which page, which action, who does it”): (1) a company user signs up → the Admin reviews the Sign-ups row → Move · Create company & activate · Archive — only Move and Create open the login; (2) company verification: No paperwork → Waiting to verify → Verified; (3) a quotation with an order-level discount: ≤ 10% the Sales lead approves, > 10% the Sales manager; (4) Sales claims a company from Free data through the two approval levels. Paths come from the build (employer site dev.hiring.svn.topdev.asia: /auth/sign-up · /company-join · /jobs/new; admin: /crm/sign-ups · /crm/companies · /crm/free-data · /crm/company-claims · /crm/quotations). Screenshots are taken from this site’s mockups and will be swapped for QA-environment captures when available.',
+    },
+  },
+  {
+    date: '2026-09-11',
+    kind: 'both',
+    module: 'crm',
+    title: {
+      vi: 'Xác minh công ty theo đúng build: ba nhãn No paperwork · Waiting to verify · Verified — có Giấy chứng nhận đăng ký doanh nghiệp (ERC) trên hồ sơ là chuyển sang Waiting to verify, và chỉ ở trạng thái đó Admin mới bấm Verify',
+      en: 'Company verification follows the build: three labels No paperwork · Waiting to verify · Verified — an ERC on file moves the company to Waiting to verify, and only there can the Admin press Verify',
+    },
+    detail: {
+      vi: 'Thay luật “đủ 3 input MST · địa chỉ đăng ký MST · ERC” (09/09) bằng luật một input: có ERC trên hồ sơ. Lý do: công ty được admin tạo qua form Create company đầy đủ (bắt buộc tên pháp lý · MST · địa chỉ xuất hóa đơn), nên MST và địa chỉ không thể thiếu trên một hồ sơ đã tồn tại — thứ employer còn nợ chỉ là giấy chứng nhận. Nhãn được tính lúc đọc từ kết luận xác minh + có/không có tài liệu (svn-be V482), không lưu. Trên Company site: banner và nút header đổi thành “Tải lên ERC để được xác minh”, tag No paperwork / Waiting to verify / Verified; trang Company information (/company-join) chỉ đọc sau khi Verified. Trên admin: filter Verified 3 giá trị, chip Chờ verify đếm Waiting to verify, dialog Verify liệt kê ERC là input và MST · địa chỉ · tên pháp lý · sales owner là thông tin đối chiếu. Hành động thứ ba trên Sign-ups gọi theo build: Create company & activate.',
+      en: 'Replaces the 09/09 “three inputs — MST · registered address · ERC” rule with one input: an ERC on the record. Why: the company is created by an admin through the full Create company form (legal name · MST · invoice address required), so neither can be missing on a record that exists — the certificate is the only thing the employer still owes. The label is derived on read from the verdict plus the documents (svn-be V482), never stored. Company site: banner and header button now read “Tải lên ERC để được xác minh”, tags No paperwork / Waiting to verify / Verified; Company information (/company-join) is read-only once Verified. Admin: the Verified filter has the three labels, the Chờ verify chip counts Waiting to verify, the Verify dialog lists the ERC as the input and MST · address · legal name · sales owner as facts to read against it. The third Sign-ups action takes the build’s name: Create company & activate.',
+    },
+  },
+  {
     date: '2026-09-09',
     kind: 'both',
     module: 'crm',

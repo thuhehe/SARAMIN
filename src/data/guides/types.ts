@@ -33,6 +33,26 @@ export interface GuideSettings {
   table: SpecTable
 }
 
+/**
+ * One row of a WORKFLOW table — see `GuideTask.flow`. Every column is a question the
+ * client asked to have answered per step (11/09/2026): who acts, on which platform,
+ * on which page, doing what, with what result — and the picture of that very step.
+ */
+export interface GuideFlowStep {
+  /** step number, or a marker such as 'alt' / 'bypass' */
+  n: string
+  /** the actor, named as in the guide's legend: Employer HR · Saramin Admin · Sales rep · Sales lead · System */
+  who: string
+  /** Employer site · Admin console · Email */
+  platform: string
+  /** menu path plus URL path, e.g. 'CRM → Sign-ups (/crm/sign-ups)' */
+  page: string
+  action: string
+  result: string
+  /** the screenshot of THIS step, rendered under the row */
+  shot?: GuideShot
+}
+
 export interface GuideTask {
   /** anchor id — stable once published, links point at it */
   id: string
@@ -41,8 +61,15 @@ export interface GuideTask {
   where: string
   /** one line: what you end up with */
   outcome?: string
-  /** key steps only. **bold** marks a field or button name as it appears on screen. */
-  steps: string[]
+  /** key steps only. **bold** marks a field or button name as it appears on screen.
+      Optional since 11/09/2026: a workflow task carries its steps in `flow` instead. */
+  steps?: string[]
+  /**
+   * An end-to-end workflow as a hand-off table, one row per step with the screenshot
+   * of that step nested under it. A prose list made the reader hunt for the actor and
+   * the page; a table gives each its own column, which is what the client asked for.
+   */
+  flow?: GuideFlowStep[]
   shots?: GuideShot[]
   /**
    * A field-by-field reference for a form-heavy task: what each control means and

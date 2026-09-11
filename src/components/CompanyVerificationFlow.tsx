@@ -73,8 +73,8 @@ function Tag({ x, y, verified }: { x: number; y: number; verified: boolean }) {
      an admin can clear. Same split as the tag on both screens. */
   const c = verified ? BLUE : SLATE
   const bg = verified ? '#eff6ff' : '#f1f5f9'
-  const label = verified ? 'Verified' : 'Thiếu hồ sơ'
-  const w = verified ? 78 : 82
+  const label = verified ? 'Verified' : 'No paperwork'
+  const w = verified ? 78 : 96
   return (
     <g>
       <rect x={x} y={y} width={w} height={20} rx={10} fill={bg} stroke={c} strokeWidth={1.2} />
@@ -132,10 +132,10 @@ export function CompanyVerificationFlow() {
 
         {/* what is locked once they are INSIDE — after the admin opened the account */}
         <Arrow d="M 688 226 L 688 262" tone="amber" label="sau khi admin mở" lx={688} ly={247} />
-        <Box x={558} y={264} w={260} h={64} title="Sau khi vào: KHÓA khi chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm 3 mục còn thiếu ✓/✗ + link Company information" tone="stop" />
+        <Box x={558} y={264} w={260} h={64} title="Sau khi vào: KHÓA khi chưa xác minh" sub="Post job (kể cả draft) — disabled" sub2="kèm yêu cầu upload ERC + link Company information" tone="stop" />
 
         <Arrow d="M 818 165 L 856 165" tone="brand" label="nút cạnh tag" lx={837} ly={154} />
-        <Box x={858} y={128} w={250} h={74} title="④ Company information" sub="điền địa chỉ đăng ký MST · upload ERC" sub2="banner ✓/✗ 3 mục · Figma 2311 · 2313" tone="plain" />
+        <Box x={858} y={128} w={250} h={74} title="④ Company information" sub="upload ERC → No paperwork → Waiting to verify" sub2="Figma 2311 · 2313" tone="plain" />
 
         {/* the verified state on the company side */}
         <Box x={1140} y={128} w={240} h={98} title="⑥ Tag xanh — Verified" sub="Post job MỞ (draft không cần invoice)" sub2="Company info CHỈ ĐỌC — đổi qua Saramin" tone="blue" />
@@ -155,12 +155,12 @@ export function CompanyVerificationFlow() {
         <line x1={852} y1={474} x2={852} y2={764} stroke="var(--color-line)" strokeWidth={1.5} strokeDasharray="5 4" />
 
         {/* JOB B — verify, at leisure. No deadline of its own; the two gates are the
-            only hard stops, and the button opens when the three inputs are in. */}
+            only hard stops, and the button opens once an ERC is on file. */}
         <text x={866} y={482} fontSize={10.5} fontWeight={800} fill={BR}>VIỆC B · KHÔNG CHẶN VÀO — xác minh ERC, miễn xong trước khi đăng tin / xuất hóa đơn</text>
-        <Box x={866} y={492} w={250} h={74} title="Customers — cột Verified" sub="filter “Unverified · ready to verify”" sub2="hàng ghi rõ thiếu gì · chip Chờ verify" tone="plain" />
+        <Box x={866} y={492} w={250} h={74} title="Customers — cột Verified" sub="filter “Waiting to verify”" sub2="chip Chờ verify · n = đúng các công ty verify được" tone="plain" />
 
         <Arrow d="M 991 566 L 991 604" tone="brand" />
-        <Box x={866} y={606} w={250} h={94} title="⑤ Company detail → Verify" sub="nút chỉ bấm được khi đủ 3 input:" sub2="MST · địa chỉ đăng ký MST · ERC" tone="gate" />
+        <Box x={866} y={606} w={250} h={94} title="⑤ Company detail → Verify" sub="nút chỉ bấm được ở Waiting to verify:" sub2="đã có ERC trên hồ sơ · đối chiếu MST, địa chỉ, tên" tone="gate" />
 
         <Arrow d="M 1116 653 L 1146 653" tone="blue" />
         <Box x={1148} y={606} w={232} h={94} title="VERIFIED" sub="Sales: “Yêu cầu xuất hóa đơn chính” MỞ" sub2="Kế toán chỉ xuất từ yêu cầu này" tone="green" />
