@@ -716,6 +716,14 @@ export const jobManagement: BuildModule = {
         description:
           'Keyword + facet search results with three sorts and pagination — the workhorse discovery surface. Ranking is decided by what the candidate TYPED and by the posting tier the employer PAID for, in that order of construction: relevance decides which jobs qualify and how they order inside a band; the tier decides which band. The candidate’s profile and match score never enter.',
         userStory: 'As a jobseeker, I want to type what I am looking for and get jobs that actually match it — with the paid placements clearly marked — so I can trust the list and zero in on the right roles.',
+        keyPoints: [
+          { vi: 'Lấy tất cả job có từ khoá trong ít nhất 1 trường: tiêu đề · kỹ năng · ngành / vị trí · công ty · mô tả + yêu cầu.', en: 'Take every job whose title, skills, category / role, company, or description + requirements contains the keyword.' },
+          { vi: 'Sort mặc định “Recommended”: xếp theo gói trước — Top Job → Distinction → Basic Plus → Basic → Free.', en: 'Default sort “Recommended”: group by paid tier first — Top Job → Distinction → Basic Plus → Basic → Free.' },
+          { vi: 'Trong một gói: job có từ khoá ở tiêu đề lên trước, rồi kỹ năng, ngành, công ty. Bằng nhau thì job auto-refresh mới hơn lên trước — KHÔNG tính lần sửa tin.', en: 'Inside one tier: title matches first, then skills, category, company. Ties go to the newest auto-refresh — NOT the last edit.' },
+          { vi: 'Job chỉ khớp ở mô tả / yêu cầu không được xếp vào gói — nằm cuối danh sách, sau mọi gói.', en: 'A job matched only in description / requirements is not grouped — it goes to the very end, after every tier.' },
+          { vi: 'Hai sort còn lại — Date posted, Closing soonest — không phân gói, không ưu tiên gói trả tiền.', en: 'The other two sorts — Date posted and Closing soonest — have no tiers and no paid priority.' },
+          { vi: 'Không dùng CV hay điểm phù hợp của ứng viên ở đây.', en: 'The candidate’s CV and match score are never used here.' },
+        ],
         uiFields: [
           {
             group: 'Query & facets',
@@ -760,27 +768,27 @@ export const jobManagement: BuildModule = {
         requirements: [
           {
             label: 'JOB SEARCH — gate → filter → score → band → order → tail, and relevance is ONLY what the candidate typed',
-            text: 'DECIDED (2026-09-11): job search ranks on QUERY RELEVANCE and POSTING TIER, and on nothing else. It does not read the candidate’s CV, preferences or match score — search answers “how well does this job match what I typed”; “how well does it fit me” belongs to the recommendations feed. Money enters at exactly one stage (4), on exactly one sort (Recommended), and only for jobs that already match a declared field.',
+            text: 'How the result list is built when a candidate searches — six steps, in order. The paid tier matters at step 4 only, and only in the Recommended sort. The candidate’s own CV and match score are never used.',
             table: {
-              cols: ['Stage', 'What it does', 'Rule'],
+              cols: ['Step', 'What happens', 'Rule in plain words'],
               rows: [
-                ['1 · GATE', 'Decides what is eligible at all — binary', 'status = Open · exposure = On · not past deadline · moderation approved. NEVER a domain field: every one of those can empty the result set and none can explain why.'],
-                ['2 · FILTER', 'The facets the candidate ticked — binary', 'OR within one facet, AND across facets. The keyword is NOT a filter — it is the input to stage 3.'],
-                ['3 · RETRIEVE + SCORE', 'Which jobs qualify, and how relevant each is', 'A job qualifies when EVERY word of the query hits at least one searchable field (any field per word). Relevance = the best field it hit, in this priority: title → skills → role/category → company → body (the list lives once, in “WHICH FIELDS THE KEYWORD MATCHES”).'],
-                ['4 · BAND', 'RECOMMENDED SORT ONLY — groups by posting tier', 'Top Job → Distinction → Basic Plus → Basic → Free — but ONLY for jobs whose best hit is a DECLARED field (title · skills · role/category · company). A job whose only hit is in the body skips banding and goes to stage 6.'],
-                ['5 · ORDER', 'Orders WITHIN each band', 'field priority ↓ (title first … company last) → `lastRefreshedAt` ↓ → `publishedAt` ↓ → `jobId`. Relevance first, so a title match leads its band; refresh second, so the paid cadence still buys the place among equals.'],
-                ['6 · TAIL', 'Body-only matches, after every band', 'Unbanded. `lastRefreshedAt` ↓ → `publishedAt` ↓ → `jobId`. Money never reaches the tail — this is the relevance floor, and it is one sentence to explain to the client.'],
+                ['1 · Only live jobs', 'Drop everything that is not currently visible', 'The job must be Open, Exposure On, not past its deadline, and approved. Nothing else is excluded at this step — not salary, not industry, not experience.'],
+                ['2 · Apply the filters', 'The boxes the candidate ticked', 'Inside one filter, any ticked value passes (OR). Across filters, all must pass (AND). The keyword is not a filter — it is handled in step 3.'],
+                ['3 · Find the keyword', 'Which jobs match, and how well', 'Every word of the query must appear in at least one of: job title · skills · job category / role · company · description + requirements. Remember WHICH field matched — title is the best match, then skills, then category, then company, then description.'],
+                ['4 · Group by paid tier', 'Recommended sort only', 'Top Job → Distinction → Basic Plus → Basic → Free. Only jobs matched in title, skills, category or company are grouped. A job matched only in description / requirements skips this step.'],
+                ['5 · Order inside each group', 'Relevance first, then freshness', 'Title matches first, then skills, then category, then company. Ties: the job with the newest auto-refresh comes first. Editing a job does NOT count as a refresh.'],
+                ['6 · The end of the list', 'Description-only matches', 'After all the groups, ordered by newest auto-refresh. The paid tier has no effect here.'],
               ],
             },
             items: [
-              'THE FIELD LIST LIVES IN ONE PLACE — the module block “WHICH FIELDS THE KEYWORD MATCHES — ranked, not equal”. This table only says how the priority is USED; restating the list here is how two copies start to disagree.',
-              'ONE TEXT ANALYSER FOR THE WHOLE PLATFORM — the one already decided for skill typeahead: lower-casing, ASCII folding (“ke toan” finds Kế toán), punctuation stripping (“nodejs” finds Node.js), exact → prefix → contains.',
-              'WORDS ARE AND-ED, FIELDS ARE OR-ED. “kế toán Hà Nội” requires both words to land somewhere — each may land in a different field — or “Hà Nội” alone drags in every job in the city. Relax to OR only when the AND set is empty, and disclose it.',
-              'DE-DUPLICATE BY COMPANY BEFORE STAGE 4. One employer with five Top Job posts must not own the entire top band and the first page with it.',
-              'SALARY FILTER follows the already-decided currency contract — scope, never convert; “Thỏa thuận” always included; say what the scope hid.',
-              'NO RANDOMNESS ANYWHERE. Every ordering ends in `jobId`, so the order is total and pagination is stable across page loads.',
+              'Which fields count as searchable is written once — “Which fields the keyword matches”, on the module page. Do not copy the list anywhere else.',
+              'Same text matching as skill typeahead: lowercase, accents ignored (“ke toan” finds Kế toán), punctuation ignored (“nodejs” finds Node.js).',
+              'Words: all must match. Fields: any may match. “kế toán Hà Nội” needs both words, and each may sit in a different field. If nothing matches, retry with either word — and tell the candidate that happened.',
+              'One company posting many similar jobs shows as one card plus “3 vị trí tương tự tại X”. Do this before step 4, or one employer fills the whole top group.',
+              'The salary filter follows the salary contract: filter within one currency, never convert, always include “Thỏa thuận”.',
+              'No randomness. The same URL gives the same order every time, so paging is stable.',
             ],
-            warn: 'The match score must NEVER enter job search — not as a signal, not as a tie-break, and above all not as a gate. A candidate searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The score keeps exactly two homes: employer CV search and the jobseeker recommendations feed.',
+            warn: 'The candidate’s CV, preferences and match score are never used in search. Someone searching “kế toán” gets accounting jobs even if their CV is all backend engineering. The match score lives only in employer CV search and the recommendations feed.',
           },
           {
             label: 'THE THREE SORTS — bands belong to Recommended, and nothing else',
