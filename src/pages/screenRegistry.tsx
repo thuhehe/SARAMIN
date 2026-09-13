@@ -11,7 +11,7 @@
 import { SCREENS } from './Mockups'
 import { CO_SCREENS } from './CompanyMockups'
 import { ADMIN_PROTOTYPES } from './admin/registry'
-import { ADMIN_SCREEN_LABELS } from './AdminWireframe'
+import { ADMIN_SCREEN_LABELS } from './admin/nav'
 
 export type ScreenSource = 'js' | 'co' | 'admin'
 export type ResolvedScreen = {

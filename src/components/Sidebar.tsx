@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, Monitor, Building2 } from 'lucide-react'
+import { ChevronRight, Search, X, Home, Workflow, PanelsTopLeft, ListChecks, ListTree, Monitor, Building2 } from 'lucide-react'
 import { BUILD_MODULES, SITE_META, READY_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { featurePath } from '@/data/featureSlug'
@@ -73,7 +73,12 @@ export function Sidebar() {
           <PrimaryLink to="/plan" icon={<ListChecks className="h-3.5 w-3.5" />} label="Build plan" />
           <PrimaryLink to="/mockups" icon={<PanelsTopLeft className="h-3.5 w-3.5" />} label="Jobseeker mockups" exact />
           <PrimaryLink to="/mockups/company" icon={<Building2 className="h-3.5 w-3.5" />} label="Company mockups" />
-          <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin mockups" />
+          {/* The index sits ABOVE the console it maps: a reader meeting Part B for
+              the first time should see the whole screen list before being dropped
+              into one screen of it. `exact` on the console below, or the index's
+              own path would light both rows. */}
+          <PrimaryLink to="/wireframe/admin/screens" icon={<ListTree className="h-3.5 w-3.5" />} label="Admin screen index" />
+          <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin mockups" exact />
         </div>
         <div className="mx-4 my-1.5 border-t border-line-soft" />
         <p className="px-4 pt-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-faint">

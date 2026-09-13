@@ -22,6 +22,7 @@ const BuildPlan = lazy(() => import('./pages/BuildPlan').then((m) => ({ default:
 const Mockups = lazy(() => import('./pages/Mockups').then((m) => ({ default: m.Mockups })))
 const CompanyMockups = lazy(() => import('./pages/CompanyMockups').then((m) => ({ default: m.CompanyMockups })))
 const AdminWireframe = lazy(() => import('./pages/AdminWireframe').then((m) => ({ default: m.AdminWireframe })))
+const AdminScreenIndex = lazy(() => import('./pages/AdminScreenIndex').then((m) => ({ default: m.AdminScreenIndex })))
 const ModuleDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.ModuleDetail })))
 const FeatureDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.FeatureDetail })))
 import { SPECS, NAV_ORDER, NAV } from './data'
@@ -190,6 +191,7 @@ function Layout() {
                 <Route path="/mockups/company" element={<CompanyMockups />} />
                 <Route path="/modules" element={<Modules />} />
                 <Route path="/wireframe/admin" element={<AdminWireframe />} />
+                <Route path="/wireframe/admin/screens" element={<AdminScreenIndex />} />
                 <Route path="/legend" element={<Legend />} />
                 <Route path="/m/:moduleId" element={<ModuleDetail />} />
                 <Route path="/m/:moduleId/:featureKey" element={<FeatureDetail />} />
