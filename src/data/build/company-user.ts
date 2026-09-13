@@ -510,9 +510,9 @@ export const companyUser: BuildModule = {
         refDocs: [
           {
             label: 'Figma — Product usage',
-            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2159-35272',
-            meta: 'Figma frame · 1440 wide',
-            note: 'The screen this requirement describes — tabs, filters, the grouped list, the row anatomy and the footer notes. Demo data is dated 04/09/2026.',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=3087-11571',
+            meta: 'Figma frame · 1440 wide · chosen 13/09/2026',
+            note: 'The screen this requirement describes — filters, the grouped list, the row anatomy (type chip · name · usage text + bar · status pill + validity dates · one button) and the footer notes. Includes the two unlimited-quota rows under PO-2026-0909.',
           },
           {
             label: 'Figma — Activate flow (CV Search 30d)',
@@ -646,6 +646,27 @@ export const companyUser: BuildModule = {
             ],
           },
           {
+            label: 'Unlimited quota — the count stays, the bar goes, the clock is the limit',
+            text: 'A package can sell a product with NO quantity cap — unlimited Basic Plus posts for 90 days, unlimited CV unlocks for 30 days. The row keeps its four columns; only the quota cell changes. Line 1 still counts what was used, because the employer and Accounting both want that number. Line 2 swaps the bar for a chip: a bar answers “how much is left”, and nothing is left to run out of — the validity dates in column 3 are the real limit.',
+            table: {
+              cols: ['Quota', 'Line 1 — usage text', 'Line 2', 'The row ends when', 'Data'],
+              rows: [
+                ['Limited (today)', '3 of 5 posts used · 42 of 200 CVs unlocked', 'bar quotaUsed / quotaTotal — blue, grey at 100 %', 'the quota is exhausted, OR the activate-by / validity date passes', 'quotaTotal = 5'],
+                ['**Unlimited**', '12 posts used · 137 CVs unlocked — **no “of N”**', '{{tag:∞ Unlimited}} chip, the same 22 px height as the type chip, in place of the bar', 'ONLY by date — the validity end (CV search) or the activate-by / pack window (posting). Never by count', 'quotaTotal = **null**'],
+                ['Free job', '1 free post', 'nothing', 'the job closes', 'quotaTotal = null too, but productType = free-job draws no chip'],
+              ],
+            },
+            items: [
+              'quotaTotal is NULLABLE, and null means unlimited. Never a sentinel (0, −1, 999 999): a sentinel leaks into “0 of 0 used” or a 0 % bar on the first bug, null cannot.',
+              'Status derivation is unchanged except the count branch: an unlimited row is never Completed by exhaustion — only by its validity end, its activate-by passing unused, or a cancelled invoice. In the status table, “quotaUsed < quotaTotal” reads as TRUE when quotaTotal is null.',
+              'The chip is quota information, not a lifecycle. It is drawn on Not activated, In use and Completed rows alike and never changes colour; the status pill in column 3 keeps that job.',
+              'Nothing that alerts on remaining quota fires for an unlimited row: the Home dashboard “Quota low / exhausted” alert skips it, and the Create job form shows “Unlimited posts · until dd/mm/yyyy” instead of “using 1 of N posts”.',
+              'Chip style: blue-50 background, blue-700 SemiBold 12 text, 4 px radius. Blue because the bar is blue — everything about quota is blue, everything about lifecycle is green / amber / grey — and 4 px (not a pill) because it is an attribute like the type chip, not a status.',
+              'Drawn in the Figma frame under PO-2026-0909: “Basic Plus Unlimited 90d” (12 posts used) and “CV Search Unlimited 30d” (137 CVs unlocked).',
+            ],
+            warn: 'Open — does an unlimited CV-search product carry a DAILY unlock cap (the usual anti-scraping guard on unlimited CV packs)? If yes, line 2 becomes a small daily meter — “17 of 50 today · resets 00:00” — and the chip moves onto line 1 after the count. Decide before the product is sold: it changes the entitlement schema (dailyCap · dailyUsed).',
+          },
+          {
             label: 'Grouped by order — the header carries the money, the rows carry the product',
             text: 'Rows sit under the order that paid for them, newest invoice date first. One order can carry several products (the demo order PO-2026-0912 has three), and “which order gave me these two Top Job posts?” is the question an employer asks when quota looks wrong — so the order is the group, not a tag on the row.',
             table: {
@@ -741,8 +762,8 @@ export const companyUser: BuildModule = {
             items: [
               { name: 'type chip', type: 'enum', notes: 'Job posting · Add-on · CV search · Branding · Manual service — grey outline chip above the name' },
               { name: 'product name', type: 'string', required: true, notes: 'the catalogue name — Top Job, Hot job label, CV Search 30d…' },
-              { name: 'usage text', type: 'derived', required: true, notes: '“0 of 2 posts used” · “1 of 1 used” · “42 of 200 CVs unlocked” · “2 of 4 delivered” · free job: “1 free post”' },
-              { name: 'usage bar', type: 'progress', notes: 'quotaUsed / quotaTotal; blue while In use, grey at 100 %; hidden on the free-job row' },
+              { name: 'usage text', type: 'derived', required: true, notes: '“0 of 2 posts used” · “1 of 1 used” · “42 of 200 CVs unlocked” · “2 of 4 delivered” · free job: “1 free post” · unlimited: “12 posts used” / “137 CVs unlocked” — no “of N”' },
+              { name: 'usage bar', type: 'progress', notes: 'quotaUsed / quotaTotal; blue while In use, grey at 100 %; hidden on the free-job row. On an UNLIMITED row (quotaTotal null) the {{tag:∞ Unlimited}} chip stands in its place — see “Unlimited quota”' },
               { name: 'deadline', type: 'derived', required: true, notes: 'the date line 2 counts to — the “Expiring within 7 days” filter reads it (see “The date column”)' },
               { name: 'state cell', type: 'two lines', required: true, notes: 'line 1 = remaining in the product’s unit (amber when not activated, grey when ended / all used) · line 2 = the date it counts to — see “One state cell for every row”. No pill (REVISED 2026-09-08).' },
               { name: 'reason wording', type: 'derived', notes: 'folded into line 1 / line 2 for ended rows: “ended” · “Not used by dd/mm/yyyy” · “Withdrawn — invoice cancelled”' },
@@ -789,7 +810,7 @@ export const companyUser: BuildModule = {
             { name: 'orderId · orderCode', type: 'ref → PO', required: true, notes: 'the group; null only for the free-job rows' },
             { name: 'invoiceId · invoiceIssuedAt', type: 'ref → Invoice · date', required: true, notes: 'the provisioning event; issuedAt is the header date and the activate-by anchor' },
             { name: 'productId · productName · productType', type: 'ref → Product · string · enum', required: true, notes: 'posting-tier · add-on · cv-search · branding · manual-service · free-job' },
-            { name: 'quotaTotal · quotaUsed', type: 'int · int', required: true, notes: 'unit per type: posts · labels · slots · CV unlocks · deliveries' },
+            { name: 'quotaTotal · quotaUsed', type: 'int? · int', required: true, notes: 'unit per type: posts · labels · slots · CV unlocks · deliveries. quotaTotal null = UNLIMITED — never a sentinel (see “Unlimited quota”)' },
             { name: 'unitDurationDays', type: 'int', notes: '30 postings · 10 labels · 30 / 90 CV search — from product fulfilment' },
             { name: 'activateBy', type: 'date', required: true, notes: 'snapshot: invoiceIssuedAt + activationWindowMonths' },
             { name: 'activatedAt · validFrom · validTo', type: 'datetime', notes: 'CV search and branding only — set by Activate / Publish' },
@@ -820,6 +841,7 @@ export const companyUser: BuildModule = {
           'Clicking Activate on CV Search 30d shows the modal with the correct end date; confirming sets the window, shows the toast, and the row reads In use · “0 of 50 CVs unlocked” · “30 days left” · Search CVs. Calling activate again returns the same window.',
           'A row whose activateBy passed with quota unused reads Completed · “Not used by dd/mm/yyyy” and its buttons are gone except Buy again.',
           'The “Expiring within 7 days” checkbox returns exactly the rows whose line 2 is amber.',
+          'An unlimited product (quotaTotal null) shows “12 posts used” with the ∞ Unlimited chip and no bar; it never turns Completed by count, and the Home dashboard raises no quota alert for it.',
           'A user whose role lacks “Post jobs” sees the posting rows with no button; a non-Admin sees the CV-search row with no Activate.',
           'A free job HQ posted appears in a pinned “Free job posting” group with pill No invoice, usage “1 free post”, button View job; with no free job the group is absent.',
           'The group header never shows an amount; the search box finds a group by its PO- number.',
