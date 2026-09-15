@@ -103,7 +103,7 @@ export function JobCreateFlow() {
         <Arrow d="M 948 300 L 986 300" tone="brand" label="còn lượt" lx={967} ly={292} />
         <Box x={988} y={264} w={180} h={72} title="Điền form" sub="cùng một form với Admin" />
         <Arrow d="M 1168 300 L 1206 300" tone="brand" />
-        <Box x={1208} y={264} w={190} h={72} title="Save draft hoặc Publish" sub="Publish trừ đúng 1 lượt đăng" sub2="Save draft không trừ gì" />
+        <Box x={1208} y={264} w={190} h={72} title="Save draft hoặc Publish" sub="Publish trừ đúng 1 lượt đăng" sub2="Save draft không trừ lượt nào" />
 
         {/* row 2 — where each "no" lands. The rose box stops everything; the two
             amber boxes are ONE form state ("nothing to publish from") and both
@@ -113,22 +113,22 @@ export function JobCreateFlow() {
         <Box x={38} y={384} w={250} h={88} title="CHƯA XÁC MINH → chưa tạo được tin" sub="Không hiển thị nút Publish và Save draft" sub2="Tải Giấy ĐKKD (ERC) ở Company information" tone="stop" />
 
         <Arrow d="M 493 336 L 493 382" tone="brand" label="Chưa có" lx={530} ly={362} />
-        <Box x={328} y={384} w={330} h={88} title="CHƯA CÓ HÓA ĐƠN → chỉ lưu nháp được" sub="Chưa có gói nào để chọn, và không có gói Free như Admin" sub2="Publish bị khoá, có link mua gói · lưu nháp không tiêu gì" tone="pool" />
+        <Box x={328} y={384} w={330} h={88} title="CHƯA CÓ HÓA ĐƠN → chỉ lưu nháp được" sub="Chưa có gói nào để chọn, và không có gói Free như Admin" sub2="Publish bị khoá; khi có hóa đơn, mở lại nháp để đăng" tone="pool" />
         <rect x={568} y={376} width={82} height={18} rx={9} fill={AMB} />
         <text x={609} y={389} fontSize={9.5} fontWeight={800} textAnchor="middle" fill="#ffffff">CASE MỚI</text>
 
         <Arrow d="M 823 336 L 823 382" tone="brand" label="hết lượt" lx={855} ly={362} />
-        <Box x={698} y={384} w={250} h={88} title="HẾT LƯỢT → chỉ lưu nháp được" sub="Publish bị khoá, có link mua thêm gói" sub2="nháp vẫn được lưu, không tiêu gì" tone="pool" />
+        <Box x={698} y={384} w={250} h={88} title="HẾT LƯỢT → chỉ lưu nháp được" sub="Publish bị khoá cho tới khi có thêm lượt" sub2="Bản nháp vẫn lưu được, không mất lượt nào" tone="pool" />
 
         <text x={988} y={408} fontSize={10.5} fontWeight={700} fill={AMB}>Hai ô vàng thực ra là cùng một tình huống: chưa có gói để đăng.</text>
-        <text x={988} y={424} fontSize={10.5} fill={MUT}>Bản nháp giữ nguyên; khi có hóa đơn hoặc mua thêm gói,</text>
+        <text x={988} y={424} fontSize={10.5} fill={MUT}>Bản nháp giữ nguyên; khi có hóa đơn hoặc có thêm lượt,</text>
         <text x={988} y={440} fontSize={10.5} fill={MUT}>mở lại nháp → chọn gói → Publish. Không cần ai duyệt.</text>
 
         {/* ── the one lifecycle both doors feed ───────────────────────────────── */}
         <line x1={20} y1={498} x2={1400} y2={498} stroke="var(--color-line)" strokeWidth={1} strokeDasharray="5 4" />
         <text x={38} y={520} fontSize={11} fontWeight={800} fill={MUT}>CẢ HAI CỬA ĐỀU ĐI VÀO MỘT VÒNG ĐỜI CHUNG — không có bước duyệt nào · Exposure On/Off là công tắc riêng, chỉ có tác dụng khi tin đang Open</text>
 
-        <Box x={38} y={544} w={220} h={64} title="DRAFT" sub="chưa đăng, không tiêu gì" sub2="nháp từ cửa nào cũng nằm ở đây" />
+        <Box x={38} y={544} w={220} h={64} title="DRAFT" sub="chưa đăng, chưa bị trừ lượt" sub2="nháp từ cửa nào cũng nằm ở đây" />
         <Arrow d="M 258 576 L 396 576" tone="brand" label="Publish → chọn Schedule (hẹn giờ)" lx={327} ly={568} />
         <Box x={398} y={544} w={220} h={64} title="SCHEDULE" sub="đang chờ đến giờ hẹn" sub2="đã trừ lượt đăng (cửa 2)" />
         <Arrow d="M 618 576 L 756 576" tone="brand" label="đến giờ hẹn → tự lên Open" lx={687} ly={568} />
@@ -143,7 +143,7 @@ export function JobCreateFlow() {
         <rect x={38} y={700} width={1340} height={64} rx={10} fill="#fffbeb" stroke={AMB} strokeWidth={1.5} />
         <text x={58} y={720} fontSize={11.5} fontWeight={800} fill={AMB}>Những điều luôn đúng</text>
         <text x={58} y={738} fontSize={11} fill={MUT}>
-          Bản nháp không tiêu gì và không cần PO / hóa đơn / gói · Lượt đăng (slot) chỉ bị trừ đúng lúc Publish, dù là Post now hay Schedule · Không có bước duyệt trước khi tin lên — ở cả hai cửa.
+          Lưu nháp không bị trừ lượt đăng và không cần PO / hóa đơn / gói · Lượt đăng (slot) chỉ bị trừ đúng lúc Publish, dù là Post now hay Schedule · Không có bước duyệt trước khi tin lên — ở cả hai cửa.
         </text>
         <text x={58} y={754} fontSize={11} fill={MUT}>
           Gói Free chỉ Admin dùng được — nhà tuyển dụng không bao giờ thấy nó · Nhà tuyển dụng không chọn PO, hệ thống tự lấy gói đang có · HQ được đăng vượt lượt (đăng thay khách, có audit), nhà tuyển dụng thì không.
