@@ -10,6 +10,7 @@ import { GUIDES, guidePath } from '@/data/guides'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CompanyVerificationFlow } from '@/components/CompanyVerificationFlow'
+import { JobCreateFlow } from '@/components/JobCreateFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { CvLanguageLayers } from '@/components/CvLanguageLayers'
 import { CvVersionStory } from '@/components/CvVersionStory'
@@ -315,6 +316,7 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
           diagram squeezed into a text column is a diagram nobody can follow. */}
       {r.diagram === 'company-intake' && <CompanyIntakeFlow />}
       {r.diagram === 'company-verification' && <CompanyVerificationFlow />}
+      {r.diagram === 'job-create' && <JobCreateFlow />}
       {r.table && <ReqTableView t={r.table} dense={dense} />}
       {r.items && <ReqBullets items={r.items} dense={dense} />}
       {r.warn && (

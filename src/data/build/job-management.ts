@@ -329,6 +329,32 @@ export const jobManagement: BuildModule = {
           'The job create / edit form, written by BOTH HQ and the employer against the same Job entity. HQ staff can post on behalf of any company (data-entry / concierge posting); a company HR user posts for their own company — the key new capability against today, where a company can only save a draft. Publishing goes straight to Open (or Schedule) on both surfaces: there is no approval gate anywhere.',
         userStory:
           'As an HQ operator I want to create or edit a job for any company so that we can onboard postings on behalf of clients and fix bad data — and as a company HR user I want to post my own job and see it go live immediately, so that I do not have to wait for HQ.',
+        requirements: [
+          {
+            label: 'How a job gets created — two doors, one entity, one lifecycle',
+            text: 'Drawn for the client (15/09/2026). Admin (HQ) posts on a company’s behalf from the Free tier or from a PO line; the employer posts from the products the company holds. The form and the lifecycle are shared — only WHAT MAY BE POSTED FROM and WHO MAY PUBLISH differ. Every box is a rule already on this page; the drawing adds none.',
+            diagram: 'job-create',
+          },
+          {
+            label: 'Employer: what the form allows in each situation — Verified is the only gate that stops a draft',
+            text: 'ADDED 15/09/2026 after the client review surfaced a case the spec had only implied: a verified company with NO official invoice yet can still create a job. The form opens, there is no tier to choose, the Free tier is not offered (it is Admin-only), Publish is off — and Save draft works. Nothing is spent, nothing is approved, and the draft waits for a product.',
+            table: {
+              cols: ['Situation', 'Tier picker', 'Save draft', 'Publish', 'The form says'],
+              rows: [
+                ['Company NOT verified', 'hidden', '**Off**', '**Off**', '“Công ty chưa được xác minh — chưa đăng tin được, kể cả bản nháp” + link to Company information (upload the ERC)'],
+                ['Verified · **no product yet** — no official invoice issued, nothing provisioned', 'empty — no tier to choose, and **no Free tier**', '**On**', '**Off**', '“Chưa có sản phẩm đăng tin — lưu nháp trước, mua gói để đăng” + link to request a quotation / Product usage'],
+                ['Verified · holds a product · slots left', 'the held tiers, remaining quota beside each', 'On', '**On** — Post now / Schedule, spends exactly 1 slot', 'remaining quota next to the picker (“using 1 of 5 posts”)'],
+                ['Verified · holds a product · 0 slots left', 'the held tiers, all at 0', 'On', '**Off**', '“Hết lượt đăng của gói này” + deep link to buy'],
+              ],
+            },
+            items: [
+              'The two Publish-off rows are ONE form state, not two: “nothing to publish from”. The draft is kept unchanged; when Accounting issues the invoice (or the company buys again) the employer reopens the draft, picks the tier and publishes. No re-entry, no approval.',
+              'Why the employer never sees the Free tier: its entitlementSource is Always available — Admin-only by definition (“What each surface may post FROM”). Offering it here would let any verified company post for free, the one thing the product model forbids.',
+              'Why a draft needs no invoice: a draft is text in a table — it consumes nothing and nobody can see it. Blocking it would only stop the employer from preparing the posting while Accounting works, the exact wait the invoice-first rule was never meant to create.',
+              'Admin is unaffected by every row here: HQ picks the Free tier or a PO line and may publish past the company’s remaining slots (concierge override, audited).',
+            ],
+          },
+        ],
         uiFields: [
           {
             group: 'Basics',
@@ -408,7 +434,7 @@ export const jobManagement: BuildModule = {
             group: 'Company site only',
             items: [
               'Company is auto-set to the signed-in user’s company and is not selectable.',
-              'With no posting quota left, publish is blocked and the screen deep-links to purchasing a package. A draft is always allowed and consumes nothing.',
+              'With no posting product yet (no official invoice) OR no posting quota left, Publish is blocked and the screen deep-links to buying a package; the Free tier is never offered. A draft is always allowed and consumes nothing — see “Employer: what the form allows in each situation”.',
               'Exposure Off lets the company take a live job down without closing it — the same switch HQ has.',
             ],
           },
@@ -430,7 +456,7 @@ export const jobManagement: BuildModule = {
           'ON THE COMPANY SITE, publishing (Open or Schedule) consumes exactly one posting slot of the chosen tier; a draft consumes nothing. This is the one rule the two surfaces genuinely do not share — HQ overrides it, the employer cannot.',
           'Only HR Manager / HR Specialist roles may create a job on the Company site (see Account management), and a company may only edit its own jobs.',
         ],
-        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Draft', 'Scheduled', 'Open (published)', 'Closed (expired)', 'Quota exhausted — publish blocked (Company site)'],
+        states: ['Empty new form', 'Editing existing', 'Validation errors', 'Draft', 'Scheduled', 'Open (published)', 'Closed (expired)', 'Quota exhausted — publish blocked (Company site)', 'No product yet — draft only, Publish off (Company site)'],
         backend: {
           dataModel: [
             { name: 'id', type: 'uuid' },
@@ -467,6 +493,7 @@ export const jobManagement: BuildModule = {
           'A company user can post a job and see it go live (Open) immediately — no approval wait.',
           'Draft → Publish transitions correctly; audit log records the actor.',
           'A posting slot is consumed on a company publish (Open / Schedule), never on a draft.',
+          'A verified company with no official invoice can create a job and Save draft: the tier picker offers nothing (no Free tier), Publish is disabled with the buy link, and no slot or quota changes.',
           'A company can take a live job down via Exposure Off and re-expose it before the deadline.',
           'Negotiable salary renders as "Thỏa thuận" everywhere downstream.',
         ],
