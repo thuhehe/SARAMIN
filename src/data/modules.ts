@@ -121,7 +121,7 @@ export const MODULES: BigModule[] = [
     steps: [
       { surface: 'JS', label: 'Create / edit resumes (online + uploaded) + templates', featureIds: ['js-resumes', 'js-resume-templates'] },
       { surface: 'CO', label: 'Search the talent pool + unlock CVs (spends credits)', featureIds: ['emp-talent-search', 'emp-credits'] },
-      { surface: 'Admin', label: 'Resume records: list / detail / create (PII-gated)', featureIds: ['admin-resumes', 'admin-resume-detail', 'admin-resume-new'] },
+      { surface: 'Admin', label: 'Resume records: list / detail (PII-gated)', featureIds: ['admin-resumes', 'admin-resume-detail'] },
     ],
     keyDecisions: [
       'CV "unlock price" model — candidate paywall vs employer-side unlock; credits vs cash.',

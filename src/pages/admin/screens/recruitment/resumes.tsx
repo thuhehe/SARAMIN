@@ -5,7 +5,6 @@ import { Toast, type ToastMsg } from '@/pages/admin/ui/toast'
 import { CV_COLS } from '@/pages/admin/data/recruitment'
 import { SearchCell } from '@/pages/admin/ui/pickCells'
 import type { StatusTone } from '@/pages/admin/lib/tone'
-import { AdminResumeNew } from '@/pages/admin/screens/recruitment/resumeNew/index'
 import { CandidateProfileModal } from '@/pages/admin/ui/candidateProfile'
 import { FilterBar, FilterRow, ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
@@ -16,7 +15,6 @@ import { TwoLine, split2 } from '@/pages/admin/ui/table'
    open the SAME modal, never a copy that can drift. */
 
 export function AdminResumes() {
-  const [creating, setCreating] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
   const [menu, setMenu] = useState<number | null>(null)
   /* THE SAME TWO DIALOGS AS CV REVIEW, imported rather than re-built. Talent pool
@@ -30,7 +28,6 @@ export function AdminResumes() {
      sends words to a stranger and there is no undoing a delivered message. */
   const [decided, setDecided] = useState<Record<string, 'Qualified' | undefined>>({})
   const [toast, setToast] = useState<ToastMsg | null>(null)
-  if (creating) return <AdminResumeNew onBack={() => setCreating(false)} />
   /* THE TALENT POOL. Columns come from the REAL field sheets: BASIC INFORMATION is
      table 1 (9 fields, sign-up), WORK PREFERENCE is table 2 (6 fields, onboarding).
      From CV CONTENT we show only what is countable and already stored.
@@ -180,7 +177,6 @@ export function AdminResumes() {
       </p>
       <ListPage
         minW={2200}
-        action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New resume</button>}
         /* NO TABS — deliberately, since 2026-08-23. This row used to read
            All · Approved · Pending review · Rejected · Not enough information ·
            Can't read: four review-workflow states on a catalogue that cannot work
@@ -217,12 +213,4 @@ export function AdminResumes() {
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
-}
-
-/** Registered as its own screen id so the spec page can show the create flow
-    directly; Back returns to the list, the same thing it does in the console. */
-export function AdminResumeNewStandalone() {
-  const [backToList, setBackToList] = useState(false)
-  if (backToList) return <AdminResumes />
-  return <AdminResumeNew onBack={() => setBackToList(true)} />
 }

@@ -123,7 +123,6 @@ export const NAV: NavModule[] = [
     children: [
       { id: 'admin-resumes', label: 'Resume list' },
       { id: 'admin-resume-detail', label: 'Resume detail' },
-      { id: 'admin-resume-new', label: 'New resume' },
     ],
   },
   {

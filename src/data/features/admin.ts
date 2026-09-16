@@ -365,19 +365,6 @@ export const ADMIN_SPECS: FeatureSpec[] = [
     whatToBuild: ['Confirm admin edit scope (view-only vs correct data)', 'Audit access to PII'],
     related: ['admin-resumes'],
   },
-  {
-    id: 'admin-resume-new',
-    code: 'ADM-CV-03',
-    surface: `${S} · Resumes`,
-    title: 'New resume',
-    status: 'be-migrated',
-    summary: 'Create a resume record (admin-side).',
-    bbNotes: [
-      { heading: 'Approach', items: ['Admin-side resume creation (e.g. for assisted candidates). Same schema as the Store resume form.'] },
-    ],
-    whatToBuild: ['Confirm the admin-create use case with the client', 'Share the resume schema with the Store form'],
-    related: ['admin-resumes'],
-  },
 
   // ── B5 · Content ─────────────────────────────────────────────────────────
   {

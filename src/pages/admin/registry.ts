@@ -17,7 +17,6 @@ const adminJobCreateStandalone = screen(() => import('@/pages/admin/screens/recr
 const adminApplicants = screen(() => import('@/pages/admin/screens/recruitment/applicants'), 'AdminApplicants')
 const adminResumes = screen(() => import('@/pages/admin/screens/recruitment/resumes'), 'AdminResumes')
 const adminCvCheck = screen(() => import('@/pages/admin/screens/recruitment/cvCheck'), 'AdminCvCheck')
-const adminResumeNewStandalone = screen(() => import('@/pages/admin/screens/recruitment/resumes'), 'AdminResumeNewStandalone')
 const adminCompanyList = screen(() => import('@/pages/admin/screens/companies/list'), 'AdminCompanyList')
 const adminCompanyArchived = screen(() => import('@/pages/admin/screens/companies/archived'), 'AdminCompanyArchived')
 const adminCompanyPipeline = screen(() => import('@/pages/admin/screens/companies/pipeline'), 'AdminCompanyPipeline')
@@ -69,7 +68,6 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-job-applicants': adminApplicants,
   'admin-resumes': adminResumes,
   'admin-cv-check': adminCvCheck,
-  'admin-resume-new': adminResumeNewStandalone,
   // Customers
   'admin-company-list': adminCompanyList,
   'admin-company-archived': adminCompanyArchived,

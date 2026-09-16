@@ -59,7 +59,6 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-job-applicants': { module: 'application-management', feature: 'Application list', site: 'Admin' },
   'admin-resumes': { module: 'resume-management', feature: 'Resume list', site: 'Admin' },
   'admin-cv-check': { module: 'resume-management', feature: 'CV qualification — apply & CV search' },
-  'admin-resume-new': { module: 'resume-management', feature: 'Create resume', site: 'Admin' },
   // Jobseekers
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
   // Content
