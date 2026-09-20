@@ -4,10 +4,12 @@ import { ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
 import { PAY_METHODS, PAY_TERMS, POS, PO_TONE, QUOTE_CATALOG, VAT_RATE, draftInvOf, poDraftBtn, poExpiry, poLive, poNext, poStage, poStep } from '@/pages/admin/data/sales'
 import type { Po, PayMethod, PayTerms } from '@/pages/admin/data/sales'
-import { vnWords } from '@/pages/admin/lib/fmt'
+import { money, vnWords } from '@/pages/admin/lib/fmt'
 import { PayCell } from '@/pages/admin/screens/sales/_shared'
 import { InvoicePdfModal } from '@/pages/admin/screens/sales/invoicePdf'
 import { ListPage } from '@/pages/admin/ui/list'
+import { PeriodBar, inPeriod, usePeriod } from '@/pages/admin/ui/period'
+import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill } from '@/pages/admin/ui/status'
 
 /* ── Edit PO — the THREE payment fields, and nothing else ──────────────────
@@ -240,10 +242,25 @@ export function AdminPOs() {
      there rather than rendering a quotation inside Purchase order — that keeps the
      breadcrumb honest ("CRM / Quotations / QUO-…") and Back going to the right list. */
   const goTo = useContext(ScreenNavCtx)
+  const period = usePeriod()
   if (open) return <PoDetail po={open} onBack={() => setOpen(null)} />
+  /* Period first, on the PO's issue date. The tab counts are COUNTED inside the
+     window rather than typed, so "Active 9" can never mean nine ever. */
+  const inRange = POS.filter((p) => inPeriod(p.issued, period))
+  const byStage = (en: string) => inRange.filter((p) => poStage(poStep(p)).en === en).length
+  const paid = inRange.filter((p) => p.paidAt)
+  const sumOf = (rs: Po[]) => rs.reduce((n, p) => n + p.total, 0)
   return (
+    <div className="space-y-3">
+    <PeriodBar summary={`· ${inRange.length} PO`} />
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <MiniStat label="PO" value={inRange.length} sub="phát hành trong kỳ" />
+      <MiniStat label="Tổng giá trị" value={money(sumOf(inRange))} sub="sau VAT" />
+      <MiniStat label="Đã thu tiền" value={paid.length} sub={`${money(sumOf(paid))} đã về tài khoản`} />
+      <MiniStat label="Chưa thu" value={money(sumOf(inRange.filter((p) => !p.paidAt)))} sub={`${inRange.length - paid.length} PO còn chờ tiền`} tone={inRange.length - paid.length > 0 ? 'warn' : undefined} />
+    </div>
     <ListPage
-      tabs={[{ label: 'All', count: 64, active: true }, { label: 'Active', count: 9 }, { label: 'Draft invoice', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Expired' }]}
+      tabs={[{ label: 'All', count: inRange.length, active: true }, { label: 'Active', count: byStage('Active') }, { label: 'Draft invoice', count: byStage('Draft invoice') }, { label: 'Invoice requested', count: byStage('Invoice requested') }, { label: 'Invoice issued', count: byStage('Invoice issued') }, { label: 'Expired', count: byStage('Expired') }]}
       cols={[
         { label: 'PO', w: '1.5fr' }, { label: 'Customer', w: '1.8fr' }, { label: 'Quotation', w: '1.4fr' },
         { label: 'Total', w: '1.1fr', align: 'r' },
@@ -269,7 +286,7 @@ export function AdminPOs() {
         { label: 'Ngày thu tiền', w: '1fr' },
         { label: 'Issued', w: '0.8fr' }, { label: 'Expires', w: '0.9fr' },
       ]}
-      rows={POS.map((p) => [
+      rows={inRange.map((p) => [
         <button onClick={() => setOpen(p)} className="min-w-0 truncate text-left font-mono text-[11.5px] font-medium text-brand hover:underline">{p.code}</button>,
         <span className="truncate">{p.customer}</span>,
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
@@ -286,5 +303,6 @@ export function AdminPOs() {
       ])}
       minW={1680}
     />
+    </div>
   )
 }

@@ -9,7 +9,10 @@ import type { SalesPersona } from '@/pages/admin/data/salesOrg'
 import { CreatePOModal } from '@/pages/admin/screens/sales/createPO'
 import { NewQuotationModal } from '@/pages/admin/screens/sales/newQuotation'
 import { QuotationDetail } from '@/pages/admin/screens/sales/quotationDetail'
+import { money } from '@/pages/admin/lib/fmt'
 import { FilterBar, FilterRow, ListPage } from '@/pages/admin/ui/list'
+import { PeriodBar, inPeriod, usePeriod } from '@/pages/admin/ui/period'
+import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill } from '@/pages/admin/ui/status'
 
 /** Products, compactly: first name + "+N" when there are more. Full list on hover. */
@@ -44,6 +47,7 @@ export function AdminQuotes() {
      and the same way everywhere. */
   const [persona, setPersona] = useState<SalesPersona>(SALES_PERSONAS[1])
   const [queue, setQueue] = useState(false)
+  const period = usePeriod()
   /** Requests routed to THIS persona: matched on the role the rate escalates to. */
   const mine = (q: Quote) =>
     q.appr === 'pending' && q.special != null && apprRole(q.special) === persona.role &&
@@ -73,7 +77,10 @@ export function AdminQuotes() {
   /* Status left the tab strip and moved into Filter, so this list carries the same
      Search · Filter · Sort toolbar as Customers. Tabs made status the ONE dimension
      worth narrowing by and spent a whole row saying so. */
-  const shown = QUOTES
+  /* The period runs FIRST, on the quotation's own date, and everything below —
+     the cards, the rows, the status counts — reads the same window (see ui/period). */
+  const inRange = QUOTES.filter((q) => inPeriod(q.created, period))
+  const shown = inRange
     .filter((q) => (queue ? mine(q) : true))
     .filter((q) => !fStatus || q.status === fStatus)
     .slice()
@@ -100,8 +107,21 @@ export function AdminQuotes() {
     ]
   })
 
+  const sumValue = inRange.reduce((n, q) => n + q.value, 0)
+  const sent = inRange.filter((q) => q.status === 'Sent').length
+  const toPo = inRange.filter((q) => q.status === 'Issued to PO').length
   return (
-    <div>
+    <div className="space-y-3">
+      <PeriodBar summary={`· ${inRange.length} báo giá`} />
+      {/* Four numbers, all from the SAME filtered rows the table shows — a card
+          that counts a different window from the table is the bug this layout
+          exists to prevent. */}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <MiniStat label="Báo giá" value={inRange.length} sub="tạo trong kỳ" />
+        <MiniStat label="Tổng giá trị" value={money(sumValue)} sub="option cao nhất mỗi báo giá, cộng dồn" />
+        <MiniStat label="Đã gửi khách" value={sent} sub="đang chờ khách phản hồi" />
+        <MiniStat label="Chuyển thành PO" value={toPo} sub={inRange.length ? `${Math.round((toPo / inRange.length) * 100)}% số báo giá trong kỳ` : '—'} />
+      </div>
       {/* Create action lives on the page title row (see PRIMARY_ACTION in AdminWireframe). */}
       <ListPage
         total={shown.length}

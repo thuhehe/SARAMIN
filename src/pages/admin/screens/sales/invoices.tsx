@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel, isVerified } from '@/pages/admin/data/companies'
-import { INVOICES, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus } from '@/pages/admin/data/sales'
+import { INVOICES, POS, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
-import { dateBefore, vnWords } from '@/pages/admin/lib/fmt'
+import { MOCK_TODAY, asDate, dateBefore, money, vnWords } from '@/pages/admin/lib/fmt'
 import { PayCell } from '@/pages/admin/screens/sales/_shared'
 import { InvoicePdfModal } from '@/pages/admin/screens/sales/invoicePdf'
 import { InfoBit } from '@/pages/admin/ui/fields'
 import { ListPage } from '@/pages/admin/ui/list'
+import { PeriodBar, inPeriod, usePeriod } from '@/pages/admin/ui/period'
+import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill } from '@/pages/admin/ui/status'
 
 function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
@@ -171,16 +173,33 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
 
 export function AdminInvoices() {
   const [open, setOpen] = useState<Inv | null>(null)
+  const period = usePeriod()
   if (open) return <InvoiceDetail inv={open} onBack={() => setOpen(null)} />
   /* Archived rows are withdrawn from the default list. A draft whose PO expired
      never had legal force and granted nothing, so it is not an invoice to
      reconcile — but it stays reachable through the Archived tab and from its PO,
      because "what happened to that draft?" is a real month-end question. */
-  const rows = INVOICES.filter((i) => i.step !== 'archived')
+  /* Period first, on the invoice's own issue date. A DRAFT has no issue date yet,
+     so it follows its PO's issue date — otherwise every preset but All time would
+     hide exactly the rows Sales is still working on. */
+  const invDate = (i: Inv) => (i.issued !== '—' ? i.issued : POS.find((p) => p.code === i.po)?.issued)
+  const rows = INVOICES.filter((i) => i.step !== 'archived').filter((i) => inPeriod(invDate(i), period))
+  const byStage = (en: string) => rows.filter((i) => invStage(i).en === en).length
+  const archived = INVOICES.filter((i) => i.step === 'archived' && inPeriod(invDate(i), period)).length
+  const expiring = rows.filter((i) => i.activateBy !== '—' && (asDate(i.activateBy).getTime() - MOCK_TODAY.getTime()) / 86_400_000 <= 60).length
+  const sumOf = (rs: Inv[]) => rs.reduce((n, i) => n + i.total, 0)
+  const collected = rows.filter((i) => invPay(i).paidAt)
   return (
-    <div>
+    <div className="space-y-3">
+    <PeriodBar summary={`· ${rows.length} hoá đơn`} />
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <MiniStat label="Hoá đơn" value={rows.length} sub="trong kỳ, không tính lưu trữ" />
+      <MiniStat label="Tổng giá trị" value={money(sumOf(rows))} sub="sau VAT, khớp PO" />
+      <MiniStat label="Đã xuất chính thức" value={byStage('Invoice issued')} sub={`${byStage('Draft') + byStage('Invoice requested')} nháp / đang yêu cầu`} />
+      <MiniStat label="Đã thu tiền" value={collected.length} sub={`${money(sumOf(collected))} đã về tài khoản`} />
+    </div>
     <ListPage
-      tabs={[{ label: 'All', count: 210, active: true }, { label: 'Draft', count: 5 }, { label: 'Invoice requested', count: 3 }, { label: 'Invoice issued' }, { label: 'Archived', count: 4 }, { label: 'Activation expiring', count: 6 }]}
+      tabs={[{ label: 'All', count: rows.length, active: true }, { label: 'Draft', count: byStage('Draft') }, { label: 'Invoice requested', count: byStage('Invoice requested') }, { label: 'Invoice issued', count: byStage('Invoice issued') }, { label: 'Archived', count: archived }, { label: 'Activation expiring', count: expiring }]}
       cols={[{ label: 'Invoice no.', w: '1.2fr' }, { label: 'Customer', w: '1.6fr' }, { label: 'From PO', w: '1.4fr' }, { label: 'Total', w: '1.1fr', align: 'r' },
         // Named for what it is, and paired with the money's status — the same two
         // lifecycles, and the same fix, as the PO list.
