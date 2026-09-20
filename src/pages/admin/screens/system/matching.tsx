@@ -14,13 +14,13 @@ import { Bars, StatCards } from '@/pages/admin/ui/stats'
    the current one, so a score computed last month can still be explained. */
 export function AdminMatchingSettings() {
   const [w, setW] = useState<Record<string, number>>({
-    skills: 38, years: 18, location: 17, category: 10, salary: 7, industry: 5, education: 3, language: 2,
+    skills: 4, years: 28, location: 26, category: 23, salary: 9, industry: 5, education: 3, language: 2,
   })
   const SIGNALS: { key: string; label: string; reads: string }[] = [
     { key: 'skills', label: 'Skills', reads: 'CV skills ↔ job skills (same master list)' },
     { key: 'years', label: 'Years of experience + level', reads: 'Years + seniority derived from job titles' },
     { key: 'location', label: 'Location + work type', reads: 'Desired location & work type ↔ job location' },
-    { key: 'category', label: 'Desired job category', reads: 'Work preference ↔ job category' },
+    { key: 'category', label: 'Desired job role + category', reads: 'Desired role ↔ job role (exact id), else category' },
     { key: 'salary', label: 'Expected salary', reads: 'Expected salary ↔ job salary range' },
     { key: 'industry', label: 'Industry', reads: 'Desired industry ↔ company industry' },
     { key: 'education', label: 'Education level', reads: 'Highest education ↔ job minimum' },
@@ -81,7 +81,7 @@ export function AdminMatchingReport() {
         { label: 'Recommendations shown', value: '1.84M', delta: '30 ngày', up: true },
         { label: 'Click rate', value: '11.2%', delta: '0.8pt', up: true },
         { label: 'Apply rate', value: '3.4%', delta: '0.2pt', up: true },
-        { label: 'Weight version', value: 'v3' },
+        { label: 'Weight version', value: 'v4' },
       ]} />
 
       <div>
@@ -110,11 +110,11 @@ export function AdminMatchingReport() {
             { label: 'Reading', w: '1.8fr' },
           ]}
           rows={[
-            ['Skills', '38', '6.8%', '1.1%', '+5.7pt', 'Earns its weight — the strongest single signal.'],
-            ['Years of experience + level', '18', '4.4%', '2.0%', '+2.4pt', 'Working as expected.'],
-            ['Location + work type', '17', '4.9%', '1.6%', '+3.3pt', 'Stronger than its weight suggests — a candidate for an increase.'],
-            ['Desired job category', '10', '3.9%', '2.4%', '+1.5pt', 'Working.'],
-            ['Expected salary', '7', '3.6%', '2.9%', '+0.7pt', 'Weak. Many jobseekers leave salary blank, so it scores neutral often.'],
+            ['Skills', '4', '6.8%', '1.1%', '+5.7pt', 'Strong gap where it fires — but it fires only on the 26% of roles with taxonomy skills. Cut to 4 on 2026-09-19 until coverage and aliases exist; this gap is the case for raising it back.'],
+            ['Years of experience + level', '28', '4.4%', '2.0%', '+2.4pt', 'Working as expected — carries the model with Location.'],
+            ['Location + work type', '26', '4.9%', '1.6%', '+3.3pt', 'Stronger than its weight suggested — raised in v4.'],
+            ['Desired job role + category', '23', '3.9%', '2.4%', '+1.5pt', 'Working.'],
+            ['Expected salary', '9', '3.6%', '2.9%', '+0.7pt', 'Weak. Many jobseekers leave salary blank, so it scores neutral often.'],
             ['Industry', '5', '3.5%', '3.1%', '+0.4pt', 'Barely moves anything — reduce it and give the points to Location.'],
             ['Education level', '3', '3.4%', '3.2%', '+0.2pt', 'No measurable effect.'],
             ['Foreign language', '2', '5.1%', '3.3%', '+1.8pt', 'Small weight, real effect — only fires on the few jobs that ask.'],

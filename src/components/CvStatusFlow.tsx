@@ -384,13 +384,14 @@ export function CvStatusFlow() {
 
             MAKING EDUCATION MANDATORY was considered the same day and rejected: it
             would gate on the WEAKEST signal we hold (education level buys 3 of the
-            100 match points, against 30% for work experience) and would reject the
+            100 match points, against 28 for years of experience) and would reject the
             driver or foreman with twenty years behind them who never filled the
             field in. Work experience still stands alone.
 
             Skills did not become unimportant — they went from a GATE to a RANKING
-            input. They are still 38 of the 40 CV-content match points and still the
-            main CV-search filter, so a CV with none qualifies but ranks nowhere.
+            input. Since 2026-09-19 they are only 4 of the 100 match points (the
+            taxonomy is not ready), but still the main CV-search filter, so a CV
+            with none qualifies and is simply harder to find.
             That trade is deliberate: unfindable is recoverable, rejected is not. */}
         <text x={561} y={512} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
           OR [ Work experience,
