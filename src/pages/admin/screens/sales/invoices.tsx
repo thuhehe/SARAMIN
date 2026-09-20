@@ -191,7 +191,7 @@ export function AdminInvoices() {
   const collected = rows.filter((i) => invPay(i).paidAt)
   return (
     <div className="space-y-3">
-    <PeriodBar summary={`· ${rows.length} hoá đơn`} />
+    <PeriodBar summary={`${rows.length} hoá đơn trong kỳ`} />
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       <MiniStat label="Hoá đơn" value={rows.length} sub="trong kỳ, không tính lưu trữ" />
       <MiniStat label="Tổng giá trị" value={money(sumOf(rows))} sub="sau VAT, khớp PO" />

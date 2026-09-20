@@ -252,7 +252,7 @@ export function AdminPOs() {
   const sumOf = (rs: Po[]) => rs.reduce((n, p) => n + p.total, 0)
   return (
     <div className="space-y-3">
-    <PeriodBar summary={`· ${inRange.length} PO`} />
+    <PeriodBar summary={`${inRange.length} PO trong kỳ`} />
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       <MiniStat label="PO" value={inRange.length} sub="phát hành trong kỳ" />
       <MiniStat label="Tổng giá trị" value={money(sumOf(inRange))} sub="sau VAT" />

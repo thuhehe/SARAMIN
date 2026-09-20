@@ -112,7 +112,7 @@ export function AdminQuotes() {
   const toPo = inRange.filter((q) => q.status === 'Issued to PO').length
   return (
     <div className="space-y-3">
-      <PeriodBar summary={`· ${inRange.length} báo giá`} />
+      <PeriodBar summary={`${inRange.length} báo giá trong kỳ`} />
       {/* Four numbers, all from the SAME filtered rows the table shows — a card
           that counts a different window from the table is the bug this layout
           exists to prevent. */}
