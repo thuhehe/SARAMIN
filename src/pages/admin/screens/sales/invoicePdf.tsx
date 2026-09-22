@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { BUYER_TYPE, RETAIL_BUYER } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { ISSUER, QUOTE_CATALOG, VAT_RATE, pdfNum } from '@/pages/admin/data/sales'
+import { ISSUER, QUOTE_CATALOG, VAT_RATE, pdfNum, fmtUnit } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
 import { vnWords } from '@/pages/admin/lib/fmt'
 import { SaraminMark } from '@/pages/admin/screens/sales/_shared'
@@ -52,9 +52,13 @@ function InvHead({ vi, en }: { vi: string; en: string }) {
 
 function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
   const pack = QUOTE_CATALOG[inv.product]
-  const sub = Math.round(inv.total / (1 + VAT_RATE / 100))
+  /* No discount column exists on a VAT invoice. `calc` carries the lines with
+     every discount already folded into đơn giá — see invoiceLinesFrom. */
+  const rows = inv.calc
+    ? inv.calc.lines.map((l) => ({ name: l.name, unit: l.unitVi, qty: l.qty, price: fmtUnit(l.invUnit), amt: l.invNet }))
+    : [{ name: pack.vi, unit: pack.unitVi, qty: inv.qty, price: pdfNum(Math.round(Math.round(inv.total / (1 + VAT_RATE / 100)) / inv.qty)), amt: Math.round(inv.total / (1 + VAT_RATE / 100)) }]
+  const sub = inv.calc ? inv.calc.base : Math.round(inv.total / (1 + VAT_RATE / 100))
   const vat = inv.total - sub
-  const unit = Math.round(sub / inv.qty)
   const official = inv.step === 'issued'
   const bt = BUYER_TYPE[co?.buyerType ?? 'dn-vn']
   // The provider allocates the number only when the invoice is made official.
@@ -164,16 +168,25 @@ function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
           <div className="grid border-b border-slate-300 text-center text-[8px] text-slate-500" style={{ gridTemplateColumns: COLS }}>
             <Cell>1</Cell><Cell>2</Cell><Cell>3</Cell><Cell>4</Cell><Cell>5</Cell><Cell>6=4x5</Cell><Cell>7</Cell><Cell>8</Cell><Cell>9=6+8</Cell>
           </div>
-          <div className="grid min-h-[96px] border-b border-slate-400" style={{ gridTemplateColumns: COLS }}>
-            <Cell className="text-center">1</Cell>
-            <Cell className="text-left">{pack.vi}</Cell>
-            <Cell className="text-center">{pack.unitVi}</Cell>
-            <Cell className="text-center tabular-nums">{inv.qty}</Cell>
-            <Cell className="text-right tabular-nums">{pdfNum(unit)}</Cell>
-            <Cell className="text-right tabular-nums">{pdfNum(sub)}</Cell>
-            <Cell className="text-center tabular-nums">{VAT_RATE}%</Cell>
-            <Cell className="text-right tabular-nums">{pdfNum(vat)}</Cell>
-            <Cell className="text-right font-semibold tabular-nums">{pdfNum(inv.total)}</Cell>
+          <div className="min-h-[96px] border-b border-slate-400">
+            {rows.map((r, i) => {
+              /* Per-line VAT and payable, so the provider's columns 7–9 are filled
+                 on every row; the summary block below carries the totals. */
+              const lineVat = Math.round(r.amt * VAT_RATE / 100)
+              return (
+                <div key={i} className={cn('grid', i > 0 && 'border-t border-slate-200')} style={{ gridTemplateColumns: COLS }}>
+                  <Cell className="text-center">{i + 1}</Cell>
+                  <Cell className="text-left">{r.name}</Cell>
+                  <Cell className="text-center">{r.unit}</Cell>
+                  <Cell className="text-center tabular-nums">{r.qty}</Cell>
+                  <Cell className="text-right tabular-nums">{r.price}</Cell>
+                  <Cell className="text-right tabular-nums">{pdfNum(r.amt)}</Cell>
+                  <Cell className="text-center tabular-nums">{VAT_RATE}%</Cell>
+                  <Cell className="text-right tabular-nums">{pdfNum(lineVat)}</Cell>
+                  <Cell className="text-right font-semibold tabular-nums">{pdfNum(r.amt + lineVat)}</Cell>
+                </div>
+              )
+            })}
           </div>
           {/* the provider's VAT-rate summary block, every band listed */}
           <div className="grid border-b border-slate-400 bg-white text-[9px] font-semibold" style={{ gridTemplateColumns: 'minmax(0,2fr) 56px 1fr 1fr 1.2fr' }}>

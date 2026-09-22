@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel, isVerified } from '@/pages/admin/data/companies'
-import { INVOICES, POS, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus } from '@/pages/admin/data/sales'
+import { INVOICES, POS, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus, fmtUnit } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
 import { MOCK_TODAY, asDate, dateBefore, money, vnWords } from '@/pages/admin/lib/fmt'
 import { PayCell } from '@/pages/admin/screens/sales/_shared'
@@ -29,9 +29,14 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
   const invCo = COMPANIES.find((x) => x.name === inv.co)
     ?? COMPANIES.find((x) => x.name === inv.customer || x.legalName === inv.customer || coLabel(x) === inv.customer)
   const pack = QUOTE_CATALOG[inv.product]
-  const sub = Math.round(inv.total / (1 + VAT_RATE / 100))
+  /* Lines on an invoice never carry a discount. Where the quotation had explicit
+     lines, `calc` is those lines with every discount folded into the unit price;
+     otherwise the single catalogue line is back-solved from the total. */
+  const rows = inv.calc
+    ? inv.calc.lines.map((l) => ({ name: l.name, unit: l.unitVi, qty: l.qty, price: fmtUnit(l.invUnit), amt: l.invNet }))
+    : [{ name: pack.vi, unit: pack.unitVi, qty: inv.qty, price: Math.round(Math.round(inv.total / (1 + VAT_RATE / 100)) / inv.qty).toLocaleString('en-US'), amt: Math.round(inv.total / (1 + VAT_RATE / 100)) }]
+  const sub = inv.calc ? inv.calc.base : Math.round(inv.total / (1 + VAT_RATE / 100))
   const vat = inv.total - sub
-  const unit = Math.round(sub / inv.qty)
   const st = invStage(inv)
   return (
     <div>
@@ -149,13 +154,15 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
           <div className="grid min-w-[620px] gap-x-3 bg-ink px-3 py-2 text-[11px] font-semibold text-white" style={{ gridTemplateColumns: '28px 2.6fr 0.7fr 0.6fr 1fr 1fr' }}>
             <span>#</span><span>Tên hàng hóa, dịch vụ</span><span className="text-right">ĐVT</span><span className="text-right">SL</span><span className="text-right">Đơn giá</span><span className="text-right">Thành tiền</span>
           </div>
-          <div className="grid min-w-[620px] gap-x-3 border-t border-line px-3 py-2 text-[12px]" style={{ gridTemplateColumns: '28px 2.6fr 0.7fr 0.6fr 1fr 1fr' }}>
-            <span className="text-faint">1</span><span className="truncate">{pack.vi}</span>
-            <span className="text-right text-[11px] text-muted">{pack.unitVi}</span>
-            <span className="text-right tabular-nums">{inv.qty}</span>
-            <span className="text-right tabular-nums">{unit.toLocaleString('en-US')}</span>
-            <span className="text-right tabular-nums">{sub.toLocaleString('en-US')}</span>
-          </div>
+          {rows.map((r, i) => (
+            <div key={i} className="grid min-w-[620px] gap-x-3 border-t border-line px-3 py-2 text-[12px]" style={{ gridTemplateColumns: '28px 2.6fr 0.7fr 0.6fr 1fr 1fr' }}>
+              <span className="text-faint">{i + 1}</span><span className="truncate">{r.name}</span>
+              <span className="text-right text-[11px] text-muted">{r.unit}</span>
+              <span className="text-right tabular-nums">{r.qty}</span>
+              <span className="text-right tabular-nums">{r.price}</span>
+              <span className="text-right tabular-nums">{r.amt.toLocaleString('en-US')}</span>
+            </div>
+          ))}
         </div>
 
         <div className="mt-3 ml-auto w-full max-w-[320px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">

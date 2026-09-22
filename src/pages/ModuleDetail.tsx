@@ -416,7 +416,91 @@ function QuotationTotalsFigure() {
     </figure>
   )
 }
-const FIGURES: Record<string, () => JSX.Element> = { 'quotation-totals': QuotationTotalsFigure }
+
+/* ── Quotation → invoice, side by side ───────────────────────────────────────
+   The client's own worked example (A 2.000×2 −12%, B 3.000×3 −10%, a 1.000 ₫
+   order-level lump), shown as the two documents actually print it. The point is
+   the contrast: the quotation has a Giảm column and two discount rows; the
+   invoice has neither — its unit prices already contain them — and the totals
+   agree to the đồng. Numbers are hardcoded on purpose: they are the example the
+   spec table beside this figure walks through, and they must not drift with the
+   catalogue. */
+function QuoteToInvoiceFigure() {
+  const Head = ({ cols, tmpl }: { cols: string[]; tmpl: string }) => (
+    <div className="grid gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: tmpl }}>
+      {cols.map((c, i) => <span key={i} className={i >= 3 ? 'text-right' : ''}>{c}</span>)}
+    </div>
+  )
+  const Row = ({ cells, tmpl }: { cells: React.ReactNode[]; tmpl: string }) => (
+    <div className="grid items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[11.5px]" style={{ gridTemplateColumns: tmpl }}>
+      {cells.map((c, i) => <span key={i} className={cn('tabular-nums', i === 0 && 'text-faint', i >= 3 && 'text-right', i === 1 && 'truncate')}>{c}</span>)}
+    </div>
+  )
+  const Sum = ({ label, value, strong, rule, red }: { label: string; value: string; strong?: boolean; rule?: boolean; red?: boolean }) => (
+    <div className={cn('flex justify-between gap-2', rule && 'mt-1 border-t border-line pt-1')}>
+      <span className={strong ? 'font-semibold text-ink' : 'text-muted'}>{label}</span>
+      <span className={cn('tabular-nums', strong && 'font-semibold', red && 'text-rose-600')}>{value}</span>
+    </div>
+  )
+  const QT = '18px 1.6fr 0.5fr 0.4fr 0.9fr 0.6fr 1fr'
+  const IT = '18px 1.6fr 0.5fr 0.4fr 1fr 1fr'
+  const BT = '1.4fr 1fr 1fr 1fr 1fr 1.2fr'
+  return (
+    <figure className="mt-3">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-xl border border-line bg-surface p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Báo giá — chiết khấu hiển thị</p>
+          <div className="overflow-hidden rounded-lg border border-line">
+            <Head tmpl={QT} cols={['#', 'Dịch vụ', 'ĐV', 'SL', 'Đơn giá', 'Giảm', 'Tổng giá']} />
+            <Row tmpl={QT} cells={['1', 'Sản phẩm A', 'tin', '2', '2,000', <span className="text-rose-600">12%</span>, '3,520']} />
+            <Row tmpl={QT} cells={['2', 'Sản phẩm B', 'hồ sơ', '3', '3,000', <span className="text-rose-600">10%</span>, '8,100']} />
+          </div>
+          <div className="mt-2 ml-auto max-w-[280px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11px]">
+            <Sum label="Tạm tính" value="11,620 ₫" />
+            <Sum label="Chiết khấu tổng đơn (5%)" value="−581 ₫" red />
+            <Sum label="Giảm số tiền" value="−419 ₫" red />
+            <Sum label="Sau chiết khấu" value="10,620 ₫" rule />
+            <Sum label="Thuế GTGT (8%)" value="850 ₫" />
+            <Sum label="Tổng sau VAT" value="11,470 ₫" strong rule />
+          </div>
+        </div>
+        <div className="rounded-xl border border-line bg-surface p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Hóa đơn — không có cột chiết khấu</p>
+          <div className="overflow-hidden rounded-lg border border-line">
+            <Head tmpl={IT} cols={['#', 'Tên hàng hóa, dịch vụ', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']} />
+            <Row tmpl={IT} cells={['1', 'Sản phẩm A', 'tin', '2', <b className="text-emerald-800">1,608.50</b>, '3,217']} />
+            <Row tmpl={IT} cells={['2', 'Sản phẩm B', 'hồ sơ', '3', <b className="text-emerald-800">2,467.67</b>, '7,403']} />
+          </div>
+          <div className="mt-2 ml-auto max-w-[280px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11px]">
+            <Sum label="Cộng tiền hàng" value="10,620 ₫" />
+            <Sum label="Thuế GTGT (8%)" value="850 ₫" />
+            <Sum label="Tổng tiền thanh toán" value="11,470 ₫" strong rule />
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50/60 text-[11px]">
+        <div className="grid gap-x-2 border-b border-emerald-200 px-3 py-1.5 font-semibold uppercase tracking-wide text-emerald-900/70" style={{ gridTemplateColumns: BT }}>
+          <span>Dòng</span><span className="text-right">Tổng giá (báo giá)</span><span className="text-right">Tỉ lệ</span><span className="text-right">Gánh từ 1,000</span><span className="text-right">Thành tiền (HĐ)</span><span className="text-right">Đơn giá (HĐ)</span>
+        </div>
+        {([
+          ['Sản phẩm A', '3,520', '3,520 / 11,620', '303', '3,520 − 303 = 3,217', '3,217 ÷ 2 = 1,608.50'],
+          ['Sản phẩm B', '8,100', '8,100 / 11,620', '697 (phần còn lại)', '8,100 − 697 = 7,403', '7,403 ÷ 3 = 2,467.67'],
+        ] as const).map((r, i) => (
+          <div key={i} className="grid gap-x-2 border-b border-emerald-100 px-3 py-1.5 tabular-nums text-emerald-950" style={{ gridTemplateColumns: BT }}>
+            {r.map((c, j) => <span key={j} className={j ? 'text-right' : 'font-medium'}>{c}</span>)}
+          </div>
+        ))}
+        <div className="grid gap-x-2 px-3 py-1.5 font-semibold tabular-nums text-emerald-950" style={{ gridTemplateColumns: BT }}>
+          <span>Σ</span><span className="text-right">11,620</span><span /><span className="text-right">1,000</span><span className="text-right">10,620</span><span />
+        </div>
+      </div>
+      <figcaption className="mt-1.5 text-[11px] leading-relaxed text-faint">
+        Same option, both documents. The 1,000 ₫ lump is 581 (5% of 11,620) + 419 fixed. B takes the remainder (697, not the rounded 697.07) so the two lines sum to exactly 1,000 and both totals read 11,470 ₫.
+      </figcaption>
+    </figure>
+  )
+}
+const FIGURES: Record<string, () => JSX.Element> = { 'quotation-totals': QuotationTotalsFigure, 'quote-to-invoice': QuoteToInvoiceFigure }
 
 function Requirements({ items, dense }: { items: Requirement[]; dense?: boolean }) {
   return (

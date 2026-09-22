@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coId, coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { QUOTE_CATALOG, QUOTE_TONE, SPECIAL_LEADER_MAX, VAT_RATE, apprPerson, apprRole } from '@/pages/admin/data/sales'
+import { QUOTE_CATALOG, QUOTE_TONE, SPECIAL_LEADER_MAX, VAT_RATE, apprPerson, apprRole, invoiceLinesFrom, fmtUnit, type QuoteDetail } from '@/pages/admin/data/sales'
 import type { Quote } from '@/pages/admin/data/sales'
 import { SALES_ROLE_LABEL, teamBookOf } from '@/pages/admin/data/salesOrg'
 import type { SalesPersona } from '@/pages/admin/data/salesOrg'
@@ -200,7 +200,7 @@ export function QuotationDetail({ q, persona, onBack, onCreatePO, onDuplicate }:
 
       <p className="mb-2 text-[12.5px] font-semibold">Options</p>
       <div className="space-y-2">
-        {opts.map((o) => (
+        {q.detail ? <QuoteDetailOption d={q.detail} /> : opts.map((o) => (
           <div key={o.n} className="rounded-xl border border-line p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[12.5px] font-semibold">Option {o.n} <span className="font-normal text-muted">{QUOTE_CATALOG[o.p].vi}</span></p>
@@ -312,6 +312,56 @@ export function QuotationDetail({ q, persona, onBack, onCreatePO, onDuplicate }:
       )}
 
       {pdf && <QuotationPdfModal q={q} co={co} onClose={() => setPdf(false)} />}
+    </div>
+  )
+}
+
+/* ── An option drawn from EXPLICIT lines — the worked example ────────────────
+   The quotation is the document that SHOWS discounts: a Giảm column per line,
+   then the order-level % and the fixed amount as their own rows. The invoice
+   built from the same `detail` shows none of them — invoiceLinesFrom folds every
+   discount back into the unit price, and the note under the totals says so, with
+   the figures the invoice will actually print. Same total, to the đồng. */
+function QuoteDetailOption({ d }: { d: QuoteDetail }) {
+  const c = invoiceLinesFrom(d)
+  const COLS = '20px 2.2fr 0.7fr 0.5fr 1fr 0.6fr 1fr'
+  return (
+    <div className="rounded-xl border border-emerald-300 p-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12.5px] font-semibold">Option 1 <span className="font-normal text-muted">{d.lines.map((l) => l.name).join(' + ')}</span></p>
+        <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10.5px] font-medium text-emerald-800">Accepted</span>
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <div className="grid min-w-[560px] gap-x-2 bg-canvas/60 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted" style={{ gridTemplateColumns: COLS }}>
+          <span>#</span><span>Dịch vụ</span><span>Đơn vị</span><span>SL</span><span className="text-right">Đơn giá</span><span className="text-right">Giảm</span><span className="text-right">Tổng giá</span>
+        </div>
+        {c.lines.map((l, i) => (
+          <div key={i} className="grid min-w-[560px] items-center gap-x-2 border-t border-line-soft px-2.5 py-1.5 text-[12px]" style={{ gridTemplateColumns: COLS }}>
+            <span className="text-faint">{i + 1}</span><span className="truncate">{l.name}</span>
+            <span className="text-[11px] text-muted">{l.unitVi}</span>
+            <span className="tabular-nums">{l.qty}</span>
+            <span className="text-right tabular-nums">{l.price.toLocaleString('en-US')}</span>
+            <span className="text-right tabular-nums text-rose-600">{l.disc}%</span>
+            <span className="text-right tabular-nums">{l.quoteNet.toLocaleString('en-US')}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 ml-auto w-full max-w-[340px] rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11.5px]">
+        <div className="flex justify-between"><span className="text-muted">Tạm tính</span><span className="tabular-nums">{c.sub.toLocaleString('en-US')} ₫</span></div>
+        <div className="flex justify-between"><span className="text-muted">Chiết khấu tổng đơn ({d.optDisc}%)</span><span className="tabular-nums text-rose-600">−{c.pctCut.toLocaleString('en-US')} ₫</span></div>
+        <div className="flex justify-between"><span className="text-muted">Giảm số tiền</span><span className="tabular-nums text-rose-600">−{c.fixedCut.toLocaleString('en-US')} ₫</span></div>
+        <div className="mt-1 flex justify-between border-t border-line-soft pt-1 font-medium"><span className="text-muted">Sau chiết khấu</span><span className="tabular-nums">{c.base.toLocaleString('en-US')} ₫</span></div>
+        <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{c.vat.toLocaleString('en-US')} ₫</span></div>
+        <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng sau VAT</span><span className="tabular-nums">{c.total.toLocaleString('en-US')} ₫</span></div>
+        <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Bằng chữ: {vnWords(c.total)}.</p>
+      </div>
+      {/* The bridge to the invoice, stated on the quotation so the rep is not
+          surprised when the customer's invoice shows no discount at all. */}
+      <div className="mt-2 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
+        <b className="text-ink/80">Trên hóa đơn không có cột chiết khấu.</b> Chiết khấu dòng và {c.lump.toLocaleString('en-US')} ₫ chiết khấu tổng đơn ({c.pctCut.toLocaleString('en-US')} + {c.fixedCut.toLocaleString('en-US')}) được chia theo tỉ lệ vào từng dòng rồi <b>tính ngược vào đơn giá</b>:{' '}
+        {c.lines.map((l, i) => <span key={i}>{i ? ' · ' : ''}{l.name}: <span className="tabular-nums">{fmtUnit(l.invUnit)} × {l.qty} = {l.invNet.toLocaleString('en-US')}</span> <span className="text-faint">(gánh {l.alloc.toLocaleString('en-US')})</span></span>)}.
+        Cộng tiền hàng {c.base.toLocaleString('en-US')} ₫ — đúng bằng “Sau chiết khấu”.
+      </div>
     </div>
   )
 }

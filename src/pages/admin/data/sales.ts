@@ -166,6 +166,56 @@ export const optionTotals = (o: QOption) => {
 export const lineTotal = (l: QLine) => (l.gift ? 0 : Math.round(l.qty * l.price * (1 - l.disc / 100)))
 export const VAT_RATE = 8
 
+/* ── Từ báo giá sang hóa đơn ───────────────────────────────────────────────────
+   A VAT invoice NEVER shows a discount. It shows đơn giá × số lượng = thành tiền,
+   and nothing else — so every discount the quotation carried has to be folded
+   back INTO the unit price before the invoice is written. Two different
+   documents, two different arithmetics, ONE total.
+
+     line %       → into that line's own unit price:  đơn giá × (1 − CK dòng)
+     order % + ₫  → summed into ONE lump, then split across the lines pro-rata
+                    by their (already line-discounted) net, and folded into the
+                    unit price of each
+
+   Worked example (the one the client wrote): A 2.000 × 2 −12% = 3.520 · B
+   3.000 × 3 −10% = 8.100 · lump 1.000 → A carries 303, B carries 697 → invoice
+   A = 1.608,50 × 2 = 3.217 · B = 2.467,67 × 3 = 7.403 · Σ 10.620, the quotation's
+   "Sau chiết khấu" to the đồng.
+
+   Three rounding rules, each of which a dev gets wrong on the first try:
+     · line nets are rounded to the đồng FIRST, and the allocation is done on
+       those integers — not on the raw products.
+     · the LAST line takes the allocation remainder, so Σ allocations == lump
+       exactly and the invoice total equals the quotation's to the đồng.
+     · thành tiền is the integer net. The unit price is shown to 2 decimals and
+       MAY NOT be multiplied back out to reproduce it (2.467,67 × 3 = 7.403,01) —
+       the printed unit price is presentation, the net is the fact. */
+export type QuoteLineIn = { name: string; unitVi: string; unitEn: string; qty: number; price: number; disc: number }
+export type QuoteDetail = { lines: QuoteLineIn[]; optDisc: number; fixed: number }
+export const invoiceLinesFrom = (d: QuoteDetail) => {
+  const nets = d.lines.map((l) => Math.round(l.qty * l.price * (1 - l.disc / 100)))
+  const sub = nets.reduce((a, b) => a + b, 0)
+  const pctCut = Math.round(sub * d.optDisc / 100)
+  const fixedCut = Math.min(Math.max(0, d.fixed), sub - pctCut)
+  const lump = pctCut + fixedCut
+  const last = nets.length - 1
+  const alloc = nets.map((n, i) => (i < last ? Math.round(lump * n / sub) : 0))
+  alloc[last] = lump - alloc.slice(0, last).reduce((a, b) => a + b, 0)
+  const lines = d.lines.map((l, i) => ({
+    ...l,
+    quoteNet: nets[i],                 // what the quotation printed for this line
+    alloc: alloc[i],                   // this line's share of the order-level lump
+    invNet: nets[i] - alloc[i],        // thành tiền on the invoice — an INTEGER
+    invUnit: (nets[i] - alloc[i]) / l.qty,   // đơn giá on the invoice — decimal, presentation only
+  }))
+  const base = lines.reduce((a, l) => a + l.invNet, 0)      // == sub − lump, always
+  const vat = Math.round(base * VAT_RATE / 100)
+  return { lines, sub, pctCut, fixedCut, lump, base, vat, total: base + vat }
+}
+/** A unit price that may carry decimals: 1.608,50 · 2.467,67 · 6.100.000 */
+export const fmtUnit = (n: number) =>
+  Number.isInteger(n) ? n.toLocaleString('en-US') : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 /* Customers sharing the first 10 digits of a tax code — the same legal entity's
    branches, or genuinely unrelated companies that happen to collide. The form does
    NOT decide which; it lists them and lets the rep link. */
@@ -206,6 +256,9 @@ export type Quote = {
   appr?: 'pending' | 'approved' | 'rejected'
   reqBy?: string; reqAt?: string
   apprBy?: string; apprAt?: string; apprPct?: number; apprReason?: string
+  /** Explicit lines + order-level discounts, for the rows that have to prove the
+      quotation→invoice arithmetic. Rows without it render the catalogue default. */
+  detail?: QuoteDetail
 }
 /* Which ROLE a special discount routes to — by amount, not by chain, so above the
    band the lead is skipped entirely. Reuses the sales org already defined for the
@@ -246,6 +299,16 @@ export const QUOTES: Quote[] = [
   // approved, and therefore sendable
   { code: 'QUO-009914-08-2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', products: [1], options: 2, value: 92_400_000, status: 'Sent', created: '05/08/2026', expires: '31/08/2026', special: 10, appr: 'approved', reqBy: 'Trần Quốc Trung', reqAt: '05/08/2026 11:02', apprBy: 'Nguyễn Thị Lan', apprAt: '05/08/2026 14:20', apprPct: 10 },
   // refused, with the reason the rep has to act on
+  /* The client's own worked example for how discounts leave the invoice. Tiny
+     figures on purpose — 2.000 and 3.000 — so the arithmetic can be checked by
+     hand against the spec table. Everything downstream (PO, invoice) derives
+     from `detail`; nothing is retyped. */
+  { code: 'QUO-009916-08-2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', products: [0], options: 1, value: 11_470, status: 'Issued to PO', created: '05/08/2026', expires: '31/08/2026', acceptedOpt: 1,
+    detail: { lines: [
+      { name: 'Sản phẩm A', unitVi: 'tin', unitEn: 'post', qty: 2, price: 2_000, disc: 12 },
+      { name: 'Sản phẩm B', unitVi: 'hồ sơ', unitEn: 'CV', qty: 3, price: 3_000, disc: 10 },
+    ], optDisc: 5, fixed: 419 },   // 5% of 11.620 = 581, + 419 = the client's 1.000 lump
+    note: 'Ví dụ minh hoạ công thức báo giá → hóa đơn.' },
   { code: 'QUO-009915-08-2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', products: [2], options: 1, value: 64_800_000, status: 'Draft', created: '06/08/2026', expires: '31/08/2026', special: 22, appr: 'rejected', reqBy: 'Phạm Quang Huy', reqAt: '06/08/2026 08:30', apprBy: 'Đỗ Xuân Trường', apprAt: '06/08/2026 10:05', apprPct: 22, apprReason: 'Trên 20% thì âm biên. Tối đa 12%, hoặc đổi sang gói Basic Plus.' },
 ]
 /* ── Export quotation to PDF ───────────────────────────────────────────────────
@@ -403,7 +466,10 @@ const INV_STAGE: Record<InvStep, { vi: string; en: string; tone: StatusTone; by:
   issued: { vi: 'Đã xuất hóa đơn chính', en: 'Invoice issued', tone: 'active', by: 'Kế toán' },
   archived: { vi: 'Lưu trữ — PO đã hết hạn', en: 'Archived', tone: 'expired', by: 'System' },
 }
-export type Inv = { code: string; step: InvStep; customer: string; co?: string; po: string; payment?: string; total: number; issued: string; activateBy: string; product: number; qty: number; issuer: string }
+export type Inv = { code: string; step: InvStep; customer: string; co?: string; po: string; payment?: string; total: number; issued: string; activateBy: string; product: number; qty: number; issuer: string
+  /** Present when the source quotation carries explicit lines: the invoice's own
+      lines with discounts folded into the unit price. See invoiceLinesFrom. */
+  calc?: ReturnType<typeof invoiceLinesFrom> }
 
 export const invStage = (i: Inv) => INV_STAGE[i.step]
 
@@ -570,6 +636,9 @@ export const POS: Po[] = [
   // Issued inside the 14-day payment window and not yet paid — the plain Unpaid
   // case. Without a row like this the column only ever shows the two loud states
   // and nobody sees what "on time" looks like.
+  // The worked example, invoiced. Its lines come from the quotation's `detail`
+  // through invoiceLinesFrom — see invOf.
+  { code: 'PO-005866-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', paidAt: '08.08.2026', quote: 'QUO-009916-08-2026', total: 11_470, step: 'invoiced', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 2, invNo: '1C26TTD-177', invIssued: '07/08/2026' },
   { code: 'PO-005865-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
   { code: 'PO-005864-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
   { code: 'PO-005863-08-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
@@ -623,6 +692,7 @@ const invOf = (p: Po): Inv => ({
   product: p.product,
   qty: p.qty,
   issuer: poStep(p) === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
+  calc: (() => { const d = QUOTES.find((q) => q.code === p.quote)?.detail; return d ? invoiceLinesFrom(d) : undefined })(),
 })
 export const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[poStep(p)]).map(invOf)
 
@@ -632,4 +702,5 @@ export const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[poStep(p)]
 export const draftInvOf = (po: Po): Inv => ({
   code: '1C26TTD-—', step: 'draft', customer: po.customer, co: po.co, po: po.code,
   total: po.total, issued: '—', activateBy: '—', product: po.product, qty: po.qty, issuer: po.seller,
+  calc: (() => { const d = QUOTES.find((q) => q.code === po.quote)?.detail; return d ? invoiceLinesFrom(d) : undefined })(),
 })
