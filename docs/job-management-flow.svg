@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/></marker>
+  </defs>
+  <rect width="1500" height="760" fill="#ffffff"/>
+
+  <!-- Row 1: where the quota comes from -->
+  <g id="card-product">
+    <rect x="60" y="44" width="400" height="140" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="84" y="78" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PRODUCTS &amp; PACKAGES</text>
+    <text x="84" y="108" font-size="20" font-weight="600" fill="#1a1d21">The tier is the product</text>
+    <text x="84" y="136" font-size="15" fill="#4b5563">Display duration · the areas it appears in ·</text>
+    <text x="84" y="160" font-size="15" fill="#4b5563">ladder position · card perks.</text>
+  </g>
+  <line x1="462" y1="114" x2="546" y2="114" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="504" y="103" font-size="12.5" fill="#6b7280" text-anchor="middle">sold on</text>
+
+  <g id="card-crm">
+    <rect x="550" y="44" width="400" height="140" rx="14" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="574" y="78" font-size="13" font-weight="700" fill="#1f6feb" letter-spacing="1.6">CRM</text>
+    <text x="574" y="108" font-size="20" font-weight="600" fill="#1f6feb">Quotation → PO → VAT invoice</text>
+    <text x="574" y="136" font-size="15" fill="#1a1d21"><tspan font-weight="700">Invoice ISSUED = quota granted.</tspan></text>
+    <text x="574" y="160" font-size="15" fill="#4b5563">The only moment a company receives anything.</text>
+  </g>
+  <line x1="952" y1="114" x2="1036" y2="114" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="994" y="103" font-size="12.5" fill="#6b7280" text-anchor="middle">shows up on</text>
+
+  <g id="card-company">
+    <rect x="1040" y="44" width="400" height="140" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1064" y="78" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">COMPANY · PRODUCTS &amp; BILLING</text>
+    <text x="1064" y="108" font-size="20" font-weight="600" fill="#1a1d21">N posts left on tier X</text>
+    <text x="1064" y="136" font-size="15" fill="#4b5563">Where to verify quota before a Post</text>
+    <text x="1064" y="160" font-size="15" fill="#4b5563">and after an Upgrade.</text>
+  </g>
+
+  <!-- Row 2: the posting spends it -->
+  <line x1="750" y1="186" x2="750" y2="236" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="form">
+    <rect x="200" y="240" width="1100" height="120" rx="14" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="224" y="274" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">NEW JOB POSTING  ·  /recruitment/jobs/new</text>
+    <text x="224" y="306" font-size="17" font-weight="600" fill="#1a1d21">1 Posting setup — Company → Invoice → Main product  <tspan font-weight="400" fill="#4b5563" font-size="14">· no invoice = only Free products (HQ only)</tspan></text>
+    <text x="224" y="334" font-size="14" fill="#4b5563">then  2 Job information · 3 Applications · 4 Job content · 5 Card artwork · 6 Candidate expectation</text>
+    <rect x="1000" y="288" width="276" height="52" rx="10" fill="#f6f7f9" stroke="#e6e8ec"/>
+    <text x="1138" y="310" font-size="14" font-weight="600" fill="#1a1d21" text-anchor="middle">Save as draft — costs nothing</text>
+    <text x="1138" y="330" font-size="13" fill="#4b5563" text-anchor="middle">Company · Title · Working location</text>
+  </g>
+
+  <line x1="750" y1="362" x2="750" y2="406" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <g id="post">
+    <rect x="450" y="410" width="600" height="60" rx="12" fill="#1f6feb"/>
+    <text x="750" y="436" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">POST  =  10 fields complete  =  one slot spent</text>
+    <text x="750" y="458" font-size="13" fill="#dbe7fd" text-anchor="middle">a Post that fails (no quota · tier full) keeps the draft</text>
+  </g>
+
+  <!-- Row 3: lifecycle -->
+  <line x1="750" y1="472" x2="750" y2="512" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="lifecycle">
+    <rect x="220" y="516" width="1060" height="64" rx="32" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="330" y="555" font-size="17" font-weight="700" fill="#4b5563" text-anchor="middle">DRAFT</text>
+    <line x1="392" y1="548" x2="462" y2="548" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="427" y="538" font-size="11.5" fill="#6b7280" text-anchor="middle">Publish at set</text>
+    <text x="540" y="555" font-size="17" font-weight="700" fill="#4b5563" text-anchor="middle">SCHEDULE</text>
+    <line x1="614" y1="548" x2="684" y2="548" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="649" y="538" font-size="11.5" fill="#6b7280" text-anchor="middle">time arrives</text>
+    <rect x="700" y="526" width="150" height="44" rx="22" fill="#166534"/>
+    <text x="775" y="555" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">OPEN</text>
+    <line x1="866" y1="548" x2="936" y2="548" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="901" y="538" font-size="11.5" fill="#6b7280" text-anchor="middle">deadline · Close</text>
+    <text x="1010" y="555" font-size="17" font-weight="700" fill="#4b5563" text-anchor="middle">CLOSED</text>
+    <text x="1180" y="549" font-size="13" fill="#6b7280" text-anchor="middle">forward only ·</text>
+    <text x="1180" y="566" font-size="13" fill="#6b7280" text-anchor="middle">no re-open, no delete</text>
+    <path d="M 330 518 C 330 490, 660 490, 700 526" fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <text x="515" y="500" font-size="11.5" fill="#6b7280" text-anchor="middle">Post now</text>
+  </g>
+
+  <!-- Exposure switch beside OPEN -->
+  <g id="exposure">
+    <rect x="1300" y="508" width="150" height="80" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="1375" y="534" font-size="13" font-weight="700" fill="#b45309" text-anchor="middle">EXPOSURE</text>
+    <text x="1375" y="556" font-size="14" font-weight="600" fill="#1a1d21" text-anchor="middle">On / Off</text>
+    <text x="1375" y="576" font-size="12" fill="#4b5563" text-anchor="middle">a second switch, Open only</text>
+  </g>
+
+  <!-- Row 4: visible -->
+  <line x1="775" y1="580" x2="775" y2="616" stroke="#166534" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="visible">
+    <rect x="160" y="620" width="1180" height="116" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="750" y="652" font-size="18" font-weight="700" fill="#166534" text-anchor="middle">Public on the jobseeker site only when  OPEN  +  Exposure ON  +  company ACTIVE</text>
+    <text x="350" y="686" font-size="15" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">WHERE</tspan> — the areas the tier's</text>
+    <text x="350" y="708" font-size="15" fill="#1a1d21" text-anchor="middle">Placement slots list</text>
+    <line x1="545" y1="668" x2="545" y2="722" stroke="#86efac" stroke-width="1.5"/>
+    <text x="750" y="686" font-size="15" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">HOW HIGH</tspan> — Recommended sort bands</text>
+    <text x="750" y="708" font-size="15" fill="#1a1d21" text-anchor="middle">by tier (Posting ladder), then relevance</text>
+    <line x1="955" y1="668" x2="955" y2="722" stroke="#86efac" stroke-width="1.5"/>
+    <text x="1150" y="686" font-size="15" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">FOUND BY</tspan> — category · roles ·</text>
+    <text x="1150" y="708" font-size="15" fill="#1a1d21" text-anchor="middle">specialisations · keyword on title first</text>
+  </g>
+</svg>
