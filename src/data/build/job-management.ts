@@ -739,6 +739,14 @@ export const jobManagement: BuildModule = {
       scope: ['BE', 'FE', 'UI'],
       ready: true,
       detail: {
+        refDocs: [
+          {
+            label: 'Figma — Job search result (three sections)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=1693-9276',
+            meta: 'Figma frame · 1440 wide',
+            note: 'The search page as designed: the Top section carousel, the Job search result list with its sort control, and the Blue zone carousel inside the list. The three-section rules below were written against it (24/09/2026).',
+          },
+        ],
         description:
           'Keyword + facet search results with three sorts and pagination — the workhorse discovery surface. Ranking is decided by what the candidate TYPED and by the posting tier the employer PAID for, in that order of construction: relevance decides which jobs qualify and how they order inside a band; the tier decides which band. The candidate’s profile and match score never enter.',
         userStory: 'As a jobseeker, I want to type what I am looking for and get jobs that actually match it — with the paid placements clearly marked — so I can trust the list and zero in on the right roles.',
@@ -767,14 +775,6 @@ export const jobManagement: BuildModule = {
           {
             group: 'Result item',
             items: [
-        refDocs: [
-          {
-            label: 'Figma — Job search result (three sections)',
-            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=1693-9276',
-            meta: 'Figma frame · 1440 wide',
-            note: 'The search page as designed: the Top section carousel, the Job search result list with its sort control, and the Blue zone carousel inside the list. The three-section rules below were written against it (24/09/2026).',
-          },
-        ],
               { name: 'JobCard', type: 'title · company · salary · location · tier badge · saved ♥ · refreshed-ago' },
               { name: 'tier badge', type: '“Tin ưu tiên · <tier>”', required: true, notes: 'on every paid card in Recommended — a band can outrank relevance, so the reader is owed the disclosure' },
               { name: 'band header', type: 'section label', notes: 'RECOMMENDED — render each band as a labelled section (“Top Job”, “Distinction”…) on the page where the band starts, as the KR reference does, rather than one flat list with badges. Makes the paid structure legible at a glance' },
@@ -800,6 +800,25 @@ export const jobManagement: BuildModule = {
           'No randomness anywhere. Every ordering ends in `jobId`, so the order is total and pagination is stable across page loads.',
         ],
         requirements: [
+          {
+            label: 'THE SEARCH PAGE IS THREE SECTIONS — Top · Result list · Blue zone: one match set, three orders',
+            text: 'DECIDED 24/09/2026 (Thu, against the Figma search frame). After a keyword search the page is three sections, top to bottom: the TOP SECTION (the “UX UI jobs for you” carousel), the JOB SEARCH RESULT list, and the BLUE ZONE (“The choice that sets you apart”) inserted into that list. All three start from the SAME set — every job that contains the keyword in at least one of the five matchable fields (title · skills · category / roles / specialisations · company · description + requirements, see “WHICH FIELDS THE KEYWORD MATCHES”). What differs is which of those jobs a section takes and how it orders them.',
+            table: {
+              cols: ['Section', 'Takes which of the matching jobs', 'Order', 'Rules'],
+              rows: [
+                ['**Top section**', 'Jobs whose PRODUCT covers this placement — the tier’s Placement slots include the search-top area. Membership is set on the product, never on the posting.', '**Last refreshed** first — `lastRefreshedAt`, the auto-refresh the product gives the job. NOT the last edit.', 'A paged carousel (“1 / 2”). Renders nothing when no matching job sits on such a product.'],
+                ['**Job search result** — sort Recommended (default)', 'EVERY matching job.', '1 · Group by the product’s **Sort priority** (Posting ladder), highest rung first. 2 · Inside a group, by **which field held the keyword**: title → skills → category / roles → company → description. 3 · Ties: newest `lastRefreshedAt`.', 'Super star / Hot job are add-on BADGES — they never change the order. **Date posted** and **Closing soonest** sort the same set by that one date and ignore tiers (see “THE THREE SORTS”).'],
+                ['**Blue zone**', 'Matching jobs whose product is sold in a **Premium package** (the Premium package checkbox — Products & Packages → Packages).', '**Companies interleaved** — one job per company in turn (A, B, C, A, B…), then `lastRefreshedAt` inside that rotation.', '**Hidden entirely when fewer than 3 jobs qualify** — no half-empty band. The heading names the companies shown (“Jobs for MB Bank & NIPPA”).'],
+              ],
+            },
+            items: [
+              'LAST REFRESHED MEANS AUTO-REFRESH, in every section. A job moves when its product refreshes it (Auto-refresh on the product record) — never when someone edits the posting. Otherwise every employer edits a comma each morning to climb the list. Same rule as step 5 of the pipeline below.',
+              'THE TOP SECTION AND THE BLUE ZONE ARE PRODUCT FACTS, not posting facts. A posting cannot opt into either; the product it was published on either covers the search-top placement / sits in a Premium package, or it does not. This is what keeps both sections sellable.',
+              'INTERLEAVING IS A ROUND-ROBIN over companies ordered by their newest refreshed job; when a company runs out of jobs the rotation continues with the rest. Recommended reading — the client has not stated the tie-break, flagged below.',
+              'THE < 3 RULE IS A RENDER RULE, not a search rule: the jobs still appear in the result list under their tier. Only the band is withheld.',
+            ],
+            warn: 'Open — (1) interleaving tie-break when one company holds most of the qualifying jobs (round-robin then remainder is the recommendation); (2) whether a job may appear in BOTH the Top section and the Blue zone at once (recommendation: yes — they are two placements, and de-duplicating would hide a paid product), and whether a job shown in either is also repeated in the result list (recommendation: yes, the list is complete).',
+          },
           {
             label: 'JOB SEARCH — gate → filter → score → band → order → tail, and relevance is ONLY what the candidate typed',
             text: 'How the result list is built when a candidate searches — six steps, in order. The paid tier matters at step 4 only, and only in the Recommended sort. The candidate’s own CV and match score are never used.',
@@ -828,25 +847,6 @@ export const jobManagement: BuildModule = {
             label: 'THE THREE SORTS — bands belong to Recommended, and nothing else',
             text: 'Three sorts. Only “Recommended” uses the paid tiers. The other two are plain lists — no tiers, no paid priority — otherwise their names would mislead.',
             table: {
-          {
-            label: 'THE SEARCH PAGE IS THREE SECTIONS — Top · Result list · Blue zone: one match set, three orders',
-            text: 'DECIDED 24/09/2026 (Thu, against the Figma search frame). After a keyword search the page is three sections, top to bottom: the TOP SECTION (the “UX UI jobs for you” carousel), the JOB SEARCH RESULT list, and the BLUE ZONE (“The choice that sets you apart”) inserted into that list. All three start from the SAME set — every job that contains the keyword in at least one of the five matchable fields (title · skills · category / roles / specialisations · company · description + requirements, see “WHICH FIELDS THE KEYWORD MATCHES”). What differs is which of those jobs a section takes and how it orders them.',
-            table: {
-              cols: ['Section', 'Takes which of the matching jobs', 'Order', 'Rules'],
-              rows: [
-                ['**Top section**', 'Jobs whose PRODUCT covers this placement — the tier’s Placement slots include the search-top area. Membership is set on the product, never on the posting.', '**Last refreshed** first — `lastRefreshedAt`, the auto-refresh the product gives the job. NOT the last edit.', 'A paged carousel (“1 / 2”). Renders nothing when no matching job sits on such a product.'],
-                ['**Job search result** — sort Recommended (default)', 'EVERY matching job.', '1 · Group by the product’s **Sort priority** (Posting ladder), highest rung first. 2 · Inside a group, by **which field held the keyword**: title → skills → category / roles → company → description. 3 · Ties: newest `lastRefreshedAt`.', 'Super star / Hot job are add-on BADGES — they never change the order. **Date posted** and **Closing soonest** sort the same set by that one date and ignore tiers (see “THE THREE SORTS”).'],
-                ['**Blue zone**', 'Matching jobs whose product is sold in a **Premium package** (the Premium package checkbox — Products & Packages → Packages).', '**Companies interleaved** — one job per company in turn (A, B, C, A, B…), then `lastRefreshedAt` inside that rotation.', '**Hidden entirely when fewer than 3 jobs qualify** — no half-empty band. The heading names the companies shown (“Jobs for MB Bank & NIPPA”).'],
-              ],
-            },
-            items: [
-              'LAST REFRESHED MEANS AUTO-REFRESH, in every section. A job moves when its product refreshes it (Auto-refresh on the product record) — never when someone edits the posting. Otherwise every employer edits a comma each morning to climb the list. Same rule as step 5 of the pipeline below.',
-              'THE TOP SECTION AND THE BLUE ZONE ARE PRODUCT FACTS, not posting facts. A posting cannot opt into either; the product it was published on either covers the search-top placement / sits in a Premium package, or it does not. This is what keeps both sections sellable.',
-              'INTERLEAVING IS A ROUND-ROBIN over companies ordered by their newest refreshed job; when a company runs out of jobs the rotation continues with the rest. Recommended reading — the client has not stated the tie-break, flagged below.',
-              'THE < 3 RULE IS A RENDER RULE, not a search rule: the jobs still appear in the result list under their tier. Only the band is withheld.',
-            ],
-            warn: 'Open — (1) interleaving tie-break when one company holds most of the qualifying jobs (round-robin then remainder is the recommendation); (2) whether a job may appear in BOTH the Top section and the Blue zone at once (recommendation: yes — they are two placements, and de-duplicating would hide a paid product), and whether a job shown in either is also repeated in the result list (recommendation: yes, the list is complete).',
-          },
               cols: ['Sort', 'Paid tiers?', 'Order', 'Why this name'],
               rows: [
                 ['Recommended (default)', 'Yes — the only one', 'Tier group → which field matched → newest auto-refresh. Description-only matches come at the very end.', 'It is our pick for the query: tier, relevance and freshness together. Renamed from “Mới cập nhật” on 2026-09-11 — a list that puts relevance first cannot honestly be called “last updated”.'],
