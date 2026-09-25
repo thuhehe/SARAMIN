@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="760" fill="#ffffff"/>
+
+  <!-- ── Row 1: the three configuration pages ─────────────────────── -->
+  <g id="card-placements">
+    <rect x="60" y="48" width="380" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="84" y="84" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PLACEMENTS</text>
+    <text x="84" y="116" font-size="20" font-weight="600" fill="#1a1d21">Display areas on the site</text>
+    <text x="84" y="146" font-size="15" fill="#4b5563">One row per area — a homepage band,</text>
+    <text x="84" y="170" font-size="15" fill="#4b5563">a search strip, a banner region.</text>
+  </g>
+
+  <g id="card-products">
+    <rect x="560" y="48" width="380" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="584" y="84" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PRODUCTS</text>
+    <text x="584" y="116" font-size="20" font-weight="600" fill="#1a1d21">What is sold</text>
+    <text x="584" y="146" font-size="15" fill="#4b5563">A Job posting product <tspan font-weight="700" fill="#1a1d21">is</tspan> its tier.</text>
+    <text x="584" y="170" font-size="15" fill="#4b5563">Its <tspan font-weight="600" fill="#1a1d21">Placement slots</tspan> say where jobs appear.</text>
+  </g>
+
+  <g id="card-packages">
+    <rect x="1060" y="48" width="380" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1084" y="84" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PACKAGES</text>
+    <text x="1084" y="116" font-size="20" font-weight="600" fill="#1a1d21">Several products, one line</text>
+    <text x="1084" y="146" font-size="15" fill="#4b5563">One price on the quotation; each</text>
+    <text x="1084" y="170" font-size="15" fill="#4b5563">component still provisioned separately.</text>
+  </g>
+
+  <!-- arrows between the cards -->
+  <line x1="442" y1="123" x2="556" y2="123" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="499" y="112" font-size="12.5" fill="#6b7280" text-anchor="middle">an area a tier feeds</text>
+  <line x1="942" y1="123" x2="1056" y2="123" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="999" y="112" font-size="12.5" fill="#6b7280" text-anchor="middle">grouped as components</text>
+
+  <!-- ── Row 2: the sale chain ─────────────────────────────────────── -->
+  <line x1="750" y1="200" x2="750" y2="262" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1250" y1="200" x2="1250" y2="232" stroke="#6b7280" stroke-width="2"/>
+  <line x1="1250" y1="232" x2="770" y2="232" stroke="#6b7280" stroke-width="2"/>
+  <text x="1010" y="224" font-size="12.5" fill="#6b7280" text-anchor="middle">sold on a</text>
+
+  <g id="chain">
+    <rect x="300" y="266" width="900" height="64" rx="32" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="440" y="305" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">QUOTATION</text>
+    <line x1="530" y1="298" x2="600" y2="298" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <text x="750" y="305" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">PURCHASE ORDER</text>
+    <line x1="900" y1="298" x2="970" y2="298" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <text x="1075" y="305" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">VAT INVOICE</text>
+    <text x="750" y="352" font-size="13" fill="#6b7280" text-anchor="middle">CRM · each document is created from the one before it — nothing is retyped</text>
+  </g>
+
+  <!-- ── Row 3: what happens after the invoice ────────────────────── -->
+  <line x1="750" y1="332" x2="750" y2="392" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <g id="step-issued">
+    <rect x="450" y="396" width="600" height="64" rx="12" fill="#1f6feb"/>
+    <text x="750" y="424" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Invoice ISSUED  =  quota granted to the company</text>
+    <text x="750" y="447" font-size="13" fill="#dbe7fd" text-anchor="middle">the only moment a customer receives anything — nothing on the four pages grants by itself</text>
+  </g>
+
+  <line x1="750" y1="462" x2="750" y2="502" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g id="step-publish">
+    <rect x="450" y="506" width="600" height="54" rx="12" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="750" y="540" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">Company publishes a job on that tier  →  one slot spent</text>
+  </g>
+
+  <line x1="750" y1="562" x2="750" y2="602" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g id="step-visible">
+    <rect x="330" y="606" width="840" height="110" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="750" y="640" font-size="18" font-weight="700" fill="#166534" text-anchor="middle">The job appears on the jobseeker site</text>
+    <text x="560" y="672" font-size="15" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">WHERE</tspan> — the areas the tier's</text>
+    <text x="560" y="694" font-size="15" fill="#1a1d21" text-anchor="middle">Placement slots list</text>
+    <line x1="750" y1="656" x2="750" y2="702" stroke="#86efac" stroke-width="1.5"/>
+    <text x="940" y="672" font-size="15" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">IN WHAT ORDER</tspan> — the position the</text>
+    <text x="940" y="694" font-size="15" fill="#1a1d21" text-anchor="middle">Posting ladder gives its tier</text>
+  </g>
+
+  <!-- ── Posting ladder card, feeding the ORDER half ───────────────── -->
+  <g id="card-ladder">
+    <rect x="1230" y="580" width="230" height="136" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1254" y="614" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">POSTING LADDER</text>
+    <text x="1254" y="644" font-size="17" font-weight="600" fill="#1a1d21">Order of paid tiers</text>
+    <text x="1254" y="670" font-size="14" fill="#4b5563">Drag a rung; changes only</text>
+    <text x="1254" y="692" font-size="14" fill="#4b5563">"Recommended" on Job search.</text>
+  </g>
+  <line x1="1228" y1="672" x2="1174" y2="672" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ── Placements feeds the WHERE half (dashed, back-reference) ──── -->
+  <path d="M 250 200 L 250 672 L 326 672" fill="none" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <text x="240" y="440" font-size="12.5" fill="#6b7280" text-anchor="end">the area's shape:</text>
+  <text x="240" y="458" font-size="12.5" fill="#6b7280" text-anchor="end">items shown · pool cap · rotation</text>
+</svg>

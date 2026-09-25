@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="760" fill="#ffffff"/>
+
+  <text x="750" y="44" font-size="19" font-weight="700" fill="#1a1d21" text-anchor="middle">Free data and Customers are ONE company table at two levels of completeness</text>
+  <text x="750" y="68" font-size="14" fill="#6b7280" text-anchor="middle">Moving a company across is completing the record and giving it a sales owner — not a copy to another store</text>
+
+  <!-- ── doors in ──────────────────────────────────────────────────── -->
+  <g font-size="13" fill="#4b5563">
+    <rect x="60" y="92" width="500" height="44" rx="10" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="310" y="112" text-anchor="middle"><tspan font-weight="700" fill="#1a1d21">Doors in:</tspan> Free data → + New company (owner left blank) · bulk import</text>
+    <text x="310" y="128" text-anchor="middle" font-size="12" fill="#6b7280">Admin only. One required field: the company name.</text>
+    <rect x="940" y="92" width="500" height="44" rx="10" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1190" y="112" text-anchor="middle" font-size="12.5"><tspan font-weight="700" fill="#1a1d21">Doors in:</tspan> Customers → + New company · Sign-ups → Create company &amp; activate</text>
+    <text x="1190" y="128" text-anchor="middle" font-size="12" fill="#6b7280">Admin only. Legal name · MST · invoice address · contact · owner.</text>
+  </g>
+  <line x1="310" y1="138" x2="310" y2="164" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1190" y1="138" x2="1190" y2="164" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ── Free data ─────────────────────────────────────────────────── -->
+  <g id="free">
+    <rect x="60" y="168" width="500" height="350" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="84" y="200" font-size="13" font-weight="700" fill="#b45309" letter-spacing="1.6">FREE DATA · TAB OF CUSTOMERS · NO SALES OWNER</text>
+    <text x="84" y="230" font-size="18" font-weight="600" fill="#1a1d21">Required: the company name. Nothing else.</text>
+    <text x="84" y="258" font-size="14" fill="#4b5563">Tax code unverified · counted in no CRM number</text>
+    <text x="84" y="278" font-size="14" fill="#4b5563">cannot carry a quotation, PO or invoice · read-only for reps</text>
+    <text x="84" y="316" font-size="12.5" font-weight="700" fill="#6b7280" letter-spacing="1.2">ROW STATES</text>
+    <g font-size="13.5" font-weight="600">
+      <rect x="84" y="328" width="120" height="30" rx="15" fill="#ffffff" stroke="#d1d5db"/>
+      <text x="144" y="348" fill="#1a1d21" text-anchor="middle">Not claimed</text>
+      <line x1="206" y1="343" x2="226" y2="343" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <rect x="230" y="328" width="190" height="30" rx="15" fill="#fef3c7" stroke="#f59e0b"/>
+      <text x="325" y="348" fill="#92400e" text-anchor="middle">Waiting · step 1 · Admin</text>
+      <line x1="325" y1="360" x2="325" y2="380" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <rect x="230" y="384" width="215" height="30" rx="15" fill="#fef3c7" stroke="#f59e0b"/>
+      <text x="337" y="404" fill="#92400e" text-anchor="middle">Waiting · step 2 · Sales lead</text>
+    </g>
+    <path d="M230,399 L144,399 L144,360" fill="none" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+    <text x="84" y="444" font-size="13" fill="#b91c1c">Rejected at either step → straight back to <tspan font-weight="600">Not claimed</tspan></text>
+    <text x="84" y="462" font-size="13" fill="#b91c1c">(the card shows “Rejected N time(s) before”). Rejection is not a state.</text>
+    <text x="84" y="484" font-size="13" fill="#4b5563">One open request at a time — while one waits,</text>
+    <text x="84" y="502" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Ask for this company</tspan> disappears for everyone else.</text>
+  </g>
+
+  <!-- ── Customers ─────────────────────────────────────────────────── -->
+  <g id="cust">
+    <rect x="940" y="168" width="500" height="350" rx="14" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="964" y="200" font-size="13" font-weight="700" fill="#1f6feb" letter-spacing="1.6">CUSTOMERS · TAB “ASSIGNED” · HAS A SALES OWNER</text>
+    <text x="964" y="230" font-size="18" font-weight="600" fill="#1a1d21">Legal name · MST · invoice address · contact · owner</text>
+    <text x="964" y="258" font-size="14" fill="#4b5563">Counts in every CRM number · quotable · on the pipeline</text>
+    <text x="964" y="278" font-size="14" fill="#4b5563">Every quotation and VAT invoice prints its MST and legal name</text>
+    <text x="964" y="316" font-size="12.5" font-weight="700" fill="#6b7280" letter-spacing="1.2">RUNS ON ITS OWN CLOCK, WHATEVER THE DOOR</text>
+    <g font-size="13.5" font-weight="600">
+      <rect x="964" y="328" width="110" height="30" rx="15" fill="#f3f4f6" stroke="#d1d5db"/>
+      <text x="1019" y="348" fill="#374151" text-anchor="middle">Unverified</text>
+      <line x1="1076" y1="343" x2="1096" y2="343" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <rect x="1100" y="328" width="150" height="30" rx="15" fill="#fef3c7" stroke="#f59e0b"/>
+      <text x="1175" y="348" fill="#92400e" text-anchor="middle">Waiting to verify</text>
+      <line x1="1252" y1="343" x2="1272" y2="343" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <rect x="1276" y="328" width="100" height="30" rx="15" fill="#dbeafe" stroke="#1f6feb"/>
+      <text x="1326" y="348" fill="#1e40af" text-anchor="middle">Verified</text>
+    </g>
+    <text x="964" y="384" font-size="13" fill="#4b5563">Verification (the ERC) gates posting and the official invoice —</text>
+    <text x="964" y="402" font-size="13" fill="#4b5563">it is a different question from ownership, decided by a different button.</text>
+    <text x="964" y="440" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Archived</tspan> is the third tab: the company stops generating work,</text>
+    <text x="964" y="458" font-size="13" fill="#4b5563">with a reason from a fixed list. Reversible with Restore.</text>
+    <text x="964" y="484" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Return to the pool</tspan> releases the owner → the row is</text>
+    <text x="964" y="502" font-size="13" fill="#4b5563">Free data again, with its Owner history intact.</text>
+  </g>
+
+  <!-- ── crossings ─────────────────────────────────────────────────── -->
+  <g id="pathA">
+    <line x1="562" y1="250" x2="936" y2="250" stroke="#1f6feb" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+    <text x="750" y="222" font-size="13" font-weight="700" fill="#1f6feb" text-anchor="middle" letter-spacing="1.2">A · THE CLAIM — TWO APPROVALS, IN ORDER</text>
+    <text x="750" y="240" font-size="12" fill="#4b5563" text-anchor="middle">Rep asks → Admin approves (step 1 — creates nothing)</text>
+    <text x="750" y="272" font-size="12" fill="#4b5563" text-anchor="middle">→ Sales lead approves (step 2) <tspan font-weight="700" fill="#1a1d21">= the write</tspan></text>
+    <text x="750" y="290" font-size="12" fill="#4b5563" text-anchor="middle">owner set · contact #1 filed · leaves Free data</text>
+  </g>
+  <g id="pathB">
+    <line x1="562" y1="370" x2="936" y2="370" stroke="#1f6feb" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+    <text x="750" y="342" font-size="13" font-weight="700" fill="#1f6feb" text-anchor="middle" letter-spacing="1.2">B · ASSIGN DIRECTLY · ADMIN</text>
+    <text x="750" y="360" font-size="12" fill="#4b5563" text-anchor="middle">Pick a rep → Assign now. No approval chain.</text>
+    <text x="750" y="392" font-size="12" fill="#4b5563" text-anchor="middle">An open request is auto-rejected, with a note.</text>
+  </g>
+  <g id="pathBack">
+    <line x1="936" y1="470" x2="562" y2="470" stroke="#b45309" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowAmber)"/>
+    <text x="750" y="446" font-size="13" font-weight="700" fill="#b45309" text-anchor="middle" letter-spacing="1.2">RETURN TO THE POOL</text>
+    <text x="750" y="490" font-size="12" fill="#4b5563" text-anchor="middle">Owner released — an entry in Owner history.</text>
+    <text x="750" y="507" font-size="12" fill="#4b5563" text-anchor="middle">The row returns with its past visible.</text>
+  </g>
+
+  <!-- ── the MST gate ──────────────────────────────────────────────── -->
+  <g id="gate">
+    <rect x="60" y="534" width="1380" height="78" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="84" y="562" font-size="14" font-weight="700" fill="#92400e">THE MST GATE sits on the button that CREATES the owner record — Approve · Sales lead and Assign now — never on the Admin's step-1 pass, which creates nothing.</text>
+    <text x="84" y="586" font-size="13.5" fill="#78350f">No tax code on the record → the button is disabled (“Fill in the tax code” → Overview tab) · a duplicate blocks and names the other company · Reject is always possible.</text>
+    <text x="84" y="604" font-size="13.5" fill="#78350f">The tax code lives in ONE place, the record itself — the approval cards read it and never carry their own input. A foreign company has no Vietnamese MST and is not blocked.</text>
+  </g>
+
+  <!-- ── two notes ─────────────────────────────────────────────────── -->
+  <g font-size="13" fill="#4b5563">
+    <rect x="60" y="636" width="670" height="96" rx="12" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="84" y="664" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.2">WHERE THE DECISION IS MADE</text>
+    <text x="84" y="688">On the company's own record → tab <tspan font-weight="600" fill="#1a1d21">Claim requests</tspan>: the request card with reason,</text>
+    <text x="84" y="706">evidence, contact point, an optional note to the rep, and Approve / Reject.</text>
+    <text x="84" y="724">The header banner on the record offers “Review request (step) →”.</text>
+    <rect x="770" y="636" width="670" height="96" rx="12" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="794" y="664" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.2">WHERE THE REP READS THE OUTCOME</text>
+    <text x="794" y="688"><tspan font-weight="600" fill="#1a1d21">CRM → Claim requests</tspan> (/crm/company-claims) is a LOG: status, who decided, when,</text>
+    <text x="794" y="706">and the admin's note verbatim. It has <tspan font-weight="600" fill="#1a1d21">no Approve / Reject buttons — on purpose</tspan>.</text>
+    <text x="794" y="724">One place to decide, or two places disagree.</text>
+  </g>
+</svg>

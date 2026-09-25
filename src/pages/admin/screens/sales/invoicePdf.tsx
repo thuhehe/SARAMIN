@@ -54,11 +54,15 @@ function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
   const pack = QUOTE_CATALOG[inv.product]
   /* No discount column exists on a VAT invoice. `calc` carries the lines with
      every discount already folded into đơn giá — see invoiceLinesFrom. */
-  const rows = inv.calc
-    ? inv.calc.lines.map((l) => ({ name: l.name, unit: l.unitVi, qty: l.qty, price: fmtUnit(l.invUnit), amt: l.invNet }))
-    : [{ name: pack.vi, unit: pack.unitVi, qty: inv.qty, price: pdfNum(Math.round(Math.round(inv.total / (1 + VAT_RATE / 100)) / inv.qty)), amt: Math.round(inv.total / (1 + VAT_RATE / 100)) }]
   const sub = inv.calc ? inv.calc.base : Math.round(inv.total / (1 + VAT_RATE / 100))
   const vat = inv.total - sub
+  /* Per-line VAT is ALLOCATED from the frozen total (last line takes the
+     remainder), never recomputed as rate × line — otherwise 257 + 592 = 849 on an
+     invoice whose total tax is 850, and the rate-summary block below stops
+     reconciling with its own lines. */
+  const rows = inv.calc
+    ? inv.calc.lines.map((l) => ({ name: l.name, unit: l.unitVi, qty: l.qty, price: fmtUnit(l.invUnit), amt: l.invNet, tax: l.invVat }))
+    : [{ name: pack.vi, unit: pack.unitVi, qty: inv.qty, price: pdfNum(Math.round(sub / inv.qty)), amt: sub, tax: vat }]
   const official = inv.step === 'issued'
   const bt = BUYER_TYPE[co?.buyerType ?? 'dn-vn']
   // The provider allocates the number only when the invoice is made official.
@@ -170,9 +174,7 @@ function InvoicePdfDoc({ inv, co }: { inv: Inv; co?: Company }) {
           </div>
           <div className="min-h-[96px] border-b border-slate-400">
             {rows.map((r, i) => {
-              /* Per-line VAT and payable, so the provider's columns 7–9 are filled
-                 on every row; the summary block below carries the totals. */
-              const lineVat = Math.round(r.amt * VAT_RATE / 100)
+              const lineVat = r.tax
               return (
                 <div key={i} className={cn('grid', i > 0 && 'border-t border-slate-200')} style={{ gridTemplateColumns: COLS }}>
                   <Cell className="text-center">{i + 1}</Cell>

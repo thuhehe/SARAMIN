@@ -356,8 +356,8 @@ function ApplyScreen() {
                     </span>
                   </label>
                 ))}
-                {/* The SAME qualification rule as every other CV (≥1 experience — or
-                    ≥1 education entry AND ≥1 project for a fresher), but the strict
+                {/* The SAME qualification rule as every other CV (≥1 experience OR
+                    ≥1 education entry), but the strict
                     consequence: a SARAMIN CV below it cannot be sent, because we
                     generate that document ourselves. VNW pattern — greyed,
                     unselectable, missing fields NAMED, one link into the editor. */}
@@ -1226,11 +1226,11 @@ function CreateCvScreen() {
 
         {/* ── right rail — THE RULE, not a percentage, then the item list ──
             "CV completeness 85%" is gone (2026-09-11). A percentage cannot express
-            an OR-rule — nothing a bar can show says "you need X, or Y and Z
-            together" — so it was always going to disagree with the gate; the
-            design shipped reading "100% · your CV is ready!" over ten empty
-            sections. The rail now draws the rule itself: two rows, "hoặc" between
-            them, "và" inside the second. One representation, so it cannot drift. */}
+            an OR-rule — nothing a bar can show says "you need X, or Y" — so it was
+            always going to disagree with the gate; the design shipped reading
+            "100% · your CV is ready!" over ten empty sections. The rail now draws
+            the rule itself: two rows with "hoặc" between them. One representation,
+            so it cannot drift. */}
         <div className="space-y-3 self-start">
           <div className="rounded-xl border border-line bg-surface p-4">
             <p className="text-[13px] font-bold text-ink">Điều kiện để dùng CV</p>
@@ -1242,12 +1242,11 @@ function CreateCvScreen() {
               <span className="cursor-pointer text-[11px] font-semibold text-brand">Thêm →</span>
             </div>
             <p className="my-0.5 text-[10.5px] text-faint">hoặc</p>
+            {/* ONE ENTRY, NOT TWO (2026-09-25): the second branch was "Học vấn và Dự
+                án". Projects left the rule, so the "và" row collapses to a single
+                item and the rail draws a flat two-way OR. */}
             <div className="flex items-center justify-between text-[12px] text-ink">
-              <span className="flex items-center gap-1.5">
-                <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Học vấn
-                <span className="text-[10.5px] text-faint">và</span>
-                <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Dự án
-              </span>
+              <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-line" />Học vấn</span>
               <span className="cursor-pointer text-[11px] font-semibold text-brand">Thêm →</span>
             </div>
             {/* Skills are a NUDGE here, not a gate — left the rule 2026-09-11. Still
@@ -1303,7 +1302,7 @@ function CreateCvScreen() {
 /* ── Admin / CRM screens (HQ Admin console) ──────────────────────────────── */
 
 function AdminBar({ active }: { active?: string }) {
-  const items = ['Dashboard', 'Companies', 'Jobs', 'Sales', 'Settings']
+  const items = ['Dashboard', 'Companies', 'Jobs', 'Users', 'Sales', 'Settings']
   return (
     <div className="flex items-center gap-4 border-b border-line px-5 py-2.5 bg-surface">
       <span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[11px] font-bold text-white">S</span>
@@ -2227,13 +2226,13 @@ function MyCvsScreen() {
      which is the reason the row shows them at all: it is how a candidate compares
      their CVs and decides which one employers should find. */
   /* `missing` = the APPLY-ELIGIBLE gate (see Resume management): a Saramin CV
-     needs ≥1 experience (or ≥1 education entry AND ≥1 project for a fresher)
+     needs ≥1 experience OR ≥1 education entry
      before it can be SENT with an application. The label shows HERE, on the
      shelf, so the candidate learns it before the apply modal greys the row.
      It does not touch the searchable flag — an incomplete CV can still be
      the one employers find. */
-  /* `indexStatus` — CV SEARCH only. ONE rule qualifies a CV (≥1 experience, or
-     education + a project for a fresher), read off the fields an upload is parsed into
+  /* `indexStatus` — CV SEARCH only. ONE rule qualifies a CV (≥1 experience OR ≥1 education
+     entry — projects left the rule 2026-09-25), read off the fields an upload is parsed into
      at UPLOAD time. An uploaded CV that fails is NOT blocked from applying —
      that would punish the candidate for our parser — it simply waits outside
      the index until a reviewer clears it. Decided: no auto-pass, so the
@@ -4236,6 +4235,401 @@ function SignUpScreen() {
   )
 }
 
+/* ── Admin · Users — the deleted-account record ──────────────────────────────
+   The erased state of the Jobseeker users screens. Every PII field is already
+   gone here: what the page still shows is the RECORD of the erasure plus the
+   rows that outlive it (money and the employer's pipeline). What may be kept
+   and what must go is a table in the requirement, not a caption on a mockup. */
+
+/** Breadcrumb + page heading shared by the two Users screens. */
+function AdminCrumb({ trail }: { trail: string[] }) {
+  return (
+    <div className="flex items-center gap-1.5 border-b border-line-soft bg-canvas/40 px-5 py-2 text-[11.5px] text-muted">
+      {trail.map((t, i) => (
+        <span key={t} className="flex items-center gap-1.5">
+          <span className={cn(i === trail.length - 1 && 'font-medium text-ink')}>{t}</span>
+          {i < trail.length - 1 && <span className="text-faint">/</span>}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+const DELETED_ROWS = [
+  { id: 'CAND-8F42C1', at: '21/09/2026 09:26', by: 'Withdrawn', reason: 'Đã tìm được việc', apps: 14, unlocks: 6, notified: 4, purge: 'Purged' },
+  { id: 'CAND-3B07A9', at: '20/09/2026 17:02', by: 'Withdrawn', reason: 'Không còn nhu cầu', apps: 2, unlocks: 0, notified: 1, purge: 'Purged' },
+  { id: 'CAND-91D5E4', at: '20/09/2026 11:40', by: 'HQ', reason: 'Fake profile — same photo as 3 other accounts', apps: 0, unlocks: 0, notified: 0, purge: 'Purged' },
+  { id: 'CAND-5C1188', at: '19/09/2026 08:15', by: 'Withdrawn', reason: 'Quyền riêng tư', apps: 7, unlocks: 3, notified: 3, purge: 'Pending' },
+  { id: 'CAND-2A6F30', at: '18/09/2026 14:55', by: 'HQ', reason: 'Spam applications', apps: 41, unlocks: 1, notified: 9, purge: 'Failed' },
+]
+
+function AdminDeletedListScreen() {
+  const go = useNav()
+  return (
+    <div>
+      <AdminBar active="Users" />
+      <AdminCrumb trail={['User', 'Deleted accounts']} />
+      <div className="flex items-start justify-between px-5 py-3">
+        <div>
+          <p className="text-[15px] font-bold">Deleted accounts</p>
+          <p className="text-[11.5px] text-muted">Jobseeker accounts that have ended. A row here is a record of an erasure — it is never an account that can come back.</p>
+        </div>
+        <Btn>Export erasure log</Btn>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-y border-line-soft px-5 py-2 text-[11px] text-muted">
+        <span className="rounded-md border border-line px-2 py-1 text-faint">Search by candidate ID…</span>
+        <span className="rounded-md border border-line px-2 py-1">Deleted by: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Purge status: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Deleted: last 30 days</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11.5px]" style={{ minWidth: 860 }}>
+          <thead>
+            <tr className="border-b border-line bg-canvas/40 text-left text-[10.5px] uppercase tracking-wide text-faint">
+              <th className="px-5 py-2 font-semibold">Candidate ID</th>
+              <th className="px-3 py-2 font-semibold">Deleted at</th>
+              <th className="px-3 py-2 font-semibold">Deleted by</th>
+              <th className="px-3 py-2 font-semibold">Reason</th>
+              <th className="px-3 py-2 text-right font-semibold">Apps</th>
+              <th className="px-3 py-2 text-right font-semibold">Unlocks</th>
+              <th className="px-3 py-2 text-right font-semibold">Notified</th>
+              <th className="px-3 py-2 font-semibold">Purge</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DELETED_ROWS.map((r, i) => (
+              <tr
+                key={r.id}
+                onClick={i === 0 ? () => go('admin-deleted-detail') : undefined}
+                className={cn('border-b border-line-soft last:border-0', i === 0 && 'cursor-pointer hover:bg-brand-soft/40')}
+              >
+                <td className="px-5 py-2.5">
+                  <span className={cn('font-mono text-[11px] font-semibold', i === 0 ? 'text-brand' : 'text-ink')}>{r.id}</span>
+                </td>
+                <td className="px-3 py-2.5 text-muted">{r.at}</td>
+                <td className="px-3 py-2.5"><Chip tone={r.by === 'HQ' ? 'amber' : 'muted'}>{r.by}</Chip></td>
+                <td className="max-w-[190px] truncate px-3 py-2.5 text-muted">{r.reason}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{r.apps}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{r.unlocks}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{r.notified}</td>
+                <td className="px-3 py-2.5">
+                  <Chip tone={r.purge === 'Purged' ? 'green' : r.purge === 'Pending' ? 'blue' : 'rose'}>{r.purge}</Chip>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-5 py-3 text-[11px] text-faint">
+        The name and email columns of <b>Jobseeker users</b> are deliberately absent — both are erased by the time a row reaches this list. Click <b className="text-brand">CAND-8F42C1</b> to open the record.
+      </p>
+    </div>
+  )
+}
+
+function AdminDeletedDetailScreen() {
+  const go = useNav()
+  const tiles: [string, string][] = [
+    ['CVs at deletion', '2'],
+    ['Applications', '14'],
+    ['CV unlocks', '6'],
+    ['Joined', '12/03/2025'],
+    ['Last login', '21/09/2026'],
+    ['Purged at', '21/09/2026'],
+  ]
+  /* [label, value, verdict] — the verdict is the column a reader actually needs
+     here. "Erased" and "Reserved" both render as a token rather than a name, and
+     without the chip the email row looks like data we forgot to delete. */
+  const account: [string, string, 'erased' | 'reserved' | 'kept'][] = [
+    ['FULL NAME', '(erased)', 'erased'],
+    ['EMAIL (LOGIN)', 'erased-8f42c1@erased.invalid', 'reserved'],
+    ['EMAIL VERIFIED', 'No — the address was never proven', 'kept'],
+    ['PROVEN BY', 'Phone only', 'kept'],
+    ['SIGN-UP METHOD', 'Email + password', 'kept'],
+    ['PHONE', '(erased)', 'erased'],
+    ['LOCATION', '(erased)', 'erased'],
+  ]
+  const record: [string, string][] = [
+    ['REQUEST RECEIVED', '21/09/2026 09:26 · in-app'],
+    ['REQUEST VERIFIED', '21/09/2026 09:26 · OTP to registered email'],
+    ['DELETED BY', 'The seeker (withdrawal)'],
+    ['REASON', 'Đã tìm được việc'],
+    ['PURGED AT', '21/09/2026 11:04'],
+    ['EMPLOYERS NOTIFIED', '4 of 4 · last sent 09:31'],
+  ]
+  const unlocks = [
+    ['FPT Software', 'CV #1', '18/09/2026', '1', 'Retained'],
+    ['MoMo', 'CV #1', '12/09/2026', '1', 'Retained'],
+    ['Shopee', 'CV #1', '02/08/2026', '1', 'Retained'],
+    ['Tiki', 'CV #2', '28/07/2026', '1', '—'],
+  ]
+  const apps = [
+    ['Senior Frontend Engineer (ReactJS)', 'FPT Software', 'Withdrawn', '21/09/2026'],
+    ['Product Manager', 'MoMo', 'Withdrawn', '16/09/2026'],
+    ['Backend Engineer (Go)', 'Shopee', 'Rejected', '21/07/2026'],
+  ]
+  return (
+    <div>
+      <AdminBar active="Users" />
+      <AdminCrumb trail={['User', 'Deleted accounts', 'CAND-8F42C1']} />
+      <div className="px-5 py-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-[17px] font-bold text-muted">(erased)</p>
+              <Chip tone="rose">Deleted</Chip>
+              <span className="font-mono text-[11px] text-faint">CAND-8F42C1</span>
+            </div>
+            <p className="mt-0.5 text-[11.5px] text-muted">Deleted 21/09/2026 by the seeker · erasure completed 11:04</p>
+          </div>
+          <div className="flex gap-2">
+            <Btn onClick={() => go('admin-deleted-list')}>← Back to list</Btn>
+            <Btn>Export erasure record</Btn>
+          </div>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {tiles.map(([k, v]) => (
+            <div key={k} className="rounded-lg border border-line px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-faint">{k}</p>
+              <p className="mt-0.5 text-[14px] font-bold tabular-nums">{v}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-line p-4">
+            <p className="mb-2 text-[12px] font-bold">Account <span className="font-normal text-faint">after erasure</span></p>
+            {account.map(([k, v, verdict]) => (
+              <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line-soft py-1.5 last:border-0">
+                <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint">{k}</span>
+                <span className="flex min-w-0 items-center justify-end gap-1.5 text-right">
+                  <span className={cn('truncate text-[12px]', verdict === 'kept' ? 'font-medium text-ink' : 'italic text-faint')}>{v}</span>
+                  {verdict === 'reserved' && <Chip tone="green">Reserved</Chip>}
+                </span>
+              </div>
+            ))}
+            <p className="mt-2 text-[11px] text-faint">
+              The login address is the one thing deliberately NOT thrown away. It is kept as a one-way token in the same unique column, so the address stays taken for ever and a second sign-up with it is refused — while nobody, HQ included, can read it back.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-line p-4">
+            <p className="mb-2 text-[12px] font-bold">Deletion record <span className="font-normal text-faint">retained</span></p>
+            {record.map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line-soft py-1.5 last:border-0">
+                <span className="text-[10px] uppercase tracking-wide text-faint">{k}</span>
+                <span className="text-right text-[12px] font-medium text-ink">{v}</span>
+              </div>
+            ))}
+            <div className="mt-2 rounded-md bg-brand-soft px-2.5 py-1.5 text-[11px] text-brand">There is no Restore control on this screen once the record is purged.</div>
+          </div>
+        </div>
+
+        <p className="mt-5 mb-2 text-[12px] font-bold">CV unlocks <span className="font-normal text-faint">kept — the employer paid for these</span></p>
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full text-[11.5px]" style={{ minWidth: 560 }}>
+            <thead>
+              <tr className="border-b border-line bg-canvas/40 text-left text-[10.5px] uppercase tracking-wide text-faint">
+                <th className="px-3 py-2 font-semibold">Company</th>
+                <th className="px-3 py-2 font-semibold">CV</th>
+                <th className="px-3 py-2 font-semibold">Unlocked</th>
+                <th className="px-3 py-2 text-right font-semibold">Credits</th>
+                <th className="px-3 py-2 font-semibold">Delivered file</th>
+              </tr>
+            </thead>
+            <tbody>
+              {unlocks.map((u) => (
+                <tr key={u[0]} className="border-b border-line-soft last:border-0">
+                  <td className="px-3 py-2 font-medium text-ink">{u[0]}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted">{u[1]}</td>
+                  <td className="px-3 py-2 text-muted">{u[2]}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{u[3]}</td>
+                  <td className="px-3 py-2">{u[4] === 'Retained' ? <Chip tone="blue">Retained</Chip> : <span className="text-faint">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-1.5 text-[11px] text-faint">No refund: the employer received the CV and keeps it under their own consent form. CV titles are replaced by a reference — a file name carries the person's name.</p>
+
+        <p className="mt-5 mb-2 text-[12px] font-bold">Applications <span className="font-normal text-faint">de-linked, kept for the employer's pipeline</span></p>
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full text-[11.5px]" style={{ minWidth: 560 }}>
+            <thead>
+              <tr className="border-b border-line bg-canvas/40 text-left text-[10.5px] uppercase tracking-wide text-faint">
+                <th className="px-3 py-2 font-semibold">Job</th>
+                <th className="px-3 py-2 font-semibold">Company</th>
+                <th className="px-3 py-2 font-semibold">Stage</th>
+                <th className="px-3 py-2 font-semibold">Applied</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map((a) => (
+                <tr key={a[0]} className="border-b border-line-soft last:border-0">
+                  <td className="px-3 py-2 font-medium text-ink">{a[0]}</td>
+                  <td className="px-3 py-2 text-muted">{a[1]}</td>
+                  <td className="px-3 py-2"><Chip tone={a[2] === 'Withdrawn' ? 'rose' : 'muted'}>{a[2]}</Chip></td>
+                  <td className="px-3 py-2 text-muted">{a[3]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-1.5 text-[11px] text-faint">The employer's own screen shows these as “Deleted candidate”. There is no CV link and no contact control on either side.</p>
+      </div>
+    </div>
+  )
+}
+
+/** Admin ▸ Applicants — one row belongs to a candidate who has since deleted
+    their account. The row is the point: it stays, it keeps the job, the company
+    and the date, and it has lost the person. */
+function AdminApplicantsDeletedScreen() {
+  const go = useNav()
+  const rows: { job: string; co: string; who: string; ref?: string; stage: string; tone: 'muted' | 'green' | 'blue' | 'amber' | 'rose'; at: string; gone?: boolean }[] = [
+    { job: 'Senior Frontend Engineer (ReactJS)', co: 'FPT Software', who: 'Trần Minh Quân', stage: 'Interview', tone: 'amber', at: '19/09/2026' },
+    { job: 'Senior Frontend Engineer (ReactJS)', co: 'FPT Software', who: '(erased)', ref: 'CAND-8F42C1', stage: 'Withdrawn', tone: 'rose', at: '19/09/2026', gone: true },
+    { job: 'Product Manager', co: 'MoMo', who: '(erased)', ref: 'CAND-8F42C1', stage: 'Withdrawn', tone: 'rose', at: '16/09/2026', gone: true },
+    { job: 'Product Manager', co: 'MoMo', who: 'Lê Thu Hằng', stage: 'Screening', tone: 'blue', at: '15/09/2026' },
+    { job: 'Backend Engineer (Go)', co: 'Shopee', who: '(erased)', ref: 'CAND-8F42C1', stage: 'Rejected', tone: 'muted', at: '21/07/2026', gone: true },
+  ]
+  return (
+    <div>
+      <AdminBar active="Users" />
+      <AdminCrumb trail={['Recruitment', 'Applicants']} />
+      <div className="flex items-start justify-between px-5 py-3">
+        <div>
+          <p className="text-[15px] font-bold">Applicants</p>
+          <p className="text-[11.5px] text-muted">Every application across every company. HQ never moves a stage — that is the employer's call.</p>
+        </div>
+        <Btn>Export</Btn>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-y border-line-soft px-5 py-2 text-[11px] text-muted">
+        <span className="rounded-md border border-line px-2 py-1 text-faint">Search by job or company…</span>
+        <span className="rounded-md border border-line px-2 py-1">Company: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Stage: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1 text-faint">Candidate: not searchable</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11.5px]" style={{ minWidth: 760 }}>
+          <thead>
+            <tr className="border-b border-line bg-canvas/40 text-left text-[10.5px] uppercase tracking-wide text-faint">
+              <th className="px-5 py-2 font-semibold">Job</th>
+              <th className="px-3 py-2 font-semibold">Company</th>
+              <th className="px-3 py-2 font-semibold">Candidate</th>
+              <th className="px-3 py-2 font-semibold">Stage</th>
+              <th className="px-3 py-2 font-semibold">Applied</th>
+              <th className="px-3 py-2 font-semibold">CV</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className={cn('border-b border-line-soft last:border-0', r.gone && 'bg-canvas/40')}>
+                <td className="px-5 py-2.5 font-medium text-ink">{r.job}</td>
+                <td className="px-3 py-2.5 text-muted">{r.co}</td>
+                <td className="px-3 py-2.5">
+                  {r.gone ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="italic text-faint">{r.who}</span>
+                      <span onClick={() => go('admin-deleted-detail')} className="cursor-pointer font-mono text-[10.5px] text-brand hover:underline">{r.ref}</span>
+                    </span>
+                  ) : (
+                    <span className="text-ink">{r.who}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5"><Chip tone={r.tone}>{r.stage}</Chip></td>
+                <td className="px-3 py-2.5 text-muted">{r.at}</td>
+                <td className="px-3 py-2.5">{r.gone ? <span className="text-faint">—</span> : <span className="text-brand">Open CV</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-5 py-3 text-[11px] text-faint">
+        The row survives the erasure — the job, the company, the stage and the date are the employer's record, not the candidate's. What it loses is the person: no name, no CV link, and the candidate reference is the only way back, to the <b className="text-brand">deletion record</b>. An in-progress application reads <b>Withdrawn</b>; a terminal one keeps the stage it ended in.
+      </p>
+    </div>
+  )
+}
+
+/** Admin ▸ CV search usage — the money view. A deletion must not be able to
+    remove a row a company paid for. */
+function AdminCvUsageDeletedScreen() {
+  const go = useNav()
+  const rows: { co: string; who: string; ref?: string; cv: string; at: string; by: string; credits: string; gone?: boolean; orphan?: boolean }[] = [
+    { co: 'FPT Software', who: 'Trần Minh Quân', cv: 'CV tiếng Việt', at: '19/09/2026 10:12', by: 'Linh Trần', credits: '1' },
+    { co: 'FPT Software', who: '(erased)', ref: 'CAND-8F42C1', cv: 'CV #1', at: '18/09/2026 14:40', by: 'Linh Trần', credits: '1', gone: true },
+    { co: 'MoMo', who: '(erased)', ref: 'CAND-8F42C1', cv: 'CV #1', at: '12/09/2026 09:05', by: 'Đặng Hòa', credits: '1', gone: true },
+    { co: 'Tiki', who: '(erased)', ref: 'CAND-8F42C1', cv: 'CV #2', at: '28/07/2026 16:21', by: 'Vũ Nam', credits: '1', gone: true, orphan: true },
+    { co: 'Shopee', who: 'Phạm Quốc Bảo', cv: 'Backend CV', at: '22/07/2026 11:33', by: 'Trịnh Mai', credits: '1' },
+  ]
+  return (
+    <div>
+      <AdminBar active="Users" />
+      <AdminCrumb trail={['Products & packages', 'CV search usage']} />
+      <div className="flex items-start justify-between px-5 py-3">
+        <div>
+          <p className="text-[15px] font-bold">CV search usage</p>
+          <p className="text-[11.5px] text-muted">Every unlock, and the credit it cost. One unlock = 1 credit.</p>
+        </div>
+        <Btn>Export</Btn>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-y border-line-soft px-5 py-2 text-[11px] text-muted">
+        <span className="rounded-md border border-line px-2 py-1">Company: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Unlocked by: ALL</span>
+        <span className="rounded-md border border-line px-2 py-1">Period: last 90 days</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11.5px]" style={{ minWidth: 820 }}>
+          <thead>
+            <tr className="border-b border-line bg-canvas/40 text-left text-[10.5px] uppercase tracking-wide text-faint">
+              <th className="px-5 py-2 font-semibold">Company</th>
+              <th className="px-3 py-2 font-semibold">Candidate</th>
+              <th className="px-3 py-2 font-semibold">CV</th>
+              <th className="px-3 py-2 font-semibold">Unlocked at</th>
+              <th className="px-3 py-2 font-semibold">By</th>
+              <th className="px-3 py-2 text-right font-semibold">Credits</th>
+              <th className="px-3 py-2 font-semibold">Refund</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className={cn('border-b border-line-soft last:border-0', r.gone && 'bg-canvas/40')}>
+                <td className="px-5 py-2.5 font-medium text-ink">{r.co}</td>
+                <td className="px-3 py-2.5">
+                  {r.gone ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="italic text-faint">{r.who}</span>
+                      <span onClick={() => go('admin-deleted-detail')} className="cursor-pointer font-mono text-[10.5px] text-brand hover:underline">{r.ref}</span>
+                    </span>
+                  ) : (
+                    <span className="text-ink">{r.who}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 font-mono text-[11px] text-muted">
+                  {r.cv}
+                  {r.orphan && <span className="ml-1.5 align-middle"><Chip tone="amber">CV erased</Chip></span>}
+                </td>
+                <td className="px-3 py-2.5 text-muted">{r.at}</td>
+                <td className="px-3 py-2.5 text-muted">{r.by}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{r.credits}</td>
+                <td className="px-3 py-2.5 text-faint">None</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mx-5 my-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-800">
+        <b>“CV erased” means the CV itself no longer exists</b> — Tiki unlocked it through Resume search and it was never submitted with an application, so the purge deleted it outright. Only the paid unlock survives, which is why the row still reads CV #2 rather than a link.
+        <br />
+        <b>The row is drawn here because the build loses it today.</b> The unlock is tied to the CV with a cascading delete, so deleting the CV deletes the unlock with it — while the 1-credit deduction stays in the ledger. Tiki ends up charged with no record of what it bought. The fix is to anonymise the unlock instead of letting it cascade.
+      </div>
+      <p className="px-5 pb-4 text-[11px] text-faint">No unlock is ever refunded by an account deletion: the employer received the CV and keeps it under their own consent form. A Saramin CV recall is the opposite case — our mistake, so it refunds the credit.</p>
+    </div>
+  )
+}
+
 /* ── Registry ────────────────────────────────────────────────────────────── */
 
 export interface Screen {
@@ -4270,6 +4664,11 @@ export const SCREENS: Screen[] = [
   { id: 'crm-activate', site: 'Admin · CRM', title: '3 · Create account', url: 'admin/accounts/new', Comp: CrmActivateScreen },
   { id: 'crm-products', site: 'Admin · CRM', title: '4 · Choose products', url: 'admin/accounts/vanphat/products', Comp: CrmProductsScreen },
   { id: 'crm-company-page', site: 'Admin · CRM', title: '5 · Company detail page', url: 'admin/companies/vanphat/profile', Comp: CrmCompanyPageScreen },
+  // Admin / Users — what is left of a jobseeker after they delete the account
+  { id: 'admin-deleted-list', site: 'Admin · Users', title: 'Deleted accounts — list', url: 'admin/users/deleted-accounts', Comp: AdminDeletedListScreen },
+  { id: 'admin-deleted-detail', site: 'Admin · Users', title: 'Deleted account — detail', url: 'admin/users/deleted-accounts/CAND-8F42C1', Comp: AdminDeletedDetailScreen },
+  { id: 'admin-applicants-deleted', site: 'Admin · Users', title: 'Applicants — a deleted candidate\u2019s rows', url: 'admin/recruitment/applicants', Comp: AdminApplicantsDeletedScreen },
+  { id: 'admin-cv-usage-deleted', site: 'Admin · Users', title: 'CV search usage — after a deletion', url: 'admin/products/cv-search-usage', Comp: AdminCvUsageDeletedScreen },
 ]
 
 /** One canvas that swaps screens — driven entirely by clicks inside each screen.

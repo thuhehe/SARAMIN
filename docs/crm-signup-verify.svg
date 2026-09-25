@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="780" viewBox="0 0 1500 780" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="780" fill="#ffffff"/>
+
+  <text x="750" y="40" font-size="19" font-weight="700" fill="#1a1d21" text-anchor="middle">Sign-up and company verification — two gates, in order</text>
+  <text x="750" y="62" font-size="14" fill="#6b7280" text-anchor="middle">Gate ① Placement opens sign-in. Gate ② Verification opens posting a job and requesting the official invoice. Nothing else is locked behind either.</text>
+
+  <!-- lanes -->
+  <rect x="40" y="84" width="1420" height="250" rx="14" fill="#f9fafb" stroke="#e6e8ec"/>
+  <text x="60" y="110" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">COMPANY SITE · THE EMPLOYER</text>
+  <rect x="40" y="430" width="1420" height="250" rx="14" fill="#eef4fd" stroke="#c7d7f7"/>
+  <text x="60" y="456" font-size="13" font-weight="700" fill="#1f6feb" letter-spacing="1.6">ADMIN CONSOLE · SARAMIN</text>
+
+  <!-- gate lines -->
+  <line x1="700" y1="84" x2="700" y2="680" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="612" y="368" width="176" height="46" rx="10" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="700" y="387" font-size="12.5" font-weight="700" fill="#b45309" text-anchor="middle" letter-spacing="1.2">GATE ① PLACEMENT</text>
+  <text x="700" y="405" font-size="12.5" fill="#78350f" text-anchor="middle">opens sign-in</text>
+
+  <line x1="1270" y1="84" x2="1270" y2="680" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="1166" y="368" width="208" height="46" rx="10" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="1270" y="387" font-size="12.5" font-weight="700" fill="#b45309" text-anchor="middle" letter-spacing="1.2">GATE ② VERIFICATION</text>
+  <text x="1270" y="405" font-size="12.5" fill="#78350f" text-anchor="middle">opens Post job + official invoice</text>
+
+  <!-- ── employer steps ────────────────────────────────────────────── -->
+  <g id="s1">
+    <rect x="70" y="140" width="270" height="112" rx="12" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="90" y="168" font-size="16" font-weight="700" fill="#1a1d21">① Sign up</text>
+    <text x="90" y="192" font-size="13" fill="#4b5563">Step Company: MST (Verify looks it up),</text>
+    <text x="90" y="210" font-size="13" fill="#4b5563">Company abroad?, ERC upload (optional).</text>
+    <text x="90" y="228" font-size="12.5" fill="#4b5563">Step Account: name, email, phone, password.</text>
+    <text x="90" y="246" font-size="12" fill="#6b7280">Nothing exists yet: no login, no company, no row.</text>
+  </g>
+  <line x1="342" y1="196" x2="358" y2="196" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="s2">
+    <rect x="362" y="140" width="270" height="112" rx="12" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="382" y="168" font-size="16" font-weight="700" fill="#1a1d21">② Verify the email</text>
+    <text x="382" y="192" font-size="13" fill="#4b5563">The link proves the address — that is all.</text>
+    <text x="382" y="210" font-size="13" fill="#4b5563">Still no login and no company.</text>
+    <text x="382" y="228" font-size="13" fill="#4b5563">One row appears on Admin → Sign-ups.</text>
+    <text x="382" y="246" font-size="12.5" fill="#6b7280">“Saramin sets your account up — 1 business day.”</text>
+  </g>
+  <g id="s4">
+    <rect x="730" y="140" width="270" height="112" rx="12" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="750" y="168" font-size="16" font-weight="700" fill="#1a1d21">④ Sign in</text>
+    <text x="750" y="192" font-size="13" fill="#4b5563">Activation email → the console, using</text>
+    <text x="750" y="210" font-size="13" fill="#4b5563">the password chosen at ①.</text>
+    <text x="750" y="228" font-size="13" fill="#4b5563">Tag beside the company: <tspan font-weight="600" fill="#374151">Unverified</tspan>.</text>
+    <text x="750" y="246" font-size="12" fill="#b91c1c">Post job disabled — the page asks for the ERC.</text>
+  </g>
+  <line x1="1002" y1="196" x2="1016" y2="196" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="s5">
+    <rect x="1020" y="140" width="230" height="112" rx="12" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1040" y="168" font-size="16" font-weight="700" fill="#1a1d21">⑤ Upload the ERC</text>
+    <text x="1040" y="192" font-size="13" fill="#4b5563">Company information →</text>
+    <text x="1040" y="210" font-size="13" fill="#4b5563">Enterprise Registration Documents.</text>
+    <text x="1040" y="228" font-size="13" fill="#4b5563">Several pages are fine.</text>
+    <text x="1040" y="246" font-size="12.5" fill="#92400e">Tag → <tspan font-weight="600">Waiting to verify</tspan>, on both sides.</text>
+  </g>
+  <g id="s7">
+    <rect x="1300" y="140" width="150" height="112" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="1320" y="168" font-size="16" font-weight="700" fill="#166534">⑦ Post job</text>
+    <text x="1320" y="192" font-size="13" fill="#166534">unlocked — a draft</text>
+    <text x="1320" y="210" font-size="13" fill="#166534">needs no invoice.</text>
+    <text x="1320" y="236" font-size="12.5" fill="#4b5563">Company information</text>
+    <text x="1320" y="252" font-size="12.5" fill="#4b5563">is now read-only.</text>
+  </g>
+  <text x="1375" y="290" font-size="12.5" fill="#6b7280" text-anchor="middle">Tag: blue <tspan font-weight="600" fill="#1e40af">Verified</tspan></text>
+
+  <!-- ── admin steps ───────────────────────────────────────────────── -->
+  <g id="s3">
+    <rect x="372" y="500" width="300" height="134" rx="12" fill="#ffffff" stroke="#c7d7f7" stroke-width="1.5"/>
+    <text x="392" y="528" font-size="16" font-weight="700" fill="#1a1d21">③ Sign-ups — resolve the row</text>
+    <text x="392" y="552" font-size="13" fill="#4b5563">Match: Customers · Free data · Not match (informational).</text>
+    <text x="392" y="574" font-size="12.5" fill="#1a1d21"><tspan font-weight="600">Move to existing company</tspan> — HR person at a customer</text>
+    <text x="392" y="592" font-size="12.5" fill="#1a1d21"><tspan font-weight="600">Create company &amp; activate</tspan> — form opens prefilled</text>
+    <text x="392" y="610" font-size="12.5" fill="#1a1d21"><tspan font-weight="600">Archive</tspan> — spam; no login, no company, no email</text>
+    <text x="392" y="628" font-size="12.5" fill="#6b7280">Move / Create send the activation email. SLA 1 business day.</text>
+  </g>
+  <g id="s6">
+    <rect x="880" y="500" width="370" height="134" rx="12" fill="#ffffff" stroke="#c7d7f7" stroke-width="1.5"/>
+    <text x="900" y="528" font-size="16" font-weight="700" fill="#1a1d21">⑥ Company record → Verify company</text>
+    <text x="900" y="552" font-size="13" fill="#4b5563">Customers → filter Verified = Waiting to verify → open it.</text>
+    <text x="900" y="570" font-size="13" fill="#4b5563">Read the ERC (Company documents) against the MST, the</text>
+    <text x="900" y="588" font-size="13" fill="#4b5563">registered address and the legal name → <tspan font-weight="600" fill="#1a1d21">Verify</tspan>.</text>
+    <text x="900" y="610" font-size="12.5" fill="#6b7280">Only proceeds in Waiting to verify — on Unverified the dialog</text>
+    <text x="900" y="628" font-size="12.5" fill="#6b7280">says there is no paperwork to rule on. Owner may be Unassigned.</text>
+  </g>
+  <g id="s8">
+    <rect x="1300" y="500" width="150" height="134" rx="12" fill="#ffffff" stroke="#c7d7f7" stroke-width="1.5"/>
+    <text x="1320" y="528" font-size="16" font-weight="700" fill="#1a1d21">⑧ Later</text>
+    <text x="1320" y="552" font-size="13" fill="#4b5563">An admin edits</text>
+    <text x="1320" y="570" font-size="13" fill="#4b5563">identity data</text>
+    <text x="1320" y="588" font-size="13" fill="#4b5563">(name, MST, address)</text>
+    <text x="1320" y="610" font-size="12.5" fill="#92400e">→ Waiting to verify</text>
+    <text x="1320" y="628" font-size="12.5" fill="#92400e">again; Verify clears it.</text>
+  </g>
+  <path d="M1300,600 L1290,600 L1290,660 L1070,660 L1070,636" fill="none" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrowAmber)"/>
+
+  <!-- ── crossings between lanes ───────────────────────────────────── -->
+  <line x1="497" y1="254" x2="497" y2="496" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="508" y="300" font-size="12.5" fill="#6b7280">email verified → a row on Sign-ups</text>
+
+  <path d="M672,560 L740,560 L740,256" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <text x="752" y="300" font-size="12.5" fill="#1f6feb">company exists (Unverified) ·</text>
+  <text x="752" y="318" font-size="12.5" fill="#1f6feb">activation email → the person signs in</text>
+
+  <line x1="1100" y1="254" x2="1100" y2="496" stroke="#b45309" stroke-width="2" marker-end="url(#arrowAmber)"/>
+  <text x="1112" y="300" font-size="12.5" fill="#92400e">ERC on file → the company</text>
+  <text x="1112" y="318" font-size="12.5" fill="#92400e">enters the admin's queue</text>
+
+  <path d="M1200,500 L1200,470 L1375,470 L1375,256" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- ── also unlocked for sales ───────────────────────────────────── -->
+  <rect x="70" y="500" width="250" height="134" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="90" y="528" font-size="13" font-weight="700" fill="#b45309" letter-spacing="1.2">ALSO UNLOCKED BY ⑥</text>
+  <text x="90" y="554" font-size="13" fill="#4b5563">On the company's <tspan font-weight="600" fill="#1a1d21">Purchase order</tspan>,</text>
+  <text x="90" y="572" font-size="13" fill="#4b5563">Sales' <tspan font-weight="600" fill="#1a1d21">Request official invoice</tspan> is</text>
+  <text x="90" y="590" font-size="13" fill="#4b5563">disabled until the company is</text>
+  <text x="90" y="608" font-size="13" fill="#4b5563">Verified (enforced server-side too).</text>
+  <text x="90" y="628" font-size="12.5" fill="#6b7280">Quotation and Issue PO are never gated.</text>
+
+  <!-- ── status legend ─────────────────────────────────────────────── -->
+  <g font-size="13" font-weight="600">
+    <text x="60" y="730" font-size="12.5" font-weight="700" fill="#6b7280" letter-spacing="1.2">THE TAG — derived on every read from the verdict + the documents on file, never stored</text>
+    <rect x="60" y="742" width="230" height="28" rx="14" fill="#f3f4f6" stroke="#d1d5db"/>
+    <text x="175" y="761" fill="#374151" text-anchor="middle">Unverified — no paperwork yet</text>
+    <line x1="292" y1="756" x2="312" y2="756" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <rect x="316" y="742" width="300" height="28" rx="14" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="466" y="761" fill="#92400e" text-anchor="middle">Waiting to verify — the admin's queue (amber)</text>
+    <line x1="618" y1="756" x2="638" y2="756" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <rect x="642" y="742" width="230" height="28" rx="14" fill="#dbeafe" stroke="#1f6feb"/>
+    <text x="757" y="761" fill="#1e40af" text-anchor="middle">Verified — a fact somebody checked</text>
+    <text x="900" y="761" font-size="12.5" font-weight="400" fill="#6b7280">Same three labels on the Customers list, the record header and the Company site.</text>
+  </g>
+</svg>

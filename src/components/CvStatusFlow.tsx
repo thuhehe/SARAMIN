@@ -392,12 +392,22 @@ export function CvStatusFlow() {
             input. Since 2026-09-19 they are only 4 of the 100 match points (the
             taxonomy is not ready), but still the main CV-search filter, so a CV
             with none qualifies and is simply harder to find.
-            That trade is deliberate: unfindable is recoverable, rejected is not. */}
-        <text x={561} y={512} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
-          OR [ Work experience,
-        </text>
-        <text x={561} y={536} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
-          AND [ Education, Projects ] ]
+            That trade is deliberate: unfindable is recoverable, rejected is not.
+
+            PROJECTS LEFT THE RULE TOO (2026-09-25, Thu). The second branch was
+            AND [ Education, Projects ] — a fresher had to produce both. One entry
+            of either kind is now enough, so the rule is a flat two-way OR and the
+            picture is one line instead of two. What that gives up is the argument
+            for the AND: a school name and a date alone say little about what
+            someone can do. What it buys is that the branch stops asking the least
+            experienced candidates for the most work.
+
+            ⚠ THIS PUTS THE SPEC AHEAD OF THE BUILD. svn-be still implements
+            exp >= 1 || (edu >= 1 && proj >= 1) in CvQualificationRule.java —
+            MIN_PROJECTS = 1 has to go, and its test row "0, 1, 0, …" flips from
+            NOT_ENOUGH_INFORMATION to QUALIFIED. */}
+        <text x={561} y={524} fontSize={13} fontWeight={700} textAnchor="middle" fill="var(--color-ink)" fontFamily="ui-monospace, monospace">
+          OR [ Work experience, Education ]
         </text>
 
         <path d="M 722 470 C 768 470, 768 284, 812 284" fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#arrow-${RED.slice(1)})`} />

@@ -90,6 +90,7 @@ export const jobseekerUser: BuildModule = {
           ['Active', 'Verified, full use', '—', 'Full use of the site. An email sign-up reaches it by verifying; a social sign-up reaches it by finishing the completion step'],
           ['Suspended', 'Blocked by HQ — a reason is required', 'Yes, by HQ', 'Sign-in is refused with a support contact, never the reason text'],
           ['Deactivated', 'Withdrawn by the user', 'Yes, on sign-in within the grace window', 'Reinstate returns to the previous status, not blindly Active'],
+          ['Deleted', 'Ended for good — by the user or by HQ', 'NO, once purged', 'Applications in progress are withdrawn, the CV leaves search, and the record moves to Deleted accounts (Admin). The email is never reusable'],
         ],
       },
       items: ['An unverified account can BROWSE jobs but cannot APPLY — verification gates writing, not reading.'],
@@ -1327,6 +1328,303 @@ export const jobseekerUser: BuildModule = {
           'How long do the CV and contact details stay readable on the employer surfaces — forever, or a fixed retention (e.g. 12 months)? Needs legal sign-off.',
           'Does HQ get an audited break-glass unblock for genuine mistakes?',
           'Legal: does retaining a hashed identifier to enforce a permanent bar sit correctly with the erasure right under Decree 13/2023 — and does the T&C say the address can never be reused?',
+        ],
+      },
+    },
+    // 7 · Deleted accounts (Admin) — the record that outlives the person ──────
+    // Deliberately its own feature rather than a section of "Delete account":
+    // that one is the jobseeker's exit, this one is the RECORD HQ keeps of it,
+    // and the two are read by different people for different reasons. It is also
+    // where the Sept-21 Privacy Policy lands, which is why the conflict with the
+    // earlier client decision is pinned at the top rather than quietly resolved.
+    {
+      name: 'Deleted accounts (Admin)',
+      site: 'Admin',
+      scope: ['BE', 'FE', 'UI'],
+      mockup: 'admin-deleted-list',
+      // the record, then the two surfaces where a deleted candidate's rows survive
+      mockups: ['admin-deleted-detail', 'admin-applicants-deleted', 'admin-cv-usage-deleted'],
+      notes:
+        'A separate page beside Jobseeker users, not a DELETED tab on it: a live account is read as a roster, an ended one is read for when it ended, why, what it reached, and what we can prove we erased. None of those has a column on the jobseeker grid.',
+      detail: {
+        refDocs: [
+          {
+            label: 'Privacy Policy — 21/09/2026 (EN)',
+            href: '/docs/Privacy-Policy-2026-09-21.docx',
+            meta: 'DOCX · client legal, received 21/09/2026',
+            note: 'The binding source for this requirement. “Data Deletion Procedure and Method” sets the 02-working-day validation and the 72-hour erasure; “Account Deletion” under recruiter rights sets the employer notice and the removal of candidate data from the candidate-management page.',
+          },
+          {
+            label: 'Quy định bảo mật — 21/09/2026 (VI)',
+            href: '/docs/Quy-dinh-bao-mat-2026-09-21.docx',
+            meta: 'DOCX · client legal, received 21/09/2026',
+            note: 'The Vietnamese text of the same policy. Where the two differ, this is the one a Vietnamese authority reads.',
+          },
+          {
+            label: 'Mẫu xác nhận đồng ý xử lý dữ liệu cá nhân',
+            href: '/docs/Mau-xac-nhan-dong-y-du-lieu-ca-nhan.docx',
+            meta: 'DOCX · employer consent template',
+            note: 'Why an employer lawfully keeps what they already received: Article 3 gives unsuccessful candidates a 60-month retention on the EMPLOYER side. Saramin owes the notice, not the enforcement.',
+          },
+        ],
+        keyPoints: [
+          {
+            vi: '**Soft delete không phải trạng thái cuối.** Chính sách 21/09 cam kết xoá hoàn toàn trong **72 giờ** kể từ khi yêu cầu được xác minh hợp lệ. Soft delete chỉ là trạng thái trung gian trong cửa sổ đó; sau đó mọi dòng dữ liệu phải là hard delete hoặc ẩn danh không thể đảo ngược.',
+            en: '**A soft delete is not an end state.** The 21/09 policy commits to complete deletion within **72 hours** of the request being verified. Soft delete is only the transition state inside that window; after it every row must be hard-deleted or irreversibly anonymised.',
+          },
+          {
+            vi: 'Trang này **không có nút Restore** sau khi đã purge. Chính sách nói rõ dữ liệu giữ lại “sẽ không được sử dụng để khôi phục hoặc tái lập tài khoản hay hồ sơ cá nhân”.',
+            en: 'This page has **no Restore control** once the record is purged. The policy states that retained data “will not be used to restore or recreate your account or personal profile”.',
+          },
+          {
+            vi: 'Thứ được giữ lại là **bằng chứng đã xoá** và **dấu vết tiền**: hồ sơ yêu cầu xoá, log thông báo NTD, bút toán trừ credit, và lượt unlock. Không giữ lại con người.',
+            en: 'What is retained is **proof of erasure** and **the money trail**: the deletion request record, the employer-notification log, the credit deduction and the unlock rows. Not the person.',
+          },
+          {
+            vi: 'Email được giữ ở dạng **token không gửi được** trong chính cột unique — địa chỉ vẫn bị giữ chỗ vĩnh viễn nhưng không ai đọc được, và không ai đăng ký lại được.',
+            en: 'The email is kept as an **unmailable token** in the same unique column — the address stays reserved for ever, unreadable, and cannot be registered again.',
+          },
+        ],
+        description:
+          'The record of every jobseeker account that has ended — withdrawn by the seeker or deleted by HQ. It answers three questions a live account never raises: when did it end, why, and what did the erasure reach. It is also the evidence file: under the 21/09 Privacy Policy Saramin must be able to show that a valid request was verified within 02 working days, that the data was gone within 72 hours, and that every employer holding the candidate’s data was notified.',
+        userStory:
+          'As HQ, I want a permanent record of each ended account and what its erasure touched, so that I can answer a data-subject complaint or an authority’s question without keeping the person’s data to do it.',
+        sections: [
+          {
+            early: true,
+            heading: 'CONFLICT — the Sept-21 policy contradicts the recorded client decision',
+            text:
+              'The “Delete account” requirement records a client decision that whatever the employer already holds STAYS, and that the employer “still views the CV and makes contact as normal”. The Privacy Policy issued on 21/09/2026 says the opposite. Both cannot ship. This is flagged, not resolved — Thu decides.',
+            table: {
+              cols: ['Question', 'Recorded client decision', 'Privacy Policy 21/09/2026'],
+              rows: [
+                ['Candidate data on the employer’s candidate-management page', 'Stays, with a “Tài khoản không còn tồn tại” tag', '“All candidate personal data will be removed from the candidate management page”'],
+                ['Employer contacting the candidate afterwards', 'Contacts them as normal', '“Recruiters must delete all candidate personal information and stop contacting the candidate by any means”'],
+                ['Employer notice', 'Not specified', 'Saramin notifies the recruiter by email on account deletion, CV deletion and application withdrawal'],
+                ['Unlock refund', 'None — the employer got what they paid for', 'Silent. Nothing in the policy requires a refund'],
+              ],
+            },
+            items: [
+              'Only the LAST row agrees. The mockups on this page are drawn to the POLICY reading, because a legal commitment already published to users is the harder of the two to walk back.',
+              'The one point both sides make identically: data an employer already downloaded is outside Saramin and cannot be recalled by us. The policy says so in as many words.',
+            ],
+            warn: 'Do not build either behaviour until this is answered in writing. The two readings differ on what a recruiter sees on their own screen, which is the most expensive thing to change late.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'Timing — the two clocks the policy sets',
+            table: {
+              cols: ['Step', 'Deadline', 'Source'],
+              rows: [
+                ['Acknowledge and verify the request is valid', '02 working days from receipt', 'Privacy Policy — Data Deletion Procedure #1'],
+                ['Data stops being visible to third parties', 'Immediately on verification', '#2 — “cease to be displayed to our third parties”'],
+                ['Data completely deleted', '72 hours from verification', '#2'],
+                ['Withdrawal of CONSENT (a different request)', '15 days, 20 with a third party, one 15-day extension', 'Right to Withdraw Consent'],
+              ],
+            },
+            items: [
+              'An in-product deletion re-authenticates and sends an OTP, so the request is verified at the moment it is made — the 72-hour clock starts immediately and the 02-day step is already satisfied.',
+              'A request arriving by email to career@saramin.vn needs an HQ action to verify the sender is the account’s own address. That is what the 02-working-day SLA on this queue is for.',
+            ],
+            warn: 'The build currently purges at deletedAt + 30 days, and the self-service withdrawal path leaves no purge scheduled at all — so those accounts are never purged. Both contradict the published 72 hours.',
+          },
+          {
+            label: 'What the record keeps, and what it erases',
+            text: 'Read against the live Jobseeker users detail screen, field for field. “Erased” means the value is gone from the database, not hidden from the page.',
+            table: {
+              cols: ['Field on Jobseeker users', 'After deletion', 'Why'],
+              rows: [
+                ['Full name', 'Erased', 'Replaced by “(erased)”'],
+                ['Email (login)', 'Kept as an unmailable token', 'Keeps the address reserved and unreadable; this IS the “list of users who requested deletion” the policy requires'],
+                ['Email verified · Proven by', 'Kept', 'Booleans, no PII, needed for fraud review'],
+                ['Sign-up method', 'Kept', 'Channel statistics'],
+                ['Phone', 'Erased', '—'],
+                ['Location', 'Erased', 'Province plus the rest is re-identifying'],
+                ['My page card — headline, desired role, job type, expected salary, preferred locations, open to offers', 'Erased, whole card', 'Expected salary is income data, which the consent form treats as SENSITIVE personal data'],
+                ['Profile completeness %', 'Dropped', 'Meaningless once the profile is gone'],
+                ['CVs · Applications · CV unlocks · Joined · Last login (the stat tiles)', 'Kept as counts', 'Numbers, not people — they carry the reach of the deletion'],
+                ['CV list — file names, visibility, Open CV', 'File names replaced by a reference; Open CV removed', 'A CV file name usually carries the person’s name'],
+                ['CV list — “Unlocked by N employers”', 'Kept and expanded to company · date · credits', 'The employer paid; this is the billing evidence'],
+                ['Applications table', 'Kept, de-linked from the candidate', 'The employer’s pipeline record, and the proof of what was withdrawn'],
+                ['Account status card', 'Expanded into the deletion record', 'Requested · verified · deleted by · reason · purged at · employers notified'],
+              ],
+            },
+            warn: 'Opening a deleted jobseeker’s CV from Admin has no remaining purpose and is the one PII view this page must not offer.',
+          },
+          {
+            label: 'What a deletion does to each application stage',
+            text:
+              'Deleting the account withdraws every application still in play, and leaves every finished one exactly as it was. That is why a deleted candidate\u2019s rows read Withdrawn OR a terminal stage, and never anything else.',
+            table: {
+              cols: ['Stage at the moment of deletion', 'Becomes', 'Why'],
+              rows: [
+                ['Applied', 'Withdrawn', 'Still in play \u2014 the policy reads account deletion as withdrawing all of that candidate\u2019s applications'],
+                ['Screening', 'Withdrawn', 'Same'],
+                ['Interview', 'Withdrawn', 'Same \u2014 including when an interview is already booked. The employer is told by email; the row does not disappear on them'],
+                ['Offered', 'Withdrawn', 'Same. An offer the candidate can no longer accept is not left sitting open'],
+                ['Rejected', 'Rejected \u2014 unchanged', 'Already finished. Rewriting it would falsify what happened: the employer DID reject them, and their funnel statistics read from this row'],
+                ['Hired', 'Hired \u2014 unchanged', 'Same, and it is the row a placement and an invoice may depend on'],
+                ['Withdrawn (already)', 'Withdrawn \u2014 unchanged', 'Nothing to do'],
+              ],
+            },
+            items: [
+              'The rule is one line: in-progress \u2192 Withdrawn, terminal \u2192 untouched. It is worth stating because the tempting shortcut \u2014 setting every row of a deleted candidate to Withdrawn \u2014 silently rewrites recruiting history and breaks every hire-rate figure built on it.',
+              'The stage is the LAST thing about the application that still carries meaning once the person is erased, which is why it is kept accurate rather than tidied.',
+            ],
+            warn: 'A stage change from this path is a system action, not the employer\u2019s: HQ never moves a candidate\u2019s stage, and neither does the purge job move a finished one.',
+          },
+          {
+            label: 'Why the login email is kept when everything else goes',
+            text:
+              'The erased account keeps exactly one piece of the person: their login address, and only in a form nobody can read. It is what enforces the permanent bar on re-registration, and the Privacy Policy asks for it by name \u2014 a list of users who requested deletion, held so the data cannot be restored from a backup and so an account cannot be recreated to get around fraud controls.',
+            table: {
+              cols: ['Question', 'Answer'],
+              rows: [
+                ['What is stored', 'A one-way peppered token, written into the SAME unique email column \u2014 not a second table, not the address'],
+                ['Can HQ read the original address', 'No. Nothing in the system can reverse it'],
+                ['How does it block a re-sign-up', 'The uniqueness constraint still holds, and the \u201cdoes this email exist\u201d check hashes the typed address and tests the token form too'],
+                ['What does the sign-in door say', '\u201cThis address is spent\u201d, not \u201cno such user\u201d \u2014 saying so IS the point'],
+                ['Phone', 'Hashed into the suppression list the same way; the readable column is erased'],
+              ],
+            },
+            items: [
+              'The policy caps this deliberately: the list \u201cwill not contain any unnecessary personally identifiable information beyond what is necessary for the purposes described\u201d. A hash of the address and nothing else is that minimum.',
+            ],
+            warn: 'A readable email kept anywhere \u201cjust for matching\u201d defeats the whole design \u2014 it is the one field an erased account is allowed to carry, and only because it cannot be read.',
+          },
+          {
+            label: 'Two populations, one list',
+            table: {
+              cols: ['Deleted by', 'Means', 'Reason text is'],
+              rows: [
+                ['Withdrawn', 'The seeker ended it themselves', 'The reason they picked on the withdrawal screen'],
+                ['HQ', 'An operator ended it', 'An internal audit note'],
+              ],
+            },
+            items: ['An unknown actor reads as HQ, never as Withdrawn: claiming someone deleted their own account is the worse of the two wrong answers.'],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'List columns',
+            items: [
+              { name: 'Candidate ID', type: 'string', required: true, notes: 'the pseudonym — the only durable handle once the name and email are gone' },
+              { name: 'Deleted at', type: 'timestamp', required: true, notes: 'when the account ended, NOT the last status change' },
+              { name: 'Deleted by', type: 'enum', required: true, notes: 'Withdrawn | HQ' },
+              { name: 'Reason', type: 'text', notes: 'one line, full text on hover' },
+              { name: 'Applications', type: 'int', notes: 'how many were withdrawn by the deletion' },
+              { name: 'CV unlocks', type: 'int', notes: 'how many paid unlocks the deletion touched' },
+              { name: 'Employers notified', type: 'int', notes: 'sent / total — the compliance figure' },
+              { name: 'Purge status', type: 'enum', required: true, notes: 'Pending | Purged | Failed. Failed must be visible: today a failed purge is only an ERROR line in a log' },
+            ],
+          },
+          {
+            group: 'List filters',
+            items: [
+              { name: 'Search', type: 'string', notes: 'by candidate ID only — there is no name or email left to search' },
+              { name: 'Deleted by', type: 'enum', notes: 'All | Withdrawn | HQ' },
+              { name: 'Purge status', type: 'enum', notes: 'All | Pending | Purged | Failed' },
+              { name: 'Deleted between', type: 'date range', notes: 'bounds deletedAt. The existing date filter bounds createdAt, which on this page answers a different question and must not be reused' },
+            ],
+          },
+          {
+            group: 'Detail — deletion record',
+            items: [
+              { name: 'Request received', type: 'timestamp + enum', required: true, notes: 'and the channel: in-app | email' },
+              { name: 'Request verified', type: 'timestamp + string', required: true, notes: 'and how: OTP, or the HQ operator who validated an emailed request' },
+              { name: 'Deleted by / Reason', type: 'enum / text', required: true },
+              { name: 'Purged at / Purge status', type: 'timestamp / enum', required: true },
+              { name: 'Employers notified', type: 'int / int + timestamp', required: true, notes: 'sent of total, and when the last one went' },
+            ],
+          },
+          {
+            group: 'Detail — retained tables',
+            items: [
+              { name: 'CV unlocks', type: 'table', notes: 'company · CV reference · unlocked at · credits spent · whether the delivered file is retained' },
+              { name: 'Applications', type: 'table', notes: 'job · company · stage · applied at. De-linked from the candidate but still listed' },
+            ],
+          },
+        ],
+        behaviors: [
+          { group: 'On confirming the deletion (T0)', items: [
+            'Status moves to Deleted, deletedAt and the reason are stamped, every session is revoked and sign-in is refused.',
+            'In-progress applications (Applied / Screening / Interview / Offered) become Withdrawn. Hired, Rejected and already-Withdrawn are left alone — they are terminal.',
+            'The candidate leaves CV search synchronously, not on the next re-index.',
+            'The employer notification emails are queued, one per company holding the candidate’s data.',
+            'A confirmation email goes to the seeker at the address that is about to be erased.',
+          ] },
+          { group: 'At the purge (within 72h)', items: [
+            'Applications are de-linked and kept; the submitted CV row is de-linked and PII-stripped and kept; every un-submitted CV, saved job, saved folder, followed company and notification is deleted.',
+            'The identity row is kept but anonymised: name erased, password removed, email replaced by the token.',
+            'Stored CV files are erased by key, including anything cached by a CDN.',
+            'The candidate id, hashed email and hashed phone go to the suppression list.',
+            'A purge that fails leaves the account UNTOUCHED and retries on the next sweep — it must never half-erase.',
+          ] },
+          { group: 'After the purge', items: [
+            'Any restore from a database backup must re-run the purge against the suppression list. That is the only reason the list exists.',
+            'The same email may not be registered again.',
+          ] },
+        ],
+        rules: [
+          'No Restore control on a purged record, anywhere in Admin.',
+          'No unlock refund on account deletion. A Saramin CV recall is our mistake and refunds the credit; a candidate leaving is not.',
+          'The credit ledger is never rewritten. Its UNLOCK entries survive the deletion by design — they carry a soft reference with no foreign key precisely so the trail outlives what it points at.',
+          'Unlock rows are ANONYMISED, not deleted. Today an unlock on a CV that was never submitted with an application is cascade-deleted with that CV, so a company loses the row it paid for while the deduction stays — the usage list develops a hole.',
+          'Applications keep a pseudonymous reference to the deleted candidate. De-linking them to NULL means this page cannot list them at all afterwards, which is exactly the evidence a complaint asks for.',
+          'Historical counts and reports are never rewritten — only identity is removed.',
+          'Recruiter notes and tags written about the candidate are PII and must be purged with everything else.',
+        ],
+        states: [
+          'Empty — no deleted accounts in the filter range.',
+          'Pending — deleted, inside the 72-hour window, not yet purged. The only state where a Restore could legitimately exist, if legal allows one at all.',
+          'Purged — the normal end state; the page shows the record and the retained tables.',
+          'Failed — the purge job could not complete. Needs to be visible and actionable here, not only in a server log.',
+          'HQ-deleted with no reason recorded — the reason field is empty; the row must still read as HQ, never as Withdrawn.',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'candidate.status', type: 'enum', required: true, notes: 'ACTIVE | INACTIVE | DEACTIVATED | DELETED' },
+            { name: 'candidate.deletedAt / statusChangedAt / statusChangedBy / statusChangeReason', type: 'timestamp / timestamp / id? / text', required: true, notes: 'statusChangedBy = the candidate’s own id means Withdrawn; an admin id or null means HQ' },
+            { name: 'candidate.scheduledHardDeleteAt', type: 'timestamp?', required: true, notes: 'must be stamped on EVERY delete path. The self-service path leaves it null today, so those accounts are never purged' },
+            { name: 'candidate.email (anonymised)', type: 'string', required: true, notes: 'peppered token in the same unique column — reserves the address without keeping it readable' },
+            { name: 'deletionRequest', type: 'entity', required: true, notes: 'NEW — candidateRef, channel(in_app|email), receivedAt, verifiedAt, verifiedBy, purgedAt, purgeStatus. The evidence file' },
+            { name: 'employerNotification', type: 'entity', required: true, notes: 'NEW — candidateRef, companyId, recipient, sentAt, templateVersion. Proof the notice duty was discharged; keyed to the pseudonym, never to the person' },
+            { name: 'jobApplication.erasedCandidateRef', type: 'string?', required: true, notes: 'NEW — the pseudonym, written at purge in place of the candidate link' },
+            { name: 'unlockRecord', type: 'entity', notes: 'resume · company · unlockedBy · unlockedAt · spentCredits. Anonymise at purge instead of letting it cascade away with the CV' },
+            { name: 'creditLedger', type: 'entity', notes: 'UNLOCK entries — untouched by a deletion, by design' },
+            { name: 'suppressionList', type: 'entity', required: true, notes: 'candidateRef, hash(email), hash(phone), deletedAt. No plaintext contact data' },
+            { name: 'auditEvent', type: 'entity', required: true, notes: 'candidate.status_change (from → to + reason) and candidate.purge. They reference the id without a foreign key, so they survive the erasure they attest to' },
+          ],
+          endpoints: [
+            'GET /api/admin/candidates?status=DELETED — the list. Search by candidate ref, filter by deletedBy and purgeStatus, bound by deletedAt',
+            'GET /api/admin/candidates/{ref}/deletion-record — the detail: request record, notification log, retained unlocks and applications',
+            'POST /api/admin/deletion-requests/{id}/verify — HQ validates an emailed request and starts the 72-hour clock',
+            'POST /api/admin/deletion-requests/{id}/retry-purge — re-runs a failed purge',
+            'GET /api/admin/candidates/deleted/export — the erasure log, carrying deletedAt, reason and the notification counts (the jobseeker export column set does not)',
+          ],
+          notes:
+            'The purge runs per candidate in its own transaction, so the recruitment writes, the identity erasure and the audit row that attests to them stand or fall together. One account failing must not stop the sweep, and a failure must leave the account untouched rather than half-erased. CV file keys have to be read BEFORE the purge — afterwards no row names them.',
+        },
+        acceptance: [
+          'Deleted accounts is its own page beside Jobseeker users, listing every ended account with when, why, by whom, and what the erasure reached.',
+          'No name, email or phone appears anywhere on either screen after the purge.',
+          'The email address cannot be registered again, and the sign-in door recognises it as spent rather than answering “no such user”.',
+          'There is no Restore control on a purged record.',
+          'A record shows how many employers were notified, out of how many held the data, and when the last notice was sent.',
+          'The CV unlocks table still lists every company that paid, with the credits spent, including for a CV that was never submitted with an application.',
+          'The applications table still lists the de-linked applications, and the in-progress ones read as Withdrawn.',
+          'A failed purge is visible on this page and can be retried from it.',
+          'Every account, however it was deleted, is purged within 72 hours of its request being verified.',
+        ],
+        openQuestions: [
+          'BLOCKER — which wins: the recorded client decision that employers keep the CV and keep contacting, or the 21/09 Privacy Policy that says they must delete it and stop? Everything on the employer side depends on this one answer.',
+          'The build purges at deletedAt + 30 days and the self-service path schedules no purge at all, against a published commitment of 72 hours. Do we change the build, or re-publish the policy?',
+          'Is there a grace window at all? A 24-hour “changed my mind” window fits inside 72 hours but means holding a restorable profile, which reads badly against the policy’s own wording.',
+          'The delivered CV file is retained on purpose, while the policy says all candidate data leaves the candidate-management page. Proposal: retain the object as evidence, stop serving it in the UI. Needs legal sign-off.',
+          'Which fields exactly must survive for a PDPD audit? The backend currently encodes a documented default and says Legal must confirm it — these two documents are that answer, and this table is the proposal.',
+          'May a SUSPENDED account delete itself? If yes, deleting becomes a way to shed a ban.',
+          'Invoices and payment records: VN accounting law overrides erasure. Which fields, and for how long?',
         ],
       },
     },

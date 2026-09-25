@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="820" fill="#ffffff"/>
+
+  <!-- ── Row 1: the three doors into the company table ─────────────── -->
+  <g id="door-a">
+    <rect x="60" y="44" width="400" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="84" y="78" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">DOOR A · ADMIN CREATES</text>
+    <text x="84" y="108" font-size="19" font-weight="600" fill="#1a1d21">Customers → + New company</text>
+    <text x="84" y="136" font-size="14.5" fill="#4b5563">Legal name · MST (checked against the register)</text>
+    <text x="84" y="158" font-size="14.5" fill="#4b5563">· invoice address · contact · sales owner.</text>
+    <text x="84" y="180" font-size="14.5" fill="#4b5563">Owner left blank → the row files into <tspan font-weight="600" fill="#1a1d21">Free data</tspan>.</text>
+  </g>
+
+  <g id="door-b">
+    <rect x="550" y="44" width="400" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="574" y="78" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">DOOR B · SALES ASKS, TWO APPROVALS</text>
+    <text x="574" y="108" font-size="19" font-weight="600" fill="#1a1d21">Free data → Ask for this company</text>
+    <text x="574" y="136" font-size="14.5" fill="#4b5563">Admin approves (step 1) → Sales lead approves (step 2).</text>
+    <text x="574" y="158" font-size="14.5" fill="#4b5563">The lead's Approve is <tspan font-weight="600" fill="#1a1d21">the write</tspan>: the rep becomes</text>
+    <text x="574" y="180" font-size="14.5" fill="#4b5563">the sales owner and the company leaves Free data.</text>
+  </g>
+
+  <g id="door-c">
+    <rect x="1040" y="44" width="400" height="150" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1064" y="78" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">DOOR C · EMPLOYER SIGNS UP</text>
+    <text x="1064" y="108" font-size="19" font-weight="600" fill="#1a1d21">Company site → a Sign-ups row</text>
+    <text x="1064" y="136" font-size="14.5" fill="#4b5563">Admin resolves it: Move to existing company ·</text>
+    <text x="1064" y="158" font-size="14.5" fill="#4b5563">Create company &amp; activate · Archive.</text>
+    <text x="1064" y="180" font-size="14.5" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">GATE ① Placement</tspan> is what opens the person's sign-in.</text>
+  </g>
+
+  <line x1="260" y1="196" x2="260" y2="244" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="750" y1="196" x2="750" y2="244" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1240" y1="196" x2="1240" y2="244" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1000" y="228" font-size="12.5" fill="#6b7280" text-anchor="middle">Sales never create a company — every door is operated by an Admin</text>
+
+  <!-- ── Row 2: one company record ─────────────────────────────────── -->
+  <g id="customers">
+    <rect x="60" y="248" width="1380" height="126" rx="14" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="84" y="280" font-size="13" font-weight="700" fill="#1f6feb" letter-spacing="1.6">CUSTOMERS · /crm/companies — ONE COMPANY RECORD, WHICHEVER DOOR IT CAME THROUGH</text>
+    <text x="84" y="308" font-size="15" fill="#1a1d21">Assigned · Free data · Archived are <tspan font-weight="600">tabs of one table</tspan>. The record carries five statuses that answer different questions and never move each other:</text>
+    <g font-size="13" font-weight="600">
+      <rect x="84" y="326" width="215" height="30" rx="15" fill="#ffffff" stroke="#c7d7f7"/>
+      <text x="191" y="346" fill="#1a1d21" text-anchor="middle">Status  Active · Archived</text>
+      <rect x="311" y="326" width="255" height="30" rx="15" fill="#ffffff" stroke="#c7d7f7"/>
+      <text x="438" y="346" fill="#1a1d21" text-anchor="middle">Customer  New · Existing · Churn</text>
+      <rect x="578" y="326" width="330" height="30" rx="15" fill="#ffffff" stroke="#c7d7f7"/>
+      <text x="743" y="346" fill="#1a1d21" text-anchor="middle">Verified · Waiting to verify · Unverified</text>
+      <rect x="920" y="326" width="270" height="30" rx="15" fill="#ffffff" stroke="#c7d7f7"/>
+      <text x="1055" y="346" fill="#1a1d21" text-anchor="middle">Pipeline  Proposal → … → Invoice</text>
+      <rect x="1202" y="326" width="214" height="30" rx="15" fill="#ffffff" stroke="#c7d7f7"/>
+      <text x="1309" y="346" fill="#1a1d21" text-anchor="middle">Sales owner · or Free data</text>
+    </g>
+  </g>
+
+  <!-- ── Row 3: left — the pipeline board ──────────────────────────── -->
+  <g id="pipeline">
+    <rect x="60" y="420" width="250" height="324" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="84" y="450" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PIPELINE BOARD</text>
+    <text x="84" y="472" font-size="12.5" fill="#6b7280">/crm/pipeline · every card is a quotation</text>
+    <g font-size="14" fill="#1a1d21">
+      <text x="84" y="506"><tspan font-weight="600">Proposal</tspan> — first quotation saved</text>
+      <text x="84" y="534"><tspan font-weight="600">Qualified</tspan> — dragged by Sales</text>
+      <text x="84" y="562"><tspan font-weight="600">Negotiation</tspan> — dragged by Sales</text>
+      <text x="84" y="596"><tspan font-weight="600" fill="#1f6feb">PO</tspan> — system, on Issue PO</text>
+      <text x="84" y="624"><tspan font-weight="600" fill="#1f6feb">Invoice</tspan> — system, on issue = WON</text>
+      <text x="84" y="660"><tspan font-weight="600" fill="#b91c1c">Lost</tspan> — Sales, always with a reason</text>
+    </g>
+    <text x="84" y="700" font-size="12.5" fill="#6b7280">Expiry is not Lost. Losing a deal never</text>
+    <text x="84" y="718" font-size="12.5" fill="#6b7280">changes the customer status.</text>
+  </g>
+
+  <!-- ── Row 3: centre — the document chain ────────────────────────── -->
+  <line x1="750" y1="376" x2="750" y2="430" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <g id="chain">
+    <rect x="350" y="434" width="860" height="64" rx="32" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="490" y="473" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">QUOTATION</text>
+    <line x1="580" y1="466" x2="640" y2="466" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <text x="780" y="473" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">PURCHASE ORDER</text>
+    <line x1="920" y1="466" x2="980" y2="466" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <text x="1085" y="473" font-size="18" font-weight="600" fill="#1f6feb" text-anchor="middle">VAT INVOICE</text>
+  </g>
+  <g font-size="12.5" fill="#4b5563" text-anchor="middle">
+    <text x="490" y="520"><tspan font-weight="700" fill="#1a1d21">Sales</tspan> · Save draft → Mark as sent</text>
+    <text x="490" y="538">1–3 options, alternatives · expires month-end</text>
+    <text x="780" y="520"><tspan font-weight="700" fill="#1a1d21">Sales</tspan> · Issue PO from the accepted option</text>
+    <text x="780" y="538">= WON · grants nothing · expires month-end</text>
+    <text x="1085" y="520"><tspan font-weight="700" fill="#1a1d21">Accounting</tspan> · Issue official invoice</text>
+    <text x="1085" y="538">the only click that grants anything</text>
+  </g>
+  <text x="772" y="400" font-size="12.5" fill="#6b7280">each document is created from the one before it — nothing retyped,</text>
+  <text x="772" y="418" font-size="12.5" fill="#6b7280">nothing editable after issue, one total to the last đồng</text>
+
+  <line x1="780" y1="548" x2="780" y2="586" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <g id="issued">
+    <rect x="350" y="590" width="860" height="66" rx="12" fill="#1f6feb"/>
+    <text x="780" y="618" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Invoice ISSUED  =  the products are on the customer's account</text>
+    <text x="780" y="642" font-size="13" fill="#dbe7fd" text-anchor="middle">Customer New → Existing · deal closed WON · Activate by = issue date + 12 months · read it on Products &amp; billing → IN USE</text>
+  </g>
+
+  <line x1="780" y1="658" x2="780" y2="694" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="use">
+    <rect x="350" y="698" width="860" height="46" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="780" y="728" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">The company publishes a job on the tier it bought  ·  opens CVs</text>
+  </g>
+
+  <!-- ── Row 3: right — gate ② and payment ─────────────────────────── -->
+  <g id="gate2">
+    <rect x="1250" y="420" width="190" height="180" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="1274" y="450" font-size="13" font-weight="700" fill="#b45309" letter-spacing="1.6">GATE ②</text>
+    <text x="1274" y="474" font-size="16" font-weight="600" fill="#1a1d21">Verification</text>
+    <text x="1274" y="500" font-size="13" fill="#4b5563">Admin presses <tspan font-weight="600" fill="#1a1d21">Verify</tspan></text>
+    <text x="1274" y="518" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">company</tspan> once the ERC</text>
+    <text x="1274" y="536" font-size="13" fill="#4b5563">is on file. Unlocks two</text>
+    <text x="1274" y="554" font-size="13" fill="#4b5563">things: the employer's</text>
+    <text x="1274" y="572" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Post job</tspan>, and Sales'</text>
+    <text x="1274" y="590" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Request official invoice</tspan>.</text>
+  </g>
+  <path d="M1250,510 L1230,510 L1230,466 L1214,466" fill="none" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrowAmber)"/>
+
+  <g id="payment">
+    <rect x="1250" y="616" width="190" height="128" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1274" y="646" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6">PAYMENT</text>
+    <text x="1274" y="672" font-size="13" fill="#4b5563">Unpaid · Partially paid ·</text>
+    <text x="1274" y="690" font-size="13" fill="#4b5563">Paid — a fact on the PO,</text>
+    <text x="1274" y="708" font-size="13" fill="#4b5563">confirmed by Accounting.</text>
+    <text x="1274" y="730" font-size="13" fill="#4b5563"><tspan font-weight="600" fill="#1a1d21">Never gates the invoice.</tspan></text>
+  </g>
+
+  <text x="750" y="792" font-size="12.5" fill="#6b7280" text-anchor="middle">Not the PO, not a draft invoice, not payment — only the issued official VAT invoice grants a product. Everything else in the module leads up to that click.</text>
+</svg>

@@ -172,45 +172,66 @@ export const VAT_RATE = 8
    back INTO the unit price before the invoice is written. Two different
    documents, two different arithmetics, ONE total.
 
-     line %       → into that line's own unit price:  đơn giá × (1 − CK dòng)
-     order % + ₫  → summed into ONE lump, then split across the lines pro-rata
-                    by their (already line-discounted) net, and folded into the
-                    unit price of each
+   The method is the one the client's current CRM already uses
+   (`Invoice.php::getDetailsItem()`): take the THREE FROZEN TOTALS — tổng trước
+   thuế, tổng tiền thuế, tổng thanh toán — and split them DOWN onto the lines.
+   Nothing is rebuilt from the lines up, because per-line rounding would let the
+   invoice drift a đồng from what the customer agreed and paid.
 
-   Worked example (the one the client wrote): A 2.000 × 2 −12% = 3.520 · B
-   3.000 × 3 −10% = 8.100 · lump 1.000 → A carries 303, B carries 697 → invoice
-   A = 1.608,50 × 2 = 3.217 · B = 2.467,67 × 3 = 7.403 · Σ 10.620, the quotation's
-   "Sau chiết khấu" to the đồng.
+     weights      each line's net after ITS OWN % (the "tỷ trọng")
+     pre-tax      split tổng trước thuế by weight; last line takes the remainder
+     VAT          split tổng tiền thuế by pre-tax; last line takes the remainder
+                  (with mixed rates: first by rate GROUP, last taxable group takes
+                  the remainder, then within the group — see the spec)
+     unit price   pre-tax ÷ qty, shown to 2 dp — derived, never the source
+
+   Worked example (the client's): A 2.000 × 2 −12% = 3.520 · B 3.000 × 3 −10% =
+   8.100 · sub 11.620 · lump 581 + 419 = 1.000 → tổng trước thuế 10.620 →
+   A = round(10.620 × 3.520/11.620) = 3.217 · B = remainder 7.403 → đơn giá
+   1.608,50 · 2.467,67 → VAT 850 split 257 / 593 → 3.474 / 7.996 → 11.470.
 
    Three rounding rules, each of which a dev gets wrong on the first try:
-     · line nets are rounded to the đồng FIRST, and the allocation is done on
-       those integers — not on the raw products.
-     · the LAST line takes the allocation remainder, so Σ allocations == lump
-       exactly and the invoice total equals the quotation's to the đồng.
-     · thành tiền is the integer net. The unit price is shown to 2 decimals and
-       MAY NOT be multiplied back out to reproduce it (2.467,67 × 3 = 7.403,01) —
-       the printed unit price is presentation, the net is the fact. */
+     · line nets are rounded to the đồng FIRST and used as the weights.
+     · every "last" — last line for pre-tax, last line for VAT, last taxable
+       group with mixed rates — takes the remainder, so each column sums to its
+       frozen total exactly. "Last" is the printed order, and must be.
+     · thành tiền and tiền thuế are the stored integers. The unit price is shown
+       to 2 decimals and MAY NOT be multiplied back out (2.467,67 × 3 = 7.403,01);
+       per-line VAT is the allocated integer, never rate × line recomputed. */
 export type QuoteLineIn = { name: string; unitVi: string; unitEn: string; qty: number; price: number; disc: number }
 export type QuoteDetail = { lines: QuoteLineIn[]; optDisc: number; fixed: number }
+/** Split an integer total across lines pro-rata by `weights`; the last line takes the remainder. */
+const splitDown = (total: number, weights: number[]) => {
+  const sum = weights.reduce((a, b) => a + b, 0)
+  const last = weights.length - 1
+  const out = weights.map((w, i) => (i < last && sum > 0 ? Math.round(total * w / sum) : 0))
+  out[last] = total - out.slice(0, last).reduce((a, b) => a + b, 0)
+  return out
+}
 export const invoiceLinesFrom = (d: QuoteDetail) => {
+  // the quotation's own arithmetic — what the customer saw and agreed
   const nets = d.lines.map((l) => Math.round(l.qty * l.price * (1 - l.disc / 100)))
   const sub = nets.reduce((a, b) => a + b, 0)
   const pctCut = Math.round(sub * d.optDisc / 100)
   const fixedCut = Math.min(Math.max(0, d.fixed), sub - pctCut)
   const lump = pctCut + fixedCut
-  const last = nets.length - 1
-  const alloc = nets.map((n, i) => (i < last ? Math.round(lump * n / sub) : 0))
-  alloc[last] = lump - alloc.slice(0, last).reduce((a, b) => a + b, 0)
+  // the three frozen totals
+  const base = sub - lump
+  const vat = Math.round(base * VAT_RATE / 100)
+  const total = base + vat
+  // split DOWN: pre-tax by the quotation nets, then VAT by the pre-tax result
+  const preTax = splitDown(base, nets)
+  const vats = splitDown(vat, preTax)   // one rate today → one group; see spec for mixed rates
   const lines = d.lines.map((l, i) => ({
     ...l,
     quoteNet: nets[i],                 // what the quotation printed for this line
-    alloc: alloc[i],                   // this line's share of the order-level lump
-    invNet: nets[i] - alloc[i],        // thành tiền on the invoice — an INTEGER
-    invUnit: (nets[i] - alloc[i]) / l.qty,   // đơn giá on the invoice — decimal, presentation only
+    alloc: nets[i] - preTax[i],        // this line's share of the order-level lump — derived
+    invNet: preTax[i],                 // thành tiền on the invoice — an INTEGER
+    invVat: vats[i],                   // tiền thuế on the invoice — allocated, an INTEGER
+    invTotal: preTax[i] + vats[i],
+    invUnit: preTax[i] / l.qty,        // đơn giá on the invoice — decimal, presentation only
   }))
-  const base = lines.reduce((a, l) => a + l.invNet, 0)      // == sub − lump, always
-  const vat = Math.round(base * VAT_RATE / 100)
-  return { lines, sub, pctCut, fixedCut, lump, base, vat, total: base + vat }
+  return { lines, sub, pctCut, fixedCut, lump, base, vat, total }
 }
 /** A unit price that may carry decimals: 1.608,50 · 2.467,67 · 6.100.000 */
 export const fmtUnit = (n: number) =>

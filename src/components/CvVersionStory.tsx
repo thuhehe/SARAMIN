@@ -188,8 +188,8 @@ const STEPS: Step[] = [
   },
   {
     date: '20/07', actor: 'Ứng viên', title: 'Thay file — v.2, mỏng hơn',
-    event: 'Minh Anh thay file bằng một “bản rút gọn” 1 trang — với CV tải lên, đây chính là “xoá bớt trường”. Hệ thống đọc được 1 kinh nghiệm · 2 kỹ năng.',
-    rule: ['Bản mới **luôn được quét lại** → không đạt (không còn kinh nghiệm nào đọc được) → **Not enough information**. CV tải lên đang nghi ngờ → **vào hàng đợi CV review**.', 'Đơn #1 là snapshot của v.1 → **không đổi**. FPT vẫn giữ bản 2 trang. Trạng thái nghi ngờ **không bao giờ thu hồi** gì.'],
+    event: 'Minh Anh thay file bằng một “bản rút gọn” 1 trang — với CV tải lên, đây chính là “xoá bớt trường”. Hệ thống không đọc được kinh nghiệm nào, cũng không có học vấn.',
+    rule: ['Bản mới **luôn được quét lại** → không đạt (không có kinh nghiệm, cũng không có học vấn) → **Not enough information**. CV tải lên đang nghi ngờ → **vào hàng đợi CV review**.', 'Đơn #1 là snapshot của v.1 → **không đổi**. FPT vẫn giữ bản 2 trang. Trạng thái nghi ngờ **không bao giờ thu hồi** gì.'],
     cv: { label: 'Not enough information', tone: 'doubt', sub: 'v.2' }, a1: { ...A1_SENT, sub: 'v.1 · Interview' }, a2: NONE,
     sees: {
       js: <><MyCv meta="Cập nhật 20/07/2026" ver={2} /><p className="text-[10px] italic text-faint">Không chip, không “chờ duyệt” — nghi ngờ trên CV tải lên là việc của chúng ta, ứng viên không thấy.</p></>,

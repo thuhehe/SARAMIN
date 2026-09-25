@@ -309,6 +309,34 @@ export const jobManagement: BuildModule = {
         'RECOMMENDATION — a dedicated search index (Meilisearch / Typesense) for Phase-1, and the reason is not speed. Two requirements are already decided elsewhere and both are awkward in SQL: Vietnamese ASCII folding with typo tolerance, and FACET COUNTS shown live beside each filter. Postgres can fold with `unaccent` + GIN, but multi-dimension facet counts is where it gets expensive and fiddly. If the client prefers to stay on SQL in Phase-1 the cost is concrete and must be stated up front: drop the counts next to the facets.',
       ],
     },
+    {
+      label: 'JOB DISCOVERY \u2014 the name for every page that gets a candidate TO a job list',
+      text:
+        '\u201cJob discovery\u201d (VI: Kh\u00e1m ph\u00e1 vi\u1ec7c l\u00e0m) is the internal name for the family of jobseeker pages whose job is to deliver a job list \u2014 as opposed to the search box that queries one, or the job detail at the end of one. It is a SPEC word, not a label: the menu a jobseeker reads says \u201cVi\u1ec7c l\u00e0m / Jobs\u201d.',
+      table: {
+        cols: ['Page', 'What it is', 'Saramin KR equivalent'],
+        rows: [
+          ['Jobs by location', 'The job list, faceted by province / district', '\uc9c0\uc5ed\ubcc4'],
+          ['Jobs by job category', 'The job list, faceted by the job-category taxonomy', '\uc9c1\uc885\ubcc4'],
+          ['Search result', 'The job list from a keyword query \u2014 already specced as \u201cJob list (Search result)\u201d', '\u2014'],
+          ['Recommended jobs', 'Matched to the signed-in jobseeker\u2019s profile \u2014 already specced', '\ucd94\ucc9c'],
+          ['Relevant jobs', 'Matched to another job \u2014 already specced', '\u2014'],
+          ['HOT100', 'A RANKING, not a filter \u2014 the most-viewed / most-applied postings', 'HOT100'],
+          ['Zone', 'A branded campaign landing page, banner + copy + two job lists', '\ucc44\uc6a9\uad00'],
+          ['Collection', 'A curated saved set of jobs published under a slug', '\ud050\ub808\uc774\uc158'],
+          ['Jobs for foreign nationals', 'The job list, filtered to visa-friendly postings', '\uc678\uad6d\uc778 \ucc44\uc6a9'],
+          ['Staffing agencies', 'A directory of COMPANIES, not jobs \u2014 the odd member', '\ud30c\uacac\uc5c5\uccb4'],
+        ],
+      },
+      items: [
+        'THE TEST for whether a new page joins this family: does it hand the candidate a job list? That is the only thing the name has to settle, and it settles it without a meeting.',
+        'THE FACETED ROWS ARE ONE PAGE, NOT MANY. Location, category and \u201cforeign nationals\u201d are the same list with a filter pre-applied and a different entry point. Specifying them as separate screens is how three copies of one search end up maintained apart.',
+        'TWO OF THESE ARE ALREADY BUILT and must not be re-invented under a new name: a ZONE is svn-be\u2019s `zone` (public `/khu-tuyen-dung/{slug}`) and a COLLECTION is `job_collection` (public `/bo-suu-tap/{slug}`). A zone does not own its lists \u2014 it points at collections.',
+        'SARAMIN KR\u2019s \uc5ed\uc138\uad8c\ubcc4 (jobs by subway station) is deliberately NOT on this list. It rests on a dense metro network; HCMC has one line.',
+        'GOOGLE TRANSLATE RENDERS \ucc44\uc6a9\uad00 AS \u201cRecruitment Center\u201d, which is wrong and has already caused confusion \u2014 it is a campaign page, not a place. Use Zone.',
+      ],
+      warn: 'Do not name this family after the navigation widget (\u201cmega menu pages\u201d) or after one of its own members (\u201cjob collection pages\u201d). The first is false the moment the nav becomes a mobile drawer; the second overloads `job_collection`, which already means one specific thing in the database.',
+    },
   ],
   features: [
     /* ONE requirement for both surfaces. HQ and the employer write the SAME Job
