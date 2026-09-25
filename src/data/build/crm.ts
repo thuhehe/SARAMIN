@@ -1264,7 +1264,7 @@ export const crm: BuildModule = {
           {
             group: 'Admin · the same card (beneficiary view)',
             items: [
-              { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: one panel per sponsor — sponsor name (opens its record), linked since/by, one TILE per product with a spend (count big, unit small), total used, Remove link. Never a PO number, total, remainder or invoice of the sponsor' },
+              { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: ONE PLAIN TABLE — Invoice (the sponsor’s INV- number) · Shared by (name, linked since/by) · Sản phẩm · Đã dùng (count + unit) · Lần dùng gần nhất · Remove link; one row per product spent, grouped under the sponsor. Never the PO number, amount, total or remainder' },
               { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin' },
               { name: 'used (per product) · lastUsed', type: 'derived', notes: 'one chip per product line with a spend (“Top job 3 · Basic 2 · CV search 12”) — counts only, no denominator on this side, even for the admin reading this record; the numbers live on the sponsor’s' },
               { name: 'Remove link', type: 'button' },
@@ -1305,7 +1305,7 @@ export const crm: BuildModule = {
         states: [
           'Sponsor with no links yet — the ID list shows one empty box and SAVE disabled',
           'Sponsor with links — summary line + table + Link row',
-          'Beneficiary — Overview: sponsor names only · Products & billing: one panel per sponsor with usage tiles and Remove link',
+          'Beneficiary — Overview: sponsor names only · Products & billing: one plain table (invoice · sponsor · product · used · last used · Remove link)',
           'Neither, and no invoiced PO — the card is not rendered',
           'Shared PO exhausted — listed disabled in the picker, sponsor named',
           'Link removed — Removed pill with the date, no Remove action, usage kept',
