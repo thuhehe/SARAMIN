@@ -1079,7 +1079,7 @@ export const crm: BuildModule = {
       ready: true,
       notes: 'Client request 25/09/2026. A company that bought a PO lets other companies — linked on its record by Company ID, NO parent/subsidiary relationship needed — post jobs and open CVs from that PO once it is invoiced. The buyer (SPONSOR) sees invoices, totals and who used what; a linked company (BENEFICIARY) sees only what it used.',
       mockup: 'admin-shared-quota',
-      mockups: ['co-create-job', 'co-product-usage', 'co-products'],
+      mockups: ['co-create-job', 'co-product-usage', 'co-product-usage-beneficiary', 'co-products'],
       detail: {
         keyPoints: [
           {

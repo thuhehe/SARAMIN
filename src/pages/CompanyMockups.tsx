@@ -2855,9 +2855,15 @@ function SharedQuotaCoCard({ view, onView }: { view: 'sponsor' | 'beneficiary'; 
 type UsageRow = { type: string; name: string; used: string; pct?: number; unlimited?: boolean; pill?: [string, 'green' | 'amber' | 'muted']; dates?: string; btn?: string; by?: [string, number][] }
 type UsageGroup = { head: string; meta?: string; shared?: boolean; rows: UsageRow[] }
 
-function ProductUsageScreen() {
+/* Two nav entries, one component: the SPONSOR's page and the BENEFICIARY's page are
+   two screens in the gallery (and two Screen UI blocks on the spec pages), because
+   a reader is shown one company at a time — a role switch inside the page read as a
+   feature of the page rather than as two companies. */
+function ProductUsageSponsorScreen() { return <ProductUsageScreen role="sponsor" /> }
+function ProductUsageBeneficiaryScreen() { return <ProductUsageScreen role="beneficiary" /> }
+
+function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
   const go = useCoNav()
-  const [role, setRole] = useState<'sponsor' | 'beneficiary'>('sponsor')
   const [expiring, setExpiring] = useState(false)
   const sponsor: UsageGroup[] = [
     { head: 'Free job posting', meta: '1 product', rows: [{ type: 'Job posting', name: 'Free Job', used: '1 free post' }] },
@@ -2895,15 +2901,10 @@ function ProductUsageScreen() {
   const company = role === 'sponsor' ? 'FPT Software' : 'Công ty TNHH Sao Mai'
   return (
     <div>
-      {/* mockup switch — two companies cannot be one page; this stands in for signing in as the other */}
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11px]">
-        <span className="text-muted">Xem như:</span>
-        {(['sponsor', 'beneficiary'] as const).map((r) => (
-          <button key={r} onClick={() => setRole(r)} className={cn('rounded-full border px-2.5 py-1 font-medium', role === r ? 'border-brand bg-brand text-white' : 'border-line text-muted')}>
-            {r === 'sponsor' ? 'FPT Software — công ty tài trợ (đứng tên PO)' : 'Sao Mai — công ty thụ hưởng (dùng chung)'}
-          </button>
-        ))}
-      </div>
+      <p className="mb-3 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11px] text-muted">
+        Đang xem như <b className="text-ink/80">{company}</b> — {role === 'sponsor' ? 'công ty tài trợ, đứng tên PO' : 'công ty thụ hưởng, dùng chung quota'}.
+        {' '}Trang còn lại: <b className="cursor-pointer text-brand" onClick={() => go(role === 'sponsor' ? 'co-product-usage-beneficiary' : 'co-product-usage')}>{role === 'sponsor' ? 'Product usage — công ty thụ hưởng' : 'Product usage — công ty tài trợ'} →</b>
+      </p>
       <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
         {/* left rail — as the Figma frame */}
         <aside>
@@ -3335,7 +3336,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'More',
     overflow: true,
     items: [
-      { id: 'co-product-usage', label: 'Product usage', Comp: ProductUsageScreen },
+      { id: 'co-product-usage', label: 'Product usage — sponsor', Comp: ProductUsageSponsorScreen },
+      { id: 'co-product-usage-beneficiary', label: 'Product usage — beneficiary', Comp: ProductUsageBeneficiaryScreen },
       { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
       { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
       { id: 'co-company-info', label: 'Company information', Comp: CompanyInfoScreen },

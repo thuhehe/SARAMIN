@@ -503,6 +503,7 @@ export const companyUser: BuildModule = {
       site: 'Companies',
       slug: 'product-usage-companies',
       mockup: 'co-product-usage',
+      mockups: ['co-product-usage-beneficiary'],
       scope: ['BE', 'FE', 'UI'],
       notes:
         'What the account bought, as live rows the employer can act on — grouped under the order that paid for them. The employer-side view of the SAME entitlement record the Admin “Products & quota” screen shows.',
