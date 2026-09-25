@@ -1264,7 +1264,7 @@ export const crm: BuildModule = {
           {
             group: 'Admin · the same card (beneficiary view)',
             items: [
-              { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: ONE PLAIN TABLE — Invoice (the sponsor’s INV- number) · Shared by (name, linked since/by) · Sản phẩm · Đã dùng (count + unit) · Lần dùng gần nhất · Remove link; one row per product spent, grouped under the sponsor. Never the PO number, amount, total or remainder' },
+              { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: ONE PLAIN TABLE — Invoice (the sponsor’s INV- number) · Shared by (name) · Sản phẩm · Đã dùng (count + unit) · Lần dùng gần nhất · Remove link; one row per product spent, grouped under the sponsor. Never the PO number, amount, total or remainder' },
               { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin' },
               { name: 'used (per product) · lastUsed', type: 'derived', notes: 'one chip per product line with a spend (“Top job 3 · Basic 2 · CV search 12”) — counts only, no denominator on this side, even for the admin reading this record; the numbers live on the sponsor’s' },
               { name: 'Remove link', type: 'button' },

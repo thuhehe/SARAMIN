@@ -272,7 +272,7 @@ function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: Sh
     return items.map(([l, product, n], i) => [
       i === 0 ? <span key="inv" className="font-mono text-[11.5px] text-ink">{l.invoice ?? '—'}</span> : <span key="inv" />,
       i === 0
-        ? <span key="sp" className="flex flex-col"><button onClick={() => s && onOpen?.(s)} className="text-left font-medium text-brand hover:underline">{s ? coLabel(s) : l.sponsor}</button><span className="text-[10px] text-faint">link {l.since} · {l.by}</span></span>
+        ? <button key="sp" onClick={() => s && onOpen?.(s)} className="text-left font-medium text-brand hover:underline">{s ? coLabel(s) : l.sponsor}</button>
         : <span key="sp" />,
       product ? <span key="p">{product}</span> : <span key="p" className="text-faint">chưa dùng gì</span>,
       product ? <b key="n" className="tabular-nums">{n}<span className="font-normal text-faint"> {unitOf(l.sponsor, product)}</span></b> : <span key="n" />,
