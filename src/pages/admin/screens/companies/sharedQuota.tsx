@@ -168,7 +168,7 @@ function UsedChips({ used }: { used: Record<string, number> }) {
   )
 }
 
-function SponsorView({ c, links, onOpen, onRemove, onChange }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void; onChange: (change: { add: Company[]; remove: string[] }) => void }) {
+function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void }) {
   const products = usageMatrix(c.name, links)
   const active = links.filter((l) => l.status === 'active')
   const othersTotal = products.reduce((s, p) => s + p.others, 0)
@@ -207,7 +207,7 @@ function SponsorView({ c, links, onOpen, onRemove, onChange }: { c: Company; lin
             </thead>
             <tbody>
               {links.length === 0 && (
-                <tr><td colSpan={products.length + 5} className="px-3 py-3 text-[12px] text-muted">Chưa link công ty nào — nhập Company ID ở ô bên dưới rồi SAVE.</td></tr>
+                <tr><td colSpan={products.length + 5} className="px-3 py-3 text-[12px] text-muted">Chưa link công ty nào — link bằng Company ID ở tab Overview, thẻ Dùng chung quota.</td></tr>
               )}
               {links.map((l) => {
                 const b = byName(l.beneficiary)
@@ -260,10 +260,9 @@ function SponsorView({ c, links, onOpen, onRemove, onChange }: { c: Company; lin
           </table>
         </div>
       )}
-      <div className="mt-3 rounded-lg border border-line bg-canvas/40 px-3 py-2.5"><CompanyIdRows sponsor={c} links={links} onSave={onChange} /></div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         Cột = từng sản phẩm trên các PO đã xuất hoá đơn của {coLabel(c)} — PO có bao nhiêu dòng thì bảng có bấy nhiêu cột, cuộn ngang khi nhiều. Mỗi lần công ty được link đăng tin hoặc mở CV là <b className="text-muted">một dòng trên Usage history của {coLabel(c)}</b> ghi rõ công ty nào.
-        Remove chỉ chặn lần dùng <b className="text-muted">tiếp theo</b> — tin đã đăng vẫn chạy hết hạn. Trên Company site, công ty được link chỉ thấy <b className="text-muted">hàng của mình</b> — không thấy tổng, còn lại hay hoá đơn.
+        Link thêm công ty ở tab <b className="text-muted">Overview</b> (danh sách Company ID). Remove chỉ chặn lần dùng <b className="text-muted">tiếp theo</b> — tin đã đăng vẫn chạy hết hạn. Trên Company site, công ty được link chỉ thấy <b className="text-muted">hàng của mình</b> — không thấy tổng, còn lại hay hoá đơn.
       </p>
     </>
   )
@@ -335,7 +334,6 @@ export function SharedQuotaCard({ c, onOpen }: { c: Company; onOpen?: (x: Compan
           links={links}
           onOpen={onOpen}
           onRemove={(name) => setLinks((ls) => applyChange(ls, c.name, { add: [], remove: [name] }))}
-          onChange={(ch) => setLinks((ls) => applyChange(ls, c.name, ch))}
         />
       )}
     </DetailCard>

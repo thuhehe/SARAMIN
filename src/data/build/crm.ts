@@ -1127,7 +1127,7 @@ export const crm: BuildModule = {
           },
           {
             label: 'Setup — on the sponsor’s record, by Company ID',
-            text: 'Company record → card **Shared quota** (Overview, and again under the matrix on Products & billing) → the **Company ID list** — the KR admin’s “ID AMS” control, which the client asked for by picture: one box per linked company (ID · name · units used), a red **−** on each, an empty box to type the next ID into, **+ Thêm ID** for another, and one **SAVE** for the lot. The six checks run live under a box as the ID is typed; SAVE enables only when every box passes and states what it will do (“link 2 · gỡ 1”). By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
+            text: 'Company record → **Overview** → card **Shared quota** → the **Company ID list** — the KR admin’s “ID AMS” control, which the client asked for by picture: one box per linked company (ID · name · units used), a red **−** on each, an empty box to type the next ID into, **+ Thêm ID** for another, and one **SAVE** for the lot. The six checks run live under a box as the ID is typed; SAVE enables only when every box passes and states what it will do (“link 2 · gỡ 1”). By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
             table: {
               cols: ['Check (server-side too) — six of them', 'Refused when', 'Message'],
               rows: [
@@ -1140,7 +1140,7 @@ export const crm: BuildModule = {
               ],
             },
             items: [
-              'The ID list sits on the Shared quota card on BOTH tabs — Overview (where it IS the card) and Products & billing (under the matrix). Any number of boxes; there is no limit. Pressing − on an existing row marks it “sẽ gỡ khi Save” and can be undone before saving; SAVE applies adds and removes together.',
+              'The ID list lives on the Overview card only — that card IS the list. Products & billing shows the usage matrix and a Remove per row, nothing else. Any number of boxes; there is no limit. Pressing − on an existing row marks it “sẽ gỡ khi Save” and can be undone before saving; SAVE applies adds and removes together.',
               'Who may link / remove: HQ admin, and the sponsor’s sales owner (permission `company:share_quota`). A beneficiary’s own sales owner cannot link it to anyone — the sponsor is the one whose money is at stake.',
               'The sponsor needs no invoiced PO to be linked — the link can be prepared before the sale closes; it simply does nothing until an invoice is issued.',
               'Verification is not a condition for linking. It is a condition for POSTING (the existing gate): an unverified beneficiary sees the sponsor’s PO but cannot publish, exactly as it could not publish from its own.',
@@ -1192,7 +1192,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
-                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing, with the same ID list under it'],
+                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
               ],
             },
             items: [
