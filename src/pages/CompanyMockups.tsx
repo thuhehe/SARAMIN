@@ -2852,13 +2852,71 @@ function SharedQuotaCoCard({ view, onView }: { view: 'sponsor' | 'beneficiary'; 
  *   no amount), rows with a COUNT only ("3 posts used" — no "of N", no bar), and
  *   the one button it needs. Nothing of the sponsor's PO reaches this page.
  */
-type UsageRow = { type: string; name: string; used: string; pct?: number; unlimited?: boolean; pill?: [string, 'green' | 'amber' | 'muted']; dates?: string; btn?: string; by?: [string, number][] }
+type UsageRow = { type: string; name: string; used: string; pct?: number; unlimited?: boolean; pill?: [string, 'green' | 'amber' | 'muted']; dates?: string; btn?: string}
 type UsageGroup = { head: string; meta?: string; shared?: boolean; rows: UsageRow[] }
 
 /* Two nav entries, one component: the SPONSOR's page and the BENEFICIARY's page are
    two screens in the gallery (and two Screen UI blocks on the spec pages), because
    a reader is shown one company at a time — a role switch inside the page read as a
    feature of the page rather than as two companies. */
+/* The sponsor's "who used what" — the SAME matrix the admin record shows (rows =
+   linked companies, columns = every product on the sponsor's invoiced POs, footer
+   = own use · linked use · remaining / total), so the customer and Saramin read one
+   table. No Link / Remove here: that is done through Saramin. */
+function SponsorUsageMatrix() {
+  const products: { name: string; unit: string; total: number; own: number }[] = [
+    { name: 'Top Job', unit: 'posts', total: 100, own: 38 },
+    { name: 'Basic', unit: 'posts', total: 20, own: 4 },
+    { name: 'Distinction', unit: 'posts', total: 10, own: 0 },
+    { name: 'CV Search — COMBO 200', unit: 'CVs', total: 200, own: 61 },
+  ]
+  const rows: { name: string; id: string; used: number[]; last: string; removed?: string }[] = [
+    { name: 'Công ty TNHH Sao Mai', id: 'CO-S2CERJW', used: [3, 2, 0, 12], last: '20/09/2026' },
+    { name: 'Công ty CP An Khang', id: 'CO-CZ1HY91', used: [1, 0, 0, 0], last: '15/09/2026' },
+    { name: 'Công ty TNHH Phú Thịnh', id: 'CO-4K2T7MQ', used: [2, 0, 0, 4], last: '22/08/2026', removed: '30/08/2026' },
+  ]
+  const others = products.map((_, i) => rows.reduce((t, r) => t + r.used[i], 0))
+  const num = (n: number, dim?: boolean) => <span className={cn('tabular-nums', n === 0 || dim ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
+  const cell = 'px-3 py-2 text-right text-[12px]'
+  return (
+    <div className="mt-3 overflow-hidden rounded-lg border border-line">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/60 px-3 py-2">
+        <p className="text-[12.5px] font-bold">Companies using your quota</p>
+        <span className="text-[10.5px] text-faint">cột = từng sản phẩm trên các PO đã xuất hoá đơn của bạn</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse" style={{ minWidth: 520 + products.length * 120 }}>
+          <thead>
+            <tr className="bg-canvas/40 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+              <th className="px-3 py-2 text-left">Company</th>
+              {products.map((p) => <th key={p.name} className="px-3 py-2 text-right whitespace-nowrap"><span className="block normal-case tracking-normal text-ink/80">{p.name}</span><span className="font-normal normal-case tracking-normal text-faint">{p.unit} · tổng {p.total}</span></th>)}
+              <th className="px-3 py-2 text-right">Tổng</th>
+              <th className="px-3 py-2 text-left">Last used</th>
+              <th className="px-3 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className={cn('border-t border-line-soft', r.removed && 'bg-canvas/30')}>
+                <td className="px-3 py-2"><span className={cn('block text-[12.5px] font-medium', r.removed ? 'text-muted' : 'text-ink')}>{r.name}</span><span className="font-mono text-[10px] text-faint">{r.id}</span></td>
+                {r.used.map((n, i) => <td key={i} className={cell}>{num(n, !!r.removed)}</td>)}
+                <td className={cell}><b className="tabular-nums">{r.used.reduce((t, n) => t + n, 0)}</b></td>
+                <td className="px-3 py-2 text-[11.5px] tabular-nums text-muted">{r.last}</td>
+                <td className="px-3 py-2">{r.removed ? <Chip tone="muted">Removed {r.removed}</Chip> : <Chip tone="green">Active</Chip>}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="text-[12px]">
+            <tr className="border-t border-line bg-canvas/40"><td className="px-3 py-2 font-medium text-ink/80">FPT Software tự dùng</td>{products.map((p) => <td key={p.name} className={cell}>{num(p.own)}</td>)}<td className={cell}><b className="tabular-nums">{products.reduce((t, p) => t + p.own, 0)}</b></td><td colSpan={2} /></tr>
+            <tr className="border-t border-line-soft bg-canvas/40"><td className="px-3 py-2 font-medium text-ink/80">Công ty được link đã dùng</td>{others.map((n, i) => <td key={i} className={cell}>{num(n)}</td>)}<td className={cell}><b className="tabular-nums">{others.reduce((t, n) => t + n, 0)}</b></td><td colSpan={2} className="px-3 py-2 text-[10.5px] text-faint">kể cả link đã gỡ — slot đã dùng là đã dùng</td></tr>
+            <tr className="border-t border-line bg-brand-soft/60"><td className="px-3 py-2 font-bold text-brand">Còn lại / tổng</td>{products.map((p, i) => { const rem = p.total - p.own - others[i]; return <td key={p.name} className={cn(cell, 'font-bold tabular-nums', rem / p.total < 0.2 ? 'text-amber-700' : 'text-brand')}>{rem}<span className="font-normal text-faint"> / {p.total}</span></td> })}<td className={cell} /><td colSpan={2} className="px-3 py-2 text-[10.5px] text-faint">chỉ bạn và Saramin thấy dòng này</td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function ProductUsageSponsorScreen() { return <ProductUsageScreen role="sponsor" /> }
 function ProductUsageBeneficiaryScreen() { return <ProductUsageScreen role="beneficiary" /> }
 
@@ -2868,13 +2926,13 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
   const sponsor: UsageGroup[] = [
     { head: 'Free job posting', meta: '1 product', rows: [{ type: 'Job posting', name: 'Free Job', used: '1 free post' }] },
     { head: 'PO-2026-0912', meta: '02/09/2026 · 3 products', rows: [
-      { type: 'Job posting', name: 'Top Job', used: '41 of 100 posts used', pct: 41, btn: 'Post job', by: [['FPT Software', 38], ['Sao Mai', 3]] },
-      { type: 'Job posting', name: 'Basic', used: '6 of 20 posts used', pct: 30, btn: 'Post job', by: [['FPT Software', 4], ['Sao Mai', 2]] },
+      { type: 'Job posting', name: 'Top Job', used: '41 of 100 posts used', pct: 41, btn: 'Post job' },
+      { type: 'Job posting', name: 'Basic', used: '6 of 20 posts used', pct: 30, btn: 'Post job' },
       { type: 'Add-on', name: 'Hot job label', used: '0 of 2 used', pct: 0 },
     ] },
     { head: 'PO-2026-0909', meta: '09/09/2026 · 2 products', rows: [
-      { type: 'CV search', name: 'CV Search — COMBO 200', used: '77 of 200 CVs unlocked', pct: 38, pill: ['In use', 'green'], dates: '09/09/2026 – 08/12/2026', btn: 'Find talent', by: [['FPT Software', 61], ['Sao Mai', 12], ['Phú Thịnh (đã gỡ)', 4]] },
-      { type: 'Job posting', name: 'Distinction', used: '0 of 10 posts used', pct: 0, btn: 'Post job', by: [['FPT Software', 0]] },
+      { type: 'CV search', name: 'CV Search — COMBO 200', used: '77 of 200 CVs unlocked', pct: 38, pill: ['In use', 'green'], dates: '09/09/2026 – 08/12/2026', btn: 'Find talent' },
+      { type: 'Job posting', name: 'Distinction', used: '0 of 10 posts used', pct: 0, btn: 'Post job' },
     ] },
     { head: 'PO-2026-0801', meta: '01/08/2026 · 1 product', rows: [
       { type: 'CV search', name: 'CV Search 30d', used: '0 of 50 CVs unlocked', pct: 0, pill: ['Not activated', 'amber'], dates: 'activate by 01/08/2027', btn: 'Activate' },
@@ -2933,9 +2991,10 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
 
           {role === 'sponsor' && (
             <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
-              <b>2 công ty đang dùng chung quota của {company}</b> — Sao Mai · An Khang. Số họ dùng <b>đã nằm trong</b> các thanh dưới; dòng “Dùng bởi” dưới mỗi sản phẩm tách ra ai dùng bao nhiêu. Thêm hoặc gỡ công ty: liên hệ sales owner của bạn ở Saramin.
+              <b>2 công ty đang dùng chung quota của {company}</b> — Sao Mai · An Khang. Số họ dùng <b>đã nằm trong</b> các thanh dưới; bảng dưới đây tách ra ai dùng bao nhiêu theo từng sản phẩm. Thêm hoặc gỡ công ty: liên hệ sales owner của bạn ở Saramin.
             </p>
           )}
+          {role === 'sponsor' && <SponsorUsageMatrix />}
           {role === 'beneficiary' && (
             <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
               {company} đang <b>dùng chung quota</b> của FPT Software và Tiki. Trang này hiện <b>số Invoice</b> (để bạn chọn đúng invoice khi tạo job) và <b>số bạn đã dùng</b> — tổng quota, số còn lại, giá trị và PO thuộc về công ty tài trợ.
@@ -2960,12 +3019,6 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
                       {r.unlimited && <span className="mt-1 inline-block rounded bg-sky-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">∞ Unlimited</span>}
                       {/* a beneficiary row has no bar: a bar needs a denominator, and the denominator is the sponsor's */}
                       {r.pct != null && <div className="mt-1.5 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${r.pct}%` }} /></div>}
-                      {r.by && (
-                        <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[10.5px]">
-                          <span className="text-faint">Dùng bởi</span>
-                          {r.by.map(([who, n]) => <span key={who} className="rounded border border-line bg-canvas/60 px-1.5 py-0.5 text-muted">{who} <b className="text-ink">{n}</b></span>)}
-                        </p>
-                      )}
                     </div>
                     <div className="text-[11.5px]">
                       {r.pill && <Chip tone={r.pill[1]}>{r.pill[0]}</Chip>}
@@ -2985,7 +3038,7 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
             <p className="mt-1">- Usage from the last 2 years is shown here.</p>
             <p>- Closing a posting early does not refund the unused days of a product in use.</p>
             {role === 'beneficiary' && <p>- An invoice marked “Shared by …” is another company’s: you see its number (to pick it when posting) and your own usage; the remaining quota, the amount and the order are on that company’s account.</p>}
-            {role === 'sponsor' && <p>- “Dùng bởi” lists every company that spent from this product — companies you no longer share with keep their past usage.</p>}
+            {role === 'sponsor' && <p>- “Companies using your quota” lists every company that spent from your products — companies you no longer share with keep their past usage.</p>}
             <p>- Usage &amp; payment: [FAQ] · Help center 02-6226-5000 (weekdays 09:00–19:00)</p>
           </div>
         </section>

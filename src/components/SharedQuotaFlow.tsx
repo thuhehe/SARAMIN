@@ -245,7 +245,7 @@ export function SharedQuotaFlow() {
           ]],
           ['COMPANY SITE', [
             'Create job → Purchase order: nhóm “PO của công ty bạn” + “Shared by …” · note dưới ô · PO hết slot disabled',
-            'Product usage (Products & Payment Management) — sponsor: từng dòng có “dùng bởi …” · beneficiary: nhóm theo SỐ INVOICE “Shared by …”, chỉ số đã dùng',
+            'Product usage (Products & Payment Management) — sponsor: ma trận như admin (ai dùng bao nhiêu) · beneficiary: nhóm theo SỐ INVOICE “Shared by …”, chỉ số đã dùng',
             'Products & quota — sponsor: ma trận · beneficiary: ô đã dùng',
             'Orders & invoices — chỉ chứng từ của chính công ty (beneficiary không thấy hoá đơn sponsor)',
             'Usage history — “từ quota của {sponsor}” / “bởi {beneficiary}”',

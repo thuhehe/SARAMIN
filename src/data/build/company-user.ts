@@ -552,13 +552,13 @@ export const companyUser: BuildModule = {
         requirements: [
           {
             label: 'Shared quota on this page — sponsor and beneficiary (CRM → Shared quota)',
-            text: 'The same page reads differently for the two companies a quota link joins. The SPONSOR (công ty tài trợ — the company that bought the PO) sees its page unchanged in shape, plus a “Dùng bởi” line under every product naming who spent what; its bars already include the beneficiaries’ use. A BENEFICIARY (công ty thụ hưởng) sees one group per shared invoice headed with the **invoice number** (INV-…) and “Shared by {Sponsor}” — the invoice number, not the PO, because that is what the Create-job picker names for a shared quota and what the poster picks; no date, no amount — and rows that carry a COUNT only: “3 posts used”, no “of N”, no bar, because the denominator is the sponsor’s.',
+            text: 'The same page reads differently for the two companies a quota link joins. The SPONSOR (công ty tài trợ — the company that bought the PO) sees its page unchanged in shape, plus — above the list — the SAME usage matrix the admin record shows (rows = linked companies, columns = every product on its invoiced POs, footer = own use · linked use · remaining / total); its bars already include the beneficiaries’ use. A BENEFICIARY (công ty thụ hưởng) sees one group per shared invoice headed with the **invoice number** (INV-…) and “Shared by {Sponsor}” — the invoice number, not the PO, because that is what the Create-job picker names for a shared quota and what the poster picks; no date, no amount — and rows that carry a COUNT only: “3 posts used”, no “of N”, no bar, because the denominator is the sponsor’s.',
             table: {
               cols: ['', 'Sponsor', 'Beneficiary'],
               rows: [
                 ['Group header', 'PO number · date · N products, as today', '**Invoice number** (INV-…) · “Shared by {Sponsor}” · N products. The number only — never the date, amount, lines, totals or the PO'],
                 ['Usage text', '“41 of 100 posts used” + bar', '“3 posts used” — count only, **no bar**'],
-                ['Who used it', '“Dùng bởi: FPT Software 38 · Sao Mai 3” under the row (removed links keep their past use)', 'n/a'],
+                ['Who used it', 'The usage matrix above the list — one row per linked company, one column per product, footer own / linked / remaining per product (removed links keep their past use); no Link / Remove, that is Saramin’s', 'n/a'],
                 ['Status pill · validity', 'As today', 'Pill only (In use / Not activated) — the validity dates are the sponsor’s pack'],
                 ['Button', 'Post job · Find talent · Activate', 'Post job · Find talent. **No Activate** — only the sponsor activates its pack'],
                 ['Banner', '“N công ty đang dùng chung quota của bạn” + how to add/remove (via Saramin)', '“Đang dùng chung quota của {Sponsors} — chỉ hiện số bạn đã dùng”'],
