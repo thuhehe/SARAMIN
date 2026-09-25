@@ -1127,7 +1127,7 @@ export const crm: BuildModule = {
           },
           {
             label: 'Setup — on the sponsor’s record, by Company ID',
-            text: 'Company record → **Products & billing** → card **Shared quota** → **+ Link company** (header of the card) opens a small dialog: the admin types the beneficiary’s Company ID (`CO-XXXXXXX`), the checks run live under the box, and **Link company** enables only when they pass. By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
+            text: 'Company record → card **Shared quota** (Overview, and again under the matrix on Products & billing) → the **Company ID list** — the KR admin’s “ID AMS” control, which the client asked for by picture: one box per linked company (ID · name · units used), a red **−** on each, an empty box to type the next ID into, **+ Thêm ID** for another, and one **SAVE** for the lot. The six checks run live under a box as the ID is typed; SAVE enables only when every box passes and states what it will do (“link 2 · gỡ 1”). By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
             table: {
               cols: ['Check (server-side too) — six of them', 'Refused when', 'Message'],
               rows: [
@@ -1140,7 +1140,7 @@ export const crm: BuildModule = {
               ],
             },
             items: [
-              '**+ Link company** sits on the Shared quota card on BOTH tabs — Overview (the snapshot) and Products & billing (the matrix) — and opens the same dialog. Repeat it for every company to link; there is no limit.',
+              'The ID list sits on the Shared quota card on BOTH tabs — Overview (where it IS the card) and Products & billing (under the matrix). Any number of boxes; there is no limit. Pressing − on an existing row marks it “sẽ gỡ khi Save” and can be undone before saving; SAVE applies adds and removes together.',
               'Who may link / remove: HQ admin, and the sponsor’s sales owner (permission `company:share_quota`). A beneficiary’s own sales owner cannot link it to anyone — the sponsor is the one whose money is at stake.',
               'The sponsor needs no invoiced PO to be linked — the link can be prepared before the sale closes; it simply does nothing until an invoice is issued.',
               'Verification is not a condition for linking. It is a condition for POSTING (the existing gate): an unverified beneficiary sees the sponsor’s PO but cannot publish, exactly as it could not publish from its own.',
@@ -1192,7 +1192,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
-                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'Snapshot card: linked companies with units used + **+ Link company**', 'The matrix stays on Products & billing'],
+                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing, with the same ID list under it'],
               ],
             },
             items: [
@@ -1249,8 +1249,8 @@ export const crm: BuildModule = {
           {
             group: 'Admin · Company record → Products & billing → card Shared quota (sponsor view)',
             items: [
-              { name: '+ Link company', type: 'button (card header)', notes: 'opens the Link dialog — the card itself is the matrix, the action is rare and consequential, so it does not sit as an open input on the card' },
-              { name: 'linkCompanyId', type: 'string', required: true, notes: 'in the dialog — the beneficiary’s Company ID, CO-XXXXXXX; validated live against the seven checks, the verdict shown under the box; Link company enables only on ✓' },
+              { name: 'Company ID list', type: 'repeatable field', notes: 'the KR “ID AMS” pattern — one box per linked company (read-only ID · name · units used · linked date) with a red − (marks for removal, ↺ undoes); empty boxes for new IDs (CO-XXXXXXX, validated live against the six checks + “typed twice”, ✓ shows the resolved company); + Thêm ID adds a box' },
+              { name: 'SAVE', type: 'button', notes: 'applies every add and remove in one write; disabled while any box is invalid or nothing changed; the label beside it says “link N · gỡ M”' },
               { name: 'summary line', type: 'derived', notes: '“N công ty đang dùng chung · đã dùng X / total slots và Y / total CV unlocks” — the sponsor’s own totals, what others took from them' },
               { name: 'usage matrix', type: 'table', notes: 'ROWS = linked companies (name + CO-ID + linked date/by + job titles) · COLUMNS = every product line on the sponsor’s invoiced POs, read from the entitlement ledger, never hard-coded (unit and total in the header) · cell = units that company spent, “—” for 0 · a Tổng column · Last used · Status (Active / Removed + date) · Remove. FOOTER: the sponsor’s own use · linked companies’ use (removed links included — spent is spent) · Còn lại / tổng per product, amber under 20 %. First column sticky; the table scrolls sideways when a PO has many lines.' },
             ],
@@ -1297,7 +1297,7 @@ export const crm: BuildModule = {
           'Removal never claws back. Archiving either side removes the link automatically.',
         ],
         states: [
-          'Sponsor with no links yet — the card shows the empty line and + Link company',
+          'Sponsor with no links yet — the ID list shows one empty box and SAVE disabled',
           'Sponsor with links — summary line + table + Link row',
           'Beneficiary — one block per sponsor (name, since/by, usage chips, Remove link)',
           'Neither, and no invoiced PO — the card is not rendered',
@@ -1335,7 +1335,8 @@ export const crm: BuildModule = {
           notes: 'Never copy quota. One balance, on the sponsor; the link is a read-and-spend permission. The spend must be atomic on the sponsor’s balance — two beneficiaries publishing at once on the last slot is the race to test.',
         },
         acceptance: [
-          'On the sponsor’s record, + Link company → a valid Company ID → Link company adds an Active row with today’s date and the operator’s name; the seven refusals each show their message under the box and leave no row.',
+          'On the sponsor’s record, typing a valid Company ID into an empty box shows ✓ and the company name; SAVE adds an Active row with today’s date and the operator’s name. Each of the six refusals (and an ID typed twice in the list) shows its message under the box and keeps SAVE disabled.',
+          'Pressing − on an existing row and SAVE removes that link; − then ↺ before SAVE changes nothing. One SAVE may add and remove several rows at once and is audited as one action with the list of IDs.',
           'The usage matrix has exactly one column per product line on the sponsor’s invoiced POs — add a PO with a new product and a column appears; a PO with ten lines scrolls sideways with the company column pinned. Remaining / total per product equals total − sponsor’s own use − every linked company’s use, removed links included.',
           'A company can be linked to a second sponsor; its Create job then shows two “Shared by …” groups and its record lists both sponsors, each with its own usage and Remove link. Linking the same pair twice is refused.',
           'Before the sponsor’s PO is invoiced, the beneficiary’s Create job shows no shared PO; the moment the invoice is issued it appears under “Shared by {Sponsor}”.',

@@ -50,46 +50,104 @@ function resolveId(raw: string, sponsor: Company, links: ShareLink[]): { ok: tru
   return { ok: true, c }
 }
 
-/** The Link dialog — one input, validated live, and the rule under it. A dialog
-    rather than a row on the card: linking is rare and consequential, the matrix is
-    what the card is for, and a permanently open input box was reading as a search. */
-function LinkCompanyModal({ sponsor, links, onLink, onClose }: { sponsor: Company; links: ShareLink[]; onLink: (c: Company) => void; onClose: () => void }) {
-  const [raw, setRaw] = useState('')
-  const r = resolveId(raw, sponsor, links)
+/*
+ * The Link control — the KR admin's "ID AMS" pattern, which the client asked for
+ * by picture: a LIST of Company-ID boxes, one per linked company, a red − on
+ * each, an empty box to type the next ID into, and one SAVE for the lot. No
+ * dialog, no search: the operator pastes IDs the sponsor handed over, sees the
+ * resolved company appear beside each box, and saves once.
+ *
+ * Existing links are rows too — read-only ID, the company and its usage beside
+ * it — so adding and removing happen in one place and the Save button states
+ * exactly what it is about to do.
+ */
+type IdRow = { key: number; raw: string; existing?: ShareLink; removed?: boolean }
+let rowSeq = 1
+
+export function CompanyIdRows({ sponsor, links, onSave }: { sponsor: Company; links: ShareLink[]; onSave: (change: { add: Company[]; remove: string[] }) => void }) {
+  const active = links.filter((l) => l.status === 'active')
+  const fresh = (): IdRow[] => [...active.map((l) => ({ key: rowSeq++, raw: idOf(l.beneficiary), existing: l })), { key: rowSeq++, raw: '' }]
+  const [rows, setRows] = useState<IdRow[]>(fresh)
+  const set = (key: number, patch: Partial<IdRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  /* live verdict per NEW row — the same six checks the server runs, plus "typed
+     twice in this list", which only this screen can see */
+  const verdict = (r: IdRow) => {
+    if (r.existing || !r.raw.trim()) return null
+    const v = resolveId(r.raw, sponsor, links)
+    if (v?.ok && rows.some((o) => o.key !== r.key && !o.existing && o.raw.trim().toUpperCase() === r.raw.trim().toUpperCase())) return { ok: false as const, why: 'ID này đã nhập ở dòng trên.' }
+    return v
+  }
+  const adds = rows.filter((r) => !r.existing && verdict(r)?.ok).map((r) => (verdict(r) as { ok: true; c: Company }).c)
+  const removes = rows.filter((r) => r.existing && r.removed).map((r) => r.existing!.beneficiary)
+  const invalid = rows.some((r) => { const v = verdict(r); return v !== null && !v.ok })
+  const dirty = adds.length > 0 || removes.length > 0
+  const save = () => { onSave({ add: adds, remove: removes }); setRows(fresh()) }
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-8 w-full max-w-[480px] rounded-2xl border border-line bg-surface p-5 shadow-2xl">
-        <h3 className="text-[15px] font-bold tracking-tight text-ink">Link a company to {coLabel(sponsor)}’s quota</h3>
-        <p className="mt-1 text-[12px] text-muted">Công ty được link sẽ đăng tin và mở CV từ các PO đã xuất hoá đơn của {coLabel(sponsor)} — và chỉ thấy số mình đã dùng.</p>
-        <label className="mt-4 block text-[11px] font-semibold text-ink/80">Company ID</label>
-        <input
-          autoFocus
-          value={raw}
-          onChange={(e) => setRaw(e.target.value)}
-          placeholder="CO-XXXXXXX"
-          className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[13px] uppercase outline-none placeholder:font-sans placeholder:normal-case placeholder:text-faint focus:border-brand"
-        />
-        <p className={cn('mt-1.5 min-h-[18px] text-[11.5px]', !r ? 'text-faint' : r.ok ? 'text-emerald-700' : 'text-rose-700')}>
-          {!r
-            ? 'Nhập đúng ID của công ty — không tìm theo tên, để không link nhầm hai công ty trùng tên.'
-            : r.ok
-              ? <>✓ <b>{coLabel(r.c)}</b> · {r.c.address} · sales owner {r.c.owner}</>
-              : <>✗ {r.why}</>}
-        </p>
-        <p className="mt-2 rounded-md bg-canvas/70 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
-          Điều kiện: công ty tồn tại · <b className="text-ink/70">Active</b> · chưa có sponsor khác · không phải sponsor của ai · không phải chính công ty này. Quan hệ mẹ/con <b className="text-ink/70">không</b> bắt buộc và <b className="text-ink/70">không</b> tự tạo link. Ghi vào audit log và activity của cả hai công ty.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Huỷ</button>
+    <div>
+      <p className="text-[11px] font-semibold text-ink/80">Company ID <span className="font-normal text-faint">— công ty dùng chung quota của {coLabel(sponsor)}</span></p>
+      <div className="mt-1.5 space-y-1.5">
+        {rows.map((r) => {
+          const v = verdict(r)
+          const dim = r.removed
+          return (
+            <div key={r.key}>
+              <div className={cn('flex items-stretch overflow-hidden rounded-md border', dim ? 'border-line opacity-50' : v && !v.ok ? 'border-rose-300' : 'border-line')}>
+                {r.existing ? (
+                  <>
+                    {/* Two lines, not one: in the narrow Overview column a one-line row
+                        truncated the company name to nothing, and the name is the
+                        only thing telling the operator the ID resolved to the right
+                        company. */}
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2 bg-surface px-3 py-1.5">
+                      <span className="min-w-0">
+                        <span className="block font-mono text-[12.5px] leading-tight text-ink">{r.raw}</span>
+                        <span className="block truncate text-[11px] leading-tight text-muted">{byName(r.existing.beneficiary) ? coLabel(byName(r.existing.beneficiary)!) : r.existing.beneficiary}</span>
+                      </span>
+                      <span className="shrink-0 text-right text-[10.5px] leading-tight tabular-nums text-faint">{linkTotal(r.existing)} đơn vị<span className="block">link {r.existing.since}</span></span>
+                    </span>
+                    <button
+                      onClick={() => set(r.key, { removed: !r.removed })}
+                      title={r.removed ? 'Giữ lại' : 'Gỡ khi Save'}
+                      className={cn('w-10 shrink-0 text-[16px] font-bold text-white', r.removed ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600')}
+                    >{r.removed ? '↺' : '−'}</button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      value={r.raw}
+                      onChange={(e) => set(r.key, { raw: e.target.value })}
+                      placeholder="CO-XXXXXXX"
+                      className="min-w-0 flex-1 bg-surface px-3 py-2 font-mono text-[12.5px] uppercase outline-none placeholder:font-sans placeholder:normal-case placeholder:text-faint"
+                    />
+                    {v?.ok && <span className="flex shrink-0 items-center px-2 text-[11.5px] text-emerald-700">✓ {coLabel(v.c)}</span>}
+                    <button
+                      onClick={() => setRows((rs) => (rs.filter((o) => !o.existing && !o.raw.trim()).length <= 1 && !r.raw.trim() ? rs : rs.filter((o) => o.key !== r.key)))}
+                      title="Bỏ dòng"
+                      className="w-10 shrink-0 bg-rose-500 text-[16px] font-bold text-white hover:bg-rose-600"
+                    >−</button>
+                  </>
+                )}
+              </div>
+              {v && !v.ok && <p className="mt-0.5 text-[10.5px] text-rose-700">✗ {v.why}</p>}
+              {r.removed && <p className="mt-0.5 text-[10.5px] text-amber-800">Sẽ gỡ khi Save — tin đã đăng vẫn chạy hết hạn, số đã dùng vẫn ở lại bảng.</p>}
+            </div>
+          )
+        })}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <button onClick={() => setRows((rs) => [...rs, { key: rowSeq++, raw: '' }])} className="text-[11px] font-medium text-brand hover:underline">+ Thêm ID</button>
+        <div className="flex items-center gap-2">
+          {dirty && <span className="text-[10.5px] text-faint">{adds.length > 0 && `link ${adds.length}`}{adds.length > 0 && removes.length > 0 && ' · '}{removes.length > 0 && `gỡ ${removes.length}`}</span>}
           <button
-            disabled={!r || !r.ok}
-            onClick={() => { if (r?.ok) { onLink(r.c); onClose() } }}
-            className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Link company
-          </button>
+            disabled={!dirty || invalid}
+            onClick={save}
+            className="rounded-md bg-brand px-4 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >SAVE</button>
         </div>
       </div>
+      <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+        Nhập đúng <b className="text-muted">Company ID</b> — không tìm theo tên. Điều kiện: tồn tại · <b className="text-muted">Active</b> · không phải sponsor của ai · không phải chính công ty này · chưa link. Link bao nhiêu công ty cũng được; một công ty cũng có thể dùng chung từ nhiều sponsor. Ghi audit log + activity của cả hai bên.
+      </p>
     </div>
   )
 }
@@ -110,7 +168,7 @@ function UsedChips({ used }: { used: Record<string, number> }) {
   )
 }
 
-function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void }) {
+function SponsorView({ c, links, onOpen, onRemove, onChange }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void; onChange: (change: { add: Company[]; remove: string[] }) => void }) {
   const products = usageMatrix(c.name, links)
   const active = links.filter((l) => l.status === 'active')
   const othersTotal = products.reduce((s, p) => s + p.others, 0)
@@ -149,7 +207,7 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
             </thead>
             <tbody>
               {links.length === 0 && (
-                <tr><td colSpan={products.length + 5} className="px-3 py-3 text-[12px] text-muted">Chưa link công ty nào — bấm <b>+ Link company</b> ở góc thẻ.</td></tr>
+                <tr><td colSpan={products.length + 5} className="px-3 py-3 text-[12px] text-muted">Chưa link công ty nào — nhập Company ID ở ô bên dưới rồi SAVE.</td></tr>
               )}
               {links.map((l) => {
                 const b = byName(l.beneficiary)
@@ -202,6 +260,7 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
           </table>
         </div>
       )}
+      <div className="mt-3 rounded-lg border border-line bg-canvas/40 px-3 py-2.5"><CompanyIdRows sponsor={c} links={links} onSave={onChange} /></div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         Cột = từng sản phẩm trên các PO đã xuất hoá đơn của {coLabel(c)} — PO có bao nhiêu dòng thì bảng có bấy nhiêu cột, cuộn ngang khi nhiều. Mỗi lần công ty được link đăng tin hoặc mở CV là <b className="text-muted">một dòng trên Usage history của {coLabel(c)}</b> ghi rõ công ty nào.
         Remove chỉ chặn lần dùng <b className="text-muted">tiếp theo</b> — tin đã đăng vẫn chạy hết hạn. Trên Company site, công ty được link chỉ thấy <b className="text-muted">hàng của mình</b> — không thấy tổng, còn lại hay hoá đơn.
@@ -248,21 +307,25 @@ function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: Sh
   )
 }
 
+/** Apply a Save from the ID list to the prototype's local link state. */
+const TODAY = '25/09/2026'
+function applyChange(ls: ShareLink[], sponsor: string, ch: { add: Company[]; remove: string[] }): ShareLink[] {
+  const removed = ls.map((l) => (ch.remove.includes(l.beneficiary) && l.status === 'active' ? { ...l, status: 'removed' as const, removedAt: TODAY, removedBy: 'Nguyễn Thị Lan' } : l))
+  const added: ShareLink[] = ch.add.map((x) => ({ sponsor, beneficiary: x.name, since: TODAY, by: 'Nguyễn Thị Lan', status: 'active', used: {}, jobs: [] }))
+  return [...added, ...removed]
+}
+
 export function SharedQuotaCard({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
   /* Local copies so the prototype can link and remove without touching the seed. */
   const [links, setLinks] = useState<ShareLink[]>(() => beneficiariesOf(c.name))
   const [mine, setMine] = useState<ShareLink[]>(() => sponsorsOf(c.name))
-  const [linking, setLinking] = useState(false)
   const hasPo = poHistory(c).some((p) => p.invoiced) || sponsorProducts(c.name).length > 0
   const isSponsor = links.length > 0
   if (!isSponsor && mine.length === 0 && !hasPo) return null
-  const today = '25/09/2026'
   return (
     <DetailCard
       title={mine.length ? 'Shared quota — dùng chung từ sponsor' : 'Shared quota — công ty dùng chung PO này'}
-      action={mine.length
-        ? <span className="text-[11px] text-faint">beneficiary · {mine.length} sponsor</span>
-        : <button onClick={() => setLinking(true)} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">+ Link company</button>}
+      action={<span className="text-[11px] text-faint">{mine.length ? `beneficiary · ${mine.length} sponsor` : `${links.filter((l) => l.status === 'active').length} active`}</span>}
     >
       {mine.length ? (
         <BeneficiaryView c={c} links={mine} onOpen={onOpen} onRemove={(sp) => setMine((ls) => ls.filter((l) => l.sponsor !== sp))} />
@@ -271,15 +334,8 @@ export function SharedQuotaCard({ c, onOpen }: { c: Company; onOpen?: (x: Compan
           c={c}
           links={links}
           onOpen={onOpen}
-          onRemove={(name) => setLinks((ls) => ls.map((l) => (l.beneficiary === name && l.status === 'active' ? { ...l, status: 'removed', removedAt: today, removedBy: 'Nguyễn Thị Lan' } : l)))}
-        />
-      )}
-      {linking && (
-        <LinkCompanyModal
-          sponsor={c}
-          links={links}
-          onLink={(x) => setLinks((ls) => [{ sponsor: c.name, beneficiary: x.name, since: today, by: 'Nguyễn Thị Lan', status: 'active', used: {}, jobs: [] }, ...ls])}
-          onClose={() => setLinking(false)}
+          onRemove={(name) => setLinks((ls) => applyChange(ls, c.name, { add: [], remove: [name] }))}
+          onChange={(ch) => setLinks((ls) => applyChange(ls, c.name, ch))}
         />
       )}
     </DetailCard>
@@ -295,7 +351,6 @@ export function SharedQuotaCard({ c, onOpen }: { c: Company; onOpen?: (x: Compan
 export function SharedQuotaOverview({ c, onOpen, onGoBilling }: { c: Company; onOpen?: (x: Company) => void; onGoBilling?: () => void }) {
   const mine = sponsorsOf(c.name)
   const [links, setLinks] = useState<ShareLink[]>(() => beneficiariesOf(c.name))
-  const [linking, setLinking] = useState(false)
   const active = links.filter((l) => l.status === 'active')
   const canSponsor = poHistory(c).some((p) => p.invoiced) || sponsorProducts(c.name).length > 0
   if (mine.length === 0 && active.length === 0 && !canSponsor) return null
@@ -324,55 +379,19 @@ export function SharedQuotaOverview({ c, onOpen, onGoBilling }: { c: Company; on
     )
   }
   const total = active.reduce((s, l) => s + linkTotal(l), 0)
-  const today = '25/09/2026'
   return (
     <DetailCard
       title="Dùng chung quota — Shared quota"
-      action={
-        <span className="flex items-center gap-2">
-          {active.length > 0 && <Pill tone="active">sponsor · {active.length} công ty</Pill>}
-          <button onClick={() => setLinking(true)} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90">+ Link company</button>
-        </span>
-      }
+      action={active.length > 0 ? <Pill tone="active">sponsor · {active.length} công ty · {total} đơn vị đã dùng</Pill> : <span className="text-[11px] text-faint">sponsor · chưa link</span>}
     >
-      {active.length === 0 ? (
-        <p className="text-[12px] text-muted">Chưa có công ty nào dùng chung quota của {coLabel(c)}. <b>+ Link company</b> — nhập Company ID; link bao nhiêu công ty cũng được.</p>
-      ) : (
-        <>
-          <p className="text-[11px] leading-relaxed text-muted">
-            {coLabel(c)} đứng tên PO; <b className="text-ink/80">{active.length} công ty</b> được link đang đăng tin từ quota đó — đã dùng <b className="text-ink/80">{total}</b> đơn vị. Không phải công ty con: mỗi bên vẫn là khách hàng riêng.
-          </p>
-          <ul className="mt-2 divide-y divide-line-soft rounded-lg border border-line bg-canvas/40">
-            {active.map((l) => {
-              const b = byName(l.beneficiary)
-              return (
-                <li key={l.beneficiary} className="flex items-start justify-between gap-2 px-2.5 py-2">
-                  <span className="min-w-0">
-                    <button onClick={() => b && onOpen?.(b)} className="block truncate text-[12px] font-medium text-brand hover:underline">{b ? coLabel(b) : l.beneficiary}</button>
-                    <span className="block font-mono text-[10px] text-faint">{idOf(l.beneficiary)} · link {l.since}</span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <b className="block text-[13px] tabular-nums text-ink">{linkTotal(l)}</b>
-                    <span className="block text-[10px] text-faint">đơn vị · {l.lastUsed ?? '—'}</span>
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        </>
-      )}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-[10.5px] text-faint">Bảng theo từng sản phẩm, còn lại / tổng và Remove ở tab Products &amp; billing.</span>
+      {/* The KR "ID AMS" list, verbatim in shape: ID boxes, red minus, SAVE. Every
+          linked company is a row (ID · name · units used), so this one control is
+          both the list and the editor. */}
+      <CompanyIdRows sponsor={c} links={links} onSave={(ch) => setLinks((ls) => applyChange(ls, c.name, ch))} />
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-line-soft pt-2">
+        <span className="text-[10.5px] text-faint">Không phải công ty con: mỗi bên vẫn là khách hàng riêng. Bảng theo từng sản phẩm, còn lại / tổng ở tab Products &amp; billing.</span>
         {goBilling}
       </div>
-      {linking && (
-        <LinkCompanyModal
-          sponsor={c}
-          links={links}
-          onLink={(x) => setLinks((ls) => [{ sponsor: c.name, beneficiary: x.name, since: today, by: 'Nguyễn Thị Lan', status: 'active', used: {}, jobs: [] }, ...ls])}
-          onClose={() => setLinking(false)}
-        />
-      )}
     </DetailCard>
   )
 }
