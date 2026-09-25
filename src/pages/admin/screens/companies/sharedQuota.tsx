@@ -152,22 +152,6 @@ export function CompanyIdRows({ sponsor, links, onSave }: { sponsor: Company; li
   )
 }
 
-/** Compact per-product read-out for one company: "Top job 3 · Basic 2 · CV 12".
-    Only products with a spend — a row of zeros says nothing. */
-function UsedChips({ used }: { used: Record<string, number> }) {
-  const on = Object.entries(used).filter(([, n]) => n > 0)
-  if (on.length === 0) return <span className="text-[11px] text-faint">chưa dùng</span>
-  return (
-    <span className="flex flex-wrap gap-1">
-      {on.map(([k, n]) => (
-        <span key={k} className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas/60 px-1.5 py-0.5 text-[10.5px]">
-          <span className="text-muted">{k}</span><b className="tabular-nums text-ink">{n}</b>
-        </span>
-      ))}
-    </span>
-  )
-}
-
 function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void }) {
   const products = usageMatrix(c.name, links)
   const active = links.filter((l) => l.status === 'active')
@@ -268,39 +252,59 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
   )
 }
 
+/*
+ * BENEFICIARY, Products & billing — what THIS company has spent, and nothing about
+ * where it came from beyond the sponsor's name. No PO numbers, no totals, no
+ * remainder, no invoice: those are the sponsor's facts and stay on the sponsor's
+ * record (client, 25/09/2026 — "tuyệt đối không hiển thị PO của công ty tài trợ").
+ * One panel per sponsor, one tile per product with a spend, the count big.
+ */
 function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (sponsor: string) => void }) {
+  const unitOf = (sponsor: string, product: string) => sponsorProducts(sponsor).find((p) => p.name === product)?.unit ?? 'đơn vị'
   return (
     <>
-      {/* One block per sponsor. A company may draw on several — a group PO and a
-          partner's PO at once — and each is its own link, its own usage, its own
-          Remove, because "which quota did this come from" must never be a guess. */}
-      <div className="space-y-2">
+      <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+        {coLabel(c)} là <b className="text-ink/80">công ty thụ hưởng</b> — đăng tin và mở CV từ quota của {links.length} công ty tài trợ. Dưới đây là <b className="text-ink/80">số {coLabel(c)} đã dùng</b>, tính theo từng sản phẩm.
+      </p>
+      <div className="space-y-3">
         {links.map((link) => {
           const s = byName(link.sponsor)
+          const used = Object.entries(link.used).filter(([, n]) => n > 0)
+          const total = used.reduce((t, [, n]) => t + n, 0)
           return (
-            <div key={link.sponsor} className="rounded-lg border border-brand/30 bg-brand-soft/60 px-3 py-2.5">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+            <div key={link.sponsor} className="overflow-hidden rounded-xl border border-line">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/60 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-[12px] text-ink/85">
-                    Đăng tin từ PO của{' '}
-                    <button onClick={() => s && onOpen?.(s)} className="font-semibold text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
-                    <span className="font-mono text-[10.5px] text-faint"> · {idOf(link.sponsor)}</span>
+                  <p className="text-[12.5px] font-semibold text-ink">
+                    Từ{' '}
+                    <button onClick={() => s && onOpen?.(s)} className="text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
+                    <span className="ml-1.5 font-mono text-[10.5px] font-normal text-faint">{idOf(link.sponsor)}</span>
                   </p>
-                  <p className="mt-0.5 text-[10.5px] text-faint">Link {link.since} bởi {link.by} · lần dùng gần nhất {link.lastUsed ?? '—'}</p>
+                  <p className="text-[10.5px] text-faint">Link {link.since} bởi {link.by} · lần dùng gần nhất {link.lastUsed ?? '—'}</p>
                 </div>
-                <RowAction tone="rose" onClick={() => onRemove(link.sponsor)}>Remove link</RowAction>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-muted">Tổng đã dùng <b className="text-[14px] tabular-nums text-ink">{total}</b></span>
+                  <RowAction tone="rose" onClick={() => onRemove(link.sponsor)}>Remove link</RowAction>
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-[10px] uppercase tracking-wide text-faint">Đã dùng</span>
-                <UsedChips used={link.used} />
-              </div>
+              {used.length === 0 ? (
+                <p className="px-3 py-3 text-[12px] text-muted">Chưa dùng gì từ {s ? coLabel(s) : link.sponsor}.</p>
+              ) : (
+                <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {used.map(([product, n]) => (
+                    <div key={product} className="rounded-lg border border-line bg-surface px-3 py-2.5">
+                      <p className="truncate text-[11px] font-medium text-ink/80" title={product}>{product}</p>
+                      <p className="mt-1 text-[22px] font-bold leading-none tabular-nums text-ink">{n}<span className="ml-1 text-[11px] font-normal text-faint">{unitOf(link.sponsor, product)} đã dùng</span></p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
       </div>
-      <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-        <b className="text-muted">Không có “còn lại / tổng” ở đây, và không có hoá đơn</b> — cả hai nằm trên hồ sơ của từng sponsor. Sponsor không phải công ty mẹ — chỉ dùng chung quota. Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; tiền, hạng và customer status tính cho sponsor.
-        Lúc đăng tin, PO của mỗi sponsor nằm trong nhóm riêng “Shared by …” — chọn PO nào thì trừ PO đó, không có ưu tiên tự động.
+      <p className="mt-2.5 rounded-md bg-canvas/70 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
+        Chỉ có <b className="text-ink/70">số đã dùng</b> ở đây. Tổng quota, số còn lại và hoá đơn là của công ty tài trợ — chỉ hiện trên hồ sơ của họ và với admin. Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho công ty tài trợ.
       </p>
     </>
   )
@@ -354,25 +358,27 @@ export function SharedQuotaOverview({ c, onOpen, onGoBilling }: { c: Company; on
   if (mine.length === 0 && active.length === 0 && !canSponsor) return null
   const goBilling = <button onClick={onGoBilling} className="text-[11px] font-medium text-brand hover:underline">Products &amp; billing →</button>
   if (mine.length > 0) {
+    /* Names only. The snapshot says WHOSE beneficiary this company is and since
+       when — not what it used, and never anything about the sponsor's POs. The
+       counts are one click away on Products & billing. */
     return (
-      <DetailCard title="Dùng chung quota — Shared quota" action={<Pill tone="neutral">beneficiary · {mine.length} sponsor</Pill>}>
-        <ul className="divide-y divide-line-soft rounded-lg border border-line bg-canvas/40">
+      <DetailCard title="Dùng chung quota — Shared quota" action={<Pill tone="neutral">công ty thụ hưởng</Pill>}>
+        <p className="text-[12px] leading-relaxed text-ink/85">{coLabel(c)} là <b>công ty thụ hưởng</b> của:</p>
+        <ul className="mt-1.5 divide-y divide-line-soft rounded-lg border border-line bg-canvas/40">
           {mine.map((link) => {
             const s = byName(link.sponsor)
             return (
-              <li key={link.sponsor} className="px-2.5 py-2">
-                <p className="text-[12px] text-ink/85">
-                  PO của{' '}
-                  <button onClick={() => s && onOpen?.(s)} className="font-semibold text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
-                  <span className="font-mono text-[10.5px] text-faint"> · {idOf(link.sponsor)} · link {link.since}</span>
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5"><span className="text-[10px] uppercase tracking-wide text-faint">Đã dùng</span><UsedChips used={link.used} /></div>
+              <li key={link.sponsor} className="flex items-center justify-between gap-2 px-2.5 py-2">
+                <button onClick={() => s && onOpen?.(s)} className="min-w-0 text-left text-[12.5px] font-semibold text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
+                <span className="shrink-0 text-right text-[10.5px] leading-tight tabular-nums text-faint">link {link.since}<span className="block">{link.by}</span></span>
               </li>
             )
           })}
         </ul>
-        <p className="mt-1.5 text-[10.5px] text-faint">Không phải công ty mẹ — chỉ dùng chung quota. Hoá đơn, tổng và số còn lại ở hồ sơ từng sponsor.</p>
-        <div className="mt-2 flex justify-end">{goBilling}</div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-[10.5px] text-faint">Không phải công ty mẹ — chỉ dùng chung quota. Số đã dùng ở tab Products &amp; billing.</span>
+          {goBilling}
+        </div>
       </DetailCard>
     )
   }

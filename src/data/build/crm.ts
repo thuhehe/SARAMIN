@@ -1179,7 +1179,7 @@ export const crm: BuildModule = {
                 ['6', 'Link removed while a job is live', 'The job runs to its end date on the slot already spent. Upgrade tier or renew from the sponsor’s PO is refused.'],
               ],
             },
-            warn: 'The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
+            warn: 'Two things the beneficiary’s screens must NEVER show: the sponsor’s PO (number, lines, totals, remainder, invoice) — on any tab, admin side included — and, on the jobseeker site, the sponsor’s name on the job. The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
           },
           {
             label: 'Usage — what each side sees, and where',
@@ -1192,7 +1192,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
-                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
+                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: “{Beneficiary} là công ty thụ hưởng của: {Sponsor A} · {Sponsor B}” — names and linked dates only, nothing about POs or usage', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
               ],
             },
             items: [
@@ -1258,7 +1258,7 @@ export const crm: BuildModule = {
           {
             group: 'Admin · the same card (beneficiary view)',
             items: [
-              { name: 'sponsors', type: 'ref → Company[]', notes: 'one block per sponsor — name + CO-ID (opens the sponsor’s record), linked since/by, usage chips, Remove link' },
+              { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: one panel per sponsor — sponsor name (opens its record), linked since/by, one TILE per product with a spend (count big, unit small), total used, Remove link. Never a PO number, total, remainder or invoice of the sponsor' },
               { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin' },
               { name: 'used (per product) · lastUsed', type: 'derived', notes: 'one chip per product line with a spend (“Top job 3 · Basic 2 · CV search 12”) — counts only, no denominator on this side, even for the admin reading this record; the numbers live on the sponsor’s' },
               { name: 'Remove link', type: 'button' },
@@ -1299,7 +1299,7 @@ export const crm: BuildModule = {
         states: [
           'Sponsor with no links yet — the ID list shows one empty box and SAVE disabled',
           'Sponsor with links — summary line + table + Link row',
-          'Beneficiary — one block per sponsor (name, since/by, usage chips, Remove link)',
+          'Beneficiary — Overview: sponsor names only · Products & billing: one panel per sponsor with usage tiles and Remove link',
           'Neither, and no invoiced PO — the card is not rendered',
           'Shared PO exhausted — listed disabled in the picker, sponsor named',
           'Link removed — Removed pill with the date, no Remove action, usage kept',
