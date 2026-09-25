@@ -25,6 +25,8 @@ import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
 import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/companies/owner'
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
 import { MembershipStat, ProductsQuota } from '@/pages/admin/screens/companies/products'
+import { SharedQuotaCard, SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
+import { sponsorsOf } from '@/pages/admin/data/sharedQuota'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
 import { CoRoleBuilder, InviteUserModal } from '@/pages/admin/screens/companies/users'
 import { NewQuotationModal } from '@/pages/admin/screens/sales/newQuotation'
@@ -40,7 +42,7 @@ import { Table } from '@/pages/admin/ui/table'
    the first time a field is added. What the pool variant does is SUBTRACT — one tab,
    no customer pills, no writes — because a company nobody owns has no pipeline, no
    quota, no contacts and no activity to show. */
-export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void }) {
+export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, initialTab }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void; /** open on this tab — for a spec preview that has to land ON the thing it shows */ initialTab?: CoTab }) {
   const isPool = Boolean(pool)
   const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
   /* Stored on new records; derived from the buyer classification on older ones. */
@@ -61,7 +63,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
   const [params] = useSearchParams()
   const [tab, setTab] = useState<CoTab>(() => {
     const want = params.get('tab')
-    return (CO_TABS.find((t) => t.toLowerCase() === want?.toLowerCase()) ?? 'Overview') as CoTab
+    return (CO_TABS.find((t) => t.toLowerCase() === want?.toLowerCase()) ?? initialTab ?? 'Overview') as CoTab
   })
   const [inviting, setInviting] = useState(false)
   const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
@@ -528,7 +530,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
         <MiniStat label="Team" value={`${team.length}/${MAX_SEATS}`} sub="seats used" tone={full ? 'warn' : undefined} />
         {/* A free job draws on NO quota, so a company posting only free jobs has
             none — and "n/a" is the honest reading, not "0 slots left". */}
-        <MiniStat label="Job quota" value={c.jobPosting ? `${c.jobLeft}/${c.jobTotal}` : '—'} sub={c.jobPosting ? 'slots left' : freeJobs > 0 ? 'chỉ tin miễn phí' : 'n/a'} tone={c.jobPosting && c.jobLeft / c.jobTotal < 0.3 ? 'warn' : undefined} />
+        {/* A BENEFICIARY has no balance of its own to show — it posts from its
+            sponsor's. "—" would be true and misleading, so the card names the
+            sponsor instead and the Shared quota card carries the counts. */}
+        {sponsorsOf(c.name).length > 0 && !c.jobPosting
+          ? <MiniStat label="Job quota" value={<span className="text-[12.5px] text-brand">dùng chung</span>} sub={`từ ${sponsorsOf(c.name).map((l) => l.sponsor).join(' · ')}`} />
+          : <MiniStat label="Job quota" value={c.jobPosting ? `${c.jobLeft}/${c.jobTotal}` : '—'} sub={c.jobPosting ? 'slots left' : freeJobs > 0 ? 'chỉ tin miễn phí' : 'n/a'} tone={c.jobPosting && c.jobLeft / c.jobTotal < 0.3 ? 'warn' : undefined} />}
         <MiniStat label="CV unlocks" value={c.resumeSearch ? `${c.cvLeft}/${c.cvTotal}` : '—'} sub={c.resumeSearch ? 'left' : 'n/a'} tone={c.resumeSearch && c.cvLeft / c.cvTotal < 0.3 ? 'warn' : undefined} />
         <MiniStat label="Sales owner" value={<span className="text-[12.5px]">{c.owner.split(' ').slice(-2).join(' ')}</span>} sub="from CRM" />
       </div>
@@ -836,6 +843,9 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
             <CompanyDocs c={c} />
             {/* Owner history moved to its own tab — see the tab strip above. */}
             {!isPool && <AffiliatedCompanies c={c} onOpen={onOpen} />}
+            {/* Shared quota, the OTHER kind of link between companies — beside the legal
+                tree so the two are read together and never confused. */}
+            {!isPool && <SharedQuotaOverview c={c} onOpen={onOpen} onGoBilling={() => setTab('Products & billing')} />}
           </div>
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
@@ -1024,6 +1034,11 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim }:
       {/* ── Products & billing ───────────────────────────────────────────── */}
       {tab === 'Products & billing' && (
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          {/* Shared quota — one PO, several companies. Full width, ABOVE the meters,
+              because it changes how the meters below have to be read: on a sponsor
+              the numbers include other companies' spends, on a beneficiary there
+              are no numbers at all. Renders nothing on a record it does not apply to. */}
+          <div className="lg:col-span-2"><SharedQuotaCard c={c} onOpen={onOpen} /></div>
           {/* Manual services used to be a card of their own beside this one. They are
               entitlement bought on a PO like everything else, so they are lines in
               this list now — with their delivery log where their quota is shown. */}

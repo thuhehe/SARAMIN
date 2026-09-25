@@ -1068,6 +1068,294 @@ export const crm: BuildModule = {
         ],
       },
     },
+    // 0b · Shared quota — one PO, several companies ──────────────────────────
+    {
+      name: 'Shared quota — one PO, several companies',
+      /* Slug pinned at birth (2026-09-25): the feature name will be argued about
+         (“shared PO”, “quota sharing”, “sponsor”) and the address must not move. */
+      slug: 'shared-quota',
+      site: 'AdminCompanies',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'Client request 25/09/2026. A company that bought a PO lets other companies — linked on its record by Company ID, NO parent/subsidiary relationship needed — post jobs and open CVs from that PO once it is invoiced. The buyer (SPONSOR) sees invoices, totals and who used what; a linked company (BENEFICIARY) sees only what it used.',
+      mockup: 'admin-shared-quota',
+      mockups: ['co-create-job', 'co-products'],
+      detail: {
+        keyPoints: [
+          {
+            vi: 'Đây KHÔNG phải quan hệ mẹ – con. Link chỉ chia sẻ đúng một thứ: quota trên các PO đã xuất hoá đơn của công ty mua. Pháp nhân, hoá đơn, doanh thu, hạng — vẫn của riêng từng công ty.',
+            en: 'This is NOT the parent / subsidiary tree. The link shares exactly one thing — the quota on the buyer’s invoiced POs. Legal identity, invoices, revenue and tier stay with each company.',
+          },
+          {
+            vi: 'Hai vai: **Sponsor** (công ty mua PO, được xuất hoá đơn) và **Beneficiary** (công ty được link vào bằng Company ID). Admin link trên hồ sơ của Sponsor. **Nhiều-nhiều**: một Sponsor link bao nhiêu công ty cũng được, và một công ty có thể dùng chung từ nhiều Sponsor — mỗi link là một dòng riêng.',
+            en: 'Two roles: the **Sponsor** (buys the PO, is invoiced) and the **Beneficiary** (linked on the sponsor’s record by Company ID). An admin links them on the sponsor’s record. **Many-to-many**: a sponsor links any number of companies, and a company may draw on several sponsors — each link is its own row.',
+          },
+          {
+            vi: 'Chia sẻ chỉ có hiệu lực SAU KHI hoá đơn chính của PO được xuất — như mọi quota khác. PO chưa xuất hoá đơn thì Beneficiary chưa thấy gì.',
+            en: 'Sharing takes effect only once the PO’s official invoice is issued — like every other quota. An un-invoiced PO shows nothing to a beneficiary.',
+          },
+          {
+            vi: 'Khi tạo job, Beneficiary thấy PO của Sponsor trong danh sách PO (nhóm “Shared by …”) và dùng như PO của mình. Job đứng tên Beneficiary; slot trừ vào PO của Sponsor.',
+            en: 'On Create job the beneficiary sees the sponsor’s POs (group “Shared by …”) and uses them like its own. The job carries the beneficiary’s name; the slot is spent from the sponsor’s PO.',
+          },
+          {
+            vi: 'Beneficiary chỉ thấy SỐ MÌNH ĐÃ DÙNG (vd. 20) — không thấy tổng, số còn lại, hay hoá đơn. Sponsor thấy hoá đơn, tổng, còn lại, và từng công ty dùng bao nhiêu.',
+            en: 'A beneficiary sees only WHAT IT USED (e.g. 20) — never the total, the remainder or the invoice. The sponsor sees invoices, totals, remainder, and how much each linked company used.',
+          },
+        ],
+        description:
+          'A company that buys a PO can let other companies use it — a group buying centrally for its member companies, a franchise owner paying for franchisees, an agency posting for its clients. Those companies are separate customers with no parent/subsidiary relationship, and the corporate tree (Customers → Affiliated companies) shares nothing and must stay that way.\n\nThe buyer’s record gets a place to link companies by **Company ID**. Once the buyer’s PO is invoiced, each linked company posts from it as if it were its own, sees only what it has used, and the buyer sees everything — invoices, totals, and who used what.',
+        userStory:
+          'As a Saramin admin, I want to link several companies to the company that bought a PO, so that they can post from that PO without each buying their own — while the buyer, and only the buyer, sees the invoice and the full usage.',
+        requirements: [
+          {
+            label: 'Vocabulary — sponsor and beneficiary, not parent and subsidiary',
+            text: 'The client’s own words were “công ty mẹ / công ty con (tạm gọi)” — and the caveat was right: those names already mean the legal tree, where NOTHING is shared or inherited. This feature shares one thing and nothing else, so it needs its own pair of names.',
+            table: {
+              cols: ['Role', 'On screen (VI)', 'Who', 'Sees'],
+              rows: [
+                ['**Sponsor**', 'Công ty mua — đứng tên PO', 'The company that bought the PO and is invoiced for it', 'Everything: its invoices, PO totals, remaining quota, and a per-company breakdown of who used what'],
+                ['**Beneficiary**', 'Công ty dùng chung', 'A company an admin linked to the sponsor by Company ID', 'Only its own usage count (“đã dùng 20”) — no total, no remainder, no invoice'],
+                ['Link', 'Dùng chung quota', 'The record joining the two — created and removed by an admin on the sponsor’s record', 'Both sides: a row in the sponsor’s list; a banner naming the sponsor on the beneficiary'],
+              ],
+            },
+            items: [
+              'A sponsor may have any number of beneficiaries, and a beneficiary may have any number of sponsors (client, 25/09/2026). What keeps “which PO paid for this job” from ever being a guess is the picker: the POs are grouped PER SPONSOR and the poster picks one explicitly.',
+              'No chains. A company that is a sponsor cannot also be a beneficiary (A → B → C is refused). One level, on purpose.',
+              'The corporate tree and this link are independent: a parent may sponsor a subsidiary, a subsidiary may sponsor an unrelated company, and linking never creates or requires a parent link.',
+            ],
+          },
+          {
+            label: 'Setup — on the sponsor’s record, by Company ID',
+            text: 'Company record → **Products & billing** → card **Shared quota** → **+ Link company** (header of the card) opens a small dialog: the admin types the beneficiary’s Company ID (`CO-XXXXXXX`), the checks run live under the box, and **Link company** enables only when they pass. By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
+            table: {
+              cols: ['Check (server-side too) — six of them', 'Refused when', 'Message'],
+              rows: [
+                ['Format', 'Not `CO-` + 7 Crockford-Base32 characters, or the check character fails', 'Không đúng dạng CO-XXXXXXX'],
+                ['Exists', 'No company has this ID', 'Không có công ty nào mang ID này'],
+                ['Not itself', 'The ID is the sponsor’s own', 'Đây là chính công ty này'],
+                ['Active', 'The company is Archived', '… đã Archived — không link được'],
+                ['Not a sponsor itself', 'The company has active beneficiaries of its own', 'Công ty này đang là sponsor — không link lồng nhau'],
+                ['Not linked yet', 'An active link to this sponsor already exists', '… đã được link rồi'],
+              ],
+            },
+            items: [
+              '**+ Link company** sits on the Shared quota card on BOTH tabs — Overview (the snapshot) and Products & billing (the matrix) — and opens the same dialog. Repeat it for every company to link; there is no limit.',
+              'Who may link / remove: HQ admin, and the sponsor’s sales owner (permission `company:share_quota`). A beneficiary’s own sales owner cannot link it to anyone — the sponsor is the one whose money is at stake.',
+              'The sponsor needs no invoiced PO to be linked — the link can be prepared before the sale closes; it simply does nothing until an invoice is issued.',
+              'Verification is not a condition for linking. It is a condition for POSTING (the existing gate): an unverified beneficiary sees the sponsor’s PO but cannot publish, exactly as it could not publish from its own.',
+              'Every link and removal is written to the audit log and to BOTH companies’ activity feeds, with who and when.',
+            ],
+          },
+          {
+            label: 'What is shared — the quota an issued invoice granted, and nothing before it',
+            table: {
+              cols: ['Product on the sponsor’s PO', 'Shared?', 'How the beneficiary uses it'],
+              rows: [
+                ['Job posting — any tier, including Includes and gift lines', '**Yes**', 'Create job → pick the sponsor’s PO → the tier list is that PO’s lines. One slot leaves the sponsor’s balance.'],
+                ['Add-ons (label, display placement)', '**Yes** — on the same PO', 'Attached at posting; spends the add-on line on the sponsor’s PO.'],
+                ['CV search (unlocks)', '**Yes, while the pack is running**', 'The sponsor (or an admin) activates the pack — one pack at a time, the existing rule, on the sponsor’s account. A beneficiary’s unlock deducts from it. A beneficiary cannot activate a sponsor’s pack.'],
+                ['Placement booking (banner, popup)', 'No', 'A booking carries the sponsor’s creative and name; nothing to share.'],
+                ['Manual service', 'No', 'Delivered by hand, to the sponsor.'],
+                ['Free job (Admin-only, no PO)', 'n/a', 'Unchanged — an admin posts it for any company without a PO.'],
+              ],
+            },
+            items: [
+              'Sharing is per LINK, not per PO: a beneficiary sees every invoiced PO of its sponsor, current and future, for as long as the link is active. A per-PO “do not share this one” switch is an open question below.',
+              'Activation window and validity are the sponsor’s — a slot a beneficiary spends on 30/11 still has to fall inside the PO’s **Must be used within** window counted from the sponsor’s invoice date.',
+              'Provisioning does not change: the invoice grants quota to the SPONSOR, once. Nothing is copied to a beneficiary — the beneficiary reads the sponsor’s balance through the link.',
+            ],
+          },
+          {
+            label: 'Create job — what a beneficiary sees, and what a slot does',
+            table: {
+              cols: ['#', 'Step', 'Behaviour'],
+              rows: [
+                ['1', 'Beneficiary opens Create job on the Company site — or an admin posts for it', 'The **Purchase order** list has two groups: **Your company’s POs** (if any) and **Shared by {Sponsor} · {CO-ID}** — the sponsor’s invoiced, unexpired POs that still have quota.'],
+                ['2', 'Picks a shared PO', 'The Product (Main) list becomes that PO’s paid lines; add-ons follow. A note under the field: “Slot sẽ trừ vào PO của {Sponsor}. Job đứng tên {Beneficiary}.”'],
+                ['3', 'Publishes', 'One slot leaves the sponsor’s PO. The job shows the **beneficiary’s** name, logo and company page everywhere on the jobseeker site. The ledger entry carries `usedByCompanyId = beneficiary`.'],
+                ['4', 'The shared PO has no slots left', 'The PO is listed but **disabled** — “Hết slot — liên hệ {Sponsor}”. The beneficiary never sees a number, only whether it can post.'],
+                ['5', 'Beneficiary has its own PO too — or several sponsors', 'One group per source: **Your company’s POs**, then **Shared by {Sponsor A}**, **Shared by {Sponsor B}**… The operator picks. **No automatic precedence** — own-first or sponsor-first would silently decide whose money is spent.'],
+                ['6', 'Link removed while a job is live', 'The job runs to its end date on the slot already spent. Upgrade tier or renew from the sponsor’s PO is refused.'],
+              ],
+            },
+            warn: 'The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
+          },
+          {
+            label: 'Usage — what each side sees, and where',
+            table: {
+              cols: ['', 'Beneficiary · Company site → Products & quota', 'Sponsor · Company site → Products & quota', 'Admin · both records → Products & billing'],
+              rows: [
+                ['Its own usage', '**Đã dùng: Top job 20 · Basic 3 · CV search 12** — one count per product line, no denominator', 'Its own usage, as today', 'Both'],
+                ['Total / remaining of the shared PO', '**Hidden**', '20 / 100 as today — the meter includes what beneficiaries used', 'On the sponsor’s record'],
+                ['Invoices, PO amounts', '**Hidden** — Orders & invoices shows only its own documents', 'All its invoices', 'On the sponsor’s record'],
+                ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
+                ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
+                ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
+                ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: one line per sponsor with usage chips', 'Snapshot card: linked companies with units used + **+ Link company**', 'The matrix stays on Products & billing'],
+              ],
+            },
+            items: [
+              '“20, not 20/100” is the client’s call and the reason the feature is safe to offer: a beneficiary cannot infer the size of a deal it is not party to.',
+              'Because the beneficiary cannot see the remainder, the FAILURE has to be explicit: a disabled PO in the picker with the sponsor named, and a notification to the sponsor’s contact when a beneficiary is refused for lack of slots.',
+            ],
+          },
+          {
+            label: 'Money, tier and status — everything counts for the sponsor',
+            table: {
+              cols: ['Figure', 'Counts for', 'Why'],
+              rows: [
+                ['Revenue · membership tier · Customer since · customer status New → Existing', '**Sponsor**', 'It is the sponsor’s invoice. A beneficiary that has never bought anything stays **New** with revenue 0 — using shared quota is not a purchase.'],
+                ['Open jobs · Jobs tab · Applications · Resumes', '**Beneficiary**', 'The jobs are its jobs, the candidates are its candidates.'],
+                ['Job quota stat · Products & billing meter', 'Sponsor (numbers) · Beneficiary (usage count only)', 'See the usage table above.'],
+                ['Sales owner', 'Each its own', 'A sponsor and its beneficiaries may belong to different reps; the link does not move ownership.'],
+                ['Reports (Sales, Revenue)', 'Sponsor', 'No change to any report. Usage-by-company is a breakdown on the sponsor’s record, not a revenue split.'],
+              ],
+            },
+          },
+          {
+            label: 'Link status — two values, and removal keeps the history',
+            table: {
+              cols: ['Status', 'Means', 'Set by', 'Effect'],
+              rows: [
+                ['**Active**', 'The beneficiary may post from the sponsor’s invoiced POs', 'Admin / sponsor’s sales owner — **Link company**', 'The sponsor’s POs appear in the beneficiary’s Create job; usage accrues on the sponsor’s ledger with the beneficiary’s name'],
+                ['**Removed**', 'The link is closed; history kept', 'Admin / sponsor’s sales owner — **Remove**; or automatically when either company is Archived', 'No new spends. Live jobs finish. The row stays on the sponsor’s list with its usage and the removal date; the beneficiary’s banner disappears'],
+              ],
+            },
+            items: [
+              'Re-linking a removed company creates a NEW active link (new since / by); the old row keeps its own usage.',
+              'Nothing is ever clawed back on removal — a slot spent is a job posted.',
+            ],
+          },
+          {
+            label: 'Edge cases — decided',
+            table: {
+              cols: ['Case', 'Rule'],
+              rows: [
+                ['The sponsor’s PO expires, or its activation window closes', 'Same as for the sponsor: the quota is gone for everyone. Beneficiaries see the PO leave the picker.'],
+                ['The sponsor buys a second PO', 'Shared automatically — the link is per company. (Per-PO exclusion: open question.)'],
+                ['The beneficiary is Unverified', 'Sees the shared PO, cannot publish — the verification gate is unchanged and is the beneficiary’s own.'],
+                ['The beneficiary is Archived', 'Link → Removed automatically; its live jobs follow the archive rule.'],
+                ['The sponsor is Archived', 'Every link → Removed; beneficiaries lose the PO from the picker at once.'],
+                ['The sponsor’s invoice is corrected on the provider portal', 'Out of scope — the platform has no cancel. If one is ever added, claw-back must treat beneficiaries’ spends as the sponsor’s.'],
+                ['A beneficiary opens a CV from the sponsor’s pack', 'Deducts from the sponsor’s running pack; the CV is unlocked for the BENEFICIARY’s users only — unlocks are per company, not per pack.'],
+                ['The same person is a user at both companies', 'Irrelevant — access is by company account; the link is between companies.'],
+                ['A beneficiary wants to leave', 'Asks the sponsor or Saramin. No self-service unlink on the Company site in this phase.'],
+              ],
+            },
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Admin · Company record → Products & billing → card Shared quota (sponsor view)',
+            items: [
+              { name: '+ Link company', type: 'button (card header)', notes: 'opens the Link dialog — the card itself is the matrix, the action is rare and consequential, so it does not sit as an open input on the card' },
+              { name: 'linkCompanyId', type: 'string', required: true, notes: 'in the dialog — the beneficiary’s Company ID, CO-XXXXXXX; validated live against the seven checks, the verdict shown under the box; Link company enables only on ✓' },
+              { name: 'summary line', type: 'derived', notes: '“N công ty đang dùng chung · đã dùng X / total slots và Y / total CV unlocks” — the sponsor’s own totals, what others took from them' },
+              { name: 'usage matrix', type: 'table', notes: 'ROWS = linked companies (name + CO-ID + linked date/by + job titles) · COLUMNS = every product line on the sponsor’s invoiced POs, read from the entitlement ledger, never hard-coded (unit and total in the header) · cell = units that company spent, “—” for 0 · a Tổng column · Last used · Status (Active / Removed + date) · Remove. FOOTER: the sponsor’s own use · linked companies’ use (removed links included — spent is spent) · Còn lại / tổng per product, amber under 20 %. First column sticky; the table scrolls sideways when a PO has many lines.' },
+            ],
+          },
+          {
+            group: 'Admin · the same card (beneficiary view)',
+            items: [
+              { name: 'sponsors', type: 'ref → Company[]', notes: 'one block per sponsor — name + CO-ID (opens the sponsor’s record), linked since/by, usage chips, Remove link' },
+              { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin' },
+              { name: 'used (per product) · lastUsed', type: 'derived', notes: 'one chip per product line with a spend (“Top job 3 · Basic 2 · CV search 12”) — counts only, no denominator on this side, even for the admin reading this record; the numbers live on the sponsor’s' },
+              { name: 'Remove link', type: 'button' },
+            ],
+          },
+          {
+            group: 'Company site · Create job → Purchase order (PO)',
+            items: [
+              { name: 'poOptions', type: 'grouped list', notes: 'group 1 “Your company’s POs”, then one group per sponsor “Shared by {Sponsor} · {CO-ID}”. A shared PO with no quota is listed disabled with “Hết slot — liên hệ {Sponsor}”' },
+              { name: 'note', type: 'text', notes: 'under the field once a shared PO is picked: “Slot sẽ trừ vào PO của {Sponsor}. Job đứng tên {Beneficiary}.”' },
+            ],
+          },
+          {
+            group: 'Company site · Products & quota',
+            items: [
+              { name: 'beneficiary card', type: 'card', notes: '“Quota shared by {Sponsor}” · Đã dùng, one chip per product line · last used · “Số còn lại và hoá đơn nằm ở {Sponsor}”' },
+              { name: 'sponsor card', type: 'card', notes: '“Companies using your quota” — the same usage matrix as the admin’s (rows = companies, columns = the products on your POs, footer = you / them / remaining); the meters above already include their spends' },
+              { name: 'usage history attribution', type: 'text', notes: 'beneficiary: “từ PO của {Sponsor}”; sponsor: “bởi {Beneficiary}”' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Linking is instant and needs no acceptance from the beneficiary; both companies’ admins are notified (“{Sponsor} đã cho {Beneficiary} dùng chung quota” / “Bạn đã được {Sponsor} cho dùng chung quota”).',
+          'The sponsor’s PO appears in the beneficiary’s picker the moment the sponsor’s invoice is issued — the same event that lights it up for the sponsor.',
+          'A spend from a shared PO writes ONE ledger entry on the sponsor’s balance with `usedByCompanyId` — never a mirror entry on the beneficiary.',
+          'Removing a link hides the sponsor’s POs from the beneficiary at the next request; a Create job form already open with a shared PO selected is refused at Publish with the reason.',
+          'The stat card “Job quota” on a beneficiary reads “dùng chung từ {Sponsor}”; “Open jobs” and the Jobs tab keep counting its own jobs, whichever PO funded them.',
+        ],
+        rules: [
+          'Many-to-many: unlimited beneficiaries per sponsor, unlimited sponsors per beneficiary; no chains (a sponsor cannot be a beneficiary).',
+          'Link by Company ID only. No name search on this control.',
+          'Sharing covers Job posting products (tiers, includes, gifts, add-ons) and CV unlocks from a running pack. Placement bookings and manual services are never shared.',
+          'Nothing is provisioned to a beneficiary, ever. The balance has one owner.',
+          'Revenue, tier, customer status and Customer since belong to the sponsor. Jobs, applications and resumes belong to the beneficiary.',
+          'A beneficiary sees counts of its own usage only. Totals, remainder and invoices are the sponsor’s and the admin’s.',
+          'Removal never claws back. Archiving either side removes the link automatically.',
+        ],
+        states: [
+          'Sponsor with no links yet — the card shows the empty line and + Link company',
+          'Sponsor with links — summary line + table + Link row',
+          'Beneficiary — one block per sponsor (name, since/by, usage chips, Remove link)',
+          'Neither, and no invoiced PO — the card is not rendered',
+          'Shared PO exhausted — listed disabled in the picker, sponsor named',
+          'Link removed — Removed pill with the date, no Remove action, usage kept',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'company_quota_share.id', type: 'uuid', required: true },
+            { name: 'sponsorCompanyId', type: 'ref → Company', required: true },
+            { name: 'beneficiaryCompanyId', type: 'ref → Company', required: true, notes: 'partial unique index on (sponsorCompanyId, beneficiaryCompanyId) WHERE status = active — one live link per pair; a beneficiary may appear under several sponsors' },
+            { name: 'status', type: 'enum', required: true, notes: 'active | removed' },
+            { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin_user', required: true },
+            { name: 'removedAt / removedBy / removedReason', type: 'timestamp? / ref? / enum?', notes: 'manual | sponsor_archived | beneficiary_archived' },
+            { name: 'quota ledger · usedByCompanyId', type: 'ref → Company', required: true, notes: 'NEW column on every quota spend; = the owner when not shared. The one column every breakdown and every attribution string reads' },
+            { name: 'job.fundedByCompanyId', type: 'ref → Company', required: true, notes: '= the company whose PO funded the posting; = the beneficiary itself when it used its own. Read by the Jobs tab column “Trừ từ” and by the upgrade/renew refusal after removal' },
+          ],
+          endpoints: [
+            'POST /admin/companies/{id}/quota-shares { beneficiaryCompanyId } — runs the seven checks; 400 (format) · 404 (unknown ID) · 409 (itself, archived, has a sponsor, is a sponsor, already linked) with the message from the table. Permission company:share_quota.',
+            'DELETE /admin/companies/{id}/quota-shares/{shareId} — status → removed, reason manual.',
+            'GET /admin/companies/{id}/quota-shares — the sponsor’s list with per-beneficiary aggregates (usedSlots, usedCv, lastUsedAt, jobTitles).',
+            'GET /admin/companies/{id}/quota-sponsor — the beneficiary’s banner: sponsor {name, companyId}, linkedAt/By, its own counts.',
+            'GET /company/purchase-orders?usable=true — Company site: own POs + shared POs; a shared PO carries sponsor {name, companyId} and hasQuota: boolean — never numbers.',
+            'POST /company/jobs/{id}/publish { poId } — accepts a shared poId; validates the link is active and the PO belongs to the sponsor; spends atomically on the sponsor’s balance (row lock) and writes usedByCompanyId.',
+            'GET /company/quota/usage — beneficiary: its counts only; sponsor: its meters + the per-beneficiary breakdown.',
+            'JOB on company archive — removes every active share where the archived company is sponsor or beneficiary, reason set accordingly.',
+          ],
+          integrations: [
+            'Job management — the PO picker on both surfaces, job.fundedByCompanyId, the “Trừ từ” column',
+            'Products & Packages — activation window and the one-CV-pack rule stay the sponsor’s',
+            'Account management — Company site Products & quota, Orders & invoices (own documents only)',
+            'Audit log — link created / removed, with both company IDs',
+            'Notifications — link created / removed → both companies’ admins; “refused for lack of slots” → the sponsor’s contact',
+          ],
+          notes: 'Never copy quota. One balance, on the sponsor; the link is a read-and-spend permission. The spend must be atomic on the sponsor’s balance — two beneficiaries publishing at once on the last slot is the race to test.',
+        },
+        acceptance: [
+          'On the sponsor’s record, + Link company → a valid Company ID → Link company adds an Active row with today’s date and the operator’s name; the seven refusals each show their message under the box and leave no row.',
+          'The usage matrix has exactly one column per product line on the sponsor’s invoiced POs — add a PO with a new product and a column appears; a PO with ten lines scrolls sideways with the company column pinned. Remaining / total per product equals total − sponsor’s own use − every linked company’s use, removed links included.',
+          'A company can be linked to a second sponsor; its Create job then shows two “Shared by …” groups and its record lists both sponsors, each with its own usage and Remove link. Linking the same pair twice is refused.',
+          'Before the sponsor’s PO is invoiced, the beneficiary’s Create job shows no shared PO; the moment the invoice is issued it appears under “Shared by {Sponsor}”.',
+          'Publishing from a shared PO drops the sponsor’s slot count by one, writes a usage entry naming the beneficiary, and shows the job under the beneficiary’s name on the jobseeker site with no mention of the sponsor.',
+          'The beneficiary’s Products & quota shows “Đã dùng: N slots · M unlocks” with no total or remainder; its Orders & invoices shows none of the sponsor’s documents.',
+          'The sponsor’s Products & quota shows the per-company table; its meters include the beneficiaries’ spends; its usage history names the beneficiary on each of their spends.',
+          'A shared PO with no slots left is listed disabled with the sponsor named; the beneficiary is refused at Publish if it tries anyway; the sponsor is notified.',
+          'Removing the link makes the sponsor’s POs disappear from the beneficiary’s picker; a live job funded from it runs to its end; the row remains on the sponsor’s list as Removed with its usage.',
+          'Archiving the sponsor removes every link; archiving a beneficiary removes its link — both audited.',
+          'Revenue, tier, Customer since and customer status change on the sponsor only; the beneficiary’s stay as they were.',
+        ],
+        openQuestions: [
+          'Per-PO exclusion — should a sponsor be able to mark one PO “not shared” (a personal top-up while a group PO is shared)? Not in this phase; the link is per company.',
+          'A cap per beneficiary (e.g. at most 20 slots) — the client said “20, not 20/100”, which reads as “no denominator”, not “a limit”. Confirm no cap is wanted.',
+          'Self-service on the Company site — should the sponsor’s own Admin be able to link a beneficiary by ID without Saramin? Recommended phase 2, once the admin-side flow has run for a while.',
+          'CV unlocks in phase 1, or job posting only? The rule above includes CV; if the client wants posting only, drop the CV row and the pack rule.',
+          'Notification cadence to the sponsor — one message per spend, or a daily digest per beneficiary?',
+        ],
+      },
+    },
     {
       name: 'Free data',
       /* Slug PINNED — see the note on Invoices above. The name is still shorter

@@ -31,6 +31,7 @@ export type ResolvedScreen = {
 const NAV_OWNER: Record<string, string> = {
   'admin-job-create': 'admin-job-list', // reached from "+ New job"
   'admin-credits': 'admin-company-list', // a per-company balance — lives on the company record
+  'admin-shared-quota': 'admin-company-list', // the company record, Products & billing tab
 }
 
 /** Every admin screen a spec page can show, and the nav page that opens it. Anything

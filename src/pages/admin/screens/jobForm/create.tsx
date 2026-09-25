@@ -40,6 +40,19 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
   const NO_PO = isAdmin ? '— none (Free job) —' : '— none —'
   const [po, setPo] = useState(NO_PO)
   const hasPo = po !== NO_PO
+  /* SHARED QUOTA — a PO another company bought and let this one use (CRM →
+     Shared quota). Listed in the same picker, in its own group, because to the
+     person posting it IS a PO they can post from; the label names the sponsor so
+     nobody is surprised whose slots are spent. A shared PO with nothing left is
+     still listed, disabled, with the reason — the beneficiary never sees a count,
+     so the refusal has to be spelled out here. */
+  const SHARED_PO = 'PO-2026-0051 · shared by FPT Software (CO-8Q2K7ZV) · active'
+  const SHARED_PO_EMPTY = 'PO-2026-0033 · shared by FPT Software (CO-8Q2K7ZV) · hết slot — liên hệ FPT Software'
+  /* A company may be linked to SEVERAL sponsors — one group per sponsor, so whose
+     quota a slot comes from is read off the option, never inferred. */
+  const SHARED_PO_2 = 'PO-2026-0047 · shared by Tiki (CO-1890XYZ) · active'
+  const sharedPo = po === SHARED_PO || po === SHARED_PO_2
+  const sponsorName = po === SHARED_PO_2 ? 'Tiki' : 'FPT Software'
   const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.entitlement === 'free' && c.status === 'Active')
   const paidProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.entitlement !== 'free' && c.status === 'Active')
   /* Add-ons attach to THIS job at posting time — the natural moment, since a
@@ -83,8 +96,8 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
               label="Purchase order (PO)"
               value={po}
               onChange={setPo}
-              options={[NO_PO, 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026']}
-              extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only</span>}
+              options={[NO_PO, 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026', SHARED_PO, SHARED_PO_EMPTY, SHARED_PO_2]}
+              extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only · own POs first, then “shared by …”</span>}
             />
             {/* keyed on the PO so the product resets rather than keeping a stale
                 paid tier after the operator drops back to "no PO" */}
@@ -97,6 +110,12 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">{hasPo ? '— lines on the selected PO' : '— free tier (no PO)'}</span>}
             />
           </div>
+          {sharedPo && (
+            <p className="rounded-md border border-brand/30 bg-brand-soft px-3 py-2 text-[11px] leading-relaxed text-brand">
+              <b>Dùng chung quota.</b> Slot sẽ trừ vào PO của <b>{sponsorName}</b> — job vẫn đứng tên <b>{isAdmin ? 'công ty đã chọn' : 'công ty bạn'}</b> trên jobseeker site, ứng viên không thấy {sponsorName} ở đâu cả.
+              {sponsorName} thấy job này trong bảng “công ty nào dùng bao nhiêu” trên hồ sơ của họ; bên này chỉ thấy số mình đã dùng.
+            </p>
+          )}
           {hasPo && (
             <div className="grid grid-cols-2 gap-3">
               <SelectField

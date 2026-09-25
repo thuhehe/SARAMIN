@@ -2748,11 +2748,104 @@ function TeamScreen() {
   )
 }
 
+/* SHARED QUOTA on the Company site — one card, two readings (CRM → Shared quota).
+   The mockup company (Đại Dương) is drawn as the SPONSOR — it bought the PO, so it
+   sees who used what. The toggle previews the same card as a BENEFICIARY would
+   read it: a count of what it used and nothing else. Two companies cannot be one
+   screen, so the preview switch stands in for opening the other company's site. */
+function SharedQuotaCoCard({ view, onView }: { view: 'sponsor' | 'beneficiary'; onView: (v: 'sponsor' | 'beneficiary') => void }) {
+  /* Products as columns, read from the sponsor's invoiced PO lines — a PO can
+     carry any number of them, so nothing here assumes "slots and CV". */
+  const products: [string, string, number, number][] = [['Job Posting — Pro', 'slots', 10, 2], ['Resume Search — COMBO 100', 'unlocks', 100, 32]]
+  const rows: [string, string, number[], string][] = [
+    ['Công ty TNHH Sao Mai', 'CO-3K7M2QP', [2, 6], '20/09/2026'],
+    ['Công ty CP An Khang', 'CO-9P4TZ1C', [1, 0], '15/09/2026'],
+  ]
+  return (
+    <div className="mb-4 rounded-xl border border-brand/30 bg-brand-soft/40 p-4">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12.5px] font-bold">{view === 'sponsor' ? 'Companies using your quota' : 'Quota shared by FPT Software'}</p>
+        <div className="flex items-center gap-1 text-[10.5px]">
+          <span className="text-faint">Preview as:</span>
+          {(['sponsor', 'beneficiary'] as const).map((v) => (
+            <button key={v} onClick={() => onView(v)} className={cn('rounded-full border px-2 py-0.5 font-medium', view === v ? 'border-brand bg-brand text-white' : 'border-line text-muted')}>
+              {v === 'sponsor' ? 'sponsor (mua PO)' : 'beneficiary (dùng chung)'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === 'sponsor' ? (
+        <>
+          <p className="text-[11px] leading-relaxed text-muted">
+            Saramin đã link <b className="text-ink/80">2 công ty</b> vào quota của bạn. Số họ dùng <b className="text-ink/80">đã nằm trong</b> các thanh “còn lại” bên dưới — <b className="text-ink/80">3 / 10 slots</b> và <b className="text-ink/80">6 / 100 unlocks</b> đến nay là của họ.
+          </p>
+          <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-surface">
+            <table className="w-full border-collapse text-[11.5px]" style={{ minWidth: 420 + products.length * 130 }}>
+              <thead>
+                <tr className="text-[10px] font-semibold uppercase tracking-wide text-faint">
+                  <th className="px-3 py-1.5 text-left">Company</th>
+                  {products.map(([p, u]) => <th key={p} className="px-3 py-1.5 text-right"><span className="block normal-case tracking-normal text-ink/80">{p}</span><span className="font-normal normal-case tracking-normal">{u}</span></th>)}
+                  <th className="px-3 py-1.5 text-right">Last used</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(([n, id, used, last]) => (
+                  <tr key={id} className="border-t border-line-soft">
+                    <td className="px-3 py-2"><span className="block truncate font-medium text-ink/85">{n}</span><span className="font-mono text-[10px] text-faint">{id}</span></td>
+                    {used.map((v, i) => <td key={i} className={cn('px-3 py-2 text-right tabular-nums', v ? 'font-semibold' : 'text-faint')}>{v || '—'}</td>)}
+                    <td className="px-3 py-2 text-right tabular-nums text-muted">{last}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-line bg-canvas/50 text-ink/80">
+                  <td className="px-3 py-1.5 font-medium">Bạn tự dùng</td>
+                  {products.map(([p, , , own]) => <td key={p} className="px-3 py-1.5 text-right tabular-nums">{own}</td>)}
+                  <td />
+                </tr>
+                <tr className="border-t border-line bg-brand-soft/60 font-bold text-brand">
+                  <td className="px-3 py-1.5">Còn lại / tổng</td>
+                  {products.map(([p, , total, own], i) => { const others = rows.reduce((s, r) => s + r[2][i], 0); return <td key={p} className="px-3 py-1.5 text-right tabular-nums">{total - own - others}<span className="font-normal text-faint"> / {total}</span></td> })}
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Họ chỉ thấy số mình đã dùng — không thấy tổng, số còn lại hay hoá đơn của bạn. Muốn thêm hoặc gỡ một công ty, liên hệ sales owner của bạn ở Saramin (link bằng Company ID).</p>
+        </>
+      ) : (
+        <>
+          <p className="text-[11px] leading-relaxed text-muted">
+            Công ty bạn đăng tin từ PO của <b className="text-ink/80">FPT Software</b> (CO-8Q2K7ZV) — link ngày 12/08/2026. Khi tạo job, chọn PO trong nhóm <b className="text-ink/80">“Shared by FPT Software”</b>.
+          </p>
+          {/* Per product, as chips — the sponsor's PO can carry any number of lines,
+              and this side shows a COUNT per line, never a denominator. */}
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <div className="rounded-lg border border-line bg-surface px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-faint">Đã dùng — theo sản phẩm</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {([['Top job', 3], ['Basic', 2], ['CV search — COMBO 200', 12]] as [string, number][]).map(([k, n]) => (
+                  <span key={k} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas/60 px-2 py-1 text-[11px]"><span className="text-muted">{k}</span><b className="tabular-nums">{n}</b></span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-line bg-surface px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-faint">Lần dùng gần nhất</p>
+              <p className="text-[15px] font-bold tabular-nums">20/09/2026</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">Số còn lại, tổng quota và hoá đơn nằm ở FPT Software — không hiện ở đây. Nếu đăng tin bị từ chối vì hết slot, liên hệ FPT Software. Job vẫn đứng tên công ty bạn trên jobseeker site.</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 function ProductsQuotaScreen() {
   const go = useCoNav()
+  const [shareView, setShareView] = useState<'sponsor' | 'beneficiary'>('sponsor')
   return (
     <div>
       <PageBar title="Products & quota" sub="What you bought and how much is left." />
+      <SharedQuotaCoCard view={shareView} onView={setShareView} />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -2828,6 +2921,7 @@ function ProductsQuotaScreen() {
         </div>
         <div className="divide-y divide-line-soft">
           {([
+            ['', 'Job opened — Kỹ sư cơ khí · bởi Công ty TNHH Sao Mai (dùng chung quota)', 'Sao Mai · Admin', '20/09/2026', '−1 slot · 7 left'],
             ['', 'CV unlock — Nguyễn Thị Hoa (Điều dưỡng viên)', 'Linh Trần', '05/08/2026', '−1 unlock · 62 left'],
             ['', 'Job opened — Điều dưỡng viên (Khoa Nội)', 'Minh Phạm', '01/08/2026', '−1 slot · 7 left'],
             ['', 'CV unlock — Trần Văn B. (Kỹ thuật viên XN)', 'Linh Trần', '29/07/2026', '−1 unlock · 63 left'],

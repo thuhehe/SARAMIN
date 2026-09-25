@@ -60,6 +60,9 @@ const adminEnvironment = screen(() => import('@/pages/admin/screens/system/envir
 const adminDepartments = screen(() => import('@/pages/admin/screens/directory/departments'), 'AdminDepartments')
 const adminCompanyDirectory = screen(() => import('@/pages/admin/screens/directory/directory'), 'AdminCompanyDirectory')
 const adminClaimRequests = screen(() => import('@/pages/admin/screens/directory/claimRequests'), 'AdminClaimRequests')
+/* The company record opened straight on Products & billing, for the Shared quota
+   spec page — the console reaches it by opening a row on Customers. */
+const adminSharedQuota = screen(() => import('@/pages/admin/screens/companies/sharedQuotaDemo'), 'AdminSharedQuotaDemo')
 
 export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   // Recruitment
@@ -118,6 +121,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-departments': adminDepartments,
   'admin-company-directory': adminCompanyDirectory,
   'admin-claim-requests': adminClaimRequests,
+  'admin-shared-quota': adminSharedQuota,
   // Job categories & roles now live inside Master data (one page); keep the id mapped.
   'admin-job-categories': adminMasterData,
 }
