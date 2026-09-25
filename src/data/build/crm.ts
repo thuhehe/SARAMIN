@@ -1184,7 +1184,7 @@ export const crm: BuildModule = {
                 ['6', 'Link removed while a job is live', 'The job runs to its end date on the slot already spent. Upgrade tier or renew from the sponsor’s PO is refused.'],
               ],
             },
-            warn: 'Two things the beneficiary’s screens must NEVER show: the sponsor’s PO (number, lines, totals, remainder, invoice) — on any tab, admin side included — and, on the jobseeker site, the sponsor’s name on the job. The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
+            warn: 'Two things the beneficiary’s screens must NEVER show: the sponsor’s PO beyond its NUMBER — no lines, amount, totals, remainder or invoice, on any tab, admin side included (the number itself is shown, because the Create-job picker names the PO and Product usage has to match it) — and, on the jobseeker site, the sponsor’s name on the job. The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
           },
           {
             label: 'Usage — what each side sees, and where',
@@ -1197,7 +1197,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
-                ['Product usage (company site)', 'Groups “Shared by {Sponsor}” — no PO number/date/amount; rows are counts only, no bar; Post job / Find talent, no Activate', 'Its page as today + “Dùng bởi …” under every product; bars include beneficiaries’ use', 'n/a — see Products & billing'],
+                ['Product usage (company site)', 'One group per shared PO: PO number + “Shared by {Sponsor}” — no date/amount; rows are counts only, no bar; Post job / Find talent, no Activate', 'Its page as today + “Dùng bởi …” under every product; bars include beneficiaries’ use', 'n/a — see Products & billing'],
                 ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: “{Beneficiary} là công ty thụ hưởng của: {Sponsor A} · {Sponsor B}” — names and linked dates only, nothing about POs or usage', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
               ],
             },

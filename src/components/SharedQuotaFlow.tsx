@@ -181,7 +181,7 @@ export function SharedQuotaFlow() {
         <text x={R + 34} y={246} fontSize={11.5} fill={INK}>Sao Mai là <tspan fontWeight={800}>công ty thụ hưởng</tspan> của:</text>
         <text x={R + 34} y={268} fontSize={11.5} fontWeight={700} fill={BR}>FPT Software <tspan fontSize={10} fontWeight={400} fill={MUT}>· link 12/08/2026 · Phạm Quang Huy</tspan></text>
         <text x={R + 34} y={288} fontSize={11.5} fontWeight={700} fill={BR}>Tiki <tspan fontSize={10} fontWeight={400} fill={MUT}>· link 05/09/2026 · Phạm Quang Huy</tspan></text>
-        <Box x={R + 20} y={316} w={W - 40} h={52} title="TUYỆT ĐỐI không hiện PO của cty tài trợ ở cty thụ hưởng" sub="không số PO · không dòng · không tổng · không còn lại · không hoá đơn — trên mọi tab, kể cả phía admin" tone="stop" />
+        <Box x={R + 20} y={316} w={W - 40} h={52} title="Cty thụ hưởng chỉ thấy SỐ PO của cty tài trợ — không gì khác" sub="số PO hiện vì lúc đăng tin phải chọn nó · không dòng · không giá trị · không tổng · không còn lại · không hoá đơn" tone="stop" />
 
         {/* ── ② CREATE JOB ────────────────────────────────────────────────────── */}
         <rect x={20} y={406} width={1380} height={250} rx={12} fill="var(--color-surface)" stroke="var(--color-line)" strokeWidth={1} />
@@ -223,7 +223,7 @@ export function SharedQuotaFlow() {
         <Tiles x={R + 20} y={778} />
         <text x={R + 300} y={786} fontSize={10.5} fill={MUT}>Header panel: tên sponsor (mở hồ sơ) · link ngày/bởi ·</text>
         <text x={R + 300} y={801} fontSize={10.5} fill={MUT}>lần dùng gần nhất · tổng đã dùng · Remove link (admin).</text>
-        <text x={R + 300} y={821} fontSize={10.5} fontWeight={700} fill="#be123c">Không số PO · không tổng · không còn lại · không hoá đơn.</text>
+        <text x={R + 300} y={821} fontSize={10.5} fontWeight={700} fill="#be123c">Chỉ số PO · không tổng · không còn lại · không hoá đơn.</text>
         <text x={R + 300} y={841} fontSize={10.5} fill={MUT}>Orders & invoices của cty thụ hưởng: chỉ chứng từ của chính nó.</text>
         <text x={R + 300} y={856} fontSize={10.5} fill={MUT}>Usage history: spend của mình, ghi “từ quota của FPT Software”.</text>
         <Surface x={R + 20} y={886} label="Admin · Company detail" />
@@ -245,7 +245,7 @@ export function SharedQuotaFlow() {
           ]],
           ['COMPANY SITE', [
             'Create job → Purchase order: nhóm “PO của công ty bạn” + “Shared by …” · note dưới ô · PO hết slot disabled',
-            'Product usage (Products & Payment Management) — sponsor: từng dòng có “dùng bởi …” · beneficiary: nhóm “Shared by …”, chỉ số đã dùng, KHÔNG số PO',
+            'Product usage (Products & Payment Management) — sponsor: từng dòng có “dùng bởi …” · beneficiary: nhóm theo số PO “Shared by …”, chỉ số đã dùng',
             'Products & quota — sponsor: ma trận · beneficiary: ô đã dùng',
             'Orders & invoices — chỉ chứng từ của chính công ty (beneficiary không thấy hoá đơn sponsor)',
             'Usage history — “từ quota của {sponsor}” / “bởi {beneficiary}”',
