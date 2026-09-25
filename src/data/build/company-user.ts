@@ -556,7 +556,7 @@ export const companyUser: BuildModule = {
             table: {
               cols: ['', 'Sponsor', 'Beneficiary'],
               rows: [
-                ['Group header', 'PO number · date · N products, as today', '**Invoice number** (INV-…) · “Shared by {Sponsor}” · N products · chip “dùng chung”. The number only — never the date, amount, lines, totals or the PO'],
+                ['Group header', 'PO number · date · N products, as today', '**Invoice number** (INV-…) · “Shared by {Sponsor}” · N products. The number only — never the date, amount, lines, totals or the PO'],
                 ['Usage text', '“41 of 100 posts used” + bar', '“3 posts used” — count only, **no bar**'],
                 ['Who used it', '“Dùng bởi: FPT Software 38 · Sao Mai 3” under the row (removed links keep their past use)', 'n/a'],
                 ['Status pill · validity', 'As today', 'Pill only (In use / Not activated) — the validity dates are the sponsor’s pack'],

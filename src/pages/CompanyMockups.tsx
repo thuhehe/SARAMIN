@@ -2948,7 +2948,6 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
                 <div className={cn('flex items-center gap-3 px-4 py-2 text-[12px]', g.shared ? 'bg-brand-soft/60' : 'bg-canvas/70')}>
                   <span className="font-bold text-ink">{g.head}</span>
                   {g.meta && <span className="text-muted">{g.meta}</span>}
-                  {g.shared && <Chip tone="blue">dùng chung</Chip>}
                 </div>
                 {g.rows.map((r) => (
                   <div key={r.name} className="grid items-center gap-3 border-t border-line-soft px-4 py-3 md:grid-cols-[1.2fr_1.1fr_1fr_auto]">
