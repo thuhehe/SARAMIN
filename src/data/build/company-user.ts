@@ -502,6 +502,7 @@ export const companyUser: BuildModule = {
       name: 'Product usage (company site)',
       site: 'Companies',
       slug: 'product-usage-companies',
+      mockup: 'co-product-usage',
       scope: ['BE', 'FE', 'UI'],
       notes:
         'What the account bought, as live rows the employer can act on — grouped under the order that paid for them. The employer-side view of the SAME entitlement record the Admin “Products & quota” screen shows.',
@@ -548,6 +549,23 @@ export const companyUser: BuildModule = {
           },
         ],
         requirements: [
+          {
+            label: 'Shared quota on this page — sponsor and beneficiary (CRM → Shared quota)',
+            text: 'The same page reads differently for the two companies a quota link joins. The SPONSOR (công ty tài trợ — the company that bought the PO) sees its page unchanged in shape, plus a “Dùng bởi” line under every product naming who spent what; its bars already include the beneficiaries’ use. A BENEFICIARY (công ty thụ hưởng) sees one group per sponsor headed “Shared by {Sponsor}” — no PO number, no date, no amount — and rows that carry a COUNT only: “3 posts used”, no “of N”, no bar, because the denominator is the sponsor’s.',
+            table: {
+              cols: ['', 'Sponsor', 'Beneficiary'],
+              rows: [
+                ['Group header', 'PO number · date · N products, as today', '“Shared by {Sponsor}” · linked date · N products · chip “dùng chung”. **Never the PO number, date or amount**'],
+                ['Usage text', '“41 of 100 posts used” + bar', '“3 posts used” — count only, **no bar**'],
+                ['Who used it', '“Dùng bởi: FPT Software 38 · Sao Mai 3” under the row (removed links keep their past use)', 'n/a'],
+                ['Status pill · validity', 'As today', 'Pill only (In use / Not activated) — the validity dates are the sponsor’s pack'],
+                ['Button', 'Post job · Find talent · Activate', 'Post job · Find talent. **No Activate** — only the sponsor activates its pack'],
+                ['Banner', '“N công ty đang dùng chung quota của bạn” + how to add/remove (via Saramin)', '“Đang dùng chung quota của {Sponsors} — chỉ hiện số bạn đã dùng”'],
+                ['Filters, footer notes', 'As the Figma frame', 'As the Figma frame, plus one note on shared products'],
+              ],
+            },
+          },
+
           {
             label: 'Words a new developer must know before reading on',
             text: 'Five terms, five different records. The client’s documents — and Saramin Korea’s UI — use “invoice” for several of them; this spec does not.',

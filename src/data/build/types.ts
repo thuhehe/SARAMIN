@@ -181,7 +181,7 @@ export interface RequirementBlock {
   figure?: 'quotation-totals' | 'quote-to-invoice'
   /** A named FLOW drawn by the renderer — same reasoning as `figure`, but for the
       whole-process pictures a developer reads before touching the code. */
-  diagram?: 'company-intake' | 'company-verification' | 'job-create'
+  diagram?: 'company-intake' | 'company-verification' | 'job-create' | 'shared-quota'
 }
 
 export type Requirement = string | RequirementBlock

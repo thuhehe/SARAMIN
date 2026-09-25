@@ -1079,7 +1079,7 @@ export const crm: BuildModule = {
       ready: true,
       notes: 'Client request 25/09/2026. A company that bought a PO lets other companies — linked on its record by Company ID, NO parent/subsidiary relationship needed — post jobs and open CVs from that PO once it is invoiced. The buyer (SPONSOR) sees invoices, totals and who used what; a linked company (BENEFICIARY) sees only what it used.',
       mockup: 'admin-shared-quota',
-      mockups: ['co-create-job', 'co-products'],
+      mockups: ['co-create-job', 'co-product-usage', 'co-products'],
       detail: {
         keyPoints: [
           {
@@ -1108,6 +1108,11 @@ export const crm: BuildModule = {
         userStory:
           'As a Saramin admin, I want to link several companies to the company that bought a PO, so that they can post from that PO without each buying their own — while the buyer, and only the buyer, sees the invoice and the full usage.',
         requirements: [
+          {
+            label: 'The flow — three steps, two sides',
+            text: 'Read this first. The same step looks different on each side, and that asymmetry is the whole feature: ① an admin LINKS beneficiaries on the sponsor’s Company detail (the Company ID list — the beneficiary’s record only says whose beneficiary it is) → ② the beneficiary CREATES A JOB and picks the sponsor’s PO from its own group in the picker; the slot leaves the sponsor’s PO, the job carries the beneficiary’s name → ③ PRODUCTS & BILLING shows on both records and both surfaces (admin, company site): the sponsor reads the per-product matrix with totals and remainder, the beneficiary reads only what it used.',
+            diagram: 'shared-quota',
+          },
           {
             label: 'Vocabulary — sponsor and beneficiary, not parent and subsidiary',
             text: 'The client’s own words were “công ty mẹ / công ty con (tạm gọi)” — and the caveat was right: those names already mean the legal tree, where NOTHING is shared or inherited. This feature shares one thing and nothing else, so it needs its own pair of names.',
@@ -1192,6 +1197,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
+                ['Product usage (company site)', 'Groups “Shared by {Sponsor}” — no PO number/date/amount; rows are counts only, no bar; Post job / Find talent, no Activate', 'Its page as today + “Dùng bởi …” under every product; bars include beneficiaries’ use', 'n/a — see Products & billing'],
                 ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: “{Beneficiary} là công ty thụ hưởng của: {Sponsor A} · {Sponsor B}” — names and linked dates only, nothing about POs or usage', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
               ],
             },

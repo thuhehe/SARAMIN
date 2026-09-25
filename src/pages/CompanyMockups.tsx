@@ -2839,6 +2839,155 @@ function SharedQuotaCoCard({ view, onView }: { view: 'sponsor' | 'beneficiary'; 
   )
 }
 
+/*
+ * PRODUCT USAGE — the Figma page (node 4623-22501): left rail "Products & Payment
+ * Management", the grouped list (one group per PO, rows = type chip · name ·
+ * usage text + bar · status pill + validity · one button), the footer notes.
+ *
+ * Drawn TWICE through one switch, because the shared-quota feature makes the same
+ * page read differently for the two companies it joins:
+ *   SPONSOR — its own page, unchanged in shape, plus one line per row saying WHO
+ *   spent what ("FPT 38 · Sao Mai 3"); the bars already include the others' use.
+ *   BENEFICIARY — a group per sponsor headed "Shared by …" (NO PO number, no date,
+ *   no amount), rows with a COUNT only ("3 posts used" — no "of N", no bar), and
+ *   the one button it needs. Nothing of the sponsor's PO reaches this page.
+ */
+type UsageRow = { type: string; name: string; used: string; pct?: number; unlimited?: boolean; pill?: [string, 'green' | 'amber' | 'muted']; dates?: string; btn?: string; by?: [string, number][] }
+type UsageGroup = { head: string; meta?: string; shared?: boolean; rows: UsageRow[] }
+
+function ProductUsageScreen() {
+  const go = useCoNav()
+  const [role, setRole] = useState<'sponsor' | 'beneficiary'>('sponsor')
+  const [expiring, setExpiring] = useState(false)
+  const sponsor: UsageGroup[] = [
+    { head: 'Free job posting', meta: '1 product', rows: [{ type: 'Job posting', name: 'Free Job', used: '1 free post' }] },
+    { head: 'PO-2026-0912', meta: '02/09/2026 · 3 products', rows: [
+      { type: 'Job posting', name: 'Top Job', used: '41 of 100 posts used', pct: 41, btn: 'Post job', by: [['FPT Software', 38], ['Sao Mai', 3]] },
+      { type: 'Job posting', name: 'Basic', used: '6 of 20 posts used', pct: 30, btn: 'Post job', by: [['FPT Software', 4], ['Sao Mai', 2]] },
+      { type: 'Add-on', name: 'Hot job label', used: '0 of 2 used', pct: 0 },
+    ] },
+    { head: 'PO-2026-0909', meta: '09/09/2026 · 2 products', rows: [
+      { type: 'CV search', name: 'CV Search — COMBO 200', used: '77 of 200 CVs unlocked', pct: 38, pill: ['In use', 'green'], dates: '09/09/2026 – 08/12/2026', btn: 'Find talent', by: [['FPT Software', 61], ['Sao Mai', 12], ['Phú Thịnh (đã gỡ)', 4]] },
+      { type: 'Job posting', name: 'Distinction', used: '0 of 10 posts used', pct: 0, btn: 'Post job', by: [['FPT Software', 0]] },
+    ] },
+    { head: 'PO-2026-0801', meta: '01/08/2026 · 1 product', rows: [
+      { type: 'CV search', name: 'CV Search 30d', used: '0 of 50 CVs unlocked', pct: 0, pill: ['Not activated', 'amber'], dates: 'activate by 01/08/2027', btn: 'Activate' },
+    ] },
+  ]
+  const beneficiary: UsageGroup[] = [
+    { head: 'Shared by FPT Software', meta: 'linked 12/08/2026 · 3 products', shared: true, rows: [
+      { type: 'Job posting', name: 'Top Job', used: '3 posts used', btn: 'Post job' },
+      { type: 'Job posting', name: 'Basic', used: '2 posts used', btn: 'Post job' },
+      { type: 'CV search', name: 'CV Search — COMBO 200', used: '12 CVs unlocked', pill: ['In use', 'green'], btn: 'Find talent' },
+    ] },
+    { head: 'Shared by Tiki', meta: 'linked 05/09/2026 · 1 product', shared: true, rows: [
+      { type: 'Job posting', name: 'Job Posting — Pro', used: '1 post used', btn: 'Post job' },
+    ] },
+  ]
+  const groups = role === 'sponsor' ? sponsor : beneficiary
+  const count = groups.reduce((n, g) => n + g.rows.length, 0)
+  const company = role === 'sponsor' ? 'FPT Software' : 'Công ty TNHH Sao Mai'
+  return (
+    <div>
+      {/* mockup switch — two companies cannot be one page; this stands in for signing in as the other */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11px]">
+        <span className="text-muted">Xem như:</span>
+        {(['sponsor', 'beneficiary'] as const).map((r) => (
+          <button key={r} onClick={() => setRole(r)} className={cn('rounded-full border px-2.5 py-1 font-medium', role === r ? 'border-brand bg-brand text-white' : 'border-line text-muted')}>
+            {r === 'sponsor' ? 'FPT Software — công ty tài trợ (đứng tên PO)' : 'Sao Mai — công ty thụ hưởng (dùng chung)'}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
+        {/* left rail — as the Figma frame */}
+        <aside>
+          <p className="text-[15px] font-bold leading-snug">Products &amp; Payment Management</p>
+          <div className="mt-3 space-y-1.5 text-[12.5px]">
+            <p className="flex items-center gap-2 font-semibold text-brand"><span className="grid h-5 w-5 place-items-center rounded border border-brand/40 text-[10px]">▦</span>Product usage</p>
+            <p onClick={() => go('co-orders')} className="flex cursor-pointer items-center gap-2 text-muted"><span className="grid h-5 w-5 place-items-center rounded border border-line text-[10px]">▭</span>Payment history</p>
+          </div>
+          <div className="mt-4 rounded-lg bg-canvas px-3 py-2.5 text-[11px] text-muted">
+            <p className="text-center font-semibold text-ink/80">Help center</p>
+            <p className="mt-1">02-6226-5000</p>
+            <p>Weekdays 09:00–19:00</p>
+          </div>
+        </aside>
+
+        <section className="min-w-0">
+          <h3 className="text-[20px] font-bold">Product usage</h3>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[12px] text-ink/80"><b>{count}</b> products{role === 'beneficiary' && <span className="text-muted"> · dùng chung từ 2 công ty tài trợ</span>}</p>
+            <div className="flex flex-wrap items-center gap-2 text-[11.5px]">
+              <label className="flex items-center gap-1.5 text-muted"><input type="checkbox" checked={expiring} onChange={(e) => setExpiring(e.target.checked)} className="accent-brand" />Expiring within 7 days</label>
+              <span className="rounded-md border border-line px-2.5 py-1.5 text-ink/80">All product types ▾</span>
+              <span className="flex items-center gap-2 rounded-md border border-line px-2.5 py-1.5 text-faint">Search products <span>⌕</span></span>
+            </div>
+          </div>
+
+          {role === 'sponsor' && (
+            <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
+              <b>2 công ty đang dùng chung quota của {company}</b> — Sao Mai · An Khang. Số họ dùng <b>đã nằm trong</b> các thanh dưới; dòng “Dùng bởi” dưới mỗi sản phẩm tách ra ai dùng bao nhiêu. Thêm hoặc gỡ công ty: liên hệ sales owner của bạn ở Saramin.
+            </p>
+          )}
+          {role === 'beneficiary' && (
+            <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
+              {company} đang <b>dùng chung quota</b> của FPT Software và Tiki. Trang này chỉ hiện <b>số bạn đã dùng</b> — tổng quota, số còn lại và hoá đơn thuộc về công ty tài trợ. Khi tạo job, chọn PO trong nhóm “Shared by …”.
+            </p>
+          )}
+
+          <div className="mt-3 overflow-hidden rounded-lg border border-line">
+            {groups.map((g) => (
+              <div key={g.head}>
+                <div className={cn('flex items-center gap-3 px-4 py-2 text-[12px]', g.shared ? 'bg-brand-soft/60' : 'bg-canvas/70')}>
+                  <span className="font-bold text-ink">{g.head}</span>
+                  {g.meta && <span className="text-muted">{g.meta}</span>}
+                  {g.shared && <Chip tone="blue">dùng chung</Chip>}
+                </div>
+                {g.rows.map((r) => (
+                  <div key={r.name} className="grid items-center gap-3 border-t border-line-soft px-4 py-3 md:grid-cols-[1.2fr_1.1fr_1fr_auto]">
+                    <div>
+                      <Chip tone="muted">{r.type}</Chip>
+                      <p className="mt-1 text-[13px] font-semibold text-ink">{r.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12px] text-ink/85">{r.used}</p>
+                      {r.unlimited && <span className="mt-1 inline-block rounded bg-sky-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">∞ Unlimited</span>}
+                      {/* a beneficiary row has no bar: a bar needs a denominator, and the denominator is the sponsor's */}
+                      {r.pct != null && <div className="mt-1.5 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${r.pct}%` }} /></div>}
+                      {r.by && (
+                        <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[10.5px]">
+                          <span className="text-faint">Dùng bởi</span>
+                          {r.by.map(([who, n]) => <span key={who} className="rounded border border-line bg-canvas/60 px-1.5 py-0.5 text-muted">{who} <b className="text-ink">{n}</b></span>)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-[11.5px]">
+                      {r.pill && <Chip tone={r.pill[1]}>{r.pill[0]}</Chip>}
+                      {r.dates && <p className="mt-1 text-muted">{r.dates}</p>}
+                    </div>
+                    <div className="md:text-right">
+                      {r.btn && <Btn onClick={() => go(r.btn === 'Find talent' ? 'co-resume-search' : 'co-post-job')}>{r.btn}</Btn>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 text-[11.5px] text-muted">
+            <p className="font-semibold text-ink/80">About product usage</p>
+            <p className="mt-1">- Usage from the last 2 years is shown here.</p>
+            <p>- Closing a posting early does not refund the unused days of a product in use.</p>
+            {role === 'beneficiary' && <p>- Products under “Shared by …” belong to another company’s order: only your own usage is shown here; the remaining quota and the invoice are on that company’s account.</p>}
+            {role === 'sponsor' && <p>- “Dùng bởi” lists every company that spent from this product — companies you no longer share with keep their past usage.</p>}
+            <p>- Usage &amp; payment: [FAQ] · Help center 02-6226-5000 (weekdays 09:00–19:00)</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
 function ProductsQuotaScreen() {
   const go = useCoNav()
   const [shareView, setShareView] = useState<'sponsor' | 'beneficiary'>('sponsor')
@@ -3180,6 +3329,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'More',
     overflow: true,
     items: [
+      { id: 'co-product-usage', label: 'Product usage', Comp: ProductUsageScreen },
       { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
       { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
       { id: 'co-company-info', label: 'Company information', Comp: CompanyInfoScreen },
