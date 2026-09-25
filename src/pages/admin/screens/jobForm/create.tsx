@@ -46,11 +46,13 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
      nobody is surprised whose slots are spent. A shared PO with nothing left is
      still listed, disabled, with the reason — the beneficiary never sees a count,
      so the refusal has to be spelled out here. */
-  const SHARED_PO = 'PO-2026-0051 · shared by FPT Software (CO-8Q2K7ZV) · active'
-  const SHARED_PO_EMPTY = 'PO-2026-0033 · shared by FPT Software (CO-8Q2K7ZV) · hết slot — liên hệ FPT Software'
+  /* A shared entry is named by the sponsor's INVOICE number (client, 25/09/2026): that
+     is the number the beneficiary reads on its Product usage page, so the two match. */
+  const SHARED_PO = 'INV-003464-09-2026 · shared by FPT Software (CO-8Q2K7ZV) · active'
+  const SHARED_PO_EMPTY = 'INV-003458-09-2026 · shared by FPT Software (CO-8Q2K7ZV) · hết slot — liên hệ FPT Software'
   /* A company may be linked to SEVERAL sponsors — one group per sponsor, so whose
      quota a slot comes from is read off the option, never inferred. */
-  const SHARED_PO_2 = 'PO-2026-0047 · shared by Tiki (CO-1890XYZ) · active'
+  const SHARED_PO_2 = 'INV-003451-09-2026 · shared by Tiki (CO-1890XYZ) · active'
   const sharedPo = po === SHARED_PO || po === SHARED_PO_2
   const sponsorName = po === SHARED_PO_2 ? 'Tiki' : 'FPT Software'
   const freeProducts = CATALOG.filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.entitlement === 'free' && c.status === 'Active')

@@ -1176,7 +1176,7 @@ export const crm: BuildModule = {
             table: {
               cols: ['#', 'Step', 'Behaviour'],
               rows: [
-                ['1', 'Beneficiary opens Create job on the Company site — or an admin posts for it', 'The **Purchase order** list has two groups: **Your company’s POs** (if any) and **Shared by {Sponsor} · {CO-ID}** — the sponsor’s invoiced, unexpired POs that still have quota.'],
+                ['1', 'Beneficiary opens Create job on the Company site — or an admin posts for it', 'The **Purchase order** list has two groups: **Your company’s POs** (if any) and **Shared by {Sponsor} · {CO-ID}** — the sponsor’s invoiced, unexpired quota, each entry named by its **invoice number** (INV-…), which is the number the beneficiary sees on Product usage.'],
                 ['2', 'Picks a shared PO', 'The Product (Main) list becomes that PO’s paid lines; add-ons follow. A note under the field: “Slot sẽ trừ vào PO của {Sponsor}. Job đứng tên {Beneficiary}.”'],
                 ['3', 'Publishes', 'One slot leaves the sponsor’s PO. The job shows the **beneficiary’s** name, logo and company page everywhere on the jobseeker site. The ledger entry carries `usedByCompanyId = beneficiary`.'],
                 ['4', 'The shared PO has no slots left', 'The PO is listed but **disabled** — “Hết slot — liên hệ {Sponsor}”. The beneficiary never sees a number, only whether it can post.'],
@@ -1184,7 +1184,7 @@ export const crm: BuildModule = {
                 ['6', 'Link removed while a job is live', 'The job runs to its end date on the slot already spent. Upgrade tier or renew from the sponsor’s PO is refused.'],
               ],
             },
-            warn: 'Two things the beneficiary’s screens must NEVER show: the sponsor’s PO beyond its NUMBER — no lines, amount, totals, remainder or invoice, on any tab, admin side included (the number itself is shown, because the Create-job picker names the PO and Product usage has to match it) — and, on the jobseeker site, the sponsor’s name on the job. The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
+            warn: 'Two things the beneficiary’s screens must NEVER show: the sponsor’s PO or invoice beyond the INVOICE NUMBER — no lines, amount, totals, remainder, PO number or invoice document, on any tab, admin side included (the invoice number is shown, because the Create-job picker names the shared quota by it and Product usage has to match) — and, on the jobseeker site, the sponsor’s name on the job. The job must never show the sponsor’s name to jobseekers. The sponsor paid; the beneficiary is hiring. A candidate applying to Sao Mai must not see FPT anywhere on the posting.',
           },
           {
             label: 'Usage — what each side sees, and where',
@@ -1197,7 +1197,7 @@ export const crm: BuildModule = {
                 ['Who used what', 'n/a', '**Companies using your quota** — the USAGE MATRIX: one row per beneficiary, **one column per product line on the sponsor’s invoiced POs** (a PO with 100 Top job · 20 Basic · 200 CV search gives three columns; the next PO’s lines add theirs), last used, job titles; footer rows “you used”, “linked companies used”, “remaining / total” per product', 'The same matrix on the sponsor’s record, plus + Link company / Remove'],
                 ['Usage history', 'Its own spends, each marked “từ PO của {Sponsor}”', 'Every spend, beneficiaries’ included, each marked “bởi {Beneficiary}”', 'Both'],
                 ['Stat card “Job quota”', '“dùng chung từ {Sponsor A · Sponsor B}” instead of a number', 'Its number, as today', 'As the company site'],
-                ['Product usage (company site)', 'One group per shared PO: PO number + “Shared by {Sponsor}” — no date/amount; rows are counts only, no bar; Post job / Find talent, no Activate', 'Its page as today + “Dùng bởi …” under every product; bars include beneficiaries’ use', 'n/a — see Products & billing'],
+                ['Product usage (company site)', 'One group per shared invoice: invoice number (INV-…) + “Shared by {Sponsor}” — no date/amount/PO; rows are counts only, no bar; Post job / Find talent, no Activate', 'Its page as today + “Dùng bởi …” under every product; bars include beneficiaries’ use', 'n/a — see Products & billing'],
                 ['Overview tab (admin)', 'Snapshot card beside Affiliated companies: “{Beneficiary} là công ty thụ hưởng của: {Sponsor A} · {Sponsor B}” — names and linked dates only, nothing about POs or usage', 'The Company ID list: one box per linked company (ID · name · units used), red −, + Thêm ID, SAVE', 'The matrix stays on Products & billing (with Remove per row)'],
               ],
             },
@@ -1273,7 +1273,7 @@ export const crm: BuildModule = {
           {
             group: 'Company site · Create job → Purchase order (PO)',
             items: [
-              { name: 'poOptions', type: 'grouped list', notes: 'group 1 “Your company’s POs”, then one group per sponsor “Shared by {Sponsor} · {CO-ID}”. A shared PO with no quota is listed disabled with “Hết slot — liên hệ {Sponsor}”' },
+              { name: 'poOptions', type: 'grouped list', notes: 'group 1 “Your company’s POs”, then one group per sponsor “Shared by {Sponsor} · {CO-ID}” whose entries are named by the invoice number (INV-…). A shared entry with no quota is listed disabled with “Hết slot — liên hệ {Sponsor}”' },
               { name: 'note', type: 'text', notes: 'under the field once a shared PO is picked: “Slot sẽ trừ vào PO của {Sponsor}. Job đứng tên {Beneficiary}.”' },
             ],
           },

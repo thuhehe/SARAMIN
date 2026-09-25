@@ -2874,18 +2874,19 @@ function ProductUsageScreen() {
       { type: 'CV search', name: 'CV Search 30d', used: '0 of 50 CVs unlocked', pct: 0, pill: ['Not activated', 'amber'], dates: 'activate by 01/08/2027', btn: 'Activate' },
     ] },
   ]
-  /* The PO NUMBER is shown on the beneficiary's groups — it is what the Create-job
-     picker lists and what the poster picks, so the page has to name it. The number
-     only: no date, no amount, no lines, no totals, no invoice. */
+  /* The INVOICE NUMBER is shown on the beneficiary's groups (client, 25/09/2026) —
+     it is what the Create-job picker lists for a shared quota and what the poster
+     picks, so the page has to name it. The number only: no date, no amount, no
+     lines, no totals, no PO. */
   const beneficiary: UsageGroup[] = [
-    { head: 'PO-2026-0912', meta: 'Shared by FPT Software · 2 products', shared: true, rows: [
+    { head: 'INV-003464-09-2026', meta: 'Shared by FPT Software · 2 products', shared: true, rows: [
       { type: 'Job posting', name: 'Top Job', used: '3 posts used', btn: 'Post job' },
       { type: 'Job posting', name: 'Basic', used: '2 posts used', btn: 'Post job' },
     ] },
-    { head: 'PO-2026-0909', meta: 'Shared by FPT Software · 1 product', shared: true, rows: [
+    { head: 'INV-003458-09-2026', meta: 'Shared by FPT Software · 1 product', shared: true, rows: [
       { type: 'CV search', name: 'CV Search — COMBO 200', used: '12 CVs unlocked', pill: ['In use', 'green'], btn: 'Find talent' },
     ] },
-    { head: 'PO-2026-0847', meta: 'Shared by Tiki · 1 product', shared: true, rows: [
+    { head: 'INV-003451-09-2026', meta: 'Shared by Tiki · 1 product', shared: true, rows: [
       { type: 'Job posting', name: 'Job Posting — Pro', used: '1 post used', btn: 'Post job' },
     ] },
   ]
@@ -2936,7 +2937,7 @@ function ProductUsageScreen() {
           )}
           {role === 'beneficiary' && (
             <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
-              {company} đang <b>dùng chung quota</b> của FPT Software và Tiki. Trang này hiện <b>số PO</b> (để bạn chọn đúng PO khi tạo job) và <b>số bạn đã dùng</b> — tổng quota, số còn lại, giá trị và hoá đơn thuộc về công ty tài trợ.
+              {company} đang <b>dùng chung quota</b> của FPT Software và Tiki. Trang này hiện <b>số Invoice</b> (để bạn chọn đúng invoice khi tạo job) và <b>số bạn đã dùng</b> — tổng quota, số còn lại, giá trị và PO thuộc về công ty tài trợ.
             </p>
           )}
 
@@ -2983,7 +2984,7 @@ function ProductUsageScreen() {
             <p className="font-semibold text-ink/80">About product usage</p>
             <p className="mt-1">- Usage from the last 2 years is shown here.</p>
             <p>- Closing a posting early does not refund the unused days of a product in use.</p>
-            {role === 'beneficiary' && <p>- A PO marked “Shared by …” is another company’s order: you see its number (to pick it when posting) and your own usage; the remaining quota, the amount and the invoice are on that company’s account.</p>}
+            {role === 'beneficiary' && <p>- An invoice marked “Shared by …” is another company’s: you see its number (to pick it when posting) and your own usage; the remaining quota, the amount and the order are on that company’s account.</p>}
             {role === 'sponsor' && <p>- “Dùng bởi” lists every company that spent from this product — companies you no longer share with keep their past usage.</p>}
             <p>- Usage &amp; payment: [FAQ] · Help center 02-6226-5000 (weekdays 09:00–19:00)</p>
           </div>
