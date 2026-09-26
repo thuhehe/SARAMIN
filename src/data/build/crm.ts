@@ -1081,6 +1081,14 @@ export const crm: BuildModule = {
       mockup: 'admin-shared-quota',
       mockups: ['co-create-job', 'co-product-usage', 'co-product-usage-beneficiary', 'co-products'],
       detail: {
+        refDocs: [
+          {
+            label: 'Figma — Product usage · sponsor (công ty tài trợ)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=4642-11655',
+            meta: 'Figma frame · 1440 wide · 26/09/2026',
+            note: 'Company site, the sponsor’s Product usage: banner + the usage matrix above the product list. The beneficiary’s page and the admin screens are in the prototype below.',
+          },
+        ],
         keyPoints: [
           {
             vi: 'Đây KHÔNG phải quan hệ mẹ – con. Link chỉ chia sẻ đúng một thứ: quota trên các PO đã xuất hoá đơn của công ty mua. Pháp nhân, hoá đơn, doanh thu, hạng — vẫn của riêng từng công ty.',

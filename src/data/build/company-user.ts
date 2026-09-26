@@ -517,6 +517,12 @@ export const companyUser: BuildModule = {
             note: 'The screen this requirement describes — filters, the grouped list, the row anatomy (type chip · name · usage text + bar · status pill + validity dates · one button) and the footer notes. Includes the two unlimited-quota rows under PO-2026-0909.',
           },
           {
+            label: 'Figma — Product usage · sponsor (công ty tài trợ)',
+            href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=4642-11655',
+            meta: 'Figma frame · 1440 wide · 26/09/2026',
+            note: 'The same page for a company whose quota other companies use: a banner naming them and, above the list, the usage matrix (rows = linked companies, columns = the products on its invoiced POs, footer = own · linked · remaining / total). See CRM → Shared quota.',
+          },
+          {
             label: 'Figma — Activate flow (CV Search 30d)',
             href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2249-9438',
             meta: 'Figma frame',
