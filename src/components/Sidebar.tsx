@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Search, X, Home, Monitor, History, BookOpen, ClipboardCheck } from 'lucide-react'
+import { BookOpen, ChevronRight, Search, X, Home, Monitor, History, ClipboardCheck } from 'lucide-react'
 import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildModule } from '@/data/buildModules'
 import { featurePath } from '@/data/featureSlug'
@@ -88,7 +88,6 @@ export function Sidebar() {
 
               Build plan is off the nav too, at the client's request. */}
           <PrimaryLink to="/wireframe/admin" icon={<Monitor className="h-3.5 w-3.5" />} label="Admin mockups" />
-          <PrimaryLink to="/workflow" icon={<BookOpen className="h-3.5 w-3.5" />} label="Cẩm nang thao tác" />
           <PrimaryLink to="/testing" icon={<ClipboardCheck className="h-3.5 w-3.5" />} label="Testing workflow" />
           <PrimaryLink to="/changelog" icon={<History className="h-3.5 w-3.5" />} label="Document history" />
         </div>
