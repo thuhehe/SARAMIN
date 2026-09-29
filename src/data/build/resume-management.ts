@@ -1945,6 +1945,25 @@ export const resumeManagement: BuildModule = {
             ],
           },
           {
+            heading: '⚠ AS BUILT — the queue matches this model, but a held application on a replaced version is STRANDED',
+            text: 'Checked against svn-be and saramin-vn-admin on 2026-09-26, prompted by a client question about whether a second version should get a second queue row. THE ROW MODEL IS ALREADY RIGHT: Needs review selects `FROM candidate_cv` (`AdminCvReviewQueryAdapter`), so it is one row per CV; a replace updates that row in place — `CandidateCvLibraryService.replaceFile` stamps `superseded_at` on the old `cv_version`, inserts the new one, and rewrites `candidate_cv` with the new media key and a PENDING verdict. No second row ever appears, which is what this page specifies.\n\nWhat is NOT right is what happens to an application that was already waiting on the version being replaced. Three defects, all from the same root: **`job_application` stores a frozen `applied_cv_media_key` and nothing resolves it across versions.** There is no `cvVersionId` on the application at all.',
+            table: {
+              cols: ['#', 'Defect', 'Where', 'Effect'],
+              rows: [
+                ['**1**', '**A held application is never delivered once the CV is replaced.** Release does `findPendingScreeningByAppliedCvMediaKey(cv.mediaKey())` — the CURRENT key. An application frozen on the previous key is not found.', '`CandidateCvModerationService.deliverWaitingApplications`', '**Silent, permanent loss.** Apply while in doubt → candidate replaces the file → admin approves → that application sits at Pending for ever. No sweeper picks it up; the release query has only two callers and neither walks versions.'],
+                ['**2**', '**The automatic route never delivers anything.** `CvQualificationService` flips the CV to APPROVED and even counts a variable called `released`, but the class holds no application repository.', '`CvQualificationService.reevaluate`', 'The self-service exit this page promises does not exist: a candidate who fixes their CV and passes the scan does NOT get their held applications sent. Only an admin Approve delivers.'],
+                ['**3**', '**“Dùng để ứng tuyển” counts only the current version**, because `cv_version.media_key` is unique per version and the count joins on `cv.media_key`.', '`AdminCvReviewQueryAdapter` · and the reject dialog’s `held` count', 'A CV with 3 applications on v.1 and 1 on v.2 reads **1**, not 4. The admin decides without seeing the reach — the exact number this page says that column exists to show.'],
+              ],
+            },
+            items: [
+              '★ ONE FIX COVERS 1 AND 3, AND THE CODE ALREADY CONTAINS IT. `rejectImpact` in the same class walks every `cv_version` of the CV to compute its `kept` count — the version-aware lookup exists and is simply not used for held/released. Resolve held applications by **all** of the CV’s version media keys, not just the current one, and both the stranded delivery and the undercount go away.',
+              'DEFECT 2 IS A SEPARATE WIRING JOB — give the qualification service the application repository, or have it raise the same domain event the admin path raises, so both routes out of doubt release identically. Until then, “the candidate can fix it themselves and their applications go out” is true on this page and false in the build.',
+              'THE CLIENT’S PROPOSAL — a second queue row per version, so an older version can still be approved for the application that used it — was considered on 2026-09-26 and NOT adopted. Reasons, in order of weight: the CV, not the version, carries the status, so two rows would mean two verdicts on one record and nothing coherent for My CVs, the apply gate or CV search to read; binding a held application to an abandoned version would stop a candidate rescuing it by fixing their CV, which is the more common case by far; and per-job tailoring belongs in the three CV slots, not in versions of one document. The real harm the proposal was aiming at — a post-apply edit killing a pending application — is defect 1 above, and it is a bug, not a missing row.',
+              'NO TEST COVERS apply-while-held → replace → approve. `CvVersionLifecycleIntegrationTest` covers reject-across-versions, replace ordering, decided-row version pinning and applicant-row display; the stranded case is the one hole, and it is the one that loses data.',
+            ],
+            warn: 'DO NOT “FIX” DEFECT 1 BY DELIVERING THE OLD FILE. The application must go out with the version that is current and Qualified at release — the candidate replaced the old one on purpose, and a Rejected CV must still reach nobody. What is broken is the LOOKUP that finds the waiting application, not the document it should carry.',
+          },
+          {
             early: true,
             heading: 'In one table',
             text: 'Two kinds of CV, one rule, and one field it writes. Everything downstream — whether the application is delivered, whether the CV is searchable — is READ from that field and never decided anywhere else.',

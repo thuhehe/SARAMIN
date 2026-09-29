@@ -4630,6 +4630,572 @@ function AdminCvUsageDeletedScreen() {
   )
 }
 
+/* ── Jobseeker · Account information — changing the phone or the email ───────
+   Drawn on the BUILD's Account information page (svn-web
+   features/my-profile/ui/account: photo column · Basic information rows · Sign-in
+   & security · a quiet Withdraw link) and on its withdrawal OTP step (verify-step:
+   send → 6-digit code → countdown → resend → attempts left). Today the build shows
+   email and phone as READ-ONLY rows; these screens add the two Change flows.
+   The rule they draw — prove the NEW channel the way sign-up did, keep at least
+   one verified channel — is a table on the requirement, not a caption here. */
+
+type CcStage = 'account' | 'enter' | 'authorise' | 'verify' | 'done'
+const CC_STAGES: { id: CcStage; label: string }[] = [
+  { id: 'account', label: '1 · Tài khoản' },
+  { id: 'enter', label: '2 · Nhập mới' },
+  { id: 'authorise', label: '3 · Xác nhận là bạn' },
+  { id: 'verify', label: '4 · Xác minh kênh mới' },
+  { id: 'done', label: '5 · Xong' },
+]
+
+/** One OTP box, the shape the build already ships on the withdrawal step. */
+function OtpBox({
+  sentTo,
+  channel,
+  state,
+}: {
+  sentTo: string
+  channel: 'zalo' | 'email'
+  state: 'fresh' | 'wrong' | 'expired' | 'superseded' | 'locked'
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-surface">
+      <div className="border-b border-line px-5 py-3 text-center">
+        <span className="border-b-2 border-brand pb-2.5 text-[12.5px] font-bold text-ink">
+          {channel === 'zalo' ? 'Mã qua Zalo' : 'Mã qua email'}
+        </span>
+      </div>
+      <div className="space-y-3 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <span className="w-28 shrink-0 text-[11.5px] font-bold text-ink">Gửi tới</span>
+          <span className="flex-1 rounded-md border border-line bg-canvas px-2.5 py-1.5 text-[12px] text-ink">{sentTo}</span>
+          <Btn className={cn(state === 'fresh' && 'opacity-50')}>{state === 'fresh' ? 'Gửi lại (52s)' : 'Gửi lại'}</Btn>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="w-28 shrink-0 text-[11.5px] font-bold text-ink">Mã xác minh</span>
+          <span className="relative flex-1">
+            <span className={cn('block rounded-md border bg-surface px-2.5 py-1.5 font-mono text-[13px] tracking-[0.3em]', state === 'wrong' || state === 'expired' ? 'border-rose-300 text-ink' : 'border-line text-ink')}>
+              {state === 'expired' ? '· · · · · ·' : '4 8 2 9 1 _'}
+            </span>
+            {state !== 'expired' && state !== 'locked' && (
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] text-rose-600">còn 2:47</span>
+            )}
+          </span>
+        </div>
+        <div className="space-y-1 pl-[7.75rem] text-[11.5px]">
+          {state === 'wrong' && <p className="text-rose-600">Mã không đúng. Còn 2 lần thử.</p>}
+          {state === 'expired' && <p className="text-rose-600">Mã đã hết hạn — bấm Gửi lại để nhận mã mới.</p>}
+          {state === 'superseded' && <p className="text-rose-600">Mã này đã được thay bằng mã mới hơn — dùng tin nhắn mới nhất.</p>}
+          {state === 'locked' && <p className="text-rose-600">Bạn đã nhập sai 5 lần trong 24 giờ. Vui lòng thử lại sau 24 giờ.</p>}
+          {state !== 'locked' && (
+            <>
+              <p className="text-rose-600">Đã gửi mã.</p>
+              <p className="text-faint">{channel === 'zalo' ? 'Mở Zalo trên điện thoại có số này để lấy mã. Mã có hiệu lực 3 phút.' : 'Kiểm tra hộp thư (cả mục spam). Mã có hiệu lực 3 phút.'}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ContactChangeScreen() {
+  const go = useNav()
+  const [stage, setStage] = useState<CcStage>('account')
+  const [which, setWhich] = useState<'phone' | 'email'>('phone')
+  /* the account BEFORE the change — decides which channel can authorise it */
+  const [acct, setAcct] = useState<'vn' | 'abroad' | 'pendingEmail'>('vn')
+  const [abroad, setAbroad] = useState(false)
+  /* a Zalo sign-up never proved the email — the case that decides the abroad path */
+  const [emailOk, setEmailOk] = useState(true)
+  const [enterErr, setEnterErr] = useState<'ok' | 'taken' | 'deleted'>('ok')
+  const [fresh, setFresh] = useState(true)
+  const [otp, setOtp] = useState<'fresh' | 'wrong' | 'expired' | 'superseded' | 'locked'>('fresh')
+
+  const curPhone = acct === 'abroad' ? '+1 415 555 0123' : '+84 903 112 445'
+  const curEmail = 'minhanh@email.com'
+  const newPhone = abroad ? '+61 4 1234 5678' : '+84 912 555 888'
+  const newEmail = 'minh.anh.work@gmail.com'
+  /* the channel that AUTHORISES: whatever is verified today */
+  const authChannel: 'zalo' | 'email' = acct === 'abroad' ? 'email' : 'zalo'
+  const authTo = authChannel === 'zalo' ? '+84 903 ••• 445' : 'mi•••@email.com'
+  /* an abroad number cannot receive Zalo, so it is saved unverified and the code
+     goes to the EMAIL instead — every time, verified before or not. One rule, one
+     sentence on the screen; the reasoning lives on the requirement. */
+  const emailVerified = acct !== 'vn' || emailOk
+  const skipsVerify = false
+  const verifiesEmailFirst = which === 'phone' && abroad
+
+  const Rail = () => (
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line-soft bg-canvas/40 px-5 py-2">
+      {CC_STAGES.map((s, i) => {
+        const cur = CC_STAGES.findIndex((x) => x.id === stage)
+        const skipped = (s.id === 'authorise' && fresh) || (s.id === 'verify' && skipsVerify)
+        return (
+          <div key={s.id} className="flex items-center gap-1.5">
+            <span
+              onClick={() => setStage(s.id)}
+              className={cn(
+                'cursor-pointer whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium',
+                i === cur ? 'bg-brand text-white' : i < cur ? 'bg-emerald-100 text-emerald-700' : 'bg-canvas text-faint',
+                skipped && i !== cur && 'line-through opacity-60',
+              )}
+            >
+              {s.label}
+            </span>
+            {i < CC_STAGES.length - 1 && <span className="text-faint">›</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  const Row = ({ k, v, chip, action, sub }: { k: string; v: string; chip?: React.ReactNode; action?: React.ReactNode; sub?: string }) => (
+    <div className="flex items-start justify-between gap-3 border-b border-line-soft py-2.5 last:border-0">
+      <span className="w-36 shrink-0 pt-0.5 text-[11.5px] font-bold text-ink">{k}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-ink">
+          {v}
+          {chip}
+        </span>
+        {sub && <span className="mt-0.5 block text-[11px] text-faint">{sub}</span>}
+      </span>
+      {action && <span className="shrink-0">{action}</span>}
+    </div>
+  )
+
+  const Sheet = ({ title, sub, children, foot }: { title: string; sub?: string; children: React.ReactNode; foot: React.ReactNode }) => (
+    <div className="mx-auto my-6 w-full max-w-[600px] overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="border-b border-line px-5 py-3.5">
+        <p className="text-[14px] font-bold text-ink">{title}</p>
+        {sub && <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{sub}</p>}
+      </div>
+      <div className="space-y-3 px-5 py-4">{children}</div>
+      <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">{foot}</div>
+    </div>
+  )
+
+  const Toggle = <T extends string>({ label, value, set, opts }: { label: string; value: T; set: (v: T) => void; opts: [T, string][] }) => (
+    <div className="flex flex-wrap items-center gap-1 text-[10.5px]">
+      <span className="text-faint">{label}</span>
+      {opts.map(([v, l]) => (
+        <span key={v} onClick={() => set(v)} className={cn('cursor-pointer rounded border px-1.5 py-0.5', value === v ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted')}>
+          {l}
+        </span>
+      ))}
+    </div>
+  )
+
+  return (
+    <div className="relative min-h-[640px] bg-canvas/30">
+      <JsHeader />
+      <Rail />
+
+      {/* mock-only controls: which variant of the account, which change, session freshness */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-dashed border-line px-5 py-2">
+        <Toggle label="Tài khoản:" value={acct} set={setAcct} opts={[['vn', 'Số VN đã xác minh'], ['abroad', 'Số nước ngoài (email là kênh xác minh)'], ['pendingEmail', 'Đang chờ đổi email']]} />
+        <Toggle label="Đổi:" value={which} set={setWhich} opts={[['phone', 'Số điện thoại'], ['email', 'Email']]} />
+        {acct === 'vn' && <Toggle label="Email đã xác minh?" value={emailOk ? 'y' : 'n'} set={(v) => setEmailOk(v === 'y')} opts={[['y', 'Có'], ['n', 'Chưa — đăng ký bằng Zalo']]} />}
+        <Toggle label="Phiên:" value={fresh ? 'y' : 'n'} set={(v) => setFresh(v === 'y')} opts={[['y', 'vừa đăng nhập < 10 phút (bỏ qua bước 3)'], ['n', 'đăng nhập đã lâu']]} />
+      </div>
+
+      {/* ── 1 · Account information — the build's page, with the two Change buttons added ── */}
+      {stage === 'account' && (
+        <div className="mx-auto max-w-[880px] px-5 py-6">
+          <p className="text-[20px] font-bold text-ink">Thông tin tài khoản</p>
+          <div className="mt-5 flex gap-8">
+            <div className="shrink-0 text-center">
+              <span className="block h-20 w-20 rounded-full bg-gradient-to-br from-brand to-violet-500" />
+              <span className="mt-2 block text-[11px] text-brand">Đổi ảnh</span>
+            </div>
+            <div className="min-w-0 flex-1 space-y-7">
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[14px] font-bold text-ink">Thông tin cơ bản</p>
+                  <Btn>Chỉnh sửa</Btn>
+                </div>
+                <div className="rounded-xl border border-line px-4">
+                  <Row k="Họ và tên" v="Nguyễn Minh Anh" />
+                  <Row k="Ngày sinh" v="12/04/1998" />
+                  <Row k="Giới tính" v="Nữ" />
+                  <Row k="Quốc tịch" v="Việt Nam" />
+                  <Row
+                    k="Email đăng nhập"
+                    v={curEmail}
+                    chip={emailVerified ? <Chip tone="green">Đã xác minh</Chip> : <Chip tone="amber">Chưa xác minh</Chip>}
+                    sub={!emailVerified ? 'Bạn đã xác minh bằng Zalo khi đăng ký — email này chưa được xác minh' : acct === 'pendingEmail' ? `Đang chờ xác minh: ${newEmail} · Gửi lại mã · Huỷ — email cũ vẫn dùng để đăng nhập cho tới khi mã được nhập` : 'Dùng để đăng nhập và nhận mã khôi phục mật khẩu'}
+                    action={
+                      <Btn onClick={() => { setWhich('email'); setEnterErr('ok'); setStage('enter') }}>{acct === 'pendingEmail' ? 'Đổi email khác' : 'Đổi email'}</Btn>
+                    }
+                  />
+                  <Row
+                    k="Số điện thoại"
+                    v={curPhone}
+                    chip={acct === 'abroad' ? <Chip tone="amber">Số nước ngoài · chưa xác minh</Chip> : <Chip tone="green">Zalo · đã xác minh</Chip>}
+                    sub={acct === 'abroad' ? 'Số nước ngoài không nhận được Zalo — email là kênh xác minh của bạn' : 'Nhận mã Zalo khi đổi mật khẩu, đổi email hoặc xoá tài khoản'}
+                    action={<Btn onClick={() => { setWhich('phone'); setAbroad(acct === 'abroad'); setEnterErr('ok'); setStage('enter') }}>Đổi số</Btn>}
+                  />
+                </div>
+              </section>
+              <section>
+                <p className="mb-2 text-[14px] font-bold text-ink">Đăng nhập & bảo mật</p>
+                <div className="rounded-xl border border-line px-4">
+                  <Row k="Mật khẩu" v="Đổi lần cuối 03/08/2026" action={<Btn>Đổi mật khẩu</Btn>} />
+                  <Row k="Google" v="Đã liên kết · minhanh@gmail.com" action={<Btn>Huỷ liên kết</Btn>} />
+                </div>
+              </section>
+              <div className="flex justify-end">
+                <span onClick={() => go('js-settings')} className="cursor-pointer text-[12px] font-medium text-ink underline underline-offset-4">Xoá tài khoản</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2 · Enter the new value ─────────────────────────────────────────── */}
+      {stage === 'enter' && which === 'phone' && (
+        <Sheet
+          title="Đổi số điện thoại"
+          sub="Số mới sẽ nhận mã Zalo khi bạn đổi mật khẩu, đổi email hoặc xoá tài khoản — nên chúng tôi cần xác minh nó trước."
+          foot={
+            <>
+              <Btn onClick={() => setStage('account')}>Huỷ</Btn>
+              <Btn primary onClick={() => setStage(fresh ? (skipsVerify ? 'done' : 'verify') : 'authorise')}>{abroad ? 'Gửi mã tới email' : 'Gửi mã Zalo tới số mới'}</Btn>
+            </>
+          }
+        >
+          <Row k="Số hiện tại" v={curPhone} chip={acct === 'abroad' ? <Chip tone="amber">chưa xác minh</Chip> : <Chip tone="green">đã xác minh</Chip>} />
+          <div className="flex items-center gap-3 py-1">
+            <span className="w-36 shrink-0 text-[11.5px] font-bold text-ink">Số mới</span>
+            <span className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] text-muted">{abroad ? '+61 ▾' : '+84 ▾'}</span>
+            <span className={cn('flex-1 rounded-md border bg-surface px-2.5 py-1.5 text-[12px] text-ink', enterErr !== 'ok' ? 'border-rose-300' : 'border-line')}>{abroad ? '4 1234 5678' : '912 555 888'}</span>
+          </div>
+          <label className="flex cursor-pointer items-start gap-2 pl-[9.75rem] text-[11.5px] text-ink" onClick={() => setAbroad((a) => !a)}>
+            <span className={cn('mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[3px] border text-[9px]', abroad ? 'border-brand bg-brand text-white' : 'border-line')}>{abroad ? '✓' : ''}</span>
+            <span>Tôi đang ở nước ngoài — số của tôi không phải số Việt Nam</span>
+          </label>
+          {abroad && (
+            <div className="ml-[9.75rem] rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[11.5px] text-amber-800">
+              Số nước ngoài không nhận được Zalo — chúng tôi sẽ gửi mã xác minh tới email <b>{curEmail}</b>.
+            </div>
+          )}
+          {enterErr === 'taken' && <p className="pl-[9.75rem] text-[11.5px] text-rose-600">Số này đã được dùng cho một tài khoản khác.</p>}
+          <div className="border-t border-line-soft pt-2"><Toggle label="Trạng thái (mock):" value={enterErr} set={setEnterErr} opts={[['ok', 'Hợp lệ'], ['taken', 'Số đã được dùng']]} /></div>
+        </Sheet>
+      )}
+      {stage === 'enter' && which === 'email' && (
+        <Sheet
+          title="Đổi email đăng nhập"
+          sub="Email cũ vẫn dùng để đăng nhập cho tới khi bạn nhập mã gửi tới email mới. Yêu cầu hết hạn sau 24 giờ."
+          foot={
+            <>
+              <Btn onClick={() => setStage('account')}>Huỷ</Btn>
+              <Btn primary onClick={() => setStage(fresh ? 'verify' : 'authorise')}>Gửi mã tới email mới</Btn>
+            </>
+          }
+        >
+          <Row k="Email hiện tại" v={curEmail} chip={<Chip tone="green">đã xác minh</Chip>} />
+          <div className="flex items-center gap-3 py-1">
+            <span className="w-36 shrink-0 text-[11.5px] font-bold text-ink">Email mới</span>
+            <span className={cn('flex-1 rounded-md border bg-surface px-2.5 py-1.5 text-[12px] text-ink', enterErr !== 'ok' ? 'border-rose-300' : 'border-line')}>{newEmail}</span>
+          </div>
+          {enterErr === 'taken' && <p className="pl-[9.75rem] text-[11.5px] text-rose-600">Email này đã được dùng cho một tài khoản khác.</p>}
+          {enterErr === 'deleted' && <p className="pl-[9.75rem] text-[11.5px] text-rose-600">Email này thuộc về một tài khoản đã bị xoá và không thể dùng lại.</p>}
+          <p className="pl-[9.75rem] text-[11px] text-faint">Nếu bạn đăng nhập bằng Google với email này, email đăng nhập được khoá theo Google và không đổi ở đây.</p>
+          <div className="border-t border-line-soft pt-2"><Toggle label="Trạng thái (mock):" value={enterErr} set={setEnterErr} opts={[['ok', 'Hợp lệ'], ['taken', 'Đã có tài khoản'], ['deleted', 'Thuộc tài khoản đã xoá']]} /></div>
+        </Sheet>
+      )}
+
+      {/* ── 3 · Authorise with the CURRENT verified channel (skipped on a fresh session) ── */}
+      {stage === 'authorise' && (
+        <div className="mx-auto max-w-[600px] px-5 py-6">
+          <p className="text-center text-[16px] font-bold text-ink">Xác nhận đó là bạn</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted">
+            Trước khi đổi {which === 'phone' ? 'số điện thoại' : 'email'}, nhập mã gửi tới kênh đã xác minh hiện tại của bạn. Bước này được bỏ qua nếu bạn vừa đăng nhập trong 10 phút.
+          </p>
+          <div className="mt-4"><OtpBox sentTo={authTo} channel={authChannel} state={otp} /></div>
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('enter')}>Quay lại</Btn>
+            <Btn primary onClick={() => setStage(skipsVerify ? 'done' : 'verify')}>Tiếp tục</Btn>
+          </div>
+          <div className="mt-3 flex justify-center"><Toggle label="Mã (mock):" value={otp} set={setOtp} opts={[['fresh', 'Vừa gửi'], ['wrong', 'Sai mã'], ['expired', 'Hết hạn'], ['superseded', 'Mã cũ'], ['locked', 'Khoá 24h']]} /></div>
+        </div>
+      )}
+
+      {/* ── 4 · Verify the NEW channel — the same proof sign-up asked for ─────── */}
+      {stage === 'verify' && (
+        <div className="mx-auto max-w-[600px] px-5 py-6">
+          <p className="text-center text-[16px] font-bold text-ink">{verifiesEmailFirst ? 'Nhập mã từ email' : which === 'phone' ? 'Xác minh số mới' : 'Xác minh email mới'}</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted">
+            {verifiesEmailFirst
+              ? `Mã đã gửi tới ${curEmail}. Nhập mã để lưu số ${newPhone}.`
+              : which === 'phone' ? `Mã đã gửi qua Zalo tới ${newPhone}. Số cũ vẫn giữ nguyên cho tới khi mã được nhập.` : `Mã đã gửi tới ${newEmail}. Email cũ vẫn là email đăng nhập cho tới khi mã được nhập.`}
+          </p>
+          <div className="mt-4"><OtpBox sentTo={verifiesEmailFirst ? curEmail : which === 'phone' ? newPhone : newEmail} channel={which === 'phone' && !verifiesEmailFirst ? 'zalo' : 'email'} state={otp} /></div>
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('enter')}>Đổi {which === 'phone' ? 'số' : 'email'} khác</Btn>
+            <Btn primary onClick={() => setStage('done')}>Xác nhận</Btn>
+          </div>
+          <div className="mt-3 flex justify-center"><Toggle label="Mã (mock):" value={otp} set={setOtp} opts={[['fresh', 'Vừa gửi'], ['wrong', 'Sai mã'], ['expired', 'Hết hạn'], ['superseded', 'Mã cũ'], ['locked', 'Khoá 24h']]} /></div>
+        </div>
+      )}
+
+      {/* ── 5 · Done — and the OLD channel is told ─────────────────────────── */}
+      {stage === 'done' && (
+        <div className="mx-auto max-w-[520px] px-5 py-10 text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[20px] text-emerald-700">✓</span>
+          <p className="mt-3 text-[16px] font-bold text-ink">{which === 'phone' ? 'Đã đổi số điện thoại' : 'Đã đổi email đăng nhập'}</p>
+          <p className="mt-1 text-[12px] text-ink">
+            {which === 'phone' ? newPhone : newEmail}{' '}
+            {which === 'phone' && abroad ? <Chip tone="amber">số nước ngoài · chưa xác minh</Chip> : <Chip tone="green">đã xác minh</Chip>}
+          </p>
+          <p className="mt-3 text-[11.5px] text-muted">
+            Chúng tôi đã báo cho {which === 'phone' ? `số cũ ${curPhone}` : `email cũ ${curEmail}`} về thay đổi này. Không phải bạn? Đổi mật khẩu ngay và liên hệ hỗ trợ.
+          </p>
+          {verifiesEmailFirst && !emailVerified && <p className="mt-2 text-[11.5px] text-emerald-700">Email {curEmail} đã được xác minh.</p>}
+          <div className="mt-5"><Btn primary onClick={() => { setStage('account'); setOtp('fresh') }}>Về Thông tin tài khoản</Btn></div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Jobseeker · The journey: sign up by Zalo, months later change the number from abroad ──
+   One linear story to read end to end — the case that decides the abroad rule.
+   Sign-up proves the PHONE (Zalo), never the email. When that seeker later ticks
+   "Tôi đang ở nước ngoài" while changing the number, the old number is about to
+   go and the email was never proven — so the flow proves the email before it
+   saves the foreign number. Same OtpBox the contact-change screen uses. */
+
+type ZjStage = 'signup' | 'otp' | 'created' | 'change' | 'authorise' | 'verifyEmail' | 'done'
+const ZJ_STAGES: { id: ZjStage; label: string }[] = [
+  { id: 'signup', label: '1 · Đăng ký' },
+  { id: 'otp', label: '2 · Mã Zalo' },
+  { id: 'created', label: '3 · Tài khoản' },
+  { id: 'change', label: '4 · Đổi số (3 tháng sau)' },
+  { id: 'authorise', label: '5 · Xác nhận là bạn' },
+  { id: 'verifyEmail', label: '6 · Xác minh email' },
+  { id: 'done', label: '7 · Xong' },
+]
+
+function ZaloJourneyScreen() {
+  const go = useNav()
+  const [stage, setStage] = useState<ZjStage>('signup')
+  const cur = ZJ_STAGES.findIndex((s) => s.id === stage)
+  const next = () => setStage(ZJ_STAGES[Math.min(cur + 1, ZJ_STAGES.length - 1)].id)
+  const oldPhone = '+84 912 555 888'
+  const newPhone = '+61 4 1234 5678'
+  const email = 'minhanh@email.com'
+
+  const Field = ({ k, v, req, hint, right }: { k: string; v: React.ReactNode; req?: boolean; hint?: string; right?: React.ReactNode }) => (
+    <div className="flex items-start gap-3 py-2">
+      <span className="w-32 shrink-0 pt-1.5 text-[11.5px] font-bold text-ink">
+        {k}
+        {req && <span className="text-rose-500"> *</span>}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">{v}{right}</span>
+        {hint && <span className="mt-1 block text-[11px] text-faint">{hint}</span>}
+      </span>
+    </div>
+  )
+  const Input = ({ children, mono, w }: { children: React.ReactNode; mono?: boolean; w?: string }) => (
+    <span className={cn('block rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] text-ink', mono && 'font-mono', w ?? 'flex-1')}>{children}</span>
+  )
+  const AccountRows = ({ after }: { after?: boolean }) => (
+    <div className="rounded-xl border border-line px-4">
+      {[
+        ['Họ và tên', 'Nguyễn Minh Anh'],
+        ['Ngày sinh', '12/04/1998'],
+      ].map(([k, v]) => (
+        <div key={k} className="flex items-center gap-3 border-b border-line-soft py-2.5">
+          <span className="w-36 shrink-0 text-[11.5px] font-bold text-ink">{k}</span>
+          <span className="text-[12px] text-ink">{v}</span>
+        </div>
+      ))}
+      <div className="flex items-start gap-3 border-b border-line-soft py-2.5">
+        <span className="w-36 shrink-0 pt-0.5 text-[11.5px] font-bold text-ink">Email đăng nhập</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-ink">
+            {email}
+            {after ? <Chip tone="green">Đã xác minh</Chip> : <Chip tone="amber">Chưa xác minh</Chip>}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-faint">
+            {after ? 'Kênh xác minh của bạn — mã khôi phục mật khẩu và mã xoá tài khoản gửi tới đây' : 'Bạn đã xác minh bằng Zalo khi đăng ký — email này chưa được xác minh'}
+          </span>
+        </span>
+        <Btn>Đổi email</Btn>
+      </div>
+      <div className="flex items-start gap-3 py-2.5">
+        <span className="w-36 shrink-0 pt-0.5 text-[11.5px] font-bold text-ink">Số điện thoại</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-ink">
+            {after ? newPhone : oldPhone}
+            {after ? <Chip tone="amber">Số nước ngoài · chưa xác minh</Chip> : <Chip tone="green">Zalo · đã xác minh</Chip>}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-faint">
+            {after ? 'Số nước ngoài không nhận được Zalo — email là kênh xác minh của bạn' : 'Nhận mã Zalo khi đổi mật khẩu, đổi email hoặc xoá tài khoản'}
+          </span>
+        </span>
+        <Btn primary={!after} onClick={!after ? () => setStage('change') : undefined}>Đổi số</Btn>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="relative min-h-[640px] bg-canvas/30">
+      <JsHeader minimal={stage === 'signup' || stage === 'otp'} />
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line-soft bg-canvas/40 px-5 py-2">
+        {ZJ_STAGES.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-1.5">
+            <span
+              onClick={() => setStage(s.id)}
+              className={cn('cursor-pointer whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium', i === cur ? 'bg-brand text-white' : i < cur ? 'bg-emerald-100 text-emerald-700' : 'bg-canvas text-faint')}
+            >
+              {s.label}
+            </span>
+            {i < ZJ_STAGES.length - 1 && <span className="text-faint">›</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* 1 · sign-up — the build's form (5 fields + consent) with the abroad box left UNTICKED */}
+      {stage === 'signup' && (
+        <div className="mx-auto max-w-[620px] px-5 py-6">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <p className="text-[18px] font-bold text-ink">Tạo tài khoản</p>
+            <p className="mt-0.5 text-[11.5px] text-muted">Hoặc đăng ký bằng Google · Facebook</p>
+            <div className="mt-4 divide-y divide-line-soft">
+              <Field k="Họ và tên" req v={<Input>Nguyễn Minh Anh</Input>} />
+              <Field k="Email" req v={<Input>{email}</Input>} hint="Dùng để đăng nhập. Chưa cần xác minh ngay — Zalo sẽ xác minh bạn." />
+              <Field k="Mật khẩu" req v={<Input mono>••••••••••••</Input>} hint="12+ ký tự · chữ hoa · số · ký tự đặc biệt" />
+              <Field
+                k="Số điện thoại"
+                req
+                v={<><Input w="w-16">+84 ▾</Input><Input>912 555 888</Input></>}
+                hint="Chúng tôi sẽ gửi mã Zalo tới số này để xác minh bạn"
+              />
+              <div className="flex items-start gap-2 py-2 pl-[8.75rem] text-[11.5px] text-ink">
+                <span className="mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[3px] border border-line" />
+                <span>
+                  Tôi đang ở nước ngoài — không có số Việt Nam
+                  <span className="block text-[11px] text-faint">Nếu tích, mã xác minh sẽ gửi qua email thay vì Zalo</span>
+                </span>
+              </div>
+              <Field k="Ngày sinh" req v={<Input>12 / 04 / 1998</Input>} />
+              <div className="flex items-start gap-2 py-3 text-[11.5px] text-ink">
+                <span className="mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[3px] border border-brand bg-brand text-[9px] text-white">✓</span>
+                <span>Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật</span>
+              </div>
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Btn primary onClick={next}>Tạo tài khoản & nhận mã Zalo</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2 · the Zalo code — nothing exists yet */}
+      {stage === 'otp' && (
+        <div className="mx-auto max-w-[600px] px-5 py-6">
+          <p className="text-center text-[16px] font-bold text-ink">Nhập mã Zalo</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted">Mã đã gửi qua Zalo tới {oldPhone}. Tài khoản chỉ được tạo sau khi bạn nhập đúng mã.</p>
+          <div className="mt-4"><OtpBox sentTo={oldPhone} channel="zalo" state="fresh" /></div>
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('signup')}>Sửa số</Btn>
+            <Btn primary onClick={next}>Xác nhận</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* 3 · the account exists, Active — phone proven, email not */}
+      {stage === 'created' && (
+        <div className="mx-auto max-w-[880px] px-5 py-6">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-100 text-[13px] text-emerald-700">✓</span>
+            <p className="text-[15px] font-bold text-ink">Tài khoản đã tạo</p>
+            <Chip tone="green">Active</Chip>
+            <span className="text-[11.5px] text-muted">— đây là trạng thái đầu tiên tài khoản có</span>
+          </div>
+          <p className="mb-2 text-[14px] font-bold text-ink">Thông tin tài khoản</p>
+          <AccountRows />
+          <p className="mt-3 text-[11px] text-faint">Ba tháng sau, Minh Anh chuyển sang Úc và muốn đổi số → bấm <b>Đổi số</b>.</p>
+        </div>
+      )}
+
+      {/* 4 · change the number, abroad ticked — the email was never proven */}
+      {stage === 'change' && (
+        <div className="mx-auto my-6 w-full max-w-[600px] overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+          <div className="border-b border-line px-5 py-3.5">
+            <p className="text-[14px] font-bold text-ink">Đổi số điện thoại</p>
+            <p className="mt-0.5 text-[11.5px] text-muted">Số mới sẽ nhận mã Zalo khi bạn đổi mật khẩu, đổi email hoặc xoá tài khoản — nên chúng tôi cần xác minh nó trước.</p>
+          </div>
+          <div className="space-y-3 px-5 py-4">
+            <Field k="Số hiện tại" v={<span className="text-[12px] text-ink">{oldPhone}</span>} right={<Chip tone="green">đã xác minh</Chip>} />
+            <Field k="Số mới" v={<><Input w="w-16">+61 ▾</Input><Input>4 1234 5678</Input></>} />
+            <div className="flex items-start gap-2 pl-[8.75rem] text-[11.5px] text-ink">
+              <span className="mt-0.5 grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[3px] border border-brand bg-brand text-[9px] text-white">✓</span>
+              <span>Tôi đang ở nước ngoài — số của tôi không phải số Việt Nam</span>
+            </div>
+            <div className="ml-[8.75rem] rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[11.5px] text-amber-800">
+              Số nước ngoài không nhận được Zalo — chúng tôi sẽ gửi mã xác minh tới email <b>{email}</b>.
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+            <Btn onClick={() => setStage('created')}>Huỷ</Btn>
+            <Btn primary onClick={next}>Gửi mã tới email</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* 5 · authorise with the OLD number, while it still exists */}
+      {stage === 'authorise' && (
+        <div className="mx-auto max-w-[600px] px-5 py-6">
+          <p className="text-center text-[16px] font-bold text-ink">Xác nhận đó là bạn</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted">Số cũ {oldPhone} vẫn còn hiệu lực lúc này — nhập mã Zalo gửi tới số đó. (Bỏ qua nếu bạn vừa đăng nhập trong 10 phút.)</p>
+          <div className="mt-4"><OtpBox sentTo="+84 912 ••• 888" channel="zalo" state="fresh" /></div>
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('change')}>Quay lại</Btn>
+            <Btn primary onClick={next}>Tiếp tục</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* 6 · prove the email — the first time this account ever does */}
+      {stage === 'verifyEmail' && (
+        <div className="mx-auto max-w-[600px] px-5 py-6">
+          <p className="text-center text-[16px] font-bold text-ink">Nhập mã từ email</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted">Mã đã gửi tới {email}. Nhập mã để lưu số {newPhone}.</p>
+          <div className="mt-4"><OtpBox sentTo={email} channel="email" state="fresh" /></div>
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('change')}>Đổi số khác</Btn>
+            <Btn primary onClick={next}>Xác nhận</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* 7 · done — and what the account page reads afterwards */}
+      {stage === 'done' && (
+        <div className="mx-auto max-w-[880px] px-5 py-6">
+          <div className="mx-auto max-w-[520px] text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-[20px] text-emerald-700">✓</span>
+            <p className="mt-3 text-[16px] font-bold text-ink">Đã đổi số điện thoại</p>
+            <p className="mt-1 text-[12px] text-ink">{newPhone} <Chip tone="amber">số nước ngoài · chưa xác minh</Chip></p>
+            <p className="mt-2 text-[11.5px] text-emerald-700">Email {email} đã được xác minh và là kênh xác minh của bạn từ giờ.</p>
+            <p className="mt-2 text-[11.5px] text-muted">Chúng tôi đã báo cho số cũ {oldPhone} qua Zalo về thay đổi này. Không phải bạn? Đổi mật khẩu ngay và liên hệ hỗ trợ.</p>
+          </div>
+          <p className="mb-2 mt-6 text-[14px] font-bold text-ink">Thông tin tài khoản — sau khi đổi</p>
+          <AccountRows after />
+          <div className="mt-4 flex justify-center gap-2">
+            <Btn onClick={() => setStage('signup')}>Xem lại từ đầu</Btn>
+            <Btn onClick={() => go('js-contact-change')}>Mở màn hình đổi số / email đầy đủ →</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Registry ────────────────────────────────────────────────────────────── */
 
 export interface Screen {
@@ -4658,6 +5224,8 @@ export const SCREENS: Screen[] = [
   { id: 'js-signup', site: 'Jobseeker', title: 'Sign up', url: 'saramin.vn/signup', Comp: SignUpScreen },
   { id: 'js-signup-social', site: 'Jobseeker', title: 'Sign up — social login completion', url: 'saramin.vn/signup/complete', Comp: SignUpSocialScreen },
   { id: 'js-onboarding', site: 'Jobseeker', title: 'Onboarding', url: 'saramin.vn/welcome', Comp: OnboardingScreen },
+  { id: 'js-contact-change', site: 'Jobseeker', title: 'Account information — change phone / email', url: 'saramin.vn/my-profile/account', Comp: ContactChangeScreen },
+  { id: 'js-zalo-journey', site: 'Jobseeker', title: 'Journey — sign up by Zalo, later change the number from abroad', url: 'saramin.vn/signup → …/my-profile/account', Comp: ZaloJourneyScreen },
   // Admin / CRM — the lead → customer activation flow
   { id: 'crm-pipeline', site: 'Admin · CRM', title: '1 · Sales pipeline', url: 'admin/sales/customers', Comp: CrmPipelineScreen },
   { id: 'crm-customer', site: 'Admin · CRM', title: '2 · Customer (Won) → activate', url: 'admin/sales/customers/vanphat', Comp: CrmCustomerScreen },

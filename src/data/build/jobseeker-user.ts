@@ -144,7 +144,8 @@ export const jobseekerUser: BuildModule = {
       // Two screens, one requirement: the entry screen and the step that finishes a
       // social sign-up. The completion step is where the social route collects the
       // same fields the email form does, so it has to be reviewable right here.
-      mockups: ['js-signup-social'],
+      // …and the end-to-end story: sign up by Zalo, then change the number from abroad
+      mockups: ['js-signup-social', 'js-zalo-journey'],
       notes: 'Email + password OR a social provider. Either way the account ends up with the same NINE fields — including highest education and years of work experience. Sign-in, verification and password reset live here too.',
       detail: {
         keyPoints: [
@@ -839,6 +840,10 @@ export const jobseekerUser: BuildModule = {
       site: 'Jobseekers',
       slug: 'account-settings-jobseeker',
       scope: ['BE', 'FE', 'UI'],
+      // The build's Account information page with the two Change flows added — one
+      // stage-driven screen: account → enter the new value → authorise → verify → done.
+      mockup: 'js-contact-change',
+      mockups: ['js-zalo-journey'],
       notes:
         'Identity · contact · sign-in methods · CV-search switch · notifications · deactivate / delete. Profile facts and job preferences stay on My page.',
       ready: true,
@@ -908,6 +913,30 @@ export const jobseekerUser: BuildModule = {
                 ['Phone', '+84 number, or “I live abroad” with the foreign number. Shown to an employer only with an application or an unlock.', '{{btn:Edit}}. Whether an OTP confirms it is open question [C5] — the row is designed to carry a Verified badge if it ships.'],
               ],
             },
+          },
+          {
+            label: 'Changing the phone or the email — prove the NEW channel, the way sign-up did',
+            text:
+              'Email and phone are not profile fields: they are the recovery channel for Forgot password and the second factor for Delete account. So a change is treated exactly like sign-up for that channel — the new value is proven before it is used, and the “I live abroad” box remains a CHANNEL SELECTOR, never a permission to skip proving. Drawn on the build’s Account information page (svn-web my-profile/account), which today shows both rows read-only.',
+            table: {
+              cols: ['Change', 'The seeker must prove', 'Then'],
+              rows: [
+                ['Phone → new Vietnamese number', 'One code by **Zalo to the NEW number** (the same 6-digit code, 3 min, resend 60 s, 3 guesses, 5 wrong in 24 h → 24 h lock)', 'The new number becomes the verified channel; the old one is released'],
+                ['Phone → foreign number (“Tôi đang ở nước ngoài” ticked)', '**One code to the email — every time**, whether or not the email was verified before. Nothing can be sent by Zalo to that number', 'The foreign number is saved as contact info, **unverified**; the email is the verified channel from here. ONE rule, so the screen needs one sentence: “Số nước ngoài không nhận được Zalo — chúng tôi sẽ gửi mã xác minh tới email …”. For a Zalo-signed-up account this is also the moment its login email is finally proven. The tick box is a statement, not a proof — it chooses the channel, it never removes the code'],
+                ['Login email → new address', 'One code to the **NEW address**', 'Until the code is entered the **old email stays the login** (existing rule); the row shows “Đang chờ xác minh · Gửi lại · Huỷ”; the request expires after 24 h'],
+                ['Either, when the session is not fresh', 'First a code to the **CURRENT** verified channel (Zalo, or email for an abroad account)', 'Skipped when the seeker signed in within the last 10 minutes — a stolen session must not be able to re-point the recovery channel'],
+              ],
+            },
+            items: [
+              'AT LEAST ONE VERIFIED CHANNEL, ALWAYS — the twin of “at least one sign-in method must remain”. The abroad rule above makes it unreachable (the email code runs every time), so the backend keeps it as a GUARD, not a path: refuse any write that would leave an account with an unverified email and a foreign number. The two sign-up routes are why the guard exists — a Zalo sign-up never proved the email, an abroad sign-up never proved the phone.',
+              'THE SCREEN EXPLAINS NOTHING — it instructs. “Chưa từng được xác minh”, “kênh xác minh”, “trở thành kênh của bạn” are our bookkeeping and read as strange on a form; they live here and on the account page’s chip, never in the flow. The heading on the code step is “Nhập mã từ email”, not a sentence about why.',
+              'PROVE THE NEW VALUE, NEVER JUST THE SESSION. A logged-in session that could set an unproven email is an account-takeover path: set your own address, press Forgot password, own the account. A typo does the same to the seeker themselves.',
+              'UNIQUENESS AND THE DELETION BLOCK APPLY HERE TOO. Normalise first (lower-cased email, national-format phone); refuse a value on another account; refuse an email whose hash sits on the deleted-accounts block — otherwise “change my email” is the way around the permanent bar.',
+              'THE NEW VALUE IS RESERVED, NOT TAKEN, while the code is pending — 24 h, then the request expires — so nobody can squat an address they never confirm.',
+              'THE OLD CHANNEL IS TOLD, every time either changes: a Zalo / email notice to the OLD value with “not you? change your password”. It is the only alarm a hijacked account ever gets.',
+              'A PROVIDER-SUPPLIED LOGIN EMAIL DOES NOT CHANGE HERE — it is locked to Google / Facebook (module rule). The seeker changes the contact email instead, or sets a password and unlinks.',
+            ],
+            warn: 'The build stores the phone unverified today (the résumé editor edits it freely). Once a code can be sent to it, an EDIT of the phone anywhere — résumé editor included — must go through this flow, or the verified badge on the account page becomes a lie.',
           },
           {
             label: 'Sign-in methods — at least one must remain',

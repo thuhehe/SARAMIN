@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="700" viewBox="0 0 1500 700" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/></marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+  </defs>
+  <rect width="1500" height="700" fill="#ffffff"/>
+
+  <!-- column headers -->
+  <text x="380" y="44" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6" text-anchor="middle">DOOR 1 · THEY APPLIED TO YOU  →  JOBS TAB</text>
+  <text x="1120" y="44" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="1.6" text-anchor="middle">DOOR 2 · YOU WENT LOOKING  →  TALENT POOL TAB</text>
+  <line x1="750" y1="30" x2="750" y2="560" stroke="#e6e8ec" stroke-width="1.5" stroke-dasharray="6 6"/>
+
+  <!-- DOOR 1 -->
+  <g id="d1-apply">
+    <rect x="130" y="64" width="500" height="70" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="380" y="94" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">Candidate applies to your posting</text>
+    <text x="380" y="118" font-size="14" fill="#4b5563" text-anchor="middle">with their own CV, a Saramin CV or their profile</text>
+  </g>
+  <line x1="380" y1="136" x2="380" y2="170" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="d1-hq">
+    <rect x="130" y="174" width="500" height="88" rx="14" fill="#eaf1fe" stroke="#1f6feb" stroke-width="1.5"/>
+    <text x="380" y="204" font-size="17" font-weight="600" fill="#1f6feb" text-anchor="middle">Saramin checks the CV — at upload, once</text>
+    <text x="380" y="228" font-size="14" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">Sent</tspan> → reaches you   ·   <tspan font-weight="700">Not sent</tspan> → CV under review / refused</text>
+    <text x="380" y="250" font-size="14" fill="#1a1d21" text-anchor="middle"><tspan font-weight="700">Recalled</tspan> → sent, then refused: row stays, read-only</text>
+  </g>
+  <line x1="380" y1="264" x2="380" y2="298" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <g id="d1-board">
+    <rect x="80" y="302" width="600" height="120" rx="14" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="380" y="332" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">The posting's board — contacts open, nothing to pay</text>
+    <g font-size="13" font-weight="700" fill="#4b5563" text-anchor="middle">
+      <rect x="144" y="352" width="112" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="200" y="374">CV screening</text>
+      <rect x="266" y="352" width="100" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="316" y="374">Interview 1</text>
+      <rect x="376" y="352" width="100" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="426" y="374">Interview 2</text>
+      <rect x="486" y="352" width="120" height="34" rx="8" fill="#eaf1fe" stroke="#1f6feb"/><text x="546" y="374" fill="#1f6feb">Final acceptance</text>
+    </g>
+    <text x="380" y="408" font-size="13" fill="#6b7280" text-anchor="middle">per posting · first and last pinned (rename only) · up to 8 stages</text>
+  </g>
+
+  <!-- DOOR 2 -->
+  <g id="d2-search">
+    <rect x="870" y="64" width="500" height="70" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1120" y="94" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">You search the Talent pool (CV search)</text>
+    <text x="1120" y="118" font-size="14" fill="#4b5563" text-anchor="middle">results are masked — Long T***, no contacts</text>
+  </g>
+  <line x1="1120" y1="136" x2="1120" y2="170" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="d2-save">
+    <rect x="870" y="174" width="500" height="88" rx="14" fill="#f6f7f9" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1120" y="204" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">Save candidate → pick a folder</text>
+    <text x="1120" y="228" font-size="14" fill="#4b5563" text-anchor="middle">lands in the folder's <tspan font-weight="700" fill="#1a1d21">Saved</tspan> column, still masked</text>
+    <text x="1120" y="250" font-size="14" fill="#166534" font-weight="700" text-anchor="middle">free — nothing charged yet</text>
+  </g>
+  <line x1="1120" y1="264" x2="1120" y2="298" stroke="#b45309" stroke-width="2" marker-end="url(#arrowAmber)"/>
+  <text x="1140" y="286" font-size="12.5" font-weight="700" fill="#b45309">move out of Saved = 1 credit (once, for ever)</text>
+  <g id="d2-board">
+    <rect x="820" y="302" width="600" height="120" rx="14" fill="#ffffff" stroke="#e6e8ec" stroke-width="1.5"/>
+    <text x="1120" y="332" font-size="17" font-weight="600" fill="#1a1d21" text-anchor="middle">The folder's board — unlocked from here on</text>
+    <g font-size="13" font-weight="700" fill="#4b5563" text-anchor="middle">
+      <rect x="850" y="352" width="120" height="34" rx="8" fill="#fffbeb" stroke="#f59e0b"/><text x="910" y="374" fill="#b45309">Saved · locked</text>
+      <rect x="980" y="352" width="100" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="1030" y="374">Interview 1</text>
+      <rect x="1090" y="352" width="100" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="1140" y="374">Interview 2</text>
+      <rect x="1200" y="352" width="40" height="34" rx="8" fill="#f6f7f9" stroke="#e6e8ec"/><text x="1220" y="375" font-size="16">+</text>
+      <rect x="1250" y="352" width="140" height="34" rx="8" fill="#eaf1fe" stroke="#1f6feb"/><text x="1320" y="374" fill="#1f6feb">Final acceptance</text>
+    </g>
+    <text x="1120" y="408" font-size="13" fill="#6b7280" text-anchor="middle">per folder · Saved pinned first, Final acceptance last · already-unlocked people move free · no way back into Saved</text>
+  </g>
+
+  <!-- shared bottom -->
+  <line x1="380" y1="424" x2="380" y2="462" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1120" y1="424" x2="1120" y2="462" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  <g id="shared">
+    <rect x="80" y="466" width="1340" height="96" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="750" y="496" font-size="17" font-weight="700" fill="#166534" text-anchor="middle">Same board tools on both tabs</text>
+    <text x="750" y="522" font-size="14" fill="#1a1d21" text-anchor="middle">List / Board view · search · filter &amp; sort · star · Multi-select → move / reject with reason / remove · Save all (password-locked Excel)</text>
+    <text x="750" y="546" font-size="14" fill="#1a1d21" text-anchor="middle">Row tags: <tspan font-weight="700">Recalled by Saramin</tspan> (read-only) · <tspan font-weight="700">Account deleted</tspan> (name withheld, stage still movable) · <tspan font-weight="700">Not unlocked</tspan> (folder only)</text>
+  </g>
+
+  <!-- credits strip -->
+  <g id="credits">
+    <rect x="80" y="590" width="1340" height="76" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="104" y="616" font-size="13" font-weight="700" fill="#b45309" letter-spacing="1.6">CREDITS</text>
+    <text x="104" y="640" font-size="14" fill="#1a1d21">A CV search package (sold in CRM, activated on the company) puts N credits on the balance · 1 credit = 1 person, for the whole company, for ever</text>
+    <text x="104" y="660" font-size="14" fill="#4b5563">Spent by: Unlock in CV search · moving a card out of Saved · Multi-select → Unlock.   Never spent by: anything on the Jobs tab · saving · archiving · re-opening.</text>
+  </g>
+</svg>
