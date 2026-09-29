@@ -44,6 +44,56 @@ export const PLACEMENTS: Placement[] = [
   { id: 'search-adsense', page: 'Search', ref: '2.3', name: 'Banner adsense', size: '425 × 160 px', shown: '1 at a time', cap: 'unlimited · position varies on reload', route: 'booked', fedBy: 'Banner placement product · interleaved between results' },
 ]
 
+/* Which slot a placement SKU sells. Declared ONCE: the catalogue prints it, the
+   product form validates against it and the occupancy view counts bookings with
+   it, so a product that changes slot cannot mean three different things on three
+   screens. A product carrying its own `slot` still wins — this is the fallback
+   for the SKUs that predate that field. */
+export const PLACEMENT_OF_SKU: Record<string, string> = {
+  'PLC-HOMEHERO': 'home-hero',
+  'PLC-FEATURECO': 'home-feature-co',
+  'PLC-HOTJOBS': 'home-super-hot',
+  'PLC-TOPCOMPANY': 'home-top-co',
+  'PLC-ADS-HOME': 'home-adsense',
+  'PLC-ADS-SEARCH': 'search-adsense',
+  'PLC-SEARCH-HLCO': 'search-highlight-co',
+  'PLC-POPUP': 'home-popup',
+}
+
+/* How many items the slot RENDERS AT ONCE — "1 at a time", "6 logos", "4 jobs".
+   This is the only real capacity a slot has.
+
+   It is NOT a limit on how many banners may be booked against it. A slot shows a
+   fixed number of positions and rotates an UNLIMITED pool of bookings through
+   them, so the constraint is never "no room left" — it is that every extra
+   booking makes each one appear less often. `null` = a plain list, no rotation. */
+export function shownOf(p: Placement): number | null {
+  const n = p.shown.match(/^(\d+)/)
+  return n ? Number(n[1]) : null
+}
+
+/* Share of voice: the fraction of the time one booking is on screen, = positions
+   ÷ bookings in rotation. Above 1 every booking is always visible, so it clamps.
+
+   This is the number that replaces "capacity used". An uncapped slot can be sold
+   indefinitely without ever reading full, and the only thing that moves is this
+   ratio — which is what the customer actually bought. */
+export function shareOf(shown: number | null, live: number): number | null {
+  if (shown == null || live === 0) return null
+  return Math.min(1, shown / live)
+}
+
+/* The deck's "max 6 · rotate 3s" prose, as a number, kept ONLY as a reference
+   reading. The client has since confirmed the pool is unlimited, so this is what
+   the deck claims rather than a rule the system enforces. */
+export function deckCapOf(p: Placement): number | null {
+  const max = p.cap.match(/max (\d+)/)
+  if (max) return Number(max[1])
+  const fixed = p.cap.match(/\+(\d+) fixed/)
+  if (fixed) return Number(fixed[1])
+  return null
+}
+
 /* ── Image gallery ───────────────────────────────────────────────────────────
    The stock pictures a JOB borrows when its product feeds a placement with image
    slots. Classified by TOPIC — what the picture SHOWS — because that is the only

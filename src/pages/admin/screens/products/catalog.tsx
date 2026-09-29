@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
-import { ACTIVATE_WITHIN_DEFAULT, CATALOG, DESCRIPTIONS, FILL_META, PLACEMENTS, SLOT_CONTENT, activateWithin, activateWithinLabel } from '@/pages/admin/data/products'
+import { ACTIVATE_WITHIN_DEFAULT, CATALOG, DESCRIPTIONS, FILL_META, PLACEMENTS, PLACEMENT_OF_SKU, SLOT_CONTENT, activateWithin, activateWithinLabel } from '@/pages/admin/data/products'
 import type { CatalogItem } from '@/pages/admin/data/products'
 import { DetailCard, KV } from '@/pages/admin/ui/fields'
 import { FilterSelect, ListPage } from '@/pages/admin/ui/list'
@@ -28,16 +28,9 @@ function ProductDetail({ p, onBack }: { p: CatalogItem; onBack: () => void }) {
   const unpriced = p.price.startsWith('—')
 
 
-  const placement = PLACEMENTS.find((x) =>
-    (p.sku === 'PLC-HOMEHERO' && x.id === 'home-hero') ||
-    (p.sku === 'PLC-ADS-HOME' && x.id === 'home-adsense') ||
-    (p.sku === 'PLC-ADS-SEARCH' && x.id === 'search-adsense') ||
-    (p.sku === 'PLC-TOPCOMPANY' && x.id === 'home-top-co') ||
-    (p.sku === 'PLC-HOTJOBS' && x.id === 'home-super-hot') ||
-    (p.slot != null && x.id === p.slot) ||
-    (p.sku === 'PLC-FEATURECO' && x.id === 'home-feature-co') ||
-    (p.sku === 'PLC-SEARCH-HLCO' && x.id === 'search-highlight-co') ||
-    (p.sku === 'PLC-POPUP' && x.id === 'home-popup'))
+  /* The product's own `slot` wins; otherwise the shared SKU → slot map. Same
+     lookup the occupancy view uses, so the two cannot drift. */
+  const placement = PLACEMENTS.find((x) => x.id === (p.slot ?? PLACEMENT_OF_SKU[p.sku]))
 
   // Which placements a tier feeds — read from the registry, not restated.
   const TIER_FEEDS: Record<string, string[]> = {

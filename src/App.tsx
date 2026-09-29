@@ -27,6 +27,7 @@ const ModuleDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ de
 const FeatureDetail = lazy(() => import('./pages/ModuleDetail').then((m) => ({ default: m.FeatureDetail })))
 const ModuleGuide = lazy(() => import('./pages/ModuleGuide').then((m) => ({ default: m.ModuleGuide })))
 const TestingWorkflow = lazy(() => import('./pages/TestingWorkflow').then((m) => ({ default: m.TestingWorkflow })))
+const Workflow = lazy(() => import('./pages/Workflow').then((m) => ({ default: m.Workflow })))
 import { SPECS, NAV_ORDER, NAV } from './data'
 import { StatusDot } from './components/StatusBadge'
 import { CommentsProvider, useComments } from './comments/CommentsProvider'
@@ -196,6 +197,7 @@ function Layout() {
                 <Route path="/changelog" element={<Changelog />} />
                 <Route path="/legend" element={<Legend />} />
                 <Route path="/testing" element={<TestingWorkflow />} />
+                <Route path="/workflow" element={<Workflow />} />
                 <Route path="/m/:moduleId" element={<ModuleDetail />} />
                 {/* Before :featureKey — "guide" is a reserved word in a module, never a
                     feature slug. The user guide is the HOW next to the module's WHY. */}

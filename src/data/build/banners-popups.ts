@@ -60,7 +60,7 @@ export const bannersPopups: BuildModule = {
           ['Ended', 'Past the end date; kept for reporting', 'Cannot return to Live without a new date range · Unpublish → Draft'],
         ],
       },
-      warn: 'Phase-1 booking rule: a slot holds at most ONE Live banner per period. Overlapping date ranges in the same slot are a booking conflict and are blocked at save — an ad slot is sold to one advertiser at a time.',
+      warn: 'SUPERSEDED — do not build the old rule. This previously read “a slot holds at most ONE Live banner per period; overlapping date ranges are blocked at save”. The client has confirmed the opposite: a slot renders a FIXED number of positions and rotates an UNLIMITED pool of bookings through them. Overlapping date ranges are therefore NORMAL and must NOT be blocked — blocking them would refuse the ordinary case. What overlapping bookings do change is the share of voice each one gets; see “Vị trí hiển thị — kho xoay vòng không giới hạn”.',
     },
     {
       label: 'Paid ad slots are sold as products',
@@ -290,6 +290,112 @@ export const bannersPopups: BuildModule = {
         ],
       },
     },
+    // 1 · Slot occupancy ──────────────────────────────────────────────────────
+    {
+      name: 'Slot occupancy',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      mockup: 'admin-slots',
+      detail: {
+        description:
+          'The banner list counted the other way up: one row per SLOT instead of one row per booking. It answers the question the booking list structurally cannot — “what is on screen right now, and what changes next?” — because an empty slot is not a row on a booking list. It is the ABSENCE of rows against an area nobody thought to check, and only a table whose rows are the slots can show a thing that is not there. Every figure is derived; nothing on this screen is stored or typed.',
+        userStory:
+          'As an HQ content operator, I want to see every display area with what is running in it and what expires next, so that no slot renders blank and no slot is sold so heavily that the customers already in it stop appearing.',
+        sections: [
+          {
+            heading: 'Vị trí hiển thị — kho xoay vòng không giới hạn',
+            text: 'A slot renders a FIXED number of positions (`itemsShown`) and rotates an UNLIMITED pool of Live bookings through them. This is the rule the whole screen rests on, and it replaces the earlier Phase-1 “one Live banner per slot” rule, which was wrong.\n\nThe consequence is that a slot can never be FULL, so there is no free capacity to count and no overbooking to block. What moves as more is sold is the SHARE OF VOICE each booking receives — which is the thing the advertiser is actually buying. Selling the tenth hero banner does not fail; it quietly cuts all ten customers to a tenth of the time.',
+            items: [
+              'Do NOT build a capacity check, a “slots remaining” figure, or an overlap guard. All three describe a constraint this product does not have.',
+              'The deck’s “max 6 · rotate 3s” prose is a DISPLAY rotation description (6 positions cycling every 3s), not a booking limit. Keep it as reference text; never enforce it.',
+              'House banners rotate exactly like sold ones and count in every figure below. Excluding them would overstate the share each paying customer gets.',
+            ],
+          },
+          {
+            heading: 'Mỗi cột được tính như thế nào',
+            text: 'Every column is computed on read from the Placements registry plus the bookings in the slot. `live` is the base of nearly all of it and has a precise definition: status Open AND Exposure On. An Open banner with Exposure Off renders nothing, so counting it would let a slot read occupied while showing blank.',
+            table: {
+              cols: ['Cột', 'Công thức', 'Ghi chú'],
+              rows: [
+                ['Hiển thị cùng lúc', '`placement.itemsShown`', 'Số vị trí render đồng thời. Sức chứa thật duy nhất của slot.'],
+                ['Đang xoay vòng (live)', 'count(booking: status = Open AND exposure = On)', 'Chia tiếp thành KH (source = Sold) và nội bộ (source = House).'],
+                ['Tỉ lệ hiển thị / banner', 'min(1, itemsShown ÷ live)', 'Phần thời lượng mỗi banner lên hình. live ≤ itemsShown ⇒ 100%. live = 0 ⇒ không tính.'],
+                ['Đang chờ (scheduled)', 'count(booking: status = Schedule)', 'Đã đặt, chưa tới startAt. Hiện kèm booking có startAt sớm nhất.'],
+                ['Kín đến khi nào', 'MAX(endAt) trong các booking live; “còn N ngày” = ngày đó − hôm nay', 'KHÔNG dùng min(endAt). Kho không giới hạn nên một booking kết thúc không giải phóng chỗ và không mở ra cơ hội bán mới — chỉ lúc vị trí về 0 banner mới cần xử lý. Có booking không đặt endAt ⇒ “luôn bật”, không bao giờ trống.'],
+                ['Tình trạng', 'suy ra từ các cột trên — xem bảng trạng thái', 'Không bao giờ lưu, không bao giờ nhập tay.'],
+              ],
+            },
+            items: [
+              '“Hôm nay” là đồng hồ server và PHẢI hiển thị trên màn hình. Một con số “còn N ngày” không có mốc ngày là con số người đọc không kiểm chứng được.',
+              'Booking không có endAt (popup “Always on”) làm vị trí được coi là kín vô thời hạn; nó vẫn tính vào live và vào tỉ lệ hiển thị.',
+              'KHOẢNG TRỐNG (gap) = ngày booking scheduled sớm nhất bắt đầu − ngày vị trí về 0 banner, khi hiệu số > 0. Đây là con số danh sách booking không bao giờ hiện ra được: cả hai booking đều bình thường trên dòng của mình, lỗ hổng chỉ lộ ra khi đọc chúng trên cùng một vị trí.',
+            ],
+          },
+          {
+            heading: 'Hai VIEW của cùng một danh sách, không phải trang riêng cho từng vị trí',
+            text: 'Yêu cầu “trang chi tiết cho mỗi placement” (tổng số vị trí · banner đang chạy · số ngày còn lại của mỗi công ty · banner đã hết hạn) KHÔNG cần một trang riêng. Cả bốn đều là dữ kiện về BOOKING đọc theo một vị trí, nên nhóm các dòng banner sẵn có theo vị trí là đủ — giống backlog và epic swimlane của Jira: cùng một tập issue, hai cách đọc.',
+            table: {
+              cols: ['View', 'Ở đâu', 'Trả lời câu hỏi nào'],
+              rows: [
+                ['Danh sách phẳng', 'Displays → Danh sách', 'Tìm một booking cụ thể: lọc theo công ty, trạng thái, nguồn.'],
+                ['Nhóm theo vị trí (swimlane)', 'Displays → Theo vị trí', 'Trong vị trí này có gì: banner đang chạy, đang chờ, đã hết hạn, và SỐ NGÀY CÒN LẠI của từng công ty. Header mỗi nhóm mang tổng kết của vị trí.'],
+                ['Bảng theo vị trí', 'Slot occupancy', 'Toàn bộ kho vị trí trong 10 dòng: chỗ nào trống, chỗ nào sắp trống, chỗ nào loãng. Dùng để quét, không để đọc chi tiết.'],
+              ],
+            },
+            items: [
+              'Nhóm RỖNG là thông tin, không phải lỗi hiển thị: một vị trí không có dòng nào bên dưới chính là câu trả lời cho “vị trí nào đang trống”. Vì vậy view nhóm liệt kê MỌI vị trí bán được, kể cả vị trí chưa từng có booking.',
+              'KHÔNG làm trang chi tiết riêng cho từng placement. Mười ba vị trí sẽ thành mười ba trang, thêm vị trí thứ mười bốn là thêm một trang nữa, và người đọc phải mở từng trang mới biết chỗ nào có vấn đề — đúng thứ mà bảng Slot occupancy giải quyết trong một màn hình.',
+            ],
+          },
+          {
+            heading: 'Trạng thái vị trí — suy ra, không nhập tay',
+            text: 'Six states, evaluated in the order below; the first match wins. The order matters: a slot that is both about to empty and running only house creative is reported as the more urgent of the two.',
+            table: {
+              cols: ['Trạng thái', 'Điều kiện', 'Nghĩa là gì / cần làm gì'],
+              rows: [
+                ['Trống', 'live = 0, fill route ≠ “both”', 'Không có gì hiển thị — vị trí đang trống trên site. Cần lấp ngay, kể cả bằng banner nội bộ.'],
+                ['Chỉ theo hạng', 'live = 0, fill route = “both”', 'Không có booking nhưng vị trí vẫn được lấp tự động theo hạng tin đăng. KHÔNG phải lỗi.'],
+                ['Sắp trống', 'mọi booking live có endAt ≤ hôm nay + 7 ngày, VÀ đang chờ = 0', 'Sắp không còn gì hiển thị và chưa có gì xếp sau. Đây là trạng thái cả màn hình sinh ra để bắt.'],
+                ['Loãng', 'tỉ lệ hiển thị < ngưỡng tối thiểu', 'Bán quá nhiều so với số vị trí; mỗi khách lên hình quá ít. Ngưng bán thêm vào vị trí này.'],
+                ['Chỉ nội bộ', 'live > 0, KH = 0', 'Đang chạy nhưng toàn banner nội bộ — vị trí không sinh doanh thu. Tín hiệu cho sales, không phải lỗi.'],
+                ['Đang chạy', 'live > 0, KH ≥ 1, tỉ lệ ≥ ngưỡng', 'Bình thường.'],
+              ],
+            },
+            items: [
+              '“Sắp trống” nhìn booking RỜI CUỐI CÙNG, không phải booking rời sớm nhất: 1 trong 5 banner hết hạn ngày mai vẫn còn 4 banner trên màn hình. Vị trí chỉ tối khi mọi booking live đã kết thúc và không có gì xếp sau.',
+              'Ngưỡng 7 ngày là khoảng thời gian sales cần để bán tiếp một chỗ — business chốt, không phải hằng số kỹ thuật.',
+            ],
+          },
+        ],
+        backend: {
+          dataModel: [
+            { name: 'SlotUsage', type: 'derived (không lưu)', notes: 'placementId, itemsShown, live[], sold, house, queued, share, nextOut, leaving[], liveAfter, shareAfter, health — tính khi đọc từ Placement + bookings' },
+          ],
+          endpoints: [
+            'GET /admin/slots/occupancy — mọi vị trí có thể đặt (fill route ≠ tier) kèm các số đã tính; lọc theo health',
+            'GET /admin/slots/:placementId/bookings — booking của một vị trí, kèm số ngày còn lại của từng công ty',
+          ],
+          notes:
+            'Tính trên đường đọc, giống hệt cách status của banner được suy ra từ (isPublished, startAt, endAt). Không lưu cột health: một vị trí không được phép “đang chạy” trong khi banner cuối của nó đã hết hạn.',
+        },
+        acceptance: [
+          'Một vị trí không có booking live nào hiển thị Trống, kể cả khi vẫn còn booking Scheduled.',
+          'Một banner Open nhưng Exposure Off KHÔNG được tính vào live, và vị trí chỉ có banner đó hiển thị Trống.',
+          'Tỉ lệ hiển thị in kèm phép tính của chính nó (số vị trí ÷ số banner), không chỉ in phần trăm.',
+          'Ngày tham chiếu “hôm nay” hiển thị trên màn hình; “còn N ngày” kiểm chứng được bằng tay từ nó.',
+          'Nhiều booking cùng ngày kết thúc gom thành MỘT sự kiện ở cột Thay đổi kế tiếp.',
+          'Đặt thêm booking vào một vị trí đã có banner live KHÔNG bị chặn.',
+          'Mở một vị trí xem được từng booking kèm số ngày còn lại của mỗi công ty.',
+          'Displays có công tắc Danh sách / Theo vị trí; view nhóm hiện MỌI vị trí bán được, vị trí chưa có booking vẫn xuất hiện dưới dạng nhóm rỗng.',
+        ],
+        openQuestions: [
+          'NGƯỠNG TỈ LỆ HIỂN THỊ TỐI THIỂU — hiện tạm 50%. Đây là cam kết thương mại với khách (“banner của bạn lên hình ít nhất X% thời lượng”), không phải giới hạn kỹ thuật, và cũng là con số quyết định khi nào ngừng bán thêm vào một vị trí. Business phải chốt.',
+          'Khi một vị trí sắp trống, hệ thống có TỰ đẩy banner nội bộ vào để lấp không, hay chỉ cảnh báo để người xử lý?',
+          'Tỉ lệ hiển thị có cần ghi vào hợp đồng / báo giá không? Nếu có thì bán thêm vào vị trí đã đầy khách là thay đổi điều khoản của những khách đã ký.',
+          'Ngưỡng “sắp trống” 7 ngày có khớp với thời gian sales cần để bán tiếp một chỗ không?',
+        ],
+      },
+    },
     // 1 · Banner admin ────────────────────────────────────────────────────────
     {
       name: 'Create banner + Banner list',
@@ -298,7 +404,7 @@ export const bannersPopups: BuildModule = {
       mockup: 'admin-banners',
       detail: {
         description:
-          'The HQ screen for booking and managing every banner on the jobseeker site: a list with derived status, plus a create / edit form. A banner is an image (per breakpoint), a destination link, a named slot and a date range. Because paid ad slots are sold as products, this is also where a booking is tied back to the ad product the advertiser bought — and where a double-booking of the same slot is caught.',
+          'The HQ screen for booking and managing every banner on the jobseeker site: a list with derived status, plus a create / edit form. A banner is an image (per breakpoint), a destination link, a named slot and a date range. Because paid ad slots are sold as products, this is also where a booking is tied back to the ad product the advertiser bought — and where the operator is shown what a new booking does to the share of voice of the bookings already in that slot.',
         userStory:
           'As an HQ marketing operator, I want to book a banner into a slot for a date range, so that the campaign goes live and ends by itself without anyone remembering to switch it off.',
         uiFields: [
@@ -361,7 +467,7 @@ export const bannersPopups: BuildModule = {
           'Selecting a slot shows the required image dimensions inline and validates the upload against them.',
           'Saving without publishing keeps the banner in Draft; image, link and date validation runs on publish.',
           'A banner is never hand-set to Live: the operator publishes with a date range and the status follows.',
-          'A slot with an already-booked overlapping date range is rejected at save, naming the conflicting banner — this is the double-booking guard.',
+          'SUPERSEDED: there is NO double-booking guard. The pool is unlimited, so an overlapping date range in the same slot is a normal second booking, not a conflict. The form instead SHOWS what the new booking does to share of voice — “vị trí này sẽ có N banner xoay vòng, mỗi banner ~X% thời lượng” — so the operator sells with the dilution in front of them rather than discovering it later.',
           '"End now" stops a Live banner immediately (endAt = now) and is the emergency stop for a wrong or complained-about creative.',
           'Duplicate copies the content and slot but clears the dates, which is how a repeat booking for the next period is made.',
           'Impressions and clicks show per row and on the banner detail, with CTR derived — this is the number sales reports back to the advertiser.',
@@ -370,7 +476,7 @@ export const bannersPopups: BuildModule = {
         rules: [
           'endAt must be after startAt; publishing with an endAt already in the past is refused.',
           'Slots are a fixed, defined set — an operator cannot invent one; adding a slot is a code + design change.',
-          'One Live banner per slot per period in Phase-1: overlapping ranges in the same slot are blocked.',
+          'SUPERSEDED: unlimited Live banners per slot. A slot renders `itemsShown` positions and rotates every Live booking through them; overlapping ranges are expected.',
           'A paid banner requires an advertiser and an ad product reference; a house banner requires neither.',
           'Only Draft banners can be deleted. Anything that has ever been Live is Ended, not deleted, so its performance history survives.',
           'Image dimensions must match the slot spec; a mismatched upload is rejected rather than silently scaled.',
@@ -426,7 +532,7 @@ export const bannersPopups: BuildModule = {
         acceptance: [
           'A banner published with a future start shows as Scheduled and does not render on the jobseeker site.',
           'It becomes Live at startAt and Ended after endAt with no operator action.',
-          'Booking a slot that already has an overlapping banner is refused, naming the conflict.',
+          'Booking a slot that already has Live banners is ACCEPTED, and the form states the resulting share of voice before save.',
           'An image that does not match the slot dimensions is rejected at upload.',
           '"End now" removes a Live banner from the jobseeker site immediately.',
           'Impressions and clicks are attributed to the right banner and survive it ending.',

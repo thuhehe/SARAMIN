@@ -55,15 +55,35 @@ export function TableSearch({ q, onChange, placeholder, dropdown }: { q: string;
   )
 }
 
-export type Col = { label: string; w: string; align?: 'r' | 'c' }
+export type Col = {
+  label: string
+  w: string
+  align?: 'r' | 'c'
+  /* How the column's value is DERIVED, printed under the heading.
+     A derived column whose heading only names it makes the reader guess at the
+     arithmetic, and a number nobody can reproduce is a number nobody trusts. Put
+     the formula where the eye lands first — the heading — not only in a tooltip
+     that has to be hunted for. Leave it unset for columns that simply print a
+     stored field; a hint on "Company" is noise. */
+  hint?: string
+}
 
 export function Table({ cols, rows, minW = 560, empty }: { cols: Col[]; rows: React.ReactNode[][]; minW?: number; empty?: string }) {
   const tmpl = cols.map((c) => c.w).join(' ')
   const alignCls = (a?: 'r' | 'c') => (a === 'r' ? 'text-right justify-end' : a === 'c' ? 'text-center justify-center' : '')
+  const anyHint = cols.some((c) => c.hint)
   return (
     <div className="overflow-x-auto rounded-xl border border-line">
-      <div style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 bg-canvas/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {cols.map((c, i) => <span key={i} className={alignCls(c.align)}>{c.label}</span>)}
+      <div
+        style={{ gridTemplateColumns: tmpl, minWidth: minW }}
+        className={cn('grid gap-x-5 bg-canvas/60 px-4 text-[11px] font-semibold uppercase tracking-wide text-muted', anyHint ? 'items-start py-2.5' : 'py-2')}
+      >
+        {cols.map((c, i) => (
+          <span key={i} className={cn('flex min-w-0 flex-col', c.align === 'r' ? 'items-end text-right' : c.align === 'c' ? 'items-center text-center' : '')}>
+            <span>{c.label}</span>
+            {c.hint && <span className="mt-0.5 text-[9.5px] font-normal normal-case tracking-normal text-faint">{c.hint}</span>}
+          </span>
+        ))}
       </div>
       {rows.map((r, ri) => (
         <div key={ri} style={{ gridTemplateColumns: tmpl, minWidth: minW }} className="grid gap-x-5 items-center border-t border-line-soft px-4 py-2.5 text-[12.5px]">

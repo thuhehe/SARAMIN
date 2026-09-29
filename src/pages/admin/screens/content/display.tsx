@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { BANNERS, BANNER_TONE, POPUPS, PU_AUDIENCE } from '@/pages/admin/data/content'
+import { BANNERS, BANNER_TONE, BOOKABLE_SLOTS, POPUPS, PU_AUDIENCE, SLOT_HEALTH, SLOT_TODAY_LABEL, slotUsage } from '@/pages/admin/data/content'
 import type { Banner, Popup } from '@/pages/admin/data/content'
 import { CATALOG } from '@/pages/admin/data/products'
 import { PublishBannerModal } from '@/pages/admin/screens/content/publishBanner'
@@ -47,14 +47,47 @@ function AdminBanners({ leading }: { leading?: React.ReactNode }) {
   const [fSource, setFSource] = useState('')
   const [edit, setEdit] = useState<Banner | null>(null)
   const [creating, setCreating] = useState(false)
+  /* Two VIEWS of one list, not two screens — the same relationship a Jira backlog
+     has with its epic swimlanes. Flat answers "find me this booking"; grouped
+     answers "what is in this slot", which is the question that needs a placement
+     to be a heading rather than a repeated cell. */
+  const [group, setGroup] = useState(false)
 
   const rows = BANNERS.filter((b) => (!fStatus || b.status === fStatus) && (!fSource || b.source === fSource))
   const slotOf = (sku: string) => CATALOG.find((c) => c.sku === sku)?.name ?? sku
 
+  const viewToggle = (
+    <span className="inline-flex overflow-hidden rounded-lg border border-line bg-surface text-[11.5px] font-medium">
+      {([[false, 'Danh sách'], [true, 'Theo vị trí']] as const).map(([v, label]) => (
+        <button
+          key={label}
+          onClick={() => setGroup(v)}
+          className={cn('px-2.5 py-1 transition-colors', group === v ? 'bg-brand text-white' : 'text-muted hover:text-ink')}
+        >
+          {label}
+        </button>
+      ))}
+    </span>
+  )
+
+  if (group) {
+    return (
+      <div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {leading}
+          {viewToggle}
+          <button onClick={() => setCreating(true)} className="ml-auto shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">+ Publish banner</button>
+        </div>
+        <BannersByPlacement onOpen={setEdit} />
+        {(creating || edit) && <PublishBannerModal banner={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
+      </div>
+    )
+  }
+
   return (
     <div>
       <ListPage
-        leading={leading}
+        leading={<span className="flex items-center gap-2">{leading}{viewToggle}</span>}
         cols={[
           { label: 'Banner', w: '1.7fr' },
           { label: 'Placement', w: '1.3fr' },
@@ -97,6 +130,108 @@ function AdminBanners({ leading }: { leading?: React.ReactNode }) {
       </p>
       {(creating || edit) && <PublishBannerModal banner={edit} onClose={() => { setCreating(false); setEdit(null) }} />}
     </div>
+  )
+}
+
+/* ── Banners grouped by placement (swimlane) ──────────────────────────────────
+   The client asked for a per-placement page showing total positions, what is
+   live, days left per company and what has expired. All four are facts about
+   BOOKINGS read against one slot — so grouping the rows already on this page
+   gives every placement its "detail page" at once, and a slot with no rows
+   underneath states the emptiness by itself.
+
+   A separate page per placement would have been thirteen screens that go stale
+   the moment a fourteenth slot is added, and a reader would have to open each
+   one to learn which are in trouble. */
+function BannersByPlacement({ onOpen }: { onOpen: (b: Banner) => void }) {
+  return (
+    <div className="space-y-4">
+      {BOOKABLE_SLOTS.map((p) => {
+        const u = slotUsage(p)
+        const rows = u.occupants.filter((o) => o.kind === 'Banner')
+        const order: Record<string, number> = { Open: 0, Schedule: 1, Draft: 2, Expired: 3 }
+        const sorted = [...rows].sort((a, b) => (order[a.status] - order[b.status]) || (a.daysLeft ?? 999) - (b.daysLeft ?? 999))
+        const live = (o: (typeof sorted)[number]) => o.status === 'Open' && o.exposure === 'On'
+
+        return (
+          <section key={p.id} className="overflow-hidden rounded-xl border border-line">
+            {/* The swimlane header carries the slot's whole reading, so the group
+                is scannable without expanding it. */}
+            <header className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line bg-canvas/60 px-4 py-2.5">
+              <span className="min-w-0">
+                <span className="block truncate text-[12.5px] font-bold text-ink">{p.name}</span>
+                <span className="block truncate text-[10.5px] text-faint">{p.page} · deck §{p.ref} · {p.size} · hiển thị {p.shown}</span>
+              </span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+                <Stat n={u.live.length} label="đang chạy" tone={u.live.length === 0 ? 'rose' : 'emerald'} />
+                <Stat n={u.queued} label="đang chờ" />
+                <Stat n={u.expired} label="đã hết hạn" />
+                <Stat n={u.draft} label="nháp" />
+                {u.share != null && <span className="text-[11px]">tỉ lệ <b className="tabular-nums text-ink/80">{Math.round(u.share * 100)}%</b></span>}
+              </span>
+              <span className="ml-auto shrink-0" title={SLOT_HEALTH[u.health].rule}>
+                <Pill tone={SLOT_HEALTH[u.health].tone}>{u.health}</Pill>
+              </span>
+            </header>
+
+            {sorted.length === 0 ? (
+              <p className="px-4 py-5 text-center text-[11.5px] text-faint">
+                Chưa có banner nào đặt vào vị trí này{p.route === 'both' && ' — vị trí vẫn được lấp theo hạng tin đăng'}.
+              </p>
+            ) : (
+              <div>
+                <div className="grid grid-cols-[1.8fr_1.2fr_0.7fr_1.3fr_0.8fr_1fr] gap-x-4 border-b border-line-soft px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
+                  <span>Banner</span><span>Công ty</span><span>Nguồn</span><span>Lịch chạy</span><span className="text-right">Còn lại</span><span>Trạng thái</span>
+                </div>
+                {sorted.map((o) => (
+                  <div key={o.id} className={cn('grid grid-cols-[1.8fr_1.2fr_0.7fr_1.3fr_0.8fr_1fr] items-center gap-x-4 border-b border-line-soft px-4 py-2 text-[12px] last:border-0', !live(o) && 'opacity-60')}>
+                    <span className="min-w-0">
+                      <button
+                        onClick={() => { const b = BANNERS.find((x) => x.id === o.id); if (b) onOpen(b) }}
+                        className="block max-w-full truncate text-left font-medium text-brand hover:underline"
+                      >
+                        {o.name}
+                      </button>
+                      <span className="block font-mono text-[10px] text-faint">{o.id}</span>
+                    </span>
+                    <span className={cn('truncate', o.source === 'House' && 'text-faint')}>{o.company}</span>
+                    <span>{o.source === 'House' ? <Pill tone="neutral">Nội bộ</Pill> : <Pill tone="active">Khách</Pill>}</span>
+                    <span className="tabular-nums text-[11.5px] text-muted">
+                      {o.start === '—' ? 'chưa đặt' : `${o.start} – ${o.end}`}
+                    </span>
+                    {/* The client's "số ngày hiển thị còn lại của mỗi company". */}
+                    <span className={cn('text-right tabular-nums text-[11.5px]', o.daysLeft != null && o.daysLeft <= 7 && live(o) ? 'font-medium text-amber-700' : 'text-muted')}>
+                      {o.daysLeft == null ? '—' : o.daysLeft < 0 ? 'đã hết' : `${o.daysLeft} ngày`}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Pill tone={BANNER_TONE[o.status]}>{o.status}</Pill>
+                      {o.status === 'Open' && o.exposure === 'Off' && (
+                        <span className="text-[10px] text-rose-600" title="Open nhưng Exposure Off — không hiển thị">tắt</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )
+      })}
+      <p className="text-[11px] leading-relaxed text-faint">
+        Mỗi nhóm là một vị trí, kể cả vị trí chưa có banner nào — một nhóm rỗng chính là câu trả lời cho “vị trí nào
+        đang trống”. Số ngày còn lại tính đến {SLOT_TODAY_LABEL} · xem tổng quan toàn bộ vị trí ở{' '}
+        <b className="text-ink/70">Slot occupancy</b>.
+      </p>
+    </div>
+  )
+}
+
+/** One stat in a swimlane header — dimmed at zero so a row of noughts stays quiet. */
+function Stat({ n, label, tone }: { n: number; label: string; tone?: 'rose' | 'emerald' }) {
+  return (
+    <span className="text-[11px]">
+      <b className={cn('tabular-nums', n === 0 ? 'text-ink/25' : tone === 'rose' ? 'text-rose-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-ink/80')}>{n}</b>{' '}
+      <span className={cn(n === 0 && 'text-faint')}>{label}</span>
+    </span>
   )
 }
 
