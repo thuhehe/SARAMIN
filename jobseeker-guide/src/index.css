@@ -13,6 +13,46 @@
   --color-brand: #1f6feb;
   --color-brand-soft: #eaf1fe;
   --color-navy: #0f2744;
+  --color-warn-soft: #fff7e6;
+  --color-warn: #7a4a07;
+  --color-tip: #173d7a;
+}
+
+/* Dark: same roles, re-derived rather than inverted. The rail stays navy in
+   both themes; it is the site's signature, not a surface. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-canvas: #0e131a;
+    --color-surface: #151b24;
+    --color-ink: #e6e9ee;
+    --color-muted: #9ba4b0;
+    --color-faint: #6f7987;
+    --color-line: #263142;
+    --color-line-soft: #1d2531;
+    --color-brand: #6aa4ff;
+    --color-brand-soft: #1a2a45;
+    --color-navy: #0b1d33;
+    --color-warn-soft: #3a2a0d;
+    --color-warn: #f3d38f;
+    --color-tip: #c3d8ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --color-canvas: #0e131a;
+  --color-surface: #151b24;
+  --color-ink: #e6e9ee;
+  --color-muted: #9ba4b0;
+  --color-faint: #6f7987;
+  --color-line: #263142;
+  --color-line-soft: #1d2531;
+  --color-brand: #6aa4ff;
+  --color-brand-soft: #1a2a45;
+  --color-navy: #0b1d33;
+  --color-warn-soft: #3a2a0d;
+  --color-warn: #f3d38f;
+  --color-tip: #c3d8ff;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -23,8 +63,10 @@
   }
 }
 
-:root {
-  color-scheme: light;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
 }
 
 html {

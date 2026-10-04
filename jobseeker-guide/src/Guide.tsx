@@ -140,14 +140,17 @@ export function Guide() {
               onClick={toggleDev}
               className={cn(
                 'rounded-lg px-3 py-2 text-[12.5px] font-semibold transition-colors',
-                dev ? 'bg-ink text-white' : 'bg-navy text-white hover:opacity-90',
+                dev ? 'bg-brand text-white' : 'bg-navy text-white hover:opacity-90',
               )}
             >
               {dev ? '← Về bản người dùng' : 'Xem bản Developer'}
             </button>
             <button onClick={() => setAll(true)} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Mở hết</button>
             <button onClick={() => setAll(false)} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Thu gọn</button>
-            <button onClick={() => window.print()} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">In / Lưu PDF</button>
+            {/* The artifact preview runs in a frame that cannot open the print dialog. */}
+            {!import.meta.env.VITE_ARTIFACT && (
+              <button onClick={() => window.print()} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">In / Lưu PDF</button>
+            )}
           </div>
         </div>
 
@@ -317,7 +320,7 @@ function Block({ b }: { b: GuideBlock }) {
 
   if (b.kind === 'warn') {
     return (
-      <div className="flex gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-900">
+      <div className="flex gap-2 rounded-lg bg-warn-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-warn">
         <span className="shrink-0">⚠️</span>
         <span>{devTag}{md(b.text)}</span>
       </div>
@@ -326,7 +329,7 @@ function Block({ b }: { b: GuideBlock }) {
 
   if (b.kind === 'tip') {
     return (
-      <div className="flex gap-2 rounded-lg bg-brand-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-[#173d7a]">
+      <div className="flex gap-2 rounded-lg bg-brand-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-tip">
         <span className="shrink-0">💡</span>
         <span>{devTag}{md(b.text)}</span>
       </div>
