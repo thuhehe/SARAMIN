@@ -25,7 +25,7 @@ Written from `svn-web` + `svn-be` on branch `dev` — the commit hashes are in
 `HANDBOOK.source` and printed in the footer. When the build changes, re-read the
 code and bump them.
 
-Modules so far: **Tài khoản** (sign up, sign in, forgot password).
+Modules so far: **Tài khoản** (sign up, sign in, forgot password), **CV** (create, upload, manage, apply — `src/data/cv.ts`), **Duyệt nội dung** (copy review of the account screens).
 
 ## Run / deploy
 

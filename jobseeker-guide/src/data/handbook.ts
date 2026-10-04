@@ -10,6 +10,7 @@
  */
 import type { GuideModule, GuideSection, Handbook } from './types'
 import { COPY_MODULE, COPY_SECTIONS } from './copyReview'
+import { CV_MODULE, CV_SECTIONS } from './cv'
 
 /** The deployed jobseeker site this handbook describes. Every deep link is built from it. */
 export const SITE_BASE = 'https://dev.svn.topdev.asia'
@@ -760,7 +761,7 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
 ]
 
 export const HANDBOOK: Handbook = {
-  modules: [ACCOUNT_MODULE, COPY_MODULE],
-  sections: [...ACCOUNT_SECTIONS.map((s) => ({ ...s, module: ACCOUNT_MODULE.id })), ...COPY_SECTIONS],
+  modules: [ACCOUNT_MODULE, CV_MODULE, COPY_MODULE],
+  sections: [...ACCOUNT_SECTIONS.map((s) => ({ ...s, module: ACCOUNT_MODULE.id })), ...CV_SECTIONS, ...COPY_SECTIONS],
   source: { web: 'bfb3ef8', be: '6a1fee8', date: '04/10/2026' },
 }
