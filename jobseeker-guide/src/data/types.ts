@@ -26,6 +26,10 @@ export type GuideBlock =
   | { kind: 'tip'; text: string; dev?: boolean }
   /** deep links into the live jobseeker site */
   | { kind: 'links'; items: { label: string; path: string }[]; dev?: boolean }
+  /** one screen's copy, as generated from the build (copy.generated.json) */
+  | { kind: 'copy'; screen: string; dev?: boolean }
+  /** the whole copy review's toolbar: copy-all / download */
+  | { kind: 'copy-all'; dev?: boolean }
 
 export interface GuideSection {
   /** anchor id — stable once published */

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CURRENT_DOC, DOCS, GROUPS, HANDBOOK, siteUrl } from '@/data/handbook'
 import type { GuideBlock, GuideSection } from '@/data/types'
+import { copyHaystack } from '@/data/copyReview'
+import { CopyAll, CopyPrefsProvider, CopyTable } from '@/CopyReview'
 
 /* ── CẨM NANG JOBSEEKER ───────────────────────────────────────────────────────
    The operating handbook for the BUILT jobseeker site (dev.svn.topdev.asia),
@@ -193,11 +195,13 @@ export function Guide() {
           </p>
         )}
 
+        <CopyPrefsProvider dev={dev}>
         <div className="space-y-4">
           {visible.map((s) => (
             <Section key={s.id} s={s} dev={dev} open={open[s.id] ?? true} onToggle={() => setOpen((o) => ({ ...o, [s.id]: !(o[s.id] ?? true) }))} />
           ))}
         </div>
+        </CopyPrefsProvider>
 
         <p className="mt-8 border-t border-line pt-3 text-[11px] leading-relaxed text-faint">
           Viết từ build thật: <span className="font-mono">svn-web</span> @ <span className="font-mono">{HANDBOOK.source.web}</span> ·{' '}
@@ -394,6 +398,9 @@ function Block({ b }: { b: GuideBlock }) {
     )
   }
 
+  if (b.kind === 'copy') return <CopyTable screenId={b.screen} />
+  if (b.kind === 'copy-all') return <CopyAll />
+
   if (b.kind === 'tip') {
     return (
       <div className="flex gap-2 rounded-lg bg-brand-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-tip">
@@ -437,7 +444,8 @@ function md(s: string, onDark = false) {
 function matches(s: GuideSection, q: string) {
   const t = q.trim().toLowerCase()
   if (!t) return true
-  const hay = [s.title, s.label, s.lead ?? '', s.where ?? '', JSON.stringify(s.blocks)].join(' ').toLowerCase()
+  const rows = s.blocks.map((b) => (b.kind === 'copy' ? copyHaystack(b.screen) : '')).join(' ')
+  const hay = [s.title, s.label, s.lead ?? '', s.where ?? '', JSON.stringify(s.blocks), rows].join(' ').toLowerCase()
   return hay.includes(t)
 }
 

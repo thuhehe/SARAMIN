@@ -9,6 +9,7 @@
  * Module 1 — Tài khoản: sign up, sign in, forgot password.
  */
 import type { Handbook } from './types'
+import { COPY_GROUP, COPY_SECTIONS } from './copyReview'
 
 /** The deployed jobseeker site this handbook describes. Every deep link is built from it. */
 export const SITE_BASE = 'https://dev.svn.topdev.asia'
@@ -21,7 +22,7 @@ export const DOCS = [
 ] as const
 export const CURRENT_DOC = 'Jobseeker'
 
-export const GROUPS = ['Bắt đầu', 'Đăng ký', 'Đăng nhập', 'Quên mật khẩu', 'Tra cứu'] as const
+export const GROUPS = ['Bắt đầu', 'Đăng ký', 'Đăng nhập', 'Quên mật khẩu', 'Tra cứu', COPY_GROUP] as const
 
 export const HANDBOOK: Handbook = {
   title: 'Tài khoản ứng viên, coi một lần là hiểu',
@@ -746,6 +747,7 @@ export const HANDBOOK: Handbook = {
         },
       ],
     },
+    ...COPY_SECTIONS,
   ],
 
   source: { web: 'bfb3ef8', be: '6a1fee8', date: '04/10/2026' },
