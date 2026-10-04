@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { CURRENT_DOC, DOCS, HANDBOOK, siteUrl } from '@/data/handbook'
 import type { GuideBlock, GuideModule, GuideSection } from '@/data/types'
 import { copyHaystack } from '@/data/copyReview'
+import { SHOTS_SOURCE } from '@/data/shots'
 import { CopyAll, CopyPrefsProvider, CopyTable } from '@/CopyReview'
 
 /* ── CẨM NANG JOBSEEKER ───────────────────────────────────────────────────────
@@ -218,7 +219,7 @@ export function Guide() {
           Viết từ build thật: <span className="font-mono">svn-web</span> @ <span className="font-mono">{HANDBOOK.source.web}</span> ·{' '}
           <span className="font-mono">svn-be</span> @ <span className="font-mono">{HANDBOOK.source.be}</span> (nhánh <span className="font-mono">dev</span>, {HANDBOOK.source.date}). Site đang mô tả:{' '}
           <a href={siteUrl('/')} target="_blank" rel="noreferrer" className="text-brand hover:underline">dev.svn.topdev.asia</a>.
-          Build đổi thì trang này là thứ cũ đi trước.
+          Build đổi thì trang này là thứ cũ đi trước. Ảnh chụp màn hình: {SHOTS_SOURCE} (ứng viên mẫu, tin tuyển dụng mẫu).
         </p>
       </div>
     </div>
@@ -389,6 +390,7 @@ function PageView({ s, dev, pages, go }: { s: GuideSection; dev: boolean; pages:
         </header>
         <div className="space-y-3.5 px-4 py-4 sm:px-5">
           {s.lead && <p className="max-w-[80ch] text-[13px] leading-relaxed text-ink/75">{md(s.lead)}</p>}
+          {s.shots && s.shots.length > 0 && <Shots shots={s.shots} />}
           {blocks.map((b, j) => <Block key={j} b={b} />)}
         </div>
       </section>
@@ -404,6 +406,102 @@ function PageView({ s, dev, pages, go }: { s: GuideSection; dev: boolean; pages:
         )}
       </div>
     </div>
+  )
+}
+
+/* The screen first, then the steps: a reader who can see the screen needs half
+   the words. One shot runs full width; several sit two to a row. Each opens full
+   size on this page — the screens are 1440px wide and the column is narrower. */
+function Shots({ shots }: { shots: { src: string; caption: string }[] }) {
+  const [open, setOpen] = useState<number | null>(null)
+  useEffect(() => {
+    if (open === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(null)
+      if (e.key === 'ArrowRight') setOpen((i) => (i === null ? i : (i + 1) % shots.length))
+      if (e.key === 'ArrowLeft') setOpen((i) => (i === null ? i : (i - 1 + shots.length) % shots.length))
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, shots.length])
+
+  return (
+    <>
+      <div className={cn('grid gap-3', shots.length > 1 && 'sm:grid-cols-2')}>
+        {shots.map((sh, i) => (
+          <figure key={sh.src} className={cn('min-w-0', shots.length > 1 && i === 0 && shots.length % 2 === 1 && 'sm:col-span-2')}>
+            <ShotThumb sh={sh} onOpen={() => setOpen(i)} />
+            <figcaption className="mt-1.5 text-[12px] leading-snug text-muted">{sh.caption}</figcaption>
+          </figure>
+        ))}
+      </div>
+      {open !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={shots[open].caption}
+          onClick={() => setOpen(null)}
+          className="fixed inset-0 z-50 flex flex-col bg-[#0b1220]/90 print:hidden"
+        >
+          <div className="flex shrink-0 items-center gap-3 px-4 py-3 text-white">
+            <p className="min-w-0 flex-1 text-[13px] text-white/90">
+              {shots[open].caption}
+              {shots.length > 1 && <span className="ml-2 tabular-nums text-white/55">{open + 1} / {shots.length} · ← →</span>}
+            </p>
+            <button type="button" onClick={() => setOpen(null)} className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 text-[12.5px] font-semibold hover:bg-white/25">
+              Đóng (Esc)
+            </button>
+          </div>
+          {/* Scrolls, so a full-page capture reads at its real size instead of
+              being squeezed into the window height. */}
+          <div className="min-h-0 flex-1 overflow-auto px-4 pb-6">
+            <img
+              src={shots[open].src}
+              alt={shots[open].caption}
+              onClick={(e) => e.stopPropagation()}
+              className="mx-auto block h-auto max-w-full rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/* A capture narrower than the column is shown at its own size (an element crop
+   scaled up only blurs); a wide one fills the column, and a tall one shows its
+   top with a fade and a hint — the whole page is one click away. */
+function ShotThumb({ sh, onOpen }: { sh: { src: string; caption: string }; onOpen: () => void }) {
+  const [dim, setDim] = useState<{ w: number; h: number } | null>(null)
+  const small = dim !== null && dim.w < 900
+  const tall = dim !== null && !small && dim.h / dim.w > 0.8
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Xem cỡ lớn"
+      className={cn(
+        'relative block w-full cursor-zoom-in overflow-hidden rounded-xl border border-line hover:border-brand',
+        small ? 'bg-canvas p-3' : 'bg-surface',
+      )}
+    >
+      <img
+        src={sh.src}
+        alt={sh.caption}
+        loading="lazy"
+        onLoad={(e) => setDim({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+        className={cn(
+          'block h-auto',
+          small ? 'mx-auto max-w-full rounded-md border border-line' : 'w-full',
+          tall && 'max-h-[540px] object-cover object-top',
+        )}
+      />
+      {tall && (
+        <span className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-surface via-surface/85 to-transparent pb-2.5 text-[12px] font-semibold text-brand">
+          Bấm để xem toàn trang ↓
+        </span>
+      )}
+    </button>
   )
 }
 

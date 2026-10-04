@@ -49,6 +49,8 @@ export interface GuideSection {
   blocks: GuideBlock[]
   /** whole section hidden from the user view */
   dev?: boolean
+  /** screenshots of the screen this page describes, shown under the lead */
+  shots?: { src: string; caption: string }[]
 }
 
 /** A sub-module: one row of pages inside a module. */

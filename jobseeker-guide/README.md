@@ -59,3 +59,19 @@ SVN_WEB=../../svn-web node scripts/build-copy.mjs   # → src/data/copy.generate
 - The build fails on a key that no longer resolves, and lists any new string no
   screen references — re-run after every `/pullcode`, then re-check the IDs quoted
   in the "Điểm cần khách quyết định" table (`src/data/copyReview.ts`).
+
+## Ảnh chụp màn hình
+
+`public/shots/*.jpg`, mapped to pages in `src/data/shots.ts`. Captured from svn-web
+`dev` running locally in mock mode (dev.svn.topdev.asia was not reachable from the
+capture machine) — the real screens and copy, with sample data:
+
+```bash
+# in svn-web: .env.local with NEXT_PUBLIC_USE_MOCK=true, SVN_MOCK_MY_PROFILE=true,
+# NEXT_PUBLIC_SITE_URL=http://localhost:3000 — then `pnpm dev`
+node scripts/shoot.cjs              # every shot
+node scripts/shoot.cjs cv-list      # just one
+```
+
+Needs `playwright-core` (set `PW_CORE` to its path if not installed here) and the
+preinstalled Chromium at `/opt/pw-browsers/chromium`.
