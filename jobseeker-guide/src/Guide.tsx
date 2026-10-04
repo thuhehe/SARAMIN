@@ -98,7 +98,7 @@ export function Guide() {
                     active === s.id ? 'bg-white/15 font-medium text-white' : 'text-white/75 hover:bg-white/10',
                   )}
                 >
-                  <span className="w-6 shrink-0 text-[10px] font-bold text-amber-300">{s.code}</span>
+                  <span className="w-7 shrink-0 text-[10px] font-bold text-amber-300">{s.code}</span>
                   <span className="min-w-0 truncate">{s.label}</span>
                   {s.dev && <span className="ml-auto shrink-0 rounded bg-white/10 px-1 text-[9px] font-semibold uppercase text-white/60">Dev</span>}
                 </button>
