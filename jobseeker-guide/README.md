@@ -34,3 +34,23 @@ Vercel: import this repo with **Root Directory = `jobseeker-guide`**
 (framework Vite, build `npm run build`, output `dist`).
 
 `?view=dev` opens the Developer view directly; `#<section-id>` deep-links a section.
+
+## Duyệt nội dung (client copy review)
+
+Every string a jobseeker sees on the account screens, one row per string with a
+stable ID (`SD-07`), in VI / EN / KO. The text is **extracted from svn-web**, never
+typed by hand:
+
+```bash
+SVN_WEB=../../svn-web node scripts/build-copy.mjs   # → src/data/copy.generated.json
+```
+
+- `scripts/copy-screens.mjs` — which strings appear on which screen, in on-screen
+  order, with position / condition notes. `IGNORED_PREFIXES` lists copy that exists
+  in the build but never renders (with the reason).
+- `scripts/dump-copy.mjs` — bundles the svn-web copy modules with esbuild; schema
+  validation messages are read by running each schema on an input that breaks one
+  rule. Needs `zod` (a devDependency here; svn-web needs no `node_modules`).
+- The build fails on a key that no longer resolves, and lists any new string no
+  screen references — re-run after every `/pullcode`, then re-check the IDs quoted
+  in the "Điểm cần khách quyết định" table (`src/data/copyReview.ts`).

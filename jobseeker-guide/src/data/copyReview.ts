@@ -68,6 +68,49 @@ export const COPY_SECTIONS: GuideSection[] = [
       },
     ],
   },
+  /* Written by hand against the generated IDs — re-check the IDs whenever
+     build-copy.mjs reports a change in a screen's row count. */
+  {
+    id: 'nd-can-quyet-dinh',
+    group: COPY_GROUP,
+    code: 'QĐ',
+    label: 'Điểm cần khách quyết định',
+    title: 'Điểm cần khách hàng quyết định',
+    lead: 'Những chỗ chúng tôi thấy khi rà chữ. Không phải lỗi gõ đơn thuần — mỗi điểm cần một quyết định về nội dung.',
+    blocks: [
+      {
+        kind: 'table',
+        table: {
+          cols: ['Mã dòng', 'Vấn đề', 'Cần quyết định'],
+          rows: [
+            ['SU-17 · SU-18 · SU-21 · SU-22 · SU-24', 'Banner đăng ký quảng bá **dịch vụ chỉ có ở Hàn Quốc**: bài kiểm tra năng khiếu (slide 2), đề nghị vị trí (slide 4), thưởng **500.000 KRW** (slide 5).', 'Bỏ các slide này, hay viết lại cho dịch vụ có ở Việt Nam?'],
+            ['SU-06', 'Trang **đăng ký** nhưng tiêu đề khối mạng xã hội là “Đăng nhập mạng xã hội”.', 'Đổi thành “Đăng ký bằng mạng xã hội”?'],
+            ['SD-03 · CS-02', 'Trên điện thoại, tiêu đề header của màn đăng ký là **“Đăng nhập”**.', 'Xác nhận cần sửa thành “Đăng ký”.'],
+            ['SD-20 · SD-57 · CS-38', 'Cùng một ô nhưng hai cách viết: “Nhập mã 6 số” và “Nhập mã 6 chữ số”.', 'Chọn một cách viết.'],
+            ['SD-33 · SD-99 …', 'Cùng một ý, hai câu: “Đã có lỗi xảy ra. Vui lòng thử lại.” và “Đã xảy ra lỗi. Vui lòng thử lại.”', 'Chọn một câu dùng chung.'],
+            ['FP-03', 'Tiêu đề “Tìm mật khẩu cho ứng viên” — mật khẩu không “tìm” được, chỉ đặt lại được.', 'Đổi thành “Đặt lại mật khẩu”?'],
+            ['FP-39 · FP-53', 'Hai nút khác việc nhưng **cùng chữ** “Đặt lại mật khẩu” (bước 1: sang bước tiếp; bước 2: lưu mật khẩu).', 'Đổi nút bước 1 thành “Tiếp tục”?'],
+            ['FP-41', '“Nhập hai lần để một lỗi gõ nhầm không khoá bạn ở ngoài.” đọc như dịch máy.', 'Viết lại câu hướng dẫn.'],
+            ['FP-17 · FP-27', 'Đếm ngược hiển thị “Hết hạn sau 45” (không có đơn vị); khoá 24 giờ hiện thành “1440:00”.', 'Định dạng thời gian mong muốn (ví dụ “45 giây”, “24 giờ”).'],
+            ['SI-23 · LR-05', 'Để trống ô email mà bấm Đăng nhập thì báo “Định dạng email không hợp lệ.” — không có câu “Vui lòng nhập email.”', 'Thêm câu riêng cho ô trống?'],
+            ['SD-47', 'Tiếng Anh sai ngữ pháp: “At least 1 special characters”.', 'Sửa thành “At least 1 special character”.'],
+            ['SD-07 · SD-14', 'Tiếng Anh thiếu dấu chấm cuối câu, khác các câu báo lỗi còn lại.', 'Thống nhất dấu chấm.'],
+            ['SD-03 · SI-12 · LR-22 · FP-58 · SO-01', 'Tiếng Anh không thống nhất: “Sign in / Sign In / Log in / Login failed / Sign Up / Logout”.', 'Chọn một bộ từ (ví dụ “Sign in / Sign up / Sign out”).'],
+            ['CS-35', 'Ô Email có placeholder đúng bằng nhãn “Email”.', 'Thêm gợi ý, ví dụ “Nhập email của bạn”.'],
+            ['RP-12', 'Link đặt lại cũ dùng quy tắc mật khẩu khác (chữ + số, không cần chữ hoa) so với đăng ký và quên mật khẩu.', 'Thống nhất một bộ quy tắc mật khẩu.'],
+          ],
+        },
+      },
+      {
+        kind: 'warn',
+        text: 'Không có dòng nào trong bảng cho trường hợp **chưa tick điều khoản bắt buộc** khi đăng ký: câu báo lỗi có trong code nhưng **không bao giờ hiện** — người dùng bấm Đăng ký và không thấy gì. Đây là lỗi của build, cần sửa cùng lúc với nội dung.',
+      },
+      {
+        kind: 'p',
+        text: 'Ngoài bảng: vài nhãn chỉ dành cho trình đọc màn hình đang là tiếng Anh ở mọi ngôn ngữ (“Change language”, “Show password / Hide password” ở bước 2 Quên mật khẩu) và nút Quay lại trên điện thoại chưa có nhãn. Tiếng Hàn đã dịch đủ nhưng **chưa chọn được** trên trang người tìm việc.',
+      },
+    ],
+  },
   ...COPY_SCREENS.map<GuideSection>((s) => ({
     id: `nd-${s.id.toLowerCase()}`,
     group: COPY_GROUP,
