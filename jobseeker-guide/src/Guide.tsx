@@ -1,38 +1,56 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { CURRENT_DOC, DOCS, GROUPS, HANDBOOK, siteUrl } from '@/data/handbook'
-import type { GuideBlock, GuideSection } from '@/data/types'
+import { CURRENT_DOC, DOCS, HANDBOOK, siteUrl } from '@/data/handbook'
+import type { GuideBlock, GuideModule, GuideSection } from '@/data/types'
 import { copyHaystack } from '@/data/copyReview'
 import { CopyAll, CopyPrefsProvider, CopyTable } from '@/CopyReview'
 
 /* ── CẨM NANG JOBSEEKER ───────────────────────────────────────────────────────
-   The operating handbook for the BUILT jobseeker site (dev.svn.topdev.asia),
-   laid out exactly like the admin guide: a grouped navy rail on the left, and a
-   page that opens with the questions people actually arrive with before it opens
-   with any structure.
+   The operating handbook for the BUILT jobseeker site (dev.svn.topdev.asia).
 
-   ONE DOCUMENT, TWO AUDIENCES. The user / Developer switch filters blocks rather
-   than swapping documents. Every deep link points at the live site. */
+   MODULE → SUB-MODULE → PAGE. One page is on screen at a time; a module opens on
+   its overview (the questions people arrive with, then one card per sub-module),
+   and a page carries the tabs of its sub-module and Trước / Sau across the
+   module. The reader picks a place instead of scrolling a single column past
+   forty sections to reach it.
+
+   The URL hash is the place: `#tai-khoan` (a module) or `#dang-nhap` (a page).
+   Plain tokens only, so the same links work inside an artifact frame.
+
+   ONE DOCUMENT, TWO AUDIENCES. The user / Developer switch filters pages and
+   blocks rather than swapping documents. Every deep link points at the live site. */
+
+const MODULES = HANDBOOK.modules
+const moduleOf = (s: GuideSection) => MODULES.find((m) => m.id === s.module)!
+
 export function Guide() {
   const [dev, setDev] = useState(() => readDev())
-  const [open, setOpen] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(HANDBOOK.sections.map((s) => [s.id, true])),
-  )
   const [q, setQ] = useState('')
-  const [active, setActive] = useState<string>(HANDBOOK.sections[0].id)
+  const [place, setPlace] = useState<string>(() => location.hash.slice(1) || MODULES[0].id)
 
-  const visible = useMemo(
-    () => HANDBOOK.sections.filter((s) => (dev || !s.dev) && matches(s, q)),
-    [dev, q],
+  /* the pages this audience can reach, in reading order: module, then sub-module */
+  const pages = useMemo(
+    () =>
+      MODULES.flatMap((m) =>
+        m.subs.flatMap((sub) => HANDBOOK.sections.filter((s) => s.module === m.id && s.group === sub.label && (dev || !s.dev))),
+      ),
+    [dev],
   )
-  const setAll = (v: boolean) => setOpen(Object.fromEntries(HANDBOOK.sections.map((s) => [s.id, v])))
+  const page = pages.find((s) => s.id === place)
+  const module = page ? moduleOf(page) : (MODULES.find((m) => m.id === place) ?? MODULES[0])
+  const hits = useMemo(() => (q.trim() ? pages.filter((s) => matches(s, q)) : null), [pages, q])
 
   const go = (id: string) => {
-    setActive(id)
-    setOpen((o) => ({ ...o, [id]: true }))
+    setPlace(id)
     history.replaceState(null, '', `#${id}`)
-    requestAnimationFrame(() => document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    window.scrollTo({ top: 0 })
   }
+
+  useEffect(() => {
+    const onHash = () => setPlace(location.hash.slice(1) || MODULES[0].id)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const toggleDev = () =>
     setDev((v) => {
@@ -44,32 +62,10 @@ export function Guide() {
       return !v
     })
 
-  /* A shared link to #dang-nhap lands on that section. */
-  useEffect(() => {
-    const id = location.hash.slice(1)
-    if (id && HANDBOOK.sections.some((s) => s.id === id)) go(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  /* The rail follows the reader: the section whose top last crossed the upper
-     third of the viewport is the active one. */
-  useEffect(() => {
-    const els = visible.map((s) => document.getElementById(`sec-${s.id}`)).filter(Boolean) as HTMLElement[]
-    const io = new IntersectionObserver(
-      (entries) => {
-        const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
-        if (hit) setActive(hit.target.id.replace(/^sec-/, ''))
-      },
-      { rootMargin: '0px 0px -66% 0px' },
-    )
-    els.forEach((el) => io.observe(el))
-    return () => io.disconnect()
-  }, [visible])
-
   return (
     <div className="mx-auto flex max-w-[1240px] gap-6 px-4 py-4 pb-16 sm:px-6 print:block print:px-0">
       {/* ── rail ───────────────────────────────────────────────────────────── */}
-      <aside className="scroll-thin sticky top-4 hidden h-[calc(100vh-2rem)] w-[240px] shrink-0 overflow-y-auto rounded-2xl bg-navy p-3 text-white/90 lg:block print:hidden">
+      <aside className="scroll-thin sticky top-4 hidden h-[calc(100vh-2rem)] w-[248px] shrink-0 overflow-y-auto rounded-2xl bg-navy p-3 text-white/90 lg:block print:hidden">
         <div className="relative px-2 pb-3 pt-1">
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-amber-400 text-[12px] font-black text-navy">S</span>
@@ -81,33 +77,75 @@ export function Guide() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Tìm hướng dẫn…"
+          placeholder="Tìm trong cẩm nang…"
           className="mb-3 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-[12px] text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
         />
 
-        {GROUPS.map((g) => {
-          const items = visible.filter((s) => s.group === g)
-          if (items.length === 0) return null
-          return (
-            <div key={g} className="mb-3">
-              <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/40">{g}</p>
-              {items.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => go(s.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[12.5px] transition-colors',
-                    active === s.id ? 'bg-white/15 font-medium text-white' : 'text-white/75 hover:bg-white/10',
+        {hits ? (
+          <div>
+            <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/40">{hits.length} kết quả</p>
+            {hits.length === 0 && <p className="px-2 py-2 text-[12px] text-white/55">Không có trang nào khớp “{q}”.</p>}
+            {hits.map((s) => (
+              <RailPage key={s.id} s={s} active={s.id === place} onClick={() => go(s.id)} trail={`${moduleOf(s).label} › ${s.group}`} />
+            ))}
+          </div>
+        ) : (
+          <nav className="space-y-1">
+            {MODULES.map((m) => {
+              const open = m.id === module.id
+              return (
+                <div key={m.id}>
+                  <button
+                    onClick={() => go(m.id)}
+                    aria-expanded={open}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors',
+                      place === m.id ? 'bg-white/15 text-white' : open ? 'text-white' : 'text-white/75 hover:bg-white/10',
+                    )}
+                  >
+                    <span className="grid h-5 w-7 shrink-0 place-items-center rounded bg-amber-400/90 text-[9.5px] font-black text-navy">{m.code}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{m.label}</span>
+                    <span className={cn('text-[10px] text-white/50 transition-transform', open && 'rotate-90')}>▸</span>
+                  </button>
+                  {open && (
+                    <div className="mb-2 ml-3 border-l border-white/10 pl-2">
+                      {m.subs.map((sub) => {
+                        const items = pages.filter((s) => s.module === m.id && s.group === sub.label)
+                        if (items.length === 0) return null
+                        /* Only the sub-module being read is unfolded; the rest stay one
+                           line each, so the rail never outgrows the screen. */
+                        const here = page?.module === m.id && page.group === sub.label
+                        return (
+                          <div key={sub.label} className="mt-0.5">
+                            <button
+                              onClick={() => go(here ? m.id : items[0].id)}
+                              aria-expanded={here}
+                              className={cn(
+                                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors',
+                                here ? 'font-semibold text-white' : 'text-white/70 hover:bg-white/10 hover:text-white',
+                              )}
+                            >
+                              <span className={cn('w-2.5 shrink-0 text-[9px] text-white/45 transition-transform', here && 'rotate-90')}>▸</span>
+                              <span className="min-w-0 flex-1 truncate">{sub.label}</span>
+                              <span className="shrink-0 text-[10.5px] tabular-nums text-white/40">{items.length}</span>
+                            </button>
+                            {here && (
+                              <div className="mb-1 ml-2">
+                                {items.map((s) => (
+                                  <RailPage key={s.id} s={s} active={s.id === place} onClick={() => go(s.id)} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
-                >
-                  <span className="w-7 shrink-0 text-[10px] font-bold text-amber-300">{s.code}</span>
-                  <span className="min-w-0 truncate">{s.label}</span>
-                  {s.dev && <span className="ml-auto shrink-0 rounded bg-white/10 px-1 text-[9px] font-semibold uppercase text-white/60">Dev</span>}
-                </button>
-              ))}
-            </div>
-          )
-        })}
+                </div>
+              )
+            })}
+          </nav>
+        )}
       </aside>
 
       {/* ── page ───────────────────────────────────────────────────────────── */}
@@ -117,15 +155,19 @@ export function Guide() {
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded bg-amber-400 text-[12px] font-black text-navy">S</span>
           <DocSwitcher compact />
           <select
-            value={active}
+            value={page ? page.id : module.id}
             onChange={(e) => go(e.target.value)}
+            aria-label="Chọn trang"
             className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/10 px-2 py-1.5 text-[13px] text-white focus:outline-none"
           >
-            {GROUPS.map((g) => (
-              <optgroup key={g} label={g} className="text-ink">
-                {visible.filter((s) => s.group === g).map((s) => (
+            {MODULES.map((m) => (
+              <optgroup key={m.id} label={m.label} className="text-ink">
+                <option value={m.id} className="text-ink">
+                  {m.code} · Tổng quan module
+                </option>
+                {pages.filter((s) => s.module === m.id).map((s) => (
                   <option key={s.id} value={s.id} className="text-ink">
-                    {s.code} · {s.label}
+                    {s.group} › {s.code} · {s.label}
                   </option>
                 ))}
               </optgroup>
@@ -133,11 +175,21 @@ export function Guide() {
           </select>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Cẩm nang thao tác · Jobseeker</p>
-            <h1 className="mt-1 max-w-[20ch] text-[28px] font-bold leading-[1.1] tracking-tight sm:text-[34px]">{HANDBOOK.title}</h1>
-          </div>
+        {/* breadcrumb + audience switch */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <nav aria-label="Vị trí" className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-muted">
+            <span className="font-semibold uppercase tracking-widest text-brand">Cẩm nang Jobseeker</span>
+            <span className="text-faint">/</span>
+            {page ? (
+              <>
+                <button onClick={() => go(module.id)} className="font-medium hover:text-brand hover:underline">{module.label}</button>
+                <span className="text-faint">/</span>
+                <span className="font-medium text-ink">{page.group}</span>
+              </>
+            ) : (
+              <span className="font-medium text-ink">{module.label}</span>
+            )}
+          </nav>
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <button
               onClick={toggleDev}
@@ -148,35 +200,82 @@ export function Guide() {
             >
               {dev ? '← Về bản người dùng' : 'Xem bản Developer'}
             </button>
-            <button onClick={() => setAll(true)} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Mở hết</button>
-            <button onClick={() => setAll(false)} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">Thu gọn</button>
             {/* The artifact preview runs in a frame that cannot open the print dialog. */}
             {!import.meta.env.VITE_ARTIFACT && (
-              <button onClick={() => window.print()} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">In / Lưu PDF</button>
+              <button onClick={() => window.print()} className="rounded-lg border border-line px-3 py-2 text-[12.5px] font-medium text-muted hover:border-ink/40">In trang này</button>
             )}
           </div>
         </div>
 
-        <p className="mb-4 max-w-[76ch] text-[14px] leading-relaxed text-ink/75">{md(HANDBOOK.lead)}</p>
+        <CopyPrefsProvider dev={dev}>
+          {page ? (
+            <PageView s={page} dev={dev} pages={pages} go={go} />
+          ) : (
+            <ModuleOverview m={module} pages={pages} go={go} />
+          )}
+        </CopyPrefsProvider>
 
-        {/* the three questions people arrive with */}
+        <p className="mt-8 border-t border-line pt-3 text-[11px] leading-relaxed text-faint">
+          Viết từ build thật: <span className="font-mono">svn-web</span> @ <span className="font-mono">{HANDBOOK.source.web}</span> ·{' '}
+          <span className="font-mono">svn-be</span> @ <span className="font-mono">{HANDBOOK.source.be}</span> (nhánh <span className="font-mono">dev</span>, {HANDBOOK.source.date}). Site đang mô tả:{' '}
+          <a href={siteUrl('/')} target="_blank" rel="noreferrer" className="text-brand hover:underline">dev.svn.topdev.asia</a>.
+          Build đổi thì trang này là thứ cũ đi trước.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function RailPage({ s, active, onClick, trail }: { s: GuideSection; active: boolean; onClick: () => void; trail?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[12.5px] transition-colors',
+        active ? 'bg-white/15 font-medium text-white' : 'text-white/75 hover:bg-white/10',
+      )}
+    >
+      <span className="w-7 shrink-0 text-[10px] font-bold text-amber-300">{s.code}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{s.label}</span>
+        {trail && <span className="block truncate text-[10.5px] text-white/45">{trail}</span>}
+      </span>
+      {s.dev && <span className="shrink-0 rounded bg-white/10 px-1 text-[9px] font-semibold uppercase text-white/60">Dev</span>}
+    </button>
+  )
+}
+
+/* ── a module's landing page ──────────────────────────────────────────────── */
+function ModuleOverview({ m, pages, go }: { m: GuideModule; pages: GuideSection[]; go: (id: string) => void }) {
+  const mine = pages.filter((s) => s.module === m.id)
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-brand">Module · {m.code}</p>
+      <h1 className="mt-1 max-w-[24ch] text-[28px] font-bold leading-[1.1] tracking-tight [text-wrap:balance] sm:text-[34px]">{m.title}</h1>
+      <p className="mb-5 mt-3 max-w-[76ch] text-[14px] leading-relaxed text-ink/75">{md(m.lead)}</p>
+
+      {m.quick && (
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          {HANDBOOK.quick.map((c) => (
+          {m.quick.map((c) => (
             <div key={c.q} className="rounded-xl border border-line bg-surface p-4">
               <p className="text-[13.5px] font-bold text-ink">{c.q}</p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{md(c.a)}</p>
             </div>
           ))}
         </div>
+      )}
 
-        {/* the one rule that answers most support calls */}
+      {m.keyFact && (
         <div className="mb-4 rounded-xl bg-gradient-to-r from-[#0f4c8a] to-[#1466b8] px-5 py-4 text-white">
-          <p className="text-[14px] font-bold">{HANDBOOK.keyFact.heading}</p>
-          <p className="mt-1.5 max-w-[86ch] text-[13px] leading-relaxed text-white/90">{md(HANDBOOK.keyFact.text, true)}</p>
+          <p className="text-[14px] font-bold">{m.keyFact.heading}</p>
+          <p className="mt-1.5 max-w-[86ch] text-[13px] leading-relaxed text-white/90">{md(m.keyFact.text, true)}</p>
         </div>
+      )}
 
+      {m.links && (
         <div className="mb-6 flex flex-wrap gap-2 print:hidden">
-          {HANDBOOK.links.map((l) => (
+          {m.links.map((l) => (
             <a
               key={l.path}
               href={siteUrl(l.path)}
@@ -188,29 +287,128 @@ export function Guide() {
             </a>
           ))}
         </div>
+      )}
 
-        {visible.length === 0 && (
-          <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-[13px] text-muted">
-            Không có mục nào khớp “{q}”.
-          </p>
-        )}
+      {m.blocks && <div className="mb-6 space-y-3.5">{m.blocks.map((b, i) => <Block key={i} b={b} />)}</div>}
 
-        <CopyPrefsProvider dev={dev}>
-        <div className="space-y-4">
-          {visible.map((s) => (
-            <Section key={s.id} s={s} dev={dev} open={open[s.id] ?? true} onToggle={() => setOpen((o) => ({ ...o, [s.id]: !(o[s.id] ?? true) }))} />
-          ))}
-        </div>
-        </CopyPrefsProvider>
-
-        <p className="mt-8 border-t border-line pt-3 text-[11px] leading-relaxed text-faint">
-          Viết từ build thật: <span className="font-mono">svn-web</span> @ <span className="font-mono">{HANDBOOK.source.web}</span> ·{' '}
-          <span className="font-mono">svn-be</span> @ <span className="font-mono">{HANDBOOK.source.be}</span> (nhánh <span className="font-mono">dev</span>, {HANDBOOK.source.date}). Site đang mô tả:{' '}
-          <a href={siteUrl('/')} target="_blank" rel="noreferrer" className="text-brand hover:underline">dev.svn.topdev.asia</a>.
-          Build đổi thì trang này là thứ cũ đi trước.
-        </p>
+      <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-widest text-muted">Trong module này</h2>
+      <div className="grid gap-3 md:grid-cols-2">
+        {m.subs.map((sub, i) => {
+          const items = mine.filter((s) => s.group === sub.label)
+          if (items.length === 0) return null
+          return (
+            <div key={sub.label} className="flex flex-col rounded-2xl border border-line bg-surface p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-[15px] font-bold text-ink">
+                  <span className="mr-2 text-[12px] tabular-nums text-faint">{String(i + 1).padStart(2, '0')}</span>
+                  {sub.label}
+                </p>
+                <span className="shrink-0 text-[11px] tabular-nums text-faint">{items.length} trang</span>
+              </div>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{sub.blurb}</p>
+              <ul className="mt-3 space-y-0.5 border-t border-line-soft pt-2">
+                {items.map((s) => (
+                  <li key={s.id}>
+                    <button onClick={() => go(s.id)} className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1 text-left hover:bg-brand-soft">
+                      <span className="w-7 shrink-0 text-[10px] font-bold text-brand">{s.code}</span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-ink/85 group-hover:text-brand">{s.label}</span>
+                      {s.dev && <DevTag inline />}
+                      <span className="text-[12px] text-faint group-hover:text-brand">→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+/* ── one page, with its sub-module's tabs and the way on ──────────────────── */
+function PageView({ s, dev, pages, go }: { s: GuideSection; dev: boolean; pages: GuideSection[]; go: (id: string) => void }) {
+  const blocks = s.blocks.filter((b) => dev || !b.dev)
+  const siblings = pages.filter((p) => p.module === s.module && p.group === s.group)
+  const inModule = pages.filter((p) => p.module === s.module)
+  const i = inModule.findIndex((p) => p.id === s.id)
+  const prev = inModule[i - 1]
+  const next = inModule[i + 1]
+
+  return (
+    <div>
+      {siblings.length > 1 && (
+        <div role="tablist" aria-label={s.group} className="mb-3 flex gap-1.5 overflow-x-auto pb-1 print:hidden">
+          {siblings.map((p) => {
+            const on = p.id === s.id
+            return (
+              <button
+                key={p.id}
+                ref={on ? (el) => el?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) : undefined}
+                role="tab"
+                aria-selected={on}
+                onClick={() => go(p.id)}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] transition-colors',
+                  on ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line bg-surface text-ink/75 hover:border-brand/50',
+                )}
+              >
+                <span className={cn('text-[10px] font-bold', on ? 'text-brand' : 'text-faint')}>{p.code}</span>
+                {p.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <header className="flex items-start gap-3 border-b border-line-soft px-4 py-4 sm:px-5">
+          <span className="mt-1 grid h-6 w-8 shrink-0 place-items-center rounded bg-brand-soft text-[10px] font-bold text-brand">{s.code}</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] font-bold leading-tight tracking-tight text-ink [text-wrap:balance]">
+              {s.title}
+              {s.dev && <DevTag inline />}
+            </h1>
+            {s.where && <p className="mt-1 break-words font-mono text-[11px] text-faint">{s.where}</p>}
+          </div>
+        </header>
+        <div className="space-y-3.5 px-4 py-4 sm:px-5">
+          {s.lead && <p className="max-w-[80ch] text-[13px] leading-relaxed text-ink/75">{md(s.lead)}</p>}
+          {blocks.map((b, j) => <Block key={j} b={b} />)}
+        </div>
+      </section>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 print:hidden">
+        {prev ? <PagerLink dir="prev" s={prev} onClick={() => go(prev.id)} /> : <span />}
+        {next ? (
+          <PagerLink dir="next" s={next} onClick={() => go(next.id)} />
+        ) : (
+          <button onClick={() => go(s.module)} className="rounded-xl border border-dashed border-line px-4 py-3 text-right text-[12.5px] text-muted hover:border-brand hover:text-brand">
+            Hết module · về trang tổng quan ↑
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PagerLink({ dir, s, onClick }: { dir: 'prev' | 'next'; s: GuideSection; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group rounded-xl border border-line bg-surface px-4 py-3 hover:border-brand',
+        dir === 'next' ? 'text-right sm:col-start-2' : 'text-left',
+      )}
+    >
+      <span className="block text-[11px] text-muted">
+        {dir === 'prev' ? '← Trước' : 'Tiếp theo →'} · {s.group}
+      </span>
+      <span className="mt-0.5 block truncate text-[13.5px] font-semibold text-ink group-hover:text-brand">
+        <span className="mr-1.5 text-[11px] font-bold text-brand">{s.code}</span>
+        {s.label}
+      </span>
+    </button>
   )
 }
 
@@ -277,30 +475,6 @@ function DocSwitcher({ compact }: { compact?: boolean }) {
         </div>
       )}
     </div>
-  )
-}
-
-function Section({ s, dev, open, onToggle }: { s: GuideSection; dev: boolean; open: boolean; onToggle: () => void }) {
-  const blocks = s.blocks.filter((b) => dev || !b.dev)
-  return (
-    <section id={`sec-${s.id}`} className="scroll-mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
-      <button onClick={onToggle} className="flex w-full items-start gap-3 px-4 py-4 text-left hover:bg-canvas/40 sm:px-5">
-        <span className="mt-0.5 grid h-6 w-7 shrink-0 place-items-center rounded bg-brand-soft text-[10px] font-bold text-brand">{s.code}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[17px] font-bold tracking-tight text-ink">
-            {s.title}
-            {s.dev && <DevTag inline />}
-          </span>
-          {s.where && <span className="mt-0.5 block break-words font-mono text-[11px] text-faint">{s.where}</span>}
-        </span>
-        <span className="shrink-0 pt-1 text-[12px] text-muted print:hidden">{open ? '▾' : '▸'}</span>
-      </button>
-
-      <div className={cn('space-y-3.5 border-t border-line-soft px-4 py-4 sm:px-5', !open && 'hidden print:block')}>
-        {s.lead && <p className="max-w-[80ch] text-[13px] leading-relaxed text-ink/75">{md(s.lead)}</p>}
-        {blocks.map((b, i) => <Block key={i} b={b} />)}
-      </div>
-    </section>
   )
 }
 

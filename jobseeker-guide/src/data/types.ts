@@ -32,9 +32,11 @@ export type GuideBlock =
   | { kind: 'copy-all'; dev?: boolean }
 
 export interface GuideSection {
-  /** anchor id — stable once published */
+  /** anchor id — stable once published; the page's URL hash */
   id: string
-  /** sidebar group heading */
+  /** the parent module (GuideModule.id) */
+  module: string
+  /** the sub-module inside it (GuideSub.label) */
   group: string
   /** short badge in the sidebar */
   code: string
@@ -49,13 +51,32 @@ export interface GuideSection {
   dev?: boolean
 }
 
-export interface Handbook {
+/** A sub-module: one row of pages inside a module. */
+export interface GuideSub {
+  label: string
+  /** one line on the module's overview card */
+  blurb: string
+}
+
+/** A parent module. Its overview is the landing page; its pages are reached
+    through the sub-modules, one page at a time. */
+export interface GuideModule {
+  id: string
+  code: string
+  label: string
   title: string
   lead: string
   /** the three "I want to…" cards above the fold */
-  quick: { q: string; a: string }[]
-  keyFact: { heading: string; text: string }
-  links: { label: string; path: string }[]
+  quick?: { q: string; a: string }[]
+  keyFact?: { heading: string; text: string }
+  links?: { label: string; path: string }[]
+  subs: GuideSub[]
+  /** extra blocks under the sub-module cards */
+  blocks?: GuideBlock[]
+}
+
+export interface Handbook {
+  modules: GuideModule[]
   sections: GuideSection[]
   /** what build this was written from — shown in the footer */
   source: { web: string; be: string; date: string }

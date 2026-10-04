@@ -8,7 +8,7 @@
  * build ships.
  */
 import data from './copy.generated.json'
-import type { GuideSection } from './types'
+import type { GuideModule, GuideSection } from './types'
 
 export interface CopyRow {
   id: string
@@ -32,7 +32,22 @@ export const COPY_SOURCE: { web: string; date: string } = data.source
 export const COPY_SCREENS = data.screens as CopyScreen[]
 export const copyScreen = (id: string) => COPY_SCREENS.find((s) => s.id === id)
 
-export const COPY_GROUP = 'Duyệt nội dung'
+export const COPY_MODULE_ID = 'duyet-noi-dung'
+
+/* Which sub-module each screen's table sits in. A screen missing here lands in
+   "Khác" rather than vanishing from the nav. */
+const SCREEN_SUB: Record<string, string> = {
+  SU: 'Đăng ký',
+  SD: 'Đăng ký',
+  CS: 'Đăng ký',
+  SI: 'Đăng nhập',
+  LR: 'Đăng nhập',
+  SO: 'Đăng nhập',
+  FP: 'Quên mật khẩu',
+  RP: 'Quên mật khẩu',
+}
+const subOf = (screenId: string) => SCREEN_SUB[screenId] ?? 'Khác'
+const screensIn = (sub: string) => COPY_SCREENS.filter((s) => subOf(s.id) === sub).map((s) => s.id).join(' · ')
 export const COPY_LANGS = [
   { id: 'vi', label: 'Tiếng Việt' },
   { id: 'en', label: 'English' },
@@ -42,14 +57,31 @@ export type CopyLang = (typeof COPY_LANGS)[number]['id']
 
 const total = COPY_SCREENS.reduce((n, s) => n + s.items.length, 0)
 
+export const COPY_MODULE: GuideModule = {
+  id: COPY_MODULE_ID,
+  code: 'ND',
+  label: 'Duyệt nội dung',
+  title: 'Duyệt nội dung các màn hình Tài khoản',
+  lead: `Toàn bộ chữ người tìm việc nhìn thấy trên ${COPY_SCREENS.length} màn hình Tài khoản — ${total} dòng, tiếng Việt / English / 한국어, lấy thẳng từ build (svn-web @ ${COPY_SOURCE.web}, ${COPY_SOURCE.date}), không gõ lại bằng tay. Mỗi màn hình là một bảng; mỗi dòng có một **mã** để góp ý.`,
+  subs: [
+    { label: 'Bắt đầu duyệt', blurb: 'Cách đọc bảng, và những điểm cần khách quyết định trước.' },
+    { label: 'Đăng ký', blurb: `Màn hình ${screensIn('Đăng ký')}.` },
+    { label: 'Đăng nhập', blurb: `Màn hình ${screensIn('Đăng nhập')}.` },
+    { label: 'Quên mật khẩu', blurb: `Màn hình ${screensIn('Quên mật khẩu')}.` },
+    { label: 'Khác', blurb: `Màn hình ${screensIn('Khác')}.` },
+  ].filter((sub) => sub.label === 'Bắt đầu duyệt' || COPY_SCREENS.some((s) => subOf(s.id) === sub.label)),
+  blocks: [{ kind: 'copy-all' }],
+}
+
 export const COPY_SECTIONS: GuideSection[] = [
   {
-    id: 'duyet-noi-dung',
-    group: COPY_GROUP,
+    id: 'cach-duyet',
+    module: COPY_MODULE_ID,
+    group: 'Bắt đầu duyệt',
     code: 'ND',
     label: 'Cách duyệt',
     title: 'Duyệt nội dung — cách đọc bảng',
-    lead: `Toàn bộ chữ người tìm việc nhìn thấy trên ${COPY_SCREENS.length} màn hình Tài khoản — ${total} dòng, lấy thẳng từ build (svn-web @ ${COPY_SOURCE.web}, ${COPY_SOURCE.date}), không gõ lại bằng tay.`,
+    lead: 'Đọc một lần trước khi duyệt bảng đầu tiên.',
     blocks: [
       {
         kind: 'steps',
@@ -72,7 +104,8 @@ export const COPY_SECTIONS: GuideSection[] = [
      build-copy.mjs reports a change in a screen's row count. */
   {
     id: 'nd-can-quyet-dinh',
-    group: COPY_GROUP,
+    module: COPY_MODULE_ID,
+    group: 'Bắt đầu duyệt',
     code: 'QĐ',
     label: 'Điểm cần khách quyết định',
     title: 'Điểm cần khách hàng quyết định',
@@ -113,7 +146,8 @@ export const COPY_SECTIONS: GuideSection[] = [
   },
   ...COPY_SCREENS.map<GuideSection>((s) => ({
     id: `nd-${s.id.toLowerCase()}`,
-    group: COPY_GROUP,
+    module: COPY_MODULE_ID,
+    group: subOf(s.id),
     code: s.id,
     label: s.screen,
     title: s.screen,

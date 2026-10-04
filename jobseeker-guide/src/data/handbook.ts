@@ -8,8 +8,8 @@
  *
  * Module 1 — Tài khoản: sign up, sign in, forgot password.
  */
-import type { Handbook } from './types'
-import { COPY_GROUP, COPY_SECTIONS } from './copyReview'
+import type { GuideModule, GuideSection, Handbook } from './types'
+import { COPY_MODULE, COPY_SECTIONS } from './copyReview'
 
 /** The deployed jobseeker site this handbook describes. Every deep link is built from it. */
 export const SITE_BASE = 'https://dev.svn.topdev.asia'
@@ -22,9 +22,10 @@ export const DOCS = [
 ] as const
 export const CURRENT_DOC = 'Jobseeker'
 
-export const GROUPS = ['Bắt đầu', 'Đăng ký', 'Đăng nhập', 'Quên mật khẩu', 'Tra cứu', COPY_GROUP] as const
-
-export const HANDBOOK: Handbook = {
+const ACCOUNT_MODULE: GuideModule = {
+  id: 'tai-khoan',
+  code: 'TK',
+  label: 'Tài khoản',
   title: 'Tài khoản ứng viên, coi một lần là hiểu',
   lead:
     'Bản này dành cho người vận hành, CS và QA: tạo tài khoản ứng viên, đăng nhập, lấy lại mật khẩu trên trang Saramin dành cho người tìm việc — làm gì, theo thứ tự nào, và màn hình sẽ báo gì khi có lỗi. Bật **Xem bản Developer** để thấy thêm route, endpoint, mã lỗi và cấu hình môi trường.',
@@ -54,11 +55,20 @@ export const HANDBOOK: Handbook = {
     { label: 'Mở Quên mật khẩu', path: '/auth/forgot-password' },
   ],
 
-  sections: [
+  subs: [
+    { label: 'Tổng quan', blurb: 'Các màn hình của module và những từ cần biết trước.' },
+    { label: 'Đăng ký', blurb: 'Tạo tài khoản bằng email, khi ở nước ngoài, hoặc bằng mạng xã hội.' },
+    { label: 'Đăng nhập', blurb: 'Email + mật khẩu, mạng xã hội, hộp đăng nhập nổi, đăng xuất.' },
+    { label: 'Quên mật khẩu', blurb: 'Lấy lại mật khẩu bằng mã 6 số, và link đặt lại cũ.' },
+    { label: 'Tra cứu', blurb: 'Điểm chưa khớp trong build; môi trường dev và mã lỗi cho Developer.' },
+  ],
+}
+
+const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
     /* ── BẮT ĐẦU ──────────────────────────────────────────────────────────── */
     {
       id: 'tong-quan',
-      group: 'Bắt đầu',
+      group: 'Tổng quan',
       code: 'TQ',
       label: 'Bản đồ màn hình',
       title: 'Bản đồ màn hình — module Tài khoản',
@@ -99,7 +109,7 @@ export const HANDBOOK: Handbook = {
     },
     {
       id: 'tu-dien',
-      group: 'Bắt đầu',
+      group: 'Tổng quan',
       code: 'TĐ',
       label: 'Từ điển',
       title: 'Từ điển — đọc trước, 3 phút',
@@ -747,8 +757,10 @@ export const HANDBOOK: Handbook = {
         },
       ],
     },
-    ...COPY_SECTIONS,
-  ],
+]
 
+export const HANDBOOK: Handbook = {
+  modules: [ACCOUNT_MODULE, COPY_MODULE],
+  sections: [...ACCOUNT_SECTIONS.map((s) => ({ ...s, module: ACCOUNT_MODULE.id })), ...COPY_SECTIONS],
   source: { web: 'bfb3ef8', be: '6a1fee8', date: '04/10/2026' },
 }

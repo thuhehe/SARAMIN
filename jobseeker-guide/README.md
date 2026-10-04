@@ -11,8 +11,13 @@ SHOULD be built; this says what IS built, for CS / QA / ops.
 
 ## Content
 
+Structure is **module → sub-module → page**, one page on screen at a time. A
+module (`GuideModule`) opens on its overview — quick questions, key fact, one card
+per sub-module; a page carries its sub-module's tabs and Trước / Sau. The URL hash
+is the place: `#tai-khoan` (module) or `#dang-nhap` (page).
+
 All content is data — `src/data/handbook.ts`. One `GuideSection` per screen or
-task; blocks are `p`, `steps`, `flow`, `table`, `warn`, `tip`, `links`. Mark a
+task, tagged with its `module` and sub-module (`group`); blocks are `p`, `steps`, `flow`, `table`, `warn`, `tip`, `links`. Mark a
 block or a whole section `dev: true` to show it only in the Developer view.
 Inline markup is `**bold**` and `` `code` `` only.
 
