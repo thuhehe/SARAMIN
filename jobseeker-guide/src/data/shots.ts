@@ -23,7 +23,7 @@ export const SHOTS: Record<string, Shot[]> = {
     s('acc-password', 'Mật khẩu — danh sách 4 điều kiện sáng dần khi gõ'),
     s('acc-phone-otp', 'Số điện thoại — sau khi bấm Xác thực: ô nhập mã và đồng hồ đếm ngược'),
     s('acc-phone-verified', 'Số điện thoại — đã xác thực, nút đổi thành Đổi số'),
-    s('acc-terms', 'Khối Điều khoản: Đồng ý tất cả, 1 ô bắt buộc, 3 ô tuỳ chọn'),
+    s('acc-terms', 'Khối Điều khoản: Đồng ý tất cả, 1 ô bắt buộc, 3 ô tuỳ chọn, và nút Đăng ký'),
   ],
   'dang-ky-nuoc-ngoai': [s('acc-abroad', 'Tick Tôi đang ở nước ngoài — ô Email có nút Xác thực')],
   'dang-ky-mxh': [s('acc-complete-signup', 'Hoàn tất đăng ký sau khi đăng nhập bằng mạng xã hội')],

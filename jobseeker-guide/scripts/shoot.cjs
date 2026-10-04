@@ -8,11 +8,19 @@ const only = process.argv.slice(2)
 
 async function go(p, u) { await p.goto(BASE + u, { waitUntil: 'networkidle', timeout: 240000 }); await prep(p); await p.waitForTimeout(700) }
 async function snap(p, name, opts = {}) { await p.screenshot({ path: `${OUT}/${name}.jpg`, type: 'jpeg', quality: 80, ...opts }); console.log('✓', name) }
-async function el(p, loc, name, pad = 16) {
-  const box = await loc.boundingBox(); if (!box) throw new Error('no box for ' + name)
-  const vp = p.viewportSize()
-  const x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad)
-  await snap(p, name, { clip: { x, y, width: Math.min(vp.width - x, box.width + pad * 2), height: box.height + pad * 2 }, fullPage: true })
+/* Crops to one or more elements (their union), padded. boundingBox() is
+   relative to the viewport while a fullPage clip is relative to the page, so the
+   scroll offset is added — without it a crop below the fold lands too high. */
+async function el(p, locs, name, pad = 16) {
+  const boxes = []
+  for (const l of [].concat(locs)) { const b = await l.boundingBox(); if (!b) throw new Error('no box for ' + name); boxes.push(b) }
+  const { sx, sy, pw } = await p.evaluate(() => ({ sx: scrollX, sy: scrollY, pw: document.documentElement.scrollWidth }))
+  const x0 = Math.min(...boxes.map((b) => b.x)) + sx - pad
+  const y0 = Math.min(...boxes.map((b) => b.y)) + sy - pad
+  const x1 = Math.max(...boxes.map((b) => b.x + b.width)) + sx + pad
+  const y1 = Math.max(...boxes.map((b) => b.y + b.height)) + sy + pad
+  const x = Math.max(0, x0), y = Math.max(0, y0)
+  await snap(p, name, { clip: { x, y, width: Math.min(pw, x1) - x, height: y1 - y }, fullPage: true })
 }
 
 const SHOTS = {
@@ -48,8 +56,10 @@ const SHOTS = {
   },
   'acc-terms': async p => {
     await go(p, '/auth/sign-up/detail')
-    const t = p.getByText('Đồng ý tất cả').first(); await t.scrollIntoViewIfNeeded()
-    await el(p, t.locator('xpath=ancestor::*[.//text()[contains(.,"Bắt buộc")]][1]'), 'acc-terms')
+    const heading = p.getByText('Điều khoản', { exact: true }).first(); await heading.scrollIntoViewIfNeeded()
+    const box = p.getByText('Đồng ý tất cả').first().locator('xpath=ancestor::*[.//text()[contains(.,"Bắt buộc")]][1]')
+    const submit = p.getByRole('button', { name: 'Đăng ký', exact: true }).last()
+    await el(p, [heading, box, submit], 'acc-terms')
   },
   'acc-signup-errors': async p => {
     await go(p, '/auth/sign-up/detail')
