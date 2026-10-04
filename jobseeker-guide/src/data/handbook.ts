@@ -33,21 +33,21 @@ const ACCOUNT_MODULE: GuideModule = {
   quick: [
     {
       q: 'Muốn tạo tài khoản?',
-      a: 'Vào **Đăng ký → Tạo tài khoản bằng email**. Cần một **số điện thoại Việt Nam nhận được mã Zalo** (hoặc tick **Tôi đang ở nước ngoài** để xác thực bằng email). Đăng ký xong là vào thẳng, không cần mở email.',
+      a: 'Vào [[Đăng ký|Sign up]] → [[Tạo tài khoản bằng email|Create an account with email]]. Cần một **số điện thoại Việt Nam nhận được mã Zalo** (hoặc tick [[Tôi đang ở nước ngoài|I live abroad]] để xác thực bằng email). Đăng ký xong là vào thẳng, không cần mở email.',
     },
     {
       q: 'Không đăng nhập được?',
-      a: 'Đăng nhập **chỉ bằng email** (không bằng số điện thoại). Tài khoản tạo bằng Google/Facebook/LinkedIn **không có mật khẩu** — dùng lại nút mạng xã hội, hoặc Quên mật khẩu để đặt mật khẩu đầu tiên.',
+      a: 'Đăng nhập **chỉ bằng email** (không bằng số điện thoại). Tài khoản tạo bằng Google/Facebook/LinkedIn **không có mật khẩu** — dùng lại nút mạng xã hội, hoặc [[Quên mật khẩu|Forgot password]] để đặt mật khẩu đầu tiên.',
     },
     {
       q: 'Quên mật khẩu?',
-      a: 'Bấm **Quên mật khẩu** → nhận **mã 6 số** qua số điện thoại (mặc định) hoặc email → đặt mật khẩu mới ngay trên cùng trang. Không còn gửi link qua email.',
+      a: 'Bấm [[Quên mật khẩu|Forgot password]] → nhận **mã 6 số** qua số điện thoại (mặc định) hoặc email → đặt mật khẩu mới ngay trên cùng trang. Không còn gửi link qua email.',
     },
   ],
   keyFact: {
     heading: 'Điều quan trọng nhất cần nhớ',
     text:
-      'Tài khoản ứng viên **xác thực bằng số điện thoại** nhưng **đăng nhập bằng email**. Lúc đăng ký, mã OTP gửi về số điện thoại (qua Zalo) — email chỉ được kiểm tra bằng mã khi người dùng tick **Tôi đang ở nước ngoài**. Lúc đăng nhập thì ngược lại: ô duy nhất là **Email**, không có ô số điện thoại. Gần như mọi câu hỏi “sao tôi đăng ký rồi mà không vào được” đều dừng ở chỗ người dùng gõ số điện thoại vào ô email, hoặc tài khoản đó được tạo bằng mạng xã hội nên chưa từng có mật khẩu.',
+      'Tài khoản ứng viên **xác thực bằng số điện thoại** nhưng **đăng nhập bằng email**. Lúc đăng ký, mã OTP gửi về số điện thoại (qua Zalo) — email chỉ được kiểm tra bằng mã khi người dùng tick [[Tôi đang ở nước ngoài|I live abroad]]. Lúc đăng nhập thì ngược lại: ô duy nhất là [[Email|Email]], không có ô số điện thoại. Gần như mọi câu hỏi “sao tôi đăng ký rồi mà không vào được” đều dừng ở chỗ người dùng gõ số điện thoại vào ô email, hoặc tài khoản đó được tạo bằng mạng xã hội nên chưa từng có mật khẩu.',
   },
   links: [
     { label: 'Mở trang Đăng ký', path: '/auth/sign-up' },
@@ -74,21 +74,21 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
       label: 'Bản đồ màn hình',
       title: 'Bản đồ màn hình — module Tài khoản',
       lead:
-        'Toàn bộ module nằm dưới `/auth`. Đường dẫn giống nhau ở mọi ngôn ngữ — ngôn ngữ lấy từ cookie hoặc trình duyệt, mặc định tiếng Việt. Cả ba màn hình đều có tab **Ứng viên | Nhà tuyển dụng**; cẩm nang này chỉ nói phần **Ứng viên**.',
+        'Toàn bộ module nằm dưới `/auth`. Đường dẫn giống nhau ở mọi ngôn ngữ — ngôn ngữ lấy từ cookie hoặc trình duyệt, mặc định tiếng Việt. Cả ba màn hình đều có tab [[Ứng viên|Jobseeker]] | [[Nhà tuyển dụng|Employer]]; cẩm nang này chỉ nói phần [[Ứng viên|Jobseeker]].',
       blocks: [
         {
           kind: 'table',
           table: {
             cols: ['Màn hình', 'Đường dẫn', 'Dùng để'],
             rows: [
-              ['Đăng ký — chọn cách', '`/auth/sign-up`', 'Bước 1: chọn mạng xã hội hoặc **Tạo tài khoản bằng email**. Bên phải là banner quảng bá chạy tự động.'],
-              ['Đăng ký — form email', '`/auth/sign-up/detail`', 'Bước 2: điền họ tên, email, mật khẩu, số điện thoại (xác thực OTP), ngày sinh, điều khoản.'],
-              ['Hoàn tất đăng ký', '`/auth/complete-signup`', 'Chỉ gặp khi đăng ký **lần đầu bằng mạng xã hội**: bổ sung số điện thoại và đồng ý điều khoản.'],
-              ['Chào mừng (onboarding)', '`/chao-mung`', 'Trang đầu tiên sau khi đăng ký thành công: dựng hồ sơ, kết thúc bằng danh sách việc làm gợi ý.'],
-              ['Đăng nhập', '`/auth/sign-in`', 'Email + mật khẩu, **Duy trì đăng nhập**, link **Quên mật khẩu**, nút mạng xã hội.'],
-              ['Quên mật khẩu', '`/auth/forgot-password`', 'Tìm mật khẩu bằng số điện thoại hoặc email → mã 6 số → đặt mật khẩu mới, cả 3 bước trên cùng một trang.'],
-              ['Đặt mật khẩu mới (link cũ)', '`/auth/reset-password?token=…`', 'Chỉ mở từ **link email cũ** hoặc link do admin gửi. Người dùng bình thường không còn đi qua trang này.'],
-              ['Tài khoản đã xoá', '`/auth/account-deleted`', 'Trang kết thúc sau khi ứng viên **tự xoá** tài khoản. Không phải trang báo lỗi đăng nhập.'],
+              ['[[Đăng ký|Sign up]] — chọn cách', '`/auth/sign-up`', 'Bước 1: chọn mạng xã hội hoặc [[Tạo tài khoản bằng email|Create an account with email]]. Bên phải là banner quảng bá chạy tự động.'],
+              ['[[Đăng ký|Sign up]] — form email', '`/auth/sign-up/detail`', 'Bước 2: điền họ tên, email, mật khẩu, số điện thoại (xác thực OTP), ngày sinh, điều khoản.'],
+              ['[[Hoàn tất đăng ký|Finish signing up]]', '`/auth/complete-signup`', 'Chỉ gặp khi đăng ký **lần đầu bằng mạng xã hội**: bổ sung số điện thoại và đồng ý điều khoản.'],
+              ['[[Chào mừng|Welcome]] (onboarding)', '`/chao-mung`', 'Trang đầu tiên sau khi đăng ký thành công: dựng hồ sơ, kết thúc bằng danh sách việc làm gợi ý.'],
+              ['[[Đăng nhập|Sign in]]', '`/auth/sign-in`', 'Email + mật khẩu, [[Duy trì đăng nhập|Keep me signed in]], link [[Quên mật khẩu|Forgot password]], nút mạng xã hội.'],
+              ['[[Quên mật khẩu|Forgot password]]', '`/auth/forgot-password`', 'Tìm mật khẩu bằng số điện thoại hoặc email → mã 6 số → đặt mật khẩu mới, cả 3 bước trên cùng một trang.'],
+              ['[[Đặt mật khẩu mới|Set a new password]] (link cũ)', '`/auth/reset-password?token=…`', 'Chỉ mở từ **link email cũ** hoặc link do admin gửi. Người dùng bình thường không còn đi qua trang này.'],
+              ['[[Tài khoản của bạn đã được xoá|Your account has been deleted]]', '`/auth/account-deleted`', 'Trang kết thúc sau khi ứng viên **tự xoá** tài khoản. Không phải trang báo lỗi đăng nhập.'],
             ],
           },
         },
@@ -96,10 +96,10 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           kind: 'flow',
           heading: 'Hành trình thường gặp nhất',
           items: [
-            { label: 'Đăng ký', path: '/auth/sign-up' },
+            { label: '[[Đăng ký|Sign up]]', path: '/auth/sign-up' },
             { label: 'Form email + OTP điện thoại', path: '/auth/sign-up/detail' },
-            { label: 'Tự đăng nhập → Chào mừng', path: '/chao-mung' },
-            { label: 'Lần sau: Đăng nhập', path: '/auth/sign-in' },
+            { label: 'Tự đăng nhập → [[Chào mừng|Welcome]]', path: '/chao-mung' },
+            { label: 'Lần sau: [[Đăng nhập|Sign in]]', path: '/auth/sign-in' },
           ],
         },
         {
@@ -124,11 +124,11 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
               ['ID đăng nhập', 'Luôn là **email**. Không đăng nhập bằng số điện thoại hay tên.'],
               ['OTP / mã xác thực', 'Mã **6 chữ số**, sống **3 phút**. Sau **60 giây** mới được xin mã mới. Mỗi mã cho nhập sai **3 lần**; mỗi lượt xác thực xin được tối đa **3 mã**.'],
               ['Luồng Việt Nam', 'Mặc định khi đăng ký. Số điện thoại **phải xác thực bằng OTP** (gửi qua Zalo). Email không cần xác thực lúc đăng ký.'],
-              ['Luồng ở nước ngoài', 'Khi tick **Tôi đang ở nước ngoài**. **Email phải xác thực bằng OTP**; số điện thoại chỉ là số liên hệ, không xác thực.'],
-              ['Tài khoản mạng xã hội', 'Tạo bằng Google / Facebook / LinkedIn. **Không có mật khẩu** cho tới khi người dùng tự đặt qua Quên mật khẩu.'],
-              ['Duy trì đăng nhập', 'Tick: giữ đăng nhập **14 ngày**. Không tick: **1 ngày**. Trong thời gian đó hệ thống tự gia hạn, người dùng không phải đăng nhập lại.'],
+              ['Luồng ở nước ngoài', 'Khi tick [[Tôi đang ở nước ngoài|I live abroad]]. **Email phải xác thực bằng OTP**; số điện thoại chỉ là số liên hệ, không xác thực.'],
+              ['Tài khoản mạng xã hội', 'Tạo bằng Google / Facebook / LinkedIn. **Không có mật khẩu** cho tới khi người dùng tự đặt qua [[Quên mật khẩu|Forgot password]].'],
+              ['[[Duy trì đăng nhập|Keep me signed in]]', 'Tick: giữ đăng nhập **14 ngày**. Không tick: **1 ngày**. Trong thời gian đó hệ thống tự gia hạn, người dùng không phải đăng nhập lại.'],
               ['Khoá số điện thoại', 'Nhập sai mã **5 lần trong 24 giờ** trên cùng một số → số đó bị khoá 24 giờ, không gửi được mã nữa.'],
-              ['Onboarding / Chào mừng', 'Trình hướng dẫn dựng hồ sơ sau đăng ký. Chưa xong thì mỗi lần đăng nhập đều được đưa về đây trước.'],
+              ['Onboarding / [[Chào mừng|Welcome]]', 'Trình hướng dẫn dựng hồ sơ sau đăng ký. Chưa xong thì mỗi lần đăng nhập đều được đưa về đây trước.'],
             ],
           },
         },
@@ -149,14 +149,14 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Mở trang **Đăng ký** (`/auth/sign-up`), hoặc bấm **Đăng ký tài khoản ứng viên** ở panel trái trang Đăng nhập. Đảm bảo đang ở tab **Ứng viên**.',
-            'Bấm **Tạo tài khoản bằng email**. Trang chuyển sang form **Đăng ký tài khoản ứng viên Saramin**.',
-            'Điền **Họ và tên** và **Email**. Email này là ID đăng nhập về sau.',
-            'Đặt **Mật khẩu** — gõ tới đâu, danh sách 4 điều kiện bên dưới sáng tới đó; đủ cả 4 thì hiện **Mật khẩu hợp lệ**.',
-            'Nhập **Số điện thoại** (chỉ gõ được chữ số, không cần +84) → bấm **Xác thực**. Mã 6 số được gửi qua **Zalo** về số đó.',
-            'Nhập mã vào ô **Nhập mã 6 chữ số** → bấm **Kiểm tra**. Thành công hiện **✓ Đã xác thực số điện thoại**, ô số khoá lại, nút đổi thành **Đổi số**.',
-            'Chọn **Ngày sinh** (gõ DD/MM/YYYY hoặc bấm biểu tượng lịch). Phải đủ **15 tuổi**.',
-            'Tick **(Bắt buộc) Tôi đồng ý với Điều khoản dịch vụ & Chính sách bảo mật** (hoặc **Đồng ý tất cả**) → bấm **Đăng ký**.',
+            'Mở trang [[Đăng ký|Sign up]] (`/auth/sign-up`), hoặc bấm [[Đăng ký tài khoản ứng viên|Create a jobseeker account]] ở panel trái trang [[Đăng nhập|Sign in]]. Đảm bảo đang ở tab [[Ứng viên|Jobseeker]].',
+            'Bấm [[Tạo tài khoản bằng email|Create an account with email]]. Trang chuyển sang form [[Đăng ký tài khoản ứng viên Saramin|Create your Saramin jobseeker account]].',
+            'Điền [[Họ và tên|Full name]] và [[Email|Email]]. Email này là ID đăng nhập về sau.',
+            'Đặt [[Mật khẩu|Password]] — gõ tới đâu, danh sách 4 điều kiện bên dưới sáng tới đó; đủ cả 4 thì hiện [[Mật khẩu hợp lệ|This is a valid password]].',
+            'Nhập [[Số điện thoại|Phone number]] (chỉ gõ được chữ số, không cần +84) → bấm [[Xác thực|Verify]]. Mã 6 số được gửi qua **Zalo** về số đó.',
+            'Nhập mã vào ô [[Nhập mã 6 chữ số|Enter the 6-digit code]] → bấm [[Kiểm tra|Check]]. Thành công hiện ✓ [[Đã xác thực số điện thoại|Phone number is verified]], ô số khoá lại, nút đổi thành [[Đổi số|Change]].',
+            'Chọn [[Ngày sinh|Date of birth]] (gõ DD/MM/YYYY hoặc bấm biểu tượng lịch). Phải đủ **15 tuổi**.',
+            'Tick [[(Bắt buộc) Tôi đồng ý với Điều khoản dịch vụ & Chính sách bảo mật|(Required) I agree to our Terms of Service & Privacy Policy]] (hoặc [[Đồng ý tất cả|Agree to all]]) → bấm [[Đăng ký|Sign up]].',
           ],
         },
         {
@@ -165,12 +165,12 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Ô', 'Điều kiện', 'Thông báo khi sai'],
             rows: [
-              ['Họ và tên', '2–100 ký tự, chỉ chữ cái (có dấu được) và một khoảng trắng giữa các từ. Không số, không ký tự đặc biệt.', '“Vui lòng nhập họ và tên (tối thiểu 2 ký tự).” · “Họ và tên chỉ gồm chữ cái và khoảng trắng đơn.”'],
-              ['Email', 'Đúng định dạng email. Tự chuyển về chữ thường. Trùng hay không chỉ biết **khi bấm Đăng ký**.', '“Vui lòng nhập email.” · “Định dạng email không hợp lệ.”'],
-              ['Mật khẩu', 'Xem bảng mật khẩu ngay dưới. Không được trùng email.', '“Mật khẩu không được trùng với email.”'],
-              ['Số điện thoại', 'Số di động 9 chữ số hoặc cố định 10 (bỏ số 0 đầu). Nút **Xác thực** chỉ bấm được khi số hợp lệ.', '“Số điện thoại không hợp lệ. Số di động có 9 chữ số, số cố định có 10.” · khi bấm Đăng ký mà chưa xác thực: “Vui lòng xác thực số điện thoại trước khi tiếp tục.”'],
-              ['Ngày sinh', 'Không ở tương lai, không quá 120 năm, đủ 15 tuổi (tính theo giờ Việt Nam).', '“Vui lòng nhập ngày sinh.” · “Ngày sinh không thể ở tương lai.” · “Bạn phải đủ 15 tuổi trở lên để đăng ký.”'],
-              ['Điều khoản', '1 ô bắt buộc + 3 ô tuỳ chọn (dịch vụ theo vị trí, tiếp thị qua email, tiếp thị qua SMS). Mặc định chưa tick ô nào.', 'Không có thông báo — xem cảnh báo bên dưới.'],
+              ['[[Họ và tên|Full name]]', '2–100 ký tự, chỉ chữ cái (có dấu được) và một khoảng trắng giữa các từ. Không số, không ký tự đặc biệt.', '“Vui lòng nhập họ và tên (tối thiểu 2 ký tự).” · “Họ và tên chỉ gồm chữ cái và khoảng trắng đơn.”'],
+              ['[[Email|Email]]', 'Đúng định dạng email. Tự chuyển về chữ thường. Trùng hay không chỉ biết **khi bấm** [[Đăng ký|Sign up]].', '“Vui lòng nhập email.” · “Định dạng email không hợp lệ.”'],
+              ['[[Mật khẩu|Password]]', 'Xem bảng mật khẩu ngay dưới. Không được trùng email.', '“Mật khẩu không được trùng với email.”'],
+              ['[[Số điện thoại|Phone number]]', 'Số di động 9 chữ số hoặc cố định 10 (bỏ số 0 đầu). Nút [[Xác thực|Verify]] chỉ bấm được khi số hợp lệ.', '“Số điện thoại không hợp lệ. Số di động có 9 chữ số, số cố định có 10.” · khi bấm [[Đăng ký|Sign up]] mà chưa xác thực: “Vui lòng xác thực số điện thoại trước khi tiếp tục.”'],
+              ['[[Ngày sinh|Date of birth]]', 'Không ở tương lai, không quá 120 năm, đủ 15 tuổi (tính theo giờ Việt Nam).', '“Vui lòng nhập ngày sinh.” · “Ngày sinh không thể ở tương lai.” · “Bạn phải đủ 15 tuổi trở lên để đăng ký.”'],
+              ['[[Điều khoản|Terms]]', '1 ô bắt buộc + 3 ô tuỳ chọn (dịch vụ theo vị trí, tiếp thị qua email, tiếp thị qua SMS). Mặc định chưa tick ô nào.', 'Không có thông báo — xem cảnh báo bên dưới.'],
             ],
           },
         },
@@ -181,25 +181,25 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Điều kiện', 'Dòng trong danh sách'],
             rows: [
-              ['8 đến 128 ký tự', 'Ít nhất 8 ký tự'],
-              ['Có ít nhất 1 chữ số 0–9', 'Ít nhất 1 chữ số'],
-              ['Có ít nhất 1 ký tự đặc biệt trên bàn phím: ! @ # $ % & * ( ) - _ + = ? . , … ', 'Ít nhất 1 ký tự đặc biệt'],
-              ['Có ít nhất 1 chữ in hoa A–Z (không dấu)', 'Ít nhất 1 chữ hoa'],
+              ['8 đến 128 ký tự', '[[Ít nhất 8 ký tự|At least 8 characters]]'],
+              ['Có ít nhất 1 chữ số 0–9', '[[Ít nhất 1 chữ số|At least 1 number]]'],
+              ['Có ít nhất 1 ký tự đặc biệt trên bàn phím: ! @ # $ % & * ( ) - _ + = ? . , … ', '[[Ít nhất 1 ký tự đặc biệt|At least 1 special characters]]'],
+              ['Có ít nhất 1 chữ in hoa A–Z (không dấu)', '[[Ít nhất 1 chữ hoa|At least 1 uppercase letter]]'],
               ['Không trùng với email', '— (báo lỗi riêng)'],
             ],
           },
         },
         {
           kind: 'warn',
-          text: 'Nếu **chưa tick ô điều khoản bắt buộc**, bấm **Đăng ký** sẽ **không có gì xảy ra** — không báo lỗi, nút vẫn sáng. Khi người dùng báo “bấm Đăng ký không được”, hỏi điều này trước tiên.',
+          text: 'Nếu **chưa tick ô điều khoản bắt buộc**, bấm [[Đăng ký|Sign up]] sẽ **không có gì xảy ra** — không báo lỗi, nút vẫn sáng. Khi người dùng báo “bấm Đăng ký không được”, hỏi điều này trước tiên.',
         },
         {
           kind: 'warn',
-          text: 'Chữ có dấu (ă, ơ…), dấu cách hay emoji được danh sách tính là “ký tự đặc biệt” và hiện **Mật khẩu hợp lệ**, nhưng hệ thống **từ chối** khi bấm Đăng ký với lỗi “Mật khẩu chưa đáp ứng yêu cầu bảo mật.” Hướng dẫn người dùng dùng ký tự như **! @ # $**.',
+          text: 'Chữ có dấu (ă, ơ…), dấu cách hay emoji được danh sách tính là “ký tự đặc biệt” và hiện [[Mật khẩu hợp lệ|This is a valid password]], nhưng hệ thống **từ chối** khi bấm [[Đăng ký|Sign up]] với lỗi “Mật khẩu chưa đáp ứng yêu cầu bảo mật.” Hướng dẫn người dùng dùng ký tự như **! @ # $**.',
         },
         {
           kind: 'tip',
-          text: 'Xác thực số điện thoại có hiệu lực **30 phút**. Điền form quá lâu sau khi xác thực thì khi bấm Đăng ký sẽ báo “Xác thực số điện thoại đã hết hạn. Vui lòng xác thực lại.” — chỉ cần bấm **Xác thực** lại.',
+          text: 'Xác thực số điện thoại có hiệu lực **30 phút**. Điền form quá lâu sau khi xác thực thì khi bấm [[Đăng ký|Sign up]] sẽ báo “Xác thực số điện thoại đã hết hạn. Vui lòng xác thực lại.” — chỉ cần bấm [[Xác thực|Verify]] lại.',
         },
         { kind: 'links', items: [{ label: 'Đăng ký', path: '/auth/sign-up' }, { label: 'Form email', path: '/auth/sign-up/detail' }] },
       ],
@@ -217,11 +217,11 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Trên dòng **Số điện thoại**, tick **Tôi đang ở nước ngoài** (góc phải).',
-            'Ô **Email** xuất hiện nút **Xác thực** → bấm để nhận mã 6 số qua email (tiêu đề “[Saramin] Mã xác thực đăng ký tài khoản”). Dưới ô hiện “Đã gửi mã tới m***@g***” và đồng hồ đếm ngược.',
-            'Nhập mã vào **Nhập mã 6 số** → **Kiểm tra**. Thành công hiện **✓ Đã xác thực email**, nút đổi thành **Đổi email**.',
-            'Ô **Số điện thoại** vẫn bắt buộc nhưng chỉ cần tối thiểu 6 chữ số, không xác thực.',
-            'Điền các ô còn lại như ĐK1 → **Đăng ký**.',
+            'Trên dòng [[Số điện thoại|Phone number]], tick [[Tôi đang ở nước ngoài|I live abroad]] (góc phải).',
+            'Ô [[Email|Email]] xuất hiện nút [[Xác thực|Verify]] → bấm để nhận mã 6 số qua email (tiêu đề “[Saramin] Mã xác thực đăng ký tài khoản”). Dưới ô hiện “Đã gửi mã tới m***@g***” và đồng hồ đếm ngược.',
+            'Nhập mã vào [[Nhập mã 6 số|Enter the 6-digit code]] → [[Kiểm tra|Check]]. Thành công hiện ✓ [[Đã xác thực email|Email verified]], nút đổi thành [[Đổi email|Change]].',
+            'Ô [[Số điện thoại|Phone number]] vẫn bắt buộc nhưng chỉ cần tối thiểu 6 chữ số, không xác thực.',
+            'Điền các ô còn lại như ĐK1 → [[Đăng ký|Sign up]].',
           ],
         },
         {
@@ -230,11 +230,11 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         },
         {
           kind: 'warn',
-          text: 'Xác thực email chỉ có hiệu lực **10 phút** (số điện thoại là 30 phút). Quá hạn thì bấm Đăng ký chỉ ra thông báo chung “Đã xảy ra lỗi. Vui lòng thử lại.” — cách xử lý: bấm **Đổi email** rồi xác thực lại.',
+          text: 'Xác thực email chỉ có hiệu lực **10 phút** (số điện thoại là 30 phút). Quá hạn thì bấm [[Đăng ký|Sign up]] chỉ ra thông báo chung “Đã xảy ra lỗi. Vui lòng thử lại.” — cách xử lý: bấm [[Đổi email|Change]] rồi xác thực lại.',
         },
         {
           kind: 'p',
-          text: 'Gửi mã email cũng **kiểm tra email đã được dùng chưa**: trùng thì báo ngay “Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.”, không phải đợi tới lúc bấm Đăng ký.',
+          text: 'Gửi mã email cũng **kiểm tra email đã được dùng chưa**: trùng thì báo ngay “Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.”, không phải đợi tới lúc bấm [[Đăng ký|Sign up]].',
         },
       ],
     },
@@ -246,16 +246,16 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
       title: 'Đăng ký bằng Google / Facebook / LinkedIn',
       where: '/auth/sign-up → nhà cung cấp → /auth/complete-signup',
       lead:
-        'Ba nút tròn dưới dòng **Đăng nhập mạng xã hội** ở bước 1. Không có Zalo, Apple, Naver hay Kakao. Cùng ba nút này cũng dùng để **đăng nhập** — hệ thống tự biết đây là người mới hay người cũ.',
+        'Ba nút tròn dưới dòng [[Đăng nhập mạng xã hội|Quick social sign-in]] ở bước 1. Không có Zalo, Apple, Naver hay Kakao. Cùng ba nút này cũng dùng để **đăng nhập** — hệ thống tự biết đây là người mới hay người cũ.',
       blocks: [
         {
           kind: 'steps',
           items: [
-            'Ở **Đăng ký** (tab Ứng viên), bấm biểu tượng Google, Facebook hoặc LinkedIn.',
+            'Ở [[Đăng ký|Sign up]] (tab [[Ứng viên|Jobseeker]]), bấm biểu tượng Google, Facebook hoặc LinkedIn.',
             'Đăng nhập và đồng ý trên trang của nhà cung cấp.',
-            'Nếu đây là **người mới**, trang **Hoàn tất đăng ký** mở ra. Email lấy từ nhà cung cấp (khoá, không sửa được); nếu nhà cung cấp không trả email thì người dùng tự nhập.',
-            'Xác thực **Số điện thoại** bằng OTP như ĐK1 (hoặc tick **Tôi đang ở nước ngoài**).',
-            'Tick điều khoản bắt buộc → **Tiếp tục**. Nút chỉ sáng khi đủ điều kiện.',
+            'Nếu đây là **người mới**, trang [[Hoàn tất đăng ký|Finish signing up]] mở ra. Email lấy từ nhà cung cấp (khoá, không sửa được); nếu nhà cung cấp không trả email thì người dùng tự nhập.',
+            'Xác thực [[Số điện thoại|Phone number]] bằng OTP như ĐK1 (hoặc tick [[Tôi đang ở nước ngoài|I live abroad]]).',
+            'Tick điều khoản bắt buộc → [[Tiếp tục|Continue]]. Nút chỉ sáng khi đủ điều kiện.',
           ],
         },
         {
@@ -264,11 +264,11 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Tình huống', 'Kết quả'],
             rows: [
-              ['Tài khoản mạng xã hội này đã từng đăng ký', 'Đăng nhập luôn, không qua Hoàn tất đăng ký.'],
+              ['Tài khoản mạng xã hội này đã từng đăng ký', 'Đăng nhập luôn, không qua [[Hoàn tất đăng ký|Finish signing up]].'],
               ['Email Google/LinkedIn trùng một tài khoản Saramin **đã xác thực**', 'Tự liên kết và đăng nhập vào tài khoản đó.'],
-              ['Email trùng một tài khoản, nhưng qua **Facebook**', 'Không tự liên kết (Facebook không được tin về email). Quay về trang Đăng nhập — **không có thông báo** nào hiện ra.'],
-              ['Người mới', 'Trang **Hoàn tất đăng ký**. Phiên chờ này sống **30 phút**.'],
-              ['Email của tài khoản **đã xoá**', 'Trang Đăng nhập báo “Tài khoản này đã bị xoá và không thể sử dụng lại. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.”'],
+              ['Email trùng một tài khoản, nhưng qua **Facebook**', 'Không tự liên kết (Facebook không được tin về email). Quay về trang [[Đăng nhập|Sign in]] — **không có thông báo** nào hiện ra.'],
+              ['Người mới', 'Trang [[Hoàn tất đăng ký|Finish signing up]]. Phiên chờ này sống **30 phút**.'],
+              ['Email của tài khoản **đã xoá**', 'Trang [[Đăng nhập|Sign in]] báo “Tài khoản này đã bị xoá và không thể sử dụng lại. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.”'],
             ],
           },
         },
@@ -293,7 +293,7 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           kind: 'steps',
           items: [
             'Người dùng **được đăng nhập ngay** — không có màn hình “kiểm tra email”, không cần bấm link xác thực.',
-            'Trang chuyển sang **Chào mừng** (`/chao-mung`) để dựng hồ sơ. Nếu bắt đầu đăng ký từ một hành động (ví dụ bấm Ứng tuyển), sau Chào mừng sẽ quay về đúng trang đó.',
+            'Trang chuyển sang [[Chào mừng|Welcome]] (`/chao-mung`) để dựng hồ sơ. Nếu bắt đầu đăng ký từ một hành động (ví dụ bấm [[Ứng tuyển|Apply]]), sau [[Chào mừng|Welcome]] sẽ quay về đúng trang đó.',
             'Một **email chào mừng** được gửi: “[Saramin] {Tên} ơi, sẵn sàng “Khởi đầu Matching” cùng Saramin Vietnam nào!”.',
           ],
         },
@@ -317,11 +317,11 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Thông báo', 'Hiện ở', 'Nghĩa là / Cách xử lý'],
             rows: [
-              ['“Email này đã được đăng ký.”', 'Ô Email', 'Đã có tài khoản → **Đăng nhập** hoặc **Quên mật khẩu**. Có thể tài khoản cũ được tạo bằng mạng xã hội.'],
-              ['“Email này thuộc về một tài khoản đã bị xoá và không thể dùng để đăng ký lại.”', 'Ô Email', 'Email của tài khoản đã xoá bị chặn vĩnh viễn. Chỉ CS gỡ được sau khi xác minh danh tính.'],
-              ['“Số điện thoại này đã được đăng ký. Vui lòng đăng nhập hoặc dùng số khác.”', 'Ô Số điện thoại', 'Số đã gắn với tài khoản khác.'],
-              ['“Xác thực số điện thoại đã hết hạn. Vui lòng xác thực lại.”', 'Ô Số điện thoại', 'Quá 30 phút từ lúc xác thực. Bấm **Xác thực** lại.'],
-              ['“Mật khẩu chưa đáp ứng yêu cầu bảo mật.”', 'Ô Mật khẩu', 'Thường do dùng chữ có dấu / dấu cách làm “ký tự đặc biệt”. Đổi sang ! @ # $.'],
+              ['“Email này đã được đăng ký.”', 'Ô [[Email|Email]]', 'Đã có tài khoản → [[Đăng nhập|Sign in]] hoặc [[Quên mật khẩu|Forgot password]]. Có thể tài khoản cũ được tạo bằng mạng xã hội.'],
+              ['“Email này thuộc về một tài khoản đã bị xoá và không thể dùng để đăng ký lại.”', 'Ô [[Email|Email]]', 'Email của tài khoản đã xoá bị chặn vĩnh viễn. Chỉ CS gỡ được sau khi xác minh danh tính.'],
+              ['“Số điện thoại này đã được đăng ký. Vui lòng đăng nhập hoặc dùng số khác.”', 'Ô [[Số điện thoại|Phone number]]', 'Số đã gắn với tài khoản khác.'],
+              ['“Xác thực số điện thoại đã hết hạn. Vui lòng xác thực lại.”', 'Ô [[Số điện thoại|Phone number]]', 'Quá 30 phút từ lúc xác thực. Bấm [[Xác thực|Verify]] lại.'],
+              ['“Mật khẩu chưa đáp ứng yêu cầu bảo mật.”', 'Ô [[Mật khẩu|Password]]', 'Thường do dùng chữ có dấu / dấu cách làm “ký tự đặc biệt”. Đổi sang ! @ # $.'],
               ['“Quá nhiều yêu cầu. Vui lòng thử lại sau giây lát.”', 'Thông báo nổi', 'Quá 5 lần đăng ký/phút từ cùng mạng. Đợi một phút.'],
               ['“Đã xảy ra lỗi. Vui lòng thử lại.”', 'Thông báo nổi', 'Lỗi chung. Với người ở nước ngoài: thường là xác thực email đã quá 10 phút.'],
             ],
@@ -335,8 +335,8 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
             rows: [
               ['“Mã vừa được gửi. Vui lòng đợi trước khi yêu cầu mã mới.”', 'Chưa đủ 60 giây, hoặc đã xin quá **3 mã/giờ** (10 mã/ngày) cho số này.'],
               ['“Mã xác thực không đúng. Vui lòng thử lại.”', 'Sai mã. Mỗi mã cho sai 3 lần.'],
-              ['“Đã hết thời gian nhập. Vui lòng nhận lại mã xác thực và nhập lại.”', 'Mã quá 3 phút. Bấm **Gửi lại**.'],
-              ['“Một mã mới đã được gửi. Vui lòng dùng tin nhắn mới nhất.”', 'Đang nhập mã cũ sau khi đã bấm Gửi lại.'],
+              ['“Đã hết thời gian nhập. Vui lòng nhận lại mã xác thực và nhập lại.”', 'Mã quá 3 phút. Bấm [[Gửi lại|Resend]].'],
+              ['“Một mã mới đã được gửi. Vui lòng dùng tin nhắn mới nhất.”', 'Đang nhập mã cũ sau khi đã bấm [[Gửi lại|Resend]].'],
               ['“Số này đã bị khoá do nhập sai quá nhiều lần. Vui lòng thử lại sau 24 giờ.”', 'Sai 5 lần trong 24 giờ. Không mở khoá sớm được từ phía người dùng.'],
               ['“Xác thực số điện thoại tạm thời không khả dụng. Vui lòng liên hệ hỗ trợ.”', 'Hệ thống gửi Zalo chưa được cấu hình / đang lỗi. Báo kỹ thuật.'],
             ],
@@ -366,16 +366,16 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
       title: 'Đăng nhập bằng email và mật khẩu',
       where: '/auth/sign-in',
       lead:
-        'Trang có panel minh hoạ bên trái (chỉ trên máy tính) và form bên phải. Không có tiêu đề “Đăng nhập” — chữ đó nằm trên nút.',
+        'Trang có panel minh hoạ bên trái (chỉ trên máy tính) và form bên phải. Không có tiêu đề “Đăng nhập” — chữ [[Đăng nhập|Sign in]] nằm trên nút.',
       blocks: [
         {
           kind: 'steps',
           items: [
-            'Mở trang **Đăng nhập** (`/auth/sign-in`). Kiểm tra đang ở tab **Ứng viên** (tab **Nhà tuyển dụng** là tài khoản khác hoàn toàn).',
-            'Nhập **Email** và **Mật khẩu** (biểu tượng con mắt để hiện/ẩn).',
-            'Tick **Duy trì đăng nhập** nếu là máy cá nhân — giữ đăng nhập 14 ngày thay vì 1 ngày.',
-            'Bấm **Đăng nhập**.',
-            'Thành công: nếu chưa xong onboarding → về **Chào mừng**; nếu đến từ một trang cần đăng nhập → quay lại đúng trang đó; còn lại → trang chủ.',
+            'Mở trang [[Đăng nhập|Sign in]] (`/auth/sign-in`). Kiểm tra đang ở tab [[Ứng viên|Jobseeker]] (tab [[Nhà tuyển dụng|Employer]] là tài khoản khác hoàn toàn).',
+            'Nhập [[Email|Email]] và [[Mật khẩu|Password]] (biểu tượng con mắt để hiện/ẩn).',
+            'Tick [[Duy trì đăng nhập|Keep me signed in]] nếu là máy cá nhân — giữ đăng nhập 14 ngày thay vì 1 ngày.',
+            'Bấm [[Đăng nhập|Sign in]].',
+            'Thành công: nếu chưa xong onboarding → về [[Chào mừng|Welcome]]; nếu đến từ một trang cần đăng nhập → quay lại đúng trang đó; còn lại → trang chủ.',
           ],
         },
         {
@@ -384,15 +384,15 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Ô', 'Điều kiện', 'Thông báo khi sai'],
             rows: [
-              ['Email', 'Đúng định dạng email. **Số điện thoại không dùng được.**', '“Định dạng email không hợp lệ.” (để trống cũng hiện câu này)'],
-              ['Mật khẩu', 'Không trống, tối đa 72 ký tự.', '“Vui lòng nhập mật khẩu.” · “Mật khẩu tối đa 72 ký tự.”'],
-              ['Duy trì đăng nhập', 'Tuỳ chọn, mặc định không tick.', '—'],
+              ['[[Email|Email]]', 'Đúng định dạng email. **Số điện thoại không dùng được.**', '“Định dạng email không hợp lệ.” (để trống cũng hiện câu này)'],
+              ['[[Mật khẩu|Password]]', 'Không trống, tối đa 72 ký tự.', '“Vui lòng nhập mật khẩu.” · “Mật khẩu tối đa 72 ký tự.”'],
+              ['[[Duy trì đăng nhập|Keep me signed in]]', 'Tuỳ chọn, mặc định không tick.', '—'],
             ],
           },
         },
         {
           kind: 'tip',
-          text: 'Trên **điện thoại** (màn hình hẹp), trang Đăng nhập **không có nút Đăng ký** — nút đó nằm ở panel trái chỉ hiện trên máy tính. Người dùng mobile mở thẳng `/auth/sign-up`.',
+          text: 'Trên **điện thoại** (màn hình hẹp), trang [[Đăng nhập|Sign in]] **không có nút** [[Đăng ký tài khoản ứng viên|Create a jobseeker account]] — nút đó nằm ở panel trái chỉ hiện trên máy tính. Người dùng mobile mở thẳng `/auth/sign-up`.',
         },
         { kind: 'links', items: [{ label: 'Đăng nhập', path: '/auth/sign-in' }] },
       ],
@@ -408,9 +408,9 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Bấm biểu tượng nhà cung cấp dưới dòng **hoặc đăng nhập bằng mạng xã hội** (chỉ có ở tab Ứng viên).',
+            'Bấm biểu tượng nhà cung cấp dưới dòng [[hoặc đăng nhập bằng mạng xã hội|or sign in with social]] (chỉ có ở tab [[Ứng viên|Jobseeker]]).',
             'Đồng ý trên trang của nhà cung cấp.',
-            'Tài khoản đã có → vào luôn. Tài khoản chưa có → sang **Hoàn tất đăng ký** (xem ĐK3).',
+            'Tài khoản đã có → vào luôn. Tài khoản chưa có → sang [[Hoàn tất đăng ký|Finish signing up]] (xem ĐK3).',
           ],
         },
         {
@@ -443,18 +443,18 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Ai bấm', 'Thấy gì'],
             rows: [
-              ['Khách chưa đăng nhập', 'Hộp “Bạn cần **đăng nhập** để sử dụng dịch vụ này” với Email, Mật khẩu, **Duy trì đăng nhập**, **Ghi nhớ email**, nút **Đăng nhập**, link **Quên mật khẩu** | **Đăng ký** và nút mạng xã hội.'],
-              ['Đang đăng nhập bằng **tài khoản nhà tuyển dụng**', 'Panel góc màn hình “Đăng nhập bằng tài khoản ứng viên” — “Bạn đang đăng nhập bằng tài khoản nhà tuyển dụng. Ứng tuyển cần tài khoản ứng viên.” Đăng nhập ứng viên sẽ **kết thúc phiên nhà tuyển dụng** (mỗi trình duyệt chỉ một vai trò).'],
+              ['Khách chưa đăng nhập', 'Hộp [[Bạn cần đăng nhập để sử dụng dịch vụ này|You need to sign in to use this service]] với [[Email|Email]], [[Mật khẩu|Password]], [[Duy trì đăng nhập|Keep me signed in]], [[Ghi nhớ email|Remember my email]], nút [[Đăng nhập|Sign in]], link [[Quên mật khẩu|Forgot password]] | [[Đăng ký|Sign Up]] và nút mạng xã hội.'],
+              ['Đang đăng nhập bằng **tài khoản nhà tuyển dụng**', 'Panel góc màn hình [[Đăng nhập bằng tài khoản ứng viên|Sign in as a jobseeker]] — “Bạn đang đăng nhập bằng tài khoản nhà tuyển dụng. Ứng tuyển cần tài khoản ứng viên.” Đăng nhập ứng viên sẽ **kết thúc phiên nhà tuyển dụng** (mỗi trình duyệt chỉ một vai trò).'],
             ],
           },
         },
         {
           kind: 'p',
-          text: 'Áp dụng cho: Ứng tuyển, Ứng tuyển hàng loạt, Lưu tin, Theo dõi công ty, chuông thông báo.',
+          text: 'Áp dụng cho: [[Ứng tuyển|Apply]] (trang chi tiết tin: [[Nộp đơn|Apply]]), [[Ứng tuyển hàng loạt|Batch apply]], Lưu tin (nút ngôi sao), [[Theo dõi|Follow]] công ty, chuông thông báo.',
         },
         {
           kind: 'warn',
-          text: 'Ô **Ghi nhớ email** trong hộp này **chưa có tác dụng** — tick hay không thì lần sau email cũng không được điền sẵn.',
+          text: 'Ô [[Ghi nhớ email|Remember my email]] trong hộp này **chưa có tác dụng** — tick hay không thì lần sau email cũng không được điền sẵn.',
         },
       ],
     },
@@ -472,10 +472,10 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Thông báo (dưới ô mật khẩu)', 'Nghĩa là', 'Cách xử lý'],
             rows: [
-              ['“Email hoặc mật khẩu không đúng.”', 'Sai email, sai mật khẩu, **tài khoản chỉ có mạng xã hội** (chưa từng có mật khẩu), hoặc đang dùng tài khoản nhà tuyển dụng ở tab Ứng viên.', 'Kiểm tra tab, thử nút mạng xã hội, hoặc **Quên mật khẩu**.'],
+              ['“Email hoặc mật khẩu không đúng.”', 'Sai email, sai mật khẩu, **tài khoản chỉ có mạng xã hội** (chưa từng có mật khẩu), hoặc đang dùng tài khoản nhà tuyển dụng ở tab [[Ứng viên|Jobseeker]].', 'Kiểm tra tab, thử nút mạng xã hội, hoặc [[Quên mật khẩu|Forgot password]].'],
               ['“Tài khoản này đã bị vô hiệu hóa.”', 'Admin đã tắt tài khoản.', 'Liên hệ CS.'],
               ['“Tài khoản này đã bị xoá và không thể sử dụng lại.”', 'Tài khoản đã xoá.', 'Chỉ CS khôi phục được, và chỉ trong **72 giờ** sau khi xoá.'],
-              ['“Vui lòng xác thực email để tiếp tục.” + khung **Kiểm tra email của bạn**', 'Tài khoản cũ chưa xác thực email (tài khoản mới tạo không gặp).', 'Bấm **Gửi lại email xác thực** (tối đa 3 lần/giờ), mở link trong email rồi đăng nhập lại.'],
+              ['“Vui lòng xác thực email để tiếp tục.” + khung [[Kiểm tra email của bạn|Check your email]]', 'Tài khoản cũ chưa xác thực email (tài khoản mới tạo không gặp).', 'Bấm [[Gửi lại email xác thực|Resend verification email]] (tối đa 3 lần/giờ), mở link trong email rồi đăng nhập lại.'],
               ['“Quá nhiều yêu cầu. Vui lòng thử lại sau giây lát.”', 'Quá 10 lần thử/phút cho cùng email hoặc cùng mạng.', 'Đợi một phút. **Không có khoá tài khoản** vì sai mật khẩu nhiều lần.'],
               ['“Đã xảy ra lỗi. Vui lòng thử lại.”', 'Lỗi chung.', 'Thử lại; vẫn lỗi thì báo kỹ thuật.'],
             ],
@@ -505,13 +505,13 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Bấm **Đăng xuất** trong menu tài khoản ở header (hoặc trong Cài đặt tài khoản).',
+            'Bấm [[Đăng xuất|Logout]] trong menu tài khoản ở header (hoặc trong [[Cài đặt tài khoản|Account settings]]).',
             'Không có hộp xác nhận. Trang về trang chủ ngay.',
           ],
         },
         {
           kind: 'p',
-          text: 'Đăng xuất chỉ áp dụng cho **thiết bị đang dùng**. Muốn đăng xuất mọi thiết bị: đặt lại mật khẩu qua **Quên mật khẩu** (xem QM2).',
+          text: 'Đăng xuất chỉ áp dụng cho **thiết bị đang dùng**. Muốn đăng xuất mọi thiết bị: đặt lại mật khẩu qua [[Quên mật khẩu|Forgot password]] (xem QM2).',
         },
       ],
     },
@@ -525,26 +525,26 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
       title: 'Quên mật khẩu — bước 1: xác thực',
       where: '/auth/forgot-password',
       lead:
-        'Trang **Tìm mật khẩu cho ứng viên**. Hai tab: **Tìm bằng số điện thoại** (mặc định) và **Tìm bằng email**. Không còn gửi link đặt lại qua email — mọi thứ làm trên cùng trang bằng mã 6 số.',
+        'Trang [[Tìm mật khẩu cho ứng viên|Find password for jobseeker]]. Hai tab: [[Tìm bằng số điện thoại|Find by phone number]] (mặc định) và [[Tìm bằng email|Find by email address]]. Không còn gửi link đặt lại qua email — mọi thứ làm trên cùng trang bằng mã 6 số.',
       blocks: [
         {
           kind: 'flow',
           items: [
-            { label: 'Nhập số / email → Xác thực' },
-            { label: 'Nhập mã → Kiểm tra' },
-            { label: 'Đặt lại mật khẩu' },
-            { label: 'Mật khẩu mới ×2' },
-            { label: 'Xong → Đăng nhập' },
+            { label: 'Nhập số / email → [[Xác thực|Verify]]' },
+            { label: 'Nhập mã → [[Kiểm tra|Check]]' },
+            { label: '[[Đặt lại mật khẩu|Reset password]]' },
+            { label: '[[Mật khẩu mới|New password]] + [[Xác nhận mật khẩu|Confirm password]]' },
+            { label: 'Xong → [[Đến trang đăng nhập|Go to sign in]]' },
           ],
         },
         {
           kind: 'steps',
           items: [
-            'Trang Đăng nhập → bấm **Quên mật khẩu**.',
-            'Chọn tab: **Tìm bằng số điện thoại** (mã qua Zalo) hoặc **Tìm bằng email** (mã qua email “[Saramin] Mã xác thực đặt lại mật khẩu”).',
-            'Nhập số / email → bấm **Xác thực**. Nút chuyển thành đếm ngược, hết giờ thì thành **Gửi lại**.',
-            'Nhập mã vào ô **Mã xác minh** → bấm **Kiểm tra**. Thành công hiện **Đã xác thực số điện thoại** / **Đã xác thực email**.',
-            'Nút xanh lớn **Đặt lại mật khẩu** sáng lên → bấm để sang bước 2.',
+            'Trang [[Đăng nhập|Sign in]] → bấm [[Quên mật khẩu|Forgot password]].',
+            'Chọn tab: [[Tìm bằng số điện thoại|Find by phone number]] (mã qua Zalo) hoặc [[Tìm bằng email|Find by email address]] (mã qua email “[Saramin] Mã xác thực đặt lại mật khẩu”).',
+            'Nhập số / email → bấm [[Xác thực|Verify]]. Nút chuyển thành đếm ngược, hết giờ thì thành [[Gửi lại|Resend]].',
+            'Nhập mã vào ô [[Mã xác minh|Verification code]] → bấm [[Kiểm tra|Check]]. Thành công hiện [[Đã xác thực số điện thoại|Number verified]] / [[Đã xác thực email|Email verified]].',
+            'Nút xanh lớn [[Đặt lại mật khẩu|Reset password]] sáng lên → bấm để sang bước 2.',
           ],
         },
         {
@@ -553,15 +553,15 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Thông báo', 'Nghĩa là / Cách xử lý'],
             rows: [
-              ['“Không tìm thấy tài khoản nào có thể khôi phục bằng số điện thoại này. Vui lòng kiểm tra lại số, hoặc khôi phục bằng email.”', 'Số chưa gắn tài khoản nào. Thử tab email. (Có chủ đích cho biết rõ — quyết định sản phẩm 28/09.)'],
-              ['“Không tìm thấy tài khoản nào có thể khôi phục bằng email này…”', 'Email chưa đăng ký. Thử tab số điện thoại.'],
-              ['“Số này đang gắn với nhiều tài khoản nên không xác định được cần đặt lại mật khẩu nào. Vui lòng dùng email.”', 'Dùng tab **Tìm bằng email**.'],
+              ['“Không tìm thấy tài khoản nào có thể khôi phục bằng số điện thoại này. Vui lòng kiểm tra lại số, hoặc khôi phục bằng email.”', 'Số chưa gắn tài khoản nào. Thử tab [[Tìm bằng email|Find by email address]]. (Có chủ đích cho biết rõ — quyết định sản phẩm 28/09.)'],
+              ['“Không tìm thấy tài khoản nào có thể khôi phục bằng email này…”', 'Email chưa đăng ký. Thử tab [[Tìm bằng số điện thoại|Find by phone number]].'],
+              ['“Số này đang gắn với nhiều tài khoản nên không xác định được cần đặt lại mật khẩu nào. Vui lòng dùng email.”', 'Dùng tab [[Tìm bằng email|Find by email address]].'],
               ['“Còn {n} lần thử.” / “Đã hết số lần thử với mã này. Hãy gửi mã mới.”', 'Sai mã. Mỗi mã cho 3 lần.'],
               ['“Mã này đã hết hạn. Hãy gửi mã mới.”', 'Quá 3 phút.'],
-              ['“Mã đó đã được thay thế…”', 'Đang nhập mã cũ sau khi bấm Gửi lại.'],
+              ['“Mã đó đã được thay thế…”', 'Đang nhập mã cũ sau khi bấm [[Gửi lại|Resend]].'],
               ['“Quá nhiều yêu cầu. Vui lòng thử lại sau {n} giây.”', 'Chưa đủ 60 giây, hoặc đã xin 3 mã.'],
-              ['“Nhập sai mã quá nhiều lần. Vui lòng thử lại sau…”', 'Số điện thoại bị khoá 24 giờ (sai 5 lần/24 giờ). Tab email không bị khoá kiểu này.'],
-              ['“Hiện chưa thể xác minh qua điện thoại. Vui lòng liên hệ bộ phận hỗ trợ Saramin.”', 'Kênh Zalo chưa sẵn sàng → dùng tab email.'],
+              ['“Nhập sai mã quá nhiều lần. Vui lòng thử lại sau…”', 'Số điện thoại bị khoá 24 giờ (sai 5 lần/24 giờ). Tab [[Tìm bằng email|Find by email address]] không bị khoá kiểu này.'],
+              ['“Hiện chưa thể xác minh qua điện thoại. Vui lòng liên hệ bộ phận hỗ trợ Saramin.”', 'Kênh Zalo chưa sẵn sàng → dùng tab [[Tìm bằng email|Find by email address]].'],
             ],
           },
         },
@@ -587,10 +587,10 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Nhập **Mật khẩu mới** (quy tắc như lúc đăng ký: 8–128 ký tự, 1 chữ số, 1 ký tự đặc biệt, 1 chữ hoa).',
-            'Nhập lại ở **Xác nhận mật khẩu**.',
-            'Bấm **Đặt lại mật khẩu**. Màn hình hiện “Mật khẩu của bạn đã được đặt lại — Mọi thiết bị khác đã bị đăng xuất. Hãy đăng nhập bằng mật khẩu mới.”',
-            'Bấm **Đến trang đăng nhập** và đăng nhập bằng mật khẩu mới.',
+            'Nhập [[Mật khẩu mới|New password]] (quy tắc như lúc đăng ký: 8–128 ký tự, 1 chữ số, 1 ký tự đặc biệt, 1 chữ hoa).',
+            'Nhập lại ở [[Xác nhận mật khẩu|Confirm password]].',
+            'Bấm [[Đặt lại mật khẩu|Reset password]]. Màn hình hiện “Mật khẩu của bạn đã được đặt lại — Mọi thiết bị khác đã bị đăng xuất. Hãy đăng nhập bằng mật khẩu mới.”',
+            'Bấm [[Đến trang đăng nhập|Go to sign in]] và đăng nhập bằng mật khẩu mới.',
           ],
         },
         {
@@ -623,8 +623,8 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         {
           kind: 'steps',
           items: [
-            'Mở link trong email → trang **Đặt mật khẩu mới**.',
-            'Nhập **một** ô mật khẩu mới (không có ô xác nhận) → **Cập nhật mật khẩu**.',
+            'Mở link trong email → trang [[Đặt mật khẩu mới|Set a new password]].',
+            'Nhập **một** ô mật khẩu mới (không có ô xác nhận) → [[Cập nhật mật khẩu|Update password]].',
             'Thành công: **tự đăng nhập** và về trang chủ (khác với QM2).',
           ],
         },
@@ -634,7 +634,7 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
         },
         {
           kind: 'p',
-          text: 'Link hết hạn / đã dùng: “Liên kết đặt lại không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới.” kèm link **Yêu cầu liên kết mới** (dẫn về QM1).',
+          text: 'Link hết hạn / đã dùng: “Liên kết đặt lại không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới.” kèm link [[Yêu cầu liên kết mới|Request a new link]] (dẫn về QM1).',
         },
       ],
     },
@@ -653,19 +653,19 @@ const ACCOUNT_SECTIONS: Omit<GuideSection, 'module'>[] = [
           table: {
             cols: ['Ở đâu', 'Hiện tượng'],
             rows: [
-              ['Đăng ký — điều khoản', 'Không tick ô bắt buộc mà bấm Đăng ký: không có phản hồi nào.'],
+              ['Đăng ký — điều khoản', 'Không tick ô bắt buộc mà bấm [[Đăng ký|Sign up]]: không có phản hồi nào.'],
               ['Đăng ký — mật khẩu', 'Chữ có dấu / dấu cách được tính là ký tự đặc biệt ở màn hình nhưng bị hệ thống từ chối.'],
               ['Đăng ký — ở nước ngoài', 'Xác thực email quá 10 phút chỉ báo lỗi chung.'],
               ['Đăng ký — mã OTP', 'Hệ thống có trả về số lần thử còn lại nhưng màn hình đăng ký không hiển thị.'],
               ['Đăng ký — số điện thoại', 'Không có ô mã quốc gia, không gõ được dấu “+”, kể cả khi ở nước ngoài.'],
-              ['Đăng ký — mobile', 'Tiêu đề header trên điện thoại ở form email và Hoàn tất đăng ký ghi “Đăng nhập”.'],
+              ['Đăng ký — mobile', 'Tiêu đề header trên điện thoại ở form email và [[Hoàn tất đăng ký|Finish signing up]] ghi [[Đăng nhập|Sign In]].'],
               ['Đăng ký — banner', 'Slide 2, 4, 5 quảng bá dịch vụ chỉ có ở Hàn Quốc (đánh giá năng lực, đề nghị vị trí, thưởng 500.000 KRW).'],
               ['Đăng ký — tuổi', 'Tối thiểu 15 tuổi lấy theo Hàn Quốc, đang chờ xác nhận pháp lý VN.'],
               ['Hoàn tất đăng ký', 'Lỗi email sai định dạng / lỗi chung hiện thành “Phiên của bạn đã hết hạn…”.'],
-              ['Đăng nhập MXH', 'Email trùng tài khoản chưa xác thực (hoặc qua Facebook): về trang Đăng nhập mà không có thông báo.'],
-              ['Đăng nhập — mobile', 'Không có nút Đăng ký trên trang Đăng nhập.'],
+              ['Đăng nhập MXH', 'Email trùng tài khoản chưa xác thực (hoặc qua Facebook): về trang [[Đăng nhập|Sign in]] mà không có thông báo.'],
+              ['Đăng nhập — mobile', 'Không có nút [[Đăng ký tài khoản ứng viên|Create a jobseeker account]] trên trang [[Đăng nhập|Sign in]].'],
               ['Đăng nhập — đã đăng nhập', 'Mở lại `/auth/sign-in` hay `/auth/sign-up` khi đang đăng nhập vẫn hiện form (không tự chuyển đi).'],
-              ['Hộp đăng nhập nổi', '**Ghi nhớ email** không có tác dụng.'],
+              ['Hộp đăng nhập nổi', '[[Ghi nhớ email|Remember my email]] không có tác dụng.'],
               ['Quên mật khẩu', 'Không hiển thị “đã gửi mã tới 090•••”.'],
               ['Link đặt lại cũ', 'Không kiểm tra chữ hoa; không có ô xác nhận; không đăng xuất các thiết bị khác.'],
               ['Tìm ID', 'Chưa có trang.'],
