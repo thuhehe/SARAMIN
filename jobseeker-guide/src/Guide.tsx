@@ -620,10 +620,19 @@ function Block({ b }: { b: GuideBlock }) {
   )
 }
 
-/* **bold** and `code` only. A full markdown renderer would invite the handbook to
-   become prose, and the point of these blocks is that they stay short. */
+/* Inline markup, deliberately small:
+     **bold**                 emphasis
+     `code`                   a path, a key, a value
+     [[Tên VI|English name]]  a name AS IT READS ON SCREEN — menu, screen, tab,
+                              button, field. Both languages, so a reader can find
+                              it on the site whichever language it is set to.
+   A full markdown renderer would invite the handbook to become prose. */
 function md(s: string, onDark = false) {
-  return s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+  return s.split(/(\[\[[^\]]+\]\]|\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+    if (part.startsWith('[[') && part.endsWith(']]')) {
+      const [vi, en] = part.slice(2, -2).split('|')
+      return <UiName key={i} vi={vi} en={en} onDark={onDark} />
+    }
     if (part.startsWith('**') && part.endsWith('**')) {
       return <b key={i} className={cn('font-semibold', onDark ? 'text-white' : 'text-ink')}>{part.slice(2, -2)}</b>
     }
@@ -632,6 +641,28 @@ function md(s: string, onDark = false) {
     }
     return part
   })
+}
+
+/* An on-screen name: the Vietnamese label in bold, the English one beside it,
+   set in a faint chip so it reads as "a thing on the screen" rather than prose. */
+function UiName({ vi, en, onDark }: { vi: string; en?: string; onDark?: boolean }) {
+  const showEn = en && en.trim() && en.trim() !== vi.trim()
+  return (
+    <span
+      className={cn(
+        'whitespace-normal rounded px-1 py-px [box-decoration-break:clone]',
+        onDark ? 'bg-white/15' : 'bg-brand-soft/70',
+      )}
+    >
+      <b className={cn('font-semibold', onDark ? 'text-white' : 'text-ink')}>{vi}</b>
+      {showEn && (
+        <span lang="en" className={cn('text-[0.92em] font-normal', onDark ? 'text-white/75' : 'text-muted')}>
+          {' / '}
+          {en}
+        </span>
+      )}
+    </span>
+  )
 }
 
 function matches(s: GuideSection, q: string) {
