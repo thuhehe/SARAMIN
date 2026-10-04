@@ -456,12 +456,16 @@ function DocSwitcher({ compact }: { compact?: boolean }) {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex items-center gap-1.5 rounded-md font-bold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-amber-300',
+          'flex items-center gap-2 rounded-md font-bold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-amber-300',
           compact ? 'px-1.5 py-1 text-[13px]' : '-mx-1 px-1 py-0.5 text-[14px]',
         )}
       >
         {CURRENT_DOC}
-        <span className={cn('text-[10px] text-white/60 transition-transform', open && 'rotate-180')}>▾</span>
+        <span className="grid h-5 w-5 place-items-center rounded bg-white/10">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className={cn('h-4 w-4 fill-none stroke-current text-white/85 transition-transform', open && 'rotate-180')} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </span>
       </button>
       {open && (
         <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-[216px] max-w-full overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">
