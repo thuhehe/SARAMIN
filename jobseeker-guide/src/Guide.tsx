@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { GROUPS, HANDBOOK, siteUrl } from '@/data/handbook'
+import { CURRENT_DOC, DOCS, GROUPS, HANDBOOK, siteUrl } from '@/data/handbook'
 import type { GuideBlock, GuideSection } from '@/data/types'
 
 /* ── CẨM NANG JOBSEEKER ───────────────────────────────────────────────────────
@@ -68,11 +68,11 @@ export function Guide() {
     <div className="mx-auto flex max-w-[1240px] gap-6 px-4 py-4 pb-16 sm:px-6 print:block print:px-0">
       {/* ── rail ───────────────────────────────────────────────────────────── */}
       <aside className="scroll-thin sticky top-4 hidden h-[calc(100vh-2rem)] w-[240px] shrink-0 overflow-y-auto rounded-2xl bg-navy p-3 text-white/90 lg:block print:hidden">
-        <div className="px-2 pb-3 pt-1">
-          <p className="flex items-center gap-2 text-[14px] font-bold text-white">
-            <span className="grid h-6 w-6 place-items-center rounded bg-amber-400 text-[12px] font-black text-navy">S</span>
-            Saramin Jobseeker
-          </p>
+        <div className="relative px-2 pb-3 pt-1">
+          <div className="flex items-center gap-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-amber-400 text-[12px] font-black text-navy">S</span>
+            <DocSwitcher />
+          </div>
           <p className="mt-0.5 pl-8 text-[11px] text-white/55">{dev ? 'Bản dành cho Developer' : 'Bản dành cho người dùng & QA'}</p>
         </div>
 
@@ -111,8 +111,9 @@ export function Guide() {
       {/* ── page ───────────────────────────────────────────────────────────── */}
       <div className="min-w-0 flex-1">
         {/* narrow screens: the rail collapses to a picker */}
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-navy p-2 lg:hidden print:hidden">
+        <div className="relative mb-4 flex items-center gap-2 rounded-xl bg-navy p-2 lg:hidden print:hidden">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded bg-amber-400 text-[12px] font-black text-navy">S</span>
+          <DocSwitcher compact />
           <select
             value={active}
             onChange={(e) => go(e.target.value)}
@@ -205,6 +206,72 @@ export function Guide() {
           Build đổi thì trang này là thứ cũ đi trước.
         </p>
       </div>
+    </div>
+  )
+}
+
+/* The two handbooks are one family: the admin console's and this one. The
+   switcher names the document, so a reader always knows which site they are on
+   and can cross to the other in one click. */
+function DocSwitcher({ compact }: { compact?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="min-w-0">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'flex items-center gap-1.5 rounded-md font-bold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-amber-300',
+          compact ? 'px-1.5 py-1 text-[13px]' : '-mx-1 px-1 py-0.5 text-[14px]',
+        )}
+      >
+        {CURRENT_DOC}
+        <span className={cn('text-[10px] text-white/60 transition-transform', open && 'rotate-180')}>▾</span>
+      </button>
+      {open && (
+        <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-[216px] max-w-full overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">
+          {DOCS.map((d) => {
+            const current = d.label === CURRENT_DOC
+            return (
+              <a
+                key={d.label}
+                role="menuitem"
+                href={current ? undefined : d.href}
+                aria-current={current ? 'page' : undefined}
+                onClick={current ? () => setOpen(false) : undefined}
+                className={cn(
+                  'flex items-start gap-2 px-3 py-2 text-left',
+                  current ? 'cursor-default bg-brand-soft' : 'hover:bg-canvas',
+                )}
+              >
+                <span className={cn('mt-0.5 w-3 shrink-0 text-[11px] font-bold', current ? 'text-brand' : 'text-transparent')}>✓</span>
+                <span className="min-w-0">
+                  <span className={cn('block text-[13px] font-semibold', current ? 'text-brand' : 'text-ink')}>{d.label}</span>
+                  <span className="block text-[11px] text-muted">{d.note}</span>
+                </span>
+              </a>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

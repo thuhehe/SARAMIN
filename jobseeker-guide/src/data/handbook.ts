@@ -14,6 +14,13 @@ import type { Handbook } from './types'
 export const SITE_BASE = 'https://dev.svn.topdev.asia'
 export const siteUrl = (path: string) => `${SITE_BASE}${path}`
 
+/** The handbook family, as the switcher at the top of the rail lists it. */
+export const DOCS = [
+  { label: 'Admin console', note: 'Cẩm nang trang quản trị', href: 'https://saramin-admin-guide.vercel.app/' },
+  { label: 'Jobseeker', note: 'Cẩm nang trang người tìm việc', href: '/' },
+] as const
+export const CURRENT_DOC = 'Jobseeker'
+
 export const GROUPS = ['Bắt đầu', 'Đăng ký', 'Đăng nhập', 'Quên mật khẩu', 'Tra cứu'] as const
 
 export const HANDBOOK: Handbook = {
