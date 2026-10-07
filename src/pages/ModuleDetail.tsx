@@ -5,12 +5,14 @@ import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
+import { EmbeddedCtx } from '@/pages/admin/ctx'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { GUIDES, guidePath } from '@/data/guides'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CompanyVerificationFlow } from '@/components/CompanyVerificationFlow'
 import { SharedQuotaFlow } from '@/components/SharedQuotaFlow'
+import { CallLinkFlow } from '@/components/CallLinkFlow'
 import { JobCreateFlow } from '@/components/JobCreateFlow'
 import { CvStatusFlow } from '@/components/CvStatusFlow'
 import { CvLanguageLayers } from '@/components/CvLanguageLayers'
@@ -319,6 +321,7 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
       {r.diagram === 'company-verification' && <CompanyVerificationFlow />}
       {r.diagram === 'job-create' && <JobCreateFlow />}
       {r.diagram === 'shared-quota' && <SharedQuotaFlow />}
+      {r.diagram === 'call-link' && <CallLinkFlow />}
       {r.table && <ReqTableView t={r.table} dense={dense} />}
       {r.items && <ReqBullets items={r.items} dense={dense} />}
       {r.warn && (
@@ -838,7 +841,9 @@ function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolv
       )}
       <div className="max-h-[640px] overflow-y-auto scroll-thin">
         <Suspense fallback={<div className="flex min-h-[240px] items-center justify-center text-[12px] text-faint">Loading…</div>}>
-          <s.Comp />
+          <EmbeddedCtx.Provider value>
+            <s.Comp />
+          </EmbeddedCtx.Provider>
         </Suspense>
       </div>
     </SpecBlock>

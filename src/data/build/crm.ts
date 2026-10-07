@@ -1371,6 +1371,280 @@ export const crm: BuildModule = {
         ],
       },
     },
+    // 0c · Calls — link every Callio call to a company ──────────────────────────
+    {
+      name: 'Calls — link every Callio call to a company',
+      /* Slug pinned at birth (2026-10-07) — the name will be argued about. */
+      slug: 'call-link',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'Client request 07/10/2026 — a call is linked to its company (and contact person) at the moment it is made, so it lands on the company as a sales activity right away and the Call log reads Company + Contact person without an admin mapping each call. PROPOSAL: builds on the matching the build already does (by number) and adds the two links only a person can make — the rep who clicks Call, and the rep who just hung up.',
+      mockup: 'admin-call-link',
+      mockups: ['admin-call-logs'],
+      detail: {
+        keyPoints: [
+          {
+            vi: 'Callio không cho CRM quay số (không có API gọi, không có tham số auto-dial). Nên liên kết được tạo ở chính cú click: nút **Call** trên công ty copy số, mở Callio và ghi lại “đang gọi ai, của công ty nào” — đúng thao tác sales vẫn làm, không thêm bước nào.',
+            en: 'Callio cannot be dialled from the CRM (no dial API, no auto-dial parameter). So the link is made at the click itself: **Call** on the company copies the number, opens Callio and records “who is being called, for which company” — the step reps already take, with nothing added.',
+          },
+          {
+            vi: 'Khi Callio báo cuộc gọi (webhook call-end, vài giây sau khi cúp máy), hệ thống ghép theo thứ tự: ① cuộc gọi đang chờ từ CRM — cùng sales, cùng số, trong 30 phút; ② số điện thoại — đúng một công ty giữ số (đã có); ③ không ghép được → hỏi chính sales vừa gọi.',
+            en: 'When Callio reports the call (call-end webhook, seconds after hang-up) it is matched in this order: ① a pending CRM call — same rep, same number, within 30 minutes; ② the number — exactly one company holds it (built today); ③ neither → ask the rep who made it.',
+          },
+          {
+            vi: 'Cuộc gọi gọi thẳng trong Callio mà không ghép được hiện ngay cho CHÍNH sales đã gọi (toast “You just called…” + khay **Calls to link**): chọn công ty + người liên hệ, lưu số vào contact để lần sau tự ghép. Admin chỉ còn những cuộc không ai nhận.',
+            en: 'A call dialled straight in Callio that cannot be matched goes straight to the rep who made it (toast “You just called…” + the **Calls to link** tray): pick the company and contact, save the number on the contact so the next call links itself. Admins keep only what nobody claims.',
+          },
+          {
+            vi: 'Mỗi cuộc gọi có người nghe = MỘT activity Sales trên công ty: ghi chú của sales + dữ kiện Callio (thời lượng, ghi âm) — không bao giờ là transcript thô. Cuộc gọi không ai nghe là “attempt”: có trên call log của công ty nhưng không reset Idle, không tính KPI.',
+            en: 'Every answered call = ONE Sales activity on the company: the rep’s note plus Callio’s facts (duration, recording) — never the raw transcript. An unanswered call is an “attempt”: on the company’s call log, but it neither resets Idle nor counts as a KPI call.',
+          },
+          {
+            vi: 'Call logs có Company · Contact person · **Linked by** (CRM call · Number · Rep · Admin · Waiting) — biết mỗi cuộc gọi được gán bằng cách nào, và đội có thực sự gọi từ CRM hay không.',
+            en: 'Call logs read Company · Contact person · **Linked by** (CRM call · Number · Rep · Admin · Waiting) — how each call got placed, and whether the team really starts its calls from the CRM.',
+          },
+        ],
+        description:
+          'Sales call customers through Callio, a separate system. Today a rep copies a number from the company record, pastes it into Callio, and the call comes back later through the sync — placed on a company only when exactly one company holds that number. On dev that leaves 11,709 of 25,617 calls (46%) waiting for an admin to assign, because the numbers reps dial are mostly on no CRM record.\n\nThis feature links a call to its company at the moment it is made. A call started from the company record carries its company and contact with it; a call dialled straight in Callio is linked by the rep who made it, seconds after hanging up. Either way it lands on the company as a sales activity, and the Call log shows the company and the contact person.',
+        userStory:
+          'As a sales rep, I want the call I make to land on the right company and contact without anyone mapping it later, so that the account’s history and my activity are complete the moment I hang up.',
+        requirements: [
+          {
+            label: 'Where we are — what the build does today, and why the queue is half the log',
+            text: 'Checked against saramin-vn-admin `docs/features/calls.md` and svn-be `CallProjectionService` on 07/10/2026. Most of the machinery exists; what is missing is the one fact a phone number cannot carry — which company the rep MEANT.',
+            table: {
+              cols: ['Piece', 'Built today', 'In this proposal'],
+              rows: [
+                ['Call button on the company', 'Opens the contact’s Callio inbox (when the contact is linked to a Callio customer) or `client.callio.vn`. Records nothing', '**Changed** — the same click also records a CRM call'],
+                ['Sync', 'Pull every 10 min + Callio webhooks `call-end` / `missed-call` (stored in 1–2 s, drained on a short interval)', 'Kept — the webhook is what makes step ① feel instant'],
+                ['Match by number', 'contact phone · company phone · primary-contact phone, national format. One company → on it (+ the contact when exactly one holds it) · several → **Several companies** · none → **No company** · no admin on the extension → **No rep**', 'Kept — it becomes step ②'],
+                ['Needs assigning', 'Admin queue for those three · Assign = company + contact (or a new one, or company only) + save the number + the other waiting calls from it · Archive a call or a whole number · re-match when a number appears in the CRM', 'Kept for admins; reps get their own slice (Calls to link)'],
+                ['Company activity feed', 'Synced calls are **not** shown — V293 stopped writing them and the panel filters CALL_SYNC; they only move the account’s Idle clock', '**Changed** — one row per answered call'],
+                ['Call logs', 'Company · Contact person · State columns exist', 'Kept + **Linked by**, reordered, **My calls to link**'],
+              ],
+            },
+            items: [
+              'Dev, 07/10/2026: 25,617 calls, 11,709 in Needs assigning; every answered call of the morning reads “No company”, and most extensions read “ext … — not bound”. For most calls neither the company nor the rep is known — that is the gap this feature closes.',
+            ],
+          },
+          {
+            label: 'The flow — four ways a call gets onto a company, tried in this order',
+            text: 'The order is the order of certainty: a rep who clicked Call for a named person beats a phone-number lookup, which beats a human deciding later. A CRM call therefore also settles a shared number — the case the number lookup can only queue.',
+            diagram: 'call-link',
+            table: {
+              cols: ['#', 'How the call starts', 'What links it', 'Who acts', 'Linked by'],
+              rows: [
+                ['①', 'Rep clicks **Call** on the company (header · Log an activity → Call · phone icon on a contact) → **Copy & open Callio**', 'The CRM call recorded at the click — rep · company · contact · number · time. The Callio call is paired with it when it arrives', 'Nobody — automatic, seconds after hang-up', '**CRM call**'],
+                ['②', 'Rep dials in Callio directly, or the customer rings in', 'The number — exactly one company holds it (built today)', 'Nobody — automatic', '**Number**'],
+                ['③', 'As ②, but no company — or several — hold the number', 'The rep who made (or took) the call picks the company and contact in **Calls to link**', 'The rep, right after the call', '**Rep**'],
+                ['④', 'Still waiting — the rep skipped it, or no rep is bound to the extension', 'An admin assigns it from **Needs assigning** (built today)', 'Admin', '**Admin**'],
+              ],
+            },
+            items: [
+              'Every path ends in the same place: company + contact on the call row, one activity on the company, and the number saved on the contact when one was named — so the next call from it links at step ②.',
+            ],
+          },
+          {
+            label: 'The Call card on the company record — five states',
+            text: 'Company record → Overview → **Log an activity → Call**. No longer a free-text note form: the note is one part of it, the link is the point. The header **Call** button opens this card; the phone icon on a contact row opens it straight in Calling for that person — that click IS Copy & open Callio.',
+            table: {
+              cols: ['State', 'Reached when', 'What the rep sees', 'Actions', 'Written'],
+              rows: [
+                ['**Pick**', 'Call clicked on the company', '“Who are you calling?” — every dialable number on the account: contacts first (name · title · number · “opens their Callio inbox” or “opens Callio — paste the number”), then the company lines; a box for another number', 'Copy & open Callio · Cancel', 'Nothing yet'],
+                ['**Calling**', 'Copy & open Callio clicked', 'Amber strip “Calling {name} · {number} — waiting for Callio”, “{number} copied — paste it in Callio and press Call” · Open Callio again · Copy again; Result chips (optional) and Note', 'Save note · Cancel call', 'A pending CRM call + a feed row “Calling … waiting for Callio”'],
+                ['**Found**', 'The Callio call is paired with it, answered', 'Green strip “✓ Callio call found · Outbound · Answered · 2m 14s · ext …” + ▶ Play recording · “Linked by your Call click — same number, 1 minute later”', 'Save', 'Call row: company + contact, Linked by = CRM call. Activity: Callio’s facts + the rep’s note'],
+                ['**No answer**', 'Callio reports it missed / busy / failed / abandoned', 'Grey strip “Callio: no answer (Busy · 0:00)” — on the call log for this company, not contact', 'Call again · Close', 'Call row: company + contact. Feed: an **attempt** row (no Idle reset, no KPI)'],
+                ['**Not found**', '30 minutes pass with no matching Callio call', 'Rose strip “No Callio call to {number} within 30 minutes — a call from a mobile or Zalo leaves no Callio record”', 'Keep as manual note · Discard', 'Keep → a manual Call activity, as today (counts as contact, nothing to play). Discard → nothing'],
+              ],
+            },
+            items: [
+              'The note can be written while the call is still waiting for Callio; Callio’s facts join the SAME activity when the call arrives — one row, never two.',
+              'Result (optional, one at most): Interested · Call back later · Not interested · Wrong number.',
+              'Another number: typed in the box with the contact it belongs to; when Callio confirms it was dialled, the link offers to save it on that contact.',
+            ],
+          },
+          {
+            label: 'Calls to link — the rep links their own call, right after hanging up',
+            text: 'The rep’s own ANSWERED calls that steps ① and ② could not place. It opens by itself as a toast when the call-end webhook brings one in — “You just called {number} ({duration}) — no company has this number. Which company was it?” — because the rep is the only person who knows who was on the line, and the best moment to ask is the minute after they hung up, not an admin tomorrow.',
+            table: {
+              cols: ['Part', 'Behaviour'],
+              rows: [
+                ['Toast', 'Bottom-right of the console, on any page. **Link now** opens the tray on that call · **Later** folds it to a pill “N calls to link”'],
+                ['Tray', 'The rep’s waiting calls, newest first: number · direction · duration · time · reason (No company / Several companies). **Link** expands the form inline'],
+                ['Company', 'Search by name or MST. Suggested first: for a shared number, the companies holding it; otherwise the companies the rep opened just before the call (they usually look the company up before dialling)'],
+                ['Contact person', 'The company’s contacts · **+ New contact with this number** (the build’s contact form, prefilled) · **Company only**'],
+                ['Save the number', 'On by default when a contact is picked — “Save {number} on {contact} — later calls from it link on their own”. Not offered for Company only'],
+                ['Other calls', '“Also link the N other waiting calls from this number” — on by default (the build’s rule for Assign)'],
+                ['Not a customer', 'Archives the call — spam, wrong number, personal (the build’s Archive, opened to the rep for their own calls)'],
+                ['On the page too', 'Call logs → **My calls to link** is the same set, for a rep who dismissed the toast'],
+              ],
+            },
+            items: [
+              'Only answered calls ask to be linked — an unanswered call writes no activity, so filing it would be work with nothing at the end of it.',
+              'The rep credited never changes: linking files the call, it does not move the KPI — the build’s rule for Assign.',
+            ],
+          },
+          {
+            label: 'Pairing a Callio call with a CRM call — the rule',
+            table: {
+              cols: ['Check', 'Rule'],
+              rows: [
+                ['Number', 'The national form of the Callio call’s customer number equals the CRM call’s number (`vn_phone_national` on both sides — 0908…, +84908… and 84908… are one number)'],
+                ['Rep', 'The Callio call’s rep (resolved from the extension or the agent email) is the user who clicked. When the extension is **not bound** yet, the clicking user is taken as the rep — and the binding is suggested to an admin'],
+                ['Time', 'The Callio call started between 2 minutes before and 30 minutes after the click (the window is a setting)'],
+                ['Direction', 'Outbound only. An inbound call (the customer ringing back) goes to step ② / ③'],
+                ['One to one', 'A CRM call pairs with at most one Callio call — the first that qualifies. Dialling the same number again is a new call (the card offers Call again)'],
+                ['Several pending', 'The rep clicked two companies that share a number → the most recent click wins'],
+                ['Expiry', 'No pairing within the window → the card shows Not found and the CRM call closes as Expired'],
+              ],
+            },
+          },
+          {
+            label: 'Linked by — five values',
+            table: {
+              cols: ['Value', 'Means', 'Set by'],
+              rows: [
+                ['**CRM call**', 'Paired with a call started from the company record', 'System, at the pairing'],
+                ['**Number**', 'Exactly one company holds the number', 'System (built today)'],
+                ['**Rep**', 'Linked by the rep who made the call — Calls to link or My calls to link', 'The rep'],
+                ['**Admin**', 'Assigned from Needs assigning', 'An admin'],
+                ['**Waiting**', 'Answered, and none of the above has happened yet', '—'],
+              ],
+            },
+            items: [
+              'Stored on the call row with who and when, never recomputed — a number added to the CRM later must not rewrite how an old call was filed.',
+              'The share of each value over a period is the adoption number: a team whose calls are mostly Rep or Admin is dialling from Callio, not from the CRM. It sits on top of the Call log.',
+            ],
+          },
+          {
+            label: 'The company activity feed — one row per call',
+            table: {
+              cols: ['Call', 'Feed row', 'Resets Idle', 'KPI call'],
+              rows: [
+                ['Answered, on the company (any Linked by)', '**Call · {contact}** — the rep’s note + Result · direction · Answered · duration · ▶ recording · Linked by', 'Yes', 'As today — answered ≥ 5 s, credited to the rep'],
+                ['Answered, still Waiting', 'Nothing on any company yet', '—', 'Yes — the KPI counts by rep, not by company'],
+                ['Unanswered (missed · busy · failed · abandoned)', '**Call attempt · {contact}** — greyed, “not contact”', 'No', 'No'],
+                ['CRM call that Callio never reported, kept by the rep', '**Call · {contact} (manual)** — the note, nothing to play', 'Yes', 'No'],
+              ],
+            },
+            warn: 'BUILD CHANGE TO CONFIRM: since V293 a synced call writes no company_activity row and the panel hides CALL_SYNC rows — the reason recorded was a raw Callio transcript showing under a rep’s name as if they had typed it. This brings the call back as ONE row whose text is the rep’s own note (empty when they wrote none) plus Callio’s facts — never the transcript. That is what “ghi ngay cho sales activity” asks for; the client confirms before build.',
+          },
+          {
+            label: 'Call logs — what changes on the page',
+            table: {
+              cols: ['Change', 'Why'],
+              rows: [
+                ['**Linked by** column + the summary line “Today · N answered calls · CRM call · Number · Rep · Admin · Waiting”', 'How each call got onto its company, and the team’s adoption at a glance'],
+                ['Columns reordered: Phone · Company · Contact person · Linked by · Sales owner · Start time · Call type · Status · Duration · Record · Call ID', 'Who was called reads first; the vendor’s call ID is a support key, so last'],
+                ['**My calls to link** tab (rep) beside Needs assigning (admin)', 'The rep’s own waiting calls — the same set as the tray'],
+                ['**Link** inside the Company cell of a waiting row', 'The action sits where the gap is'],
+              ],
+            },
+            items: ['Needs assigning, Archived, the column filters, Export Excel and Sync from Callio stay as built.'],
+          },
+          {
+            label: 'Extension binding — learnt from CRM calls',
+            items: [
+              'Unbound extensions: most extensions on dev show “not bound”, so their calls credit nobody and land in No rep. A CRM call tells us who was dialling — when an unbound extension’s call pairs with a CRM call, the pairing still happens (the clicking user is the rep), and the console suggests the binding to an admin — “ext 10005 placed 5 of 5 CRM calls by Nguyễn Thị Lan — bind?”. It never binds by itself.',
+              'Binding stays an admin act (the build’s Bind extension dialog); the suggestion is a shortcut to it.',
+            ],
+          },
+        ],
+        uiFields: [
+          {
+            group: 'Company record → Overview → Log an activity → Call (the Call card)',
+            items: [
+              { name: 'targets', type: 'list', notes: 'every dialable number on the account — contacts (name · title · number · Callio-inbox hint) then company lines; the same list as the build’s “Call this company” dialog' },
+              { name: 'Copy & open Callio', type: 'button', notes: 'per target: copies the number, opens Callio (the contact’s inbox when linked, else client.callio.vn) in a new tab, creates the CRM call' },
+              { name: 'otherNumber · forContact', type: 'string · select', notes: 'a number the record does not hold yet, and the contact it belongs to (or Company only)' },
+              { name: 'result', type: 'enum?', notes: 'Interested · Call back later · Not interested · Wrong number — optional' },
+              { name: 'note', type: 'text', notes: 'written during or after the call; joins the same activity as Callio’s facts' },
+              { name: 'state strip', type: 'derived', notes: 'Calling (amber) · Found (green) · No answer (grey) · Not found (rose)' },
+            ],
+          },
+          {
+            group: 'Company record — entry points',
+            items: [
+              { name: 'Call', type: 'header button', notes: 'opens the Call card on Overview (not on a Free-data or archived record)' },
+              { name: 'phone icon', type: 'per contact row (Contacts tab)', notes: 'opens the Call card already in Calling for that contact' },
+            ],
+          },
+          {
+            group: 'Calls to link (console-wide, the signed-in rep)',
+            items: [
+              { name: 'toast', type: 'popup', notes: '“You just called {number} ({duration}) — no company has this number” · Link now · Later' },
+              { name: 'tray', type: 'panel / pill', notes: 'the rep’s answered waiting calls; Link expands the form' },
+              { name: 'company · contact · saveNumber · applyToNumber', type: 'form', notes: 'the build’s Assign fields; suggestions: companies holding a shared number, else companies opened just before the call' },
+              { name: 'Not a customer', type: 'link', notes: 'archives the call' },
+            ],
+          },
+          {
+            group: 'CRM → Call logs',
+            items: [
+              { name: 'Linked by', type: 'column', notes: 'CRM call · Number · Rep · Admin · Waiting, with a hint per value' },
+              { name: 'summary line', type: 'derived', notes: 'today’s answered calls split by Linked by' },
+              { name: 'My calls to link', type: 'tab', notes: 'answered, Waiting, rep = me' },
+              { name: 'Link', type: 'button in the Company cell', notes: 'on a waiting row the signed-in user may link' },
+            ],
+          },
+        ],
+        rules: [
+          'Callio places every call; the CRM never dials. Copy & open Callio is a hand-off, and `tel:` stays off (it routes through the user’s phone and leaves Callio with no record — the build’s rule).',
+          'Matching order: pending CRM call → number → the rep → an admin. The first that answers wins; Linked by records which.',
+          'Only answered calls write an activity or ask to be linked. Unanswered calls still get the company and contact on the call row (the build keeps them on SKIPPED rows).',
+          'One answered call = one activity, whatever path linked it.',
+          'Linking never changes the rep credited.',
+          'A rep links only their own calls; an admin links any.',
+        ],
+        states: [
+          'CRM call: Pending → Matched · Expired · Discarded',
+          'Call row: Waiting → CRM call · Number · Rep · Admin (stored with who and when)',
+          'Call card: Pick → Calling → Found · No answer · Not found',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'crm_call.id', type: 'uuid', required: true },
+            { name: 'adminUserId', type: 'ref → admin_user', required: true, notes: 'the signed-in user who clicked — never sent by the client' },
+            { name: 'companyId / contactId', type: 'ref → company / ref → contact?', required: true, notes: 'contact null for a company line or Company only' },
+            { name: 'nationalNumber', type: 'string', required: true, notes: '`vn_phone_national` of the number clicked' },
+            { name: 'clickedAt / state', type: 'timestamp / enum', required: true, notes: 'PENDING · MATCHED · EXPIRED · DISCARDED' },
+            { name: 'callLogId / activityId', type: 'ref → call_log? / ref → company_activity', notes: 'the activity is created at the click (Calling) and enriched at the pairing' },
+            { name: 'call_log.linkSource · linkedBy · linkedAt', type: 'enum? · ref? · timestamp?', notes: 'CRM_CALL · PHONE · REP · ADMIN — null while Waiting. Stored, never recomputed' },
+            { name: 'company_activity.callLogId', type: 'ref → call_log?', notes: 'one activity per call; duration / outcome / recording are read through it, never copied' },
+          ],
+          endpoints: [
+            'POST /admin/companies/{id}/crm-calls { contactId?, number } → { crmCallId, activityId } — Copy & open Callio; the client opens Callio after it returns',
+            'PATCH /admin/crm-calls/{id} { note?, result? } · POST /admin/crm-calls/{id}/discard · POST /admin/crm-calls/{id}/keep-manual',
+            'GET /admin/crm-calls/{id} — the card waits on MATCHED / EXPIRED (poll or push)',
+            'CallProjectionService.resolve — BEFORE the number lookup, find a PENDING crm_call by (nationalNumber, actor or clicking user, window) → company + contact from it, linkSource = CRM_CALL, crm_call MATCHED, attach the activity',
+            'GET /admin/telephony/calls?mine=waiting — the rep’s Calls to link (answered, UNMATCHED / AMBIGUOUS, actor = me)',
+            'POST /admin/telephony/calls/{id}/link { companyId, contactId?, saveNumber, applyToNumber } — the build’s assign, opened to the call’s own rep (new grant `telephony_call:link_own`); linkSource = REP or ADMIN by who acts',
+            'Notification — an answered call landing UNMATCHED / AMBIGUOUS with a resolved rep → “You just called …” to that rep (the console toast)',
+            'JOB expire-crm-calls — every minute: PENDING older than the window → EXPIRED',
+          ],
+          integrations: ['Callio — webhooks call-end / missed-call (no dial API)', 'Company record — Call card, header Call, contact phone icon', 'CRM → Call logs', 'Notifications (the toast)', 'Ranking — unchanged (counts by rep)'],
+          notes: 'The pairing must run on the webhook drain, not only on the 10-minute pull, or “seconds after hang-up” is false — the lesson the build already recorded on CallioWebhookController.',
+        },
+        acceptance: [
+          'Copy & open Callio copies the number, opens Callio (the contact’s inbox when linked) and puts a “Calling … waiting for Callio” row on the company’s feed at once.',
+          'A Callio call to that number by the same rep within 30 minutes is filed on that company and contact with Linked by = CRM call — even when the number is on no record or on several companies — and the card turns Found with duration and recording.',
+          'A missed or busy call pairs the same way, shows No answer, and writes an attempt row that changes neither Idle nor the KPI.',
+          'No Callio call within 30 minutes → Not found; Keep writes a manual call activity, Discard writes nothing.',
+          'A call dialled straight in Callio to a number no company holds pops “You just called …” for the rep who made it within seconds; linking it files the call with Linked by = Rep, saves the number on the contact when chosen, and the next call from that number links by Number.',
+          'Call logs show Company, Contact person and Linked by on every call; My calls to link lists exactly the signed-in rep’s answered waiting calls; Needs assigning still lists all of them for an admin.',
+          'One answered call never produces two activities: the note written during the call and Callio’s facts are the same row.',
+        ],
+        openQuestions: [
+          'Feed: bring answered calls back onto the company history (this proposal) — the build removed them in V293. Client to confirm.',
+          'May a rep link their own waiting calls (new grant), or does linking stay admin-only and the toast only notify?',
+          'Window: 30 minutes after the click — right for how reps work? Shorter = fewer wrong pairings, longer = fewer Not found.',
+          'Unanswered attempts: show them on the feed (greyed), or on the call log only?',
+          'True click-to-dial: Callio’s WebRTC SDK would let the CRM place the call itself, but its auth puts the SIP password in the browser — a security decision for Saramin, out of scope here.',
+          'Free data: the Call button is not offered on a pool record (no activity may be logged there), so calls to pool companies keep linking by number only. Enough?',
+        ],
+      },
+    },
     {
       name: 'Free data',
       /* Slug PINNED — see the note on Invoices above. The name is still shorter

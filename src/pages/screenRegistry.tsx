@@ -32,6 +32,7 @@ const NAV_OWNER: Record<string, string> = {
   'admin-job-create': 'admin-job-list', // reached from "+ New job"
   'admin-credits': 'admin-company-list', // a per-company balance — lives on the company record
   'admin-shared-quota': 'admin-company-list', // the company record, Products & billing tab
+  'admin-call-link': 'admin-company-list', // the company record, Overview → Log an activity → Call
 }
 
 /** Every admin screen a spec page can show, and the nav page that opens it. Anything
@@ -40,6 +41,8 @@ const NAV_OWNER: Record<string, string> = {
 const ADMIN_NAV_PAGES = new Set([
   'admin-job-list', 'admin-job-applicants', 'admin-resumes', 'admin-cv-check',
   'admin-company-list', 'admin-company-pipeline', 'admin-quotes', 'admin-purchase-orders', 'admin-signups', 'admin-invoices',
+  // CRM → Call logs (the build's /call-center/logs, under CRM in its sidebar)
+  'admin-call-logs',
   // The free company pool and its approval queue. Directory is load-bearing today
   // — a CRM feature renders it via the crm-company-directory alias, so leaving it
   // out suppressed that page's console link. Claim queue has no feature pointing at

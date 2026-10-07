@@ -19,6 +19,7 @@ import { ME } from '@/pages/admin/data/salesOrg'
 import { MD_DOMAINS } from '@/pages/admin/data/system'
 import { vnd } from '@/pages/admin/lib/fmt'
 import { CompanyActivities } from '@/pages/admin/screens/companies/activity'
+import type { CallRequest } from '@/pages/admin/screens/companies/activity'
 import { AffiliatedCompanies } from '@/pages/admin/screens/companies/affiliates'
 import { AddContactModal, ContactDetail } from '@/pages/admin/screens/companies/contacts'
 import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
@@ -42,7 +43,7 @@ import { Table } from '@/pages/admin/ui/table'
    the first time a field is added. What the pool variant does is SUBTRACT — one tab,
    no customer pills, no writes — because a company nobody owns has no pipeline, no
    quota, no contacts and no activity to show. */
-export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, initialTab }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void; /** open on this tab — for a spec preview that has to land ON the thing it shows */ initialTab?: CoTab }) {
+export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, initialTab, initialCall }: { c: Company; onBack: () => void; onOpen?: (x: Company) => void; viewer?: string; pool?: DirRow; onClaim?: () => void; /** open on this tab — for a spec preview that has to land ON the thing it shows */ initialTab?: CoTab; /** open the Call card on load — the call-link preview lands on it */ initialCall?: boolean }) {
   const isPool = Boolean(pool)
   const decidedNone = (co: string) => !CLAIM_REQS.some((r) => r.co === co)
   /* Stored on new records; derived from the buyer classification on older ones. */
@@ -66,6 +67,10 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
     return (CO_TABS.find((t) => t.toLowerCase() === want?.toLowerCase()) ?? initialTab ?? 'Overview') as CoTab
   })
   const [inviting, setInviting] = useState(false)
+  /* One way to start a call on this record, whatever the entry point: the header Call
+     button and the phone icon on a contact row both open the Call card on Overview. */
+  const [callReq, setCallReq] = useState<CallRequest | undefined>(initialCall ? { n: 1 } : undefined)
+  const startCall = (prefer?: string) => { setTab('Overview'); setCallReq((r) => ({ n: (r?.n ?? 0) + 1, prefer })) }
   const [contactOpen, setContactOpen] = useState<CoContact | null>(null)
   /* One Edit toggle for the whole Basic-info card, rather than a pencil per row:
      14 inline editors is 14 chances to leave one half-saved. */
@@ -290,6 +295,14 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
         <div className="flex gap-2">
           {/* Edit and Create-quotation are WRITES — withdrawn on someone else's
               record. "View on jobseeker" is a read, so it stays. */}
+          {/* CALL — opens the Call card (Overview → Log an activity). Not on a pool or an
+              archived record: neither may carry a logged activity. */}
+          {!isPool && !archived && (
+            <button onClick={() => startCall()} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink/80 hover:border-brand hover:text-brand">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" /></svg>
+              Call
+            </button>
+          )}
           {c.hasPage && <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-brand hover:border-brand">View on jobseeker ↗</button>}
           {/* Tạo báo giá — unconditional, for EVERY company. A quotation is the one
               document that is always legitimate to raise: a first quote for a
@@ -861,7 +874,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
               </p>
             </div>
           ) : (
-            <CompanyActivities c={c} />
+            <CompanyActivities c={c} callRequest={callReq} />
           )}
         </div>
       )}
@@ -967,7 +980,16 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                 </button>,
                 <span className="truncate text-[11.5px] text-muted">{p.title}</span>,
                 <span className="truncate font-mono text-[11px] text-muted" title={p.email}>{p.email}</span>,
-                <span className="truncate font-mono text-[11px] text-muted">{p.phone}</span>,
+                /* The phone icon IS "Copy & open Callio" for this person: it opens the Call
+                   card already in Calling, linked to this contact. */
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate font-mono text-[11px] text-muted">{p.phone}</span>
+                  {p.phone !== '—' && !archived && (
+                    <button onClick={() => startCall(p.name)} title={`Call ${p.name} — copies the number, opens Callio, links the call to this company`} className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-line text-muted hover:border-brand hover:text-brand">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" /></svg>
+                    </button>
+                  )}
+                </span>,
                 <span title={CONTACT_STATUS[p.status].hint}><Pill tone={CONTACT_STATUS[p.status].tone}>{p.status}</Pill></span>,
                 p.linkedUser
                   ? <span className="text-[11px] text-emerald-700">linked</span>

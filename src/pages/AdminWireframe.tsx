@@ -82,6 +82,8 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-company-pipeline': { module: 'crm', feature: 'Sales pipeline' },
   'admin-company-archived': { module: 'crm', feature: 'Customers' },
   'admin-shared-quota': { module: 'crm', feature: 'Shared quota — one PO, several companies', site: 'AdminCompanies' },
+  'admin-call-logs': { module: 'crm', feature: 'Calls — link every Callio call to a company' },
+  'admin-call-link': { module: 'crm', feature: 'Calls — link every Callio call to a company' },
   'admin-signups': { module: 'crm', feature: 'Sign-up & company verification (ERC)' },
   // Both pool screens are specified as ONE feature — the claim flow is the spec, and
   // the queue is the second half of it. They sit on the System nav but belong to CRM.
@@ -251,6 +253,9 @@ const NAV_GROUPS: NavGroup[] = [
       // Last in the group: inbound self-registrations are a triage inbox that
       // feeds the pipeline, not a step in the document flow above it.
       { label: 'Sign-ups', specId: 'admin-signups' },
+      // Every call Callio reported and the company it is on — the build keeps it under
+      // CRM (/call-center/logs, breadcrumb "CRM / Call logs"), so the prototype does too.
+      { label: 'Call logs', specId: 'admin-call-logs' },
       // The free company pool and its claim queue. They live in CRM because that is
       // where a rep looks for their next customer — the pool is the top of the same
       // funnel Customers and Pipeline sit further down. (They remain a SEPARATE
@@ -344,6 +349,8 @@ const OFF_NAV: { group: string; item: NavItem }[] = [
   // Not a page of its own in the console — it is the company record on Products &
   // billing. Registered so the spec page can open the record ON that tab.
   { group: 'CRM', item: { label: 'Shared quota (company record)', specId: 'admin-shared-quota' } },
+  // The company record opened on the Call card — the call-link preview, not a page of its own.
+  { group: 'CRM', item: { label: 'Call → link (company record)', specId: 'admin-call-link' } },
   { group: 'System', item: { label: 'Audit log', specId: 'admin-audit-log' } },
   { group: 'System', item: { label: 'Environment', specId: 'admin-environment' } },
 ]

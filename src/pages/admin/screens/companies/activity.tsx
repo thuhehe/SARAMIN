@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Company } from '@/pages/admin/data/companies'
-import { CALL, CHAT, CHAT_CHANNELS, KIND_META, MEET, companyActivity } from '@/pages/admin/data/companyRecord'
+import { CHAT, CHAT_CHANNELS, KIND_META, MEET, companyActivity } from '@/pages/admin/data/companyRecord'
 import type { CoAtt, CoEvent, CoKind } from '@/pages/admin/data/companyRecord'
 import { ME } from '@/pages/admin/data/salesOrg'
 import { Table } from '@/pages/admin/ui/table'
+import { CallCard } from '@/pages/admin/screens/calls/callLink'
 
 /** Attachment tray shared by every activity type — images and forwarded emails. */
 /* What may be attached depends on the activity: a chat is screenshots (you cannot
@@ -31,8 +32,23 @@ function AttachRow({ atts, onAdd, onDrop, allow = ['image', 'email'] }: { atts: 
   )
 }
 
-export function CompanyActivities({ c }: { c: Company }) {
+/** A request from elsewhere on the record to start a call — the header Call button, or the
+    phone icon on a contact row (which names the person, so the card skips the pick step). */
+export type CallRequest = { n: number; prefer?: string }
+
+export function CompanyActivities({ c, callRequest }: { c: Company; callRequest?: CallRequest }) {
   const [kind, setKind] = useState<null | 'chat' | 'call' | 'meeting'>(null)
+  /* The live call row sits on top of the feed from the CLICK — "Calling … waiting for
+     Callio" — so the rep sees the link was made before Callio has said anything. */
+  const [liveCall, setLiveCall] = useState<CoEvent | null>(null)
+  const [prefer, setPrefer] = useState<string | undefined>(undefined)
+  const [callKey, setCallKey] = useState(0)
+  const composer = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!callRequest || callRequest.n === 0) return
+    setPrefer(callRequest.prefer); setCallKey(callRequest.n); setKind('call')
+    composer.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [callRequest])
   const [channel, setChannel] = useState('Zalo')
   const [note, setNote] = useState('')
   const [atts, setAtts] = useState<CoAtt[]>([])
@@ -47,18 +63,17 @@ export function CompanyActivities({ c }: { c: Company }) {
      Defaults to Sales: contact with the client is what this panel is read for, and
      it is the only kind that resets Idle. */
   const [feed, setFeed] = useState<'sales' | 'client' | 'system' | 'all'>('sales')
-  const all = [...logged, ...companyActivity(c)]
+  const all = [...(liveCall ? [liveCall] : []), ...logged, ...companyActivity(c)]
   const rows = feed === 'all' ? all : all.filter((e) => e.kind === feed)
   const countOf = (k: CoKind) => all.filter((e) => e.kind === k).length
 
   const save = () => {
     const base = { time: 'just now', kind: 'sales' as CoKind, days: 0, by: ME, atts: atts.length ? atts : undefined }
+    // A call is not saved here any more — the Call card writes its own row (see CallCard).
     const entry: CoEvent =
       kind === 'chat'
         ? { ...base, icon: '', tone: CHAT, title: `Chat · ${channel}`, sub: note.trim() || 'No note added.' }
-        : kind === 'meeting'
-          ? { ...base, icon: '', tone: MEET, title: `Meeting · ${place.toLowerCase()}`, sub: `${note.trim() || 'No note added.'} ${mins} phút · ${time} ${when}.` }
-          : { ...base, icon: '', tone: CALL, title: 'Call · logged via Calio', sub: note.trim() || 'Call synced from Calio — outcome & recording attached.' }
+        : { ...base, icon: '', tone: MEET, title: `Meeting · ${place.toLowerCase()}`, sub: `${note.trim() || 'No note added.'} ${mins} phút · ${time} ${when}.` }
     setLogged((p) => [entry, ...p])
     setKind(null); setNote(''); setChannel('Zalo'); setAtts([])
   }
@@ -75,7 +90,7 @@ export function CompanyActivities({ c }: { c: Company }) {
           company's own fields stays owner-only, but that gate lives on the Overview
           card, not here. */}
       {(
-      <div className="rounded-xl border border-line bg-surface">
+      <div ref={composer} className="rounded-xl border border-line bg-surface">
         <div className="flex flex-wrap items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
           <p className="text-[12.5px] font-bold">Log an activity</p>
           <span className="ml-auto text-[10.5px] text-faint">Ghi cho <b className="text-ink/70">bạn</b> (người đăng nhập), không phải chủ sở hữu</span>
@@ -83,7 +98,7 @@ export function CompanyActivities({ c }: { c: Company }) {
         <div className="p-3.5">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => setKind('chat')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'chat' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Chat</button>
-            <button onClick={() => setKind('call')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'call' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Call</button>
+            <button onClick={() => { setPrefer(undefined); setCallKey((k) => k + 1); setKind('call') }} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'call' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Call</button>
             <button onClick={() => setKind('meeting')} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium', kind === 'meeting' ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:border-ink/30')}>Meeting</button>
             {/* Stamped with the signed-in account, not the company's sales owner —
                 whoever actually does the work is who gets the KPI for it. */}
@@ -158,19 +173,17 @@ export function CompanyActivities({ c }: { c: Company }) {
             </div>
           )}
 
+          {/* CALL — the card that links the call to this company at the click (see CallCard).
+              Not a note form any more: the note is one part of it, the link is the point. */}
           {kind === 'call' && (
-            <div className="mt-3 space-y-2.5">
-              <div>
-                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Note</label>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call summary / next step… (auto-filled from Calio when available)" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-brand" />
-              </div>
-              {/* No attach row: Calio syncs the recording and outcome onto the call
-                  automatically, so a manual attach control here is dead weight. */}
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setKind(null)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Cancel</button>
-                <button onClick={save} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Log call</button>
-              </div>
-            </div>
+            <CallCard
+              key={callKey}
+              c={c}
+              prefer={prefer}
+              onLive={setLiveCall}
+              onDone={(r) => { if (r) setLogged((p) => [r, ...p]) }}
+              onClose={() => { setKind(null); setPrefer(undefined) }}
+            />
           )}
 
         </div>
