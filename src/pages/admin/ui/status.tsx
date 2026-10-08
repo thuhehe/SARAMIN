@@ -73,7 +73,7 @@ export function TierPill({ tier, en }: { tier: TierRow | null; en?: boolean }) {
  *
  *   Verified            blue  · an admin pressed Verify
  *   Waiting to verify   amber · ERC on file, nobody has verified → our queue
- *   No paperwork        slate · no ERC yet                        → their to-do
+ *   Unverified        slate · no ERC yet                        → their to-do
  *
  * Blue, not green, on purpose: green is the CRM's "active / bought" tone, and a
  * company can be Verified without ever having bought anything. Amber vs slate is
@@ -114,7 +114,7 @@ export function VerifiedTag({ v, display, en, showReason = true }: { v: Verifica
 }
 
 /**
- * Under a No-paperwork tag: what the admin is waiting on. Reads the gaps computed by
+ * Under a Unverified tag: what the admin is waiting on. Reads the gaps computed by
  * verifyGaps() — the SAME function the Verify button reads — so a row never promises
  * what the dialog then refuses. Today the only possible gap is the certificate.
  */

@@ -403,10 +403,10 @@ export const crm: BuildModule = {
             table: {
               cols: ['Chỗ', 'Hiện gì', 'Luật'],
               rows: [
-                ['**Customers — cột Verified**', 'Tag **Verified** (xanh, hình khiên) · **Waiting to verify** (amber — đã có ERC, chờ admin) · **No paperwork** (slate — chưa có ERC) — đúng tag employer thấy trên Company site. Dưới tag No paperwork một dòng nhỏ: *Chưa có ERC — chờ employer upload*', 'Filter **Verified** có **3 giá trị** = 3 nhãn trên. Nhãn tính lúc đọc từ **verdict + có/không có ERC** (như build: svn-be V482), không lưu. Chip **Chờ verify · n** trên toolbar: một click = lọc *Waiting to verify* — đúng các công ty bấm Verify được ngay. Ở view phòng ban, danh sách hiện luôn các công ty **chưa có owner** — sổ của ai cũng không chứa họ, không hiện ở đây thì không ai thấy để verify.'],
-                ['**Company detail — header**', 'Cùng tag đó cạnh tên; Waiting to verify do sửa thì kèm *cần xác minh lại*', 'Nút **Verify company** hiện khi chưa Verified và **chỉ bấm được ở Waiting to verify** — ở No paperwork nút disabled, tooltip nói chưa có gì để đối chiếu và chỉ sang card Enterprise Registration Documents. Không gate theo owner — xác minh là việc của admin, hồ sơ có thể chưa có owner.'],
+                ['**Customers — cột Verified**', 'Tag **Verified** (xanh, hình khiên) · **Waiting to verify** (amber — đã có ERC, chờ admin) · **Unverified** (slate — chưa có ERC) — đúng tag employer thấy trên Company site. Dưới tag Unverified một dòng nhỏ: *Chưa có ERC — chờ employer upload*', 'Filter **Verified** có **3 giá trị** = 3 nhãn trên. Nhãn tính lúc đọc từ **verdict + có/không có ERC** (như build: svn-be V482), không lưu. Chip **Chờ verify · n** trên toolbar: một click = lọc *Waiting to verify* — đúng các công ty bấm Verify được ngay. Ở view phòng ban, danh sách hiện luôn các công ty **chưa có owner** — sổ của ai cũng không chứa họ, không hiện ở đây thì không ai thấy để verify.'],
+                ['**Company detail — header**', 'Cùng tag đó cạnh tên; Waiting to verify do sửa thì kèm *cần xác minh lại*', 'Nút **Verify company** hiện khi chưa Verified và **chỉ bấm được ở Waiting to verify** — ở Unverified nút disabled, tooltip nói chưa có gì để đối chiếu và chỉ sang card Enterprise Registration Documents. Không gate theo owner — xác minh là việc của admin, hồ sơ có thể chưa có owner.'],
                 ['**Company detail — Verify dialog**', 'Một input: **ERC đã có trên hồ sơ** (≥ 1 tệp). Dưới đó bốn dòng **chỉ để đọc** và đối chiếu với giấy: MST · địa chỉ đăng ký MST · tên pháp lý · sales owner', 'Nút Verify **disabled** khi chưa có ERC. MST và địa chỉ **không chặn** — form Create company đã bắt buộc chúng lúc tạo, nên không thể thiếu trên một hồ sơ đã tồn tại; việc của admin là đọc giấy đối chiếu với hồ sơ. Owner là việc của Sales (Ownership).'],
-                ['**Company detail — Basic info · Save**', 'Sửa định danh của hồ sơ **đang Verified** → hồ sơ về **Unverified · cần xác minh lại**', 'Cùng trạng thái với chưa-verify; lý do là thứ nói cho admin sau biết hồ sơ này đã được xem một lần. Bấm Verify lại là xóa.'],
+                ['**Company detail — Basic info · Save**', 'Sửa định danh của hồ sơ **đang Verified** → hồ sơ về **Waiting to verify · cần xác minh lại**', 'Cùng trạng thái với chưa-verify; lý do là thứ nói cho admin sau biết hồ sơ này đã được xem một lần. Bấm Verify lại là xóa.'],
               ],
             },
             items: [
@@ -1379,22 +1379,22 @@ export const crm: BuildModule = {
       site: 'Admin',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Client request 07/10/2026 — a call is linked to its company (and contact person) at the moment it is made, so it lands on the company as a sales activity right away and the Call log reads Company + Contact person without an admin mapping each call. PROPOSAL: builds on the matching the build already does (by number) and adds the two links only a person can make — the rep who clicks Call, and the rep who just hung up.',
+      notes: 'Client request 07/10/2026 — a call is linked to its company (and contact person) at the moment it is made, so it lands on the company as a sales activity right away and the Call log reads Company + Contact person without an admin mapping each call. PROPOSAL: builds on the matching the build already does (by number) and adds the two links only a person can make — the rep who clicks Copy, and the rep who made the call.',
       mockup: 'admin-call-link',
       mockups: ['admin-call-logs'],
       detail: {
         keyPoints: [
           {
-            vi: 'Callio không cho CRM quay số (không có API gọi, không có tham số auto-dial). Nên liên kết được tạo ở chính cú click: nút **Call** trên công ty copy số, mở Callio và ghi lại “đang gọi ai, của công ty nào” — đúng thao tác sales vẫn làm, không thêm bước nào.',
-            en: 'Callio cannot be dialled from the CRM (no dial API, no auto-dial parameter). So the link is made at the click itself: **Call** on the company copies the number, opens Callio and records “who is being called, for which company” — the step reps already take, with nothing added.',
+            vi: 'Callio không cho CRM quay số (không có API gọi, không có tham số auto-dial). Nên liên kết được tạo ở chính cú click: nút **Copy** cạnh số điện thoại trên công ty copy số và ghi lại “đang gọi ai, của công ty nào” — sales vẫn dán số vào Callio như hôm nay, không thêm bước nào.',
+            en: 'Callio cannot be dialled from the CRM (no dial API, no auto-dial parameter). So the link is made at the click itself: **Copy** next to a number on the company copies it and records “who is being called, for which company” — the rep still pastes it into Callio as today, with nothing added.',
           },
           {
-            vi: 'Khi Callio báo cuộc gọi (webhook call-end, vài giây sau khi cúp máy), hệ thống ghép theo thứ tự: ① cuộc gọi đang chờ từ CRM — cùng sales, cùng số, trong 30 phút; ② số điện thoại — đúng một công ty giữ số (đã có); ③ không ghép được → hỏi chính sales vừa gọi.',
-            en: 'When Callio reports the call (call-end webhook, seconds after hang-up) it is matched in this order: ① a pending CRM call — same rep, same number, within 30 minutes; ② the number — exactly one company holds it (built today); ③ neither → ask the rep who made it.',
+            vi: 'Khi Callio báo cuộc gọi (webhook call-end, vài giây sau khi cúp máy), hệ thống ghép theo thứ tự: ① cuộc gọi đang chờ từ CRM — cùng sales, cùng số, trong 30 phút; ② số điện thoại — đúng một công ty giữ số (đã có); ③ nhiều công ty giữ số → sales vừa gọi chọn 1; chưa công ty nào giữ → lưu số vào contact rồi bấm **Sync from CRM**.',
+            en: 'When Callio reports the call (call-end webhook, seconds after hang-up) it is matched in this order: ① a pending CRM call — same rep, same number, within 30 minutes; ② the number — exactly one company holds it (built today); ③ several companies hold it → the rep who made it picks one; none does → save the number on the contact and press **Sync from CRM**.',
           },
           {
-            vi: 'Cuộc gọi gọi thẳng trong Callio mà không ghép được hiện ngay cho CHÍNH sales đã gọi (toast “You just called…” + khay **Calls to link**): chọn công ty + người liên hệ, lưu số vào contact để lần sau tự ghép. Admin chỉ còn những cuộc không ai nhận.',
-            en: 'A call dialled straight in Callio that cannot be matched goes straight to the rep who made it (toast “You just called…” + the **Calls to link** tray): pick the company and contact, save the number on the contact so the next call links itself. Admins keep only what nobody claims.',
+            vi: 'Cuộc gọi gọi thẳng trong Callio mà không ghép được nằm trong tab **My calls to link** (Call logs) của CHÍNH sales đã gọi — không popup, không form. Nhiều công ty giữ số: ô Company liệt kê các công ty đó, sales bấm chọn 1. Chưa công ty nào giữ: lưu số vào contact trong CRM rồi bấm **Sync from CRM** — cuộc gọi này và mọi cuộc sau từ số đó tự ghép. Admin chỉ còn những cuộc không ai xử lý.',
+            en: 'A call dialled straight in Callio that cannot be matched waits in the **My calls to link** tab (Call logs) of the rep who made it — no pop-up, no form. Several companies hold the number: the Company cell lists them and the rep clicks one. None does: save the number on the contact in the CRM and press **Sync from CRM** — this call and every later one from that number link on their own. Admins keep only what nobody settled.',
           },
           {
             vi: 'Mỗi cuộc gọi có người nghe = MỘT activity Sales trên công ty: ghi chú của sales + dữ kiện Callio (thời lượng, ghi âm) — không bao giờ là transcript thô. Cuộc gọi không ai nghe là “attempt”: có trên call log của công ty nhưng không reset Idle, không tính KPI.',
@@ -1406,7 +1406,7 @@ export const crm: BuildModule = {
           },
         ],
         description:
-          'Sales call customers through Callio, a separate system. Today a rep copies a number from the company record, pastes it into Callio, and the call comes back later through the sync — placed on a company only when exactly one company holds that number. On dev that leaves 11,709 of 25,617 calls (46%) waiting for an admin to assign, because the numbers reps dial are mostly on no CRM record.\n\nThis feature links a call to its company at the moment it is made. A call started from the company record carries its company and contact with it; a call dialled straight in Callio is linked by the rep who made it, seconds after hanging up. Either way it lands on the company as a sales activity, and the Call log shows the company and the contact person.',
+          'Sales call customers through Callio, a separate system. Today a rep copies a number from the company record, pastes it into Callio, and the call comes back later through the sync — placed on a company only when exactly one company holds that number. On dev that leaves 11,709 of 25,617 calls (46%) waiting for an admin to assign, because the numbers reps dial are mostly on no CRM record.\n\nThis feature links a call to its company at the moment it is made. A call started from the company record carries its company and contact with it; a call dialled straight in Callio links by its number — and when several companies share the number the rep who made it picks one, when none holds it the rep saves it on the contact and presses **Sync from CRM**. Either way it lands on the company as a sales activity, and the Call log shows the company and the contact person.',
         userStory:
           'As a sales rep, I want the call I make to land on the right company and contact without anyone mapping it later, so that the account’s history and my activity are complete the moment I hang up.',
         requirements: [
@@ -1416,12 +1416,12 @@ export const crm: BuildModule = {
             table: {
               cols: ['Piece', 'Built today', 'In this proposal'],
               rows: [
-                ['Call button on the company', 'Opens the contact’s Callio inbox (when the contact is linked to a Callio customer) or `client.callio.vn`. Records nothing', '**Changed** — the same click also records a CRM call'],
+                ['Call button on the company', 'Opens the contact’s Callio inbox (when the contact is linked to a Callio customer) or `client.callio.vn`. Records nothing', '**Changed** — opens the Call card; **Copy** copies the number and records a CRM call. Callio is no longer opened from the CRM'],
                 ['Sync', 'Pull every 10 min + Callio webhooks `call-end` / `missed-call` (stored in 1–2 s, drained on a short interval)', 'Kept — the webhook is what makes step ① feel instant'],
                 ['Match by number', 'contact phone · company phone · primary-contact phone, national format. One company → on it (+ the contact when exactly one holds it) · several → **Several companies** · none → **No company** · no admin on the extension → **No rep**', 'Kept — it becomes step ②'],
-                ['Needs assigning', 'Admin queue for those three · Assign = company + contact (or a new one, or company only) + save the number + the other waiting calls from it · Archive a call or a whole number · re-match when a number appears in the CRM', 'Kept for admins; reps get their own slice (Calls to link)'],
+                ['Needs assigning', 'Admin queue for those three · Assign = company + contact (or a new one, or company only) + save the number + the other waiting calls from it · Archive a call or a whole number. A waiting call is NEVER matched again: saving its number on a contact helps only the next call (svn-be requeues NO_ACTOR on binding an extension, nothing else)', 'Kept for admins · reps get their own slice (**My calls to link**) · **Sync from CRM** re-matches the waiting calls'],
                 ['Company activity feed', 'Synced calls are **not** shown — V293 stopped writing them and the panel filters CALL_SYNC; they only move the account’s Idle clock', '**Changed** — one row per answered call'],
-                ['Call logs', 'Company · Contact person · State columns exist', 'Kept + **Linked by**, reordered, **My calls to link**'],
+                ['Call logs', 'Company · Contact person · State columns exist', 'Kept + **Linked by**, reordered, **My calls to link**, pick one of several companies, **Sync from CRM**'],
               ],
             },
             items: [
@@ -1430,29 +1430,29 @@ export const crm: BuildModule = {
           },
           {
             label: 'The flow — four ways a call gets onto a company, tried in this order',
-            text: 'The order is the order of certainty: a rep who clicked Call for a named person beats a phone-number lookup, which beats a human deciding later. A CRM call therefore also settles a shared number — the case the number lookup can only queue.',
+            text: 'The order is the order of certainty: a rep who clicked Copy for a named person beats a phone-number lookup, which beats a human deciding later. A CRM call therefore also settles a shared number — the case the number lookup can only queue.',
             diagram: 'call-link',
             table: {
               cols: ['#', 'How the call starts', 'What links it', 'Who acts', 'Linked by'],
               rows: [
-                ['①', 'Rep clicks **Call** on the company (header · Log an activity → Call · phone icon on a contact) → **Copy & open Callio**', 'The CRM call recorded at the click — rep · company · contact · number · time. The Callio call is paired with it when it arrives', 'Nobody — automatic, seconds after hang-up', '**CRM call**'],
-                ['②', 'Rep dials in Callio directly, or the customer rings in', 'The number — exactly one company holds it (built today)', 'Nobody — automatic', '**Number**'],
-                ['③', 'As ②, but no company — or several — hold the number', 'The rep who made (or took) the call picks the company and contact in **Calls to link**', 'The rep, right after the call', '**Rep**'],
-                ['④', 'Still waiting — the rep skipped it, or no rep is bound to the extension', 'An admin assigns it from **Needs assigning** (built today)', 'Admin', '**Admin**'],
+                ['①', 'Rep clicks **Call** on the company (header · Log an activity → Call · phone icon on a contact) → **Copy**', 'The CRM call recorded at the click — rep · company · contact · number · time. The Callio call is paired with it when it arrives', 'Nobody — automatic, seconds after hang-up', '**CRM call**'],
+                ['②', 'Rep dials in Callio directly, or the customer rings in', 'The number — exactly one company holds it. Checked when the call comes in (built today) and again on **Sync from CRM**, so a number saved on a contact later links the calls already waiting', 'Nobody — automatic; or the rep, by saving the number and pressing Sync from CRM', '**Number**'],
+                ['③', 'As ②, but several companies hold the number', 'The rep who made (or took) the call picks one of them — the Company cell on Call logs lists them; the contact is the one holding the number there', 'The rep, after the call', '**Rep**'],
+                ['④', 'Still waiting — no company holds the number and nobody saved it yet, the rep did not pick, or no rep is bound to the extension', 'An admin assigns it from **Needs assigning** (built today)', 'Admin', '**Admin**'],
               ],
             },
             items: [
-              'Every path ends in the same place: company + contact on the call row, one activity on the company, and the number saved on the contact when one was named — so the next call from it links at step ②.',
+              'Every path ends in the same place: company + contact on the call row and one activity on the company. A number saved on a contact links the next call from it at step ② as it comes in — and the calls already waiting on **Sync from CRM**.',
             ],
           },
           {
             label: 'The Call card on the company record — five states',
-            text: 'Company record → Overview → **Log an activity → Call**. No longer a free-text note form: the note is one part of it, the link is the point. The header **Call** button opens this card; the phone icon on a contact row opens it straight in Calling for that person — that click IS Copy & open Callio.',
+            text: 'Company record → Overview → **Log an activity → Call**. No longer a free-text note form: the note is one part of it, the link is the point. The header **Call** button opens this card; the phone icon on a contact row opens it straight in Calling for that person — that click IS Copy.',
             table: {
               cols: ['State', 'Reached when', 'What the rep sees', 'Actions', 'Written'],
               rows: [
-                ['**Pick**', 'Call clicked on the company', '“Who are you calling?” — every dialable number on the account: contacts first (name · title · number · “opens their Callio inbox” or “opens Callio — paste the number”), then the company lines; a box for another number', 'Copy & open Callio · Cancel', 'Nothing yet'],
-                ['**Calling**', 'Copy & open Callio clicked', 'Amber strip “Calling {name} · {number} — waiting for Callio”, “{number} copied — paste it in Callio and press Call” · Open Callio again · Copy again; Result chips (optional) and Note', 'Save note · Cancel call', 'A pending CRM call + a feed row “Calling … waiting for Callio”'],
+                ['**Pick**', 'Call clicked on the company', '“Who are you calling?” — every dialable number on the account: contacts first (name · title · number), then the company lines; a box for another number', 'Copy · Cancel', 'Nothing yet'],
+                ['**Calling**', 'Copy clicked', 'Amber strip “Calling {name} · {number} — waiting for Callio”, “{number} copied — paste it in Callio and press Call” · Copy again; Result chips (optional) and Note', 'Save note · Cancel call', 'A pending CRM call + a feed row “Calling … waiting for Callio”'],
                 ['**Found**', 'The Callio call is paired with it, answered', 'Green strip “✓ Callio call found · Outbound · Answered · 2m 14s · ext …” + ▶ Play recording · “Linked by your Call click — same number, 1 minute later”', 'Save', 'Call row: company + contact, Linked by = CRM call. Activity: Callio’s facts + the rep’s note'],
                 ['**No answer**', 'Callio reports it missed / busy / failed / abandoned', 'Grey strip “Callio: no answer (Busy · 0:00)” — on the call log for this company, not contact', 'Call again · Close', 'Call row: company + contact. Feed: an **attempt** row (no Idle reset, no KPI)'],
                 ['**Not found**', '30 minutes pass with no matching Callio call', 'Rose strip “No Callio call to {number} within 30 minutes — a call from a mobile or Zalo leaves no Callio record”', 'Keep as manual note · Discard', 'Keep → a manual Call activity, as today (counts as contact, nothing to play). Discard → nothing'],
@@ -1465,25 +1465,35 @@ export const crm: BuildModule = {
             ],
           },
           {
-            label: 'Calls to link — the rep links their own call, right after hanging up',
-            text: 'The rep’s own ANSWERED calls that steps ① and ② could not place. It opens by itself as a toast when the call-end webhook brings one in — “You just called {number} ({duration}) — no company has this number. Which company was it?” — because the rep is the only person who knows who was on the line, and the best moment to ask is the minute after they hung up, not an admin tomorrow.',
+            label: 'My calls to link — the rep settles their own waiting calls',
+            text: 'Call logs → **My calls to link**: the rep’s own ANSWERED calls that steps ① and ② could not place. No pop-up and no link form: the tab carries the count, and each call is settled where it sits.',
             table: {
-              cols: ['Part', 'Behaviour'],
+              cols: ['The call', 'What the rep does'],
               rows: [
-                ['Toast', 'Bottom-right of the console, on any page. **Link now** opens the tray on that call · **Later** folds it to a pill “N calls to link”'],
-                ['Tray', 'The rep’s waiting calls, newest first: number · direction · duration · time · reason (No company / Several companies). **Link** expands the form inline'],
-                ['Company', 'Search by name or MST. Suggested first: for a shared number, the companies holding it; otherwise the companies the rep opened just before the call (they usually look the company up before dialling)'],
-                ['Contact person', 'The company’s contacts · **+ New contact with this number** (the build’s contact form, prefilled) · **Company only**'],
-                ['Save the number', 'On by default when a contact is picked — “Save {number} on {contact} — later calls from it link on their own”. Not offered for Company only'],
-                ['Other calls', '“Also link the N other waiting calls from this number” — on by default (the build’s rule for Assign)'],
-                ['Not a customer', 'Archives the call — spam, wrong number, personal (the build’s Archive, opened to the rep for their own calls)'],
-                ['On the page too', 'Call logs → **My calls to link** is the same set, for a rep who dismissed the toast'],
+                ['**Several companies** hold the number', 'The Company cell reads “Several companies — pick one” and lists them. The rep clicks the one they called → filed there, with the contact holding the number there; Linked by = **Rep**. This call only — the number stays shared, and a call started with **Copy** never needs it'],
+                ['**No company** holds the number', 'Nothing to pick. The rep saves the number on the right contact (company record → Contacts), then presses **Sync from CRM** → the call links by **Number**, and so does every later call from it'],
+                ['Neither done', 'Stays in Needs assigning for an admin — Assign or Archive, as built today'],
               ],
             },
             items: [
-              'Only answered calls ask to be linked — an unanswered call writes no activity, so filing it would be work with nothing at the end of it.',
-              'The rep credited never changes: linking files the call, it does not move the KPI — the build’s rule for Assign.',
+              'Only answered calls wait to be linked — an unanswered call writes no activity, so filing it would be work with nothing at the end of it.',
+              'The rep credited never changes: picking files the call, it does not move the KPI — the build’s rule for Assign.',
             ],
+          },
+          {
+            label: 'Sync from CRM — match the waiting calls again',
+            text: 'Built today, a call to a number no company holds stays UNMATCHED for good: saving the number on a contact helps only the NEXT call, because nothing matches the waiting ones again (svn-be requeues only NO_ACTOR, when an extension is bound). **Sync from CRM** — beside Sync from Callio on Call logs — runs the number match again for every call still waiting.',
+            table: {
+              cols: ['Rule', 'Behaviour'],
+              rows: [
+                ['Which calls', 'Waiting only — No company and Several companies. A call already on a company is never matched again: Linked by is stored, not recomputed'],
+                ['Against', 'The numbers the CRM holds now — contact phones, company phone, primary-contact phone, in national form (the same lookup as step ②)'],
+                ['Result', 'One company holds it → filed, Linked by = **Number** · several → stays waiting, now listing them to pick from · none → stays waiting'],
+                ['Who', 'Anyone who sees Call logs. It re-matches every waiting call, not only the presser’s — the answer does not depend on who asks'],
+                ['Afterwards', 'A result line beside the buttons: “N calls linked by Number · M still waiting”'],
+                ['Next to Sync from Callio', 'Two buttons for two gaps: Sync from Callio fetches the calls (built today); Sync from CRM re-reads the CRM’s numbers'],
+              ],
+            },
           },
           {
             label: 'Pairing a Callio call with a CRM call — the rule',
@@ -1506,9 +1516,9 @@ export const crm: BuildModule = {
               cols: ['Value', 'Means', 'Set by'],
               rows: [
                 ['**CRM call**', 'Paired with a call started from the company record', 'System, at the pairing'],
-                ['**Number**', 'Exactly one company holds the number', 'System (built today)'],
-                ['**Rep**', 'Linked by the rep who made the call — Calls to link or My calls to link', 'The rep'],
-                ['**Admin**', 'Assigned from Needs assigning', 'An admin'],
+                ['**Number**', 'Exactly one company holds the number — when the call came in, or on **Sync from CRM**', 'System (built today) · Sync from CRM'],
+                ['**Rep**', 'Picked by the rep who made the call, from the companies holding a shared number', 'The rep'],
+                ['**Admin**', 'Assigned from Needs assigning, or picked by an admin from the companies holding a shared number', 'An admin'],
                 ['**Waiting**', 'Answered, and none of the above has happened yet', '—'],
               ],
             },
@@ -1537,8 +1547,9 @@ export const crm: BuildModule = {
               rows: [
                 ['**Linked by** column + the summary line “Today · N answered calls · CRM call · Number · Rep · Admin · Waiting”', 'How each call got onto its company, and the team’s adoption at a glance'],
                 ['Columns reordered: Phone · Company · Contact person · Linked by · Sales owner · Start time · Call type · Status · Duration · Record · Call ID', 'Who was called reads first; the vendor’s call ID is a support key, so last'],
-                ['**My calls to link** tab (rep) beside Needs assigning (admin)', 'The rep’s own waiting calls — the same set as the tray'],
-                ['**Link** inside the Company cell of a waiting row', 'The action sits where the gap is'],
+                ['**My calls to link** tab (rep) beside Needs assigning (admin)', 'The rep’s own waiting calls, in one place'],
+                ['Several companies → the Company cell lists them: “Several companies — pick one”', 'A shared number is settled in one click, where the gap is — no form'],
+                ['**Sync from CRM** beside Sync from Callio', 'Re-matches the waiting calls after numbers were saved in the CRM; the result reads beside the buttons'],
               ],
             },
             items: ['Needs assigning, Archived, the column filters, Export Excel and Sync from Callio stay as built.'],
@@ -1555,8 +1566,8 @@ export const crm: BuildModule = {
           {
             group: 'Company record → Overview → Log an activity → Call (the Call card)',
             items: [
-              { name: 'targets', type: 'list', notes: 'every dialable number on the account — contacts (name · title · number · Callio-inbox hint) then company lines; the same list as the build’s “Call this company” dialog' },
-              { name: 'Copy & open Callio', type: 'button', notes: 'per target: copies the number, opens Callio (the contact’s inbox when linked, else client.callio.vn) in a new tab, creates the CRM call' },
+              { name: 'targets', type: 'list', notes: 'every dialable number on the account — contacts (name · title · number) then company lines; the same list as the build’s “Call this company” dialog' },
+              { name: 'Copy', type: 'button', notes: 'per target: copies the number to the clipboard and creates the CRM call — the rep pastes it in Callio, which the CRM does not open' },
               { name: 'otherNumber · forContact', type: 'string · select', notes: 'a number the record does not hold yet, and the contact it belongs to (or Company only)' },
               { name: 'result', type: 'enum?', notes: 'Interested · Call back later · Not interested · Wrong number — optional' },
               { name: 'note', type: 'text', notes: 'written during or after the call; joins the same activity as Callio’s facts' },
@@ -1571,31 +1582,23 @@ export const crm: BuildModule = {
             ],
           },
           {
-            group: 'Calls to link (console-wide, the signed-in rep)',
-            items: [
-              { name: 'toast', type: 'popup', notes: '“You just called {number} ({duration}) — no company has this number” · Link now · Later' },
-              { name: 'tray', type: 'panel / pill', notes: 'the rep’s answered waiting calls; Link expands the form' },
-              { name: 'company · contact · saveNumber · applyToNumber', type: 'form', notes: 'the build’s Assign fields; suggestions: companies holding a shared number, else companies opened just before the call' },
-              { name: 'Not a customer', type: 'link', notes: 'archives the call' },
-            ],
-          },
-          {
             group: 'CRM → Call logs',
             items: [
               { name: 'Linked by', type: 'column', notes: 'CRM call · Number · Rep · Admin · Waiting, with a hint per value' },
               { name: 'summary line', type: 'derived', notes: 'today’s answered calls split by Linked by' },
               { name: 'My calls to link', type: 'tab', notes: 'answered, Waiting, rep = me' },
-              { name: 'Link', type: 'button in the Company cell', notes: 'on a waiting row the signed-in user may link' },
+              { name: 'pick one', type: 'choice in the Company cell', notes: 'Several companies only: one button per company holding the number (tooltip: the contact holding it there); a click files the call — Rep when it is the caller, else Admin' },
+              { name: 'Sync from CRM', type: 'button', notes: 'beside Sync from Callio — re-matches every waiting call against the CRM’s numbers now; the result reads beside the buttons' },
             ],
           },
         ],
         rules: [
-          'Callio places every call; the CRM never dials. Copy & open Callio is a hand-off, and `tel:` stays off (it routes through the user’s phone and leaves Callio with no record — the build’s rule).',
+          'Callio places every call; the CRM never dials and does not open Callio. Copy is a hand-off — the rep pastes the number into Callio — and `tel:` stays off (it routes through the user’s phone and leaves Callio with no record — the build’s rule).',
           'Matching order: pending CRM call → number → the rep → an admin. The first that answers wins; Linked by records which.',
           'Only answered calls write an activity or ask to be linked. Unanswered calls still get the company and contact on the call row (the build keeps them on SKIPPED rows).',
           'One answered call = one activity, whatever path linked it.',
           'Linking never changes the rep credited.',
-          'A rep links only their own calls; an admin links any.',
+          'A rep picks only for their own calls; an admin for any. Sync from CRM re-matches every waiting call, whoever presses it — the match does not depend on who asks.',
         ],
         states: [
           'CRM call: Pending → Matched · Expired · Discarded',
@@ -1614,30 +1617,32 @@ export const crm: BuildModule = {
             { name: 'company_activity.callLogId', type: 'ref → call_log?', notes: 'one activity per call; duration / outcome / recording are read through it, never copied' },
           ],
           endpoints: [
-            'POST /admin/companies/{id}/crm-calls { contactId?, number } → { crmCallId, activityId } — Copy & open Callio; the client opens Callio after it returns',
+            'POST /admin/companies/{id}/crm-calls { contactId?, number } → { crmCallId, activityId } — Copy; the client copies the number to the clipboard',
             'PATCH /admin/crm-calls/{id} { note?, result? } · POST /admin/crm-calls/{id}/discard · POST /admin/crm-calls/{id}/keep-manual',
             'GET /admin/crm-calls/{id} — the card waits on MATCHED / EXPIRED (poll or push)',
             'CallProjectionService.resolve — BEFORE the number lookup, find a PENDING crm_call by (nationalNumber, actor or clicking user, window) → company + contact from it, linkSource = CRM_CALL, crm_call MATCHED, attach the activity',
-            'GET /admin/telephony/calls?mine=waiting — the rep’s Calls to link (answered, UNMATCHED / AMBIGUOUS, actor = me)',
-            'POST /admin/telephony/calls/{id}/link { companyId, contactId?, saveNumber, applyToNumber } — the build’s assign, opened to the call’s own rep (new grant `telephony_call:link_own`); linkSource = REP or ADMIN by who acts',
-            'Notification — an answered call landing UNMATCHED / AMBIGUOUS with a resolved rep → “You just called …” to that rep (the console toast)',
+            'GET /admin/telephony/calls?mine=waiting — the rep’s My calls to link (answered, UNMATCHED / AMBIGUOUS, actor = me); AMBIGUOUS rows carry their candidates [{ companyId, name, contactId, contactName }]',
+            'POST /admin/telephony/calls/{id}/pick { companyId } — AMBIGUOUS only; companyId must be one of the companies holding the number (else 409); contact = the one holding it there; the call’s own rep (new grant `telephony_call:pick_own`) or an admin; linkSource = REP / ADMIN; this call only',
+            'POST /admin/telephony/calls/rematch → { linked, stillWaiting } — Sync from CRM: CallProjectionService.resolve again for every UNMATCHED / AMBIGUOUS row against the CRM’s numbers now; one company → PROJECTED with linkSource = PHONE; never touches a row already on a company',
             'JOB expire-crm-calls — every minute: PENDING older than the window → EXPIRED',
           ],
-          integrations: ['Callio — webhooks call-end / missed-call (no dial API)', 'Company record — Call card, header Call, contact phone icon', 'CRM → Call logs', 'Notifications (the toast)', 'Ranking — unchanged (counts by rep)'],
+          integrations: ['Callio — webhooks call-end / missed-call (no dial API)', 'Company record — Call card, header Call, contact phone icon', 'CRM → Call logs', 'Ranking — unchanged (counts by rep)'],
           notes: 'The pairing must run on the webhook drain, not only on the 10-minute pull, or “seconds after hang-up” is false — the lesson the build already recorded on CallioWebhookController.',
         },
         acceptance: [
-          'Copy & open Callio copies the number, opens Callio (the contact’s inbox when linked) and puts a “Calling … waiting for Callio” row on the company’s feed at once.',
+          'Copy copies the number to the clipboard and puts a “Calling … waiting for Callio” row on the company’s feed at once; Callio is not opened.',
           'A Callio call to that number by the same rep within 30 minutes is filed on that company and contact with Linked by = CRM call — even when the number is on no record or on several companies — and the card turns Found with duration and recording.',
           'A missed or busy call pairs the same way, shows No answer, and writes an attempt row that changes neither Idle nor the KPI.',
           'No Callio call within 30 minutes → Not found; Keep writes a manual call activity, Discard writes nothing.',
-          'A call dialled straight in Callio to a number no company holds pops “You just called …” for the rep who made it within seconds; linking it files the call with Linked by = Rep, saves the number on the contact when chosen, and the next call from that number links by Number.',
+          'A call dialled straight in Callio to a number no company holds appears in My calls to link of the rep who made it within seconds. Once that number is saved on a contact, Sync from CRM files the call on that company and contact with Linked by = Number — and the next call from the number links on arrival.',
+          'A call to a number several companies hold lists those companies in its Company cell; one click files it on the company picked, with the contact holding the number there — Linked by = Rep for the caller, Admin for anyone else. Nobody can pick a company that does not hold the number.',
           'Call logs show Company, Contact person and Linked by on every call; My calls to link lists exactly the signed-in rep’s answered waiting calls; Needs assigning still lists all of them for an admin.',
           'One answered call never produces two activities: the note written during the call and Callio’s facts are the same row.',
         ],
         openQuestions: [
           'Feed: bring answered calls back onto the company history (this proposal) — the build removed them in V293. Client to confirm.',
-          'May a rep link their own waiting calls (new grant), or does linking stay admin-only and the toast only notify?',
+          'May a rep pick the company for their own shared-number calls (new grant), or does that stay admin-only?',
+          'Should saving a number on a contact re-match its waiting calls by itself, leaving Sync from CRM as the manual fallback?',
           'Window: 30 minutes after the click — right for how reps work? Shorter = fewer wrong pairings, longer = fewer Not found.',
           'Unanswered attempts: show them on the feed (greyed), or on the call log only?',
           'True click-to-dial: Callio’s WebRTC SDK would let the CRM place the call itself, but its auth puts the SIP password in the browser — a security decision for Saramin, out of scope here.',
@@ -1664,27 +1669,27 @@ export const crm: BuildModule = {
         requirements: [
           {
             label: 'ONE company table, two states — and TWO admin-only create doors',
-            text: 'Free data và Customers **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Customers” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Customers** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo của **Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. Từ 09/2026 có thêm **cửa thứ ba: employer tự đăng ký** — ra thẳng Customers nhưng ở trạng thái **Chưa xác minh, chưa có owner**, và bất động cho tới khi admin Verify (không đăng tin, không xuất hóa đơn). **Sales vẫn không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt, hoặc được phân khi admin verify một công ty tự đăng ký.',
+            text: 'Free data và Customers **là một bảng công ty, ở hai mức hoàn thiện**. “Đưa lên Customers” không phải copy sang kho khác — nó là **hoàn thiện dữ liệu + gán chủ**.\n\n| | bắt buộc | chủ sở hữu |\n|---|---|---|\n| **Free data** | tên công ty | chưa có |\n| **Customers** | tên legal + **MST** + **địa chỉ đăng ký MST** + **người liên hệ** + **sales owner** | có |\n\nHai cửa tạo của **Admin**, và **người tạo chọn màn hình trước** — màn nào thì form bắt buộc đúng field của màn đó. Sơ đồ dưới **chỉ** vẽ công ty: tạo ở đâu, và đi từ Free data lên Customers bằng đường nào. **Employer tự đăng ký không phải cửa thứ ba** — sign-up chỉ đặt một *người* vào một công ty đã ở Customers (công ty mới thật thì admin tạo qua cửa ②; công ty còn ở Free data thì đưa lên Customers trước), nên nó có **sơ đồ riêng** ở *CRM → Sign-up & company verification*. **Sales không tạo công ty**: đường duy nhất để sở hữu là *xin nhận* từ Free data qua hai cấp duyệt, hoặc được Admin phân trực tiếp.',
             diagram: 'company-intake',
             table: {
               cols: ['Cửa', 'Ai', 'Bắt buộc', 'Đích'],
               rows: [
                 ['**Free data → Thêm công ty**', 'Admin', '**1 field: tên công ty** (import hàng loạt, hoặc gặp ở hội chợ)', '**Free data** — chưa có chủ'],
                 ['**Customers → New company**', 'Admin', '**5 field: tên legal · MST · địa chỉ đăng ký MST · người liên hệ · sales owner**', '**Customers** — có chủ, đếm vào mọi số của CRM'],
-                ['**Company site → Sign up** (cửa ③, từ 09/2026)', 'Employer tự đăng ký', '**Họ tên · email · SĐT · mật khẩu · MST · tên công ty** (+ ERC tuỳ chọn). Cửa mở khi bấm link xác minh email', '**Customers — Chưa xác minh, chưa có owner.** Đăng nhập được ngay; đăng tin và xuất hóa đơn khóa tới khi admin Verify (xem CRM → Sign-up & company verification)'],
+                ['*Company site → Sign up* — **không phải cửa tạo**', 'Employer tự đăng ký', '—', '**Không tạo công ty, không chuyển công ty.** Tạo một dòng trên Sign-ups; admin đặt người đó vào một công ty **đã ở Customers** (Move), hoặc tạo công ty mới qua cửa ② (Create). Xem CRM → Sign-up & company verification'],
                 ['*(không có cửa nào)*', 'Sales', '—', 'Sales **không tạo công ty**. Đường duy nhất: Xin nhận từ Free data → Admin duyệt → Sales lead duyệt.'],
               ],
             },
           },
           {
             label: 'Sign-up user — xác minh email chưa vào được; admin place (Move / Create) mới mở login',
-            text: 'Đổi lại từ 09/2026 (khách hàng chốt). Employer tự đăng ký, **bấm link xác minh email chỉ để xác thực địa chỉ** — chưa có login, chưa có công ty, chỉ có **một dòng trên Sign-ups**. Admin resolve dòng đó: **Move** vào công ty đã có · **Create** công ty + đặt người đó làm Admin đầu tiên · **Archive** nếu là spam. Move/Create gửi **email kích hoạt**, và đó mới là lúc user đăng nhập được.\n\nSau khi vào, thứ còn chờ admin là *xác minh*: bấm **Verify** ở Company detail — nút chỉ mở khi hồ sơ **đã có ERC** (Waiting to verify); admin đối chiếu ERC với hồ sơ rồi bấm. Phân owner là việc riêng (Ownership), không chặn Verify. Chưa verify thì employer đăng nhập, đọc, cập nhật, upload đều được — chỉ **không đăng tin** (kể cả draft) và **Sales không yêu cầu xuất hóa đơn** được.',
+            text: 'Luồng này **độc lập** với sơ đồ Free data / Customers ở trên, và có sơ đồ riêng ở *CRM → Sign-up & company verification*. Đổi lại từ 09/2026 (khách hàng chốt). Employer tự đăng ký, **bấm link xác minh email chỉ để xác thực địa chỉ** — chưa có login, chưa có công ty, chỉ có **một dòng trên Sign-ups**. Admin resolve dòng đó bằng **một trong ba hành động**: **Move to existing company** · **Create company & activate** (tạo công ty mới + đặt người đó làm Admin đầu tiên) · **Archive** nếu là spam. Công ty đang ở Free data thì đưa lên Customers trước, rồi Move. Move/Create gửi **email kích hoạt**, và đó mới là lúc user đăng nhập được.\n\nSau khi vào, thứ còn chờ admin là *xác minh*: bấm **Verify** ở Company detail — nút chỉ mở khi hồ sơ **đã có ERC** (**Unverified → Waiting to verify → Verified**); admin đối chiếu ERC với hồ sơ rồi bấm. Phân owner là việc riêng (Ownership), không chặn Verify. Chưa verify thì employer đăng nhập, đọc, cập nhật, upload đều được — chỉ **không đăng tin** (kể cả draft) và **Sales không yêu cầu xuất hóa đơn** được.',
             table: {
               cols: ['Dòng Sign-ups cho thấy', 'Hành động', 'Vì sao'],
               rows: [
                 ['**Trùng một công ty đã có** trên Customers (Match)', '**Move to existing company** — tạo login ngay trong công ty đó, chọn role, gửi email kích hoạt', 'Một nhân sự HR mới ở khách hàng cũ. Không tạo thêm bản ghi công ty nào'],
-                ['**Trùng một dòng Free data**', '**Đưa dòng Free data lên Customers + place** — dòng rời Free data, dữ liệu (SĐT · địa chỉ · ngành · nguồn) đi theo, người đó là Admin đầu tiên', 'Một MST một bản ghi. Không tạo bản ghi thứ hai cho công ty đã có trong danh bạ'],
-                ['**Không trùng gì** — công ty mới thật', '**Create company & activate** — tạo công ty ở **Chưa xác minh**, người đó là **Admin đầu tiên**, gửi email kích hoạt', 'Trường hợp phổ biến nhất. Không còn tuỳ chọn “để đó” — chưa resolve là khách còn đứng ngoài'],
+                ['**Trùng một dòng Free data**', '**Hai bước:** ① trên màn Free data, đưa công ty lên Customers (Admin phân trực tiếp — điền MST · địa chỉ ĐK · người liên hệ · sales owner; dòng rời Free data, dữ liệu đi theo); ② quay lại Sign-ups → **Move to existing company**', 'Một MST một bản ghi. Sign-up **không tự gộp** dòng Free data: công ty phải hoàn thiện và có chủ trên Customers trước, như mọi công ty khác — đúng thông báo build hiện ở dialog Move'],
+                ['**Không trùng gì** — công ty mới thật', '**Create company & activate** — tạo công ty ở Customers (như cửa ②), trạng thái **Unverified**, người đó là **Admin đầu tiên**, gửi email kích hoạt', 'Trường hợp phổ biến nhất. Không còn tuỳ chọn “để đó” — chưa resolve là khách còn đứng ngoài'],
                 ['Rác / spam', '**Archive** — chặn email kích hoạt, không tạo công ty, không tạo login', 'Không tạo gì cả, và không gửi mail cho spam'],
               ],
             },
@@ -1866,17 +1871,17 @@ export const crm: BuildModule = {
           items: [
             'THE SUCCESS PAGE SETS EXPECTATIONS HONESTLY, and what it now describes is a wait: (1) verify your email; (2) **Saramin sets up your account — we email you a link when it is ready**, usually within 1 business day; (3) once you are in, complete your company record (MST · địa chỉ đăng ký MST · ERC) — Saramin verifies it, and that is what unlocks posting.',
             'THE PLACEMENT SLA IS THE ONE THAT MATTERS NOW: an open Sign-ups row is a customer standing outside the door, not a record waiting to be tidied. Commit to 1 business day, and alarm the ADMIN QUEUE when it slips — never the customer, who can do nothing about it. Verification keeps its own softer SLA, because the person is already inside while it runs.',
-            'TWO ADMIN JOBS, IN ORDER. **(A) Placement — first, and blocking.** Move the person into a company that exists, or create the company and place them in it as first Admin. Until this is done there is no login and no company. **(B) Verification — after, and non-blocking.** The ERC check, which opens Post job and the official invoice once the ERC is on file and an admin has read it. The diagram draws A before B, because A is now a gate rather than a tidy-up.',
+            'TWO ADMIN JOBS, IN ORDER, AND TWO DRAWINGS (split 08/10/2026). **(A) Placement — first, and blocking.** Move the person into a company that exists, or create the company and place them in it as first Admin. Until this is done there is no login. Drawn on its own in “The Sign-ups screen — three actions” below. **(B) Verification — after, and non-blocking.** The ERC check, which opens Post job and the official invoice once the ERC is on file and an admin has read it. The drawing on THIS block is (B) only: the three statuses and what moves a company between them.',
           ],
           table: {
             cols: ['#', 'Where', 'Who', 'What happens', 'State after'],
             rows: [
               ['①', 'Company site · Sign up', 'Employer', 'Fills the form (full name · email · phone · password · tax number · company name) + **ERC upload (optional, several files)**. Register sends the verification email.', 'Nothing exists yet'],
               ['②', 'Email', 'Employer', 'Clicks the link. **This proves the address — it does NOT open the console.**', 'Email verified · **one row on Sign-ups** · still no login, no company'],
-              ['③', 'Admin · Sign-ups', 'Admin', 'Resolves the row — **Move** into the matched customer (pick the role) · **Create company & activate** the person as its first Admin · **Archive** as spam. Move and Create send the activation email.', 'Company exists (**Unverified**) · login **Active** once they open the link'],
-              ['④', 'Company site · console', 'Employer', 'Signs in for the first time. Tag **No paperwork** beside the company name with a button → Company information. **Post job disabled**, and the page asks for the one thing still owed — the **ERC** (Giấy chứng nhận đăng ký doanh nghiệp) — with the link.', 'Unverified · **No paperwork**'],
-              ['⑤', 'Company site · Company information', 'Employer', 'Adjusts company information if anything is off, and **uploads the ERC** (several pages are fine). The file lands on the admin’s Enterprise Registration Documents card; the tag flips to **Waiting to verify** on both sides — the MST and address were filled in when the admin created the company, so the certificate is all that was missing.', 'Unverified · **Waiting to verify**'],
-              ['⑥', 'Admin · Customers → Company detail', 'Admin', 'Clicks **Chờ verify · n** (= filter *Waiting to verify*), opens the record, reads the ERC against the MST, address and legal name on it, presses **Verify company** — the button only proceeds in *Waiting to verify*; on *No paperwork* there is nothing to rule on and the dialog points at Company documents instead. Assigning a sales owner is a separate Ownership action, not part of Verify.', '**Verified**'],
+              ['③', 'Admin · Sign-ups', 'Admin', 'Resolves the row with one of three actions — **Move to existing company** (pick the role) · **Create company & activate** with the person as its first Admin · **Archive** as spam. A **Free data** match is promoted to Customers first (Free data → Admin phân trực tiếp), then Moved. Move and Create send the activation email.', 'Company exists (**Unverified**) · login **Active** once they open the link'],
+              ['④', 'Company site · console', 'Employer', 'Signs in for the first time. Tag **Unverified** beside the company name with a button → Company information. **Post job disabled**, and the page asks for the one thing still owed — the **ERC** (Giấy chứng nhận đăng ký doanh nghiệp) — with the link.', '**Unverified** (no ERC yet)'],
+              ['⑤', 'Company site · Company information', 'Employer', 'Adjusts company information if anything is off, and **uploads the ERC** (several pages are fine). The file lands on the admin’s Enterprise Registration Documents card; the tag flips to **Waiting to verify** on both sides — the MST and address were filled in when the admin created the company, so the certificate is all that was missing.', '**Waiting to verify**'],
+              ['⑥', 'Admin · Customers → Company detail', 'Admin', 'Clicks **Chờ verify · n** (= filter *Waiting to verify*), opens the record, reads the ERC against the MST, address and legal name on it, presses **Verify company** — the button only proceeds in *Waiting to verify*; on *Unverified* there is nothing to rule on and the dialog points at Company documents instead. Assigning a sales owner is a separate Ownership action, not part of Verify.', '**Verified**'],
               ['⑦', 'Both sites', 'System', 'Tag turns **blue Verified**. Employer: Post job unlocked (a draft needs no invoice), Company information read-only. Sales: “Yêu cầu xuất hóa đơn chính” enabled.', 'Verified'],
               ['⑧', 'Admin · Company detail · Save', 'Admin', 'Edits identity data on a Verified record.', '**Waiting to verify · cần xác minh lại** — back to ⑥'],
             ],
@@ -1898,17 +1903,17 @@ export const crm: BuildModule = {
         },
         {
           label: 'Verification status — three labels an admin can act on',
-          text: 'Client decision, 09/09/2026. The tag beside a company name has **three** values, not two, because an unverified record raises two different questions — *can I clear this now?* and *is the customer still owing us paperwork?* — and one amber tag answered neither. The same three labels render on the admin’s Customers list, on Company detail, and beside the company name on the Company site, so an admin and a customer on the phone read one vocabulary.',
+          text: 'The three labels are **Unverified → Waiting to verify → Verified** — the same words the build’s console prints (the slate label was called “No-paperwork” in this spec until 08/10/2026; renamed to match the console). The flow drawing at the top of this page shows what moves a company between them. Client decision, 09/09/2026. The tag beside a company name has **three** values, not two, because an unverified record raises two different questions — *can I clear this now?* and *is the customer still owing us paperwork?* — and one amber tag answered neither. The same three labels render on the admin’s Customers list, on Company detail, and beside the company name on the Company site, so an admin and a customer on the phone read one vocabulary.',
           table: {
             cols: ['Status', 'Means', 'When it shows', 'Whose move', 'Tone'],
             rows: [
               ['**Verified**', 'An admin pressed Verify against the ERC', 'After Verify — until an admin edits identity data', 'Nobody. Posting a job and the official invoice are unlocked', 'Blue shield'],
               ['**Waiting to verify** · *Chờ xác minh*', 'Not verified yet, but an ERC is on the record — there is paperwork to rule on', 'The moment the first ERC file lands, without anyone setting it', '**Admin** — this is the queue the *Chờ verify · n* chip counts, and the only state in which Verify proceeds', 'Amber — work we can do'],
-              ['**No paperwork** · *Chưa có hồ sơ*', 'Not verified, and no ERC on the record yet', 'From placement until the employer (or an admin on their behalf) uploads the certificate', '**The employer** — the tag names what is owed, and the Company site says where to upload it', 'Slate — work we are waiting on'],
+              ['**Unverified** · *Chưa xác minh*', 'Not verified, and no ERC on the record yet', 'From placement until the employer (or an admin on their behalf) uploads the certificate', '**The employer** — the tag names what is owed, and the Company site says where to upload it', 'Slate — work we are waiting on'],
             ],
           },
           items: [
-            'THE TWO UNVERIFIED LABELS ARE ONE STATE in the data (`unverified`) told apart by whether an ERC is on file, computed on read — exactly how the build derives it (svn-be V482: the verdict plus any non-rejected document). That is what keeps the tag, the filter, the counter and the Verify button from ever disagreeing — see the warning below.',
+            'UNVERIFIED AND WAITING TO VERIFY ARE ONE STATE in the data (`unverified`) told apart by whether an ERC is on file, computed on read — exactly how the build derives it (svn-be V482: the verdict plus any non-rejected document). That is what keeps the tag, the filter, the counter and the Verify button from ever disagreeing — see the warning below.',
             'AMBER vs SLATE IS THE LOAD-BEARING PART: amber means an admin can act today, slate means we are waiting on the customer. A screen full of amber is a real queue; if both unverified cases shared a colour, the queue would be unreadable — which is why the split exists at all.',
             '“Verified, then an admin edited it” is NOT a fourth status. It lands in Waiting to verify (the documents are still on file) with the modifier *· cần xác minh lại* and its own tooltip, because re-checking a changed record is a different task from checking a new one.',
             'There is no “Rejected”: an admin who cannot verify a company does not stamp it — the record stays Unverified and the reason lives in the activity log. Archiving is what ends a company that should not be pursued.',
@@ -1916,22 +1921,22 @@ export const crm: BuildModule = {
         },
         {
           label: 'Admin verifies — paperwork on file opens the button, and “Waiting to verify” is how the admin finds them',
-          text: '“Verify company” is a button on Company detail, shown while the company is not Verified — and it **only proceeds in Waiting to verify, i.e. when at least one ERC is on the record**. On No paperwork the dialog says there is nothing to rule on and points at Company documents (the build does exactly this). The dialog lists the certificate as the one input, and the MST, registered address, legal name and sales owner as facts to read the certificate against — not gates. Whether a record is waiting is **derived from the verdict plus the documents on every read, never stored** — so the filter, the counter, the row hint, the header button and the dialog can never disagree.',
+          text: '“Verify company” is a button on Company detail, shown while the company is not Verified — and it **only proceeds in Waiting to verify, i.e. when at least one ERC is on the record**. On Unverified the dialog says there is nothing to rule on and points at Company documents (the build does exactly this). The dialog lists the certificate as the one input, and the MST, registered address, legal name and sales owner as facts to read the certificate against — not gates. Whether a record is waiting is **derived from the verdict plus the documents on every read, never stored** — so the filter, the counter, the row hint, the header button and the dialog can never disagree.',
           table: {
             cols: ['Input', 'Read from', 'Missing when', 'Who fills it'],
             rows: [
-              ['**ERC** (Giấy chứng nhận đăng ký doanh nghiệp)', 'Enterprise Registration Documents card — at least one file', 'No file → **No paperwork**', 'The employer, at sign-up or on Company information (Upload document); or an admin uploads on their behalf. Placement files an ERC attached at sign-up automatically'],
+              ['**ERC** (Giấy chứng nhận đăng ký doanh nghiệp)', 'Enterprise Registration Documents card — at least one file', 'No file → **Unverified**', 'The employer, at sign-up or on Company information (Upload document); or an admin uploads on their behalf. Placement files an ERC attached at sign-up automatically'],
             ],
           },
           items: [
             'WHY ONLY THE CERTIFICATE (client, 11/09/2026 — supersedes the 09/09 three-input rule): a company is created by an admin through the ordinary Create company form, which requires the legal name, the MST and the invoice address, so none of them can be missing on a record that exists. What the employer still owes is the certificate; what the admin does is read it against the record. The build derives the label the same way (svn-be V482: `verified_at` + any non-rejected company_document).',
             'NOT INPUTS, SHOWN TO READ: **MST**, **registered address**, **legal name** (compared with the certificate — that comparison *is* the act of verifying) and **sales owner** (Chưa phân is allowed — ownership has its own home, the Ownership actions, and a company can be verified before a rep is found).',
-            'WHERE “WAITING” SHOWS — one derived value on five surfaces: (1) Customers · Verified filter, whose three values ARE the three status labels; (2) Customers toolbar chip **Chờ verify · n** — one click filters to *Waiting to verify*, a second clears it, hidden when n = 0; (3) the tag itself on every row, plus *Chưa có ERC — chờ employer upload* under a No-paperwork tag; (4) Company detail header: the tag, and the Verify button enabled only in Waiting; (5) Sign-ups · Move dialog, no-match panel: the same line.',
+            'WHERE “WAITING” SHOWS — one derived value on five surfaces: (1) Customers · Verified filter, whose three values ARE the three status labels; (2) Customers toolbar chip **Chờ verify · n** — one click filters to *Waiting to verify*, a second clears it, hidden when n = 0; (3) the tag itself on every row, plus *Chưa có ERC — chờ employer upload* under an Unverified tag; (4) Company detail header: the tag, and the Verify button enabled only in Waiting; (5) Sign-ups · Move dialog, no-match panel: the same line.',
             'Pressing Verify writes `verifiedAt`, `verifiedBy`, flips the tag blue on both sites, enables Post job on the Company site and the invoice request in the CRM, and resolves the Sign-ups row if one is open.',
             'Verify is an ADMIN duty with its own permission (`company:verify`, build), not the sales owner’s and not `company:update`: correcting a customer’s address and ruling on their legal paperwork are different authorities. The button is not hidden on a colleague’s record, and it works on a record with no owner.',
             'Admin may also upload the ERC on the employer’s behalf (customer emailed it) — same card, marked “Admin upload hộ”; that alone moves the company to Waiting to verify.',
           ],
-          warn: 'WAITING IS A LABEL, NOT A STORED STATE. The record still holds `verified | unverified` only; do NOT add a third value to the enum or persist it. It is a function of the verdict and the documents that already exist, and storing it is how a tag says “Waiting to verify” while the button says “No paperwork”. Compute it where it is read — on both sites.',
+          warn: 'WAITING IS A LABEL, NOT A STORED STATE. The record still holds `verified | unverified` only; do NOT add a third value to the enum or persist it. It is a function of the verdict and the documents that already exist, and storing it is how a tag says “Waiting to verify” while the button says “Unverified”. Compute it where it is read — on both sites.',
         },
         {
           label: 'After Verified — the employer’s Company information is read-only; an admin edit drops the flag',
@@ -1951,11 +1956,11 @@ export const crm: BuildModule = {
         {
           label: 'The tag on the Company site — where it shows and what sits beside it',
           items: [
-            'BESIDE THE COMPANY NAME — in the account menu (Figma [2791-10975](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2791-10975) · [2302-44567](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2302-44567)), in the console header, and **in the page title of Company information** (client, 09/2026 — the page is titled with the company, so the state reads as a property of the company rather than of the page). Verified: blue shield pill. Unverified: the amber / slate pill **plus one action, whose label is the EMPLOYER’s verb** — “Cập nhật hồ sơ để được xác minh · còn N mục →” (EN: “Update your details to get verified · N left →”), shortened to “Cập nhật hồ sơ · còn N mục →” in the one-line header strip. Once all three inputs are in, the action becomes a quiet line “Waiting to verify · Saramin xác minh trong 1 ngày làm việc” — an action with nothing left to do behind it is a nag people learn to ignore.',
+            'BESIDE THE COMPANY NAME — in the account menu (Figma [2791-10975](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2791-10975) · [2302-44567](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2302-44567)), in the console header, and **in the page title of Company information** (client, 09/2026 — the page is titled with the company, so the state reads as a property of the company rather than of the page). Verified: blue shield pill. Not yet verified: the slate (Unverified) or amber (Waiting to verify) pill **plus one action, whose label is the EMPLOYER’s verb** — “Cập nhật hồ sơ để được xác minh · còn N mục →” (EN: “Update your details to get verified · N left →”), shortened to “Cập nhật hồ sơ · còn N mục →” in the one-line header strip. Once all three inputs are in, the action becomes a quiet line “Waiting to verify · Saramin xác minh trong 1 ngày làm việc” — an action with nothing left to do behind it is a nag people learn to ignore.',
             'ON POST JOB: in place of the disabled actions — “Công ty chưa được xác minh — chưa đăng tin được, kể cả bản nháp. Để được xác minh, tải lên Giấy chứng nhận đăng ký doanh nghiệp (ERC) ở Company information:” followed by the certificate row (✓ or ✗) and the button “Company information →”. Once uploaded: “Waiting to verify — Saramin xác minh trong 1 ngày làm việc; sau đó bạn đăng tin được ngay.” The form is still visible; only Publish and Save draft are disabled.',
-            'ON COMPANY INFORMATION (Figma [view 2311-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2311-10289) · [edit 2313-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2313-10289)): the tag sits in the page title beside the company name, with the primary action **Tải lên ERC để được xác minh →** scrolling to the documents section. While No paperwork an amber banner says “No paperwork — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” and the documents section is a dropzone marked “Bắt buộc để xác minh”; once a file is on record the banner turns blue — “Waiting to verify — Saramin xác minh trong 1 ngày làm việc”. Verified: no banner, the page is read-only (next block). Full page spec: Account management → Company information (company site).',
+            'ON COMPANY INFORMATION (Figma [view 2311-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2311-10289) · [edit 2313-10289](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=2313-10289)): the tag sits in the page title beside the company name, with the primary action **Tải lên ERC để được xác minh →** scrolling to the documents section. While Unverified an amber banner says “Chưa xác minh — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” and the documents section is a dropzone marked “Bắt buộc để xác minh”; once a file is on record the banner turns blue — “Waiting to verify — Saramin xác minh trong 1 ngày làm việc”. Verified: no banner, the page is read-only (next block). Full page spec: Account management → Company information (company site).',
             'NAME THE DOCUMENT THE WAY THE USER KNOWS IT (client, 09/2026). “ERC” is OUR shorthand — an HR person in Vietnam recognises **giấy chứng nhận đăng ký doanh nghiệp**. So every employer-facing string leads with the Vietnamese name and carries the acronym in parentheses at most once per screen: the sign-up field is “Giấy chứng nhận đăng ký doanh nghiệp (ERC) — không bắt buộc”, the upload card is titled the same, and running copy says “giấy chứng nhận đăng ký doanh nghiệp” or “giấy này”, never a bare “ERC”. Inside this spec and on the admin console, ERC stays the shorthand.',
-            'THE ERC CARD IS A DROPZONE WHILE EMPTY, not a grey “no files” line (client, 09/2026): “Tải lên Giấy chứng nhận đăng ký doanh nghiệp (ERC)” · “Kéo thả hoặc bấm để chọn tệp · PDF hoặc ảnh · nhiều trang là bình thường” · and the reason underneath — “Saramin đối chiếu ERC với MST và địa chỉ đăng ký MST ở trên, rồi xác minh trong 1 ngày làm việc.” The card header also carries a **Bắt buộc để xác minh** chip while no file is on the record. This upload is the single control that moves a company from No paperwork to Chờ xác minh, so it is the most prominent thing on the page.',
+            'THE ERC CARD IS A DROPZONE WHILE EMPTY, not a grey “no files” line (client, 09/2026): “Tải lên Giấy chứng nhận đăng ký doanh nghiệp (ERC)” · “Kéo thả hoặc bấm để chọn tệp · PDF hoặc ảnh · nhiều trang là bình thường” · and the reason underneath — “Saramin đối chiếu ERC với MST và địa chỉ đăng ký MST ở trên, rồi xác minh trong 1 ngày làm việc.” The card header also carries a **Bắt buộc để xác minh** chip while no file is on the record. This upload is the single control that moves a company from Unverified to Chờ xác minh, so it is the most prominent thing on the page.',
             'ON THE SIGN-UP SUCCESS PAGE: the tracker names the step (“Saramin verifies your company”) so the tag is expected, not alarming, when they first see it.',
           ],
         },
@@ -1984,7 +1989,7 @@ export const crm: BuildModule = {
           },
         {
           label: 'Sign-up creates a REQUEST — no login and no company until an admin places the person',
-          text: 'Anyone can self-register on the Company site. The form captures the person (full name, email, phone, password set here), their company (tax number, company name, “is your company currently hiring?”), a Terms agreement — and, **new since 09/2026, an optional ERC upload** (Giấy chứng nhận đăng ký doanh nghiệp, several files allowed).\n\nOn submit a verification email goes out immediately. **Clicking the link is the whole gate**: it creates the login, creates the company on Customers with **Verified = Unverified** and no sales owner, and the person is inside the console at once. What waits for an admin is not access — it is **verification**, and verification gates exactly two things: posting a job and being invoiced. See the flow blocks at the top of this page.',
+          text: 'Anyone can self-register on the Company site. The form captures the person (full name, email, phone, password set here), their company (tax number, company name, “is your company currently hiring?”), a Terms agreement — and, **new since 09/2026, an optional ERC upload** (Giấy chứng nhận đăng ký doanh nghiệp, several files allowed).\n\nOn submit a verification email goes out immediately. **Clicking the link only proves the address**: it puts one row on Sign-ups and nothing else — no login, no company. What opens sign-in is an admin resolving that row (Move or Create); after that the company waits for **verification**, which gates exactly two things: posting a job and being invoiced. See the drawings on this page.',
           table: {
             cols: ['Action', 'Result'],
             rows: [
@@ -2000,24 +2005,26 @@ export const crm: BuildModule = {
             'THIS RESTORES THE 08/2026 MODEL (client, 09/2026). The 09/2026 experiment let the link itself open the console; it is reverted, deliberately. Both waits still exist — the person waits for **placement**, then their company waits for **verification** — but only the first one keeps them out. What a placed-but-unverified employer can do: sign in, read everything, upload the ERC, fix company information; what they cannot do: post a job (even a draft) or be issued the official invoice.',
             'THE PASSWORD IS STILL SET AT SIGN-UP, so the activation email is a “your account is ready, here is your company” link rather than a set-password step.',
           ],
-          warn: 'A SELF-REGISTRATION IS NOT A CREATE DOOR ANY MORE. A company is created in exactly three ways and an admin operates all three: created on Customers, promoted from Free data, or created while resolving a sign-up. Nothing reaches the platform that an admin has not looked at — which is the property the client asked for when the gate was put back.',
+          warn: 'A SELF-REGISTRATION IS NOT A CREATE DOOR ANY MORE. A company is created in exactly three ways and an admin operates all three: created on Customers, promoted from Free data, or created on Customers while resolving a sign-up (Create company & activate). A sign-up never promotes a Free data row itself — that is done on Free data first. Nothing reaches the platform that an admin has not looked at — which is the property the client asked for when the gate was put back.',
         },
         {
           label: 'The Sign-ups screen — three actions, and Create is back',
-          /* THE INTAKE DRAWING BELONGS HERE TOO, not only on Free data: this screen is
-             where its sign-up row is actually worked. Same component, rendered twice
-             on purpose — one drawing, two audiences. */
-          diagram: 'company-intake',
+          /* Its OWN drawing since 08/10/2026. It used to reuse the intake drawing, whose
+             sign-up row overlapped the Free data → Customers paths and read as a third
+             way out of the pool (client page feedback). The sign-up never moves a
+             company; it places a person into one that is already on Customers. */
+          diagram: 'company-signup',
           text: 'The Match column is information: it lists the companies this sign-up might already be, and which list each is in. What the operator DOES is exactly one of three things — and every one of them is a decision about a person who cannot get in until it is made.',
           table: {
             cols: ['Action', 'When', 'What it does', 'The person'],
             rows: [
-              ['**Move to existing company**', 'Match names a **Customers** record', 'Creates the login **inside that company** with the role picked here; an ERC uploaded at sign-up moves across. No new company is created', '**Can now sign in.** Emailed the activation link and told which company they belong to. The destination’s roles and seat cap apply'],
-              ['**Create company & activate**', 'Not match — a genuinely new company. Also the **Free data** case, where the pool row is PROMOTED instead of created fresh', 'Creates the Customers company (**Unverified**) with this person as its **first Admin**. A promoted pool row brings its phone / address / industry / source and leaves Free data', '**Can now sign in.** Emailed the activation link. Lands on the console with **No paperwork** and Post job disabled'],
+              ['**Move to existing company**', 'Match names a **Customers** record — or a **Free data** record **after** it has been promoted to Customers (step 1 on Free data, step 2 here)', 'Creates the login **inside that company** with the role picked here; an ERC uploaded at sign-up moves across. No new company is created', '**Can now sign in.** Emailed the activation link and told which company they belong to. The destination’s roles and seat cap apply'],
+              ['**Create company & activate**', 'Not match — a genuinely new company', 'Creates the company on **Customers** (the same door ② — legal name · MST · registered address · contact · sales owner), **Unverified**, with this person as its **first Admin**. Never used for a Free data match — that company already exists', '**Can now sign in.** Emailed the activation link. Lands on the console **Unverified**, Post job disabled'],
               ['**Archive**', 'Spam, junk, not real', 'Resolves the row and blocks the email from ever activating. No company, no login. Reversible, audited', 'Never gets in. No email — spam gets no receipt'],
             ],
           },
           items: [
+            'A FREE DATA MATCH IS TWO STEPS, NOT A FOURTH ACTION (client, 08/10/2026; the build does the same — its Move dialog says “That company is still in Free data … Promote it to Customers first, then come back”). Step 1 on Free data: the admin assigns the company directly (road B — MST · registered address · contact · sales owner), and the row leaves the pool. Step 2 back here: Move to existing company. A pool row has no owner and no billing identity, so placing a person straight into it would put a login on a company nobody is responsible for.',
             'EVERY ROW MUST BE RESOLVED — there is no “leave it” option any more. An unresolved row is a person waiting outside the platform, which makes the age of the oldest row the real content of this screen, and the SLA a customer-facing promise.',
             'EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS. An unverified sign-up is not a row here — it is nothing yet. So there is no “awaiting email verification” state on this screen and no Email-verified column: every visible row has already passed it.',
             'CREATE IS BACK, and it is the COMMON case: most sign-ups are genuinely new companies. It is not a second create door — it is the same admin creating the same Customers record, from the row that asked for it.',
@@ -2050,8 +2057,8 @@ export const crm: BuildModule = {
             cols: ['Track', 'States', 'Rule'],
             rows: [
               ['Login', 'Pending email verification → **Pending placement** → Active', '**Active only after an admin Moves or Creates**, and the person opens the activation link. The password was set at sign-up. Archive on Sign-ups blocks the email for good.'],
-              ['Company', '**Unverified → Verified** (and back to Unverified if an admin edits identity data)', 'Two states — see “Verification status” above. This is the only track an admin gates.'],
-              ['Inbox row (Sign-ups)', 'New → Resolved (moved · created · promoted) / Archived', 'Resolving it is what lets the person in, so this is the queue that carries the customer-facing SLA — 1 business day.'],
+              ['Company', '**Unverified → Waiting to verify → Verified** (and back to Waiting to verify if an admin edits identity data)', 'One stored flag, three labels — see “Verification status” above. This is the only track an admin gates.'],
+              ['Inbox row (Sign-ups)', 'New → Resolved (moved · created) / Archived', 'Resolving it is what lets the person in, so this is the queue that carries the customer-facing SLA — 1 business day.'],
             ],
           },
           warn: 'THE LOGIN GATE IS DELIBERATE (client, 09/2026). It was removed in 09/2026 and has been put back: only people who belong to a company an admin has looked at get into the platform. The cost is real and has to be managed rather than ignored — while a row is open, a customer who has done everything asked of them cannot sign in. That makes the SLA on this screen a promise to a customer, not housekeeping.',
@@ -2074,12 +2081,12 @@ export const crm: BuildModule = {
               { name: 'companyNameTyped', type: 'string', required: true, notes: 'the company name the person entered at sign-up' },
               { name: 'taxCode (MST)', type: 'string', notes: 'the match key; also what verifies the company later' },
               { name: 'hiring', type: 'bool', notes: '"is your company currently hiring?" from the form — a priority signal, not a disposition' },
-              { name: 'emailVerified', type: 'bool', notes: 'set true when the user clicks the link — which is also the moment the login and the Unverified company are created and the row appears. Reads true on every row HQ can see.' },
-              { name: 'companyId', type: 'ref → Company', notes: 'the Unverified company the sign-up created. Move re-points the login to another company and archives this one; Verify on Company detail resolves the row.' },
+              { name: 'emailVerified', type: 'bool', notes: 'set true when the user clicks the link — the moment the row appears on Sign-ups. No login and no company exist yet. Reads true on every row HQ can see.' },
+              { name: 'companyId', type: 'ref → Company', notes: 'nullable — the Customers company the person was placed into, by Move to existing company or Create company & activate. Empty while the row is New or Archived.' },
               { name: 'ercFiles', type: 'file[]', notes: 'optional at sign-up, several files. Attached to the created company’s Enterprise Registration Documents card — never held on the sign-up row itself.' },
               { name: 'matchResult', type: 'derived (bool)', notes: 'derived, NOT stored — a RANKED LIST of candidate companies from three signals (name · email domain · MST) across Customers and Free data, each carrying which list it is in. Never binary, never tax-only, and it never changes the two actions. See the matching rule.' },
               { name: 'receivedAt', type: 'timestamp' },
-              { name: 'status', type: 'enum', notes: 'New → Resolved (moved to existing · company verified) / Archived. Resolution by verification is automatic.' },
+              { name: 'status', type: 'enum', notes: 'New → Resolved (moved to existing · new company created) / Archived. Only the three admin actions resolve a row.' },
             ],
           },
           {
@@ -2090,27 +2097,27 @@ export const crm: BuildModule = {
               { name: 'unverifiedReason', type: 'enum', notes: 'new | edited — the line under the amber tag; `edited` carries wasVerifiedAt · editedAt · editedBy' },
               { name: 'salesOwner', type: 'ref → admin user?', notes: 'nullable — a self-registered company has none until Sales assigns one (Ownership). Shown as “Chưa phân”. NOT a Verify input.' },
               { name: 'ercDocuments', type: 'file[]', notes: 'several; each with uploadedBy (company | admin) and uploadedAt. Never deleted on re-upload.' },
-              { name: 'verificationLabel', type: 'derived — never stored', notes: 'VERIFIED · WAITING_TO_VERIFY (unverified, ≥ 1 ERC on record) · UNVERIFIED = No paperwork (unverified, no ERC). Drives the Customers filter, the Chờ verify chip, the row hint, the Verify company button and the Company-site tag. One derivation, both sites — the build’s (svn-be V482).' },
+              { name: 'verificationLabel', type: 'derived — never stored', notes: 'VERIFIED · WAITING_TO_VERIFY (unverified, ≥ 1 ERC on record) · UNVERIFIED (unverified, no ERC). Drives the Customers filter, the Chờ verify chip, the row hint, the Verify company button and the Company-site tag. One derivation, both sites — the build’s (svn-be V482).' },
             ],
           },
         ],
         behaviors: [
           'On submit the system holds the form (person, company, chosen password, any ERC files) and sends an email-verification link immediately. Nothing else exists yet.',
-          'Clicking the link does THREE things at once: creates the login (Active), creates the company on Customers (Verified = Unverified, sales owner = Chưa phân, ERC files attached to its Enterprise Registration Documents card), and creates the row here. The three-signal company match (name · email domain · MST) runs as the row appears.',
-          'Two actions on a row, both about DUPLICATES and junk, never about access: **Move to existing company** re-attaches the login to the company the admin picks and archives the Unverified duplicate the sign-up created (its ERC files move across); **Archive** deactivates the login and archives the shell company. A row with no match and no problem is left alone — it resolves when the company is verified. This REVERSES the 08/2026 model in which Move unlocked login: the person is already inside.',
-          'Match is informational and never changes the two actions. It is a RANKED LIST of candidate companies, not a yes/no — see the matching rule for the three signals and how ties are ordered.',
-          'Move emails the person which company they now belong to. Archive emails nothing — spam gets no receipt.',
-          'The user sees the state in the console itself: the No paperwork tag beside the company name, a button to Company information, and a disabled Post job that asks for the ERC. There is no “under review” login screen any more, because there is no review before login.',
+          'Clicking the link proves the address and creates the row here — nothing else: no login, no company. The three-signal company match (name · email domain · MST) runs as the row appears.',
+          'THREE actions on a row (client, 08/10/2026 — the build’s three): **Move to existing company** places the person into the Customers company the admin picks, with a role (ERC files move across); **Create company & activate** creates the company on Customers through the ordinary create form (door ②) with this person as its first Admin; **Archive** rejects the request — no login, no company. A **Free data** match is not a fourth action: the admin promotes the company to Customers on Free data first, then comes back and Moves.',
+          'Match is informational and never changes the three actions. It is a RANKED LIST of candidate companies, not a yes/no — see the matching rule for the three signals and how ties are ordered.',
+          'Move and Create email the person that their account is ready and which company they belong to — that email is what opens sign-in. Archive emails nothing — spam gets no receipt.',
+          'Once placed, the user sees the company’s state in the console itself: the Unverified tag beside the company name, a button to Company information, and a disabled Post job that asks for the ERC. Before placement there is no console to see — the sign-up success page tells them Saramin is setting the account up.',
         ],
         rules: [
           'TWO gates, in order (client, 09/2026). The email link is the USER’s own and only proves the address — every row here has cleared it by definition. **Placement is the ADMIN’s first gate and it opens sign-in**: until Move or Create, the person is not in the platform. Verification is the admin’s second gate, on Company detail, and it gates posting and invoicing, not access.',
-          'TWO actions on EVERY row, always the same two: **Move to existing company** · **Archive**. One affordance — the ⋯ menu — on every unresolved row. A table whose rows offer four different controls makes the operator read each row before they can act on any of them.',
-          'THE TWO “NO CUSTOMER MATCH” OUTCOMES LIVE INSIDE THE MOVE DIALOG, and neither is a blocker any more (09/2026 — the sign-up already created the company). Company đang ở **Free data** → amber panel with **Gộp dòng Free data vào công ty này**: the pool row is absorbed into the shell (leaves Free data, fills empty fields, its open Xin nhận becomes an owner candidate) — never the reverse. No match at all → “đây là công ty mới”, with **Mở Company detail →**; the row resolves when the company is verified. The old “Đưa công ty lên Customers → / Tạo công ty trước →” blockers are gone: with a shell already on Customers they would have produced a third record.',
+          'THREE actions on EVERY row, always the same three: **Move to existing company** · **Create company & activate** · **Archive**. One affordance — the ⋯ menu — on every unresolved row. A table whose rows offer different controls makes the operator read each row before they can act on any of them.',
+          'THE TWO “NO CUSTOMER MATCH” CASES ARE ANSWERED INSIDE THE MOVE DIALOG, as a pointer and never as a merge. Company đang ở **Free data** → amber panel “That company is still in Free data — promote it to Customers first, then come back”, with **Open the company →** (step 1 on Free data, step 2 is this Move). No match at all → “this tax code reaches no company yet” — close the dialog and use **Create company & activate** instead. A pool row is never absorbed into anything from this screen: one MST, one record, and a company leaves Free data only through the two roads on the Free data page.',
           '★ EMAIL VERIFICATION HAPPENS BEFORE THE ROW EXISTS (tightened 2026-08-23). An unverified sign-up is not a disabled row in this inbox — it is not a row at all; the request sits with the USER until they click the link. Consequences that follow, and each one removes something from the screen: there is no “awaiting verification” state, no Email-verified column (it would read the same value on every row), and no branch in the Move dialog. Placement and login are the same moment again — Move unlocks the login and sends the “you’re in” email. This REVERSES the earlier model in which an unverified person could be placed and their login opened later; that split made the operator hold two states apart for a case they can no longer meet. Spam never reaches the queue either, which is what the old rule was protecting against by keeping it archivable.',
-          'REMOVED: “Create new company + move” and “Promote from Free data + move”. Both were extra doors into the company table, placed on a screen that does not ask for phân loại người mua, địa chỉ xuất hoá đơn or người liên hệ — a record created there would stall at the VAT-invoice step, by which time the company already has users signing in.',
-          'The result is the invariant: **the company is always created first, then the user is assigned.** See the intake flow diagram on this page.',
-          'Moving a user into a company picks their role there and respects its seat cap. There is no “creating” branch on this screen, so there is no Admin-by-creation case either.',
-          'NO SALES-OWNER FIELD on this screen (was required on both actions when one of them created a company). A sign-up is only ever moved into a company that is already on Customers, and the promotion gate guarantees every such record HAS an owner — asking again here invited the operator to change ownership in passing, from a dialog about a person. Ownership changes have one home: Chuyển giao on the company record.',
+          'REMOVED for good: “Promote from Free data + move” as one action. Promoting a company needs what the Free data road asks for (MST · registered address · contact · sales owner) and belongs on that screen; doing it from a dialog about a person is how a company reaches Customers with no billing identity. **Create company & activate is back** (client, 09/2026) — but it opens the ordinary Customers create form, so the same five required fields apply.',
+          'The result is the invariant: **the company is on Customers first, then the user is assigned.** The sign-up drawing on this page shows the three actions; the intake drawing on Free data shows how a company reaches Customers.',
+          'Moving a user into a company picks their role there and respects its seat cap. Create makes the person the new company’s first Admin.',
+          'NO SALES-OWNER FIELD on the Move dialog. A person is only ever moved into a company that is already on Customers, and the promotion road guarantees every such record HAS an owner — asking again here invited the operator to change ownership in passing, from a dialog about a person. Ownership changes have one home: Chuyển giao on the company record. (Create company & activate asks for an owner because it is the Customers create form.)',
           'Password is set at sign-up; the approval email is a sign-in notice, not a set-password link.',
           'One email = one employer login; a second sign-up on the same email is blocked. Every resolution is audited.',
           '★ COMPANY MATCHING — THREE SIGNALS, TWO LISTS, AND IT IS A LIST NOT A VERDICT. The matcher reads (1) **company name** typed at sign-up, normalised, against both `name` and `legalName`; (2) **email domain** — the part after @ in the sign-up email, against the company’s website domain; (3) **MST**, exact. It scans **Customers AND Free data**, because knowing the company exists but is unclaimed is the whole reason the Move dialog can send the operator to promote it.',
@@ -2121,7 +2128,7 @@ export const crm: BuildModule = {
           'NO AUTO-PLACEMENT ON A MATCH, ever, however many signals agree. A confident match still only pre-selects the company in the Move dialog — a person is being given access to a company’s candidate pipeline, and that is not a decision to make on a string comparison. The operator confirms.',
           'THE SOURCE IS SHOWN, THE REASON IS NOT (2026-08-23). Each match renders as its list badge — **Customers** or **Free data** — plus the company name. The old cell also printed WHY it matched (“tên+đuôi email”); that described our matcher rather than answering the operator’s question, and the operator answers it by opening the company. The reason survives in the hover title for the genuinely ambiguous case.',
         ],
-        states: ['Login: Pending email verification → Active — the moment the link is clicked', 'Company: Unverified (new) → Verified → Unverified (edited) → Verified', 'Inbox row: New → Resolved (moved · merged · verified) / Archived'],
+        states: ['Login: Pending email verification → Pending placement → Active — after Move or Create, once the activation link is opened', 'Company: Unverified (no ERC) → Waiting to verify (ERC on file) → Verified → Waiting to verify · cần xác minh lại (admin edited identity data) → Verified', 'Inbox row: New → Resolved (moved · created) / Archived'],
         backend: {
           dataModel: [
             { name: 'signupId', type: 'uuid', required: true },
@@ -2149,19 +2156,21 @@ export const crm: BuildModule = {
             'GET /admin/crm/companies?verification=VERIFIED|WAITING_TO_VERIFY|UNVERIFIED — the Customers filter and the Chờ verify count; the label is computed in the query from the verdict + documents, never read from a column',
             'PATCH /admin/crm/companies/:id (identity fields) — on a verified company sets unverified/edited with wasVerifiedAt · editedAt · editedBy',
           ],
-          integrations: ['Company site — sign-up form (source) · Company information (ERC upload; read-only when verified) · the header tag', 'CRM Customers — Verified column + filter, Verify button, Enterprise Registration Documents card', 'Job management — Create job on the Company site reads the flag', 'Invoices — “Yêu cầu xuất hóa đơn chính” reads the flag', 'Auth — email verification creates the login; no placement gate', 'Notifications — verification email · “you now belong to X” · verify-queue SLA nudge'],
-          notes: 'ONE gate before sign-in (email) and ONE admin gate after it (verification), gating different things: the first gates access, the second gates posting and invoicing. Store the verification state on the COMPANY, never on the sign-up row.',
+          integrations: ['Company site — sign-up form (source) · Company information (ERC upload; read-only when verified) · the header tag', 'CRM Customers — Verified column + filter, Verify button, Enterprise Registration Documents card', 'Job management — Create job on the Company site reads the flag', 'Invoices — “Yêu cầu xuất hóa đơn chính” reads the flag', 'Auth — email verification proves the address; the login is created by Move or Create on Sign-ups', 'Notifications — verification email · “you now belong to X” · verify-queue SLA nudge'],
+          notes: 'TWO admin gates, gating different things: placement (Move / Create on Sign-ups) gates access; verification gates posting and invoicing. Store the verification state on the COMPANY, never on the sign-up row.',
         },
         acceptance: [
           'On submit a verification email is sent immediately; nothing exists yet — no login, no company, no row in this inbox.',
-          'Clicking the link creates the login, a company on Customers with Verified = Unverified and no owner (ERC files attached if given), and ONE row here. The person can sign in at once.',
-          'Signed in, not yet verified: the console header shows No paperwork with a button to Company information; Post job shows Publish and Save draft disabled, the ERC asked for and a link to Company information; Company information opens with the same banner; reading, editing Company information and uploading the ERC all work.',
-          'The row never lists the company this sign-up created as its own match; a real duplicate on Customers or Free data does appear, with the signal that found it.',
-          'Move re-attaches the login to the chosen company, archives the shell as duplicate, carries its ERC files over, and emails the person which company they belong to.',
-          'A Free data match offers “Gộp dòng Free data vào công ty này”: the pool row leaves Free data and the shell keeps its data; no third record is created.',
-          'Admin: Customers → the Verified filter offers Verified · Waiting to verify · No paperwork; a newly placed company with no ERC lists under No paperwork with “Chưa có ERC — chờ employer upload” under its tag — in the department view even with no owner. The Chờ verify chip shows the count of Waiting rows and applies that filter in one click.',
-          'Verify company on a No-paperwork record → the button is disabled and its tooltip says there is nothing to rule on yet; the employer uploads the ERC (or the admin does) → the tag reads Waiting to verify, the button enables, the dialog shows the ERC ✓ and the MST, address, legal name and owner as facts to read against it. Verify with owner = Chưa phân is allowed. Verify → tag blue on both sites, Post job enabled, Company information read-only for the employer, “Yêu cầu xuất hóa đơn chính” enabled, this row reads Resolved.',
-          'Admin edits the legal name of a verified company and saves → Chờ xác minh · cần xác minh lại on both sites; Post job disabled again; Verify company reappears.',
+          'Clicking the link creates ONE row here and nothing else: no login, no company. The success page says Saramin is setting the account up, with the 1-business-day SLA.',
+          'Placed (Move or Create) and signed in, not yet verified: the console header shows Unverified with a button to Company information; Post job shows Publish and Save draft disabled, the ERC asked for and a link to Company information; Company information opens with the same banner; reading, editing Company information and uploading the ERC all work.',
+          'The Match column lists every candidate on Customers or Free data, with the list it is in and the signal that found it.',
+          'Move to existing company (Customers match) → the login is created inside the chosen company with the picked role, ERC files carried over, activation email sent; the row reads Resolved · moved.',
+          'Create company & activate (no match) → the Customers create form opens with the sign-up’s MST and company name prefilled; saving creates the company Unverified with the person as first Admin and sends the activation email; the row reads Resolved · created.',
+          'Free data match → the Move dialog does NOT place: it says the company is still in Free data and links to it. The admin assigns it to Customers there (road B), returns, and Moves — the company now lists under Customers in the Match column. No second record is ever created for that MST.',
+          'Archive → no login, no company; the row reads Archived and keeps its history.',
+          'Admin: Customers → the Verified filter offers Verified · Waiting to verify · Unverified; a newly placed company with no ERC lists under Unverified with “Chưa có ERC — chờ employer upload” under its tag — in the department view even with no owner. The Chờ verify chip shows the count of Waiting rows and applies that filter in one click.',
+          'Verify company on an Unverified record → the button is disabled and its tooltip says there is nothing to rule on yet; the employer uploads the ERC (or the admin does) → the tag reads Waiting to verify, the button enables, the dialog shows the ERC ✓ and the MST, address, legal name and owner as facts to read against it. Verify with owner = Chưa phân is allowed. Verify → tag blue on both sites, Post job enabled, Company information read-only for the employer, “Yêu cầu xuất hóa đơn chính” enabled, this row reads Resolved.',
+          'Admin edits the legal name of a verified company and saves → Waiting to verify · cần xác minh lại on both sites; Post job disabled again; Verify company reappears.',
         ],
         openQuestions: [
           'Who approves a Move into an EXISTING company — Saramin admin alone (current default) or that company’s own Admin (safer: an MST is public, and a wrong Move exposes the customer’s jobs, applicants and quota)? Recommendation: the company’s Admin, with Saramin override only when the company has no active Admin.',

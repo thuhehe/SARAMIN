@@ -1092,7 +1092,7 @@ export const companyUser: BuildModule = {
       slug: 'company-information-companies',
       scope: ['BE', 'FE', 'UI'],
       notes:
-        'The employer’s own company record — legal identity, basic facts, Enterprise Registration Documents. While Unverified the account Admin edits it directly and uploads the one thing Saramin needs to verify the company — the ERC (Giấy chứng nhận đăng ký doanh nghiệp); a banner says so until it is on file (No paperwork → Waiting to verify). Once Verified the page is read-only — only Saramin changes it.',
+        'The employer’s own company record — legal identity, basic facts, Enterprise Registration Documents. While Unverified the account Admin edits it directly and uploads the one thing Saramin needs to verify the company — the ERC (Giấy chứng nhận đăng ký doanh nghiệp); a banner says so until it is on file (Unverified → Waiting to verify). Once Verified the page is read-only — only Saramin changes it.',
       ready: true,
       detail: {
         refDocs: [
@@ -1123,8 +1123,8 @@ export const companyUser: BuildModule = {
             en: 'TWO STATES, set by the verification flag. Unverified → the account Admin edits every field directly (tax code and registered address included) — nothing verified exists yet to protect; the admin’s Verify is the review. Verified → read-only; only Saramin edits, and that edit drops the flag until re-verified.',
           },
           {
-            vi: 'BANNER “No paperwork — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” với nút Upload document. Cùng một luật với cột Verified của admin: có giấy → Waiting to verify (Saramin xác minh trong 1 ngày làm việc) → Verified.',
-            en: 'THE BANNER “No paperwork — to be verified, Saramin needs your business registration certificate (ERC)” with the Upload document button. The same rule as the admin’s Verified column: certificate on file → Waiting to verify (Saramin verifies within 1 business day) → Verified.',
+            vi: 'BANNER “Chưa xác minh — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” với nút Upload document. Cùng một luật với cột Verified của admin: có giấy → Waiting to verify (Saramin xác minh trong 1 ngày làm việc) → Verified.',
+            en: 'THE BANNER “Unverified — to be verified, Saramin needs your business registration certificate (ERC)” with the Upload document button. The same rule as the admin’s Verified column: certificate on file → Waiting to verify (Saramin verifies within 1 business day) → Verified.',
           },
           {
             vi: 'Không có Company ID, không có nhóm Sales (nguồn lead, sales phụ trách, giá trị deal) và không có “người liên hệ chính” của CRM trên trang này. Người của công ty quản lý ở Users & roles.',
@@ -1149,7 +1149,7 @@ export const companyUser: BuildModule = {
             },
             items: [
               'LEFT OFF on purpose: **Company ID** (an HQ handle, not a fact about the company), the **Sales** group (lead source · sales owner · products interested · estimated deal value · description — CRM qualification data), and the CRM **primary contact** (a sales-side contact person; the customer’s own people are Company users).',
-              '◆ MARKS THE VERIFICATION INPUT — at least one ERC file. It is the only thing the banner asks for: the tax code and the registered address were required when the admin created the company, so they are never missing on a record that exists. While No paperwork the documents section carries the chip “Bắt buộc để xác minh” and its empty state is a dropzone.',
+              '◆ MARKS THE VERIFICATION INPUT — at least one ERC file. It is the only thing the banner asks for: the tax code and the registered address were required when the admin created the company, so they are never missing on a record that exists. While Unverified the documents section carries the chip “Bắt buộc để xác minh” and its empty state is a dropzone.',
               'Company type drives two labels and one requirement exactly as on the CRM form: a Foreign company sees “Foreign tax reference (optional)” and “Registered address” (CRM → “Loại công ty gates the invoice classifications”).',
               'The documents card is called **Enterprise Registration Documents** on both sites since 09/2026 (the admin card was renamed to match) — same records, one store.',
             ],
@@ -1160,7 +1160,7 @@ export const companyUser: BuildModule = {
             table: {
               cols: ['Status', 'Banner', 'What moves it'],
               rows: [
-                ['**No paperwork**', 'Amber — “No paperwork — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)”, the certificate row ✗, the documents section a dropzone marked “Bắt buộc để xác minh”', '**Upload document** — one file is enough; several pages are normal'],
+                ['**Unverified**', 'Amber — “Chưa xác minh — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)”, the certificate row ✗, the documents section a dropzone marked “Bắt buộc để xác minh”', '**Upload document** — one file is enough; several pages are normal'],
                 ['**Waiting to verify**', 'Blue — “Waiting to verify — Saramin xác minh trong 1 ngày làm việc”; nothing asked of the employer', 'A Saramin Admin presses **Verify company** on the record'],
                 ['**Verified**', 'No banner — the blue tag beside the company name is the statement; the page is read-only', 'A Saramin Admin editing the legal identity drops it back to Waiting to verify · cần xác minh lại'],
               ],
@@ -1170,7 +1170,7 @@ export const companyUser: BuildModule = {
               'THE SAME ASK, THREE PLACES on the Company site: the console header button reads “Tải lên ERC để được xác minh →” and turns into the quiet line “Waiting to verify · Saramin xác minh trong 1 ngày làm việc” once a file is on record; Post job shows the same ask in place of its disabled actions; this page shows it above the record. One function renders all three.',
               'It is shown in edit mode too (Figma 2313-10289); the “※” notes box under the rows repeats the rule as its first line.',
             ],
-            warn: 'DO NOT STORE “waiting”. It is the verdict plus the documents already on the record; compute it where it is read, on both sites — the build derives it the same way (svn-be V482). A stored flag is how the banner says “Waiting to verify” while the admin’s button says “No paperwork”.',
+            warn: 'DO NOT STORE “waiting”. It is the verdict plus the documents already on the record; compute it where it is read, on both sites — the build derives it the same way (svn-be V482). A stored flag is how the banner says “Waiting to verify” while the admin’s button says “Unverified”.',
           },
           {
             label: 'Two states of this page — Unverified: the account Admin edits directly · Verified: read-only',
@@ -1205,7 +1205,7 @@ export const companyUser: BuildModule = {
             items: [
               'Uploading is offered in view mode too (button on the section heading) — adding a document is not an edit of the record, so it never needs Edit mode.',
               'An empty list reads “Chưa có tệp nào” with the format hint, and the banner’s third line is ✗. Files attached at sign-up appear here from the first load.',
-              'Uploading a file does not move the flag — an upload is evidence, not a decision. What it does is flip the admin’s row from “No paperwork” to “Waiting to verify”.',
+              'Uploading a file does not move the flag — an upload is evidence, not a decision. What it does is flip the admin’s row from “Unverified” to “Waiting to verify”.',
             ],
           },
           {
@@ -1247,7 +1247,7 @@ export const companyUser: BuildModule = {
             items: [
               { name: 'title', type: 'text', notes: '“Company information management”' },
               { name: 'tabs', type: 'enum', notes: 'Company information (active) · Billing information · Users & roles — the public company page is reached from the Company page screen, not from this tab bar' },
-              { name: 'verification banner', type: 'derived', notes: 'above the first section while not verified: amber “No paperwork — Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” with the Upload document button, or blue “Waiting to verify” with the SLA once a file is on record. Absent when Verified. Same derivation as the admin’s Verified column' },
+              { name: 'verification banner', type: 'derived', notes: 'above the first section while not verified: amber “Chưa xác minh — Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)” with the Upload document button, or blue “Waiting to verify” with the SLA once a file is on record. Absent when Verified. Same derivation as the admin’s Verified column' },
               { name: 'section heading', type: 'text + action', notes: 'Company information carries {{btn:Edit}} (view) / “★ Required” (edit) — Unverified only; Enterprise Registration Documents carries {{btn:Upload document}} in both modes and both states' },
               { name: 'FAQ', type: 'accordion', notes: 'six questions; the first becomes “What does Saramin need to verify my company, and what can I change after that?” · which files count · effect on VAT invoices · where the public page is edited · who can edit · adding HR users' },
             ],
@@ -1286,12 +1286,12 @@ export const companyUser: BuildModule = {
           'The public company page is not edited here and is never affected by a change on this page except the display name, which it reads.',
         ],
         states: [
-          'No paperwork — amber banner asking for the ERC; Edit shown to the Admin',
+          'Unverified — amber banner asking for the ERC; Edit shown to the Admin',
           'Waiting to verify — blue banner with the SLA; Edit still shown (the record can be corrected until an admin verifies it)',
           'Verified — no banner, blue tag; Edit gone, Upload stays, the heading line says to contact Saramin',
           'Waiting to verify · cần xác minh lại — an admin edited a verified record: amber tag with the reason, Edit back',
           'Foreign company — tax code optional (“Foreign tax reference”); no Province / City',
-          'No documents yet — the documents section is a dropzone “Tải lên Giấy chứng nhận đăng ký doanh nghiệp”; the tag reads No paperwork',
+          'No documents yet — the documents section is a dropzone “Tải lên Giấy chứng nhận đăng ký doanh nghiệp”; the tag reads Unverified',
           'Non-Admin user — page renders with the banner but without Edit, Upload and ×',
           'Loading / failed — one retry, never a half-rendered form',
         ],
@@ -1300,7 +1300,7 @@ export const companyUser: BuildModule = {
             { name: 'company (read / write)', type: 'ref → CRM Company', required: true, notes: 'companyType · legalName · tax · address · shortName · industry · size · country · city · domain — the CRM record itself, no copy. PATCH allowed only while verification.state = unverified' },
             { name: 'company.verification', type: 'read', required: true, notes: 'verified | unverified (+ reason new | edited) — owned by CRM → Sign-up & company verification (ERC); this page only reads it' },
             { name: 'CompanyDocument', type: 'entity', required: true, notes: 'id · companyId · file (id, name, size, mime) · uploadedBy (company user | admin) · uploadedAt. NO status field. Delete allowed only while the company is unverified' },
-            { name: 'verificationLabel', type: 'derived', notes: 'VERIFIED · WAITING_TO_VERIFY · UNVERIFIED (No paperwork), computed in the GET from the verdict + documents; never a column' },
+            { name: 'verificationLabel', type: 'derived', notes: 'VERIFIED · WAITING_TO_VERIFY · UNVERIFIED (Unverified), computed in the GET from the verdict + documents; never a column' },
             { name: 'audit', type: 'append-only', required: true, notes: 'every write on this page' },
           ],
           endpoints: [
@@ -1320,7 +1320,7 @@ export const companyUser: BuildModule = {
             'No second company table. The company site reads and writes the CRM record directly while the company is unverified, and only reads it once verified — one rule (editable ⇔ unverified) enforced in one place (the PATCH). Documents are the CompanyDocument rows the admin card lists — a rename in the UI, not a new store, and with no status column.',
         },
         acceptance: [
-          'A newly placed Admin opens the page: three sections, an amber banner “No paperwork — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)”, Edit and Upload document shown; Company ID, lead source, sales owner, deal value and the CRM primary contact appear nowhere.',
+          'A newly placed Admin opens the page: three sections, an amber banner “Chưa xác minh — để được xác minh, Saramin cần Giấy chứng nhận đăng ký doanh nghiệp (ERC)”, Edit and Upload document shown; Company ID, lead source, sales owner, deal value and the CRM primary contact appear nowhere.',
           'Edit → correct the registered address → Save changes: the record is written with an audit entry and the row shows the new value; the banner is unchanged — the address is not what verification waits for.',
           'Upload document with two PDFs: two rows appear immediately, the banner turns blue “Waiting to verify — Saramin xác minh trong 1 ngày làm việc”; the admin’s Customers row reads Waiting to verify and its Verify company button enables.',
           'An admin verifies the company: on next load the page shows the blue Verified tag, no banner, no Edit; Upload document still works; PATCH returns 403.',

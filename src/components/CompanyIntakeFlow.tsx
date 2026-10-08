@@ -1,4 +1,4 @@
-/* ── How a company gets into the CRM, and how a sign-up user follows it ────────
+/* ── How a company gets into the CRM — Free data, Customers, and the way between ─
  *
  * Two things this drawing exists to settle.
  *
@@ -66,7 +66,7 @@ export function CompanyIntakeFlow() {
           0.76x and the 10.5px labels came out at ~8px, unreadable in Vietnamese.
           At 1:1 the type is the size it was authored at and the reader pans. */}
       <p className="mb-1 text-[11px] text-faint">Sơ đồ rộng — kéo ngang để xem hết →</p>
-      <svg viewBox="0 0 1420 860" className="h-auto w-full min-w-[860px]" role="img" aria-label="How a company enters the CRM, and how a sign-up user follows it">
+      <svg viewBox="0 0 1420 586" className="h-auto w-full min-w-[860px]" role="img" aria-label="How a company enters the CRM — Free data, Customers, and the two ways from one to the other">
         <defs>
           {[['p', 'var(--color-line-soft)'], ['b', BR], ['s', '#e11d48']].map(([k, c]) => (
             <marker key={k} id={`ci-${k}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto-start-reverse">
@@ -82,7 +82,7 @@ export function CompanyIntakeFlow() {
           Free data = chỉ bắt buộc <tspan fontWeight={700} fill={INK}>tên công ty</tspan> · Customers = thêm <tspan fontWeight={700} fill={INK}>MST + địa chỉ đăng ký MST + người liên hệ + sales owner</tspan>. Admin CHỌN MÀN HÌNH TRƯỚC — màn nào thì bắt buộc đúng field của màn đó, không phải “gõ được gì thì gõ, hệ thống tự xếp”.
         </text>
 
-        {/* ── ROW 1: the three doors ──────────────────────────────────────────── */}
+        {/* ── ROW 1: the two doors ──────────────────────────────────────────── */}
         <text x={38} y={104} fontSize={11} fontWeight={800} fill={MUT}>2 CỬA TẠO CÔNG TY — CẢ HAI ĐỀU LÀ ADMIN (sales không có cửa tạo — xem “Luật bất biến” dưới cùng)</text>
 
         <Box x={38} y={118} w={380} h={64} title="① Admin tạo ở màn Free data" sub="1 field bắt buộc: TÊN CÔNG TY" sub2="→ nằm ở Free data, chưa có chủ" tone="pool" />
@@ -99,10 +99,10 @@ export function CompanyIntakeFlow() {
         <Arrow d="M 700 284 C 700 310, 900 300, 900 336" tone="brand" />
 
         <Box x={38} y={338} w={300} h={92} title="FREE DATA" sub="tên công ty · chưa ai sở hữu" sub2="không đếm vào số nào của CRM" tone="pool" />
-        <Box x={750} y={338} w={300} h={92} title="COMPANY LIST" sub="MST · địa chỉ ĐKT · người liên hệ · owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />
+        <Box x={750} y={338} w={300} h={92} title="CUSTOMERS (Assigned)" sub="MST · địa chỉ ĐKT · người liên hệ · owner" sub2="khách hàng thật — báo giá, PO, hoá đơn" tone="crm" />
 
         {/* ── the promotion paths between them ────────────────────────────────── */}
-        <text x={370} y={330} fontSize={11} fontWeight={800} fill={MUT}>ĐƯA LÊN COMPANY LIST — 2 ĐƯỜNG</text>
+        <text x={370} y={330} fontSize={11} fontWeight={800} fill={MUT}>ĐƯA LÊN CUSTOMERS — 2 ĐƯỜNG</text>
 
         <Box x={368} y={344} w={352} h={38} title="A · Sales xin nhận → Admin duyệt → Sales lead duyệt" tone="plain" />
         <Box x={368} y={392} w={352} h={38} title="B · Admin phân trực tiếp (không cần duyệt)" tone="plain" />
@@ -114,50 +114,20 @@ export function CompanyIntakeFlow() {
         <text x={544} y={452} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={AMB}>Cả hai đường đều bắt buộc: MST hợp lệ + không trùng · địa chỉ ĐK xuất hóa đơn · contact person — và một sales owner</text>
         <text x={544} y={468} fontSize={10.5} textAnchor="middle" fill={MUT}>Xong thì dòng RỜI Free data (không xoá — giữ liên kết tới hồ sơ CRM để truy vết)</text>
 
-        {/* ── ROW 3: the sign-up flow, which WAITS on the above ───────────────── */}
-        {/* Divider 490 and heading 508, NOT 500/528: the right-hand outcome boxes
-            start at y=518, so a heading baseline at 528 ran the whole sentence
-            THROUGH the "Move to existing company" box (282px of overlap). The
-            heading has to clear the tallest thing in the row it labels. */}
-        <line x1={20} y1={490} x2={1400} y2={490} stroke="var(--color-line)" strokeWidth={1} strokeDasharray="5 4" />
-        <text x={38} y={508} fontSize={11} fontWeight={800} fill={MUT}>LUỒNG SIGN-UP (đổi 09/2026) — EMAIL VERIFIED CHỈ LÀ XÁC THỰC EMAIL. ADMIN PLACE (MOVE / CREATE) MỚI MỞ LOGIN · ARCHIVE = KHÔNG CHO VÀO</text>
-
-        <Box x={38} y={546} w={230} h={64} title="Employer tự đăng ký" sub="verify email → CHƯA vào được" sub2="chưa có login, chưa có công ty" tone="pool" />
-        <Arrow d="M 268 578 L 306 578" />
-        <Box x={308} y={546} w={240} h={64} title="Admin mở Sign-ups" sub="có trùng công ty đã có không?" sub2="(resolve xong mới mở login)" tone="gate" />
-        {/* ARCHIVE is the SECOND of the only two actions the screen has, and it does
-            not depend on where the company is — spam, a duplicate request and a
-            person who named the wrong company are all archived whatever the answer
-            below. Drawn hanging off the gate rather than as a fourth branch, or the
-            picture would say it is one more outcome of the lookup. */}
-        <Arrow d="M 428 610 L 428 640" />
-        <Box x={308} y={642} w={240} h={52} title="hoặc ARCHIVE" sub="spam · trùng · sai công ty" tone="plain" />
-
-        {/* three answers */}
-        <Arrow d="M 548 560 C 590 560, 600 545, 640 545" tone="brand" label="đã ở Customers" lx={596} ly={534} />
-        <Arrow d="M 548 578 L 640 652" tone="brand" label="đang ở Free data" lx={600} ly={614} />
-        <Arrow d="M 548 596 L 640 748" tone="brand" label="chưa có ở đâu" lx={588} ly={706} />
-
-        <Box x={642} y={518} w={300} h={54} title="Move to existing company" sub="ghép user vào công ty có sẵn · archive bản trùng" tone="crm" />
-        {/* Neither of these is a blocker any more: the sign-up already created the
-            company. The pool case is a MERGE in one direction only — pool row INTO
-            the new company, because a pool row cannot hold a login — and the "nowhere"
-            case simply keeps the new company and verifies it on its record. */}
-        <Box x={642} y={620} w={300} h={64} title="GỘP dòng Free data vào công ty vừa tạo" sub="dòng rời Free data · dữ liệu đổ vào" sub2="Xin nhận → ứng viên owner" tone="crm" />
-        <Box x={642} y={722} w={300} h={54} title="Công ty mới thật — giữ nguyên" sub="Verify ở Company detail · dòng Sign-ups tự đóng" tone="crm" />
-        <text x={1096} y={600} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={GRN}>chiều gộp: pool → công ty mới,</text>
-        <text x={1096} y={616} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={GRN}>không bao giờ ngược lại —</text>
-        <text x={1096} y={632} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={GRN}>dòng pool không chứa được login</text>
-
-        {/* the resulting move */}
-        <Arrow d="M 942 545 L 1090 545" tone="brand" />
-        <Box x={1092} y={518} w={286} h={54} title="Không trùng → giữ công ty mới" sub="dòng tự đóng khi admin Verify công ty" tone="crm" />
-
+        {/* The sign-up flow USED to be drawn as a third row here (until 08/10/2026).
+            It is not part of this picture: a sign-up places a PERSON into a company
+            that already sits in Customers — a new company is made through door ②,
+            a pool company is promoted through path A/B first. Drawn here, its "Free data"
+            branch read as a third way out of the pool. It now has its own drawing,
+            CompanySignupFlow, on the Sign-ups page. */}
         {/* ── the one rule that makes the whole thing hold ────────────────────── */}
-        <rect x={38} y={792} width={1340} height={48} rx={10} fill="#fffbeb" stroke={AMB} strokeWidth={1.5} />
-        <text x={58} y={812} fontSize={11.5} fontWeight={800} fill={AMB}>Luật bất biến</text>
-        <text x={58} y={830} fontSize={11} fill={MUT}>
+        <rect x={38} y={500} width={1340} height={66} rx={10} fill="#fffbeb" stroke={AMB} strokeWidth={1.5} />
+        <text x={58} y={520} fontSize={11.5} fontWeight={800} fill={AMB}>Luật bất biến</text>
+        <text x={58} y={538} fontSize={11} fill={MUT}>
           Công ty phải TỒN TẠI trong Customers trước khi bất kỳ user nào được gán vào · Chỉ ADMIN tạo công ty · Sales chỉ có một đường sở hữu: xin nhận từ Free data, qua 2 cấp duyệt.
+        </text>
+        <text x={58} y={556} fontSize={11} fill={MUT}>
+          Sign-up của employer không phải cửa thứ ba: nó chỉ đặt một NGƯỜI vào công ty ở Customers. Công ty mới thật → admin tạo qua cửa ② · công ty còn ở Free data → đưa lên Customers trước. Sơ đồ riêng: CRM → Sign-ups.
         </text>
       </svg>
     </div>

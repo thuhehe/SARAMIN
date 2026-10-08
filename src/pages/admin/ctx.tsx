@@ -36,13 +36,6 @@ export const OpenRecordCtx = createContext<string | null>(null)
    opens a modal. A bumped counter is the signal; the page decides what to do. */
 export const CreateSignalCtx = createContext(0)
 
-/* ── Embedded preview ─────────────────────────────────────────────────────────
-   True when a screen is drawn inside a spec page's preview box rather than the
-   console shell. A screen that floats something over the page (a toast, a tray)
-   keeps it inside the box then — `fixed` would escape the preview and sit on top of
-   the spec page around it. */
-export const EmbeddedCtx = createContext(false)
-
 /* ── Read-only record ─────────────────────────────────────────────────────────
    A rep can REACH a colleague's company through search (that is what stops
    duplicates being created) but may not ACT on it. Carried as context rather than

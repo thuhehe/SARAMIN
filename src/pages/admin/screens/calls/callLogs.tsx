@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils'
 import { CALLS, LINK_SOURCE, needsLink } from '@/pages/admin/data/callLink'
 import type { CallRow, LinkSource } from '@/pages/admin/data/callLink'
 import { ME } from '@/pages/admin/data/salesOrg'
-import { LinkCallForm } from '@/pages/admin/screens/calls/callLink'
 import { ListPage } from '@/pages/admin/ui/list'
 
 /*
@@ -12,16 +11,18 @@ import { ListPage } from '@/pages/admin/ui/list'
  * The build's page (/call-center/logs) already has the columns the client asked for —
  * Company and Contact person — but on dev they are empty for almost half the rows (11,709
  * of 25,617 wait in Needs assigning). The proposal changes how they get FILLED, not the
- * page: a call started from the CRM fills them itself, a call dialled straight in Callio
- * is filled by the rep who made it. This page adds what that needs to be read:
+ * page: a call started from the CRM fills them itself, and a call dialled straight in
+ * Callio gets the two fixes its number cannot give it:
  *
- *   · LINKED BY — how each call got onto its company (CRM call · Number · Rep · Admin), so
- *     the waiting rows are the exception and management can see whether reps start their
- *     calls from the CRM at all;
- *   · MY CALLS TO LINK — the rep's own waiting calls, which they can link themselves;
- *   · the summary line — the same split, counted, for today.
+ *   · SEVERAL COMPANIES hold the number → the Company cell lists them and the rep picks
+ *     the one they called (no form — the candidates ARE the choice);
+ *   · NO COMPANY holds it → the rep saves the number on the contact, then SYNC FROM CRM
+ *     re-matches the waiting calls. The build never re-matches them on its own: UNMATCHED
+ *     and AMBIGUOUS rows stay waiting even after the number is in the CRM.
  *
- * Needs assigning stays as the build has it (admin, every waiting call, the three reasons).
+ * Plus what that needs to be read: LINKED BY (how each call got onto its company), MY
+ * CALLS TO LINK (the rep's own waiting calls) and the summary line (the same split,
+ * counted, for today). Needs assigning stays as the build has it.
  */
 
 type Tab = 'all' | 'mine' | 'queue' | 'archived'
@@ -38,12 +39,15 @@ function Chip({ tone, children, title }: { tone: string; children: React.ReactNo
   return <span title={title} className={cn('inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10.5px] font-medium', tone)}>{children}</span>
 }
 
+/** "Công ty TNHH Đại Dương" → "Đại Dương" — two candidates have to fit one cell */
+const short = (name: string) => name.replace(/^Công ty (TNHH|CP)\s+/, '')
+
 export function AdminCallLogs() {
   const [tab, setTab] = useState<Tab>('all')
-  /* local overrides so a reviewer can link / archive and watch the row move */
+  /* local overrides so a reviewer can pick / sync and watch the row move */
   const [linked, setLinked] = useState<Record<string, { company: string; contact: string; source: LinkSource }>>({})
   const [archived, setArchived] = useState<Record<string, boolean>>({})
-  const [linking, setLinking] = useState<CallRow | null>(null)
+  const [synced, setSynced] = useState<string | null>(null)
 
   const calls: CallRow[] = CALLS.map((r) => {
     const l = linked[r.id]
@@ -56,11 +60,21 @@ export function AdminCallLogs() {
   const by = (s: LinkSource) => answered.filter((r) => r.source === s).length
 
   const rows = tab === 'all' ? calls.filter((r) => !r.archived) : tab === 'mine' ? mine : tab === 'queue' ? waiting : calls.filter((r) => r.archived)
-  const others = (r: CallRow) => waiting.filter((x) => x.phone === r.phone && x.id !== r.id).length
+
+  /* The rep who made the call picks; anyone else picking is an admin settling the queue. */
+  const pick = (r: CallRow, k: { company: string; contact: string }) =>
+    setLinked((m) => ({ ...m, [r.id]: { company: k.company, contact: k.contact, source: r.rep === ME ? 'rep' : 'admin' } }))
+  /* SYNC FROM CRM — the number match again, for every call still waiting, against the
+     numbers the CRM holds NOW. In the prototype "now" is the seed's savedSince. */
+  const syncFromCrm = () => {
+    const hits = waiting.filter((r) => r.savedSince)
+    setLinked((m) => ({ ...m, ...Object.fromEntries(hits.map((r) => [r.id, { ...r.savedSince!, source: 'number' as const }])) }))
+    setSynced(`${hits.length} call${hits.length === 1 ? '' : 's'} linked by Number · ${waiting.length - hits.length} still waiting`)
+  }
 
   const tabs: { k: Tab; label: string; n: number; hint: string }[] = [
     { k: 'all', label: 'All calls', n: calls.filter((r) => !r.archived).length, hint: 'Every call Callio reported' },
-    { k: 'mine', label: 'My calls to link', n: mine.length, hint: `Answered calls ${ME} made that no company holds — link them yourself` },
+    { k: 'mine', label: 'My calls to link', n: mine.length, hint: `Answered calls ${ME} made that are on no company yet` },
     { k: 'queue', label: 'Needs assigning', n: waiting.length, hint: 'Admin — every waiting call: No company · Several companies · No rep' },
     { k: 'archived', label: 'Archived', n: calls.filter((r) => r.archived).length, hint: 'Not customer work — spam, wrong numbers, personal calls' },
   ]
@@ -81,7 +95,19 @@ export function AdminCallLogs() {
           <Chip tone={LINK_SOURCE.none.tone}>Waiting</Chip>
           <b className="tabular-nums text-amber-800">{waiting.length}</b>
         </span>
-        <button className="ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Sync from Callio</button>
+        {/* Two syncs, because they close different gaps: Callio → the calls themselves;
+            CRM → numbers saved on contacts since a call came in. */}
+        <span className="ml-auto flex items-center gap-2">
+          {synced && <span className="text-[11px] font-medium text-emerald-700">✓ {synced}</span>}
+          <button
+            onClick={syncFromCrm}
+            title="Re-match every waiting call against the numbers in the CRM now — a number saved on a contact links the calls already waiting from it"
+            className="rounded-lg border border-brand/40 bg-surface px-3 py-1.5 text-[12px] font-semibold text-brand hover:border-brand"
+          >
+            Sync from CRM
+          </button>
+          <button className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Sync from Callio</button>
+        </span>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-0.5 border-b border-line-soft">
@@ -99,7 +125,7 @@ export function AdminCallLogs() {
       </div>
       {tab === 'mine' && (
         <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
-          Calls you made from Callio that no company holds the number of. You know who was on the line — link them here, or in the <b>Calls to link</b> tray that opens after each such call. Saving the number on the contact makes the next call from it link on its own.
+          Your answered calls that are on no company yet. <b>Several companies</b> hold the number → pick the one you called. <b>No company</b> holds it → save the number on the contact in the CRM, then <b>Sync from CRM</b>: this call and every later one from that number link on their own.
         </p>
       )}
 
@@ -123,62 +149,51 @@ export function AdminCallLogs() {
           { label: 'Call ID', w: '0.95fr' },
           { label: '', w: '0.55fr', align: 'r' },
         ]}
-        rows={rows.map((r) => {
-          const canLink = needsLink(r)
-          return [
-            <span className="font-mono text-[11.5px] text-ink">{r.phone}</span>,
-            r.company
-              ? <span className="truncate font-medium text-brand">{r.company}</span>
-              : (
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {r.reason && <Chip tone="border-amber-200 bg-amber-50 text-amber-800">{r.reason}</Chip>}
-                  {canLink && <button onClick={() => setLinking(r)} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white hover:opacity-90">Link</button>}
-                  {!r.reason && !canLink && <span className="text-faint">—</span>}
+        rows={rows.map((r) => [
+          <span className="font-mono text-[11.5px] text-ink">{r.phone}</span>,
+          r.company
+            ? <span className="truncate font-medium text-brand">{r.company}</span>
+            : r.candidates && !r.archived
+              ? (
+                /* a shared number: the companies holding it ARE the choice — one click
+                   files the call there, with the contact who holds the number there */
+                <span className="flex min-w-0 flex-col gap-1 py-0.5">
+                  <span className="text-[10.5px] font-medium text-amber-800">Several companies — pick one</span>
+                  <span className="flex flex-wrap gap-1">
+                    {r.candidates.map((k) => (
+                      <button
+                        key={k.company}
+                        onClick={() => pick(r, k)}
+                        title={`File this call on ${k.company} — ${k.contact} holds this number there`}
+                        className="max-w-full truncate rounded-md border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-brand hover:border-brand hover:bg-brand-soft"
+                      >
+                        {short(k.company)}
+                      </button>
+                    ))}
+                  </span>
                 </span>
-              ),
-            r.contact ? <span className={cn('truncate text-[12px]', r.contact.startsWith('—') ? 'text-faint' : 'text-ink/85')}>{r.contact}</span> : <span className="text-faint">—</span>,
-            <Chip tone={LINK_SOURCE[r.source].tone} title={LINK_SOURCE[r.source].hint}>{LINK_SOURCE[r.source].label}</Chip>,
-            r.rep ? <span className="truncate text-[12px] text-ink/85">{r.rep}</span> : <span className="truncate text-[11.5px] text-amber-800" title="No admin is bound to this extension — bind it to credit the rep">ext {r.ext} — not bound</span>,
-            <span className="text-[11.5px] tabular-nums text-muted">{r.date} {r.time}</span>,
-            <span className="text-[11.5px] text-muted">{r.dir}</span>,
-            <Chip tone={OUTCOME_TONE[r.outcome]}>{r.outcome}</Chip>,
-            <span className="text-[11.5px] tabular-nums text-muted">{r.dur}</span>,
-            r.record ? <button className="text-[11.5px] font-medium text-brand hover:underline">▶ Play</button> : <span className="text-faint">—</span>,
-            <span className="truncate font-mono text-[11px] text-faint">{r.id}</span>,
-            r.archived
-              ? <button onClick={() => setArchived((a) => ({ ...a, [r.id]: false }))} className="text-[11.5px] font-medium text-brand hover:underline">Unarchive</button>
-              : <span />,
-          ]
-        })}
+              )
+              : r.reason
+                ? <Chip tone="border-amber-200 bg-amber-50 text-amber-800" title="No company holds this number — save it on the contact, then Sync from CRM">{r.reason}</Chip>
+                : <span className="text-faint">—</span>,
+          r.contact ? <span className={cn('truncate text-[12px]', r.contact.startsWith('—') ? 'text-faint' : 'text-ink/85')}>{r.contact}</span> : <span className="text-faint">—</span>,
+          <Chip tone={LINK_SOURCE[r.source].tone} title={LINK_SOURCE[r.source].hint}>{LINK_SOURCE[r.source].label}</Chip>,
+          r.rep ? <span className="truncate text-[12px] text-ink/85">{r.rep}</span> : <span className="truncate text-[11.5px] text-amber-800" title="No admin is bound to this extension — bind it to credit the rep">ext {r.ext} — not bound</span>,
+          <span className="text-[11.5px] tabular-nums text-muted">{r.date} {r.time}</span>,
+          <span className="text-[11.5px] text-muted">{r.dir}</span>,
+          <Chip tone={OUTCOME_TONE[r.outcome]}>{r.outcome}</Chip>,
+          <span className="text-[11.5px] tabular-nums text-muted">{r.dur}</span>,
+          r.record ? <button className="text-[11.5px] font-medium text-brand hover:underline">▶ Play</button> : <span className="text-faint">—</span>,
+          <span className="truncate font-mono text-[11px] text-faint">{r.id}</span>,
+          r.archived
+            ? <button onClick={() => setArchived((a) => ({ ...a, [r.id]: false }))} className="text-[11.5px] font-medium text-brand hover:underline">Unarchive</button>
+            : <span />,
+        ])}
       />
       <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        <b className="text-muted">Linked by</b> says how a call got onto its company: <b className="text-muted">CRM call</b> — started from the Call button on the company (the rep chose the company and contact before dialling) · <b className="text-muted">Number</b> — exactly one company holds the number · <b className="text-muted">Rep</b> — linked by the rep who made the call · <b className="text-muted">Admin</b> — assigned from Needs assigning.
-        Only answered calls ask to be linked: a missed call writes no activity, so filing one would be work with nothing at the end of it.
+        <b className="text-muted">Linked by</b> says how a call got onto its company: <b className="text-muted">CRM call</b> — copied from the Call card on the company (the rep chose the company and contact before dialling) · <b className="text-muted">Number</b> — exactly one company holds the number, when the call came in or on Sync from CRM · <b className="text-muted">Rep</b> — picked by the rep who made the call, when several companies hold the number · <b className="text-muted">Admin</b> — assigned from Needs assigning.
+        Only answered calls wait to be linked: a missed call writes no activity, so filing one would be work with nothing at the end of it.
       </p>
-
-      {linking && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-          <div className="my-10 w-full max-w-[440px] rounded-2xl border border-line bg-surface p-5 shadow-2xl">
-            <h3 className="text-[15px] font-bold tracking-tight text-ink">Link this call</h3>
-            <p className="mt-0.5 text-[12px] text-muted">
-              <span className="font-mono text-ink/80">{linking.phone}</span> · {linking.dir} · {linking.dur.slice(3)} · {linking.time} · {linking.rep || `ext ${linking.ext}`} — {linking.reason === 'Several companies' ? 'several companies hold this number.' : 'no company holds this number.'}
-            </p>
-            <div className="mt-3">
-              <LinkCallForm
-                call={linking}
-                others={others(linking)}
-                onCancel={() => setLinking(null)}
-                onArchive={() => { setArchived((a) => ({ ...a, [linking.id]: true })); setLinking(null) }}
-                onLink={(company, contact) => {
-                  const src: LinkSource = linking.rep === ME ? 'rep' : 'admin'
-                  setLinked((m) => ({ ...m, [linking.id]: { company, contact, source: src } }))
-                  setLinking(null)
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

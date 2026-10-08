@@ -143,11 +143,12 @@ export type VerifyDisplay = 'verified' | 'waiting' | 'unverified'
 export const VERIFY_DISPLAY: Record<VerifyDisplay, { vi: string; en: string }> = {
   verified: { vi: 'Đã xác minh', en: 'Verified' },
   waiting: { vi: 'Chờ xác minh', en: 'Waiting to verify' },
-  /* "No paperwork", not "Unverified" — the build's own label (client, 11/09/2026).
+  /* "Unverified" — the build's own label again (admin i18n verification.UNVERIFIED,
+     checked 08/10/2026; it read "Unverified" in this prototype from 11/09/2026).
      Next to "Waiting to verify" the old pair read as the same thing at a glance;
      this one names the CAUSE — no certificate on file — which is also the action
      the employer has to take. */
-  unverified: { vi: 'Chưa có hồ sơ', en: 'No paperwork' },
+  unverified: { vi: 'Chưa xác minh', en: 'Unverified' },
 }
 /** Self-registered accounts arrive with no sales owner — this is the placeholder
     the record carries until an admin assigns one at verification. */

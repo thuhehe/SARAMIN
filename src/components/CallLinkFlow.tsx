@@ -4,14 +4,16 @@
  * starts a call (two ways), Callio places it and reports it back, the CRM matches it
  * in a fixed order, and the call lands on the company.
  *
- *   THE REP   — Call on the company record (Copy & open Callio) records a CRM call;
- *               a call dialled straight in Callio records nothing.
+ *   THE REP   — Copy on the company record's Call card records a CRM call; a call
+ *               dialled straight in Callio records nothing.
  *   CALLIO    — places every call; the call-end / missed-call webhook brings it back
  *               in seconds. No dial API, which is why the link is made at the click.
- *   MATCHING  — ① pending CRM call → ② the number → ③ the rep who made it (Calls to
- *               link) → ④ an admin (Needs assigning). The first that answers wins.
- *   COMPANY   — one call row (company · contact · Linked by), one activity per
- *               answered call, and the number saved so the next call links at ②.
+ *   MATCHING  — ① pending CRM call → ② the number (again on Sync from CRM) → ③ several
+ *               companies: the rep picks one → ④ still waiting: an admin. The first
+ *               that answers wins.
+ *   COMPANY   — one call row (company · contact · Linked by) and one activity per
+ *               answered call. The dashed loop: a number saved on a contact + Sync from
+ *               CRM sends a waiting call back through ②.
  *
  * Under it, the two screens the client will look at: the Call card on the company
  * record, and the Call logs list with the Company / Contact person columns they asked
@@ -100,7 +102,7 @@ export function CallLinkFlow() {
 
         {/* ── premise ─────────────────────────────────────────────────────────── */}
         <rect x={20} y={16} width={1380} height={58} rx={10} fill="var(--color-brand-soft)" stroke={BR} strokeWidth={1.5} />
-        <text x={36} y={39} fontSize={12.5} fontWeight={800} fill={BR}>THE LINK IS MADE WHEN THE CALL IS MADE — at the Call click, or by the rep the minute they hang up. An admin only gets what nobody claimed.</text>
+        <text x={36} y={39} fontSize={12.5} fontWeight={800} fill={BR}>THE LINK IS MADE WHEN THE CALL IS MADE — at the Copy click, or by the number. The rep settles a shared or unknown number; an admin gets only what is left.</text>
         <text x={36} y={60} fontSize={11} fill={MUT}>
           Callio places every call (no dial API). The CRM records the one fact a number cannot carry — which company and person the rep meant — and pairs it with Callio’s call when the webhook brings it back, seconds after hang-up.
         </text>
@@ -119,7 +121,7 @@ export function CallLinkFlow() {
         ))}
 
         {/* ── A · the rep ─────────────────────────────────────────────────────── */}
-        <Box x={A} y={150} w={AW} h={110} title="Call on the company record" sub="header · Log an activity · ☎ on a contact" sub2="→ Copy & open Callio" tone="gate" />
+        <Box x={A} y={150} w={AW} h={110} title="Call on the company record" sub="header · Log an activity · ☎ on a contact" sub2="→ Copy the number" tone="gate" />
         <Box x={A} y={400} w={AW} h={92} title="Dialled straight in Callio" sub="or the customer rings in" sub2="nothing recorded in the CRM" />
         <text x={A} y={300} fontSize={10.5} fill={MUT}>The click is the only moment the CRM knows</text>
         <text x={A} y={315} fontSize={10.5} fill={MUT}>who the rep MEANT to call — so it is recorded</text>
@@ -141,7 +143,7 @@ export function CallLinkFlow() {
         <text x={B + BW / 2} y={464} fontSize={10} textAnchor="middle" fill={MUT}>no auto-dial link</text>
 
         <Arrow d={`M ${A + AW + 6} 172 L ${B - 6} 172`} tone="amber" label="records" lx={(A + AW + B) / 2} ly={165} />
-        <Arrow d={`M ${A + AW + 6} 246 L ${B - 6} 246`} tone="brand" label="opens" lx={(A + AW + B) / 2} ly={239} />
+        <Arrow d={`M ${A + AW + 6} 246 L ${B - 6} 246`} tone="brand" label="paste" lx={(A + AW + B) / 2} ly={239} />
         <Arrow d={`M ${A + AW + 6} 446 L ${B - 6} 446`} tone="slate" />
         {/* the CRM call is what ① looks for; the Callio call is what arrives */}
         <Arrow d={`M ${B + BW + 6} 172 L ${C - 6} 172`} tone="amber" dashed />
@@ -150,18 +152,18 @@ export function CallLinkFlow() {
         {/* ── C · matching, in order ──────────────────────────────────────────── */}
         <Box x={C} y={156} w={CW} h={84} title="① A pending CRM call matches?" sub="same rep · same number · started −2…+30 min from the click" sub2="outbound only · latest click wins · settles shared numbers too" tone="gate" />
         <Arrow d={`M ${cx} 244 L ${cx} 270`} label="no" lx={cx + 18} ly={261} />
-        <Box x={C} y={274} w={CW} h={64} title="② Exactly one company holds the number?" sub="contact · company · primary-contact phone — built today" />
+        <Box x={C} y={274} w={CW} h={64} title="② Exactly one company holds the number?" sub="on arrival (built today) — and again on Sync from CRM" />
         <Arrow d={`M ${cx} 342 L ${cx} 368`} label="none · several" lx={cx + 50} ly={359} />
-        <Box x={C} y={372} w={CW} h={80} title="③ Calls to link — asks the rep who made the call" sub="toast: “You just called 0969 920 995 — which company?”" sub2="answered calls only · company + contact · save the number" tone="amber" />
-        <Arrow d={`M ${cx} 456 L ${cx} 482`} label="skipped · no rep bound" lx={cx + 72} ly={473} />
-        <Box x={C} y={486} w={CW} h={60} title="④ Needs assigning — an admin" sub="the build’s queue, unchanged · Assign · Archive" />
+        <Box x={C} y={372} w={CW} h={80} title="③ Several companies hold it — the rep picks one" sub="Call logs: the Company cell lists them · one click" sub2="the contact is the one holding the number there" tone="amber" />
+        <Arrow d={`M ${cx} 456 L ${cx} 482`} label="none · not picked · no rep bound" lx={cx + 100} ly={473} />
+        <Box x={C} y={486} w={CW} h={76} title="④ Still waiting — Needs assigning" sub="no company? save the number on a contact → Sync from CRM" sub2="or an admin assigns it (the build’s queue · Assign · Archive)" />
 
         {/* each path into the company, carrying the Linked by value it stores */}
         {([
           [198, 'CRM call', 'brand'],
           [306, 'Number', 'sky'],
           [412, 'Rep', 'violet'],
-          [516, 'Admin', 'slate'],
+          [524, 'Admin', 'slate'],
         ] as const).map(([y, label, tone]) => (
           <g key={label}>
             <Arrow d={`M ${C + CW + 6} ${y} L ${D - 6} ${y}`} tone={tone} />
@@ -179,21 +181,23 @@ export function CallLinkFlow() {
         <Line x={D + 16} y={268} t="the rep’s note + Result · duration ·" />
         <Line x={D + 16} y={283} t="▶ recording — never the transcript" />
         <Line x={D + 16} y={298} t="resets Idle · KPI call as today" />
-        <line x1={D + 16} x2={D + DW - 16} y1={318} y2={318} stroke="#a7f3d0" />
-        <Line x={D + 16} y={340} t="Unanswered → attempt row" bold color={INK} size={11.5} />
-        <Line x={D + 16} y={358} t="greyed on the feed · no Idle reset ·" />
-        <Line x={D + 16} y={373} t="not a KPI call" />
-        <line x1={D + 16} x2={D + DW - 16} y1={392} y2={392} stroke="#a7f3d0" />
-        <Line x={D + 16} y={414} t="Contact picked → number saved on it" bold color={INK} size={11.5} />
-        <Line x={D + 16} y={432} t="the next call from it links at ②" />
-        <line x1={D + 16} x2={D + DW - 16} y1={452} y2={452} stroke="#a7f3d0" />
-        <Line x={D + 16} y={474} t="Waiting — answered, none of ①–④ yet" bold color="#92400e" size={11.5} />
-        <Line x={D + 16} y={492} t="on no company yet; the KPI still counts" />
-        <Line x={D + 16} y={507} t="it (by rep). Linking never moves the KPI." />
+        <line x1={D + 16} x2={D + DW - 16} y1={316} y2={316} stroke="#a7f3d0" />
+        <Line x={D + 16} y={336} t="Unanswered → attempt row" bold color={INK} size={11.5} />
+        <Line x={D + 16} y={354} t="greyed on the feed · no Idle reset ·" />
+        <Line x={D + 16} y={369} t="not a KPI call" />
+        <line x1={D + 16} x2={D + DW - 16} y1={386} y2={386} stroke="#a7f3d0" />
+        <Line x={D + 16} y={406} t="Number saved on a contact" bold color={INK} size={11.5} />
+        <Line x={D + 16} y={424} t="Sync from CRM links the calls waiting" />
+        <Line x={D + 16} y={439} t="on it; later calls link at ② on arrival" />
+        <line x1={D + 16} x2={D + DW - 16} y1={456} y2={456} stroke="#a7f3d0" />
+        <Line x={D + 16} y={476} t="Waiting — answered, none of ①–④ yet" bold color="#92400e" size={11.5} />
+        <Line x={D + 16} y={494} t="on no company yet; the KPI still counts" />
+        <Line x={D + 16} y={509} t="it (by rep). Linking never moves the KPI." />
         <Line x={D + 16} y={538} t="One answered call = one activity, any path." bold color={GRN} />
 
-        {/* the loop that shrinks the queue: a saved number makes ② catch the next call */}
-        <Arrow d={`M ${D + DW / 2} 564 L ${D + DW / 2} 580 L 556 580 L 556 322 L ${C - 6} 322`} tone="sky" dashed label="number saved on the contact → the next call from it links by Number" lx={830} ly={574} />
+        {/* the loop that shrinks the queue: a number saved on a contact + Sync from CRM
+            sends a waiting call back through ② — the build never matches it again */}
+        <Arrow d={`M ${cx} 566 L ${cx} 584 L 556 584 L 556 322 L ${C - 6} 322`} tone="sky" dashed label="number saved on a contact → Sync from CRM → ② again" lx={cx - 110} ly={598} />
 
         {/* ── the Call card ───────────────────────────────────────────────────── */}
         <rect x={20} y={604} width={680} height={230} rx={12} fill="var(--color-surface)" stroke="var(--color-line)" strokeWidth={1} />
@@ -217,11 +221,13 @@ export function CallLinkFlow() {
         {(() => {
           const X = [740, 836, 1012, 1150, 1256]
           const head = ['Phone', 'Company', 'Contact person', 'Linked by', 'Status']
-          const rows: [string, string, string, string][] = [
+          /* company: a name · '' = No company · a list = several hold the number, pick one */
+          const rows: [string, string | string[], string, string][] = [
             ['0908 123 456', 'Công ty TNHH Đại Dương', 'Nguyễn Văn Toàn', 'CRM call'],
             ['0912 345 678', 'Tiki', 'Bùi Thu Hằng', 'Number'],
             ['0938 555 777', 'VNG Corporation', 'Đoàn Hải Nam', 'Rep'],
             ['0981 127 348', 'Công ty TNHH Đại Dương', 'Phạm Kế Toán', 'Admin'],
+            ['0911 468 024', ['Bình Minh', 'Sao Mai'], '—', 'Waiting'],
             ['0969 920 995', '', '—', 'Waiting'],
           ]
           return (
@@ -229,20 +235,30 @@ export function CallLinkFlow() {
               <rect x={736} y={640} width={648} height={22} rx={4} fill="var(--color-canvas)" />
               {head.map((h, i) => <text key={h} x={X[i]} y={655} fontSize={10} fontWeight={700} fill={MUT}>{h}</text>)}
               {rows.map(([phone, co, contact, src], r) => {
-                const y = 682 + r * 24
+                const y = 678 + r * 21
                 return (
                   <g key={phone}>
                     <line x1={736} x2={1384} y1={y + 9} y2={y + 9} stroke="var(--color-line-soft)" strokeWidth={0.8} />
                     <text x={X[0]} y={y + 3} fontSize={10.5} fontFamily="ui-monospace, monospace" fill={INK}>{phone}</text>
-                    {co
-                      ? <text x={X[1]} y={y + 3} fontSize={10.5} fontWeight={600} fill={BR}>{co}</text>
-                      : (
+                    {Array.isArray(co)
+                      ? (
                         <g>
-                          <Chip cx={X[1] + 38} cy={y - 1} label="No company" />
-                          <rect x={X[1] + 84} y={y - 9} width={34} height={18} rx={5} fill={BR} />
-                          <text x={X[1] + 101} y={y + 4} fontSize={10} fontWeight={700} textAnchor="middle" fill="#fff">Link</text>
+                          <text x={X[1]} y={y + 3} fontSize={9.5} fontWeight={700} fill="#92400e">pick:</text>
+                          {co.map((name, k) => {
+                            const w = name.length * 6 + 12
+                            const x = X[1] + 30 + (k === 0 ? 0 : co[0].length * 6 + 16)
+                            return (
+                              <g key={name}>
+                                <rect x={x} y={y - 9} width={w} height={17} rx={5} fill="var(--color-surface)" stroke={BR} strokeWidth={1} />
+                                <text x={x + w / 2} y={y + 3} fontSize={10} fontWeight={600} textAnchor="middle" fill={BR}>{name}</text>
+                              </g>
+                            )
+                          })}
                         </g>
-                      )}
+                      )
+                      : co
+                        ? <text x={X[1]} y={y + 3} fontSize={10.5} fontWeight={600} fill={BR}>{co}</text>
+                        : <Chip cx={X[1] + 38} cy={y - 1} label="No company" />}
                     <text x={X[2]} y={y + 3} fontSize={10.5} fill={contact === '—' ? MUT : INK}>{contact}</text>
                     <Chip cx={X[3] + 32} cy={y - 1} label={src} />
                     <text x={X[4]} y={y + 3} fontSize={10.5} fontWeight={600} fill={GRN}>Answered</text>
@@ -253,9 +269,9 @@ export function CallLinkFlow() {
           )
         })()}
         <text x={740} y={806} fontSize={10.5} fill={MUT}>
-          On top of the page: <tspan fontWeight={700} fill={INK}>Today · 10 answered · CRM call 3 · Number 2 · Rep 1 · Admin 1 · Waiting 3</tspan>
+          On top of the page: <tspan fontWeight={700} fill={INK}>Today · 11 answered · CRM call 3 · Number 2 · Rep 1 · Admin 1 · Waiting 4</tspan>
         </text>
-        <text x={740} y={821} fontSize={10.5} fill={MUT}>Mostly Rep / Admin = the team dials from Callio, not from the CRM.</text>
+        <text x={740} y={821} fontSize={10.5} fill={MUT}>Beside it: Sync from CRM · Sync from Callio. Mostly Rep / Admin = the team dials from Callio, not the CRM.</text>
       </svg>
     </div>
   )

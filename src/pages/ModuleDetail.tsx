@@ -5,12 +5,12 @@ import { BUILD_MODULES, SITE_META } from '@/data/buildModules'
 import type { BuildFeature, BulletItem, FeatureDetail, KeyPoint, ReqTable, Requirement } from '@/data/buildModules'
 import type { FieldGroup, BackendSpec } from '@/data/types'
 import { resolveScreen, mockupHref } from '@/pages/screenRegistry'
-import { EmbeddedCtx } from '@/pages/admin/ctx'
 import { featurePath, resolveFeature } from '@/data/featureSlug'
 import { GUIDES, guidePath } from '@/data/guides'
 import { CopySectionLink, slugify, useHashTarget } from '@/components/ShareLink'
 import { CompanyIntakeFlow } from '@/components/CompanyIntakeFlow'
 import { CompanyVerificationFlow } from '@/components/CompanyVerificationFlow'
+import { CompanySignupFlow } from '@/components/CompanySignupFlow'
 import { SharedQuotaFlow } from '@/components/SharedQuotaFlow'
 import { CallLinkFlow } from '@/components/CallLinkFlow'
 import { JobCreateFlow } from '@/components/JobCreateFlow'
@@ -318,6 +318,7 @@ function ReqCard({ r, dense }: { r: Exclude<Requirement, string>; dense?: boolea
       {/* A whole-process flow gets the FULL width, not the reading measure — a
           diagram squeezed into a text column is a diagram nobody can follow. */}
       {r.diagram === 'company-intake' && <CompanyIntakeFlow />}
+      {r.diagram === 'company-signup' && <CompanySignupFlow />}
       {r.diagram === 'company-verification' && <CompanyVerificationFlow />}
       {r.diagram === 'job-create' && <JobCreateFlow />}
       {r.diagram === 'shared-quota' && <SharedQuotaFlow />}
@@ -841,9 +842,7 @@ function ScreenTabs({ screens }: { screens: NonNullable<ReturnType<typeof resolv
       )}
       <div className="max-h-[640px] overflow-y-auto scroll-thin">
         <Suspense fallback={<div className="flex min-h-[240px] items-center justify-center text-[12px] text-faint">Loading…</div>}>
-          <EmbeddedCtx.Provider value>
-            <s.Comp />
-          </EmbeddedCtx.Provider>
+          <s.Comp />
         </Suspense>
       </div>
     </SpecBlock>

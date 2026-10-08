@@ -251,7 +251,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                   on the Company site, so an admin and the customer on the phone are
                   looking at one mark. A pool row has no company yet, so no tag. */}
               {!isPool && <VerifiedTag v={verif} display={verifyDisplayOf(c)} en />}
-              {/* Beside a No-paperwork tag: what the Verify button is waiting for. A
+              {/* Beside a Unverified tag: what the Verify button is waiting for. A
                   "Waiting to verify" tag already says the ERC is on file, so the
                   line only appears when it is not. */}
               {!isPool && !coVerified && gaps.length > 0 && <VerifyReadiness gaps={gaps} />}
@@ -311,7 +311,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
               quotation option (see the Quotations list), not from here. */}
           {/* VERIFY — the admin act this record may be waiting on. Shown only while
               Unverified, and DISABLED until an ERC is on the record (verifyGaps) —
-              the "No paperwork" state has nothing to rule on, and the hint beside the
+              the "Unverified" state has nothing to rule on, and the hint beside the
               tag says so. Enabled = "Waiting to verify". Not gated on `ro`:
               verification is an ADMIN duty, not the sales owner's, and the record may
               have no owner yet. */}
@@ -319,7 +319,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
             <button
               disabled={gaps.length > 0}
               onClick={() => { if (gaps.length === 0) setVerifyOpen(true) }}
-              title={gaps.length ? 'No paperwork — chưa có ERC trên hồ sơ: employer upload ở Company information, hoặc admin upload hộ ở card Enterprise Registration Documents' : 'Waiting to verify — ERC đã có trên hồ sơ, mở xác nhận'}
+              title={gaps.length ? 'Unverified — chưa có ERC trên hồ sơ: employer upload ở Company information, hoặc admin upload hộ ở card Enterprise Registration Documents' : 'Waiting to verify — ERC đã có trên hồ sơ, mở xác nhận'}
               className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-semibold', gaps.length ? 'cursor-not-allowed border-line bg-canvas text-faint' : 'border-blue-300 bg-blue-50 text-blue-700 hover:border-blue-500')}
             >
               Verify company
@@ -980,12 +980,12 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                 </button>,
                 <span className="truncate text-[11.5px] text-muted">{p.title}</span>,
                 <span className="truncate font-mono text-[11px] text-muted" title={p.email}>{p.email}</span>,
-                /* The phone icon IS "Copy & open Callio" for this person: it opens the Call
-                   card already in Calling, linked to this contact. */
+                /* The phone icon IS "Copy" for this person: it copies the number and opens
+                   the Call card already in Calling, linked to this contact. */
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate font-mono text-[11px] text-muted">{p.phone}</span>
                   {p.phone !== '—' && !archived && (
-                    <button onClick={() => startCall(p.name)} title={`Call ${p.name} — copies the number, opens Callio, links the call to this company`} className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-line text-muted hover:border-brand hover:text-brand">
+                    <button onClick={() => startCall(p.name)} title={`Call ${p.name} — copies the number to paste in Callio, links the call to this company`} className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-line text-muted hover:border-brand hover:text-brand">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" /></svg>
                     </button>
                   )}

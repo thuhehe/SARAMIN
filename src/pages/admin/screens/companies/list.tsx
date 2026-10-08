@@ -19,7 +19,7 @@ import { searchKey } from '@/pages/admin/ui/table'
 import type { Col } from '@/pages/admin/ui/table'
 
 /* The Verified filter's three values ARE the three status labels (the build's,
-   client 11/09/2026) — Verified · Waiting to verify · No paperwork. The split is
+   client 11/09/2026) — Verified · Waiting to verify · Unverified. The split is
    by PAPERWORK: whether an ERC is on the record, which is the question an admin
    asks of this column — "which can I verify right now, and which are still
    waiting on the employer?". Derived on read (verifyGaps), never stored. */
@@ -389,7 +389,7 @@ export function AdminCompanyList() {
           <Pill tone={AC_STATUS[c.account].tone}>{AC_STATUS[c.account].label}</Pill>,
           /* The same tag the employer sees on the Company site. Reason suppressed in
              the list — the row is for finding, the detail is for reading why. The tag
-             now carries the state itself (Waiting to verify vs No paperwork), so the
+             now carries the state itself (Waiting to verify vs Unverified), so the
              line under it only has to say what the admin is waiting on. */
           <div className="min-w-0">
             <VerifiedTag v={verificationOf(c)} display={verifyDisplayOf(c)} en showReason={false} />
