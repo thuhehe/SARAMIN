@@ -1906,9 +1906,29 @@ export const resumeManagement: BuildModule = {
                 ['Qualified', 'FINAL — written by the scan, or by an admin Approve', '**Sent**', '**Showing**', 'Reject → Rejected'],
                 ['Not enough information', 'DOUBT — interim. Read fine, below the rule', '**Not sent** — until the current version is Qualified (admin approval, or a replacement version the scan qualifies)', '**Hidden**', 'Approve → Qualified · Reject → Rejected'],
                 ['Can’t read', 'DOUBT — interim. No text layer (image-only scan); a human can still read it', '**Not sent** — until the current version is Qualified (admin approval, or a replacement version the scan qualifies)', '**Hidden**', 'Approve → Qualified · Reject → Rejected'],
-                ['Rejected', 'FINAL — written only by an admin, never by the scan', '**Not sent** — permanently, for held and new ones · **Recall** — for any application already Sent, which is pulled back from the employer', '**Hidden**', 'Approve → Qualified'],
+                ['Rejected', 'FINAL — written only by an admin, never by the scan', '**Not sent** — permanently, for held and new ones · **Recall** — any application already Sent is taken back off the employer’s dashboard (see the next section)', '**Hidden**', 'Approve → Qualified'],
               ],
             },
+          },
+          {
+            early: true,
+            heading: 'RECALL — taking an application back off the employer’s dashboard',
+            text: '**Recall is the only status that acts on something the employer already has.** Every other value decides whether a document goes out; Recall decides that one which already went out must come back. It happens for exactly one reason: an application was **Sent**, and the CV it carried was then **Rejected** by an admin.\n\nIt is not a kind of doubt, not a candidate action, and not something anyone sets by hand — it follows from the CV’s verdict like every other derived value on this page.',
+            table: {
+              cols: ['Where', 'What recall does there'],
+              rows: [
+                ['**Employer — Applicants**', 'The row stays, but leaves the hiring funnel: the candidate’s name is struck through, the match score is replaced by an em dash, and the stage chip becomes a rose **Đã thu hồi**. A row that is out of the running should not keep showing a score, as if it were still a choice.'],
+                ['**Employer — the CV itself**', '**The document closes.** The CV body is blurred and unreadable, and **Download disappears**. One fixed sentence says why — “Saramin đã thu hồi CV này” plus the reason clause. The recruiter never sees the reviewer’s internal words.'],
+                ['**Employer — Talent pool / CV search**', 'The CV leaves the index, and **any unlock paid for it is refunded**. Nobody keeps paying for a document we withdrew.'],
+                ['**Candidate — My applications**', 'The row reads **Đã thu hồi**, with the message the reviewer wrote and one action button. The candidate is told; the employer is not told anything beyond the fixed clause.'],
+                ['**Admin — Applications**', 'Status reads **Recall**. The employer’s funnel stage is replaced by an em dash, because that pipeline no longer applies to this row.'],
+              ],
+            },
+            items: [
+              '★ RECALL CANNOT UN-SEE A CV, and nobody should be told otherwise. A recruiter may already have read it, downloaded it, or phoned the candidate. What recall does is withdraw OUR copy and stop any further access — it cannot retrieve what a person already holds. That is exactly why the verdict behind it is the one thing the automatic scan is never allowed to write: by the time a recall is needed, part of the damage is already outside our reach.',
+              'IT ONLY TOUCHES APPLICATIONS CARRYING THE REJECTED VERSION. An application delivered on an earlier version stays **Sent** and untouched — the employer received a different document, and pulling it back would punish them for an edit the candidate made afterwards. A held application was never delivered, so it has nothing to recall: it becomes **Không được gửi** instead.',
+              'NOT THE SAME AS A DELETED ACCOUNT. A recall is OUR correction, so we pull the document back, blur it and refund the unlock. A candidate deleting their account changes none of that: what already reached the employer stays exactly as delivered, with only a tag to say the account is gone.',
+            ],
           },
           {
             heading: 'WHERE THE VERSION IS ACTUALLY VISIBLE — every surface that shows one, and none of them optional',
@@ -1950,7 +1970,7 @@ export const resumeManagement: BuildModule = {
             },
             items: [
               'THE CHIP IS THE ONLY CHANGE, and it is the same words on every surface — the Applicants row, the unlocked row, and the CV detail page opened from either. A recruiter learns this state once.',
-              'THIS IS NOT A RECALL, and the two must not be confused: a recall is OUR mistake, so we pull the document back, blur it and refund the unlock. A deletion touches none of that. Full recall behaviour is specced above, in “What the EMPLOYER sees when a CV is recalled”.',
+              'THIS IS NOT A RECALL, and the two must not be confused: a recall is OUR mistake, so we pull the document back, blur it and refund the unlock. A deletion touches none of that. Full recall behaviour is specced above, in “RECALL — taking an application back off the employer’s dashboard”.',
               'BOTH STEPS ARE IMMEDIATE — the chip appears and the CV leaves the search index at the same moment, so nobody can pay for a candidate who has already gone.',
               'BECAUSE THE UNLOCKED CV SURVIVES, the candidate’s delete-confirm screen must say so plainly (Job seeker user management → Delete account). A “delete” that quietly leaves CVs with employers is the one promise we cannot afford to break.',
             ],
