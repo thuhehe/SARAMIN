@@ -84,6 +84,24 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    date: '2026-10-14',
+    kind: 'requirement',
+    module: 'resume-management',
+    featureKey: 'resume-list-companies',
+    title: {
+      vi: 'Tìm CV (Talent pool): ghi rõ luật của ba ô OR · AND · NOT theo build — dấu phẩy tách từ khóa, dấu cách thì không; từ khóa nhiều chữ là một cụm; tối đa 16 từ khóa mỗi ô',
+      en: 'CV search (Talent pool): the OR · AND · NOT boxes now state their matching rules as built — a comma separates keywords, a space does not; a multi-word keyword is a phrase; at most 16 keywords per box',
+    },
+    detail: {
+      vi: 'Ba ô kết hợp thành (OR₁ hoặc OR₂ …) VÀ AND₁ VÀ AND₂ … VÀ KHÔNG (NOT₁ hoặc NOT₂ …). Không phân biệt dấu và hoa thường; ký tự đặc biệt bị bỏ nên không gõ được toán tử; từ khóa trùng gộp lại; ô chỉ có ký tự đặc biệt coi như trống. Có từ khóa ở bất kỳ ô nào thì mặc định sắp theo mức độ liên quan. Ghi kèm một khác biệt cần chốt: trên Postgres (môi trường dev) ô NOT đọc toàn bộ CV, trên Elasticsearch (staging) chỉ đọc headline và chức danh từng làm — nên cùng một tìm kiếm cho số kết quả khác nhau giữa hai môi trường.',
+      en: 'The boxes combine as (OR₁ or OR₂ …) AND AND₁ AND AND₂ … AND NOT (NOT₁ or NOT₂ …). Accents and case are ignored; special characters are dropped, so operators cannot be typed; duplicates collapse; a box holding only symbols counts as empty. Any keyword switches the default sort to relevance. One difference is recorded for a decision: on Postgres (the dev environment) NOT reads the whole CV, on Elasticsearch (staging) only the headline and past job titles — so the same search returns different counts on the two.',
+    },
+    source: [
+      { repo: 'svn-be', note: 'KeywordQuery / TsQuery parsing; EsCandidateQueryBuilder (phrase multi_match, NOT on headline + experienceTitles); PgFtsCandidateSearchAdapter (whole-document tsquery + headline LIKE fallback)' },
+      { repo: 'svn-web', note: 'candidate-search copy: “Separate several with commas — OR widens the search, AND narrows it, NOT excludes”' },
+    ],
+  },
+  {
     date: '2026-09-11',
     kind: 'guide',
     module: 'crm',
