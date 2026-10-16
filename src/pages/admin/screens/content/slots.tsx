@@ -263,7 +263,7 @@ function PlacementsTab({ onViewAll }: { onViewAll: (placementId: string) => void
                     </td>
                     <td className="px-3 py-3 text-right">
                       <button onClick={() => onViewAll(r.placement.id)} className="whitespace-nowrap text-[11.5px] font-medium text-brand hover:underline">
-                        View all ({r.all.length}) →
+                        View all
                       </button>
                     </td>
                   </tr>

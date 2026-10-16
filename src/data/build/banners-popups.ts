@@ -331,7 +331,7 @@ export const bannersPopups: BuildModule = {
               { name: 'Preview', type: 'image', notes: 'Reference image của placement (upload ở Placements, chỉ admin thấy). Bấm để xem lớn. Chưa có ảnh → “No reference image — add one on Placements”.' },
               { name: 'Showing now', type: 'number', notes: 'Chỉ con số: số ad Open + Visible On (đỏ khi = 0). Có ad Open nhưng Visible Off → thêm dòng “+ n hidden (Visible off)”.' },
               { name: 'Waiting', type: 'number', notes: 'Số ad Scheduled. Dòng phụ: ngày bắt đầu sớm nhất · công ty.' },
-              { name: 'View all (n)', type: 'link', notes: 'chuyển sang tab Ads với Placement = placement này (URL thành `/content/boosting?placement=<placement.id>`); n = tổng số ad của placement, mọi trạng thái.' },
+              { name: 'View all', type: 'link', notes: 'nhãn chỉ “View all”, không kèm số. Chuyển sang tab Ads với Placement = placement này (URL thành `/content/boosting?placement=<placement.id>`), mọi trạng thái.' },
             ],
           },
           {
@@ -360,7 +360,6 @@ export const bannersPopups: BuildModule = {
                 ['Showing now', 'count(ad: Status = Open, visible = true)', 'Ad không có ngày kết thúc (popup “No end date”) tính là đang hiển thị.'],
                 ['hidden', 'count(ad: Status = Open, visible = false)', 'Không lên site nên KHÔNG tính vào Showing now, nhưng vẫn giữ một slide cho kiểm tra sức chứa.'],
                 ['Waiting', 'count(ad: Status = Scheduled)', 'Draft KHÔNG tính — chưa được xếp lịch.'],
-                ['View all (n)', 'count(mọi ad của placement)', 'Mọi trạng thái: Draft · Scheduled · Open · Closed.'],
               ],
             },
           },
@@ -389,7 +388,7 @@ export const bannersPopups: BuildModule = {
           },
         ],
         states: [
-          'Placement không có ad nào: Showing now 0 (đỏ), Waiting 0, View all (0).',
+          'Placement không có ad nào: Showing now 0 (đỏ), Waiting 0; View all mở tab Ads trống.',
           'Placement chưa có Reference image: ô Preview hiện khung nét đứt “No reference image — add one on Placements”.',
           'Placement đang Inactive: KHÔNG hiện trên bảng (không trang nào vẽ nó).',
           'Dòng mở rộng không có ad đang hiển thị hay đang chờ: “Nothing showing and nothing waiting on this placement.”',
