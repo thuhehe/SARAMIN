@@ -22,7 +22,7 @@ const adminCompanyArchived = screen(() => import('@/pages/admin/screens/companie
 const adminCompanyPipeline = screen(() => import('@/pages/admin/screens/companies/pipeline'), 'AdminCompanyPipeline')
 const adminJobseekers = screen(() => import('@/pages/admin/screens/users/jobseekers'), 'AdminJobseekers')
 const adminDisplay = screen(() => import('@/pages/admin/screens/content/display'), 'AdminDisplay')
-const adminSlots = screen(() => import('@/pages/admin/screens/content/slots'), 'AdminSlots')
+const adminSlots = screen(() => import('@/pages/admin/screens/content/slots'), 'AdminBoosting')
 const adminAccountUsage = screen(() => import('@/pages/admin/screens/usage/accountUsage'), 'AdminAccountUsage')
 const adminManualServices = screen(() => import('@/pages/admin/screens/usage/manualServices'), 'AdminManualServices')
 const adminCvSearchUsage = screen(() => import('@/pages/admin/screens/usage/cvSearchUsage'), 'AdminCvSearchUsage')

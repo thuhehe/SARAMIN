@@ -60,7 +60,7 @@ export const bannersPopups: BuildModule = {
           ['Ended', 'Past the end date; kept for reporting', 'Cannot return to Live without a new date range · Unpublish → Draft'],
         ],
       },
-      warn: 'SUPERSEDED — do not build the old rule. This previously read “a slot holds at most ONE Live banner per period; overlapping date ranges are blocked at save”. The client has confirmed the opposite: a slot renders a FIXED number of positions and rotates an UNLIMITED pool of bookings through them. Overlapping date ranges are therefore NORMAL and must NOT be blocked — blocking them would refuse the ordinary case. What overlapping bookings do change is the share of voice each one gets; see “Vị trí hiển thị — kho xoay vòng không giới hạn”.',
+      warn: 'SUPERSEDED — do not build the old rule. This previously read “a slot holds at most ONE Live banner per period; overlapping date ranges are blocked at save”. The client has confirmed the opposite: a slot renders a FIXED number of positions and rotates an UNLIMITED pool of bookings through them. Overlapping date ranges are therefore NORMAL and must NOT be blocked — blocking them would refuse the ordinary case. What overlapping bookings do change is the share of voice each one gets.',
     },
     {
       label: 'Paid ad slots are sold as products',
@@ -298,101 +298,126 @@ export const bannersPopups: BuildModule = {
       mockup: 'admin-slots',
       detail: {
         description:
-          'The banner list counted the other way up: one row per SLOT instead of one row per booking. It answers the question the booking list structurally cannot — “what is on screen right now, and what changes next?” — because an empty slot is not a row on a booking list. It is the ABSENCE of rows against an area nobody thought to check, and only a table whose rows are the slots can show a thing that is not there. Every figure is derived; nothing on this screen is stored or typed.',
+          'KHÔNG phải trang riêng: là tab thứ hai của trang Boosting đang có (Service delivery → Boosting). Trang Boosting chia làm 2 tab — **Ads** (danh sách ad như hiện tại, không đổi) và **By placement** (màn hình này). Tab By placement là một bảng, mỗi dòng là một Display placement (Product settings → Placements): placement đó trông thế nào trên site, bao nhiêu banner đang hiển thị và bao nhiêu banner đang chờ hiển thị. Mở rộng một dòng để xem các banner đang hiển thị và đang chờ; bấm View all để chuyển sang tab Ads với bộ lọc Placement đã chọn sẵn, gồm cả banner đã hết hạn. Mọi con số đều suy ra từ Placements và các ad; tab này không lưu và không cho nhập gì. Chốt ngày 16/10/2026 (cột “No-banner periods” đã bỏ cùng ngày); mockup làm để khách hàng xem trước.',
         userStory:
-          'As an HQ content operator, I want to see every display area with what is running in it and what expires next, so that no slot renders blank and no slot is sold so heavily that the customers already in it stop appearing.',
-        sections: [
+          'Là admin vận hành banner, tôi muốn thấy mọi placement cùng lúc với số banner đang hiển thị và đang chờ, để biết vị trí nào đang trống hoặc sắp hết banner và xếp banner (của khách hoặc nội bộ) vào.',
+        keyPoints: [
+          { vi: 'Một trang Boosting, 2 tab: Ads (giữ nguyên như build) · By placement (mới). Không thêm mục menu mới.', en: 'One Boosting page, two tabs: Ads (as built) · By placement (new). No new menu entry.' },
+          { vi: 'Một dòng = một Display placement đang bật. Placement chưa từng có ad nào vẫn hiện — một dòng trống chính là câu trả lời.', en: 'One row per active Display placement — including placements that have never had an ad.' },
+          { vi: 'View all = chuyển sang tab Ads, bộ lọc Placement đặt sẵn — đúng như `/content/boosting?placement=<placement id>` hiện nay.', en: 'View all switches to the Ads tab with the Placement filter set — the same as `/content/boosting?placement=<placement id>` today.' },
+        ],
+        uiFields: [
           {
-            heading: 'Vị trí hiển thị — kho xoay vòng không giới hạn',
-            text: 'A slot renders a FIXED number of positions (`itemsShown`) and rotates an UNLIMITED pool of Live bookings through them. This is the rule the whole screen rests on, and it replaces the earlier Phase-1 “one Live banner per slot” rule, which was wrong.\n\nThe consequence is that a slot can never be FULL, so there is no free capacity to count and no overbooking to block. What moves as more is sold is the SHARE OF VOICE each booking receives — which is the thing the advertiser is actually buying. Selling the tenth hero banner does not fail; it quietly cuts all ten customers to a tenth of the time.',
+            group: 'Trang Boosting — khung chung của 2 tab',
             items: [
-              'Do NOT build a capacity check, a “slots remaining” figure, or an overlap guard. All three describe a constraint this product does not have.',
-              'The deck’s “max 6 · rotate 3s” prose is a DISPLAY rotation description (6 positions cycling every 3s), not a booking limit. Keep it as reference text; never enforce it.',
-              'House banners rotate exactly like sold ones and count in every figure below. Excluding them would overstate the share each paying customer gets.',
+              { name: 'header', type: 'text', notes: 'Tiêu đề Boosting + mô tả + nút **+ New** — như hiện tại, dùng chung cho cả 2 tab' },
+              { name: 'tabs', type: 'tabs', notes: '**Ads** (tổng số ad) · **By placement** (số placement). Mặc định mở Ads. Tab nằm trên URL: `/content/boosting` = Ads, `/content/boosting?tab=placements` = By placement, để link chia sẻ mở đúng tab.' },
+              { name: 'As of', type: 'date', notes: 'ngày “hôm nay” mà mọi con số tính từ đó — đồng hồ server, hiện ở cuối thanh tab' },
             ],
           },
           {
+            group: 'Tab Ads — danh sách Boosting hiện tại, không đổi',
+            items: [
+              { name: 'toolbar', type: 'filters', notes: 'Search banners and popups · All types · All statuses (Draft · Scheduled · Open · Closed) · All placements' },
+              { name: 'cột', type: 'composite', notes: 'Image · Name (+ Purpose) · Type · Placement (+ công ty / “Every company page”) · Source (+ công ty) · Status · Visible · Starts · Ends · ⋯ (Edit · Delete)' },
+              { name: 'sort', type: 'rule', notes: 'mặc định Starts, mới nhất trước' },
+            ],
+          },
+          {
+            group: 'Tab By placement — bảng chính (một dòng / placement)',
+            items: [
+              { name: 'expand', type: 'toggle', notes: '▸ / ▾ — mở danh sách ad đang hiển thị + đang chờ ngay dưới dòng. Bấm tên placement cũng mở.' },
+              { name: 'Placement', type: 'text', notes: 'Chỉ Name — như trong ô chọn Placement của Boosting. Không hiện key, page, kích thước hay số slide trên bảng.' },
+              { name: 'Preview', type: 'image', notes: 'Reference image của placement (upload ở Placements, chỉ admin thấy). Bấm để xem lớn. Chưa có ảnh → “No reference image — add one on Placements”.' },
+              { name: 'Showing now', type: 'number', notes: 'Chỉ con số: số ad Open + Visible On (đỏ khi = 0). Có ad Open nhưng Visible Off → thêm dòng “+ n hidden (Visible off)”.' },
+              { name: 'Waiting', type: 'number', notes: 'Số ad Scheduled. Dòng phụ: ngày bắt đầu sớm nhất · công ty.' },
+              { name: 'View all (n)', type: 'link', notes: 'chuyển sang tab Ads với Placement = placement này (URL thành `/content/boosting?placement=<placement.id>`); n = tổng số ad của placement, mọi trạng thái.' },
+            ],
+          },
+          {
+            group: 'Tab By placement — thanh công cụ',
+            items: [
+              { name: 'search', type: 'string', notes: 'khớp name (và key · placement id, dù không hiện trên bảng)' },
+            ],
+          },
+          {
+            group: 'Tab By placement — dòng mở rộng (ad đang hiển thị + đang chờ)',
+            items: [
+              { name: 'cột', type: 'composite', notes: 'Image · Name + ad id · Company + Order/PO (hoặc Free product / —) · Source (Customer / Internal) · Starts → Ends · Days · Visible · Status' },
+              { name: 'Days', type: 'derived', notes: 'Open: “N d left” (tô vàng khi ≤ 7) hoặc “last day” / “no end”. Scheduled: “starts in N d”.' },
+              { name: 'thứ tự', type: 'rule', notes: 'Open + Visible On (theo ngày kết thúc tăng dần) → Open + Visible Off → Scheduled (theo ngày bắt đầu tăng dần)' },
+              { name: 'link', type: 'link', notes: '“View all N ads, closed included →” ở đầu khối — cùng đích với View all trên dòng' },
+            ],
+          },
+        ],
+        sections: [
+          {
             heading: 'Mỗi cột được tính như thế nào',
-            text: 'Every column is computed on read from the Placements registry plus the bookings in the slot. `live` is the base of nearly all of it and has a precise definition: status Open AND Exposure On. An Open banner with Exposure Off renders nothing, so counting it would let a slot read occupied while showing blank.',
+            text: 'Tính khi đọc, từ bảng placement + các ad của placement đó. “Hôm nay” là ngày theo đồng hồ server (giờ Việt Nam), tính theo NGÀY, không theo giờ. Ngày kết thúc của ad là ngày hiển thị CUỐI CÙNG (inclusive).',
             table: {
               cols: ['Cột', 'Công thức', 'Ghi chú'],
               rows: [
-                ['Hiển thị cùng lúc', '`placement.itemsShown`', 'Số vị trí render đồng thời. Sức chứa thật duy nhất của slot.'],
-                ['Đang xoay vòng (live)', 'count(booking: status = Open AND exposure = On)', 'Chia tiếp thành KH (source = Sold) và nội bộ (source = House).'],
-                ['Tỉ lệ hiển thị / banner', 'min(1, itemsShown ÷ live)', 'Phần thời lượng mỗi banner lên hình. live ≤ itemsShown ⇒ 100%. live = 0 ⇒ không tính.'],
-                ['Đang chờ (scheduled)', 'count(booking: status = Schedule)', 'Đã đặt, chưa tới startAt. Hiện kèm booking có startAt sớm nhất.'],
-                ['Kín đến khi nào', 'MAX(endAt) trong các booking live; “còn N ngày” = ngày đó − hôm nay', 'KHÔNG dùng min(endAt). Kho không giới hạn nên một booking kết thúc không giải phóng chỗ và không mở ra cơ hội bán mới — chỉ lúc vị trí về 0 banner mới cần xử lý. Có booking không đặt endAt ⇒ “luôn bật”, không bao giờ trống.'],
-                ['Tình trạng', 'suy ra từ các cột trên — xem bảng trạng thái', 'Không bao giờ lưu, không bao giờ nhập tay.'],
+                ['Showing now', 'count(ad: Status = Open, visible = true)', 'Ad không có ngày kết thúc (popup “No end date”) tính là đang hiển thị.'],
+                ['hidden', 'count(ad: Status = Open, visible = false)', 'Không lên site nên KHÔNG tính vào Showing now, nhưng vẫn giữ một slide cho kiểm tra sức chứa.'],
+                ['Waiting', 'count(ad: Status = Scheduled)', 'Draft KHÔNG tính — chưa được xếp lịch.'],
+                ['View all (n)', 'count(mọi ad của placement)', 'Mọi trạng thái: Draft · Scheduled · Open · Closed.'],
               ],
             },
-            items: [
-              '“Hôm nay” là đồng hồ server và PHẢI hiển thị trên màn hình. Một con số “còn N ngày” không có mốc ngày là con số người đọc không kiểm chứng được.',
-              'Booking không có endAt (popup “Always on”) làm vị trí được coi là kín vô thời hạn; nó vẫn tính vào live và vào tỉ lệ hiển thị.',
-              'KHOẢNG TRỐNG (gap) = ngày booking scheduled sớm nhất bắt đầu − ngày vị trí về 0 banner, khi hiệu số > 0. Đây là con số danh sách booking không bao giờ hiện ra được: cả hai booking đều bình thường trên dòng của mình, lỗ hổng chỉ lộ ra khi đọc chúng trên cùng một vị trí.',
-            ],
           },
           {
-            heading: 'Hai VIEW của cùng một danh sách, không phải trang riêng cho từng vị trí',
-            text: 'Yêu cầu “trang chi tiết cho mỗi placement” (tổng số vị trí · banner đang chạy · số ngày còn lại của mỗi công ty · banner đã hết hạn) KHÔNG cần một trang riêng. Cả bốn đều là dữ kiện về BOOKING đọc theo một vị trí, nên nhóm các dòng banner sẵn có theo vị trí là đủ — giống backlog và epic swimlane của Jira: cùng một tập issue, hai cách đọc.',
+            heading: 'Mở rộng dòng và View all',
             table: {
-              cols: ['View', 'Ở đâu', 'Trả lời câu hỏi nào'],
+              cols: ['Thao tác', 'Hiện gì', 'Ở đâu'],
               rows: [
-                ['Danh sách phẳng', 'Displays → Danh sách', 'Tìm một booking cụ thể: lọc theo công ty, trạng thái, nguồn.'],
-                ['Nhóm theo vị trí (swimlane)', 'Displays → Theo vị trí', 'Trong vị trí này có gì: banner đang chạy, đang chờ, đã hết hạn, và SỐ NGÀY CÒN LẠI của từng công ty. Header mỗi nhóm mang tổng kết của vị trí.'],
-                ['Bảng theo vị trí', 'Slot occupancy', 'Toàn bộ kho vị trí trong 10 dòng: chỗ nào trống, chỗ nào sắp trống, chỗ nào loãng. Dùng để quét, không để đọc chi tiết.'],
+                ['▸ trên dòng', 'Ad đang hiển thị (gồm cả Visible Off, có đánh dấu) + ad đang chờ của placement', 'Ngay dưới dòng, trên chính trang này. Mở nhiều dòng cùng lúc được.'],
+                ['View all', 'MỌI ad của placement, kể cả Draft và Closed', 'Tab Ads của cùng trang, bộ lọc Placement đặt sẵn — `/content/boosting?placement=<placement.id>`; bộ lọc `placement` đã có trong `use-display-ads-list.ts`. Bấm Clear để bỏ lọc. Không mở modal, không làm trang chi tiết riêng cho từng placement.'],
               ],
             },
-            items: [
-              'Nhóm RỖNG là thông tin, không phải lỗi hiển thị: một vị trí không có dòng nào bên dưới chính là câu trả lời cho “vị trí nào đang trống”. Vì vậy view nhóm liệt kê MỌI vị trí bán được, kể cả vị trí chưa từng có booking.',
-              'KHÔNG làm trang chi tiết riêng cho từng placement. Mười ba vị trí sẽ thành mười ba trang, thêm vị trí thứ mười bốn là thêm một trang nữa, và người đọc phải mở từng trang mới biết chỗ nào có vấn đề — đúng thứ mà bảng Slot occupancy giải quyết trong một màn hình.',
-            ],
           },
           {
-            heading: 'Trạng thái vị trí — suy ra, không nhập tay',
-            text: 'Six states, evaluated in the order below; the first match wins. The order matters: a slot that is both about to empty and running only house creative is reported as the more urgent of the two.',
+            heading: 'Trạng thái dùng trên màn hình',
+            text: 'Lấy nguyên cột Status của Boosting (`displayAdPhase` trong build): bốn giá trị, suy ra từ trạng thái lưu + ngày. Không thêm trạng thái mới cho placement.',
             table: {
-              cols: ['Trạng thái', 'Điều kiện', 'Nghĩa là gì / cần làm gì'],
+              cols: ['Status', 'Suy ra từ', 'Đếm vào (tab By placement)'],
               rows: [
-                ['Trống', 'live = 0, fill route ≠ “both”', 'Không có gì hiển thị — vị trí đang trống trên site. Cần lấp ngay, kể cả bằng banner nội bộ.'],
-                ['Chỉ theo hạng', 'live = 0, fill route = “both”', 'Không có booking nhưng vị trí vẫn được lấp tự động theo hạng tin đăng. KHÔNG phải lỗi.'],
-                ['Sắp trống', 'mọi booking live có endAt ≤ hôm nay + 7 ngày, VÀ đang chờ = 0', 'Sắp không còn gì hiển thị và chưa có gì xếp sau. Đây là trạng thái cả màn hình sinh ra để bắt.'],
-                ['Loãng', 'tỉ lệ hiển thị < ngưỡng tối thiểu', 'Bán quá nhiều so với số vị trí; mỗi khách lên hình quá ít. Ngưng bán thêm vào vị trí này.'],
-                ['Chỉ nội bộ', 'live > 0, KH = 0', 'Đang chạy nhưng toàn banner nội bộ — vị trí không sinh doanh thu. Tín hiệu cho sales, không phải lỗi.'],
-                ['Đang chạy', 'live > 0, KH ≥ 1, tỉ lệ ≥ ngưỡng', 'Bình thường.'],
+                ['Draft', 'chưa Published (Draft, hoặc Review)', 'chỉ View all'],
+                ['Scheduled', 'Published, start > hôm nay', 'Waiting'],
+                ['Open', 'Published, start ≤ hôm nay ≤ end (không có end = Open mãi)', 'Showing now (Visible On) hoặc hidden (Visible Off)'],
+                ['Closed', 'Published và end < hôm nay, hoặc Archived', 'chỉ View all'],
               ],
             },
-            items: [
-              '“Sắp trống” nhìn booking RỜI CUỐI CÙNG, không phải booking rời sớm nhất: 1 trong 5 banner hết hạn ngày mai vẫn còn 4 banner trên màn hình. Vị trí chỉ tối khi mọi booking live đã kết thúc và không có gì xếp sau.',
-              'Ngưỡng 7 ngày là khoảng thời gian sales cần để bán tiếp một chỗ — business chốt, không phải hằng số kỹ thuật.',
-            ],
           },
+        ],
+        states: [
+          'Placement không có ad nào: Showing now 0 (đỏ), Waiting 0, View all (0).',
+          'Placement chưa có Reference image: ô Preview hiện khung nét đứt “No reference image — add one on Placements”.',
+          'Placement đang Inactive: KHÔNG hiện trên bảng (không trang nào vẽ nó).',
+          'Dòng mở rộng không có ad đang hiển thị hay đang chờ: “Nothing showing and nothing waiting on this placement.”',
+          'Tìm kiếm không khớp: “No placement matches.”',
         ],
         backend: {
           dataModel: [
-            { name: 'SlotUsage', type: 'derived (không lưu)', notes: 'placementId, itemsShown, live[], sold, house, queued, share, nextOut, leaving[], liveAfter, shareAfter, health — tính khi đọc từ Placement + bookings' },
+            { name: 'SlotOccupancyRow', type: 'derived (không lưu)', notes: 'placementId, name, referenceImageUrl, showingCount, hiddenCount, waitingCount, totalCount, nextStart {date, company}' },
           ],
           endpoints: [
-            'GET /admin/slots/occupancy — mọi vị trí có thể đặt (fill route ≠ tier) kèm các số đã tính; lọc theo health',
-            'GET /admin/slots/:placementId/bookings — booking của một vị trí, kèm số ngày còn lại của từng công ty',
+            'GET /admin/slot-occupancy — một dòng / Display placement đang bật, với các số đã tính theo ngày server',
+            'Dòng mở rộng: dùng lại list ad của Boosting với `placement` + `phase=OPEN,SCHEDULED` — không cần endpoint mới',
           ],
           notes:
-            'Tính trên đường đọc, giống hệt cách status của banner được suy ra từ (isPublished, startAt, endAt). Không lưu cột health: một vị trí không được phép “đang chạy” trong khi banner cuối của nó đã hết hạn.',
+            'Tính khi đọc, giống cách Boosting suy ra Scheduled / Open / Closed từ ngày. Không thêm cột nào vào bảng placement hay bảng ad. Quyền đọc: như Boosting (`content_display:read`). Không thêm mục menu — tab nằm trong trang Boosting.',
         },
         acceptance: [
-          'Một vị trí không có booking live nào hiển thị Trống, kể cả khi vẫn còn booking Scheduled.',
-          'Một banner Open nhưng Exposure Off KHÔNG được tính vào live, và vị trí chỉ có banner đó hiển thị Trống.',
-          'Tỉ lệ hiển thị in kèm phép tính của chính nó (số vị trí ÷ số banner), không chỉ in phần trăm.',
-          'Ngày tham chiếu “hôm nay” hiển thị trên màn hình; “còn N ngày” kiểm chứng được bằng tay từ nó.',
-          'Nhiều booking cùng ngày kết thúc gom thành MỘT sự kiện ở cột Thay đổi kế tiếp.',
-          'Đặt thêm booking vào một vị trí đã có banner live KHÔNG bị chặn.',
-          'Mở một vị trí xem được từng booking kèm số ngày còn lại của mỗi công ty.',
-          'Displays có công tắc Danh sách / Theo vị trí; view nhóm hiện MỌI vị trí bán được, vị trí chưa có booking vẫn xuất hiện dưới dạng nhóm rỗng.',
+          'Trang Boosting có 2 tab Ads · By placement; mở `/content/boosting` vào tab Ads, `?tab=placements` vào tab By placement.',
+          'Tab Ads giữ nguyên cột, bộ lọc và sort như build hiện tại.',
+          'Mỗi Display placement đang bật có đúng một dòng, kể cả placement chưa từng có ad.',
+          'Ad Open + Visible Off không tính vào Showing now và hiện thành “+ n hidden (Visible off)”.',
+          'Ad Draft không tính vào Waiting.',
+          'View all chuyển sang tab Ads với bộ lọc Placement đã chọn, URL thành `?placement=<placement.id>`, và hiện cả ad Draft và Closed.',
+          'Ngày “As of” hiện trên màn hình; mọi “N d left” / “starts in N d” trong dòng mở rộng kiểm được bằng tay từ ngày đó.',
         ],
         openQuestions: [
-          'NGƯỠNG TỈ LỆ HIỂN THỊ TỐI THIỂU — hiện tạm 50%. Đây là cam kết thương mại với khách (“banner của bạn lên hình ít nhất X% thời lượng”), không phải giới hạn kỹ thuật, và cũng là con số quyết định khi nào ngừng bán thêm vào một vị trí. Business phải chốt.',
-          'Khi một vị trí sắp trống, hệ thống có TỰ đẩy banner nội bộ vào để lấp không, hay chỉ cảnh báo để người xử lý?',
-          'Tỉ lệ hiển thị có cần ghi vào hợp đồng / báo giá không? Nếu có thì bán thêm vào vị trí đã đầy khách là thay đổi điều khoản của những khách đã ký.',
-          'Ngưỡng “sắp trống” 7 ngày có khớp với thời gian sales cần để bán tiếp một chỗ không?',
+          'Reference image có cần bắt buộc cho mọi Display placement không? Placement chưa có ảnh thì cột Preview chỉ hiện khung trống.',
+          'Có cần nhắc tự động (thông báo / email) khi một placement sắp hết banner đang hiển thị mà không có gì đang chờ không, hay chỉ xem trên màn hình?',
         ],
       },
     },
