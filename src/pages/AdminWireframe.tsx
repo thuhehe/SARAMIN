@@ -73,6 +73,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // Service — the CV-search product after it is sold. Lives with Products &
   // Packages because the row is a package, not a search.
   'admin-cv-search-usage': { module: 'products-packages', feature: 'CV search usage' },
+  'admin-quota-usage': { module: 'products-packages', feature: 'Quota usage' },
   // NOTE: still no targets for 'admin-credits' / 'admin-orders'.
   // Discounting happens on the quotation line (one place a price can be cut), orders
   // are CRM → Purchase order, and the credit balance is the entitlement ledger on the
@@ -213,6 +214,9 @@ const NAV_GROUPS: NavGroup[] = [
       // The build's Boosting page, as agreed 16/10/2026: one page, two tabs —
       // Ads (the list as built) and By placement (what used to be Slot occupancy).
       { label: 'Boosting', specId: 'admin-slots' },
+      // The CS "AMS" sheet as a page (17/10/2026): one row per unit of every product
+      // sold, with its usage and warranty filled by the system instead of by CS.
+      { label: 'Quota usage', specId: 'admin-quota-usage' },
       // ONE page for all manual services: five products across a hundred companies
       // is one list at the grain of (company × service), not five queues.
       { label: 'Manual services', specId: 'admin-manual-services' },

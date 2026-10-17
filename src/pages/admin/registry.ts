@@ -26,6 +26,7 @@ const adminSlots = screen(() => import('@/pages/admin/screens/content/slots'), '
 const adminAccountUsage = screen(() => import('@/pages/admin/screens/usage/accountUsage'), 'AdminAccountUsage')
 const adminManualServices = screen(() => import('@/pages/admin/screens/usage/manualServices'), 'AdminManualServices')
 const adminCvSearchUsage = screen(() => import('@/pages/admin/screens/usage/cvSearchUsage'), 'AdminCvSearchUsage')
+const adminQuotaUsage = screen(() => import('@/pages/admin/screens/usage/quotaUsage'), 'AdminQuotaUsage')
 const adminUnresolvedTerms = screen(() => import('@/pages/admin/screens/usage/unresolvedTerms'), 'AdminUnresolvedTerms')
 const adminPages = screen(() => import('@/pages/admin/screens/content/pages'), 'AdminPages')
 const adminCatalog = screen(() => import('@/pages/admin/screens/products/catalog'), 'AdminCatalog')
@@ -88,6 +89,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-account-usage': adminAccountUsage,
   'admin-manual-services': adminManualServices,
   'admin-cv-search-usage': adminCvSearchUsage,
+  'admin-quota-usage': adminQuotaUsage,
   'admin-unresolved-terms': adminUnresolvedTerms,
   'admin-pages': adminPages,
   // Billing & products

@@ -895,5 +895,128 @@ export const productsPackages: BuildModule = {
         ],
       },
     },
+    // Quota usage ─────────────────────────────────────────────────────────────
+    {
+      name: 'Quota usage',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      mockup: 'admin-quota-usage',
+      detail: {
+        description:
+          'Sheet “AMS” của CS, chuyển thành một trang trong Admin (Service → Quota usage, ngay dưới Boosting). **Mỗi dòng là MỘT đơn vị sản phẩm** (số lượng 1): dòng PO 4 × Basic Plus Job thành 4 dòng, đánh số 1–4, vì mỗi đơn vị được dùng cho một tin riêng, vào một ngày riêng, và có thể có bảo hành riêng. Giữ các cột và thứ tự của sheet (bỏ cột CS; “Phân loại” đổi tên thành Internal tag — chốt 17/10/2026). Các cột “CS điền” (Trạng thái sử dụng · Ngày kích hoạt · ID Job) do **hệ thống tự điền** khi đơn vị được dùng cho một tin — CS không còn gõ tay. Mockup làm ngày 17/10/2026 từ ảnh sheet khách gửi.',
+        userStory:
+          'Là CS / Sales, tôi muốn thấy từng đơn vị sản phẩm đã bán — đã dùng cho tin nào, còn hạn tới bao giờ, đã bảo hành chưa — trên một trang, để không phải duy trì sheet tay và không để khách mất quota vì quá hạn.',
+        keyPoints: [
+          { vi: 'Một dòng = một đơn vị (số lượng 1). Dòng PO số lượng N sinh ra N dòng, cột # đánh số 1…N.', en: 'One row per unit: a PO line of quantity N becomes N rows numbered 1…N.' },
+          { vi: 'Dòng xuất hiện khi hoá đơn GTGT được phát hành (lúc quota được cấp) — không phải lúc tạo PO.', en: 'Rows appear when the VAT invoice is issued — when the quota is granted.' },
+          { vi: 'Status · Activated · Job ID do hệ thống điền khi đơn vị được dùng cho một tin. Không ai gõ tay.', en: 'Status, Activated and Job ID are filled by the system when the unit is spent.' },
+          { vi: 'ID CRM + ID AMS gộp thành một Company ID — CRM và site tuyển dụng giờ là một hệ thống, một bản ghi công ty. Không hiện mã cũ.', en: 'ID CRM + ID AMS become one Company ID — one system, one company record. Old ids are not shown.' },
+        ],
+        uiFields: [
+          {
+            group: 'Order (đơn hàng)',
+            items: [
+              { name: 'Invoice no.', type: 'link', notes: 'sheet: “Invoice # CRM”. Mở hoá đơn. Hoá đơn đã phát hành nhưng **chưa thanh toán** → ô tô vàng + nhãn “Unpaid” (thay cho nền vàng “chưa thanh toán / lên tin trước” của sheet)' },
+              { name: 'Invoice status', type: 'derived', notes: 'Trạng thái của CẢ hoá đơn, tính trên mọi đơn vị của nó: In use · Fully used (Đã dùng xong) · Expired (Đã hết hạn). Fully used / Expired = CS không cần quan tâm nữa — xem bảng trạng thái' },
+              { name: 'Company ID', type: 'text', notes: 'sheet: “ID CRM” + “ID AMS”. Một mã CO-XXXXXXX, không kèm mã cũ' },
+              { name: 'Company', type: 'text', notes: 'sheet: “Tên công ty”' },
+              { name: 'Sales', type: 'text', notes: 'sales phụ trách công ty (CRM owner). Cột CS của sheet đã bỏ (17/10/2026)' },
+            ],
+          },
+          {
+            group: 'Product unit (đơn vị sản phẩm)',
+            items: [
+              { name: '#', type: 'number', notes: 'sheet: “Số thứ tự”. Số thứ tự của đơn vị trong dòng sản phẩm của hoá đơn: 1…N' },
+              { name: 'Product', type: 'text', notes: 'sheet: “Gói dịch vụ” — tên product (Basic Plus Job, Top Job, Hero Banner 10 ngày…). Thành phần của package hiện theo từng product' },
+              { name: 'Internal tag', type: 'enum', notes: 'sheet: “Phân loại” — Paid package (Gói dịch vụ) · PO 0đ · Monthly gift (Quà tặng tháng) · NIPA project. Xem câu hỏi mở 1' },
+              { name: 'Invoice date', type: 'date', notes: 'sheet: “Ngày xuất hoá đơn”' },
+              { name: 'Use by', type: 'date', notes: 'sheet: “Ngày hết hạn bảo lưu” = ngày hoá đơn + cửa sổ “Must be used within” của product. Đơn vị chưa dùng hiện thêm “N days left”, tô đỏ khi ≤ 30 ngày' },
+            ],
+          },
+          {
+            group: 'Usage — hệ thống điền (sheet: “CS điền”)',
+            items: [
+              { name: 'Status', type: 'derived', notes: 'sheet: “Trạng thái sử dụng” — Unused · Used · Expired, xem bảng trạng thái' },
+              { name: 'Activated', type: 'date', notes: 'sheet: “Ngày kích hoạt” — ngày đơn vị được dùng (tin đăng bằng đơn vị này được publish)' },
+              { name: 'Job ID', type: 'link', notes: 'sheet: “ID Job” — tin đã dùng đơn vị này; mở tin' },
+            ],
+          },
+          {
+            group: 'Warranty 1 (Bảo hành lần 1)',
+            items: [
+              { name: 'Warranty type', type: 'text', notes: 'sheet: “Loại bảo hành” — vd. Basic 30N, Basic Plus 30N. Có giá trị khi tin của đơn vị này được bảo hành' },
+              { name: 'Warranty date', type: 'date', notes: 'sheet: “Ngày bảo hành” — ngày tin bảo hành được đăng' },
+              { name: 'Warranty job ID', type: 'link', notes: 'sheet: “ID Job bảo hành”' },
+              { name: 'Free PO', type: 'link', notes: 'sheet: “PO Free – bảo hành” — hoá đơn/PO 0đ cấp cho lần bảo hành' },
+            ],
+          },
+          {
+            group: 'Thanh công cụ',
+            items: [
+              { name: 'summary cards', type: 'filter', notes: 'All units · Unused · Use by ≤ 30 days · Used · Expired — bấm để lọc' },
+              { name: 'search', type: 'string', notes: 'invoice no. · company · company ID · job ID · warranty job ID' },
+              { name: 'filters', type: 'select', notes: 'Internal tag · Product · Sales' },
+              { name: 'Hide Fully used / Expired invoices', type: 'checkbox', notes: 'ẩn mọi dòng của hoá đơn đã Fully used hoặc Expired — chỉ còn những hoá đơn CS còn phải theo dõi' },
+              { name: 'Export .xlsx', type: 'button', notes: 'xuất đúng các cột đang thấy, theo bộ lọc hiện tại — để CS vẫn có file như sheet cũ' },
+            ],
+          },
+        ],
+        behaviors: [
+          'Sắp xếp mặc định: ngày hoá đơn mới nhất trước; các dòng của cùng một hoá đơn đứng liền nhau. **Đường kẻ đậm** ngăn giữa hai hoá đơn khác nhau (thay cho dòng trống của sheet); trong cùng một hoá đơn, đổi công ty thì kẻ vừa.',
+          'Khi một tin được publish bằng một đơn vị quota, đơn vị đó (đơn vị chưa dùng có Use by sớm nhất của đúng product) chuyển sang Used, điền Activated và Job ID.',
+          'Một hoá đơn dùng cho nhiều công ty (vd. NIPA project, shared quota) hiện mỗi công ty một nhóm dòng riêng, cùng số hoá đơn.',
+        ],
+        sections: [
+          {
+            heading: 'Trạng thái của một đơn vị',
+            text: 'Suy ra, không nhập tay. Thay cho “Đã dùng” và chữ gạch ngang của sheet.',
+            table: {
+              cols: ['Status', 'Điều kiện', 'Ghi chú'],
+              rows: [
+                ['Unused', 'chưa có Job ID, hôm nay ≤ Use by', 'Dòng phụ “N days left”; ≤ 30 ngày tô đỏ và đếm vào thẻ “Use by ≤ 30 days”.'],
+                ['Used', 'đã có Job ID', 'Dòng làm mờ, như chữ gạch ngang của sheet.'],
+                ['Expired', 'chưa có Job ID, hôm nay > Use by', 'Quota mất. Không quay lại Unused.'],
+              ],
+            },
+          },
+          {
+            heading: 'Trạng thái của cả hoá đơn (Invoice status)',
+            text: 'Tính trên mọi đơn vị của hoá đơn, kể cả khi hoá đơn chia cho nhiều công ty. Hiện giống nhau trên mọi dòng của hoá đơn đó.',
+            table: {
+              cols: ['Invoice status', 'Điều kiện', 'Nghĩa với CS'],
+              rows: [
+                ['In use', 'còn ít nhất một đơn vị Unused', 'Còn phải theo dõi.'],
+                ['Fully used (Đã dùng xong)', 'mọi đơn vị đều Used', 'Không cần quan tâm nữa.'],
+                ['Expired (Đã hết hạn)', 'không còn đơn vị Unused, và có ít nhất một đơn vị Expired', 'Không cần quan tâm nữa — phần chưa dùng đã mất.'],
+              ],
+            },
+          },
+        ],
+        backend: {
+          dataModel: [
+            { name: 'QuotaUnit', type: 'derived từ entitlement', notes: 'invoiceId · lineId · unitNo · companyId · productId · internalTag · invoiceDate · useBy · status · activatedAt · jobId · warranties[{type, date, jobId, freeInvoiceId}]. Một entitlement số lượng N đọc ra N đơn vị' },
+          ],
+          endpoints: [
+            'GET /admin/quota-units?status=&tag=&productId=&salesId=&q= — danh sách đơn vị + 5 số đếm cho thẻ tóm tắt',
+            'GET /admin/quota-units/export.xlsx — cùng bộ lọc',
+          ],
+          notes: 'Không phải sổ mới: đọc từ entitlement đã cấp khi phát hành hoá đơn và từ việc tiêu quota khi đăng tin. Điểm cần làm thêm là ghi lại ĐƠN VỊ NÀO được tiêu cho tin nào, để mỗi đơn vị có Job ID riêng.',
+        },
+        acceptance: [
+          'Một dòng PO 4 × Basic Plus Job tạo đúng 4 dòng, # = 1…4, ngay khi hoá đơn được phát hành.',
+          'Đăng một tin bằng quota chuyển đúng một đơn vị sang Used, với Activated và Job ID của tin đó.',
+          'Đơn vị chưa dùng quá Use by hiện Expired; còn ≤ 30 ngày hiện số ngày tô đỏ.',
+          'Hoá đơn chưa thanh toán được đánh dấu Unpaid trên mọi dòng của nó.',
+          'Invoice status hiện Fully used khi mọi đơn vị Used, Expired khi không còn đơn vị Unused mà có ít nhất một Expired; bật “Hide Fully used / Expired invoices” thì các hoá đơn đó biến mất khỏi danh sách.',
+          'Export .xlsx ra đúng các cột và các dòng đang lọc.',
+        ],
+        openQuestions: [
+          '1 · Internal tag (sheet: “Phân loại” — Paid package · PO 0đ · Monthly gift · NIPA project) lấy từ đâu trong hệ thống mới — loại PO, loại dòng, hay một field mới trên quotation? Hiện chưa có field nào mang bốn giá trị này.',
+          '2 · Sheet ghi “Bảo hành lần 1” — có lần 2 không? Nếu có, thêm nhóm cột “Warranty 2” hay hiện bảo hành thành dòng con?',
+          '3 · “Nền vàng: chưa thanh toán / lên tin trước” — đơn vị có được dùng trước khi khách thanh toán không? Hệ thống hiện cấp quota lúc phát hành hoá đơn, không chờ thanh toán.',
+          '4 · Khi khách có nhiều đơn vị chưa dùng của cùng product, tin mới tiêu đơn vị nào trước — Use by sớm nhất (đề xuất) hay hoá đơn cũ nhất?',
+        ],
+      },
+    },
   ],
 }
