@@ -326,7 +326,7 @@ export const bannersPopups: BuildModule = {
           {
             group: 'Tab By placement — bảng chính (một dòng / placement)',
             items: [
-              { name: 'expand', type: 'toggle', notes: '▸ / ▾ — mở danh sách ad đang hiển thị + đang chờ ngay dưới dòng. Bấm tên placement cũng mở.' },
+              { name: 'expand', type: 'toggle', notes: 'Mở trang thì MỌI placement đều đã mở sẵn danh sách ad đang hiển thị + đang chờ ngay dưới dòng. ▸ / ▾ trên dòng (hoặc bấm tên placement) đóng/mở một placement.' },
               { name: 'Placement', type: 'text', notes: 'Chỉ Name — như trong ô chọn Placement của Boosting. Không hiện key, page, kích thước hay số slide trên bảng.' },
               { name: 'Preview', type: 'image', notes: 'Reference image của placement (upload ở Placements, chỉ admin thấy). Bấm để xem lớn. Chưa có ảnh → “No reference image — add one on Placements”.' },
               { name: 'Showing now', type: 'number', notes: 'Chỉ con số: số ad Open + Visible On (đỏ khi = 0). Có ad Open nhưng Visible Off → thêm dòng “+ n hidden (Visible off)”.' },
@@ -338,12 +338,15 @@ export const bannersPopups: BuildModule = {
             group: 'Tab By placement — thanh công cụ',
             items: [
               { name: 'search', type: 'string', notes: 'khớp name (và key · placement id, dù không hiện trên bảng)' },
+              { name: 'Expand all · Collapse all', type: 'buttons', notes: 'mở / đóng danh sách ad của mọi placement cùng lúc' },
             ],
           },
           {
             group: 'Tab By placement — dòng mở rộng (ad đang hiển thị + đang chờ)',
             items: [
-              { name: 'cột', type: 'composite', notes: 'Image · Name + ad id · Company + Order/PO (hoặc Free product / —) · Source (Customer / Internal) · Starts → Ends · Days · Visible · Status' },
+              { name: 'cột', type: 'composite', notes: 'Image · Name + ad id · Company ID · Company + Order/PO (hoặc Free product / —) · Banner type · Source (Customer / Internal) · Starts → Ends · Days · Visible · Status' },
+              { name: 'Banner type', type: 'derived', notes: 'Paid = đặt trên một dòng của PO trả tiền · Free = đặt trên free product (“— No order (free) —”) · quảng cáo Internal để “—” (Source đã nói rõ)' },
+              { name: 'Company ID', type: 'text', notes: 'mã CO-XXXXXXX của khách; quảng cáo Internal để “—”' },
               { name: 'Days', type: 'derived', notes: 'Open: “N d left” (tô vàng khi ≤ 7) hoặc “last day” / “no end”. Scheduled: “starts in N d”.' },
               { name: 'thứ tự', type: 'rule', notes: 'Open + Visible On (theo ngày kết thúc tăng dần) → Open + Visible Off → Scheduled (theo ngày bắt đầu tăng dần)' },
               { name: 'link', type: 'link', notes: '“View all N ads, closed included →” ở đầu khối — cùng đích với View all trên dòng' },

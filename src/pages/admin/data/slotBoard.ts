@@ -127,6 +127,24 @@ export const BOARD_ADS: BoardAd[] = [
   { id: 'AD-3211', placement: 'placement_co_candidate_management_left_banner', name: 'CO candidate — Talent pool tips', kind: 'Banner', source: 'Internal', company: 'Saramin VN', order: '—', status: 'Published', visible: true, start: '01/09/2026', end: '15/10/2026' },
 ]
 
+/* Company IDs for the mockup's advertisers (CO-XXXXXXX, as on the company record). */
+const COMPANY_IDS: Record<string, string> = {
+  'FPT Software': 'CO-0068206',
+  'Shopee': 'CO-0091544',
+  'MoMo': 'CO-0087310',
+  'Tiki': 'CO-0083120',
+  'Công ty TNHH Vạn Phát': 'CO-0094412',
+  'Viettel': 'CO-0072018',
+  'Grab Vietnam': 'CO-0095701',
+}
+/** Company ID of an ad's customer; '—' for a house ad. */
+export const companyIdOf = (a: BoardAd) => (a.source === 'Internal' ? '—' : COMPANY_IDS[a.company] ?? '—')
+
+/** Banner type: Paid = booked on a paid PO line, Free = a free product (no PO). House ads have none. */
+export type BannerType = 'Paid' | 'Free'
+export const bannerTypeOf = (a: BoardAd): BannerType | null =>
+  a.source === 'Internal' ? null : a.order.startsWith('Free product') ? 'Free' : 'Paid'
+
 /* ── Derived ──────────────────────────────────────────────────────────────── */
 
 const t0 = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()

@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { BOARD_ADS, BOARD_PLACEMENTS, BOARD_ROWS, BOARD_TODAY_LABEL, byStartDesc, daysTo, phaseOf } from '@/pages/admin/data/slotBoard'
+import { BOARD_ADS, BOARD_PLACEMENTS, BOARD_ROWS, BOARD_TODAY_LABEL, bannerTypeOf, byStartDesc, companyIdOf, daysTo, phaseOf } from '@/pages/admin/data/slotBoard'
 import type { AdPhase, BoardAd, BoardPage, BoardPlacement, BoardRow } from '@/pages/admin/data/slotBoard'
 import { Pill } from '@/pages/admin/ui/status'
 import type { StatusTone } from '@/pages/admin/lib/tone'
@@ -178,7 +178,8 @@ function Thumb({ kind }: { kind: BoardAd['kind'] }) {
 function PlacementsTab({ onViewAll }: { onViewAll: (placementId: string) => void }) {
   const rows = BOARD_ROWS()
   const [q, setQ] = useState('')
-  const [open, setOpen] = useState<Set<string>>(new Set(['placement_jobseeker_job_detail_banner']))
+  /* Every placement opens expanded; Expand all / Collapse all reset the lot, the arrow toggles one. */
+  const [open, setOpen] = useState<Set<string>>(() => new Set(rows.map((r) => r.placement.id)))
   const [preview, setPreview] = useState<BoardPlacement | null>(null)
 
   const shown = rows.filter((r) => {
@@ -200,11 +201,15 @@ function PlacementsTab({ onViewAll }: { onViewAll: (placementId: string) => void
           placeholder="Search placement…"
           className="w-[240px] rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] outline-none focus:border-brand"
         />
+        <span className="inline-flex overflow-hidden rounded-lg border border-line bg-surface text-[11.5px] font-medium">
+          <button onClick={() => setOpen(new Set(rows.map((r) => r.placement.id)))} className="px-2.5 py-1.5 text-ink/80 hover:bg-canvas">Expand all</button>
+          <button onClick={() => setOpen(new Set())} className="border-l border-line px-2.5 py-1.5 text-ink/80 hover:bg-canvas">Collapse all</button>
+        </span>
         <span className="ml-auto text-[11px] text-faint">{shown.length} of {rows.length} placements</span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-        <table className="w-full min-w-[900px] border-collapse text-[12px]">
+        <table className="w-full min-w-[1080px] border-collapse text-[12px]">
           <thead>
             <tr className="bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">
               <th className="w-8 px-2 py-2" />
@@ -308,7 +313,7 @@ function Th({ label, hint, w }: { label: string; hint: string; w?: string }) {
 /* Expanded row: what is showing and what is waiting on one placement. */
 function ExpandedAds({ row, onViewAll }: { row: BoardRow; onViewAll: () => void }) {
   const ads = [...row.showing, ...row.hidden, ...row.waiting]
-  const cols = 'grid-cols-[44px_1.7fr_1.3fr_0.75fr_1.35fr_0.8fr_0.5fr_0.8fr]'
+  const cols = 'grid-cols-[44px_1.6fr_0.85fr_1.25fr_0.7fr_0.75fr_1.35fr_0.75fr_0.45fr_0.75fr]'
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
@@ -324,7 +329,7 @@ function ExpandedAds({ row, onViewAll }: { row: BoardRow; onViewAll: () => void 
       ) : (
         <div>
           <div className={cn('grid gap-x-3 bg-canvas/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted', cols)}>
-            <span>Image</span><span>Name</span><span>Company · order</span><span>Source</span><span>Starts → Ends</span>
+            <span>Image</span><span>Name</span><span>Company ID</span><span>Company · order</span><span>Banner type</span><span>Source</span><span>Starts → Ends</span>
             <span>Days</span><span>Visible</span><span>Status</span>
           </div>
           {ads.map((a) => {
@@ -337,10 +342,12 @@ function ExpandedAds({ row, onViewAll }: { row: BoardRow; onViewAll: () => void 
                   <span className="block truncate font-medium text-ink/85">{a.name}</span>
                   <span className="block font-mono text-[9.5px] text-faint">{a.id}</span>
                 </span>
+                <span className={cn('font-mono text-[10.5px]', companyIdOf(a) === '—' && 'text-faint')}>{companyIdOf(a)}</span>
                 <span className="min-w-0">
                   <span className="block truncate">{a.company}</span>
                   <span className="block truncate text-[10px] text-faint">{a.order}</span>
                 </span>
+                <span>{bannerTypeOf(a) === 'Paid' ? <Pill tone="open">Paid</Pill> : bannerTypeOf(a) === 'Free' ? <Pill tone="schedule">Free</Pill> : <span className="text-faint">—</span>}</span>
                 <span>{a.source === 'Internal' ? <Pill tone="neutral">Internal</Pill> : <Pill tone="active">Customer</Pill>}</span>
                 <span className="tabular-nums text-[11px] text-muted">{a.start} → {a.end ?? 'no end date'}</span>
                 <span className="text-[11px]">
