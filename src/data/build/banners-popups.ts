@@ -349,7 +349,6 @@ export const bannersPopups: BuildModule = {
               { name: 'Company ID', type: 'text', notes: 'mã CO-XXXXXXX của khách; quảng cáo Internal để “—”' },
               { name: 'Days', type: 'derived', notes: 'Open: “N d left” (tô vàng khi ≤ 7) hoặc “last day” / “no end”. Scheduled: “starts in N d”.' },
               { name: 'thứ tự', type: 'rule', notes: 'Open + Visible On (theo ngày kết thúc tăng dần) → Open + Visible Off → Scheduled (theo ngày bắt đầu tăng dần)' },
-              { name: 'link', type: 'link', notes: '“View all N ads, closed included →” ở đầu khối — cùng đích với View all trên dòng' },
             ],
           },
         ],

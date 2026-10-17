@@ -4,6 +4,8 @@ import { JOB_ROWS } from '@/pages/admin/data/recruitment'
 import type { JobRow } from '@/pages/admin/data/recruitment'
 import { AdminJobCreate } from '@/pages/admin/screens/jobForm/create'
 import { AdminJobDetail } from '@/pages/admin/screens/recruitment/jobDetail'
+import { JobPlacementsTab, JobsInPlacement } from '@/pages/admin/screens/recruitment/jobPlacements'
+import { JOB_PLACEMENTS } from '@/pages/admin/data/jobPlacements'
 import { ListPage } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
 
@@ -16,13 +18,27 @@ export function AdminJobCreateStandalone() {
   return <AdminJobCreate onBack={() => setBackToList(true)} />
 }
 
+/* Two tabs since 17/10/2026, the Boosting pattern applied to jobs: Jobs (the list as
+   it was) and Placement (which jobs run in each paid band on Home and Search top).
+   View all on a placement comes back to Jobs with the Placement filter set. */
 export function AdminJobList() {
   const [creating, setCreating] = useState(false)
   const [detail, setDetail] = useState<JobRow | null>(null)
+  const [tab, setTab] = useState<'jobs' | 'placement'>('jobs')
+  const [placement, setPlacement] = useState('')
   if (creating) return <AdminJobCreate onBack={() => setCreating(false)} />
   if (detail) return <AdminJobDetail job={detail} onBack={() => setDetail(null)} />
   return (
     <div>
+    <div className="mb-3 flex items-end gap-1 border-b border-line">
+      <TabBtn on={tab === 'jobs'} onClick={() => setTab('jobs')} label="Jobs" count={1248} />
+      <TabBtn on={tab === 'placement'} onClick={() => setTab('placement')} label="Placement" count={JOB_PLACEMENTS.length} />
+    </div>
+    {tab === 'placement' ? (
+      <JobPlacementsTab onViewAll={(id) => { setPlacement(id); setTab('jobs') }} />
+    ) : placement ? (
+      <JobsInPlacement placementId={placement} onClear={() => setPlacement('')} />
+    ) : (
     <ListPage
       action={<button onClick={() => setCreating(true)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">+ New job</button>}
       minW={1400}
@@ -60,6 +76,22 @@ export function AdminJobList() {
         <span className="tabular-nums font-medium text-brand">{r.applicants || '—'}</span>,
       ])}
     />
+    )}
     </div>
+  )
+}
+
+function TabBtn({ on, onClick, label, count }: { on: boolean; onClick: () => void; label: string; count: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors',
+        on ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink',
+      )}
+    >
+      {label}
+      <span className={cn('rounded-full px-1.5 text-[10px] tabular-nums', on ? 'bg-brand-soft text-brand' : 'bg-canvas text-faint')}>{count}</span>
+    </button>
   )
 }

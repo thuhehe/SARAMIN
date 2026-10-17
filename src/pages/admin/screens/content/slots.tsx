@@ -276,7 +276,7 @@ function PlacementsTab({ onViewAll }: { onViewAll: (placementId: string) => void
                     <tr className="bg-brand-soft/40">
                       <td />
                       <td colSpan={5} className="px-3 pb-4">
-                        <ExpandedAds row={r} onViewAll={() => onViewAll(r.placement.id)} />
+                        <ExpandedAds row={r} />
                       </td>
                     </tr>
                   )}
@@ -311,7 +311,7 @@ function Th({ label, hint, w }: { label: string; hint: string; w?: string }) {
 }
 
 /* Expanded row: what is showing and what is waiting on one placement. */
-function ExpandedAds({ row, onViewAll }: { row: BoardRow; onViewAll: () => void }) {
+function ExpandedAds({ row }: { row: BoardRow }) {
   const ads = [...row.showing, ...row.hidden, ...row.waiting]
   const cols = 'grid-cols-[44px_1.6fr_0.85fr_1.25fr_0.7fr_0.75fr_1.35fr_0.75fr_0.45fr_0.75fr]'
   return (
@@ -320,9 +320,6 @@ function ExpandedAds({ row, onViewAll }: { row: BoardRow; onViewAll: () => void 
         <span className="text-[11.5px] font-semibold text-ink/80">
           Showing now {row.showing.length} · Hidden {row.hidden.length} · Waiting {row.waiting.length}
         </span>
-        <button onClick={onViewAll} className="text-[11px] font-medium text-brand hover:underline">
-          View all {row.all.length} ads, closed included →
-        </button>
       </div>
       {ads.length === 0 ? (
         <p className="px-3 py-5 text-center text-[11.5px] text-faint">Nothing showing and nothing waiting on this placement.</p>

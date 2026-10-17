@@ -691,6 +691,30 @@ export const jobManagement: BuildModule = {
         ],
         sections: [
           {
+            heading: 'Tab Placement (Admin) — job nào đang chạy ở mỗi vị trí trả tiền',
+            early: true,
+            text: 'Trang Jobs của Admin chia 2 tab, giống trang Boosting (chốt 17/10/2026): **Jobs** — danh sách như hiện tại, không đổi · **Placement** — mỗi dòng là một placement tin tuyển dụng trả tiền ở **Trang chủ** và **phần đầu trang Tìm kiếm**, thay cho sheet “Super Hot Job Today / Job Highlight” của CS. Một tin nằm trong placement vì **product nó được đăng phủ placement đó** (fill route TIER) — không ai xếp tay tin vào ô. Mở trang thì mọi placement đều mở sẵn; có nút **Expand all / Collapse all**, ▸/▾ trên dòng đóng/mở một placement. **View all** chuyển sang tab Jobs với bộ lọc Placement đặt sẵn (`/recruitment/jobs?placement=<placement id>`), gồm cả lượt chạy đã kết thúc. Chỉ có ở Admin — trang Company site không có tab này.',
+            table: {
+              cols: ['Placement (tên theo tiêu đề trên site)', 'Placement id', 'Product đưa tin vào'],
+              rows: [
+                ['Homepage — Super Hot Job Plus (thẻ lớn)', '`placement_home_super_hot_large`', 'Job Hero'],
+                ['Homepage — Super Hot Job (“Super hot jobs” · sheet: Công việc Hot hôm nay)', '`placement_home_super_hot_image`', 'Super Hot Job'],
+                ['Homepage — Top Job', '`placement_home_top_job`', 'Top Job'],
+                ['Homepage — Distinction', '`placement_home_distinction`', 'Distinction'],
+                ['Homepage — Recommended jobs (rail)', '`placement_home_recommended`', 'Top Job · Distinction'],
+                ['Homepage — Highlight jobs (sheet: Job Highlight)', '`placement_home_job_card_basic_plus`', 'Basic Plus'],
+                ['Search — Top search', '`placement_top_search`', 'các product phủ Top search'],
+              ],
+            },
+            items: [
+              'Bảng placement: Placement (tên + product đưa tin vào) · Preview (reference image) · **Showing now** (số tin đang chạy ở đó hôm nay) · **Waiting** (số tin sẽ bắt đầu sau, kèm ngày sớm nhất · công ty) · View all.',
+              'Danh sách mở rộng — đúng các cột của sheet, thêm Company ID và Status: # · Job ID · Title · Internal tag (sheet: Phân loại — Paid package · Gift · CS Support) · Activated (Ngày kích hoạt) · Expires (Ngày hết hạn) · Days left (Số ngày còn lại; ≤ 3 tô đỏ) · Company ID · Company (Tên công ty) · Status.',
+              'Status của một lượt chạy, suy ra từ ngày: Scheduled (Activated > hôm nay) · Open (Activated ≤ hôm nay ≤ Expires) · Closed (Expires < hôm nay). Danh sách mở rộng chỉ hiện Open + Scheduled; Closed chỉ thấy ở View all.',
+              'Lọc theo trang (Home · Search); ô tìm kiếm khớp tên placement, Job ID, title, công ty, Company ID.',
+              'Phần “Latest jobs” (Basic) và tin Free của trang chủ KHÔNG nằm trong tab này — chỉ các band trả tiền ở phần đầu trang. Xem câu hỏi mở.',
+            ],
+          },
+          {
             heading: 'Status values',
             text: 'One field, four values, set by the lifecycle — never by hand except via Publish / Close.',
             table: {
@@ -744,6 +768,8 @@ export const jobManagement: BuildModule = {
           },
         ],
         openQuestions: [
+          'Tab Placement: có cần đưa thêm “Latest jobs” (Basic) và tin Free của trang chủ, hay các vùng tin ở trang Job list / Mega menu không? Hiện chỉ gồm các band trả tiền ở Trang chủ + Top search.',
+          'Tab Placement: Internal tag (CS Support · Gift · Paid package) lấy từ đâu — cùng câu hỏi với Internal tag ở Quota usage.',
           'Any post-publish moderation / takedown workflow now that there is no pre-publish approval?',
           'Can a company re-open an expired job, or must they duplicate it? (HQ has no re-open either — the spec says duplicate.)',
           'Does the date-range filter apply to “posted” or to “expires”? (Or is it two separate filters — HQ asks both questions.)',
