@@ -27,7 +27,7 @@ import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/compan
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
 import { MembershipStat } from '@/pages/admin/screens/companies/products'
 import { FreeProducts, HoldingsByInvoice } from '@/pages/admin/screens/companies/holdings'
-import { SharedQuotaCard, SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
+import { SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
 import { beneficiariesOf, sponsorsOf } from '@/pages/admin/data/sharedQuota'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
 import { CoRoleBuilder, InviteUserModal } from '@/pages/admin/screens/companies/users'
@@ -1081,7 +1081,8 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
             </DetailCard>
           </div>
         )
-        const shared = <div className="lg:col-span-2" key="s"><SharedQuotaCard key={c.name} c={c} onOpen={onOpen} /></div>
+        /* No Shared quota card here (client, 2026-10-21): who is linked, linking and
+           removing live on Overview; the numbers live in the invoice table. */
         return (
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
             {/* One banner, three company types — the reader knows which reading of
@@ -1097,7 +1098,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                 <span className="flex flex-wrap items-center gap-x-3"><Pill tone="neutral">Độc lập</Pill><span>{coLabel(c)} chỉ dùng hoá đơn của chính mình — mọi số bên dưới là của {coLabel(c)}.</span></span>
               )}
             </div>
-            {[holdings, free, shared]}
+            {[holdings, free]}
           </div>
         )
       })()}
