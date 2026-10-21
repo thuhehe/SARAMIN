@@ -222,7 +222,7 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
 function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (sponsor: string) => void }) {
   /* RELATIONSHIP ONLY (client, 2026-10-21). What Sao Mai used, invoice by invoice,
      is in the invoice table above — the sponsors' invoices sit there tagged
-     "Dùng chung · từ …" next to its own "Tự mua" ones. This card says only WHO it
+     "Sponsored by …" next to its own "Own purchase" ones. This card says only WHO it
      draws on, since when, and holds Remove link. Mirror of the sponsor's list. */
   return (
     <>
@@ -257,7 +257,7 @@ function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: Sh
         </table>
       </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-        Số {coLabel(c)} đã dùng theo từng hoá đơn nằm ở bảng hoá đơn phía trên (tag <b className="text-muted">Dùng chung</b>). Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho sponsor. Remove link chỉ chặn lần dùng tiếp theo.
+        Số {coLabel(c)} đã dùng theo từng hoá đơn nằm ở bảng hoá đơn phía trên (tag <b className="text-muted">Sponsored by …</b>). Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho sponsor. Remove link chỉ chặn lần dùng tiếp theo.
       </p>
     </>
   )

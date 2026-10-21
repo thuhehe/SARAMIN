@@ -1084,7 +1084,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                 <span className="flex flex-wrap items-center gap-x-3"><Pill tone="active">Sponsor</Pill><span>{asSponsor.length} công ty đang dùng chung quota của {coLabel(c)}: <b>{asSponsor.map((l) => name(l.beneficiary)).join(', ')}</b>. Số đã dùng và còn lại trên hoá đơn tự mua đã gồm phần của họ.</span></span>
               )}
               {asBeneficiary.length > 0 && (
-                <span className="flex flex-wrap items-center gap-x-3 text-muted"><Pill tone="neutral">Công ty thụ hưởng</Pill><span>Dùng chung quota của <b className="text-ink/80">{asBeneficiary.map((l) => name(l.sponsor)).join(', ')}</b> — các hoá đơn tag <b className="text-ink/80">Dùng chung</b> bên dưới.{asSponsor.length > 0 && ' Không chia tiếp được cho công ty mình tài trợ.'}</span></span>
+                <span className="flex flex-wrap items-center gap-x-3 text-muted"><Pill tone="neutral">Công ty thụ hưởng</Pill><span>Dùng chung quota của <b className="text-ink/80">{asBeneficiary.map((l) => name(l.sponsor)).join(', ')}</b> — các hoá đơn tag <b className="text-ink/80">Sponsored by …</b> bên dưới.{asSponsor.length > 0 && ' Không chia tiếp được cho công ty mình tài trợ.'}</span></span>
               )}
               {!asSponsor.length && !asBeneficiary.length && (
                 <span className="flex flex-wrap items-center gap-x-3"><Pill tone="neutral">Độc lập</Pill><span>{coLabel(c)} chỉ dùng hoá đơn của chính mình — mọi số bên dưới là của {coLabel(c)}.</span></span>

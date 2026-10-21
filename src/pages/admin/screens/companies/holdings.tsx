@@ -148,8 +148,9 @@ const ORDER: Record<InvStatus, number> = { 'In use': 0, 'Fully used': 1, Expired
 export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
   /* BENEFICIARY mode (client, 2026-10-21: "giống Én Nhỏ, chỉ cần rõ invoice nào tự
      mua, invoice nào xài ké"). Same table as any company; the sponsors' invoices it
-     can draw on are mixed in, each header tagged "Dùng chung · từ <sponsor>" against
-     "Tự mua", with a source filter. A sponsor invoice hides PO and amount (client,
+     can draw on are mixed in, each header tagged "Sponsored by <sponsor>" against
+     "Own purchase", with a source filter (tag names: client, 2026-10-21 — English,
+     in the Sponsor / Beneficiary vocabulary). A sponsor invoice hides PO and amount (client,
      25/09: never the sponsor's PO); its lines keep total / used / remaining for the
      whole pool — what the beneficiary can still post — plus one column with this
      company's own part. */
@@ -225,7 +226,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         ))}
         {benef && (
           <span className="ml-2 flex items-center gap-1 rounded-full border border-line p-0.5">
-            {([['all', 'Tất cả nguồn'], ['own', `Tự mua ${ownInvs.length}`], ['shared', `Dùng chung ${borrowed.length}`]] as const).map(([k, label]) => (
+            {([['all', 'All sources'], ['own', `Own purchase ${ownInvs.length}`], ['shared', `Sponsored ${borrowed.length}`]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setSource(k)} className={cn('rounded-full px-2.5 py-0.5 text-[11.5px]', source === k ? 'bg-ink/80 font-semibold text-white' : 'text-muted hover:bg-canvas')}>{label}</button>
             ))}
           </span>
@@ -289,10 +290,10 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                         <Pill tone={TONE[st]}>{st}</Pill>
                         {benef && (srcOf[inv.no]
                           ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                              Dùng chung · từ
+                              Sponsored by
                               <button onClick={() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); if (x) onOpen?.(x) }} className="font-semibold underline-offset-2 hover:underline">{(() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); return x ? coLabel(x) : srcOf[inv.no] })()}</button>
                             </span>
-                          : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Tự mua</span>)}
+                          : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span>)}
                         {srcOf[inv.no]
                           ? <span className="text-[10.5px] text-faint" title="Client 25/09/2026: không hiển thị PO của công ty tài trợ">PO &amp; giá trị: chỉ trên hồ sơ sponsor</span>
                           : <>
@@ -341,7 +342,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
         <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch và không dùng được nữa. Dòng add-on (Top search, Super-star tag) đi kèm tin đăng nên không có số đã dùng và không giữ hoá đơn ở In use.
         Hoá đơn Fully used và Expired thu gọn sẵn — bấm + để xem.
-        {benef && <> <b className="text-muted">Tự mua</b> — hoá đơn của chính {coLabel(c)}, đủ PO và giá trị. <b className="text-muted">Dùng chung</b> — hoá đơn của sponsor mà {coLabel(c)} được dùng ké: số tổng / đã dùng / còn lại là của cả nhóm (còn lại = {coLabel(c)} còn đăng được bao nhiêu), cột <b className="text-muted">{coLabel(c)} đã dùng</b> là phần của riêng {coLabel(c)}; PO và giá trị không hiện.</>}
+        {benef && <> <b className="text-muted">Own purchase</b> — hoá đơn của chính {coLabel(c)}, đủ PO và giá trị. <b className="text-muted">Sponsored by …</b> — hoá đơn của sponsor mà {coLabel(c)} được dùng ké: số tổng / đã dùng / còn lại là của cả nhóm (còn lại = {coLabel(c)} còn đăng được bao nhiêu), cột <b className="text-muted">{coLabel(c)} đã dùng</b> là phần của riêng {coLabel(c)}; PO và giá trị không hiện.</>}
         {byCo && <> Mỗi công ty được link là <b className="text-muted">một cột</b> — link thêm thì thêm cột, cuộn ngang khi nhiều; cột Product đứng yên. <b className="text-muted">Qty used</b> = tổng các cột công ty bên phải; tên gạch là link đã Remove — số đã dùng vẫn giữ. Bỏ tick "Tách theo công ty" để về bảng gọn.</>}
       </p>
     </div>
