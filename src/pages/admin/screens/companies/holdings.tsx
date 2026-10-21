@@ -257,11 +257,11 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
               <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
               {group && (
                 <>
-                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}<span className="block text-[9.5px] font-normal text-faint">{byCo ? 'tự dùng' : 'đã dùng'}</span></th>
+                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}</th>
                   {cos.map((b) => (
                     <th key={b.name} className={cn(th, 'normal-case tracking-normal')}>
                       <button onClick={() => b.co && onOpen?.(b.co)} className={cn('hover:underline', b.removed ? 'text-faint line-through' : 'text-brand')}>{b.co ? coLabel(b.co) : b.name}</button>
-                      <span className="block text-[9.5px] font-normal text-faint">{b.removed ? 'đã Remove' : 'thụ hưởng'}</span>
+                      {b.removed && <span className="block text-[9.5px] font-normal text-faint">đã Remove</span>}
                     </th>
                   ))}
                 </>
@@ -294,12 +294,13 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                               <button onClick={() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); if (x) onOpen?.(x) }} className="font-semibold underline-offset-2 hover:underline">{(() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); return x ? coLabel(x) : srcOf[inv.no] })()}</button>
                             </span>
                           : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span>)}
-                        {srcOf[inv.no]
-                          ? <span className="text-[10.5px] text-faint" title="Client 25/09/2026: không hiển thị PO của công ty tài trợ">PO &amp; giá trị: chỉ trên hồ sơ sponsor</span>
-                          : <>
-                              <span className="font-mono text-[11px] text-faint">{inv.po}</span>
-                              <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
-                            </>}
+                        {/* Sponsored invoice: PO and amount simply absent (client 25/09/2026 — never the sponsor's PO). */}
+                        {!srcOf[inv.no] && (
+                          <>
+                            <span className="font-mono text-[11px] text-faint">{inv.po}</span>
+                            <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
