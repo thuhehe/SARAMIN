@@ -28,7 +28,9 @@ type ProductType = 'Job posting' | 'CV search' | 'Display / placement' | 'Manual
    sponsor's own part is `used − Σ shared`. Same FEFO attribution as the rest of the
    table: a beneficiary's posting drains the sponsor's soonest-expiring line. */
 type Line = { name: string; type: ProductType; total: number; used: number | null; shared?: Record<string, number> }
-type Inv = { no: string; po: string; issued: string; expires: string; amount: string; lines: Line[] }
+/* `notShared` — an own invoice of a sponsor that nobody else ever drew on, because
+   it ran out before the first link existed. Its reason is the tooltip. */
+type Inv = { no: string; po: string; issued: string; expires: string; amount: string; lines: Line[]; notShared?: string }
 type InvStatus = 'In use' | 'Fully used' | 'Expired'
 
 /* Mock "today" for the prototype — the same date the screenshot was taken. */
@@ -89,6 +91,10 @@ const HOLDINGS: Record<string, Inv[]> = {
      and holds an October invoice nobody else has used yet. One level only: the FPT
      invoices it rides on are NOT passed on to Sao Mai. */
   'Tiki': [
+    { no: 'INV-003012-05-2026', po: 'PO-003012-05-2026', issued: '20/05/2026', expires: '20/11/2026', amount: '64.800.000 ₫', notShared: 'Tiki dùng hết 10/10 ngày 28/08/2026 — trước khi link Sao Mai (05/09/2026)', lines: [
+      { name: 'Top job', type: 'Job posting', total: 10, used: 10 },
+      { name: 'Distinction', type: 'Job posting', total: 4, used: 4 },
+    ] },
     { no: 'INV-003589-10-2026', po: 'PO-003589-10-2026', issued: '16/10/2026', expires: '16/04/2027', amount: '48.600.000 ₫', lines: [
       { name: 'Top job', type: 'Job posting', total: 5, used: 2 },
       { name: 'Super-star tag', type: 'Add-on', total: 5, used: null },
@@ -160,7 +166,8 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   const sponsorLinks = sponsorsOf(c.name)
   const benef = sponsorLinks.length > 0
   const ownInvs = holdingsOf(c.name)
-  const borrowed = sponsorLinks.flatMap((l) => (HOLDINGS[l.sponsor] ?? []).map((inv) => ({ inv, sponsor: l.sponsor })))
+  /* A sponsor invoice that was never shared (ran out before the link) is not the beneficiary's to see. */
+  const borrowed = sponsorLinks.flatMap((l) => (HOLDINGS[l.sponsor] ?? []).filter((inv) => !inv.notShared).map((inv) => ({ inv, sponsor: l.sponsor })))
   const borrowedNos = new Set(borrowed.map((b) => b.inv.no))
   const links = beneficiariesOf(c.name)
   const sponsor = links.length > 0
@@ -225,7 +232,15 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   /* PART 1 — OWN PURCHASE */
   const groupCols = byCo ? benefs.length + 1 : 0
   const ownCols = 5 + groupCols
-  const ownTag = benef ? <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span> : null
+  /* Own-invoice tag. A sponsor's own invoices say whether they were shared — the
+     not-shared one ran out before any link, so its company columns stay blank. */
+  const ownTag = (inv: Inv) => {
+    const text = [benef && 'Own purchase', sponsor && (inv.notShared ? 'not shared' : 'shared')].filter(Boolean).join(' · ')
+    if (!text) return null
+    return inv.notShared
+      ? <span title={inv.notShared} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] font-medium text-muted">{text}</span>
+      : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">{text}</span>
+  }
   const ownTable = (
     <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + groupCols * 96 }}>
@@ -258,7 +273,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <tbody>
           {ownShown.map((inv) => {
             const st = invStatus(inv)
-            const h = head(inv, ownCols, ownTag, true)
+            const h = head(inv, ownCols, ownTag(inv), true)
             return (
               <Fragment key={inv.no}>
                 {h.row}
@@ -282,7 +297,9 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                           ? <td colSpan={groupCols} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
                           : <>
                               <td className="border-l border-line-soft px-3 py-2 text-right">{num(own(l))}</td>
-                              {benefs.map((b) => <td key={b.name} className="px-3 py-2 text-right">{num(l.shared?.[b.name] ?? 0, b.removed)}</td>)}
+                              {benefs.map((b) => inv.notShared
+                                ? <td key={b.name} className="bg-canvas/50 px-3 py-2 text-right text-faint" title={inv.notShared}>·</td>
+                                : <td key={b.name} className="px-3 py-2 text-right">{num(l.shared?.[b.name] ?? 0, b.removed)}</td>)}
                             </>
                       )}
                     </tr>
@@ -337,6 +354,65 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
     </div>
   )
 
+  /* BENEFICIARY ONLY (Sao Mai) — ONE table (client, 2026-10-21: "gom 2 table làm 1").
+     Own invoices with full numbers; sponsored invoices with only the lines this
+     company used, its count under Qty used, Total and Remaining left empty. One
+     list in drain order, the tag tells the two apart. */
+  const merged = [...ownShown.map((inv) => ({ inv, sponsor: null as string | null })), ...borShown].sort((x, y) => byDrain(x.inv, y.inv))
+  const mergedTable = (
+    <div className="overflow-x-auto rounded-xl border border-line">
+      <table className="w-full min-w-[820px] border-collapse text-[12px]">
+        <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+          <tr className="border-b border-line bg-canvas/60 text-left">
+            <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
+            <th className="w-[130px] px-3 py-2">Product type</th>
+            <th className={cn(th, 'w-[90px]')}>Total qty</th>
+            <th className={cn(th, 'w-[90px]')}>Qty used</th>
+            <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
+          </tr>
+        </thead>
+        <tbody>
+          {merged.map(({ inv, sponsor: sp }) => {
+            const st = invStatus(inv)
+            const tag = sp
+              ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">Sponsored by <button onClick={() => openCo(sp)} className="font-semibold underline-offset-2 hover:underline">{nameOf(sp)}</button></span>
+              : ownTag(inv)
+            const h = head(inv, 5, tag, !sp)
+            const lines = sp ? inv.lines.filter((l) => (l.shared?.[c.name] ?? 0) > 0) : inv.lines
+            return (
+              <Fragment key={inv.no}>
+                {h.row}
+                {!h.isClosed && sp && lines.length === 0 && (
+                  <tr className="border-t border-line-soft"><td colSpan={5} className="py-2 pl-11 pr-3 text-[11.5px] text-faint">{coLabel(c)} chưa dùng sản phẩm nào từ hoá đơn này.</td></tr>
+                )}
+                {!h.isClosed && lines.map((l) => {
+                  const left = l.used === null ? null : l.total - l.used
+                  return (
+                    <tr key={inv.no + l.name} className="border-t border-line-soft">
+                      <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                      <td className="px-3 py-2 text-muted">{l.type}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{sp ? '' : l.total}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {sp ? <b className="font-semibold">{l.shared![c.name]}</b>
+                          : l.used === null ? <span className="text-faint" title="Đi kèm một tin đăng — không trừ riêng">—</span> : l.used}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {sp ? ''
+                          : left === null ? <span className="text-[10.5px] text-faint">đi kèm tin</span>
+                          : st === 'Expired' && left > 0 ? <span className="text-faint line-through">{left}</span>
+                          : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+
   const section = (title: ReactNode, n: number, body: ReactNode) => (
     <section className="mt-3 first:mt-0">
       <h4 className="mb-1.5 flex items-baseline gap-2 text-[11.5px] font-semibold text-ink/80">{title}<span className="font-normal text-faint">{n} hoá đơn</span></h4>
@@ -375,6 +451,8 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
 
       {!benef ? (
         ownInvs.length === 0 ? empty(`${coLabel(c)} chưa có hoá đơn nào.`) : ownTable
+      ) : !sponsor ? (
+        mergedTable
       ) : (
         <>
           {source !== 'shared' && section(
@@ -390,7 +468,8 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
         <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch. Dòng add-on đi kèm tin đăng nên không có số đã dùng. Hoá đơn Fully used và Expired thu gọn sẵn.
         {byCo && <> Mỗi công ty được link là một cột trong nhóm <b className="text-muted">Qty used — tách theo công ty</b>, chỉ trên hoá đơn tự mua; tên gạch là link đã Remove.</>}
-        {benef && <> <b className="text-muted">Sponsored by other companies</b> chỉ liệt kê sản phẩm {coLabel(c)} đã dùng và số của riêng {coLabel(c)} — tổng và số còn lại là của sponsor, không hiện ở đây.</>}
+        {benef && <> Hoá đơn <b className="text-muted">Sponsored by …</b> chỉ liệt kê sản phẩm {coLabel(c)} đã dùng và số của riêng {coLabel(c)} — tổng và số còn lại là của sponsor, không hiện ở đây.</>}
+        {sponsor && <> <b className="text-muted">not shared</b> — hoá đơn dùng hết trước khi link công ty nào, nên không có cột công ty nào dùng.</>}
       </p>
     </div>
   )
