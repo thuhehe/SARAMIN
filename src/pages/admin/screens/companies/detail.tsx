@@ -7,7 +7,7 @@ import { AC_STATUS, BUYER_TYPE, COMPANIES, LEAD_SOURCES, RETAIL_BUYER, coCity, c
 import type { BuyerType, Company, CompanyType, Verification } from '@/pages/admin/data/companies'
 import { companyDocs, verifyDisplayOf, verifyGaps } from '@/pages/admin/data/companyOwner'
 import { ARCHIVE_REASONS, CO_SIZES, archiveReason } from '@/pages/admin/data/companyPage'
-import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources, poHistory } from '@/pages/admin/data/companyRecord'
+import { CONTACT_STATUS, MAX_SEATS, companyApplicants, companyContacts, companyJobs, companyResumeViews, companyTeam, jobSources } from '@/pages/admin/data/companyRecord'
 import { CO_TABS } from '@/pages/admin/data/companyRecord'
 import type { CoContact, CoTab } from '@/pages/admin/data/companyRecord'
 import { CLAIM_REQS, CLAIM_STATUS, DIRECTORY } from '@/pages/admin/data/directory'
@@ -26,6 +26,7 @@ import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
 import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/companies/owner'
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
 import { MembershipStat, ProductsQuota } from '@/pages/admin/screens/companies/products'
+import { HoldingsByInvoice } from '@/pages/admin/screens/companies/holdings'
 import { SharedQuotaCard, SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
 import { sponsorsOf } from '@/pages/admin/data/sharedQuota'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
@@ -1061,62 +1062,22 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
               the numbers include other companies' spends, on a beneficiary there
               are no numbers at all. Renders nothing on a record it does not apply to. */}
           <div className="lg:col-span-2"><SharedQuotaCard c={c} onOpen={onOpen} /></div>
+          {/* WHAT THIS COMPANY HOLDS, BY INVOICE (client, 2026-10-21) — one header row
+              per invoice, its product lines under it. Replaces the PO history card,
+              which listed the same invoices without what was left on them. */}
+          <div className="lg:col-span-2">
+            <DetailCard title="What this company holds, by invoice" action={<span className="text-[11px] text-faint">mỗi hoá đơn một nhóm · sản phẩm bên dưới</span>}>
+              <HoldingsByInvoice />
+            </DetailCard>
+          </div>
           {/* Manual services used to be a card of their own beside this one. They are
               entitlement bought on a PO like everything else, so they are lines in
               this list now — with their delivery log where their quota is shown. */}
-          <DetailCard title="Products & quota" action={<span className="text-[11px] text-faint">theo từng sản phẩm</span>}>
-            <ProductsQuota c={c} />
-          </DetailCard>
-          {/* PO history, not "billing history": the PO is the document a rep and a
-              customer both refer to, and one row per PO is one row per thing that
-              was actually bought. Order / Invoice / Payment as three separate rows
-              was one purchase told three times.
-              No STATUS column — a PO only reaches this list once it is invoiced, so
-              every row had the same value. The invoice DATE is the useful fact, and
-              it doubles as "has it been invoiced yet". */}
-          <DetailCard title="PO history" action={poHistory(c).length > 1 ? <span className="text-[11px] text-faint">{poHistory(c).length} PO</span> : undefined}>
-            {poHistory(c).length === 0 ? (
-              <>
-                <p className="text-[12px] text-muted">Chưa có PO nào. PO xuất hiện ở đây ngay khi Sales phát hành đơn hàng từ báo giá khách đã chốt.</p>
-                {/* The case this card used to have no answer for: jobs are live, but
-                    no document exists. Saying it here stops a reader concluding the
-                    list is broken — or worse, that a PO was lost. */}
-                {freeJobs > 0 && (
-                  <p className="mt-2 rounded-md border border-dashed border-amber-300 bg-amber-50/60 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
-                    Công ty này đang có <b>{freeJobs} tin miễn phí</b> đang chạy nhưng <b>không có PO nào</b> — và đúng như vậy: tin miễn phí là Admin đăng mà <b>không chọn PO</b>, nên không có báo giá, không có PO, không có hoá đơn.
-                    <span className="mt-0.5 block text-amber-800/85">Không trừ quota nào, không tính doanh thu, không tính hạng — xem cột <b>Trừ từ</b> ở tab Jobs.</span>
-                  </p>
-                )}
-              </>
-            ) : (
-              <Table
-                cols={[
-                  { label: 'PO', w: '1.2fr' },
-                  { label: 'Sản phẩm trong PO', w: '1.8fr' },
-                  { label: 'Giá trị', w: '0.9fr', align: 'r' },
-                  { label: 'Ngày xuất HĐ', w: '0.95fr', align: 'r' },
-                  // With two live POs, "when does it run out" is the column that
-                  // tells a rep which one to renew first.
-                  { label: 'Hạn dùng', w: '0.9fr', align: 'r' },
-                ]}
-                rows={poHistory(c).map((o) => [
-                  <span className="truncate font-mono text-[11.5px] text-brand">{o.po}</span>,
-                  <span className="truncate text-muted" title={o.products}>{o.products}</span>,
-                  <span className="tabular-nums">{o.amount}</span>,
-                  o.invoiced
-                    ? <span className="tabular-nums text-muted">{o.invoiced}</span>
-                    : <span className="text-[10.5px] text-amber-600">chưa xuất</span>,
-                  o.until
-                    ? <span className="tabular-nums text-muted">{o.until}</span>
-                    : <span className="text-[10.5px] text-faint">—</span>,
-                ])}
-              />
-            )}
-            <p className="mt-2 text-[11px] leading-relaxed text-faint">
-              Mỗi quota đã mua đều truy về <b className="text-muted">một PO đã trả tiền</b> — cấp tự động khi xuất hoá đơn VAT, không ai chọn tay.
-              Ngoại lệ là <b className="text-muted">tin miễn phí</b>: Admin đăng mà không chọn PO, nên nó không xuất hiện ở đây và <b className="text-muted">không cần xuất hiện</b> — chỉ hiện trên từng tin ở tab Jobs.
-            </p>
-          </DetailCard>
+          <div className="lg:col-span-2">
+            <DetailCard title="Products & quota" action={<span className="text-[11px] text-faint">theo từng sản phẩm</span>}>
+              <ProductsQuota c={c} />
+            </DetailCard>
+          </div>
         </div>
       )}
 
