@@ -4,7 +4,7 @@ import { companyId } from '@/lib/companyId'
 import { COMPANIES, coKey, coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
 import { poHistory } from '@/pages/admin/data/companyRecord'
-import { beneficiariesOf, linkTotal, sponsorsOf, sponsorProducts, usageMatrix } from '@/pages/admin/data/sharedQuota'
+import { beneficiariesOf, linkTotal, sponsorsOf, sponsorProducts } from '@/pages/admin/data/sharedQuota'
 import type { ShareLink } from '@/pages/admin/data/sharedQuota'
 import { DetailCard } from '@/pages/admin/ui/fields'
 import { RowAction } from '@/pages/admin/ui/list'
@@ -154,100 +154,60 @@ export function CompanyIdRows({ sponsor, links, onSave }: { sponsor: Company; li
 }
 
 function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (name: string) => void }) {
-  const products = usageMatrix(c.name, links)
+  /* ONE TABLE (client, 2026-10-21): the per-product matrix that used to live here
+     moved INTO the invoice table below — one column per linked company — so a
+     sponsor with five invoices reads one table, not five. What stays here is the
+     RELATIONSHIP: who is linked, since when, by whom, which jobs, status, Remove. */
   const active = links.filter((l) => l.status === 'active')
-  const othersTotal = products.reduce((s, p) => s + p.others, 0)
-  /* products as columns: the first column is sticky so a wide matrix (a PO with
-     eight lines) still reads company-by-company while it scrolls sideways */
-  const num = (n: number, muted?: boolean) => <span className={cn('tabular-nums', n === 0 || muted ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
-  const cellCls = 'px-3 py-2.5 text-right text-[12.5px]'
-  const headCls = 'px-3 py-2 text-right text-[10.5px] font-semibold uppercase tracking-wide text-muted whitespace-nowrap'
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-brand-soft px-3 py-2 text-[11.5px] text-brand">
         <span><b>{active.length}</b> công ty đang dùng chung quota của {coLabel(c)}</span>
         <span>·</span>
-        <span>các công ty đó đã dùng <b>{othersTotal}</b> đơn vị trên <b>{products.length}</b> sản phẩm của các PO đã xuất hoá đơn</span>
+        <span>số đã dùng theo từng sản phẩm, từng hoá đơn nằm ở <b>bảng hoá đơn</b> — mỗi công ty một cột</span>
       </div>
-
-      {products.length === 0 ? (
-        <p className="text-[12px] text-muted">Chưa có PO nào được xuất hoá đơn — chưa có gì để dùng chung.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full border-collapse" style={{ minWidth: 520 + products.length * 120 }}>
-            <thead>
-              <tr className="bg-canvas/60">
-                <th className="sticky left-0 z-10 bg-canvas/60 px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">Company</th>
-                {products.map((p) => (
-                  <th key={p.name} className={headCls}>
-                    <span className="block normal-case tracking-normal text-ink/80">{p.name}</span>
-                    <span className="font-normal normal-case tracking-normal text-faint">{p.unit} · tổng {p.total}</span>
-                  </th>
-                ))}
-                <th className={headCls}>Tổng</th>
-                <th className={cn(headCls, 'text-left')}>Last used</th>
-                <th className={cn(headCls, 'text-left')}>Status</th>
-                <th className={headCls} />
-              </tr>
-            </thead>
-            <tbody>
-              {links.length === 0 && (
-                <tr><td colSpan={products.length + 5} className="px-3 py-3 text-[12px] text-muted">Chưa link công ty nào — link bằng Company ID ở tab Overview, thẻ Dùng chung quota.</td></tr>
-              )}
-              {links.map((l) => {
-                const b = byName(l.beneficiary)
-                const removed = l.status === 'removed'
-                return (
-                  <tr key={l.beneficiary + l.since} className={cn('border-t border-line-soft', removed && 'bg-canvas/30')}>
-                    <td className="sticky left-0 z-10 bg-surface px-3 py-2.5 align-top">
-                      <button onClick={() => b && onOpen?.(b)} className={cn('block max-w-[220px] truncate text-left text-[12.5px] font-medium hover:underline', removed ? 'text-muted' : 'text-brand')}>{b ? coLabel(b) : l.beneficiary}</button>
-                      <span className="block font-mono text-[10px] text-faint">{idOf(l.beneficiary)} · link {l.since} bởi {l.by}</span>
-                      <span className="block max-w-[220px] truncate text-[10px] text-faint" title={l.jobs.join(', ')}>{l.jobs.length} job: {l.jobs.join(', ')}</span>
-                    </td>
-                    {products.map((p) => <td key={p.name} className={cn(cellCls, 'align-top')}>{num(l.used[p.name] ?? 0, removed)}</td>)}
-                    <td className={cn(cellCls, 'align-top')}><b className="tabular-nums">{linkTotal(l)}</b></td>
-                    <td className="px-3 py-2.5 align-top text-[11.5px] tabular-nums text-muted">{l.lastUsed ?? '—'}</td>
-                    <td className="px-3 py-2.5 align-top">
-                      {removed
-                        ? <span className="flex flex-col gap-0.5"><Pill tone="draft">Removed</Pill><span className="text-[10px] text-faint">{l.removedAt}</span></span>
-                        : <Pill tone="active">Active</Pill>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right align-top">{!removed && <RowAction tone="rose" onClick={() => onRemove(l.beneficiary)}>Remove</RowAction>}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-            {/* The three lines a sponsor actually reads. "Còn lại" is the one that
-                cannot be computed anywhere else on the page: it needs the sponsor's
-                own spend AND every linked company's, per product. */}
-            <tfoot className="text-[12px]">
-              <tr className="border-t border-line bg-canvas/40">
-                <td className="sticky left-0 z-10 bg-canvas/40 px-3 py-2 font-medium text-ink/80">{coLabel(c)} tự dùng</td>
-                {products.map((p) => <td key={p.name} className={cellCls}>{num(p.ownUsed)}</td>)}
-                <td className={cellCls}><b className="tabular-nums">{products.reduce((s, p) => s + p.ownUsed, 0)}</b></td>
-                <td colSpan={3} />
-              </tr>
-              <tr className="border-t border-line-soft bg-canvas/40">
-                <td className="sticky left-0 z-10 bg-canvas/40 px-3 py-2 font-medium text-ink/80">Công ty được link đã dùng</td>
-                {products.map((p) => <td key={p.name} className={cellCls}>{num(p.others)}</td>)}
-                <td className={cellCls}><b className="tabular-nums">{othersTotal}</b></td>
-                <td colSpan={3} className="px-3 py-2 text-[10.5px] text-faint">kể cả link đã Remove — slot đã dùng là đã dùng</td>
-              </tr>
-              <tr className="border-t border-line bg-brand-soft/60">
-                <td className="sticky left-0 z-10 bg-brand-soft/60 px-3 py-2 font-bold text-brand">Còn lại / tổng</td>
-                {products.map((p) => (
-                  <td key={p.name} className={cn(cellCls, 'font-bold tabular-nums', p.remaining / p.total < 0.2 ? 'text-amber-700' : 'text-brand')}>{p.remaining}<span className="font-normal text-faint"> / {p.total}</span></td>
-                ))}
-                <td className={cellCls} />
-                <td colSpan={3} className="px-3 py-2 text-[10.5px] text-faint">chỉ sponsor và admin thấy dòng này</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+      <div className="overflow-x-auto rounded-xl border border-line">
+        <table className="w-full min-w-[760px] border-collapse text-[12px]">
+          <thead>
+            <tr className="border-b border-line bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+              <th className="px-3 py-2">Company</th>
+              <th className="px-3 py-2">Link</th>
+              <th className="px-3 py-2">Job đang dùng quota</th>
+              <th className="px-3 py-2 text-right">Last used</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {links.length === 0 && (
+              <tr><td colSpan={6} className="px-3 py-3 text-muted">Chưa link công ty nào — link bằng Company ID ở tab Overview, thẻ Dùng chung quota.</td></tr>
+            )}
+            {links.map((l) => {
+              const b = byName(l.beneficiary)
+              const removed = l.status === 'removed'
+              return (
+                <tr key={l.beneficiary + l.since} className={cn('border-t border-line-soft', removed && 'bg-canvas/30')}>
+                  <td className="px-3 py-2.5 align-top">
+                    <button onClick={() => b && onOpen?.(b)} className={cn('text-left text-[12.5px] font-medium hover:underline', removed ? 'text-muted' : 'text-brand')}>{b ? coLabel(b) : l.beneficiary}</button>
+                    <span className="block font-mono text-[10px] text-faint">{idOf(l.beneficiary)}</span>
+                  </td>
+                  <td className="px-3 py-2.5 align-top text-[11.5px] text-muted"><span className="tabular-nums">{l.since}</span><span className="block text-[10.5px] text-faint">{l.by}</span></td>
+                  <td className="max-w-[280px] px-3 py-2.5 align-top text-[11.5px] text-muted"><span className="line-clamp-2" title={l.jobs.join(', ')}>{l.jobs.length} job · {l.jobs.join(', ')}</span></td>
+                  <td className="px-3 py-2.5 text-right align-top text-[11.5px] tabular-nums text-muted">{l.lastUsed ?? '—'}</td>
+                  <td className="px-3 py-2.5 align-top">
+                    {removed
+                      ? <span className="flex flex-col gap-0.5"><Pill tone="draft">Removed</Pill><span className="text-[10px] text-faint">{l.removedAt}</span></span>
+                      : <Pill tone="active">Active</Pill>}
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-top">{!removed && <RowAction tone="rose" onClick={() => onRemove(l.beneficiary)}>Remove</RowAction>}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-        Cột = từng sản phẩm trên các PO đã xuất hoá đơn của {coLabel(c)} — PO có bao nhiêu dòng thì bảng có bấy nhiêu cột, cuộn ngang khi nhiều. Mỗi lần công ty được link đăng tin hoặc mở CV là <b className="text-muted">một dòng trên Usage history của {coLabel(c)}</b> ghi rõ công ty nào.
-        Link thêm công ty ở tab <b className="text-muted">Overview</b> (danh sách Company ID). Remove chỉ chặn lần dùng <b className="text-muted">tiếp theo</b> — tin đã đăng vẫn chạy hết hạn. Trên Company site, công ty được link chỉ thấy <b className="text-muted">hàng của mình</b> — không thấy tổng, còn lại hay hoá đơn.
+        Link thêm công ty ở tab <b className="text-muted">Overview</b> (danh sách Company ID). Remove chỉ chặn lần dùng <b className="text-muted">tiếp theo</b> — tin đã đăng vẫn chạy hết hạn, cột của công ty đó vẫn ở bảng hoá đơn. Trên Company site, công ty được link chỉ thấy <b className="text-muted">số của mình</b> — không thấy tổng, còn lại hay hoá đơn.
       </p>
     </>
   )

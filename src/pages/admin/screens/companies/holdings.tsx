@@ -104,7 +104,6 @@ export const drawsOf = (beneficiary: string): Draw[] =>
     .filter((l) => (l.shared?.[beneficiary] ?? 0) > 0)
     .map((l) => ({ sponsor, invoice: inv.no, product: l.name, type: l.type, used: l.shared![beneficiary] }))))
 
-const short = (name: string) => { const x = COMPANIES.find((c) => c.name === name); return x ? coLabel(x) : name }
 
 /* Expired wins over everything: a lapsed invoice with units left has not been
    "used", its leftovers are forfeit. Otherwise Fully used when every SPENDABLE
@@ -119,13 +118,19 @@ const ORDER: Record<InvStatus, number> = { 'In use': 0, 'Fully used': 1, Expired
 
 export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
   const invs = holdingsOf(c.name)
-  /* SPONSOR mode — some line carries other companies' spends. One extra column
-     says whose: "Qty used" stays the line's whole spend (that is what "remaining"
-     is computed from), and the new column is the part of it that was NOT the
-     sponsor's own. Removed links stay on it, struck: a slot used is used. */
-  const sponsor = invs.some((i) => i.lines.some((l) => l.shared))
-  const removed = new Set(beneficiariesOf(c.name).filter((l) => l.status === 'removed').map((l) => l.beneficiary))
-  const cols = sponsor ? 6 : 5
+  /* SPONSOR mode — ONE table for every invoice AND every linked company (client,
+     2026-10-21: "1 bảng duy nhất cho nhiều invoice và theo dõi cty thụ hưởng").
+     The old per-product matrix is folded in as COLUMNS: the sponsor's own use,
+     then one column per linked company, under one "Đã dùng" group header. Rows stay
+     the invoice lines, so "which invoice" and "which company" read off the same
+     cell. Qty used = the sum across those columns; remaining comes from it. A
+     removed link keeps its column (muted) — a slot used is used. */
+  const links = beneficiariesOf(c.name)
+  const sponsor = links.length > 0 || invs.some((i) => i.lines.some((l) => l.shared))
+  const benefs = links.map((l) => ({ name: l.beneficiary, removed: l.status === 'removed', co: COMPANIES.find((x) => x.name === l.beneficiary) }))
+  const [split, setSplit] = useState(true)
+  const byCo = sponsor && split
+  const cols = 5 + (byCo ? benefs.length + 1 : 0)
   const [filter, setFilter] = useState<InvStatus | 'All'>('All')
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   /* In use first, soonest expiry first — that IS the order the quota drains in, so
@@ -138,12 +143,23 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   })
   const count = (s: InvStatus) => invs.filter((i) => invStatus(i) === s).length
   const shown = rows.filter((i) => filter === 'All' || invStatus(i) === filter)
+  const sharedSum = (l: Line) => Object.values(l.shared ?? {}).reduce((x, y) => x + y, 0)
+  const own = (l: Line) => (l.used ?? 0) - sharedSum(l)
+  /* Footer: what each company has drawn across the invoices on screen. Units mix
+     (slots + unlocks), same as the old matrix's TỔNG — the per-line cells above are
+     the exact figures; this row answers "who uses most". */
+  const spend = shown.flatMap((i) => i.lines).filter((l) => l.used !== null)
+  const colTotal = (name: string | null) => spend.reduce((s, l) => s + (name === null ? own(l) : l.shared?.[name] ?? 0), 0)
 
   if (invs.length === 0) return (
     <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12px] text-muted">
       {coLabel(c)} chưa tự mua sản phẩm nào — chưa có hoá đơn của riêng mình. Nếu sau này tự mua, hoá đơn hiện ở đây như mọi công ty, tách khỏi phần dùng chung.
     </p>
   )
+
+  const num = (n: number, muted?: boolean) => <span className={cn('tabular-nums', n === 0 ? 'text-faint' : muted ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
+  const stick = 'sticky left-0 z-10'
+  const th = 'px-3 py-2 text-right whitespace-nowrap'
 
   return (
     <div>
@@ -157,33 +173,56 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
             {f} <span className="tabular-nums opacity-70">{f === 'All' ? invs.length : count(f)}</span>
           </button>
         ))}
+        {sponsor && (
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11.5px] text-muted hover:bg-canvas">
+            <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} className="accent-brand" />
+            Tách số đã dùng theo công ty
+          </label>
+        )}
         <span className="ml-auto text-[10.5px] text-faint">Quota trừ theo hoá đơn hết hạn sớm nhất trước — hoá đơn In use đầu tiên là hoá đơn lần đăng tin tới sẽ trừ.</span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-line">
-        <table className={cn('w-full border-collapse text-[12px]', sponsor ? 'min-w-[920px]' : 'min-w-[820px]')}>
-          <thead>
-            <tr className="border-b border-line bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-faint">
-              <th className="px-3 py-2">Product</th>
-              <th className="w-[170px] px-3 py-2">Product type</th>
-              <th className="w-[110px] px-3 py-2 text-right">Total qty</th>
-              <th className="w-[110px] px-3 py-2 text-right">Qty used</th>
-              {sponsor && <th className="w-[190px] px-3 py-2">Trong đó công ty liên kết</th>}
-              <th className="w-[130px] px-3 py-2 text-right">Qty remaining</th>
+        <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + (byCo ? (benefs.length + 1) * 96 : 0) }}>
+          <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+            {byCo && (
+              <tr className="bg-canvas/60">
+                <th colSpan={5} className={cn(stick, 'bg-canvas')} />
+                <th colSpan={benefs.length + 1} className="border-l border-b border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
+              </tr>
+            )}
+            <tr className="border-b border-line bg-canvas/60 text-left">
+              <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
+              <th className="w-[130px] px-3 py-2">Product type</th>
+              <th className={cn(th, 'w-[90px]')}>Total qty</th>
+              <th className={cn(th, 'w-[90px]')}>Qty used</th>
+              <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
+              {byCo && (
+                <>
+                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}<span className="block text-[9.5px] font-normal text-faint">sponsor · tự dùng</span></th>
+                  {benefs.map((b) => (
+                    <th key={b.name} className={cn(th, 'normal-case tracking-normal')}>
+                      <button onClick={() => b.co && onOpen?.(b.co)} className={cn('hover:underline', b.removed ? 'text-faint line-through' : 'text-brand')}>{b.co ? coLabel(b.co) : b.name}</button>
+                      <span className="block text-[9.5px] font-normal text-faint">{b.removed ? 'đã Remove' : 'thụ hưởng'}</span>
+                    </th>
+                  ))}
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
             {shown.map((inv) => {
               const st = invStatus(inv)
               const isClosed = closed[inv.no] ?? st !== 'In use'
+              const head = st === 'In use' ? 'bg-[#f3f7ff]' : 'bg-canvas'
               return (
                 <Fragment key={inv.no}>
                   {/* INVOICE HEADER ROW — the four facts the client asked for, in one line */}
-                  <tr className={cn('border-t border-line', st === 'In use' ? 'bg-brand-soft/30' : 'bg-canvas/50')}>
-                    <td colSpan={cols} className="px-3 py-2">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <tr className={cn('border-t border-line', head)}>
+                    <td colSpan={cols} className="p-0">
+                      <div className={cn(stick, 'flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2', head)}>
                         <button
-                          onClick={() => setClosed((c) => ({ ...c, [inv.no]: !isClosed }))}
+                          onClick={() => setClosed((x) => ({ ...x, [inv.no]: !isClosed }))}
                           className="grid h-5 w-5 place-items-center rounded border border-line bg-surface text-[11px] text-muted"
                           aria-label={isClosed ? 'Mở' : 'Thu gọn'}
                         >{isClosed ? '+' : '−'}</button>
@@ -191,10 +230,8 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                         <span className="text-muted">Ngày xuất <b className="font-medium tabular-nums text-ink/80">{inv.issued}</b></span>
                         <span className="text-muted">Hết hạn <b className={cn('font-medium tabular-nums', st === 'Expired' ? 'text-rose-600' : 'text-ink/80')}>{inv.expires}</b></span>
                         <Pill tone={TONE[st]}>{st}</Pill>
-                        <span className="ml-auto flex items-center gap-3 text-[11px] text-faint">
-                          <span className="font-mono">{inv.po}</span>
-                          <b className="font-semibold tabular-nums text-ink/80">{inv.amount}</b>
-                        </span>
+                        <span className="font-mono text-[11px] text-faint">{inv.po}</span>
+                        <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
                       </div>
                     </td>
                   </tr>
@@ -203,38 +240,27 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                     const left = l.used === null ? null : l.total - l.used
                     return (
                       <tr key={inv.no + l.name} className="border-t border-line-soft">
-                        <td className="py-2 pl-11 pr-3 text-ink">{l.name}</td>
+                        <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
                         <td className="px-3 py-2 text-muted">{l.type}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{l.total}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
-                          {l.used === null ? <span className="text-faint" title="Đi kèm một tin đăng — không trừ riêng">—</span> : l.used}
-                          {sponsor && l.shared && l.used !== null && (
-                            <span className="block text-[10px] text-faint">tự dùng {l.used - Object.values(l.shared).reduce((a, b) => a + b, 0)}</span>
-                          )}
+                          {l.used === null ? <span className="text-faint" title="Đi kèm một tin đăng — không trừ riêng">—</span> : byCo ? <b className="font-semibold">{l.used}</b> : l.used}
                         </td>
-                        {sponsor && (
-                          <td className="px-3 py-2 text-[11.5px]">
-                            {l.shared ? (
-                              <span className="flex flex-wrap gap-x-2.5 gap-y-0.5">
-                                {Object.entries(l.shared).map(([name, n]) => {
-                                  const x = COMPANIES.find((co) => co.name === name)
-                                  const gone = removed.has(name)
-                                  return (
-                                    <span key={name} className="whitespace-nowrap" title={gone ? 'Link đã Remove — số đã dùng vẫn giữ' : undefined}>
-                                      <button onClick={() => x && onOpen?.(x)} className={cn('hover:underline', gone ? 'text-faint line-through' : 'text-brand')}>{short(name)}</button>{' '}
-                                      <b className={cn('tabular-nums', gone ? 'font-normal text-faint' : 'text-ink')}>{n}</b>
-                                    </span>
-                                  )
-                                })}
-                              </span>
-                            ) : <span className="text-faint">—</span>}
-                          </td>
-                        )}
                         <td className="px-3 py-2 text-right tabular-nums">
                           {left === null ? <span className="text-[10.5px] text-faint">đi kèm tin</span>
                             : st === 'Expired' && left > 0 ? <span className="text-faint line-through" title="Hoá đơn đã hết hạn — phần còn lại không dùng được nữa">{left}</span>
-                            : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-ink')}>{left}</b>}
+                            : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
                         </td>
+                        {byCo && (
+                          l.used === null
+                            ? <td colSpan={benefs.length + 1} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
+                            : <>
+                                <td className="border-l border-line-soft px-3 py-2 text-right">{num(own(l))}</td>
+                                {benefs.map((b) => (
+                                  <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(l.shared?.[b.name] ?? 0, b.removed)}</td>
+                                ))}
+                              </>
+                        )}
                       </tr>
                     )
                   })}
@@ -242,13 +268,26 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
               )
             })}
           </tbody>
+          {byCo && (
+            <tfoot>
+              <tr className="border-t-2 border-line bg-canvas/70 text-[11.5px]">
+                <td colSpan={3} className={cn(stick, 'bg-canvas px-3 py-2 font-semibold text-ink/80')}>
+                  Tổng đã dùng theo công ty<span className="block text-[10px] font-normal text-faint">trên các hoá đơn đang hiện · cộng chung slot và lượt mở CV</span>
+                </td>
+                <td className="px-3 py-2 text-right"><b className="tabular-nums">{spend.reduce((s, l) => s + (l.used ?? 0), 0)}</b></td>
+                <td />
+                <td className="border-l border-line px-3 py-2 text-right">{num(colTotal(null))}</td>
+                {benefs.map((b) => <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(colTotal(b.name), b.removed)}</td>)}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
         <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch và không dùng được nữa. Dòng add-on (Top search, Super-star tag) đi kèm tin đăng nên không có số đã dùng và không giữ hoá đơn ở In use.
         Hoá đơn Fully used và Expired thu gọn sẵn — bấm + để xem.
-        {sponsor && <> <b className="text-muted">Qty used</b> là toàn bộ số đã dùng trên dòng, kể cả công ty liên kết; cột bên cạnh tách phần của họ, tên gạch là link đã Remove.</>}
+        {byCo && <> Mỗi công ty được link là <b className="text-muted">một cột</b> — link thêm thì thêm cột, cuộn ngang khi nhiều; cột Product đứng yên. <b className="text-muted">Qty used</b> = tổng các cột công ty bên phải; tên gạch là link đã Remove — số đã dùng vẫn giữ. Bỏ tick "Tách theo công ty" để về bảng gọn.</>}
       </p>
     </div>
   )
