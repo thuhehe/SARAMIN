@@ -26,7 +26,7 @@ import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
 import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/companies/owner'
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
 import { MembershipStat } from '@/pages/admin/screens/companies/products'
-import { HoldingsByInvoice } from '@/pages/admin/screens/companies/holdings'
+import { FreeProducts, HoldingsByInvoice } from '@/pages/admin/screens/companies/holdings'
 import { SharedQuotaCard, SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
 import { beneficiariesOf, sponsorsOf } from '@/pages/admin/data/sharedQuota'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
@@ -1074,6 +1074,13 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
             </DetailCard>
           </div>
         )
+        const free = (
+          <div className="lg:col-span-2" key="f">
+            <DetailCard title="Free products" action={<span className="text-[11px] text-faint">sản phẩm tặng — không có hoá đơn</span>}>
+              <FreeProducts key={c.name} c={c} />
+            </DetailCard>
+          </div>
+        )
         const shared = <div className="lg:col-span-2" key="s"><SharedQuotaCard key={c.name} c={c} onOpen={onOpen} /></div>
         return (
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -1090,7 +1097,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
                 <span className="flex flex-wrap items-center gap-x-3"><Pill tone="neutral">Độc lập</Pill><span>{coLabel(c)} chỉ dùng hoá đơn của chính mình — mọi số bên dưới là của {coLabel(c)}.</span></span>
               )}
             </div>
-            {[holdings, shared]}
+            {[holdings, free, shared]}
           </div>
         )
       })()}

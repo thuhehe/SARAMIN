@@ -27,7 +27,13 @@ type ProductType = 'Job posting' | 'CV search' | 'Display / placement' | 'Manual
    from this line, by company name. `used` is always the line's whole spend; the
    sponsor's own part is `used − Σ shared`. Same FEFO attribution as the rest of the
    table: a beneficiary's posting drains the sponsor's soonest-expiring line. */
-type Line = { name: string; type: ProductType; total: number; used: number | null; shared?: Record<string, number> }
+/* `warranty` — a compensation line (client, 2026-10-21: "warranty ở trong Invoice
+   lun"). It sits on the invoice of the product it makes good, right under that
+   line: the build lists warranties beside gifts with no invoice, but a warranty
+   always HAS one — the purchase that under-delivered. Only free products (gifts)
+   stay in a table of their own. */
+type Warranty = { of: string; on: string; reason: string; validUntil: string }
+type Line = { name: string; type: ProductType; total: number; used: number | null; shared?: Record<string, number>; warranty?: Warranty }
 /* `notShared` — an own invoice of a sponsor that nobody else ever drew on, because
    it ran out before the first link existed. Its reason is the tooltip. */
 type Inv = { no: string; po: string; issued: string; expires: string; amount: string; lines: Line[]; notShared?: string }
@@ -55,6 +61,7 @@ const INVOICES: Inv[] = [
     { name: 'Super hot job plus v3', type: 'Job posting', total: 10, used: 0 },
     { name: 'Top search add-on', type: 'Add-on', total: 10, used: null },
     { name: 'CV Search 90d', type: 'CV search', total: 200, used: 42 },
+    { name: 'CV Search 90d', type: 'CV search', total: 7, used: 0, warranty: { of: 'CV Search 90d', on: '09/10/2026', reason: 'Không ứng viên nào mở CV', validUntil: '11/11/2026' } },
   ] },
   { no: 'INV-003475-09-2026', po: 'PO-003475-09-2026', issued: '28/09/2026', expires: '30/03/2027', amount: '513.000 ₫', lines: [
     { name: 'Top job 2026 — QC test', type: 'Job posting', total: 1, used: 1 },
@@ -85,6 +92,7 @@ const HOLDINGS: Record<string, Inv[]> = {
       { name: 'Top job', type: 'Job posting', total: 60, used: 6, shared: { [TK]: 2 } },
       { name: 'Distinction', type: 'Job posting', total: 10, used: 0 },
       { name: 'CV search — COMBO 200', type: 'CV search', total: 200, used: 86, shared: { [SM]: 12, [PT]: 4, [TK]: 9 } },
+      { name: 'CV search — COMBO 200', type: 'CV search', total: 10, used: 3, warranty: { of: 'CV search — COMBO 200', on: '12/10/2026', reason: '10 CV mở ra đã đi làm — đổi lượt mở mới', validUntil: '10/09/2027' } },
     ] },
   ],
   /* BOTH ROLES — Tiki sponsors Sao Mai (its July invoice), draws on FPT Software,
@@ -108,6 +116,7 @@ const HOLDINGS: Record<string, Inv[]> = {
   'Công ty CP Giáo dục Én Nhỏ': [
     { no: 'INV-003391-07-2026', po: 'PO-003391-07-2026', issued: '20/07/2026', expires: '20/07/2027', amount: '58.320.000 ₫', lines: [
       { name: 'Job Posting — Standard', type: 'Job posting', total: 10, used: 6 },
+      { name: 'Job Posting — Standard', type: 'Job posting', total: 1, used: 0, warranty: { of: 'Job Posting — Standard', on: '02/10/2026', reason: 'Tin hết hạn không có ứng viên — đăng lại miễn phí', validUntil: 'Not started' } },
       { name: 'Top search add-on', type: 'Add-on', total: 3, used: null },
     ] },
     { no: 'INV-003598-10-2026', po: 'PO-003598-10-2026', issued: '12/10/2026', expires: '12/10/2027', amount: '72.900.000 ₫', lines: [
@@ -199,6 +208,15 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   const openCo = (n: string) => { const x = COMPANIES.find((co) => co.name === n); if (x) onOpen?.(x) }
   const stick = 'sticky left-0 z-10'
   const th = 'px-3 py-2 text-right whitespace-nowrap'
+  const productCell = (l: Line) => l.warranty ? (
+    <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>
+      <span className="flex items-center gap-1.5">
+        <span className="text-faint">↳</span>{l.name}
+        <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-px text-[10px] font-semibold text-violet-700">Warranty</span>
+      </span>
+      <span className="block pl-4 text-[10.5px] leading-snug text-faint">{l.warranty.on} · {l.warranty.reason} · hạn dùng {l.warranty.validUntil}</span>
+    </td>
+  ) : <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
 
   /* The invoice header row — the four facts, then the source tag, then (own only) the amount. */
   const head = (inv: Inv, cols: number, tag: ReactNode, amount: boolean) => {
@@ -281,7 +299,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                   const left = l.used === null ? null : l.total - l.used
                   return (
                     <tr key={inv.no + l.name} className="border-t border-line-soft">
-                      <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                      {productCell(l)}
                       <td className="px-3 py-2 text-muted">{l.type}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{l.total}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
@@ -341,7 +359,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                 )}
                 {!h.isClosed && usedLines.map((l) => (
                   <tr key={inv.no + l.name} className="border-t border-line-soft">
-                    <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                    {productCell(l)}
                     <td className="px-3 py-2 text-muted">{l.type}</td>
                     <td className="px-3 py-2 text-right"><b className="tabular-nums">{l.shared![c.name]}</b></td>
                   </tr>
@@ -389,7 +407,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                   const left = l.used === null ? null : l.total - l.used
                   return (
                     <tr key={inv.no + l.name} className="border-t border-line-soft">
-                      <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                      {productCell(l)}
                       <td className="px-3 py-2 text-muted">{l.type}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{sp ? '' : l.total}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
@@ -466,11 +484,73 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
 
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
-        <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch. Dòng add-on đi kèm tin đăng nên không có số đã dùng. Hoá đơn Fully used và Expired thu gọn sẵn.
+        <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch. Dòng add-on đi kèm tin đăng nên không có số đã dùng. Hoá đơn Fully used và Expired thu gọn sẵn. Dòng <b className="text-muted">Warranty</b> nằm ngay dưới sản phẩm nó bù, trên chính hoá đơn đó — ngày cấp, lý do, hạn dùng ở dòng phụ.
         {byCo && <> Mỗi công ty được link là một cột trong nhóm <b className="text-muted">Qty used — tách theo công ty</b>, chỉ trên hoá đơn tự mua; tên gạch là link đã Remove.</>}
         {benef && <> Hoá đơn <b className="text-muted">Sponsored by …</b> chỉ liệt kê sản phẩm {coLabel(c)} đã dùng và số của riêng {coLabel(c)} — tổng và số còn lại là của sponsor, không hiện ở đây.</>}
         {sponsor && <> <b className="text-muted">not shared</b> — hoá đơn dùng hết trước khi link công ty nào, nên không có cột công ty nào dùng.</>}
       </p>
+    </div>
+  )
+}
+
+/* ── Free products — gifts, the only things with no invoice behind them ─────────
+ * Client, 2026-10-21: warranties moved into the invoice table; what is left here
+ * is what was GIVEN. Same quantity columns as the invoice table so a rep reads
+ * both the same way, plus valid-until and the reason the gift was granted. */
+type Gift = { name: string; type: ProductType; total: number; used: number; validUntil: string; reason: string; by: string; on: string }
+const GIFTS: Record<string, Gift[]> = {
+  'FPT Software': [
+    { name: 'Gift CV Search', type: 'CV search', total: 20, used: 5, validUntil: '11/11/2026', reason: 'Goodwill — gia hạn hợp đồng 2026', by: 'Phạm Quang Huy', on: '12/08/2026' },
+  ],
+  'Công ty CP Giáo dục Én Nhỏ': [
+    { name: 'Top job', type: 'Job posting', total: 1, used: 0, validUntil: '31/12/2026', reason: 'Khách hàng thân thiết 2025', by: 'Nguyễn Thị Lan', on: '05/10/2026' },
+    { name: 'Gift Manual Service', type: 'Manual service', total: 1, used: 1, validUntil: '12/10/2027', reason: 'Đăng tin Fanpage tặng kèm', by: 'Nguyễn Thị Lan', on: '12/10/2026' },
+  ],
+  'Công ty TNHH Sao Mai': [],
+  'Tiki': [],
+}
+const GIFTS_DEFAULT: Gift[] = [
+  { name: 'Gift CV Search', type: 'CV search', total: 10, used: 10, validUntil: '11/11/2026', reason: 'Goodwill CV search gift', by: 'Nguyễn Thị Lan', on: '01/10/2026' },
+  { name: 'Gift Manual Service', type: 'Manual service', total: 2, used: 2, validUntil: '12/10/2027', reason: 'Manual service gift', by: 'Nguyễn Thị Lan', on: '12/10/2026' },
+]
+export const giftsOf = (name: string): Gift[] => GIFTS[name] ?? GIFTS_DEFAULT
+
+export function FreeProducts({ c }: { c: Company }) {
+  const gifts = giftsOf(c.name)
+  if (gifts.length === 0) return <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[12px] text-muted">{coLabel(c)} chưa được tặng sản phẩm nào.</p>
+  const th = 'px-3 py-2 text-right whitespace-nowrap'
+  return (
+    <div className="overflow-x-auto rounded-xl border border-line">
+      <table className="w-full min-w-[900px] border-collapse text-[12px]">
+        <thead>
+          <tr className="border-b border-line bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+            <th className="px-3 py-2">Product</th>
+            <th className="w-[130px] px-3 py-2">Product type</th>
+            <th className={cn(th, 'w-[90px]')}>Total qty</th>
+            <th className={cn(th, 'w-[90px]')}>Qty used</th>
+            <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
+            <th className="w-[110px] px-3 py-2">Valid until</th>
+            <th className="px-3 py-2">Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gifts.map((g) => {
+            const left = g.total - g.used
+            const lapsed = day(g.validUntil) < TODAY
+            return (
+              <tr key={g.name + g.on} className="border-t border-line-soft">
+                <td className="px-3 py-2 text-ink">{g.name}<span className="block text-[10.5px] text-faint">tặng {g.on} · {g.by}</span></td>
+                <td className="px-3 py-2 text-muted">{g.type}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{g.total}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{g.used}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{lapsed && left > 0 ? <span className="text-faint line-through">{left}</span> : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}</td>
+                <td className={cn('px-3 py-2 tabular-nums', lapsed ? 'text-rose-600' : 'text-ink/80')}>{g.validUntil}</td>
+                <td className="px-3 py-2 text-muted">{g.reason}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
