@@ -294,13 +294,10 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                               <button onClick={() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); if (x) onOpen?.(x) }} className="font-semibold underline-offset-2 hover:underline">{(() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); return x ? coLabel(x) : srcOf[inv.no] })()}</button>
                             </span>
                           : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span>)}
-                        {/* Sponsored invoice: PO and amount simply absent (client 25/09/2026 — never the sponsor's PO). */}
-                        {!srcOf[inv.no] && (
-                          <>
-                            <span className="font-mono text-[11px] text-faint">{inv.po}</span>
-                            <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
-                          </>
-                        )}
+                        {/* No PO number on the header (client, 2026-10-21) — the invoice number is
+                            the reference. Amount only on own invoices: a sponsored invoice shows
+                            no money of the sponsor's (client 25/09/2026). */}
+                        {!srcOf[inv.no] && <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>}
                       </div>
                     </td>
                   </tr>
