@@ -39,6 +39,10 @@ import { Btn, Chip } from '@/components/wire'
 import { CopyLinkButton, initialScreenParam, useScreenParam } from '@/components/ShareLink'
 import { AdminJobCreate } from './admin/screens/jobForm/create'
 import { cn } from '@/lib/utils'
+import { byDrainOrder, giftsOf, holdingsOf, invStatus, sponsorInvoicesOf } from './admin/screens/companies/holdings'
+import type { HoldingInvoice, HoldingLine } from './admin/screens/companies/holdings'
+import { beneficiariesOf, sponsorsOf } from './admin/data/sharedQuota'
+import { COMPANIES, coLabel } from './admin/data/companies'
 
 /** Lets a screen jump the console to another screen by id (e.g. "+ Post a job"). */
 const CoNav = createContext<(id: string) => void>(() => {})
@@ -2852,116 +2856,235 @@ function SharedQuotaCoCard({ view, onView }: { view: 'sponsor' | 'beneficiary'; 
  *   no amount), rows with a COUNT only ("3 posts used" — no "of N", no bar), and
  *   the one button it needs. Nothing of the sponsor's PO reaches this page.
  */
-type UsageRow = { type: string; name: string; used: string; pct?: number; unlimited?: boolean; pill?: [string, 'green' | 'amber' | 'muted']; dates?: string; btn?: string}
-type UsageGroup = { head: string; meta?: string; shared?: boolean; rows: UsageRow[] }
+/* 2026-10-21 — rebuilt "theo hướng Admin": one grey band per INVOICE (number ·
+   issue date · expiry · status), the product lines under it, warranties inside
+   their invoice, gifts in their own Free products block — and the same four
+   company cases as the admin Products & billing tab, read from the SAME data
+   (admin/screens/companies/holdings.tsx) so customer and Saramin never disagree.
+   Figma row style kept: type chip + name · usage text + bar · validity · one button.
+   Four screens, not a switch inside one page (an in-page switch read as a feature
+   of the page rather than as four different companies). */
+type UsageCase = 'independent' | 'beneficiary' | 'sponsor' | 'both'
+const USAGE_CASES: Record<UsageCase, { company: string; screen: string; label: string; role: string }> = {
+  independent: { company: 'Công ty CP Giáo dục Én Nhỏ', screen: 'co-product-usage-independent', label: 'Én Nhỏ — độc lập', role: 'công ty độc lập — chỉ dùng hoá đơn của chính mình' },
+  beneficiary: { company: 'Công ty TNHH Sao Mai', screen: 'co-product-usage-beneficiary', label: 'Sao Mai — thụ hưởng + tự mua', role: 'công ty thụ hưởng — dùng ké quota của FPT Software và Tiki, và có hoá đơn tự mua' },
+  sponsor: { company: 'FPT Software', screen: 'co-product-usage', label: 'FPT — tài trợ', role: 'công ty tài trợ — chia sẻ quota cho Sao Mai, Tiki, An Khang' },
+  both: { company: 'Tiki', screen: 'co-product-usage-both', label: 'Tiki — tài trợ + thụ hưởng + tự mua', role: 'vừa tài trợ cho Sao Mai, vừa dùng ké quota của FPT Software, vừa có hoá đơn tự mua không chia sẻ' },
+}
+const coShort = (name: string) => { const x = COMPANIES.find((c) => c.name === name); return x ? coLabel(x) : name }
+const usageUnit = (t: string, n = 2) => (t === 'Job posting' ? (n === 1 ? 'post used' : 'posts used') : t === 'CV search' ? (n === 1 ? 'CV unlocked' : 'CVs unlocked') : 'used')
+const usageBtn = (t: string) => (t === 'Job posting' ? 'Post job' : t === 'CV search' ? 'Find talent' : null)
+const parseDay = (d: string) => { const [dd, mm, yy] = d.split('/').map(Number); return new Date(yy, mm - 1, dd) }
+const USAGE_TODAY = new Date(2026, 9, 21)
 
-/* Two nav entries, one component: the SPONSOR's page and the BENEFICIARY's page are
-   two screens in the gallery (and two Screen UI blocks on the spec pages), because
-   a reader is shown one company at a time — a role switch inside the page read as a
-   feature of the page rather than as two companies. */
-/* The sponsor's "who used what" — the SAME matrix the admin record shows (rows =
-   linked companies, columns = every product on the sponsor's invoiced POs, footer
-   = own use · linked use · remaining / total), so the customer and Saramin read one
-   table. No Link / Remove here: that is done through Saramin. */
-function SponsorUsageMatrix() {
-  const products: { name: string; unit: string; total: number; own: number }[] = [
-    { name: 'Top Job', unit: 'posts', total: 100, own: 38 },
-    { name: 'Basic', unit: 'posts', total: 20, own: 4 },
-    { name: 'Distinction', unit: 'posts', total: 10, own: 0 },
-    { name: 'CV Search — COMBO 200', unit: 'CVs', total: 200, own: 61 },
-  ]
-  const rows: { name: string; id: string; used: number[]; last: string; removed?: string }[] = [
-    { name: 'Công ty TNHH Sao Mai', id: 'CO-S2CERJW', used: [3, 2, 0, 12], last: '20/09/2026' },
-    { name: 'Công ty CP An Khang', id: 'CO-CZ1HY91', used: [1, 0, 0, 0], last: '15/09/2026' },
-    { name: 'Công ty TNHH Phú Thịnh', id: 'CO-4K2T7MQ', used: [2, 0, 0, 4], last: '22/08/2026', removed: '30/08/2026' },
-  ]
-  const others = products.map((_, i) => rows.reduce((t, r) => t + r.used[i], 0))
-  const num = (n: number, dim?: boolean) => <span className={cn('tabular-nums', n === 0 || dim ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
-  const cell = 'px-3 py-2 text-right text-[12px]'
-  return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-line">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft bg-canvas/60 px-3 py-2">
-        <p className="text-[12.5px] font-bold">Companies using your quota</p>
-        <span className="text-[10.5px] text-faint">cột = từng sản phẩm trên các PO đã xuất hoá đơn của bạn</span>
+function ProductUsageIndependentScreen() { return <ProductUsageScreen which="independent" /> }
+function ProductUsageBeneficiaryScreen() { return <ProductUsageScreen which="beneficiary" /> }
+function ProductUsageSponsorScreen() { return <ProductUsageScreen which="sponsor" /> }
+function ProductUsageBothScreen() { return <ProductUsageScreen which="both" /> }
+
+type UsageEntry = { inv: HoldingInvoice; sponsor: string | null }
+
+function ProductUsageScreen({ which }: { which: UsageCase }) {
+  const go = useCoNav()
+  const [expiring, setExpiring] = useState(false)
+  const [closed, setClosed] = useState<Record<string, boolean>>({})
+  const meta = USAGE_CASES[which]
+  const me = meta.company
+  const own = holdingsOf(me)
+  const borrowed = sponsorInvoicesOf(me)
+  const links = beneficiariesOf(me)
+  const isSponsor = links.length > 0
+  const isBenef = borrowed.length > 0 || sponsorsOf(me).length > 0
+  const ownE = (list: HoldingInvoice[]): UsageEntry[] => list.map((inv) => ({ inv, sponsor: null }))
+  const sort = (xs: UsageEntry[]) => [...xs].sort((a, b) => byDrainOrder(a.inv, b.inv))
+  const mixed = isBenef || own.some((i) => i.notShared)
+  /* Same split as the admin tab — by WHO USES the invoice. */
+  const sharedOwn = isSponsor ? sort(ownE(own.filter((i) => !i.notShared))) : []
+  const solo = sort([...ownE(isSponsor ? own.filter((i) => i.notShared) : own), ...borrowed])
+  const sharedSum = (l: HoldingLine) => Object.values(l.shared ?? {}).reduce((x, y) => x + y, 0)
+  const gifts = giftsOf(me)
+
+  const line = (e: UsageEntry, l: HoldingLine) => {
+    const st = invStatus(e.inv)
+    const sponsored = e.sponsor !== null
+    const left = l.used === null ? null : l.total - l.used
+    const mine = sponsored ? l.shared?.[me] ?? 0 : (l.used ?? 0)
+    const btn = usageBtn(l.type)
+    /* a sponsored line gets the button while the SPONSOR's line still has quota —
+       the page knows that as a yes/no, never as a number */
+    const canUse = st === 'In use' && left !== null && left > 0
+    return (
+      <div key={e.inv.no + l.name + (l.warranty ? 'w' : '')} className="grid items-center gap-3 border-t border-line-soft px-4 py-3 md:grid-cols-[1.25fr_1.25fr_0.8fr_112px]">
+        <div>
+          <span className="flex items-center gap-1.5">
+            <Chip tone="muted">{l.type}</Chip>
+            {l.warranty && <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-violet-700">Warranty</span>}
+          </span>
+          <p className="mt-1 text-[13px] font-semibold text-ink">{l.warranty && <span className="mr-1 font-normal text-faint">↳</span>}{l.name}</p>
+        </div>
+        <div>
+          {l.warranty ? (
+            /* Warranty: the granted quantity only, as Figma node 5847-29385 ("1 post") — no "of", no bar */
+            <p className="text-[12px] text-ink/85">{l.total} {l.type === 'Job posting' ? (l.total === 1 ? 'post' : 'posts') : l.type === 'CV search' ? (l.total === 1 ? 'CV' : 'CVs') : ''}</p>
+          ) : l.used === null ? (
+            <p className="text-[12px] text-muted">{l.total} — đi kèm tin đăng</p>
+          ) : sponsored ? (
+            /* no bar on a sponsored line: a bar needs a denominator, and it is the sponsor's */
+            <p className="text-[12px] text-ink/85">{mine} {usageUnit(l.type, mine)}</p>
+          ) : (
+            <>
+              <p className="text-[12px] text-ink/85">{l.used} of {l.total} {usageUnit(l.type, l.total)}{st === 'Expired' && left! > 0 && <span className="text-faint"> · <s>{left} còn lại</s> hết hạn</span>}</p>
+              <div className="mt-1.5 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-line">
+                <div className={cn('h-full rounded-full', left === 0 ? 'bg-slate-400' : 'bg-brand')} style={{ width: `${Math.min(100, (l.used / Math.max(1, l.total)) * 100)}%` }} />
+              </div>
+              {/* SPONSOR: who spent what — the admin's "Qty used — tách theo công ty" in one line */}
+              {isSponsor && !e.inv.notShared && l.shared && (
+                <p className="mt-1 flex flex-wrap gap-x-2 text-[10.5px] text-muted">
+                  <span>Bạn <b className="text-ink/80">{l.used - sharedSum(l)}</b></span>
+                  {links.filter((k) => (l.shared?.[k.beneficiary] ?? 0) > 0).map((k) => (
+                    <span key={k.beneficiary} className={cn(k.status === 'removed' && 'line-through opacity-60')} title={k.status === 'removed' ? 'Đã ngừng chia sẻ — số đã dùng vẫn giữ' : undefined}>
+                      {coShort(k.beneficiary)} <b className="text-ink/80">{l.shared![k.beneficiary]}</b>
+                    </span>
+                  ))}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+        <div className="text-[11.5px] text-muted">
+        </div>
+        <div className="md:text-right">
+          {/* no "Hết quota" label (page feedback 21/10/2026): a line with nothing left simply has no button */}
+          {btn && l.used !== null && canUse && <Btn onClick={() => go(btn === 'Find talent' ? 'co-resume-search' : 'co-post-job')}>{btn}</Btn>}
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse" style={{ minWidth: 520 + products.length * 120 }}>
-          <thead>
-            <tr className="bg-canvas/40 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
-              <th className="px-3 py-2 text-left">Company</th>
-              {products.map((p) => <th key={p.name} className="px-3 py-2 text-right whitespace-nowrap"><span className="block normal-case tracking-normal text-ink/80">{p.name}</span><span className="font-normal normal-case tracking-normal text-faint">{p.unit} · tổng {p.total}</span></th>)}
-              <th className="px-3 py-2 text-right">Tổng</th>
-              <th className="px-3 py-2 text-left">Last used</th>
-              <th className="px-3 py-2 text-left">Status</th>
+    )
+  }
+
+  const band = (e: UsageEntry, n: number) => {
+    const st = invStatus(e.inv)
+    const isClosed = closed[e.inv.no] ?? st !== 'In use'
+    return { isClosed, el: (
+      <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-[12px]', st === 'In use' ? 'bg-canvas/70' : 'bg-canvas/40')}>
+        <button onClick={() => setClosed((x) => ({ ...x, [e.inv.no]: !isClosed }))} className="w-4 text-[11px] text-muted" aria-label={isClosed ? 'Mở' : 'Thu gọn'}>{isClosed ? '▸' : '▾'}</button>
+        <span className="font-bold text-ink">{e.inv.no}</span>
+        {/* expiry only, no issue date and no status chip (page feedback 21/10/2026) — an expired date turns red */}
+        <span className="text-muted">Hết hạn <span className={cn(st === 'Expired' && 'text-rose-600')}>{e.inv.expires}</span></span>
+        {e.sponsor
+          ? <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10.5px] font-medium text-amber-800">Sponsored by {coShort(e.sponsor)}</span>
+          : mixed && <span title={e.inv.notShared} className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[10.5px] font-medium text-brand">Own purchase</span>}
+        <span className="ml-auto text-muted">{e.sponsor ? (n === 0 ? 'chưa dùng' : `${n} ${n === 1 ? 'product' : 'products'} used`) : `${n} ${n === 1 ? 'product' : 'products'}`}</span>
+      </div>
+    ) }
+  }
+
+  const list = (entries: UsageEntry[]) => (
+    <div className="overflow-hidden rounded-lg border border-line">
+      {entries.map((e) => {
+        const lines = e.sponsor ? e.inv.lines.filter((l) => (l.shared?.[me] ?? 0) > 0) : e.inv.lines
+        const b = band(e, lines.length)
+        return (
+          <div key={e.inv.no}>
+            {b.el}
+            {!b.isClosed && lines.length === 0 && <p className="border-t border-line-soft px-4 py-3 pl-11 text-[11.5px] text-faint">Bạn chưa dùng sản phẩm nào từ hoá đơn này.</p>}
+            {!b.isClosed && lines.map((l) => line(e, l))}
+          </div>
+        )
+      })}
+    </div>
+  )
+  /* SPONSOR-ROLE invoices (client, 21/10/2026: "thể hiện UI như trên Admin") — the
+     admin's table: Total · Used · Remaining, then "Qty used — tách theo công ty",
+     one column for you and one per company you share with. Same band as the rest
+     of this page (number · expiry), plus the action column the employer needs. */
+  const sharedTable = (entries: UsageEntry[]) => {
+    const cos = links.map((k) => ({ name: k.beneficiary, removed: k.status === 'removed' }))
+    const th = 'px-3 py-2 text-right whitespace-nowrap'
+    const cols = 6 + cos.length + 1
+    const num = (n: number, dim?: boolean) => <span className={cn('tabular-nums', n === 0 || dim ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
+    return (
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full border-collapse text-[12px]" style={{ minWidth: 700 + (cos.length + 1) * 84 + 112 }}>
+          <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+            <tr className="bg-canvas/60">
+              <th colSpan={5} className="sticky left-0 z-10 bg-canvas" />
+              <th colSpan={cos.length + 1} className="border-b border-l border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
+              <th />
+            </tr>
+            <tr className="border-b border-line bg-canvas/60 text-left">
+              <th className="sticky left-0 z-10 min-w-[170px] bg-canvas px-4 py-2">Product</th>
+              <th className="w-[110px] px-3 py-2">Product type</th>
+              <th className={th}>Total qty</th>
+              <th className={th}>Qty used</th>
+              <th className={th}>Qty remaining</th>
+              <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coShort(me)}</th>
+              {cos.map((c) => (
+                <th key={c.name} className={cn(th, 'normal-case tracking-normal', c.removed ? 'text-faint' : 'text-ink/80')}>
+                  <span className={cn(c.removed && 'line-through')}>{coShort(c.name)}</span>
+                  {c.removed && <span className="block text-[9.5px] font-normal">đã ngừng chia sẻ</span>}
+                </th>
+              ))}
+              <th className="w-[112px] px-3 py-2" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className={cn('border-t border-line-soft', r.removed && 'bg-canvas/30')}>
-                <td className="px-3 py-2"><span className={cn('block text-[12.5px] font-medium', r.removed ? 'text-muted' : 'text-ink')}>{r.name}</span><span className="font-mono text-[10px] text-faint">{r.id}</span></td>
-                {r.used.map((n, i) => <td key={i} className={cell}>{num(n, !!r.removed)}</td>)}
-                <td className={cell}><b className="tabular-nums">{r.used.reduce((t, n) => t + n, 0)}</b></td>
-                <td className="px-3 py-2 text-[11.5px] tabular-nums text-muted">{r.last}</td>
-                <td className="px-3 py-2">{r.removed ? <Chip tone="muted">Removed {r.removed}</Chip> : <Chip tone="green">Active</Chip>}</td>
-              </tr>
-            ))}
+            {entries.map((e) => {
+              const st = invStatus(e.inv)
+              const b = band(e, e.inv.lines.length)
+              return (
+                <Fragment key={e.inv.no}>
+                  <tr className="border-t border-line"><td colSpan={cols} className="p-0">{b.el}</td></tr>
+                  {!b.isClosed && e.inv.lines.map((l) => {
+                    const left = l.used === null ? null : l.total - l.used
+                    const btn = usageBtn(l.type)
+                    return (
+                      <tr key={e.inv.no + l.name + (l.warranty ? 'w' : '')} className="border-t border-line-soft">
+                        <td className="sticky left-0 z-10 bg-surface px-4 py-2.5">
+                          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">{l.warranty && <span className="font-normal text-faint">↳</span>}{l.name}{l.warranty && <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-violet-700">Warranty</span>}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted">{l.type}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{l.total}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{l.used === null ? <span className="text-faint">—</span> : <b className="font-semibold">{l.used}</b>}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {left === null ? <span className="text-[10.5px] text-faint">đi kèm tin</span>
+                            : st === 'Expired' && left > 0 ? <s className="text-faint">{left}</s>
+                            : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
+                        </td>
+                        {l.used === null
+                          ? <td colSpan={cos.length + 1} className="border-l border-line-soft px-3 py-2.5 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
+                          : <>
+                              <td className="border-l border-line-soft px-3 py-2.5 text-right">{num(l.used - sharedSum(l))}</td>
+                              {cos.map((c) => <td key={c.name} className="px-3 py-2.5 text-right">{num(l.shared?.[c.name] ?? 0, c.removed)}</td>)}
+                            </>}
+                        <td className="px-3 py-2.5 text-right">{btn && l.used !== null && st === 'In use' && left! > 0 && <Btn onClick={() => go(btn === 'Find talent' ? 'co-resume-search' : 'co-post-job')}>{btn}</Btn>}</td>
+                      </tr>
+                    )
+                  })}
+                </Fragment>
+              )
+            })}
           </tbody>
-          <tfoot className="text-[12px]">
-            <tr className="border-t border-line bg-canvas/40"><td className="px-3 py-2 font-medium text-ink/80">FPT Software tự dùng</td>{products.map((p) => <td key={p.name} className={cell}>{num(p.own)}</td>)}<td className={cell}><b className="tabular-nums">{products.reduce((t, p) => t + p.own, 0)}</b></td><td colSpan={2} /></tr>
-            <tr className="border-t border-line-soft bg-canvas/40"><td className="px-3 py-2 font-medium text-ink/80">Công ty được link đã dùng</td>{others.map((n, i) => <td key={i} className={cell}>{num(n)}</td>)}<td className={cell}><b className="tabular-nums">{others.reduce((t, n) => t + n, 0)}</b></td><td colSpan={2} className="px-3 py-2 text-[10.5px] text-faint">kể cả link đã gỡ — slot đã dùng là đã dùng</td></tr>
-            <tr className="border-t border-line bg-brand-soft/60"><td className="px-3 py-2 font-bold text-brand">Còn lại / tổng</td>{products.map((p, i) => { const rem = p.total - p.own - others[i]; return <td key={p.name} className={cn(cell, 'font-bold tabular-nums', rem / p.total < 0.2 ? 'text-amber-700' : 'text-brand')}>{rem}<span className="font-normal text-faint"> / {p.total}</span></td> })}<td className={cell} /><td colSpan={2} className="px-3 py-2 text-[10.5px] text-faint">chỉ bạn và Saramin thấy dòng này</td></tr>
-          </tfoot>
         </table>
       </div>
+    )
+  }
+  const section = (title: string, sub: string, entries: UsageEntry[], shared = false) => (
+    <div className="mt-4">
+      <p className="mb-1.5 text-[12.5px] font-bold text-ink/90">{title} <span className="font-normal text-muted">— {sub}</span></p>
+      {shared ? sharedTable(entries) : list(entries)}
     </div>
   )
-}
+  const lineCount = [...sharedOwn, ...solo].reduce((n, e) => n + (e.sponsor ? e.inv.lines.filter((l) => (l.shared?.[me] ?? 0) > 0).length : e.inv.lines.length), 0) + gifts.length
+  const benefNames = links.filter((k) => k.status === 'active').map((k) => coShort(k.beneficiary)).join(', ')
+  const sponsorNames = sponsorsOf(me).map((k) => coShort(k.sponsor)).join(' và ')
 
-function ProductUsageSponsorScreen() { return <ProductUsageScreen role="sponsor" /> }
-function ProductUsageBeneficiaryScreen() { return <ProductUsageScreen role="beneficiary" /> }
-
-function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
-  const go = useCoNav()
-  const [expiring, setExpiring] = useState(false)
-  const sponsor: UsageGroup[] = [
-    { head: 'Free job posting', meta: '1 product', rows: [{ type: 'Job posting', name: 'Free Job', used: '1 free post' }] },
-    { head: 'PO-2026-0912', meta: '02/09/2026 · 3 products', rows: [
-      { type: 'Job posting', name: 'Top Job', used: '41 of 100 posts used', pct: 41, btn: 'Post job' },
-      { type: 'Job posting', name: 'Basic', used: '6 of 20 posts used', pct: 30, btn: 'Post job' },
-      { type: 'Add-on', name: 'Hot job label', used: '0 of 2 used', pct: 0 },
-    ] },
-    { head: 'PO-2026-0909', meta: '09/09/2026 · 2 products', rows: [
-      { type: 'CV search', name: 'CV Search — COMBO 200', used: '77 of 200 CVs unlocked', pct: 38, pill: ['In use', 'green'], dates: '09/09/2026 – 08/12/2026', btn: 'Find talent' },
-      { type: 'Job posting', name: 'Distinction', used: '0 of 10 posts used', pct: 0, btn: 'Post job' },
-    ] },
-    { head: 'PO-2026-0801', meta: '01/08/2026 · 1 product', rows: [
-      { type: 'CV search', name: 'CV Search 30d', used: '0 of 50 CVs unlocked', pct: 0, pill: ['Not activated', 'amber'], dates: 'activate by 01/08/2027', btn: 'Activate' },
-    ] },
-  ]
-  /* The INVOICE NUMBER is shown on the beneficiary's groups (client, 25/09/2026) —
-     it is what the Create-job picker lists for a shared quota and what the poster
-     picks, so the page has to name it. The number only: no date, no amount, no
-     lines, no totals, no PO. */
-  const beneficiary: UsageGroup[] = [
-    { head: 'INV-003464-09-2026', meta: 'Shared by FPT Software · 2 products', shared: true, rows: [
-      { type: 'Job posting', name: 'Top Job', used: '3 posts used', btn: 'Post job' },
-      { type: 'Job posting', name: 'Basic', used: '2 posts used', btn: 'Post job' },
-    ] },
-    { head: 'INV-003458-09-2026', meta: 'Shared by FPT Software · 1 product', shared: true, rows: [
-      { type: 'CV search', name: 'CV Search — COMBO 200', used: '12 CVs unlocked', pill: ['In use', 'green'], btn: 'Find talent' },
-    ] },
-    { head: 'INV-003451-09-2026', meta: 'Shared by Tiki · 1 product', shared: true, rows: [
-      { type: 'Job posting', name: 'Job Posting — Pro', used: '1 post used', btn: 'Post job' },
-    ] },
-  ]
-  const groups = role === 'sponsor' ? sponsor : beneficiary
-  const count = groups.reduce((n, g) => n + g.rows.length, 0)
-  const company = role === 'sponsor' ? 'FPT Software' : 'Công ty TNHH Sao Mai'
   return (
     <div>
       <p className="mb-3 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11px] text-muted">
-        Đang xem như <b className="text-ink/80">{company}</b> — {role === 'sponsor' ? 'công ty tài trợ, đứng tên PO' : 'công ty thụ hưởng, dùng chung quota'}.
-        {' '}Trang còn lại: <b className="cursor-pointer text-brand" onClick={() => go(role === 'sponsor' ? 'co-product-usage-beneficiary' : 'co-product-usage')}>{role === 'sponsor' ? 'Product usage — công ty thụ hưởng' : 'Product usage — công ty tài trợ'} →</b>
+        Đang xem như <b className="text-ink/80">{coShort(me)}</b> — {meta.role}. Các trường hợp khác:{' '}
+        {(Object.keys(USAGE_CASES) as UsageCase[]).filter((k) => k !== which).map((k, i) => (
+          <Fragment key={k}>{i > 0 && ' · '}<b className="cursor-pointer text-brand" onClick={() => go(USAGE_CASES[k].screen)}>{USAGE_CASES[k].label}</b></Fragment>
+        ))}
       </p>
       <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
         {/* left rail — as the Figma frame */}
@@ -2981,7 +3104,7 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
         <section className="min-w-0">
           <h3 className="text-[20px] font-bold">Product usage</h3>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[12px] text-ink/80"><b>{count}</b> products{role === 'beneficiary' && <span className="text-muted"> · dùng chung từ 2 công ty tài trợ</span>}</p>
+            <p className="text-[12px] text-ink/80"><b>{lineCount}</b> products</p>
             <div className="flex flex-wrap items-center gap-2 text-[11.5px]">
               <label className="flex items-center gap-1.5 text-muted"><input type="checkbox" checked={expiring} onChange={(e) => setExpiring(e.target.checked)} className="accent-brand" />Expiring within 7 days</label>
               <span className="rounded-md border border-line px-2.5 py-1.5 text-ink/80">All product types ▾</span>
@@ -2989,56 +3112,60 @@ function ProductUsageScreen({ role }: { role: 'sponsor' | 'beneficiary' }) {
             </div>
           </div>
 
-          {role === 'sponsor' && (
-            <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
-              <b>2 công ty đang dùng chung quota của {company}</b> — Sao Mai · An Khang. Số họ dùng <b>đã nằm trong</b> các thanh dưới; bảng dưới đây tách ra ai dùng bao nhiêu theo từng sản phẩm. Thêm hoặc gỡ công ty: liên hệ sales owner của bạn ở Saramin.
-            </p>
-          )}
-          {role === 'sponsor' && <SponsorUsageMatrix />}
-          {role === 'beneficiary' && (
-            <p className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
-              {company} đang <b>dùng chung quota</b> của FPT Software và Tiki. Trang này hiện <b>số Invoice</b> (để bạn chọn đúng invoice khi tạo job) và <b>số bạn đã dùng</b> — tổng quota, số còn lại, giá trị và PO thuộc về công ty tài trợ.
-            </p>
+          {(isSponsor || isBenef) && (
+            <div className="mt-3 space-y-1 rounded-lg border border-brand/30 bg-brand-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink/85">
+              {isSponsor && <p><b>Bạn đang chia sẻ quota cho {benefNames}.</b> Qty used trên hoá đơn chia sẻ đã gồm phần của họ; nhóm cột <b>Qty used — tách theo công ty</b> cho biết ai dùng bao nhiêu. Thêm hoặc ngừng chia sẻ: liên hệ sales owner của bạn ở Saramin.</p>}
+              {isBenef && <p><b>Bạn đang dùng chung quota của {sponsorNames}.</b> Hoá đơn tag <b>Sponsored by …</b> chỉ hiện sản phẩm và số bạn đã dùng — tổng, số còn lại, giá trị và PO thuộc về công ty tài trợ.{isSponsor && ' Quota dùng ké không chia tiếp được cho công ty bạn tài trợ.'}</p>}
+            </div>
           )}
 
-          <div className="mt-3 overflow-hidden rounded-lg border border-line">
-            {groups.map((g) => (
-              <div key={g.head}>
-                <div className={cn('flex items-center gap-3 px-4 py-2 text-[12px]', g.shared ? 'bg-brand-soft/60' : 'bg-canvas/70')}>
-                  <span className="font-bold text-ink">{g.head}</span>
-                  {g.meta && <span className="text-muted">{g.meta}</span>}
-                </div>
-                {g.rows.map((r) => (
-                  <div key={r.name} className="grid items-center gap-3 border-t border-line-soft px-4 py-3 md:grid-cols-[1.2fr_1.1fr_1fr_auto]">
-                    <div>
-                      <Chip tone="muted">{r.type}</Chip>
-                      <p className="mt-1 text-[13px] font-semibold text-ink">{r.name}</p>
+          {/* One list, or two when a sponsor also has invoices only it uses */}
+          {isSponsor && solo.length > 0 ? (
+            <>
+              {section('Shared with other companies', `hoá đơn bạn mua, chia sẻ cho ${benefNames}`, sharedOwn, true)}
+              {section(`Used by ${coShort(me)} only`, `${isBenef ? 'hoá đơn dùng ké (Sponsored by …) và ' : ''}hoá đơn tự mua không chia sẻ`, solo)}
+            </>
+          ) : (
+            <div className="mt-3">{isSponsor ? sharedTable(sharedOwn) : list(solo)}</div>
+          )}
+
+          {/* FREE PRODUCTS — gifts, no invoice behind them: their own block */}
+          {gifts.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-1.5 text-[12.5px] font-bold text-ink/90">Free products <span className="font-normal text-muted">— sản phẩm được tặng, không có hoá đơn</span></p>
+              <div className="overflow-hidden rounded-lg border border-line">
+                {gifts.map((g) => {
+                  const left = g.total - g.used
+                  const lapsed = parseDay(g.validUntil) < USAGE_TODAY
+                  const btn = usageBtn(g.type)
+                  return (
+                    <div key={g.name + g.on} className="grid items-center gap-3 border-t border-line-soft px-4 py-3 first:border-t-0 md:grid-cols-[1.25fr_1.25fr_0.8fr_112px]">
+                      <div>
+                        <span className="flex items-center gap-1.5"><Chip tone="muted">{g.type}</Chip><Chip tone="green">Gift</Chip></span>
+                        <p className="mt-1 text-[13px] font-semibold text-ink">{g.name}</p>
+                        <p className="text-[10.5px] text-faint">Tặng ngày {g.on}</p>
+                      </div>
+                      <div>
+                        <p className="text-[12px] text-ink/85">{g.used} of {g.total} {usageUnit(g.type, g.total)}</p>
+                        <div className="mt-1.5 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-line"><div className={cn('h-full rounded-full', left === 0 ? 'bg-slate-400' : 'bg-brand')} style={{ width: `${(g.used / Math.max(1, g.total)) * 100}%` }} /></div>
+                      </div>
+                      <div className="text-[11.5px] text-muted">Valid until<p className={cn(lapsed ? 'text-rose-600' : 'text-ink/80')}>{g.validUntil}</p></div>
+                      <div className="md:text-right">{btn && left > 0 && !lapsed && <Btn onClick={() => go(btn === 'Find talent' ? 'co-resume-search' : 'co-post-job')}>{btn}</Btn>}</div>
                     </div>
-                    <div>
-                      <p className="text-[12px] text-ink/85">{r.used}</p>
-                      {r.unlimited && <span className="mt-1 inline-block rounded bg-sky-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">∞ Unlimited</span>}
-                      {/* a beneficiary row has no bar: a bar needs a denominator, and the denominator is the sponsor's */}
-                      {r.pct != null && <div className="mt-1.5 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${r.pct}%` }} /></div>}
-                    </div>
-                    <div className="text-[11.5px]">
-                      {r.pill && <Chip tone={r.pill[1]}>{r.pill[0]}</Chip>}
-                      {r.dates && <p className="mt-1 text-muted">{r.dates}</p>}
-                    </div>
-                    <div className="md:text-right">
-                      {r.btn && <Btn onClick={() => go(r.btn === 'Find talent' ? 'co-resume-search' : 'co-post-job')}>{r.btn}</Btn>}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
           <div className="mt-6 text-[11.5px] text-muted">
             <p className="font-semibold text-ink/80">About product usage</p>
             <p className="mt-1">- Usage from the last 2 years is shown here.</p>
+            <p>- Quota is spent from the invoice that expires first — the first In use invoice is the one your next job uses.</p>
+            <p>- A <b>Warranty</b> line sits on the invoice of the product it makes good. <b>Free products</b> are gifts and have no invoice.</p>
+            {isBenef && <p>- An invoice marked “Sponsored by …” is another company’s: you see its number (to pick it when posting) and your own usage; the remaining quota, the amount and the order are on that company’s account.</p>}
+            {isSponsor && <p>- Companies you no longer share with keep their past usage on your invoices.</p>}
             <p>- Closing a posting early does not refund the unused days of a product in use.</p>
-            {role === 'beneficiary' && <p>- An invoice marked “Shared by …” is another company’s: you see its number (to pick it when posting) and your own usage; the remaining quota, the amount and the order are on that company’s account.</p>}
-            {role === 'sponsor' && <p>- “Companies using your quota” lists every company that spent from your products — companies you no longer share with keep their past usage.</p>}
             <p>- Usage &amp; payment: [FAQ] · Help center 02-6226-5000 (weekdays 09:00–19:00)</p>
           </div>
         </section>
@@ -3388,8 +3515,10 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'More',
     overflow: true,
     items: [
-      { id: 'co-product-usage', label: 'Product usage — sponsor', Comp: ProductUsageSponsorScreen },
-      { id: 'co-product-usage-beneficiary', label: 'Product usage — beneficiary', Comp: ProductUsageBeneficiaryScreen },
+      { id: 'co-product-usage-independent', label: 'Product usage — độc lập (Én Nhỏ)', Comp: ProductUsageIndependentScreen },
+      { id: 'co-product-usage-beneficiary', label: 'Product usage — thụ hưởng (Sao Mai)', Comp: ProductUsageBeneficiaryScreen },
+      { id: 'co-product-usage', label: 'Product usage — tài trợ (FPT)', Comp: ProductUsageSponsorScreen },
+      { id: 'co-product-usage-both', label: 'Product usage — tài trợ + thụ hưởng (Tiki)', Comp: ProductUsageBothScreen },
       { id: 'co-products', label: 'Products & quota', Comp: ProductsQuotaScreen },
       { id: 'co-orders', label: 'Orders & invoices', Comp: OrdersInvoicesScreen },
       { id: 'co-company-info', label: 'Company information', Comp: CompanyInfoScreen },

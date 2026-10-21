@@ -1380,6 +1380,8 @@ export const crm: BuildModule = {
       ready: true,
       notes: 'Client, 21/10/2026: rebuild the whole Products & billing tab of the company record. One header row per INVOICE with its product lines underneath; the layout depends on whether the company is independent, a beneficiary, a sponsor, or both. Warranties live inside their invoice; free products (gifts) get their own table. Replaces the product-by-product holdings table, the Products & quota card, the PO history card and the Shared quota card on this tab.',
       mockup: 'admin-shared-quota',
+      /* Employer dashboard — Product usage, one screen per company case (21/10/2026). */
+      mockups: ['co-product-usage-independent', 'co-product-usage-beneficiary', 'co-product-usage', 'co-product-usage-both'],
       detail: {
         keyPoints: [
           {
@@ -1406,7 +1408,7 @@ export const crm: BuildModule = {
         requirements: [
           {
             label: 'Layout by company type',
-            text: 'The tab picks its layout from the company’s shared-quota links. An invoice goes in a table according to WHO USES IT, not who bought it.',
+            text: 'The tab holds two cards, named by the one fact that splits them — whether an invoice is behind the quota: **Invoiced products** (this card) and **Free products** (gifts, below). Inside Invoiced products the layout follows the company’s shared-quota links: an invoice goes in a table according to WHO USES IT, not who bought it.',
             table: {
               cols: ['Company type', 'Example', 'Tables', 'What is in them'],
               rows: [
@@ -1474,7 +1476,7 @@ export const crm: BuildModule = {
           },
           {
             label: 'Free products — a table of their own',
-            text: 'Gifts are the only quota with no invoice behind them, so they sit in a separate card **Free products** after the invoice card.',
+            text: 'Gifts are the only quota with no invoice behind them, so they sit in a separate card **Free products** after **Invoiced products**.',
             table: {
               cols: ['Column', 'Content'],
               rows: [
@@ -1486,6 +1488,26 @@ export const crm: BuildModule = {
               ],
             },
             items: ['No gifts → one dashed line “{Company} chưa được tặng sản phẩm nào”.'],
+          },
+          {
+            label: 'Employer dashboard — Product usage (Company site)',
+            text: 'The customer’s own page follows the same invoice grouping and the same four cases, read from the same data as the admin tab, in the Figma style of “Product usage” (left rail Products & Payment Management · type chip + name · usage text + bar · one action button). The four screens below show each case.',
+            table: {
+              cols: ['Case', 'Example', 'What the employer sees'],
+              rows: [
+                ['**Independent**', 'Én Nhỏ', 'One list. Grey band per invoice; product rows “x of y posts used” + bar; Post job / Find talent while quota is left.'],
+                ['**Beneficiary** (may also buy)', 'Sao Mai', 'One list, own and sponsored invoices mixed in drain order. Own purchase rows as above. **Sponsored by {Sponsor}** rows: only the products it used, “3 posts used” — no “of N”, no bar; the button shows while the sponsor’s line still has quota (a yes/no, never a number). An untouched sponsored invoice shows “chưa dùng”.'],
+                ['**Sponsor**', 'FPT', 'The admin’s table for its shared invoices: Product · Product type · Total qty · Qty used · Qty remaining · **Qty used — tách theo công ty** (itself, then one column per company it shares with; a stopped share is struck through with “đã ngừng chia sẻ”) · action. The Product column stays pinned when the company columns scroll.'],
+                ['**Sponsor + beneficiary + own purchase**', 'Tiki', 'Two blocks: **Shared with other companies** (the sponsor table above) and **Used by {company} only** (the beneficiary-style list: sponsored invoices with its own counts, plus own invoices it never shared).'],
+              ],
+            },
+            items: [
+              'Invoice band on this page: invoice number · “Hết hạn {date}” (red once passed) · source tag (Own purchase / Sponsored by …, only when sources mix) · product count (“N products used” on a sponsored invoice). No issue date, no status chip, no amount — Payment history has the money. Fully used and Expired invoices start collapsed.',
+              'Warranty row: “↳ {product}” + Warranty tag, and only the granted quantity (“1 post”, “10 CVs”) — no “of”, no bar, no sub-line, no validity (Figma node 5847-29385). In the sponsor table the warranty line keeps its numbers like any line.',
+              'A line with nothing left simply has no button — no “Hết quota” label.',
+              'Free products: a separate block under the invoices — Gift tag, “Tặng ngày {date}”, “x of y used” + bar, Valid until, action. Hidden when the company has no gifts.',
+              'Banner: “Bạn đang chia sẻ quota cho …” (sponsor) and/or “Bạn đang dùng chung quota của …” (beneficiary). Adding or stopping a share goes through the Saramin sales owner — no self-service on this page.',
+            ],
           },
           {
             label: 'Removed from this tab',
@@ -1540,6 +1562,7 @@ export const crm: BuildModule = {
           'A warranty appears as a line under the product it compensates, on that product’s invoice, with the Warranty tag and its reason and validity.',
           'Gifts appear only in the Free products card, never in the invoice table.',
           'Invoices sort In use (soonest expiry first) → Fully used → Expired; Fully used and Expired start collapsed.',
+          'Employer dashboard: Én Nhỏ and Sao Mai show one list; a Sao Mai row on a Sponsored by … invoice reads “N posts used” with no bar and no total; FPT shows the table with Qty used — tách theo công ty; Tiki shows Shared with other companies + Used by Tiki only. Warranty rows show only the quantity; there is no “Hết quota” label.',
         ],
         openQuestions: [
           'Are a sponsor’s gifts shared with its beneficiaries? Shared quota’s rule includes gifts; the Free products table currently shows them only on the company that received them.',

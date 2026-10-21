@@ -6,7 +6,7 @@ import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
 import { beneficiariesOf, sponsorsOf } from '@/pages/admin/data/sharedQuota'
 
-/* ── What this company holds — BY INVOICE ─────────────────────────────────────
+/* ── Invoiced products — BY INVOICE ───────────────────────────────────────────
  * Client feedback 2026-10-21: the build listed one row per PRODUCT with the
  * invoices it was bought on stacked in the right-hand cells, so a product bought
  * on three invoices showed three dates and three totals in one row and nobody
@@ -523,4 +523,18 @@ export function FreeProducts({ c }: { c: Company }) {
       </table>
     </div>
   )
+}
+
+/* ── Shared with the Company site (2026-10-21) ────────────────────────────────
+ * The employer's Product usage page reads the SAME invoices as this admin tab, so
+ * the customer and Saramin never see two different numbers. */
+export type { Inv as HoldingInvoice, Line as HoldingLine, Gift as HoldingGift }
+/** Sponsor invoices a beneficiary may draw on — never-shared ones excluded. */
+export const sponsorInvoicesOf = (beneficiary: string): { inv: Inv; sponsor: string }[] =>
+  sponsorsOf(beneficiary).flatMap((l) => (HOLDINGS[l.sponsor] ?? []).filter((inv) => !inv.notShared).map((inv) => ({ inv, sponsor: l.sponsor })))
+/** Drain order: In use (soonest expiry) → Fully used → Expired (newest first). */
+export const byDrainOrder = (a: Inv, b: Inv) => {
+  const sa = invStatus(a), sb = invStatus(b)
+  if (sa !== sb) return ORDER[sa] - ORDER[sb]
+  return sa === 'In use' ? day(a.expires).getTime() - day(b.expires).getTime() : day(b.issued).getTime() - day(a.issued).getTime()
 }
