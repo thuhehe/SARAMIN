@@ -1067,8 +1067,8 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
         const holdings = (
           <div className="lg:col-span-2" key="h">
             <DetailCard
-              title={asBeneficiary.length ? `Hoá đơn của chính ${coLabel(c)}` : 'What this company holds, by invoice'}
-              action={<span className="text-[11px] text-faint">{asSponsor.length ? 'một bảng cho mọi hoá đơn · mỗi công ty một cột' : 'mỗi hoá đơn một nhóm · sản phẩm bên dưới'}</span>}
+              title="What this company holds, by invoice"
+              action={<span className="text-[11px] text-faint">{asSponsor.length ? 'một bảng cho mọi hoá đơn · mỗi công ty một cột' : asBeneficiary.length ? 'hoá đơn tự mua + hoá đơn dùng chung từ sponsor' : 'mỗi hoá đơn một nhóm · sản phẩm bên dưới'}</span>}
             >
               <HoldingsByInvoice key={c.name} c={c} onOpen={onOpen} />
             </DetailCard>
@@ -1077,15 +1077,20 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
         const shared = <div className="lg:col-span-2" key="s"><SharedQuotaCard key={c.name} c={c} onOpen={onOpen} /></div>
         return (
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-            {(asSponsor.length > 0 || asBeneficiary.length > 0) && (
-              <div className={cn('lg:col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-[12px]', asSponsor.length ? 'border-brand/30 bg-brand-soft text-brand' : 'border-line bg-canvas text-muted')}>
-                <Pill tone={asSponsor.length ? 'active' : 'neutral'}>{asSponsor.length ? 'Sponsor' : 'Công ty thụ hưởng'}</Pill>
-                {asSponsor.length
-                  ? <span>{asSponsor.length} công ty đang dùng chung quota của {coLabel(c)}: <b>{asSponsor.map((l) => name(l.beneficiary)).join(', ')}</b>. Số đã dùng và còn lại bên dưới đã gồm phần của họ.</span>
-                  : <span>Dùng chung quota của <b className="text-ink/80">{asBeneficiary.map((l) => name(l.sponsor)).join(', ')}</b>. Tổng và số còn lại của quota đó chỉ hiện trên hồ sơ sponsor.</span>}
-              </div>
-            )}
-            {asBeneficiary.length ? [shared, holdings] : asSponsor.length ? [holdings, shared] : [shared, holdings]}
+            {/* One banner, three company types — the reader knows which reading of
+                the tables below applies before reading them. */}
+            <div className={cn('lg:col-span-2 flex flex-col gap-1 rounded-lg border px-3 py-2 text-[12px]', asSponsor.length ? 'border-brand/30 bg-brand-soft text-brand' : 'border-line bg-canvas text-muted')}>
+              {asSponsor.length > 0 && (
+                <span className="flex flex-wrap items-center gap-x-3"><Pill tone="active">Sponsor</Pill><span>{asSponsor.length} công ty đang dùng chung quota của {coLabel(c)}: <b>{asSponsor.map((l) => name(l.beneficiary)).join(', ')}</b>. Số đã dùng và còn lại trên hoá đơn tự mua đã gồm phần của họ.</span></span>
+              )}
+              {asBeneficiary.length > 0 && (
+                <span className="flex flex-wrap items-center gap-x-3 text-muted"><Pill tone="neutral">Công ty thụ hưởng</Pill><span>Dùng chung quota của <b className="text-ink/80">{asBeneficiary.map((l) => name(l.sponsor)).join(', ')}</b> — các hoá đơn tag <b className="text-ink/80">Dùng chung</b> bên dưới.{asSponsor.length > 0 && ' Không chia tiếp được cho công ty mình tài trợ.'}</span></span>
+              )}
+              {!asSponsor.length && !asBeneficiary.length && (
+                <span className="flex flex-wrap items-center gap-x-3"><Pill tone="neutral">Độc lập</Pill><span>{coLabel(c)} chỉ dùng hoá đơn của chính mình — mọi số bên dưới là của {coLabel(c)}.</span></span>
+              )}
+            </div>
+            {[holdings, shared]}
           </div>
         )
       })()}

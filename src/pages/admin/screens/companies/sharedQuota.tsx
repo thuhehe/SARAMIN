@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { COMPANIES, coKey, coLabel } from '@/pages/admin/data/companies'
@@ -9,7 +9,6 @@ import type { ShareLink } from '@/pages/admin/data/sharedQuota'
 import { DetailCard } from '@/pages/admin/ui/fields'
 import { RowAction } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
-import { drawsOf } from '@/pages/admin/screens/companies/holdings'
 
 /*
  * The Shared quota card on a company record — Products & billing tab.
@@ -221,68 +220,44 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
  * One panel per sponsor, one tile per product with a spend, the count big.
  */
 function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (sponsor: string) => void }) {
-  /* Same shape as the invoice table below it (client, 2026-10-21): a header row
-     per SPONSOR, the lines it drew underneath. Each line names the sponsor's
-     invoice NUMBER and this company's own count — nothing else of the sponsor's
-     document: no total, no remaining, no status (Fully used would leak the
-     balance), no PO, no amount. */
-  const draws = drawsOf(c.name)
-  const total = draws.reduce((s, d) => s + d.used, 0)
+  /* RELATIONSHIP ONLY (client, 2026-10-21). What Sao Mai used, invoice by invoice,
+     is in the invoice table above — the sponsors' invoices sit there tagged
+     "Dùng chung · từ …" next to its own "Tự mua" ones. This card says only WHO it
+     draws on, since when, and holds Remove link. Mirror of the sponsor's list. */
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-canvas px-3 py-2 text-[11.5px] text-muted">
-        <span><b className="text-ink/80">{coLabel(c)}</b> là công ty thụ hưởng của <b className="text-ink/80">{links.length}</b> sponsor</span>
-        <span>·</span>
-        <span>đã dùng <b className="text-ink/80">{total}</b> đơn vị từ quota được chia sẻ</span>
-      </div>
       <div className="overflow-x-auto rounded-xl border border-line">
-        <table className="w-full min-w-[720px] border-collapse text-[12px]">
+        <table className="w-full min-w-[680px] border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-line bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-faint">
-              <th className="px-3 py-2">Product</th>
-              <th className="w-[170px] px-3 py-2">Product type</th>
-              <th className="w-[190px] px-3 py-2">Từ invoice của sponsor</th>
-              <th className="w-[130px] px-3 py-2 text-right">{coLabel(c)} đã dùng</th>
+              <th className="px-3 py-2">Sponsor</th>
+              <th className="px-3 py-2">Link</th>
+              <th className="px-3 py-2">Job của {coLabel(c)} dùng quota này</th>
+              <th className="px-3 py-2 text-right">Last used</th>
+              <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
-            {links.map((link) => {
-              const s = byName(link.sponsor)
-              const mine = draws.filter((d) => d.sponsor === link.sponsor)
+            {links.map((l) => {
+              const s = byName(l.sponsor)
               return (
-                <Fragment key={link.sponsor}>
-                  <tr className="border-t border-line bg-brand-soft/30">
-                    <td colSpan={4} className="px-3 py-2">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Sponsor</span>
-                        <button onClick={() => s && onOpen?.(s)} className="text-[12.5px] font-semibold text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
-                        <span className="font-mono text-[10.5px] text-faint">{idOf(link.sponsor)}</span>
-                        <span className="text-muted">Link từ <b className="font-medium tabular-nums text-ink/80">{link.since}</b> · {link.by}</span>
-                        <span className="text-muted">Lần dùng gần nhất <b className="font-medium tabular-nums text-ink/80">{link.lastUsed ?? '—'}</b></span>
-                        <span className="ml-auto"><RowAction tone="rose" onClick={() => onRemove(link.sponsor)}>Remove link</RowAction></span>
-                      </div>
-                    </td>
-                  </tr>
-                  {mine.length === 0 && (
-                    <tr className="border-t border-line-soft"><td colSpan={4} className="py-2 pl-11 pr-3 text-faint">Chưa dùng gì từ quota của sponsor này.</td></tr>
-                  )}
-                  {mine.map((d) => (
-                    <tr key={d.invoice + d.product} className="border-t border-line-soft">
-                      <td className="py-2 pl-11 pr-3 text-ink">{d.product}</td>
-                      <td className="px-3 py-2 text-muted">{d.type}</td>
-                      <td className="px-3 py-2 font-mono text-[11.5px] text-ink/80">{d.invoice}</td>
-                      <td className="px-3 py-2 text-right"><b className="tabular-nums">{d.used}</b></td>
-                    </tr>
-                  ))}
-                </Fragment>
+                <tr key={l.sponsor} className="border-t border-line-soft">
+                  <td className="px-3 py-2.5 align-top">
+                    <button onClick={() => s && onOpen?.(s)} className="text-left text-[12.5px] font-medium text-brand hover:underline">{s ? coLabel(s) : l.sponsor}</button>
+                    <span className="block font-mono text-[10px] text-faint">{idOf(l.sponsor)}</span>
+                  </td>
+                  <td className="px-3 py-2.5 align-top text-[11.5px] text-muted"><span className="tabular-nums">{l.since}</span><span className="block text-[10.5px] text-faint">{l.by}</span></td>
+                  <td className="max-w-[300px] px-3 py-2.5 align-top text-[11.5px] text-muted"><span className="line-clamp-2" title={l.jobs.join(', ')}>{l.jobs.length} job · {l.jobs.join(', ')}</span></td>
+                  <td className="px-3 py-2.5 text-right align-top text-[11.5px] tabular-nums text-muted">{l.lastUsed ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-right align-top"><RowAction tone="rose" onClick={() => onRemove(l.sponsor)}>Remove link</RowAction></td>
+                </tr>
               )
             })}
           </tbody>
         </table>
       </div>
-      <p className="mt-2.5 rounded-md bg-canvas/70 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
-        Chỉ có <b className="text-ink/70">số invoice</b> và <b className="text-ink/70">số {coLabel(c)} đã dùng</b>. Tổng quota, số còn lại, trạng thái invoice, PO và giá trị là của sponsor — chỉ hiện trên hồ sơ sponsor (bấm tên để mở).
-        Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho sponsor.
+      <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+        Số {coLabel(c)} đã dùng theo từng hoá đơn nằm ở bảng hoá đơn phía trên (tag <b className="text-muted">Dùng chung</b>). Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho sponsor. Remove link chỉ chặn lần dùng tiếp theo.
       </p>
     </>
   )
@@ -303,20 +278,32 @@ export function SharedQuotaCard({ c, onOpen }: { c: Company; onOpen?: (x: Compan
   const hasPo = poHistory(c).some((p) => p.invoiced) || sponsorProducts(c.name).length > 0
   const isSponsor = links.length > 0
   if (!isSponsor && mine.length === 0 && !hasPo) return null
+  /* INDEPENDENT — holds invoices, shares with no one, draws from no one. No empty
+     table: one line saying so, and where the door is if that changes. */
+  if (!isSponsor && mine.length === 0) return (
+    <DetailCard title="Shared quota" action={<span className="text-[11px] text-faint">chưa dùng chung</span>}>
+      <p className="text-[12px] text-muted">
+        {coLabel(c)} dùng quota của riêng mình — không chia sẻ cho ai, không dùng của ai. Muốn cho công ty khác dùng chung: nhập Company ID của họ ở tab <b className="text-ink/80">Overview</b>, thẻ Dùng chung quota — {coLabel(c)} sẽ thành sponsor.
+      </p>
+    </DetailCard>
+  )
+  /* Both roles (Tiki): two short lists in one card — who draws on it, whom it draws on. */
   return (
     <DetailCard
-      title={mine.length ? 'Shared quota — dùng chung từ sponsor' : 'Shared quota — công ty dùng chung PO này'}
-      action={<span className="text-[11px] text-faint">{mine.length ? `beneficiary · ${mine.length} sponsor` : `${links.filter((l) => l.status === 'active').length} active`}</span>}
+      title="Shared quota"
+      action={<span className="text-[11px] text-faint">{[isSponsor && `sponsor · ${links.filter((l) => l.status === 'active').length} công ty`, mine.length > 0 && `thụ hưởng · ${mine.length} sponsor`].filter(Boolean).join(' · ')}</span>}
     >
-      {mine.length ? (
-        <BeneficiaryView c={c} links={mine} onOpen={onOpen} onRemove={(sp) => setMine((ls) => ls.filter((l) => l.sponsor !== sp))} />
-      ) : (
-        <SponsorView
-          c={c}
-          links={links}
-          onOpen={onOpen}
-          onRemove={(name) => setLinks((ls) => applyChange(ls, c.name, { add: [], remove: [name] }))}
-        />
+      {isSponsor && (
+        <>
+          {mine.length > 0 && <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Công ty dùng chung quota của {coLabel(c)}</h4>}
+          <SponsorView c={c} links={links} onOpen={onOpen} onRemove={(name) => setLinks((ls) => applyChange(ls, c.name, { add: [], remove: [name] }))} />
+        </>
+      )}
+      {mine.length > 0 && (
+        <div className={cn(isSponsor && 'mt-4 border-t border-line-soft pt-3')}>
+          {isSponsor && <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">{coLabel(c)} dùng chung quota của</h4>}
+          <BeneficiaryView c={c} links={mine} onOpen={onOpen} onRemove={(sp) => setMine((ls) => ls.filter((l) => l.sponsor !== sp))} />
+        </div>
       )}
     </DetailCard>
   )

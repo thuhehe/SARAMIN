@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Pill } from '@/pages/admin/ui/status'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { beneficiariesOf } from '@/pages/admin/data/sharedQuota'
+import { beneficiariesOf, sponsorsOf } from '@/pages/admin/data/sharedQuota'
 
 /* ── What this company holds — BY INVOICE ─────────────────────────────────────
  * Client feedback 2026-10-21: the build listed one row per PRODUCT with the
@@ -71,7 +71,7 @@ const INVOICES: Inv[] = [
    Top job 100 = 40 + 60, own use 38, Sao Mai 3, An Khang 1, Phú Thịnh 2 (removed).
    A beneficiary's record never reads these lines — it reads `drawsOf()` below,
    which returns only ITS OWN counts. Every other company shows the generic set. */
-const SM = 'Công ty TNHH Sao Mai', AK = 'Công ty CP An Khang', PT = 'Công ty TNHH Phú Thịnh'
+const SM = 'Công ty TNHH Sao Mai', AK = 'Công ty CP An Khang', PT = 'Công ty TNHH Phú Thịnh', TK = 'Tiki'
 const HOLDINGS: Record<string, Inv[]> = {
   'FPT Software': [
     { no: 'INV-003210-07-2026', po: 'PO-003210-07-2026', issued: '01/07/2026', expires: '01/07/2027', amount: '386.400.000 ₫', lines: [
@@ -79,18 +79,47 @@ const HOLDINGS: Record<string, Inv[]> = {
       { name: 'Basic', type: 'Job posting', total: 20, used: 6, shared: { [SM]: 2 } },
     ] },
     { no: 'INV-003464-09-2026', po: 'PO-003464-09-2026', issued: '10/09/2026', expires: '10/09/2027', amount: '512.000.000 ₫', lines: [
-      { name: 'Top job', type: 'Job posting', total: 60, used: 4 },
+      { name: 'Top job', type: 'Job posting', total: 60, used: 6, shared: { [TK]: 2 } },
       { name: 'Distinction', type: 'Job posting', total: 10, used: 0 },
-      { name: 'CV search — COMBO 200', type: 'CV search', total: 200, used: 77, shared: { [SM]: 12, [PT]: 4 } },
+      { name: 'CV search — COMBO 200', type: 'CV search', total: 200, used: 86, shared: { [SM]: 12, [PT]: 4, [TK]: 9 } },
     ] },
   ],
+  /* BOTH ROLES — Tiki sponsors Sao Mai (its July invoice), draws on FPT Software,
+     and holds an October invoice nobody else has used yet. One level only: the FPT
+     invoices it rides on are NOT passed on to Sao Mai. */
   'Tiki': [
+    { no: 'INV-003589-10-2026', po: 'PO-003589-10-2026', issued: '16/10/2026', expires: '16/04/2027', amount: '48.600.000 ₫', lines: [
+      { name: 'Top job', type: 'Job posting', total: 5, used: 2 },
+      { name: 'Super-star tag', type: 'Add-on', total: 5, used: null },
+    ] },
     { no: 'INV-003451-09-2026', po: 'PO-003451-09-2026', issued: '01/09/2026', expires: '01/09/2027', amount: '96.000.000 ₫', lines: [
       { name: 'Job Posting — Pro', type: 'Job posting', total: 30, used: 9, shared: { [SM]: 1 } },
     ] },
   ],
+  /* INDEPENDENT — buys for itself, shares with no one, draws from no one. Matches
+     its record: job posting only (no CV search), 4 of 10 slots left on the July PO. */
+  'Công ty CP Giáo dục Én Nhỏ': [
+    { no: 'INV-003391-07-2026', po: 'PO-003391-07-2026', issued: '20/07/2026', expires: '20/07/2027', amount: '58.320.000 ₫', lines: [
+      { name: 'Job Posting — Standard', type: 'Job posting', total: 10, used: 6 },
+      { name: 'Top search add-on', type: 'Add-on', total: 3, used: null },
+    ] },
+    { no: 'INV-003598-10-2026', po: 'PO-003598-10-2026', issued: '12/10/2026', expires: '12/10/2027', amount: '72.900.000 ₫', lines: [
+      { name: 'Top job', type: 'Job posting', total: 3, used: 1 },
+      { name: 'Distinction', type: 'Job posting', total: 5, used: 0 },
+    ] },
+    { no: 'INV-002417-01-2025', po: 'PO-002417-01-2025', issued: '21/01/2025', expires: '21/01/2026', amount: '24.300.000 ₫', lines: [
+      { name: 'Job Posting — Basic', type: 'Job posting', total: 5, used: 5 },
+    ] },
+  ],
   /* Beneficiaries that bought nothing themselves — everything they post is shared. */
-  [SM]: [],
+  /* Sao Mai buys a little itself AND draws on two sponsors — the case that needs
+     "which invoice is mine, which one am I riding on" on one table. */
+  [SM]: [
+    { no: 'INV-003577-10-2026', po: 'PO-003577-10-2026', issued: '14/10/2026', expires: '14/10/2027', amount: '31.860.000 ₫', lines: [
+      { name: 'Basic', type: 'Job posting', total: 5, used: 1 },
+      { name: 'Top job', type: 'Job posting', total: 2, used: 0 },
+    ] },
+  ],
   [AK]: [],
 }
 export const holdingsOf = (name: string): Inv[] => HOLDINGS[name] ?? INVOICES
@@ -117,7 +146,21 @@ const TONE = { 'In use': 'active', 'Fully used': 'draft', Expired: 'expired' } a
 const ORDER: Record<InvStatus, number> = { 'In use': 0, 'Fully used': 1, Expired: 2 }
 
 export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
-  const invs = holdingsOf(c.name)
+  /* BENEFICIARY mode (client, 2026-10-21: "giống Én Nhỏ, chỉ cần rõ invoice nào tự
+     mua, invoice nào xài ké"). Same table as any company; the sponsors' invoices it
+     can draw on are mixed in, each header tagged "Dùng chung · từ <sponsor>" against
+     "Tự mua", with a source filter. A sponsor invoice hides PO and amount (client,
+     25/09: never the sponsor's PO); its lines keep total / used / remaining for the
+     whole pool — what the beneficiary can still post — plus one column with this
+     company's own part. */
+  const sponsorLinks = sponsorsOf(c.name)
+  const benef = sponsorLinks.length > 0
+  const ownInvs = holdingsOf(c.name)
+  const srcOf: Record<string, string | null> = {}
+  ownInvs.forEach((i) => { srcOf[i.no] = null })
+  const borrowed = sponsorLinks.flatMap((l) => (HOLDINGS[l.sponsor] ?? []).map((i) => { srcOf[i.no] = l.sponsor; return i }))
+  const invs = [...ownInvs, ...borrowed]
+  const [source, setSource] = useState<'all' | 'own' | 'shared'>('all')
   /* SPONSOR mode — ONE table for every invoice AND every linked company (client,
      2026-10-21: "1 bảng duy nhất cho nhiều invoice và theo dõi cty thụ hưởng").
      The old per-product matrix is folded in as COLUMNS: the sponsor's own use,
@@ -126,11 +169,21 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
      cell. Qty used = the sum across those columns; remaining comes from it. A
      removed link keeps its column (muted) — a slot used is used. */
   const links = beneficiariesOf(c.name)
-  const sponsor = links.length > 0 || invs.some((i) => i.lines.some((l) => l.shared))
+  const sponsor = links.length > 0 || ownInvs.some((i) => i.lines.some((l) => l.shared))
   const benefs = links.map((l) => ({ name: l.beneficiary, removed: l.status === 'removed', co: COMPANIES.find((x) => x.name === l.beneficiary) }))
   const [split, setSplit] = useState(true)
   const byCo = sponsor && split
-  const cols = 5 + (byCo ? benefs.length + 1 : 0)
+  /* ONE column scheme for all four cases. After Qty used / remaining, a "theo công
+     ty" group appears whenever more than one company can touch a line:
+       - first column = THIS company's own part (own invoice: used − others;
+         borrowed invoice: its draw),
+       - then one column per company IT shares with (sponsor only). On a borrowed
+         invoice those cells are blank: it cannot re-share, and the sponsor's other
+         beneficiaries are none of its business.
+     Independent: no group — it would only repeat Qty used. */
+  const group = byCo || benef
+  const cos = byCo ? benefs : []
+  const cols = 5 + (group ? cos.length + 1 : 0)
   const [filter, setFilter] = useState<InvStatus | 'All'>('All')
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   /* In use first, soonest expiry first — that IS the order the quota drains in, so
@@ -141,17 +194,22 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
     if (sa !== sb) return ORDER[sa] - ORDER[sb]
     return sa === 'In use' ? day(a.expires).getTime() - day(b.expires).getTime() : day(b.issued).getTime() - day(a.issued).getTime()
   })
-  const count = (s: InvStatus) => invs.filter((i) => invStatus(i) === s).length
-  const shown = rows.filter((i) => filter === 'All' || invStatus(i) === filter)
+  const bySource = (i: Inv) => source === 'all' || (source === 'own') === (srcOf[i.no] === null)
+  const count = (s: InvStatus) => invs.filter((i) => bySource(i) && invStatus(i) === s).length
+  const shown = rows.filter((i) => bySource(i) && (filter === 'All' || invStatus(i) === filter))
   const sharedSum = (l: Line) => Object.values(l.shared ?? {}).reduce((x, y) => x + y, 0)
   const own = (l: Line) => (l.used ?? 0) - sharedSum(l)
+  const mineOf = (inv: Inv, l: Line) => (srcOf[inv.no] ? l.shared?.[c.name] ?? 0 : own(l))
   /* Footer: what each company has drawn across the invoices on screen. Units mix
      (slots + unlocks), same as the old matrix's TỔNG — the per-line cells above are
      the exact figures; this row answers "who uses most". */
-  const spend = shown.flatMap((i) => i.lines).filter((l) => l.used !== null)
-  const colTotal = (name: string | null) => spend.reduce((s, l) => s + (name === null ? own(l) : l.shared?.[name] ?? 0), 0)
+  const spend = shown.flatMap((i) => i.lines.filter((l) => l.used !== null).map((l) => ({ inv: i, l })))
+  const colTotal = (name: string | null) => spend.reduce((s, { inv, l }) => s + (name === null ? mineOf(inv, l) : srcOf[inv.no] ? 0 : l.shared?.[name] ?? 0), 0)
+  /* = the sum of the company columns — on a borrowed invoice only this company's
+     draw counts, never the sponsor's whole pool. */
+  const poolTotal = colTotal(null) + benefs.reduce((s, b) => s + (byCo ? colTotal(b.name) : 0), 0)
 
-  if (invs.length === 0) return (
+  if (invs.length === 0 && !benef) return (
     <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12px] text-muted">
       {coLabel(c)} chưa tự mua sản phẩm nào — chưa có hoá đơn của riêng mình. Nếu sau này tự mua, hoá đơn hiện ở đây như mọi công ty, tách khỏi phần dùng chung.
     </p>
@@ -170,9 +228,16 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
             onClick={() => setFilter(f)}
             className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', filter === f ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line text-muted hover:bg-canvas')}
           >
-            {f} <span className="tabular-nums opacity-70">{f === 'All' ? invs.length : count(f)}</span>
+            {f} <span className="tabular-nums opacity-70">{f === 'All' ? invs.filter(bySource).length : count(f)}</span>
           </button>
         ))}
+        {benef && (
+          <span className="ml-2 flex items-center gap-1 rounded-full border border-line p-0.5">
+            {([['all', 'Tất cả nguồn'], ['own', `Tự mua ${ownInvs.length}`], ['shared', `Dùng chung ${borrowed.length}`]] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setSource(k)} className={cn('rounded-full px-2.5 py-0.5 text-[11.5px]', source === k ? 'bg-ink/80 font-semibold text-white' : 'text-muted hover:bg-canvas')}>{label}</button>
+            ))}
+          </span>
+        )}
         {sponsor && (
           <label className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11.5px] text-muted hover:bg-canvas">
             <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} className="accent-brand" />
@@ -185,10 +250,10 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + (byCo ? (benefs.length + 1) * 96 : 0) }}>
           <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
-            {byCo && (
+            {group && (
               <tr className="bg-canvas/60">
                 <th colSpan={5} className={cn(stick, 'bg-canvas')} />
-                <th colSpan={benefs.length + 1} className="border-l border-b border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
+                <th colSpan={cos.length + 1} className="border-l border-b border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
               </tr>
             )}
             <tr className="border-b border-line bg-canvas/60 text-left">
@@ -197,10 +262,10 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
               <th className={cn(th, 'w-[90px]')}>Total qty</th>
               <th className={cn(th, 'w-[90px]')}>Qty used</th>
               <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
-              {byCo && (
+              {group && (
                 <>
-                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}<span className="block text-[9.5px] font-normal text-faint">sponsor · tự dùng</span></th>
-                  {benefs.map((b) => (
+                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}<span className="block text-[9.5px] font-normal text-faint">{byCo ? 'tự dùng' : 'đã dùng'}</span></th>
+                  {cos.map((b) => (
                     <th key={b.name} className={cn(th, 'normal-case tracking-normal')}>
                       <button onClick={() => b.co && onOpen?.(b.co)} className={cn('hover:underline', b.removed ? 'text-faint line-through' : 'text-brand')}>{b.co ? coLabel(b.co) : b.name}</button>
                       <span className="block text-[9.5px] font-normal text-faint">{b.removed ? 'đã Remove' : 'thụ hưởng'}</span>
@@ -230,8 +295,18 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                         <span className="text-muted">Ngày xuất <b className="font-medium tabular-nums text-ink/80">{inv.issued}</b></span>
                         <span className="text-muted">Hết hạn <b className={cn('font-medium tabular-nums', st === 'Expired' ? 'text-rose-600' : 'text-ink/80')}>{inv.expires}</b></span>
                         <Pill tone={TONE[st]}>{st}</Pill>
-                        <span className="font-mono text-[11px] text-faint">{inv.po}</span>
-                        <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
+                        {benef && (srcOf[inv.no]
+                          ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                              Dùng chung · từ
+                              <button onClick={() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); if (x) onOpen?.(x) }} className="font-semibold underline-offset-2 hover:underline">{(() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); return x ? coLabel(x) : srcOf[inv.no] })()}</button>
+                            </span>
+                          : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Tự mua</span>)}
+                        {srcOf[inv.no]
+                          ? <span className="text-[10.5px] text-faint" title="Client 25/09/2026: không hiển thị PO của công ty tài trợ">PO &amp; giá trị: chỉ trên hồ sơ sponsor</span>
+                          : <>
+                              <span className="font-mono text-[11px] text-faint">{inv.po}</span>
+                              <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>
+                            </>}
                       </div>
                     </td>
                   </tr>
@@ -251,13 +326,13 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
                             : st === 'Expired' && left > 0 ? <span className="text-faint line-through" title="Hoá đơn đã hết hạn — phần còn lại không dùng được nữa">{left}</span>
                             : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
                         </td>
-                        {byCo && (
+                        {group && (
                           l.used === null
-                            ? <td colSpan={benefs.length + 1} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
+                            ? <td colSpan={cos.length + 1} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
                             : <>
-                                <td className="border-l border-line-soft px-3 py-2 text-right">{num(own(l))}</td>
-                                {benefs.map((b) => (
-                                  <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(l.shared?.[b.name] ?? 0, b.removed)}</td>
+                                <td className="border-l border-line-soft px-3 py-2 text-right">{num(mineOf(inv, l))}</td>
+                                {cos.map((b) => (
+                                  <td key={b.name} className={cn('px-3 py-2 text-right', srcOf[inv.no] && 'bg-canvas/50')} title={srcOf[inv.no] ? 'Hoá đơn dùng chung — không chia tiếp được' : undefined}>{srcOf[inv.no] ? <span className="text-faint">·</span> : num(l.shared?.[b.name] ?? 0, b.removed)}</td>
                                 ))}
                               </>
                         )}
@@ -268,16 +343,16 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
               )
             })}
           </tbody>
-          {byCo && (
+          {group && (
             <tfoot>
               <tr className="border-t-2 border-line bg-canvas/70 text-[11.5px]">
                 <td colSpan={3} className={cn(stick, 'bg-canvas px-3 py-2 font-semibold text-ink/80')}>
                   Tổng đã dùng theo công ty<span className="block text-[10px] font-normal text-faint">trên các hoá đơn đang hiện · cộng chung slot và lượt mở CV</span>
                 </td>
-                <td className="px-3 py-2 text-right"><b className="tabular-nums">{spend.reduce((s, l) => s + (l.used ?? 0), 0)}</b></td>
+                <td className="px-3 py-2 text-right"><b className="tabular-nums">{poolTotal}</b></td>
                 <td />
                 <td className="border-l border-line px-3 py-2 text-right">{num(colTotal(null))}</td>
-                {benefs.map((b) => <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(colTotal(b.name), b.removed)}</td>)}
+                {cos.map((b) => <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(colTotal(b.name), b.removed)}</td>)}
               </tr>
             </tfoot>
           )}
@@ -287,6 +362,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
         <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch và không dùng được nữa. Dòng add-on (Top search, Super-star tag) đi kèm tin đăng nên không có số đã dùng và không giữ hoá đơn ở In use.
         Hoá đơn Fully used và Expired thu gọn sẵn — bấm + để xem.
+        {benef && <> <b className="text-muted">Tự mua</b> — hoá đơn của chính {coLabel(c)}, đủ PO và giá trị. <b className="text-muted">Dùng chung</b> — hoá đơn của sponsor mà {coLabel(c)} được dùng ké: số tổng / đã dùng / còn lại là của cả nhóm (còn lại = {coLabel(c)} còn đăng được bao nhiêu), cột <b className="text-muted">{coLabel(c)} đã dùng</b> là phần của riêng {coLabel(c)}; PO và giá trị không hiện.</>}
         {byCo && <> Mỗi công ty được link là <b className="text-muted">một cột</b> — link thêm thì thêm cột, cuộn ngang khi nhiều; cột Product đứng yên. <b className="text-muted">Qty used</b> = tổng các cột công ty bên phải; tên gạch là link đã Remove — số đã dùng vẫn giữ. Bỏ tick "Tách theo công ty" để về bảng gọn.</>}
       </p>
     </div>
