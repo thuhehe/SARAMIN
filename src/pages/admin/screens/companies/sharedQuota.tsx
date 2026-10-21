@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { companyId } from '@/lib/companyId'
 import { COMPANIES, coKey, coLabel } from '@/pages/admin/data/companies'
@@ -9,7 +9,7 @@ import type { ShareLink } from '@/pages/admin/data/sharedQuota'
 import { DetailCard } from '@/pages/admin/ui/fields'
 import { RowAction } from '@/pages/admin/ui/list'
 import { Pill } from '@/pages/admin/ui/status'
-import { Table } from '@/pages/admin/ui/table'
+import { drawsOf } from '@/pages/admin/screens/companies/holdings'
 
 /*
  * The Shared quota card on a company record — Products & billing tab.
@@ -261,44 +261,68 @@ function SponsorView({ c, links, onOpen, onRemove }: { c: Company; links: ShareL
  * One panel per sponsor, one tile per product with a spend, the count big.
  */
 function BeneficiaryView({ c, links, onOpen, onRemove }: { c: Company; links: ShareLink[]; onOpen?: (x: Company) => void; onRemove: (sponsor: string) => void }) {
-  const unitOf = (sponsor: string, product: string) => sponsorProducts(sponsor).find((p) => p.name === product)?.unit ?? 'đơn vị'
-  /* One plain table (page feedback): a row per product the company spent from a
-     sponsor. The sponsor's invoice NUMBER is the only thing of its documents on the
-     row — no PO, amount, total or remainder. */
-  const rows = links.flatMap((link) => {
-    const s = byName(link.sponsor)
-    const used = Object.entries(link.used).filter(([, n]) => n > 0)
-    const items: [ShareLink, string, number][] = used.length ? used.map(([p, n]) => [link, p, n]) : [[link, '', 0]]
-    return items.map(([l, product, n], i) => [
-      i === 0 ? <span key="inv" className="font-mono text-[11.5px] text-ink">{l.invoice ?? '—'}</span> : <span key="inv" />,
-      i === 0
-        ? <button key="sp" onClick={() => s && onOpen?.(s)} className="text-left font-medium text-brand hover:underline">{s ? coLabel(s) : l.sponsor}</button>
-        : <span key="sp" />,
-      product ? <span key="p">{product}</span> : <span key="p" className="text-faint">chưa dùng gì</span>,
-      product ? <b key="n" className="tabular-nums">{n}<span className="font-normal text-faint"> {unitOf(l.sponsor, product)}</span></b> : <span key="n" />,
-      i === 0 ? <span key="lu" className="tabular-nums text-muted">{l.lastUsed ?? '—'}</span> : <span key="lu" />,
-      i === 0 ? <RowAction key="x" tone="rose" onClick={() => onRemove(l.sponsor)}>Remove link</RowAction> : <span key="x" />,
-    ])
-  })
+  /* Same shape as the invoice table below it (client, 2026-10-21): a header row
+     per SPONSOR, the lines it drew underneath. Each line names the sponsor's
+     invoice NUMBER and this company's own count — nothing else of the sponsor's
+     document: no total, no remaining, no status (Fully used would leak the
+     balance), no PO, no amount. */
+  const draws = drawsOf(c.name)
+  const total = draws.reduce((s, d) => s + d.used, 0)
   return (
     <>
-      <p className="mb-2 text-[11.5px] leading-relaxed text-muted">
-        {coLabel(c)} là <b className="text-ink/80">công ty thụ hưởng</b> — đăng tin và mở CV từ quota của {links.length} công ty tài trợ. Bảng dưới là <b className="text-ink/80">số {coLabel(c)} đã dùng</b>, theo từng sản phẩm.
-      </p>
-      <Table
-        minW={720}
-        cols={[
-          { label: 'Invoice', w: '1.1fr' },
-          { label: 'Shared by', w: '1.3fr' },
-          { label: 'Sản phẩm', w: '1.4fr' },
-          { label: 'Đã dùng', w: '0.8fr', align: 'r' },
-          { label: 'Lần dùng gần nhất', w: '0.9fr', align: 'r' },
-          { label: '', w: '0.8fr', align: 'r' },
-        ]}
-        rows={rows}
-      />
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-canvas px-3 py-2 text-[11.5px] text-muted">
+        <span><b className="text-ink/80">{coLabel(c)}</b> là công ty thụ hưởng của <b className="text-ink/80">{links.length}</b> sponsor</span>
+        <span>·</span>
+        <span>đã dùng <b className="text-ink/80">{total}</b> đơn vị từ quota được chia sẻ</span>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-line">
+        <table className="w-full min-w-[720px] border-collapse text-[12px]">
+          <thead>
+            <tr className="border-b border-line bg-canvas/60 text-left text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+              <th className="px-3 py-2">Product</th>
+              <th className="w-[170px] px-3 py-2">Product type</th>
+              <th className="w-[190px] px-3 py-2">Từ invoice của sponsor</th>
+              <th className="w-[130px] px-3 py-2 text-right">{coLabel(c)} đã dùng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {links.map((link) => {
+              const s = byName(link.sponsor)
+              const mine = draws.filter((d) => d.sponsor === link.sponsor)
+              return (
+                <Fragment key={link.sponsor}>
+                  <tr className="border-t border-line bg-brand-soft/30">
+                    <td colSpan={4} className="px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">Sponsor</span>
+                        <button onClick={() => s && onOpen?.(s)} className="text-[12.5px] font-semibold text-brand hover:underline">{s ? coLabel(s) : link.sponsor}</button>
+                        <span className="font-mono text-[10.5px] text-faint">{idOf(link.sponsor)}</span>
+                        <span className="text-muted">Link từ <b className="font-medium tabular-nums text-ink/80">{link.since}</b> · {link.by}</span>
+                        <span className="text-muted">Lần dùng gần nhất <b className="font-medium tabular-nums text-ink/80">{link.lastUsed ?? '—'}</b></span>
+                        <span className="ml-auto"><RowAction tone="rose" onClick={() => onRemove(link.sponsor)}>Remove link</RowAction></span>
+                      </div>
+                    </td>
+                  </tr>
+                  {mine.length === 0 && (
+                    <tr className="border-t border-line-soft"><td colSpan={4} className="py-2 pl-11 pr-3 text-faint">Chưa dùng gì từ quota của sponsor này.</td></tr>
+                  )}
+                  {mine.map((d) => (
+                    <tr key={d.invoice + d.product} className="border-t border-line-soft">
+                      <td className="py-2 pl-11 pr-3 text-ink">{d.product}</td>
+                      <td className="px-3 py-2 text-muted">{d.type}</td>
+                      <td className="px-3 py-2 font-mono text-[11.5px] text-ink/80">{d.invoice}</td>
+                      <td className="px-3 py-2 text-right"><b className="tabular-nums">{d.used}</b></td>
+                    </tr>
+                  ))}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
       <p className="mt-2.5 rounded-md bg-canvas/70 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
-        Chỉ có <b className="text-ink/70">số invoice</b> và <b className="text-ink/70">số đã dùng</b> ở đây. Tổng quota, số còn lại, PO và giá trị là của công ty tài trợ — chỉ hiện trên hồ sơ của họ. Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho công ty tài trợ.
+        Chỉ có <b className="text-ink/70">số invoice</b> và <b className="text-ink/70">số {coLabel(c)} đã dùng</b>. Tổng quota, số còn lại, trạng thái invoice, PO và giá trị là của sponsor — chỉ hiện trên hồ sơ sponsor (bấm tên để mở).
+        Job của {coLabel(c)} vẫn đứng tên {coLabel(c)}; doanh thu, hạng và customer status tính cho sponsor.
       </p>
     </>
   )

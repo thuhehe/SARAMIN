@@ -25,10 +25,10 @@ import { AddContactModal, ContactDetail } from '@/pages/admin/screens/companies/
 import { CompanyDocs } from '@/pages/admin/screens/companies/docs'
 import { OwnerHistory, PipelineStatusPicker } from '@/pages/admin/screens/companies/owner'
 import { CompanyPageEditor } from '@/pages/admin/screens/companies/page'
-import { MembershipStat, ProductsQuota } from '@/pages/admin/screens/companies/products'
+import { MembershipStat } from '@/pages/admin/screens/companies/products'
 import { HoldingsByInvoice } from '@/pages/admin/screens/companies/holdings'
 import { SharedQuotaCard, SharedQuotaOverview } from '@/pages/admin/screens/companies/sharedQuota'
-import { sponsorsOf } from '@/pages/admin/data/sharedQuota'
+import { beneficiariesOf, sponsorsOf } from '@/pages/admin/data/sharedQuota'
 import { CoTabBar } from '@/pages/admin/screens/companies/tabBar'
 import { CoRoleBuilder, InviteUserModal } from '@/pages/admin/screens/companies/users'
 import { NewQuotationModal } from '@/pages/admin/screens/sales/newQuotation'
@@ -859,7 +859,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
             {!isPool && <AffiliatedCompanies c={c} onOpen={onOpen} />}
             {/* Shared quota, the OTHER kind of link between companies — beside the legal
                 tree so the two are read together and never confused. */}
-            {!isPool && <SharedQuotaOverview c={c} onOpen={onOpen} onGoBilling={() => setTab('Products & billing')} />}
+            {!isPool && <SharedQuotaOverview key={c.name} c={c} onOpen={onOpen} onGoBilling={() => setTab('Products & billing')} />}
           </div>
 
           {/* activity composer + full trail — the key section, so it gets the wider side */}
@@ -1055,31 +1055,40 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
       )}
 
       {/* ── Products & billing ───────────────────────────────────────────── */}
-      {tab === 'Products & billing' && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          {/* Shared quota — one PO, several companies. Full width, ABOVE the meters,
-              because it changes how the meters below have to be read: on a sponsor
-              the numbers include other companies' spends, on a beneficiary there
-              are no numbers at all. Renders nothing on a record it does not apply to. */}
-          <div className="lg:col-span-2"><SharedQuotaCard c={c} onOpen={onOpen} /></div>
-          {/* WHAT THIS COMPANY HOLDS, BY INVOICE (client, 2026-10-21) — one header row
-              per invoice, its product lines under it. Replaces the PO history card,
-              which listed the same invoices without what was left on them. */}
-          <div className="lg:col-span-2">
-            <DetailCard title="What this company holds, by invoice" action={<span className="text-[11px] text-faint">mỗi hoá đơn một nhóm · sản phẩm bên dưới</span>}>
-              <HoldingsByInvoice />
+      {tab === 'Products & billing' && (() => {
+        /* ROLE-AWARE ORDER (shared quota, 2026-10-21). A SPONSOR opens this tab to
+           read its balance, so its invoices come first — with whose spends are in
+           each "Qty used" — and the who-used-what matrix follows. A BENEFICIARY
+           has no balance of the sponsor's to read: what it drew comes first, its
+           own purchases (often none) after. Anyone else: as before. */
+        const asBeneficiary = sponsorsOf(c.name)
+        const asSponsor = beneficiariesOf(c.name).filter((l) => l.status === 'active')
+        const name = (n: string) => { const x = COMPANIES.find((co) => co.name === n); return x ? coLabel(x) : n }
+        const holdings = (
+          <div className="lg:col-span-2" key="h">
+            <DetailCard
+              title={asBeneficiary.length ? `Hoá đơn của chính ${coLabel(c)}` : 'What this company holds, by invoice'}
+              action={<span className="text-[11px] text-faint">{asSponsor.length ? 'Qty used gồm cả công ty liên kết' : 'mỗi hoá đơn một nhóm · sản phẩm bên dưới'}</span>}
+            >
+              <HoldingsByInvoice key={c.name} c={c} onOpen={onOpen} />
             </DetailCard>
           </div>
-          {/* Manual services used to be a card of their own beside this one. They are
-              entitlement bought on a PO like everything else, so they are lines in
-              this list now — with their delivery log where their quota is shown. */}
-          <div className="lg:col-span-2">
-            <DetailCard title="Products & quota" action={<span className="text-[11px] text-faint">theo từng sản phẩm</span>}>
-              <ProductsQuota c={c} />
-            </DetailCard>
+        )
+        const shared = <div className="lg:col-span-2" key="s"><SharedQuotaCard key={c.name} c={c} onOpen={onOpen} /></div>
+        return (
+          <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+            {(asSponsor.length > 0 || asBeneficiary.length > 0) && (
+              <div className={cn('lg:col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-[12px]', asSponsor.length ? 'border-brand/30 bg-brand-soft text-brand' : 'border-line bg-canvas text-muted')}>
+                <Pill tone={asSponsor.length ? 'active' : 'neutral'}>{asSponsor.length ? 'Sponsor' : 'Công ty thụ hưởng'}</Pill>
+                {asSponsor.length
+                  ? <span>{asSponsor.length} công ty đang dùng chung quota của {coLabel(c)}: <b>{asSponsor.map((l) => name(l.beneficiary)).join(', ')}</b>. Số đã dùng và còn lại bên dưới đã gồm phần của họ.</span>
+                  : <span>Dùng chung quota của <b className="text-ink/80">{asBeneficiary.map((l) => name(l.sponsor)).join(', ')}</b>. Tổng và số còn lại của quota đó chỉ hiện trên hồ sơ sponsor.</span>}
+              </div>
+            )}
+            {asBeneficiary.length ? [shared, holdings] : asSponsor.length ? [holdings, shared] : [shared, holdings]}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── Company page ─────────────────────────────────────────────────── */}
       {tab === 'Company page' && isPool && (
