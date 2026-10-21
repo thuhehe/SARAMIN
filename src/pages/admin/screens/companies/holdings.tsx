@@ -200,14 +200,6 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   const sharedSum = (l: Line) => Object.values(l.shared ?? {}).reduce((x, y) => x + y, 0)
   const own = (l: Line) => (l.used ?? 0) - sharedSum(l)
   const mineOf = (inv: Inv, l: Line) => (srcOf[inv.no] ? l.shared?.[c.name] ?? 0 : own(l))
-  /* Footer: what each company has drawn across the invoices on screen. Units mix
-     (slots + unlocks), same as the old matrix's TỔNG — the per-line cells above are
-     the exact figures; this row answers "who uses most". */
-  const spend = shown.flatMap((i) => i.lines.filter((l) => l.used !== null).map((l) => ({ inv: i, l })))
-  const colTotal = (name: string | null) => spend.reduce((s, { inv, l }) => s + (name === null ? mineOf(inv, l) : srcOf[inv.no] ? 0 : l.shared?.[name] ?? 0), 0)
-  /* = the sum of the company columns — on a borrowed invoice only this company's
-     draw counts, never the sponsor's whole pool. */
-  const poolTotal = colTotal(null) + benefs.reduce((s, b) => s + (byCo ? colTotal(b.name) : 0), 0)
 
   if (invs.length === 0 && !benef) return (
     <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12px] text-muted">
@@ -343,19 +335,6 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
               )
             })}
           </tbody>
-          {group && (
-            <tfoot>
-              <tr className="border-t-2 border-line bg-canvas/70 text-[11.5px]">
-                <td colSpan={3} className={cn(stick, 'bg-canvas px-3 py-2 font-semibold text-ink/80')}>
-                  Tổng đã dùng theo công ty<span className="block text-[10px] font-normal text-faint">trên các hoá đơn đang hiện · cộng chung slot và lượt mở CV</span>
-                </td>
-                <td className="px-3 py-2 text-right"><b className="tabular-nums">{poolTotal}</b></td>
-                <td />
-                <td className="border-l border-line px-3 py-2 text-right">{num(colTotal(null))}</td>
-                {cos.map((b) => <td key={b.name} className={cn('px-3 py-2 text-right')}>{num(colTotal(b.name), b.removed)}</td>)}
-              </tr>
-            </tfoot>
-          )}
         </table>
       </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
