@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { Pill } from '@/pages/admin/ui/status'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
@@ -146,71 +147,203 @@ const TONE = { 'In use': 'active', 'Fully used': 'draft', Expired: 'expired' } a
 const ORDER: Record<InvStatus, number> = { 'In use': 0, 'Fully used': 1, Expired: 2 }
 
 export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Company) => void }) {
-  /* BENEFICIARY mode (client, 2026-10-21: "giống Én Nhỏ, chỉ cần rõ invoice nào tự
-     mua, invoice nào xài ké"). Same table as any company; the sponsors' invoices it
-     can draw on are mixed in, each header tagged "Sponsored by <sponsor>" against
-     "Own purchase", with a source filter (tag names: client, 2026-10-21 — English,
-     in the Sponsor / Beneficiary vocabulary). A sponsor invoice hides PO and amount (client,
-     25/09: never the sponsor's PO); its lines keep total / used / remaining for the
-     whole pool — what the beneficiary can still post — plus one column with this
-     company's own part. */
+  /* TWO PARTS, split by SOURCE (client, 2026-10-21). A sponsor only ever shares what
+     it bought, so "invoices as sponsor" = its own purchases; "invoices as
+     beneficiary" = the sponsors'. Each part keeps one column set:
+       OWN PURCHASE — full numbers (total · used · remaining). On a sponsor, and only
+         here, a "theo công ty" group splits Qty used: its own part, then one
+         column per company it shares with.
+       SPONSORED BY OTHER COMPANIES — only the products THIS company used, and only
+         its own count. No total, no remaining, no PO, no amount: those are the
+         sponsor's (client, 25/09/2026 and 21/10/2026).
+     Independent and pure sponsor: part 1 only, no heading. */
   const sponsorLinks = sponsorsOf(c.name)
   const benef = sponsorLinks.length > 0
   const ownInvs = holdingsOf(c.name)
-  const srcOf: Record<string, string | null> = {}
-  ownInvs.forEach((i) => { srcOf[i.no] = null })
-  const borrowed = sponsorLinks.flatMap((l) => (HOLDINGS[l.sponsor] ?? []).map((i) => { srcOf[i.no] = l.sponsor; return i }))
-  const invs = [...ownInvs, ...borrowed]
-  const [source, setSource] = useState<'all' | 'own' | 'shared'>('all')
-  /* SPONSOR mode — ONE table for every invoice AND every linked company (client,
-     2026-10-21: "1 bảng duy nhất cho nhiều invoice và theo dõi cty thụ hưởng").
-     The old per-product matrix is folded in as COLUMNS: the sponsor's own use,
-     then one column per linked company, under one "Đã dùng" group header. Rows stay
-     the invoice lines, so "which invoice" and "which company" read off the same
-     cell. Qty used = the sum across those columns; remaining comes from it. A
-     removed link keeps its column (muted) — a slot used is used. */
+  const borrowed = sponsorLinks.flatMap((l) => (HOLDINGS[l.sponsor] ?? []).map((inv) => ({ inv, sponsor: l.sponsor })))
+  const borrowedNos = new Set(borrowed.map((b) => b.inv.no))
   const links = beneficiariesOf(c.name)
-  const sponsor = links.length > 0 || ownInvs.some((i) => i.lines.some((l) => l.shared))
+  const sponsor = links.length > 0
   const benefs = links.map((l) => ({ name: l.beneficiary, removed: l.status === 'removed', co: COMPANIES.find((x) => x.name === l.beneficiary) }))
   const [split, setSplit] = useState(true)
   const byCo = sponsor && split
-  /* ONE column scheme for all four cases. After Qty used / remaining, a "theo công
-     ty" group appears whenever more than one company can touch a line:
-       - first column = THIS company's own part (own invoice: used − others;
-         borrowed invoice: its draw),
-       - then one column per company IT shares with (sponsor only). On a borrowed
-         invoice those cells are blank: it cannot re-share, and the sponsor's other
-         beneficiaries are none of its business.
-     Independent: no group — it would only repeat Qty used. */
-  const group = byCo || benef
-  const cos = byCo ? benefs : []
-  const cols = 5 + (group ? cos.length + 1 : 0)
   const [filter, setFilter] = useState<InvStatus | 'All'>('All')
+  const [source, setSource] = useState<'all' | 'own' | 'shared'>('all')
   const [closed, setClosed] = useState<Record<string, boolean>>({})
-  /* In use first, soonest expiry first — that IS the order the quota drains in, so
-     the top invoice is the one the next posting will spend. Then Fully used, then
-     Expired, newest first. */
-  const rows = [...invs].sort((a, b) => {
+
+  /* In use first, soonest expiry first — that IS the order the quota drains in.
+     Then Fully used, then Expired, newest first. */
+  const byDrain = (a: Inv, b: Inv) => {
     const sa = invStatus(a), sb = invStatus(b)
     if (sa !== sb) return ORDER[sa] - ORDER[sb]
     return sa === 'In use' ? day(a.expires).getTime() - day(b.expires).getTime() : day(b.issued).getTime() - day(a.issued).getTime()
-  })
-  const bySource = (i: Inv) => source === 'all' || (source === 'own') === (srcOf[i.no] === null)
-  const count = (s: InvStatus) => invs.filter((i) => bySource(i) && invStatus(i) === s).length
-  const shown = rows.filter((i) => bySource(i) && (filter === 'All' || invStatus(i) === filter))
+  }
+  const statusOk = (i: Inv) => filter === 'All' || invStatus(i) === filter
+  const sourceOk = (i: Inv) => source === 'all' || (source === 'shared') === borrowedNos.has(i.no)
+  const all = [...ownInvs, ...borrowed.map((b) => b.inv)]
+  const count = (st: InvStatus) => all.filter((i) => sourceOk(i) && invStatus(i) === st).length
+  const ownShown = source === 'shared' ? [] : ownInvs.filter(statusOk).sort(byDrain)
+  const borShown = source === 'own' ? [] : borrowed.filter((b) => statusOk(b.inv)).sort((x, y) => byDrain(x.inv, y.inv))
+
   const sharedSum = (l: Line) => Object.values(l.shared ?? {}).reduce((x, y) => x + y, 0)
   const own = (l: Line) => (l.used ?? 0) - sharedSum(l)
-  const mineOf = (inv: Inv, l: Line) => (srcOf[inv.no] ? l.shared?.[c.name] ?? 0 : own(l))
-
-  if (invs.length === 0 && !benef) return (
-    <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12px] text-muted">
-      {coLabel(c)} chưa tự mua sản phẩm nào — chưa có hoá đơn của riêng mình. Nếu sau này tự mua, hoá đơn hiện ở đây như mọi công ty, tách khỏi phần dùng chung.
-    </p>
-  )
-
-  const num = (n: number, muted?: boolean) => <span className={cn('tabular-nums', n === 0 ? 'text-faint' : muted ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
+  const num = (n: number, muted?: boolean) => <span className={cn('tabular-nums', n === 0 || muted ? 'text-faint' : 'font-semibold text-ink')}>{n === 0 ? '—' : n}</span>
+  const nameOf = (n: string) => { const x = COMPANIES.find((co) => co.name === n); return x ? coLabel(x) : n }
+  const openCo = (n: string) => { const x = COMPANIES.find((co) => co.name === n); if (x) onOpen?.(x) }
   const stick = 'sticky left-0 z-10'
   const th = 'px-3 py-2 text-right whitespace-nowrap'
+
+  /* The invoice header row — the four facts, then the source tag, then (own only) the amount. */
+  const head = (inv: Inv, cols: number, tag: ReactNode, amount: boolean) => {
+    const st = invStatus(inv)
+    const isClosed = closed[inv.no] ?? st !== 'In use'
+    const bg = st === 'In use' ? 'bg-[#f3f7ff]' : 'bg-canvas'
+    return {
+      isClosed,
+      row: (
+        <tr className={cn('border-t border-line', bg)}>
+          <td colSpan={cols} className="p-0">
+            <div className={cn(stick, 'flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2', bg)}>
+              <button
+                onClick={() => setClosed((x) => ({ ...x, [inv.no]: !isClosed }))}
+                className="grid h-5 w-5 place-items-center rounded border border-line bg-surface text-[11px] text-muted"
+                aria-label={isClosed ? 'Mở' : 'Thu gọn'}
+              >{isClosed ? '+' : '−'}</button>
+              <span className="font-mono text-[12px] font-semibold text-brand">{inv.no}</span>
+              <span className="text-muted">Ngày xuất <b className="font-medium tabular-nums text-ink/80">{inv.issued}</b></span>
+              <span className="text-muted">Hết hạn <b className={cn('font-medium tabular-nums', st === 'Expired' ? 'text-rose-600' : 'text-ink/80')}>{inv.expires}</b></span>
+              <Pill tone={TONE[st]}>{st}</Pill>
+              {tag}
+              {amount && <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>}
+            </div>
+          </td>
+        </tr>
+      ),
+    }
+  }
+
+  /* PART 1 — OWN PURCHASE */
+  const groupCols = byCo ? benefs.length + 1 : 0
+  const ownCols = 5 + groupCols
+  const ownTag = benef ? <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span> : null
+  const ownTable = (
+    <div className="overflow-x-auto rounded-xl border border-line">
+      <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + groupCols * 96 }}>
+        <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+          {byCo && (
+            <tr className="bg-canvas/60">
+              <th colSpan={5} className={cn(stick, 'bg-canvas')} />
+              <th colSpan={groupCols} className="border-l border-b border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
+            </tr>
+          )}
+          <tr className="border-b border-line bg-canvas/60 text-left">
+            <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
+            <th className="w-[130px] px-3 py-2">Product type</th>
+            <th className={cn(th, 'w-[90px]')}>Total qty</th>
+            <th className={cn(th, 'w-[90px]')}>Qty used</th>
+            <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
+            {byCo && (
+              <>
+                <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}</th>
+                {benefs.map((b) => (
+                  <th key={b.name} className={cn(th, 'normal-case tracking-normal')}>
+                    <button onClick={() => b.co && onOpen?.(b.co)} className={cn('hover:underline', b.removed ? 'text-faint line-through' : 'text-brand')}>{b.co ? coLabel(b.co) : b.name}</button>
+                    {b.removed && <span className="block text-[9.5px] font-normal text-faint">đã Remove</span>}
+                  </th>
+                ))}
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {ownShown.map((inv) => {
+            const st = invStatus(inv)
+            const h = head(inv, ownCols, ownTag, true)
+            return (
+              <Fragment key={inv.no}>
+                {h.row}
+                {!h.isClosed && inv.lines.map((l) => {
+                  const left = l.used === null ? null : l.total - l.used
+                  return (
+                    <tr key={inv.no + l.name} className="border-t border-line-soft">
+                      <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                      <td className="px-3 py-2 text-muted">{l.type}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{l.total}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {l.used === null ? <span className="text-faint" title="Đi kèm một tin đăng — không trừ riêng">—</span> : byCo ? <b className="font-semibold">{l.used}</b> : l.used}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {left === null ? <span className="text-[10.5px] text-faint">đi kèm tin</span>
+                          : st === 'Expired' && left > 0 ? <span className="text-faint line-through" title="Hoá đơn đã hết hạn — phần còn lại không dùng được nữa">{left}</span>
+                          : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
+                      </td>
+                      {byCo && (
+                        l.used === null
+                          ? <td colSpan={groupCols} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
+                          : <>
+                              <td className="border-l border-line-soft px-3 py-2 text-right">{num(own(l))}</td>
+                              {benefs.map((b) => <td key={b.name} className="px-3 py-2 text-right">{num(l.shared?.[b.name] ?? 0, b.removed)}</td>)}
+                            </>
+                      )}
+                    </tr>
+                  )
+                })}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  /* PART 2 — SPONSORED BY OTHER COMPANIES: only lines this company used, only its count. */
+  const borTable = (
+    <div className="overflow-x-auto rounded-xl border border-line">
+      <table className="w-full min-w-[640px] border-collapse text-[12px]">
+        <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+          <tr className="border-b border-line bg-canvas/60 text-left">
+            <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
+            <th className="w-[160px] px-3 py-2">Product type</th>
+            <th className={cn(th, 'w-[160px] normal-case tracking-normal text-ink/80')}>Qty used by {coLabel(c)}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {borShown.map(({ inv, sponsor: sp }) => {
+            const tag = (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                Sponsored by <button onClick={() => openCo(sp)} className="font-semibold underline-offset-2 hover:underline">{nameOf(sp)}</button>
+              </span>
+            )
+            const h = head(inv, 3, tag, false)
+            const usedLines = inv.lines.filter((l) => (l.shared?.[c.name] ?? 0) > 0)
+            return (
+              <Fragment key={inv.no}>
+                {h.row}
+                {!h.isClosed && usedLines.length === 0 && (
+                  <tr className="border-t border-line-soft"><td colSpan={3} className="py-2 pl-11 pr-3 text-[11.5px] text-faint">{coLabel(c)} chưa dùng sản phẩm nào từ hoá đơn này.</td></tr>
+                )}
+                {!h.isClosed && usedLines.map((l) => (
+                  <tr key={inv.no + l.name} className="border-t border-line-soft">
+                    <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
+                    <td className="px-3 py-2 text-muted">{l.type}</td>
+                    <td className="px-3 py-2 text-right"><b className="tabular-nums">{l.shared![c.name]}</b></td>
+                  </tr>
+                ))}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  const section = (title: ReactNode, n: number, body: ReactNode) => (
+    <section className="mt-3 first:mt-0">
+      <h4 className="mb-1.5 flex items-baseline gap-2 text-[11.5px] font-semibold text-ink/80">{title}<span className="font-normal text-faint">{n} hoá đơn</span></h4>
+      {body}
+    </section>
+  )
+  const empty = (txt: string) => <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[12px] text-muted">{txt}</p>
 
   return (
     <div>
@@ -221,7 +354,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
             onClick={() => setFilter(f)}
             className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', filter === f ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line text-muted hover:bg-canvas')}
           >
-            {f} <span className="tabular-nums opacity-70">{f === 'All' ? invs.filter(bySource).length : count(f)}</span>
+            {f} <span className="tabular-nums opacity-70">{f === 'All' ? all.filter(sourceOk).length : count(f)}</span>
           </button>
         ))}
         {benef && (
@@ -240,108 +373,24 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <span className="ml-auto text-[10.5px] text-faint">Quota trừ theo hoá đơn hết hạn sớm nhất trước — hoá đơn In use đầu tiên là hoá đơn lần đăng tin tới sẽ trừ.</span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-line">
-        <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + (byCo ? (benefs.length + 1) * 96 : 0) }}>
-          <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
-            {group && (
-              <tr className="bg-canvas/60">
-                <th colSpan={5} className={cn(stick, 'bg-canvas')} />
-                <th colSpan={cos.length + 1} className="border-l border-b border-line px-3 pb-1 pt-2 text-center">Qty used — tách theo công ty</th>
-              </tr>
-            )}
-            <tr className="border-b border-line bg-canvas/60 text-left">
-              <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
-              <th className="w-[130px] px-3 py-2">Product type</th>
-              <th className={cn(th, 'w-[90px]')}>Total qty</th>
-              <th className={cn(th, 'w-[90px]')}>Qty used</th>
-              <th className={cn(th, 'w-[110px]')}>Qty remaining</th>
-              {group && (
-                <>
-                  <th className={cn(th, 'border-l border-line normal-case tracking-normal text-ink/80')}>{coLabel(c)}</th>
-                  {cos.map((b) => (
-                    <th key={b.name} className={cn(th, 'normal-case tracking-normal')}>
-                      <button onClick={() => b.co && onOpen?.(b.co)} className={cn('hover:underline', b.removed ? 'text-faint line-through' : 'text-brand')}>{b.co ? coLabel(b.co) : b.name}</button>
-                      {b.removed && <span className="block text-[9.5px] font-normal text-faint">đã Remove</span>}
-                    </th>
-                  ))}
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((inv) => {
-              const st = invStatus(inv)
-              const isClosed = closed[inv.no] ?? st !== 'In use'
-              const head = st === 'In use' ? 'bg-[#f3f7ff]' : 'bg-canvas'
-              return (
-                <Fragment key={inv.no}>
-                  {/* INVOICE HEADER ROW — the four facts the client asked for, in one line */}
-                  <tr className={cn('border-t border-line', head)}>
-                    <td colSpan={cols} className="p-0">
-                      <div className={cn(stick, 'flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2', head)}>
-                        <button
-                          onClick={() => setClosed((x) => ({ ...x, [inv.no]: !isClosed }))}
-                          className="grid h-5 w-5 place-items-center rounded border border-line bg-surface text-[11px] text-muted"
-                          aria-label={isClosed ? 'Mở' : 'Thu gọn'}
-                        >{isClosed ? '+' : '−'}</button>
-                        <span className="font-mono text-[12px] font-semibold text-brand">{inv.no}</span>
-                        <span className="text-muted">Ngày xuất <b className="font-medium tabular-nums text-ink/80">{inv.issued}</b></span>
-                        <span className="text-muted">Hết hạn <b className={cn('font-medium tabular-nums', st === 'Expired' ? 'text-rose-600' : 'text-ink/80')}>{inv.expires}</b></span>
-                        <Pill tone={TONE[st]}>{st}</Pill>
-                        {benef && (srcOf[inv.no]
-                          ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                              Sponsored by
-                              <button onClick={() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); if (x) onOpen?.(x) }} className="font-semibold underline-offset-2 hover:underline">{(() => { const x = COMPANIES.find((co) => co.name === srcOf[inv.no]); return x ? coLabel(x) : srcOf[inv.no] })()}</button>
-                            </span>
-                          : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">Own purchase</span>)}
-                        {/* No PO number on the header (client, 2026-10-21) — the invoice number is
-                            the reference. Amount only on own invoices: a sponsored invoice shows
-                            no money of the sponsor's (client 25/09/2026). */}
-                        {!srcOf[inv.no] && <b className="text-[11px] font-semibold tabular-nums text-ink/80">{inv.amount}</b>}
-                      </div>
-                    </td>
-                  </tr>
-                  {/* PRODUCT LINES of that invoice */}
-                  {!isClosed && inv.lines.map((l) => {
-                    const left = l.used === null ? null : l.total - l.used
-                    return (
-                      <tr key={inv.no + l.name} className="border-t border-line-soft">
-                        <td className={cn(stick, 'bg-surface py-2 pl-11 pr-3 text-ink')}>{l.name}</td>
-                        <td className="px-3 py-2 text-muted">{l.type}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{l.total}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {l.used === null ? <span className="text-faint" title="Đi kèm một tin đăng — không trừ riêng">—</span> : byCo ? <b className="font-semibold">{l.used}</b> : l.used}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {left === null ? <span className="text-[10.5px] text-faint">đi kèm tin</span>
-                            : st === 'Expired' && left > 0 ? <span className="text-faint line-through" title="Hoá đơn đã hết hạn — phần còn lại không dùng được nữa">{left}</span>
-                            : <b className={cn('font-semibold', left === 0 ? 'text-faint' : 'text-brand')}>{left}</b>}
-                        </td>
-                        {group && (
-                          l.used === null
-                            ? <td colSpan={cos.length + 1} className="border-l border-line-soft px-3 py-2 text-center text-[10.5px] text-faint">đi kèm tin đăng — không trừ riêng</td>
-                            : <>
-                                <td className="border-l border-line-soft px-3 py-2 text-right">{num(mineOf(inv, l))}</td>
-                                {cos.map((b) => (
-                                  <td key={b.name} className={cn('px-3 py-2 text-right', srcOf[inv.no] && 'bg-canvas/50')} title={srcOf[inv.no] ? 'Hoá đơn dùng chung — không chia tiếp được' : undefined}>{srcOf[inv.no] ? <span className="text-faint">·</span> : num(l.shared?.[b.name] ?? 0, b.removed)}</td>
-                                ))}
-                              </>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      {!benef ? (
+        ownInvs.length === 0 ? empty(`${coLabel(c)} chưa có hoá đơn nào.`) : ownTable
+      ) : (
+        <>
+          {source !== 'shared' && section(
+            <>Own purchase{sponsor && <span className="font-normal text-muted"> — {coLabel(c)} là sponsor, chia sẻ cho {benefs.filter((b) => !b.removed).map((b) => b.co ? coLabel(b.co) : b.name).join(', ')}</span>}</>,
+            ownShown.length,
+            ownInvs.length === 0 ? empty(`${coLabel(c)} chưa tự mua sản phẩm nào.`) : ownTable,
+          )}
+          {source !== 'own' && section(<>Sponsored by other companies</>, borShown.length, borTable)}
+        </>
+      )}
+
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
-        <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch và không dùng được nữa. Dòng add-on (Top search, Super-star tag) đi kèm tin đăng nên không có số đã dùng và không giữ hoá đơn ở In use.
-        Hoá đơn Fully used và Expired thu gọn sẵn — bấm + để xem.
-        {benef && <> <b className="text-muted">Own purchase</b> — hoá đơn của chính {coLabel(c)}, đủ PO và giá trị. <b className="text-muted">Sponsored by …</b> — hoá đơn của sponsor mà {coLabel(c)} được dùng ké: số tổng / đã dùng / còn lại là của cả nhóm (còn lại = {coLabel(c)} còn đăng được bao nhiêu), cột <b className="text-muted">{coLabel(c)} đã dùng</b> là phần của riêng {coLabel(c)}; PO và giá trị không hiện.</>}
-        {byCo && <> Mỗi công ty được link là <b className="text-muted">một cột</b> — link thêm thì thêm cột, cuộn ngang khi nhiều; cột Product đứng yên. <b className="text-muted">Qty used</b> = tổng các cột công ty bên phải; tên gạch là link đã Remove — số đã dùng vẫn giữ. Bỏ tick "Tách theo công ty" để về bảng gọn.</>}
+        <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch. Dòng add-on đi kèm tin đăng nên không có số đã dùng. Hoá đơn Fully used và Expired thu gọn sẵn.
+        {byCo && <> Mỗi công ty được link là một cột trong nhóm <b className="text-muted">Qty used — tách theo công ty</b>, chỉ trên hoá đơn tự mua; tên gạch là link đã Remove.</>}
+        {benef && <> <b className="text-muted">Sponsored by other companies</b> chỉ liệt kê sản phẩm {coLabel(c)} đã dùng và số của riêng {coLabel(c)} — tổng và số còn lại là của sponsor, không hiện ở đây.</>}
       </p>
     </div>
   )
