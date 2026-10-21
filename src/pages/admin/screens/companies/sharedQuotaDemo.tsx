@@ -13,8 +13,15 @@ import type { CoTab } from '@/pages/admin/data/companyRecord'
  * the SPONSOR (FPT Software — three companies linked, one removed) and a BENEFICIARY
  * (Sao Mai — posts from FPT's POs, sees only what it used).
  */
+/* 2026-10-21 — also the preview for the rebuilt Products & billing tab, so it
+   carries all four company types the invoice table has to handle. */
+const CASES: [string, string][] = [
+  ['Công ty CP Giáo dục Én Nhỏ', 'độc lập'],
+  ['Công ty TNHH Sao Mai', 'thụ hưởng + tự mua'],
+  ['FPT Software', 'sponsor'],
+  ['Tiki', 'sponsor + thụ hưởng + tự mua'],
+]
 const SPONSOR = 'FPT Software'
-const BENEFICIARY = 'Công ty TNHH Sao Mai'
 
 export function AdminSharedQuotaDemo() {
   const [which, setWhich] = useState<string>(SPONSOR)
@@ -25,13 +32,13 @@ export function AdminSharedQuotaDemo() {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-[11.5px]">
         <span className="text-muted">Xem hồ sơ của:</span>
-        {[SPONSOR, BENEFICIARY].map((n) => (
+        {CASES.map(([n, role]) => (
           <button
             key={n}
             onClick={() => { setWhich(n); setOpen(null) }}
             className={cn('rounded-full border px-2.5 py-1 font-medium', c.name === n ? 'border-brand bg-brand-soft text-brand' : 'border-line text-muted hover:text-ink')}
           >
-            {coLabel(COMPANIES.find((x) => x.name === n)!)} — {n === SPONSOR ? 'sponsor (mua PO)' : 'beneficiary (dùng chung)'}
+            {coLabel(COMPANIES.find((x) => x.name === n)!)} — {role}
           </button>
         ))}
         <span className="text-faint">· tab</span>

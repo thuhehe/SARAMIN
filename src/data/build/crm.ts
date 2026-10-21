@@ -1134,7 +1134,7 @@ export const crm: BuildModule = {
             },
             items: [
               'A sponsor may have any number of beneficiaries, and a beneficiary may have any number of sponsors (client, 25/09/2026). What keeps “which PO paid for this job” from ever being a guess is the picker: the POs are grouped PER SPONSOR and the poster picks one explicitly.',
-              'No chains. A company that is a sponsor cannot also be a beneficiary (A → B → C is refused). One level, on purpose.',
+              'One level (changed 21/10/2026, was “no chains”). A company may be a sponsor AND a beneficiary at once — Tiki sponsors Sao Mai and draws on FPT. But quota passes one level only: what Tiki draws from FPT is never visible to, or spendable by, Sao Mai. Re-sharing is impossible by construction, so no link is refused for it.',
               'The corporate tree and this link are independent: a parent may sponsor a subsidiary, a subsidiary may sponsor an unrelated company, and linking never creates or requires a parent link.',
             ],
           },
@@ -1142,18 +1142,17 @@ export const crm: BuildModule = {
             label: 'Setup — on the sponsor’s record, by Company ID',
             text: 'Company record → **Overview** → card **Shared quota** → the **Company ID list** — the KR admin’s “ID AMS” control, which the client asked for by picture: one box per linked company (ID · name · units used), a red **−** on each, an empty box to type the next ID into, **+ Thêm ID** for another, and one **SAVE** for the lot. The six checks run live under a box as the ID is typed; SAVE enables only when every box passes and states what it will do (“link 2 · gỡ 1”). By ID, not by name, on purpose — two companies can share a name, no two share an ID, and the ID is what the beneficiary will have handed the sponsor.',
             table: {
-              cols: ['Check (server-side too) — six of them', 'Refused when', 'Message'],
+              cols: ['Check (server-side too) — five of them', 'Refused when', 'Message'],
               rows: [
                 ['Format', 'Not `CO-` + 7 Crockford-Base32 characters, or the check character fails', 'Không đúng dạng CO-XXXXXXX'],
                 ['Exists', 'No company has this ID', 'Không có công ty nào mang ID này'],
                 ['Not itself', 'The ID is the sponsor’s own', 'Đây là chính công ty này'],
                 ['Active', 'The company is Archived', '… đã Archived — không link được'],
-                ['Not a sponsor itself', 'The company has active beneficiaries of its own', 'Công ty này đang là sponsor — không link lồng nhau'],
                 ['Not linked yet', 'An active link to this sponsor already exists', '… đã được link rồi'],
               ],
             },
             items: [
-              'The ID list lives on the Overview card only — that card IS the list. Products & billing shows the usage matrix and a Remove per row, nothing else. Any number of boxes; there is no limit. Pressing − on an existing row marks it “sẽ gỡ khi Save” and can be undone before saving; SAVE applies adds and removes together.',
+              'The ID list lives on the Overview card only — that card IS the list. Products & billing carries no Shared quota card any more (21/10/2026) — the per-company numbers are columns of its invoice table; see the requirement “Company record — Products & billing (by invoice)”. Any number of boxes; there is no limit. Pressing − on an existing row marks it “sẽ gỡ khi Save” and can be undone before saving; SAVE applies adds and removes together.',
               'Who may link / remove: HQ admin, and the sponsor’s sales owner (permission `company:share_quota`). A beneficiary’s own sales owner cannot link it to anyone — the sponsor is the one whose money is at stake.',
               'The sponsor needs no invoiced PO to be linked — the link can be prepared before the sale closes; it simply does nothing until an invoice is issued.',
               'Verification is not a condition for linking. It is a condition for POSTING (the existing gate): an unverified beneficiary sees the sponsor’s PO but cannot publish, exactly as it could not publish from its own.',
@@ -1261,16 +1260,16 @@ export const crm: BuildModule = {
         ],
         uiFields: [
           {
-            group: 'Admin · Company record → Products & billing → card Shared quota (sponsor view)',
+            group: 'Admin · Company record → Overview → card Shared quota (sponsor view) — the usage numbers moved to Products & billing, see the requirement “Company record — Products & billing (by invoice)”',
             items: [
               { name: 'Company ID list', type: 'repeatable field', notes: 'the KR “ID AMS” pattern — one box per linked company (read-only ID · name · units used · linked date) with a red − (marks for removal, ↺ undoes); empty boxes for new IDs (CO-XXXXXXX, validated live against the six checks + “typed twice”, ✓ shows the resolved company); + Thêm ID adds a box' },
               { name: 'SAVE', type: 'button', notes: 'applies every add and remove in one write; disabled while any box is invalid or nothing changed; the label beside it says “link N · gỡ M”' },
               { name: 'summary line', type: 'derived', notes: '“N công ty đang dùng chung · đã dùng X / total slots và Y / total CV unlocks” — the sponsor’s own totals, what others took from them' },
-              { name: 'usage matrix', type: 'table', notes: 'ROWS = linked companies (name + CO-ID + linked date/by + job titles) · COLUMNS = every product line on the sponsor’s invoiced POs, read from the entitlement ledger, never hard-coded (unit and total in the header) · cell = units that company spent, “—” for 0 · a Tổng column · Last used · Status (Active / Removed + date) · Remove. FOOTER: the sponsor’s own use · linked companies’ use (removed links included — spent is spent) · Còn lại / tổng per product, amber under 20 %. First column sticky; the table scrolls sideways when a PO has many lines.' },
+              { name: 'usage matrix', type: 'table', notes: 'SUPERSEDED 21/10/2026 — folded into the invoice table on Products & billing as the column group “Qty used — tách theo công ty”. Was: ROWS = linked companies (name + CO-ID + linked date/by + job titles) · COLUMNS = every product line on the sponsor’s invoiced POs, read from the entitlement ledger, never hard-coded (unit and total in the header) · cell = units that company spent, “—” for 0 · a Tổng column · Last used · Status (Active / Removed + date) · Remove. FOOTER: the sponsor’s own use · linked companies’ use (removed links included — spent is spent) · Còn lại / tổng per product, amber under 20 %. First column sticky; the table scrolls sideways when a PO has many lines.' },
             ],
           },
           {
-            group: 'Admin · the same card (beneficiary view)',
+            group: 'Admin · the same card (beneficiary view) — its usage is now the Sponsored by … invoices on Products & billing',
             items: [
               { name: 'sponsors', type: 'ref → Company[]', notes: 'Overview: names + linked date only. Products & billing: ONE PLAIN TABLE — Invoice (the sponsor’s INV- number) · Shared by (name) · Sản phẩm · Đã dùng (count + unit) · Lần dùng gần nhất · Remove link; one row per product spent, grouped under the sponsor. Never the PO number, amount, total or remainder' },
               { name: 'linkedAt / linkedBy', type: 'timestamp / ref → admin' },
@@ -1302,7 +1301,7 @@ export const crm: BuildModule = {
           'The stat card “Job quota” on a beneficiary reads “dùng chung từ {Sponsor}”; “Open jobs” and the Jobs tab keep counting its own jobs, whichever PO funded them.',
         ],
         rules: [
-          'Many-to-many: unlimited beneficiaries per sponsor, unlimited sponsors per beneficiary; no chains (a sponsor cannot be a beneficiary).',
+          'Many-to-many: unlimited beneficiaries per sponsor, unlimited sponsors per beneficiary. A company may be both, but quota passes one level only (21/10/2026).',
           'Link by Company ID only. No name search on this control.',
           'Sharing covers Job posting products (tiers, includes, gifts, add-ons) and CV unlocks from a running pack. Placement bookings and manual services are never shared.',
           'Nothing is provisioned to a beneficiary, ever. The balance has one owner.',
@@ -1312,8 +1311,8 @@ export const crm: BuildModule = {
         ],
         states: [
           'Sponsor with no links yet — the ID list shows one empty box and SAVE disabled',
-          'Sponsor with links — summary line + table + Link row',
-          'Beneficiary — Overview: sponsor names only · Products & billing: one plain table (invoice · sponsor · product · used · last used · Remove link)',
+          'Sponsor with links — Overview: summary line + Company ID list · Products & billing: company columns in the invoice table',
+          'Beneficiary — Overview: sponsor names only · Products & billing: Sponsored by … invoices with its own counts',
           'Neither, and no invoiced PO — the card is not rendered',
           'Shared PO exhausted — listed disabled in the picker, sponsor named',
           'Link removed — Removed pill with the date, no Remove action, usage kept',
@@ -1330,7 +1329,7 @@ export const crm: BuildModule = {
             { name: 'job.fundedByCompanyId', type: 'ref → Company', required: true, notes: '= the company whose PO funded the posting; = the beneficiary itself when it used its own. Read by the Jobs tab column “Trừ từ” and by the upgrade/renew refusal after removal' },
           ],
           endpoints: [
-            'POST /admin/companies/{id}/quota-shares { beneficiaryCompanyId } — runs the seven checks; 400 (format) · 404 (unknown ID) · 409 (itself, archived, has a sponsor, is a sponsor, already linked) with the message from the table. Permission company:share_quota.',
+            'POST /admin/companies/{id}/quota-shares { beneficiaryCompanyId } — runs the checks; 400 (format) · 404 (unknown ID) · 409 (itself, archived, already linked) with the message from the table. Permission company:share_quota.',
             'DELETE /admin/companies/{id}/quota-shares/{shareId} — status → removed, reason manual.',
             'GET /admin/companies/{id}/quota-shares — the sponsor’s list with per-beneficiary aggregates (usedSlots, usedCv, lastUsedAt, jobTitles).',
             'GET /admin/companies/{id}/quota-sponsor — the beneficiary’s banner: sponsor {name, companyId}, linkedAt/By, its own counts.',
@@ -1368,6 +1367,184 @@ export const crm: BuildModule = {
           'Self-service on the Company site — should the sponsor’s own Admin be able to link a beneficiary by ID without Saramin? Recommended phase 2, once the admin-side flow has run for a while.',
           'CV unlocks in phase 1, or job posting only? The rule above includes CV; if the client wants posting only, drop the CV row and the pack rule.',
           'Notification cadence to the sponsor — one message per spend, or a daily digest per beneficiary?',
+        ],
+      },
+    },
+    // 0b2 · Company record — Products & billing, rebuilt by invoice ─────────────
+    {
+      name: 'Company record — Products & billing (by invoice)',
+      /* Slug pinned at birth (2026-10-21). */
+      slug: 'company-products-billing',
+      site: 'AdminCompanies',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'Client, 21/10/2026: rebuild the whole Products & billing tab of the company record. One header row per INVOICE with its product lines underneath; the layout depends on whether the company is independent, a beneficiary, a sponsor, or both. Warranties live inside their invoice; free products (gifts) get their own table. Replaces the product-by-product holdings table, the Products & quota card, the PO history card and the Shared quota card on this tab.',
+      mockup: 'admin-shared-quota',
+      detail: {
+        keyPoints: [
+          {
+            vi: 'Mỗi HOÁ ĐƠN là một dòng tiêu đề (số hoá đơn · ngày xuất · hết hạn · trạng thái), các dòng sản phẩm của hoá đơn đó nằm ngay bên dưới với Total qty · Qty used · Qty remaining.',
+            en: 'One header row per INVOICE (number · issue date · expiry · status), its product lines directly underneath with Total qty · Qty used · Qty remaining.',
+          },
+          {
+            vi: 'Số bảng tuỳ loại công ty: **độc lập** → 1 bảng (Én Nhỏ) · **thụ hưởng** (có thể tự mua) → 1 bảng (Sao Mai) · **tài trợ** → bảng "Shared with other companies", và thêm bảng thứ hai "Used by {công ty} only" nếu có hoá đơn dùng ké hoặc hoá đơn tự mua không chia sẻ (Tiki).',
+            en: 'Number of tables by company type: **independent** → 1 table (Én Nhỏ) · **beneficiary** (may also buy) → 1 table (Sao Mai) · **sponsor** → a "Shared with other companies" table, plus a second "Used by {company} only" table when it also rides on someone else’s invoice or holds an own invoice it never shared (Tiki).',
+          },
+          {
+            vi: 'Hoá đơn **Sponsored by X** (dùng ké) chỉ hiện sản phẩm công ty này đã dùng và số của riêng nó — Total qty, Qty remaining, PO và giá trị để trống.',
+            en: 'A **Sponsored by X** invoice shows only the products this company used and its own count — Total qty, Qty remaining, PO and amount stay empty.',
+          },
+          {
+            vi: '**Warranty** là một dòng trong chính hoá đơn của sản phẩm nó bù. **Free products** (quà tặng, không có hoá đơn) nằm ở bảng riêng.',
+            en: '**Warranty** is a line inside the invoice of the product it compensates. **Free products** (gifts, no invoice) sit in a table of their own.',
+          },
+        ],
+        description:
+          'The tab answers one question a rep asks on every call: “what does this customer still have, and on which invoice?”. The build today lists one row per PRODUCT with every invoice it was bought on stacked in the cells, so a product bought three times shows three dates and three totals in one row and nobody can tell which invoice is still running. This rebuild turns it inside out — invoices are the rows, products sit under them — and makes the same table work for the four kinds of company the Shared quota feature creates. The preview above switches between the four example records: Én Nhỏ (independent), Sao Mai (beneficiary that also bought), FPT Software (sponsor), Tiki (sponsor, beneficiary and buyer at once).',
+        userStory:
+          'As a Saramin sales rep, I want to see a customer’s quota invoice by invoice — what each invoice bought, what was used, what is left, and who used it — so that I can answer “how many slots do I have left?” and “which invoice is my next job spent from?” without opening the Quota usage screen.',
+        requirements: [
+          {
+            label: 'Layout by company type',
+            text: 'The tab picks its layout from the company’s shared-quota links. An invoice goes in a table according to WHO USES IT, not who bought it.',
+            table: {
+              cols: ['Company type', 'Example', 'Tables', 'What is in them'],
+              rows: [
+                ['**Independent** — no links', 'Én Nhỏ', '1 table, no heading', 'Its own invoices, full numbers. No source tag.'],
+                ['**Beneficiary** — draws on one or more sponsors, may also buy', 'Sao Mai', '1 table, no heading', 'Its own invoices (tag **Own purchase**, full numbers) and the sponsors’ invoices (tag **Sponsored by {Sponsor}**, only its lines and count), mixed in one list in drain order.'],
+                ['**Sponsor** — shares with one or more companies', 'FPT Software', '1 table, no heading', 'Its own invoices, full numbers, plus the column group **Qty used — tách theo công ty** (its own part, then one column per linked company).'],
+                ['**Sponsor that also has invoices only it uses**', 'Tiki', '2 tables, with headings', '① **Shared with other companies** — own invoices its beneficiaries can draw on, with the company columns. ② **Used by {company} only** — invoices it rides on as a beneficiary (Sponsored by …) and own invoices it never shared, laid out like the beneficiary table.'],
+              ],
+            },
+            items: [
+              'An own invoice of a sponsor counts as SHARED when at least one link was active while the invoice still had quota left. An invoice used up (or expired) before the first link existed goes in “Used by {company} only” with the tag Own purchase; hovering the tag gives the reason (“dùng hết 28/08/2026 — trước khi link Sao Mai 05/09/2026”).',
+              'A company may be sponsor and beneficiary at once (decided 21/10/2026 with the Tiki case). Quota passes ONE level only: what it draws from its sponsor is never visible to, or spendable by, the companies it sponsors.',
+            ],
+          },
+          {
+            label: 'Invoice header row',
+            table: {
+              cols: ['Element', 'Rule'],
+              rows: [
+                ['± toggle', 'Collapses the invoice’s product lines. Fully used and Expired invoices start collapsed; In use starts open.'],
+                ['Invoice number', 'INV-… in mono, brand colour. The only reference shown — **no PO number** on the row.'],
+                ['Ngày xuất · Hết hạn', 'Issue date and expiry date of the invoice. Expiry in red once passed.'],
+                ['Status pill', 'In use · Fully used · Expired — see the status table.'],
+                ['Source tag', '**Own purchase** (brand) or **Sponsored by {Sponsor}** (amber, the name opens the sponsor’s record). Shown only when the table mixes sources — never on an independent company or a pure sponsor.'],
+                ['Amount', 'Own invoices only. A Sponsored by … invoice shows no amount and no PO (client, 25/09/2026 — never the sponsor’s money).'],
+              ],
+            },
+          },
+          {
+            label: 'Invoice status',
+            table: {
+              cols: ['Status', 'Meaning', 'Order in the table'],
+              rows: [
+                ['**In use**', 'Not expired, and at least one spendable line still has quota left.', 'First, soonest expiry first — the order quota drains in (FEFO), so the top invoice is the one the next job is spent from.'],
+                ['**Fully used**', 'Not expired, and every spendable line is at 0. Add-on lines do not count.', 'After In use, newest issue date first.'],
+                ['**Expired**', 'Past its expiry date. Wins over everything: leftovers are forfeit and shown struck through.', 'Last, newest first.'],
+              ],
+            },
+          },
+          {
+            label: 'Product line columns',
+            table: {
+              cols: ['Column', 'Own invoice', 'Sponsored by … invoice'],
+              rows: [
+                ['Product', 'Every line on the invoice', 'Only the lines THIS company used; if none, one muted row “{Company} chưa dùng sản phẩm nào từ hoá đơn này”'],
+                ['Product type', 'Job posting · CV search · Display / placement · Manual service · Add-on', 'Same'],
+                ['Total qty', 'Quantity bought on the line', 'Empty'],
+                ['Qty used', 'Whole line’s spend — every company together', 'This company’s own count only'],
+                ['Qty remaining', 'Total − used, brand colour; 0 muted; struck through on an Expired invoice', 'Empty'],
+                ['Qty used — tách theo công ty', 'Sponsor’s shared invoices only: one column for the sponsor itself, then one per linked company (name only; a removed link is struck through with “đã Remove” and keeps its numbers). Sums to Qty used. Grows a column per link; the Product column stays pinned when it scrolls. A checkbox “Tách số đã dùng theo công ty” hides the group.', 'Never'],
+              ],
+            },
+            items: [
+              'Add-on lines (Top search, Super-star tag) ride on a posting: Qty used shows “—”, Qty remaining shows “đi kèm tin”, and they never keep an invoice In use.',
+              'No totals footer row under the table.',
+            ],
+          },
+          {
+            label: 'Warranty — a line inside its invoice',
+            text: 'A warranty always has an invoice behind it — the purchase that under-delivered — so it is a line on THAT invoice, directly under the product it compensates, not a row in the gifts table.',
+            items: [
+              'Product cell: “↳ {product}” + a purple **Warranty** tag; sub-line “{grant date} · {reason} · hạn dùng {valid until | Not started}”.',
+              'Total / used / remaining like any line; a warranty with quota left keeps its invoice In use. On a sponsor’s shared invoice the company columns cover it too.',
+            ],
+          },
+          {
+            label: 'Free products — a table of their own',
+            text: 'Gifts are the only quota with no invoice behind them, so they sit in a separate card **Free products** after the invoice card.',
+            table: {
+              cols: ['Column', 'Content'],
+              rows: [
+                ['Product', 'Name; sub-line “tặng {date} · {granted by}”'],
+                ['Product type', 'As in the invoice table'],
+                ['Total qty · Qty used · Qty remaining', 'Same reading as the invoice table; remaining struck through once lapsed'],
+                ['Valid until', 'Date, red once passed'],
+                ['Reason', 'The reason entered when the gift was granted'],
+              ],
+            },
+            items: ['No gifts → one dashed line “{Company} chưa được tặng sản phẩm nào”.'],
+          },
+          {
+            label: 'Removed from this tab',
+            items: [
+              'The product-by-product holdings table (invoices stacked in cells).',
+              'The Products & quota card. CV pack activation needs a new home — open question.',
+              'The PO history card — the invoice rows replace it.',
+              'The Shared quota card — linking and removing stay on **Overview**; the numbers live in the invoice table.',
+            ],
+          },
+        ],
+        behaviors: [
+          'A banner above the tables names the company’s role: Sponsor (“N công ty đang dùng chung quota của {Company}: …”), Công ty thụ hưởng (“Dùng chung quota của {Sponsors} — các hoá đơn tag Sponsored by … bên dưới”), or Độc lập. A company that is both shows both lines.',
+          'Filter chips: All · In use · Fully used · Expired, each with its count. A company with sponsored invoices also gets a source switch: All sources · Own purchase N · Sponsored N.',
+          'Clicking a sponsor or beneficiary name opens that company’s record on the same tab.',
+        ],
+        rules: [
+          'Every unit spent is attributed to exactly ONE invoice line (FEFO: soonest expiry first) and to the company that spent it. Both are needed for this tab; the build today keeps one shared counter per tier.',
+          'A beneficiary’s record never shows a sponsor invoice’s total, remaining, PO or amount — only the lines it used and its own count.',
+          'A sponsor invoice that was never shared does not appear on any beneficiary’s record.',
+        ],
+        states: [
+          'Independent — one table',
+          'Beneficiary with no own invoice — one table of Sponsored by … invoices only',
+          'Sponsor with every own invoice shared — one table with company columns',
+          'Sponsor with sponsored or never-shared invoices — two tables with headings',
+          'Company with no invoice at all — dashed line “{Company} chưa có hoá đơn nào”',
+          'No gifts — the Free products card shows its empty line',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'quota ledger · invoiceLineId', type: 'ref → InvoiceLine', required: true, notes: 'NEW — which invoice line each spend came from (FEFO at spend time). The whole per-invoice table reads it' },
+            { name: 'quota ledger · usedByCompanyId', type: 'ref → Company', required: true, notes: 'already specified by Shared quota — the company columns read it' },
+            { name: 'invoice_line.warrantyOfLineId', type: 'ref → InvoiceLine?', notes: 'set on a warranty line; the line it compensates. With warrantyReason, grantedAt, validUntil (nullable = Not started)' },
+            { name: 'gift', type: 'entity', notes: 'product, quantity, grantedAt, grantedBy, validUntil, reason — no invoice' },
+          ],
+          endpoints: [
+            'GET /admin/companies/{id}/holdings → { role: { sponsor: bool, beneficiary: bool }, beneficiaries: [{ companyId, name, status }], sharedInvoices[], soloInvoices[], gifts[] }. Each invoice: { no, issuedAt, expiresAt, status, source: own | sponsored, sponsor?, amount? (own only), lines[] }. Each line: { product, type, total?, used, remaining?, byCompany?: { [companyId]: n }, warranty? }. For a sponsored invoice the server sends only lines with this company’s spend, used = its count, and no total / remaining / amount.',
+          ],
+          integrations: [
+            'Shared quota — links, usedByCompanyId, the one-level rule',
+            'Quota usage — the same ledger, read per spend',
+            'Manual services / gifts — the Free products table',
+          ],
+          notes: 'Status, sort and the shared / solo split are computed on the server so the Company site can reuse the same response later.',
+        },
+        acceptance: [
+          'Én Nhỏ (independent) shows one table, no headings, no source tags, no company columns; each invoice row has number, dates, status and amount, and no PO number.',
+          'Sao Mai (beneficiary + own purchase) shows one table: its own invoice with full numbers and the tag Own purchase; each sponsor invoice with the tag Sponsored by {Sponsor}, only the lines Sao Mai used, its count under Qty used, Total and Remaining empty, no amount.',
+          'FPT (sponsor) shows one table with the column group Qty used — tách theo công ty; for every line the company columns add up to Qty used; a removed link keeps its column, struck through.',
+          'Tiki (sponsor + beneficiary + buyer) shows two tables: “Shared with other companies” with its shared own invoices and the Tiki / Sao Mai columns, and “Used by Tiki only” with the FPT invoices (Tiki’s lines only) and its never-shared own invoice (full numbers).',
+          'A warranty appears as a line under the product it compensates, on that product’s invoice, with the Warranty tag and its reason and validity.',
+          'Gifts appear only in the Free products card, never in the invoice table.',
+          'Invoices sort In use (soonest expiry first) → Fully used → Expired; Fully used and Expired start collapsed.',
+        ],
+        openQuestions: [
+          'Are a sponsor’s gifts shared with its beneficiaries? Shared quota’s rule includes gifts; the Free products table currently shows them only on the company that received them.',
+          'Sharing per invoice or per company? Today the link shares every own invoice; a “keep this invoice private” switch would be a new rule.',
+          'Where does CV pack activation go now that the Products & quota card is gone — an action on the CV search line of its invoice?',
         ],
       },
     },

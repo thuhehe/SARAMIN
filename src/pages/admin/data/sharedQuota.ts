@@ -59,6 +59,8 @@ export const SHARED_QUOTA: ShareLink[] = [
   { sponsor: 'FPT Software', beneficiary: 'Công ty TNHH Sao Mai', since: '12/08/2026', by: 'Phạm Quang Huy', status: 'active', invoice: 'INV-003464-09-2026', used: { 'Top job': 3, 'Basic': 2, 'CV search — COMBO 200': 12 }, lastUsed: '20/09/2026', jobs: ['Kỹ sư cơ khí', 'QA Engineer (Bình Dương)', 'Nhân viên kho', 'Trưởng ca sản xuất', 'Nhân viên QC'] },
   // Sao Mai draws on TWO sponsors — the case the picker's per-sponsor groups exist for.
   { sponsor: 'Tiki', beneficiary: 'Công ty TNHH Sao Mai', since: '05/09/2026', by: 'Phạm Quang Huy', status: 'active', invoice: 'INV-003451-09-2026', used: { 'Job Posting — Pro': 1 }, lastUsed: '18/09/2026', jobs: ['Nhân viên giao nhận'] },
+  // Tiki is a sponsor (of Sao Mai) AND a beneficiary of FPT — the both-roles case. One level only: what Tiki draws from FPT is not passed on.
+  { sponsor: 'FPT Software', beneficiary: 'Tiki', since: '01/10/2026', by: 'Phạm Quang Huy', status: 'active', invoice: 'INV-003464-09-2026', used: { 'Top job': 2, 'CV search — COMBO 200': 9 }, lastUsed: '19/10/2026', jobs: ['Data Analyst (Tiki x FPT)', 'Backend Engineer — Payments'] },
   { sponsor: 'FPT Software', beneficiary: 'Công ty CP An Khang', since: '01/09/2026', by: 'Phạm Quang Huy', status: 'active', invoice: 'INV-003464-09-2026', used: { 'Top job': 1 }, lastUsed: '15/09/2026', jobs: ['Dược sĩ bán hàng'] },
   { sponsor: 'FPT Software', beneficiary: 'Công ty TNHH Phú Thịnh', since: '05/07/2026', by: 'Phạm Quang Huy', status: 'removed', removedAt: '30/08/2026', removedBy: 'Phạm Quang Huy', used: { 'Top job': 2, 'CV search — COMBO 200': 4 }, lastUsed: '22/08/2026', jobs: ['Nhân viên bán hàng', 'Kế toán kho'] },
 ]
