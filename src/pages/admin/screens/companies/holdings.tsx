@@ -253,13 +253,14 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
   /* Own-invoice tag. A sponsor's own invoices say whether they were shared — the
      not-shared one ran out before any link, so its company columns stay blank. */
   const ownTag = (inv: Inv) => {
-    const text = [benef && 'Own purchase', sponsor && (inv.notShared ? 'not shared' : 'shared')].filter(Boolean).join(' · ')
+    /* The section title already says shared / not shared — the tag only says the source. */
+    const text = benef || inv.notShared ? 'Own purchase' : ''
     if (!text) return null
     return inv.notShared
       ? <span title={inv.notShared} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] font-medium text-muted">{text}</span>
       : <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">{text}</span>
   }
-  const ownTable = (
+  const ownTableOf = (list: Inv[]) => (
     <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full border-collapse text-[12px]" style={{ minWidth: 820 + groupCols * 96 }}>
         <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
@@ -289,7 +290,7 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
           </tr>
         </thead>
         <tbody>
-          {ownShown.map((inv) => {
+          {list.map((inv) => {
             const st = invStatus(inv)
             const h = head(inv, ownCols, ownTag(inv), true)
             return (
@@ -331,53 +332,13 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
     </div>
   )
 
-  /* PART 2 — SPONSORED BY OTHER COMPANIES: only lines this company used, only its count. */
-  const borTable = (
-    <div className="overflow-x-auto rounded-xl border border-line">
-      <table className="w-full min-w-[640px] border-collapse text-[12px]">
-        <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
-          <tr className="border-b border-line bg-canvas/60 text-left">
-            <th className={cn(stick, 'min-w-[200px] bg-canvas px-3 py-2')}>Product</th>
-            <th className="w-[160px] px-3 py-2">Product type</th>
-            <th className={cn(th, 'w-[160px] normal-case tracking-normal text-ink/80')}>Qty used by {coLabel(c)}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {borShown.map(({ inv, sponsor: sp }) => {
-            const tag = (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                Sponsored by <button onClick={() => openCo(sp)} className="font-semibold underline-offset-2 hover:underline">{nameOf(sp)}</button>
-              </span>
-            )
-            const h = head(inv, 3, tag, false)
-            const usedLines = inv.lines.filter((l) => (l.shared?.[c.name] ?? 0) > 0)
-            return (
-              <Fragment key={inv.no}>
-                {h.row}
-                {!h.isClosed && usedLines.length === 0 && (
-                  <tr className="border-t border-line-soft"><td colSpan={3} className="py-2 pl-11 pr-3 text-[11.5px] text-faint">{coLabel(c)} chưa dùng sản phẩm nào từ hoá đơn này.</td></tr>
-                )}
-                {!h.isClosed && usedLines.map((l) => (
-                  <tr key={inv.no + l.name} className="border-t border-line-soft">
-                    {productCell(l)}
-                    <td className="px-3 py-2 text-muted">{l.type}</td>
-                    <td className="px-3 py-2 text-right"><b className="tabular-nums">{l.shared![c.name]}</b></td>
-                  </tr>
-                ))}
-              </Fragment>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-
-  /* BENEFICIARY ONLY (Sao Mai) — ONE table (client, 2026-10-21: "gom 2 table làm 1").
-     Own invoices with full numbers; sponsored invoices with only the lines this
-     company used, its count under Qty used, Total and Remaining left empty. One
-     list in drain order, the tag tells the two apart. */
-  const merged = [...ownShown.map((inv) => ({ inv, sponsor: null as string | null })), ...borShown].sort((x, y) => byDrain(x.inv, y.inv))
-  const mergedTable = (
+  /* "USED BY THIS COMPANY ONLY" table (client, 2026-10-21) — everything nobody else
+     touches: sponsored invoices it rides on (only the lines it used, its count
+     under Qty used, Total and Remaining empty) and own invoices it never shared
+     (full numbers). One list in drain order; the tag tells them apart. For a pure
+     beneficiary (Sao Mai) this is the whole card. */
+  type Entry = { inv: Inv; sponsor: string | null }
+  const mergedTableOf = (merged: Entry[]) => (
     <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full min-w-[820px] border-collapse text-[12px]">
         <thead className="text-[10.5px] font-semibold uppercase tracking-wide text-faint">
@@ -467,27 +428,36 @@ export function HoldingsByInvoice({ c, onOpen }: { c: Company; onOpen?: (x: Comp
         <span className="ml-auto text-[10.5px] text-faint">Quota trừ theo hoá đơn hết hạn sớm nhất trước — hoá đơn In use đầu tiên là hoá đơn lần đăng tin tới sẽ trừ.</span>
       </div>
 
-      {!benef ? (
-        ownInvs.length === 0 ? empty(`${coLabel(c)} chưa có hoá đơn nào.`) : ownTable
-      ) : !sponsor ? (
-        mergedTable
-      ) : (
-        <>
-          {source !== 'shared' && section(
-            <>Own purchase{sponsor && <span className="font-normal text-muted"> — {coLabel(c)} là sponsor, chia sẻ cho {benefs.filter((b) => !b.removed).map((b) => b.co ? coLabel(b.co) : b.name).join(', ')}</span>}</>,
-            ownShown.length,
-            ownInvs.length === 0 ? empty(`${coLabel(c)} chưa tự mua sản phẩm nào.`) : ownTable,
-          )}
-          {source !== 'own' && section(<>Sponsored by other companies</>, borShown.length, borTable)}
-        </>
-      )}
+      {(() => {
+        /* Which table an invoice goes in is decided by WHO USES IT, not who bought it:
+             SHARED WITH OTHER COMPANIES — own invoices of a sponsor that its
+               beneficiaries can draw on → full numbers + a column per company;
+             USED BY <COMPANY> ONLY — sponsored invoices it rides on, plus own
+               invoices nobody else touched (independent, or bought while it shared
+               with no one). */
+        const own = (list: Inv[]): Entry[] => list.map((inv) => ({ inv, sponsor: null }))
+        const sharedOwn = sponsor ? ownShown.filter((i) => !i.notShared) : []
+        const solo = [...own(sponsor ? ownShown.filter((i) => i.notShared) : ownShown), ...borShown].sort((x, y) => byDrain(x.inv, y.inv))
+        if (!benef && !sponsor) return ownInvs.length === 0 ? empty(`${coLabel(c)} chưa có hoá đơn nào.`) : ownTableOf(ownShown)
+        if (!sponsor) return mergedTableOf(solo)
+        if (solo.length === 0) return ownTableOf(sharedOwn)
+        const shareNames = benefs.filter((b) => !b.removed).map((b) => (b.co ? coLabel(b.co) : b.name)).join(', ')
+        return (
+          <>
+            {section(<>Shared with other companies<span className="font-normal text-muted"> — hoá đơn {coLabel(c)} mua, chia sẻ cho {shareNames}</span></>, sharedOwn.length,
+              sharedOwn.length ? ownTableOf(sharedOwn) : empty('Không có hoá đơn nào khớp bộ lọc.'))}
+            {section(<>Used by {coLabel(c)} only<span className="font-normal text-muted"> — {benef ? 'hoá đơn dùng ké (Sponsored by …) và ' : ''}hoá đơn tự mua không chia sẻ với ai</span></>, solo.length,
+              mergedTableOf(solo))}
+          </>
+        )
+      })()}
 
       <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
         <b className="text-muted">In use</b> — còn hạn và còn ít nhất một dòng chưa dùng hết. <b className="text-muted">Fully used</b> — còn hạn nhưng mọi dòng đã dùng hết.{' '}
         <b className="text-muted">Expired</b> — quá ngày hết hạn; phần còn lại bị gạch. Dòng add-on đi kèm tin đăng nên không có số đã dùng. Hoá đơn Fully used và Expired thu gọn sẵn. Dòng <b className="text-muted">Warranty</b> nằm ngay dưới sản phẩm nó bù, trên chính hoá đơn đó — ngày cấp, lý do, hạn dùng ở dòng phụ.
         {byCo && <> Mỗi công ty được link là một cột trong nhóm <b className="text-muted">Qty used — tách theo công ty</b>, chỉ trên hoá đơn tự mua; tên gạch là link đã Remove.</>}
         {benef && <> Hoá đơn <b className="text-muted">Sponsored by …</b> chỉ liệt kê sản phẩm {coLabel(c)} đã dùng và số của riêng {coLabel(c)} — tổng và số còn lại là của sponsor, không hiện ở đây.</>}
-        {sponsor && <> <b className="text-muted">not shared</b> — hoá đơn dùng hết trước khi link công ty nào, nên không có cột công ty nào dùng.</>}
+        {sponsor && <> Hoá đơn tự mua dùng hết trước khi link công ty nào nằm ở bảng <b className="text-muted">Used by {coLabel(c)} only</b> — rê chuột lên tag để xem lý do.</>}
       </p>
     </div>
   )
