@@ -1419,7 +1419,7 @@ export const crm: BuildModule = {
               ],
             },
             items: [
-              'An own invoice of a sponsor counts as SHARED when at least one link was active while the invoice still had quota left. An invoice used up (or expired) before the first link existed goes in “Used by {company} only” with the tag Own purchase; hovering the tag gives the reason (“dùng hết 28/08/2026 — trước khi link Sao Mai 05/09/2026”).',
+              'An own invoice of a sponsor counts as SHARED when at least one link was active while the invoice still had quota left. An own invoice that holds only never-shared products (manual services, placements — Shared quota rule) also goes there, even while links are active: Tiki’s INV-003604-10-2026 is In use and used by Tiki alone. An invoice used up (or expired) before the first link existed goes in “Used by {company} only” with the tag Own purchase; hovering the tag gives the reason (“dùng hết 28/08/2026 — trước khi link Sao Mai 05/09/2026”).',
               'A company may be sponsor and beneficiary at once (decided 21/10/2026 with the Tiki case). Quota passes ONE level only: what it draws from its sponsor is never visible to, or spendable by, the companies it sponsors.',
             ],
           },

@@ -99,6 +99,13 @@ const HOLDINGS: Record<string, Inv[]> = {
      and holds an October invoice nobody else has used yet. One level only: the FPT
      invoices it rides on are NOT passed on to Sao Mai. */
   'Tiki': [
+    /* Bought and used by Tiki ALONE while it is a sponsor: manual services and
+       placements are never shared (Shared quota rule), so an invoice holding only
+       those stays in "Used by Tiki only" — In use, with quota left. */
+    { no: 'INV-003604-10-2026', po: 'PO-003604-10-2026', issued: '18/10/2026', expires: '18/01/2027', amount: '27.000.000 ₫', notShared: 'Manual service và placement không bao giờ được chia sẻ — chỉ Tiki dùng', lines: [
+      { name: 'Đăng tin tuyển dụng trên Fanpage Saramin', type: 'Manual service', total: 3, used: 1 },
+      { name: 'Banner trang chủ — 2 tuần', type: 'Display / placement', total: 1, used: 0 },
+    ] },
     { no: 'INV-003012-05-2026', po: 'PO-003012-05-2026', issued: '20/05/2026', expires: '20/11/2026', amount: '64.800.000 ₫', notShared: 'Tiki dùng hết 10/10 ngày 28/08/2026 — trước khi link Sao Mai (05/09/2026)', lines: [
       { name: 'Top job', type: 'Job posting', total: 10, used: 10 },
       { name: 'Distinction', type: 'Job posting', total: 4, used: 4 },
