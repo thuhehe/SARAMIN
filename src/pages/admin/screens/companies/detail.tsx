@@ -1067,7 +1067,7 @@ export function CompanyDetail({ c, onBack, onOpen, viewer = ME, pool, onClaim, i
         const holdings = (
           <div className="lg:col-span-2" key="h">
             <DetailCard
-              title="What this company holds, by invoice"
+              title="Invoiced products"
               action={<span className="text-[11px] text-faint">{asSponsor.length ? 'một bảng cho mọi hoá đơn · mỗi công ty một cột' : asBeneficiary.length ? 'hoá đơn tự mua + hoá đơn dùng chung từ sponsor' : 'mỗi hoá đơn một nhóm · sản phẩm bên dưới'}</span>}
             >
               <HoldingsByInvoice key={c.name} c={c} onOpen={onOpen} />
