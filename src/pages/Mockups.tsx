@@ -2405,12 +2405,18 @@ function MyCvsScreen() {
                         “this is the CV employers search with”. So it stays on an
                         upload in doubt: the choice is real, and adding “tạm không
                         hiển thị” would leak the review we just decided to hide.
-                        A REJECTED CV gets no search chip at all — it left the
-                        index for good, and a “tạm” would promise a return that
-                        needs a new file. */}
+                        A REJECTED CV that is the chosen one keeps an AMBER chip
+                        (“Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin” · EN “Recruiters will see this CV once it’s complete” — chosen 2026-10-23) — REVISED
+                        2026-10-23 on the BA's advice: the switch is the candidate's
+                        choice and survives the verdict; the CV leaves the index,
+                        the choice does not. The promise is conditional on an
+                        UPDATE + a new verdict, never on waiting — see the reason
+                        line. Only the verdict chip by the name is red; the choice
+                        chip is amber, so one row never carries two red chips. */}
                     {shown(c) && <Chip tone={c.state === 'rejected' ? 'rose' : 'amber'}>{shown(c)!.chip}</Chip>}
-                    {searchable === i && c.state !== 'rejected' && c.state !== 'not_enough' && <Chip tone="green">Hiển thị trong tìm kiếm CV</Chip>}
-                    {searchable === i && c.state === 'not_enough' && c.kind === 'Saramin' && <Chip tone="amber">Tạm không hiển thị</Chip>}
+                    {searchable === i && c.state !== 'rejected' && c.state !== 'not_enough' && <Chip tone="green">Nhà tuyển dụng thấy CV này</Chip>}
+                    {searchable === i && c.state === 'not_enough' && c.kind === 'Saramin' && <Chip tone="amber">Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin</Chip>}
+                    {searchable === i && c.state === 'rejected' && <Chip tone="amber">Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin</Chip>}
                   </p>
                   <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px] text-faint">
                     <span>{c.meta}</span>
@@ -2429,6 +2435,7 @@ function MyCvsScreen() {
                       <p className={cn('min-w-0 flex-1 text-[11px] leading-snug', c.state === 'rejected' ? 'text-rose-700' : 'text-amber-700')}>
                         {shown(c)!.why}
                         {searchable === i && c.state !== 'rejected' && ' Vẫn là CV bạn chọn — sẽ hiển thị lại ngay khi đủ điều kiện.'}
+                        {searchable === i && c.state === 'rejected' && ' Vẫn là CV bạn đã chọn — cập nhật xong và được duyệt là hiển thị lại với nhà tuyển dụng, không cần bật lại.'}
                       </p>
                       <span
                         onClick={(e) => { e.stopPropagation(); go(shown(c)!.to) }}
@@ -2496,13 +2503,15 @@ function MyCvsScreen() {
                             <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all', searchable === i ? 'right-0.5' : 'left-0.5')} />
                           </span>
                         </label>
-                        {/* A REJECTED CV gets no “tạm” and no promise of returning on
-                            its own — a verdict needs a new file or real edits, not a
-                            wait. The Saramin gate keeps the “back the moment it
-                            qualifies” line, because that moment is theirs to create. */}
+                        {/* REVISED 2026-10-23: a REJECTED CV that is the chosen one
+                            keeps the switch ON and says so — the return is promised
+                            on an UPDATE + new verdict, never on waiting. A rejected
+                            CV that is NOT chosen still cannot be switched on. */}
                         <p className={cn('mt-1 text-[10.5px] leading-snug', !shown(c) ? 'text-faint' : c.state === 'rejected' ? 'text-rose-700' : 'text-amber-700')}>
                           {c.state === 'rejected'
-                            ? 'CV chưa được duyệt nên không thể hiển thị với nhà tuyển dụng.'
+                            ? searchable === i
+                              ? 'Vẫn là CV bạn đã chọn, nhưng chưa được duyệt nên đang tạm ẩn. Cập nhật xong và được duyệt là hiển thị lại — không cần bật lại.'
+                              : 'CV chưa được duyệt nên không thể hiển thị với nhà tuyển dụng.'
                             : shown(c)
                             ? searchable === i
                               ? 'Vẫn là CV bạn đã chọn, nhưng chưa đủ điều kiện nên tạm không hiển thị. Bổ sung xong là hiển thị lại ngay — không cần chọn lại.'

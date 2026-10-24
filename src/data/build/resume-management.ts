@@ -722,6 +722,29 @@ export const resumeManagement: BuildModule = {
               'The default is the safer value at account creation; the candidate opts in deliberately (default direction is flagged as an open question in the module).',
             ],
           },
+          {
+            heading: 'The chosen CV loses its verdict — the switch stays on (decided 2026-10-23)',
+            text: 'The candidate picked a CV for CV search, and later that CV is Rejected by an admin (or a Saramin CV drops below the readiness rule). The CV leaves the index at once; the candidate’s CHOICE does not. The switch stays on, the card says the CV is temporarily hidden and why, and the moment an update earns a Qualified verdict the CV is indexed again with no action from the candidate. Decided on the BA’s advice; it is the module rule “no system action flips the candidate’s visibility” applied to the CV-level flag — a verdict changes what is visible, never what was chosen.\n\nWhat changed from the earlier wording: the card used to give a rejected chosen CV no chip and no promise of returning (“a verdict needs a new file, not a wait”). The promise is now made, but it is CONDITIONAL — on an update and a new verdict, never on waiting — so it stays honest.',
+            table: {
+              cols: ['State of the chosen CV', 'Header chip (what recruiters see)', 'By the name (the VERDICT)', 'Reason line + action', 'In CV search'],
+              rows: [
+                ['Qualified', '{{tagok:Nhà tuyển dụng thấy CV này}}', '—', '—', 'Indexed'],
+                ['Saramin CV below the readiness rule', '{{tagwarn:Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin}}', '{{tagwarn:Chưa đủ thông tin}}', 'What is missing + “Vẫn là CV bạn chọn — bổ sung xong là hiển thị lại ngay.” · {{btn:Cập nhật hồ sơ}}', 'Not indexed'],
+                ['Uploaded CV in doubt (admin review pending)', 'no chip — the review is never shown to the candidate (invisibility rule)', '—', '—', 'Not indexed until the verdict'],
+                ['**Rejected** (Chưa được duyệt — <lý do>)', '{{tagwarn:Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin}}', '{{tag:Chưa được duyệt — Thiếu thông tin}} (always with the reason)', 'The reason + “Vẫn là CV bạn đã chọn — cập nhật xong và được duyệt là hiển thị lại với nhà tuyển dụng, không cần bật lại.” · primary action per reason: {{btn:Cập nhật hồ sơ}} · {{btn:Tải lên CV khác}}', 'Not indexed'],
+                ['After the update — re-check pending', '{{tagwarn:Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin}}', '{{tagmute:Đang chờ duyệt}}', '“Bạn đã cập nhật CV. Saramin đang kiểm tra lại.” + “Được duyệt là hiển thị lại — không cần bật lại.” The candidate already saw the verdict, so naming the re-check leaks nothing; this is the one doubt state that may be named.', 'Not indexed until the verdict'],
+                ['After the update — new verdict Qualified', 'back to {{tagok:Nhà tuyển dụng thấy CV này}}', '—', '—', 'Indexed again, automatically'],
+              ],
+            },
+            items: [
+              'VISIBLE ONLY AT QUALIFIED. “Auto back on” means the SWITCH never moved; the CV is shown again only when the new verdict is Qualified (the pool gate is cv.status = Qualified). While the updated CV is in doubt it reads “đang chờ duyệt”, not “hiển thị” — showing an unverified CV would skip the check the gate exists for.',
+              'THE HEADER CHIP WORDS WHAT RECRUITERS SEE, THE VERDICT CHIP WORDS WHY. Copy chosen 2026-10-23 (Thu), one sentence shape so the two read as one switch flipping: blue **“Nhà tuyển dụng thấy CV này” · EN “Recruiters can see this CV”** when the chosen CV is indexed; amber **“Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin” · EN “Recruiters will see this CV once it’s complete”** for EVERY chosen-but-hidden state (rejected · re-check pending · Saramin CV below the rule). The choice itself is carried by the amber colour, the ON switch in the ⋯ menu and the promise line — the chip does not repeat it. Only the verdict chip is red, and it always carries the reason; a row never shows two red chips, and never claims “Nhà tuyển dụng thấy CV này” while the CV is hidden — the build showed exactly that claim on a rejected CV on 22/10/2026, which is the bug this block fixes.',
+              'ONE HELPER DECIDES. The same `shown(cv)` that picks the verdict chip picks the choice chip and the reason line, so the card cannot say “hidden” in one place and “visible” in another.',
+              'THE ACTION IS THE POINT OF THE CARD NOW. On a rejected chosen CV the primary button is the fix the reason asks for (Cập nhật hồ sơ · Tải lên CV khác), not a quiet “Chỉnh sửa” in the corner; counters (views · applications) stay.',
+              'A rejected CV that is NOT the chosen one still cannot be switched on (“CV chưa được duyệt nên không thể hiển thị”). Keeping an existing choice is not the same as allowing a new one.',
+              'The same two chips repeat on the CV’s row in the list below the card, so the featured card and the list agree.',
+            ],
+          },
         ],
         behaviors: [
           'Setting a CV as primary is a single tap and takes effect for quick apply immediately.',
@@ -779,6 +802,7 @@ export const resumeManagement: BuildModule = {
           'A candidate can see which companies unlocked their CV and when.',
           'Deleting a CV leaves previously sent application snapshots intact.',
           'No HQ or system action can change a candidate’s visibility setting.',
+          'When the searchable CV is Rejected, its flag survives: the card shows the amber “Nhà tuyển dụng sẽ thấy CV này khi đủ thông tin” chip and the red verdict chip with the reason, the CV is not indexed, and after an update that earns Qualified it is indexed again with no action from the candidate.',
         ],
         openQuestions: [
           '[C6] Is visibility opt-in or opt-out by default at account creation? (Also open at module level.)',
