@@ -28,6 +28,7 @@ export const crmGuide: ModuleGuide = {
   intro:
     'For sales reps, sales leads and kế toán. This module is where a company becomes a paying customer: one chain of three documents — quotation → purchase order → VAT e-invoice — and the customer record they hang off. Issuing the invoice is the single most important click in the platform: it is the moment the customer actually receives what they bought.',
   before: [
+    '**Workflow 5 — Dùng chung quota** (tiếng Việt) giải thích cách một công ty tài trợ chia sẻ quota cho công ty thụ hưởng, áp dụng cho Job posting, CV search, Banner và Manual service.',
     'Four end-to-end **workflows** open the list — who does what, on which platform and page, in what order, with the screenshot of each step under its row: a company user signs up and is placed · a company is verified · a quotation discount is approved · a company is claimed from Free data. The tasks after them are the single screens those workflows pass through.',
     'Every workflow step reads the same way: **Who** · *Platform* · **Page** (path) — action → result. Actors: **Employer HR** — the person at the company who signs up and becomes its first Admin · **Saramin Admin** — the CRM operator at HQ · **Sales rep** and **Sales lead** — Saramin sales · **System** — automatic. Platforms: **Employer site** (the company console — dev: dev.hiring.svn.topdev.asia) · **Admin console** (dev: dev.admin-svn.topdev.asia) · **Email**. The Jobseeker site plays no part in these flows.',
     'Work in this order: **Customers** (the company must exist, with its tax code) → **Quotations** → **Purchase order** → **Invoice**. Each document is created from the one before it, and nothing is ever retyped between them.',
@@ -140,6 +141,138 @@ export const crmGuide: ModuleGuide = {
         '**Built (dev, 11/09/2026):** the claim, its two Waiting statuses and Approve / Reject on the company’s Claim requests tab are in the build (a foreign company is no longer blocked over a tax code it cannot have). Phân trực tiếp is specified and pending.',
       ],
       spec: 'danh-ba-doanh-nghiep-free-company-data',
+    },
+    /* ── SHARED QUOTA (2026-10-25) — user guide in Vietnamese, at the user's request.
+       Written from the BUILD (admin c2cf3b27 · svn-be abcee36b1 · svn-web b202673f1,
+       23/10/2026): all four product axes are shared (phase 2, V702). Admin strings
+       are English on screen (the console has no VI locale); employer-site strings
+       are quoted in Vietnamese as they render. Known gaps are named in the tips. */
+    {
+      id: 'wf-shared-quota',
+      title: 'Workflow 5 — Dùng chung quota (Shared quota): link công ty → dùng quota của công ty tài trợ cho Job posting · CV search · Banner · Manual service',
+      where: 'Admin console: CRM → Customers → công ty tài trợ → tab Overview → card Shared quota · Employer site: Đăng tin, Tìm ứng viên · Admin console: Jobs, Boosting, Manual services',
+      outcome: 'Một công ty (công ty tài trợ — Sponsor) mua và được xuất hoá đơn; các công ty khác được link vào (công ty thụ hưởng — Beneficiary) dùng chung quota đó cho cả 4 loại sản phẩm. Hoá đơn, doanh thu, hạng vẫn của công ty tài trợ; job, ứng viên, CV đã mở là của công ty thụ hưởng.',
+      flow: [
+        { n: '1', who: '**Saramin Admin**', platform: 'Admin console', page: '**CRM → Customers** → mở **công ty tài trợ** → tab **Overview** → card **Shared quota**', action: 'Gõ đúng **Company ID** của công ty thụ hưởng (dạng **CO-XXXXXXX**, không tìm theo tên) → **Add ID**', result: 'Toast *Company linked to shared quota*. Dòng mới “{mã} · linked {ngày}” với tag **Active**; tiêu đề card ghi *sponsor · N companies*. Trên hồ sơ công ty thụ hưởng, cùng card ghi “{tên} spends the quota of:” kèm tên công ty tài trợ', shot: { caption: 'Card Shared quota trên tab Overview của công ty tài trợ.', pending: 'Chưa có ảnh từ môi trường dev — chụp khi QA có dữ liệu link.' } },
+        { n: '2', who: '**System**', platform: '—', page: '—', action: 'Invoice chính thức của công ty tài trợ được xuất (như mọi quota khác)', result: 'Quota trên invoice đó dùng được cho công ty thụ hưởng ngay. PO chưa xuất invoice thì công ty thụ hưởng chưa thấy gì' },
+        { n: '3', who: '**Employer HR** (công ty thụ hưởng)', platform: 'Employer site', page: '**Đăng tin** → ô **Đơn hàng / Hoá đơn**', action: 'Chọn dòng “{số INV} · **Chia sẻ bởi {công ty tài trợ}**” → điền tin → đăng', result: 'Lượt đăng trừ vào invoice của công ty tài trợ; tin đứng tên công ty thụ hưởng. Dưới ô hiện “Tin này dùng lượt đăng {tên} chia sẻ cho công ty bạn. Tin vẫn là của công ty bạn.”' },
+        { n: '4', who: '**Employer HR** (công ty thụ hưởng)', platform: 'Employer site', page: '**Tìm ứng viên** → hồ sơ ứng viên → mở CV', action: 'Mở CV như bình thường — không có ô chọn nguồn', result: 'Dùng pack CV search **của chính mình trước**; không có hoặc hết thì dùng pack của công ty tài trợ (link cũ nhất trước). CV đã mở thuộc về công ty thụ hưởng' },
+        { n: '5', who: '**Saramin Admin**', platform: 'Admin console', page: '**Boosting** → tạo banner', action: '**Customer** = công ty tài trợ → **Order / PO** + **Placement product on the order** của công ty tài trợ → **Shown on** = *One company page* → **Company page** = công ty thụ hưởng → publish', result: 'Banner hiện trên trang công ty thụ hưởng; booking trừ vào PO của công ty tài trợ' },
+        { n: '6', who: '**Saramin Admin**', platform: 'Admin console', page: '**Manual services** → mở dịch vụ **của công ty tài trợ** → **Record**', action: 'Ô **Delivered for** = công ty thụ hưởng → **Save — deduct 1 {đơn vị}**', result: 'Nhật ký ghi “Delivered for {công ty}”; trừ 1 lượt của dịch vụ công ty tài trợ' },
+        { n: '7', who: '**Sales rep** · công ty', platform: 'Admin console · Employer site', page: 'Hồ sơ công ty → **Products & billing** · Employer: **Sử dụng sản phẩm**', action: 'Xem ai đã dùng bao nhiêu', result: 'Công ty tài trợ: nhóm cột *Qty used — by company*. Công ty thụ hưởng: invoice tag *Sponsored by / Tài trợ bởi …*, chỉ số của mình — xem task “Theo dõi số đã dùng” bên dưới' },
+        { n: '8', who: '**Saramin Admin**', platform: 'Admin console', page: 'card **Shared quota** của công ty tài trợ → **Remove**', action: 'Xác nhận “Remove {tên} from shared quota?”', result: 'Chỉ chặn **lần dùng tiếp theo**: tin đã đăng, banner đang chạy vẫn chạy hết hạn, không thu hồi gì. Số đã dùng vẫn nằm trên invoice của công ty tài trợ (tên bị gạch, tag *Removed*)' },
+      ],
+      tips: [
+        '**Không phải quan hệ mẹ – con.** Link chỉ chia sẻ đúng một thứ: quota trên các invoice đã xuất của công ty tài trợ. Pháp nhân, hoá đơn, doanh thu, hạng, customer status vẫn của riêng từng công ty — doanh thu và hạng tính cho công ty tài trợ.',
+        '**Áp dụng cho cả 4 loại sản phẩm** khi link đang Active: Job posting (kèm add-on Hot job tag, Super-star tag), CV search, Banner (Boosting: banner/popup) và Manual service. Không có công tắc theo từng sản phẩm hay từng invoice — link là theo công ty.',
+        '**Nhiều – nhiều, nhưng chỉ một cấp.** Một công ty tài trợ link bao nhiêu công ty cũng được; một công ty có thể dùng quota của nhiều công ty tài trợ, và vừa tài trợ vừa thụ hưởng. Quota dùng ké **không chia tiếp** được cho công ty mình tài trợ. Chỉ link hai chiều A ↔ B bị từ chối.',
+        '**Công ty thụ hưởng không bao giờ thấy** tổng quota, số còn lại, giá trị hay PO của công ty tài trợ — chỉ số invoice (để chọn khi đăng tin) và số mình đã dùng.',
+      ],
+      spec: 'shared-quota',
+    },
+    {
+      id: 'shared-quota-link',
+      title: 'Link và gỡ link công ty thụ hưởng',
+      where: 'CRM → Customers → công ty tài trợ → tab Overview → card Shared quota',
+      outcome: 'Công ty thụ hưởng dùng được quota của công ty tài trợ từ lần dùng tiếp theo.',
+      steps: [
+        'Luôn mở hồ sơ **công ty tài trợ** (công ty mua và được xuất hoá đơn) — link chỉ thêm được từ phía này. Hồ sơ công ty thụ hưởng chỉ hiện tên công ty tài trợ, không có nút Remove.',
+        'Lấy **Company ID** của công ty thụ hưởng (dạng **CO-XXXXXXX**, xem trên hồ sơ của họ hoặc do khách gửi). Ô nhập không tìm theo tên — hai công ty có thể trùng tên, không bao giờ trùng ID.',
+        'Gõ ID vào ô **CO-XXXXXXX** → **Add ID**. Nếu bị từ chối, đọc thông báo ở bảng dưới.',
+        'Gỡ: bấm **Remove** trên dòng công ty → xác nhận. Dòng vẫn ở lại danh sách với tag *Removed {ngày}*. Link lại sau đó sẽ tạo một dòng Active mới.',
+      ],
+      settings: [
+        {
+          heading: 'Khi Add ID bị từ chối',
+          note: 'Thông báo do hệ thống trả về bằng tiếng Việt, kể cả trên admin tiếng Anh.',
+          table: {
+            cols: ['Thông báo', 'Nghĩa là', 'Cách xử lý'],
+            rows: [
+              ['Không đúng dạng CO-XXXXXXX', 'ID gõ sai dạng', 'Copy lại đúng ID: **CO-** + 7 ký tự'],
+              ['Không có công ty nào mang ID này', 'Không tìm thấy công ty', 'Kiểm tra lại ID với khách'],
+              ['Đây là chính công ty này', 'Gõ ID của chính công ty tài trợ', 'Dùng ID của công ty thụ hưởng'],
+              ['{mã} đã Archived — không link được', 'Công ty thụ hưởng đã lưu trữ', 'Khôi phục công ty trước (khôi phục không tự link lại)'],
+              ['Công ty này đang chia sẻ quota cho chính công ty bạn — không link hai chiều', 'Hai công ty tài trợ cho nhau (A ↔ B)', 'Chọn một chiều duy nhất'],
+              ['{mã} đã được link rồi', 'Link đang Active', 'Không cần làm gì'],
+            ],
+          },
+        },
+      ],
+      tips: [
+        '**Ai làm được:** HQ Admin có quyền **Shared quota links** (company:share_quota), và công ty phải nằm trong phạm vi dữ liệu của người thao tác. Khách hàng không tự link trên Employer site — trang của họ ghi “Thêm hoặc ngừng chia sẻ: liên hệ sales owner của bạn ở Saramin.”',
+        '**Link không cần điều kiện trước:** công ty tài trợ chưa có invoice vẫn link được (link chỉ có tác dụng khi invoice được xuất); công ty thụ hưởng chưa Verified vẫn link được, nhưng vẫn phải qua cổng đăng tin của chính mình.',
+        '**Archive một bên** (tài trợ hoặc thụ hưởng) sẽ tự đóng mọi link của công ty đó.',
+      ],
+      spec: 'shared-quota',
+    },
+    {
+      id: 'shared-quota-use',
+      title: 'Dùng quota được chia sẻ — 4 loại sản phẩm',
+      where: 'Employer site: Đăng tin · Tìm ứng viên — Admin console: Jobs · Boosting · Manual services',
+      outcome: 'Mỗi lần dùng trừ vào quota của công ty tài trợ và được ghi là do công ty thụ hưởng dùng.',
+      steps: [
+        '**Job posting** — Employer site: **Đăng tin** → ô **Đơn hàng / Hoá đơn** → chọn dòng “{số INV} · **Chia sẻ bởi {tên}**”. Danh sách gói hiện “dùng quota được chia sẻ” thay cho số lượt. Admin đăng hộ: **Jobs** → tạo tin → ô **Invoice** → nhóm **Shared by {name}**. Nút **Đăng tin** trên dòng hoá đơn được chia sẻ ở trang Sử dụng sản phẩm mở sẵn đúng hoá đơn đó.',
+        '**CV search** — Employer site: **Tìm ứng viên** → mở CV như bình thường. Không phải chọn gì: hệ thống dùng pack của mình trước, rồi đến pack của công ty tài trợ.',
+        '**Banner (Boosting)** — chỉ Saramin Admin: **Boosting** → banner → **Customer** = công ty tài trợ, chọn **Order / PO** và **Placement product on the order** → **Shown on** = *One company page* → **Company page** = công ty thụ hưởng → publish.',
+        '**Manual service** — chỉ Saramin Admin: **Manual services** → mở dịch vụ **của công ty tài trợ** → **Record** → **Delivered for** = công ty thụ hưởng → **Save — deduct 1 {đơn vị}**.',
+      ],
+      settings: [
+        {
+          heading: '4 loại sản phẩm — dùng ở đâu, trừ vào đâu',
+          table: {
+            cols: ['Loại sản phẩm', 'Ai thao tác · ở đâu', 'Chọn quota của công ty tài trợ', 'Trừ vào', 'Lưu ý'],
+            rows: [
+              ['**Job posting** (kèm add-on Hot job tag, Super-star tag)', 'Employer HR — **Đăng tin**; hoặc Saramin Admin — **Jobs**', 'Chọn invoice trong nhóm **Chia sẻ bởi {tên}** (Employer) / **Shared by {name}** (Admin)', 'Lượt đăng trên invoice của công ty tài trợ, invoice hết hạn sớm nhất trước', 'Invoice đã hết lượt: Employer site hiện mờ “Hết lượt — liên hệ {tên}”; Admin không hiện. Invoice tặng (free) của công ty tài trợ chỉ HQ dùng được'],
+              ['**CV search**', 'Employer HR — **Tìm ứng viên**', 'Tự động — pack của mình trước, sau đó pack của công ty tài trợ (link cũ nhất trước)', 'Pack CV search của công ty tài trợ; hoàn lượt cũng về pack đó', 'Pack của công ty tài trợ đang chờ kích hoạt **không bao giờ** bị tự kích hoạt cho công ty thụ hưởng'],
+              ['**Banner** (Boosting: banner, popup)', 'Chỉ Saramin Admin — **Boosting**', '**Customer** = công ty tài trợ; **Company page** = công ty thụ hưởng', 'Booking trên PO của công ty tài trợ', 'Chỉ banner/popup **mua trên PO**. Banner toàn mạng/popup không gắn trang công ty nào → luôn tính là công ty tài trợ tự dùng. Link được kiểm tra lúc publish'],
+              ['**Manual service**', 'Chỉ Saramin Admin — **Manual services**', 'Mở dịch vụ của công ty tài trợ → **Delivered for** = công ty thụ hưởng', '1 lượt của dịch vụ công ty tài trợ', 'Chỉ dịch vụ **mua trên PO**; dịch vụ tặng không chia sẻ. Ô Delivered for chỉ hiện khi có từ hai công ty nhận trở lên'],
+            ],
+          },
+        },
+        {
+          heading: 'Khi bị chặn',
+          table: {
+            cols: ['Thông báo', 'Nghĩa là'],
+            rows: [
+              ['Đơn hàng này thuộc công ty khác và chưa được chia sẻ cho công ty bạn', 'Link đã bị gỡ (hoặc chưa có) — liên hệ công ty tài trợ / sales owner'],
+              ['Hết lượt — liên hệ {tên}', 'Invoice của công ty tài trợ đã dùng hết loại sản phẩm đó'],
+              ['A banner scoped to a company page must be booked by that company, or by a sponsor sharing its quota with it.', 'Banner chọn trang của công ty không có link với Customer'],
+              ['This service can only be delivered for its own company, or a company it shares its quota with', 'Chọn Delivered for là công ty không có link'],
+            ],
+          },
+        },
+      ],
+      tips: [
+        '**Điều kiện đăng tin là của công ty thụ hưởng:** mã số thuế, không bị lưu trữ, xác minh — dùng quota chung không bỏ qua cổng nào.',
+        '**Thông báo cho công ty tài trợ** khi quota bị dùng (email “[Saramin] {công ty thụ hưởng} vừa dùng {sản phẩm} từ quota của bạn”) chỉ có cho Job posting và đang **tắt mặc định** — bật ở **Automation → Rules**.',
+        '⚠ **Đang kiểm tra trên build (23/10/2026):** ở Employer site, công ty thụ hưởng **không có pack CV search riêng** có thể bị trang Tìm ứng viên chặn (hiện “View talent-pool plans”) trước khi tới bước dùng pack của công ty tài trợ. QA cần xác nhận trước khi hướng dẫn khách dùng CV search chung.',
+      ],
+      spec: 'shared-quota',
+    },
+    {
+      id: 'shared-quota-track',
+      title: 'Theo dõi số đã dùng — công ty tài trợ và công ty thụ hưởng',
+      where: 'Admin console: hồ sơ công ty → tab Products & billing · Employer site: Quản lý sản phẩm & thanh toán → Sử dụng sản phẩm',
+      outcome: 'Biết từng hoá đơn còn bao nhiêu và ai đã dùng.',
+      steps: [
+        '**Công ty tài trợ** — tab **Products & billing**, card **Invoiced products**: hoá đơn đang chia sẻ nằm ở mục **Shared with other companies**, có nhóm cột **Qty used — by company** (cột của chính mình trước, sau đó mỗi công ty thụ hưởng một cột; tổng các cột = Qty used). Bật/tắt bằng **Split usage by company**. Công ty đã gỡ link vẫn giữ cột, tên bị gạch.',
+        '**Công ty thụ hưởng** — cùng tab: hoá đơn của công ty tài trợ mang tag **Sponsored by {tên}**, chỉ hiện các sản phẩm mình đã dùng và số của riêng mình; Total qty, Qty remaining, giá trị để trống. Hoá đơn tự mua mang tag **Own purchase**, đủ số liệu.',
+        '**Vừa tài trợ vừa thụ hưởng** — hai mục: **Shared with other companies** (hoá đơn mình mua và đang chia sẻ) và **Used by {công ty} only** (hoá đơn dùng ké + hoá đơn tự mua không chia sẻ với ai).',
+        '**Employer site** — trang **Sử dụng sản phẩm**: công ty tài trợ thấy “Bạn đang chia sẻ quota cho {tên}.”; công ty thụ hưởng thấy “Bạn đang dùng chung quota của {tên}.” và dòng “{n} posts used”, không có tổng, không có thanh tiến độ.',
+      ],
+      shots: [
+        { src: `${IMG}/shared/admin-billing-fpt.jpg`, caption: 'Công ty tài trợ (FPT) — nhóm cột Qty used theo công ty: FPT, Sao Mai, Tiki, An Khang, Phú Thịnh (đã gỡ, gạch tên).' },
+        { src: `${IMG}/shared/admin-billing-saomai.jpg`, caption: 'Công ty thụ hưởng (Sao Mai) — hoá đơn Sponsored by chỉ có số của Sao Mai; hoá đơn Own purchase đủ số liệu.' },
+        { src: `${IMG}/shared/admin-billing-tiki.jpg`, caption: 'Vừa tài trợ vừa thụ hưởng (Tiki) — Shared with other companies và Used by Tiki only.' },
+        { src: `${IMG}/shared/employer-saomai.jpg`, caption: 'Employer site, công ty thụ hưởng — “3 posts used”, không tổng, không thanh tiến độ.' },
+        { src: `${IMG}/shared/employer-fpt.jpg`, caption: 'Employer site, công ty tài trợ — bảng như Admin với cột theo công ty.' },
+      ],
+      tips: [
+        'Ảnh minh hoạ chụp từ prototype trên trang spec (dữ liệu mẫu) — bố cục giống build; thay bằng ảnh QA khi môi trường dev có dữ liệu link.',
+        '⚠ **Lỗi đã biết trên build (23/10/2026):** hoá đơn chỉ chứa Manual service / Banner đang hiện tooltip “Manual services and placements are never shared…” — sai so với quy tắc hiện tại (cả 4 loại đều được chia sẻ). Khi công ty thụ hưởng dùng thật, hoá đơn chuyển sang mục chia sẻ.',
+        '⚠ **Manual service:** chỉ ghi nhận (Record) được từ dịch vụ trên hồ sơ **công ty tài trợ** — trên hồ sơ công ty thụ hưởng, các dòng Sponsored by không có nút History / Record.',
+      ],
+      spec: 'company-products-billing',
     },
     {
       id: 'find-a-customer',
@@ -360,6 +493,7 @@ export const crmGuide: ModuleGuide = {
     },
   ],
   builtFrom: [
+    { repo: 'saramin-vn-admin · svn-be · svn-web', branch: 'dev', commit: 'c2cf3b27 · abcee36b1 · b202673f1', date: '2026-10-23', note: 'Shared quota (Workflow 5 and its three tasks) — linking, all four shared product axes (phase 2, V702), sponsor vs beneficiary views' },
     { repo: 'saramin-vn-admin', branch: 'dev', commit: '4ee8ef2', date: '2026-09-11', note: 'screens and behaviour — Sign-ups’ three actions (SRM-484), the Verified column and Verify company (SRM-483), discount approval' },
     { repo: 'saramin-vn-admin', branch: 'dev', commit: 'deed9d0', date: '2026-09-08', note: 'docs/qa/screenshots — the build pictures on this page' },
     { repo: 'svn-web', branch: 'dev', commit: 'c497942', date: '2026-09-11', note: 'corporate sign-up with company type and the ERC (SRM-483 §1) · Company information (/company-join)' },
