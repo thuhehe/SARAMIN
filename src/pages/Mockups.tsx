@@ -3146,7 +3146,7 @@ function OnboardingScreen() {
   const [catOpen, setCatOpen] = useState(false)
   const [cat, setCat] = useState('Design')
   const [indOpen, setIndOpen] = useState(false)
-  const [inds, setInds] = useState<string[]>(['IT / Software', 'FMCG'])
+  const [inds, setInds] = useState<string[]>(['IT / Software (all)', 'Banking › Commercial banks'])
   const toggleInd = (c: string) =>
     setInds((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
   /* Step 3 is the CANDIDATE side of the shared salary contract: ONE figure,
@@ -3261,10 +3261,10 @@ function OnboardingScreen() {
                   </div>
                   <Picker
                     label="Desired industry"
-                    options={['IT / Software', 'FMCG', 'Banking', 'Healthcare', 'Education', 'Logistics', 'Real estate', 'Retail']}
+                    options={['IT / Software (all)', 'Banking & finance (all)', 'Banking › Commercial banks', 'Healthcare (all)', 'Education › E-learning', 'Logistics (all)', 'Retail › E-commerce', 'FMCG (all)']}
                     open={indOpen} setOpen={setIndOpen}
                     value={inds} onPick={toggleInd} max={3}
-                    hint="The company’s sector — a designer can work in Banking or FMCG."
+                    hint="The company’s sector. Pick a whole group, an industry or a specialty — the real field opens the 3-level picker."
                   />
                 </div>
                 <Nav next={() => setStep(2)} />

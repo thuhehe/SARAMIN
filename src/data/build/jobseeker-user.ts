@@ -428,7 +428,7 @@ export const jobseekerUser: BuildModule = {
               rows: [
                 ['Step 1', 'Desired job category', 'Dropdown, from the Category master data', 'Exactly one — it is picked first because it narrows the job-role list below it'],
                 ['Step 1', 'Desired job role', 'Text box with suggestions, from the Job-title master data', 'Exactly one'],
-                ['Step 1', 'Desired industry', 'Dropdown, more than one allowed, from the Industry master data', 'Up to 3'],
+                ['Step 1', 'Desired industry', 'The 3-level Industry picker (see the block below) — a group, an industry or a specialty can be chosen', 'Up to 3 — a whole group counts as 1'],
                 ['Step 2', 'Desired work location', 'Dropdown the candidate types into to search, more than one allowed — province / city', 'Up to 3'],
                 ['Step 2', 'Desired work type', 'Chips: in office · remote · hybrid · oversea', 'Up to 3 of the 4 — or none at all'],
                 ['Step 3', 'Expected salary', 'One amount, typed. It is always a monthly VND figure, so "triệu / tháng" is printed beside the box rather than being a control the candidate sets', 'One amount only, never a from–to range'],
@@ -443,6 +443,30 @@ export const jobseekerUser: BuildModule = {
             ],
             warn: 'ONE GROUP PER STEP is what keeps this wizard short: sign-up takes Basic information, this wizard takes Work preference, the CV carries work history, education detail and skills. Years of experience and highest education are Basic information and were ALREADY taken at registration — do not re-add them here.',
           },
+          {
+            label: 'Industry picker — any of the 3 levels can be chosen (decided 2026-10-25)',
+            text: 'Industry master data has 3 levels: group (level 1) › industry (level 2) › specialty (level 3). The candidate can choose at ANY level. Choosing a group or an industry means “all of it” and is stored as that one node, never expanded into its leaves. The same component is used on the Company site (create job), only the limit differs. Mockup: https://claude.ai/artifact/KcZaVXGYfbrTvtbSaE9KnZ',
+            table: {
+              cols: ['Checkbox state', 'When', 'What the user can do'],
+              rows: [
+                ['{{tagok:Selected}}', 'This node itself is chosen', 'Click to unselect'],
+                ['{{tagmute:Included}}', 'A parent of this node is chosen — shown as a pale tick + “đã gồm”', 'Locked. Clicking shows: “X đã nằm trong Y. Bỏ chọn Y nếu chỉ muốn chọn riêng mục này.”'],
+                ['{{tag:Partial}}', 'Some children are chosen, the node itself is not — dash + count badge', 'Click to choose the whole node; its chosen children merge into it'],
+                ['{{tagmute:Empty}}', 'Nothing chosen in this branch', 'Click to choose'],
+              ],
+            },
+            items: [
+              'Layout: 3 columns (group · industry · specialty). Every row in every column has a checkbox. Clicking the label opens the next level; clicking the checkbox selects.',
+              'No “Tất cả …” / “Toàn bộ …” rows — the parent’s own checkbox is “all”.',
+              'Choosing a parent when some of its children are already chosen merges them: the children are removed and the parent takes one slot.',
+              'Limit: each chosen node counts 1, whatever its level. Candidate preference: up to 3. Create job: 1 (to confirm). At the limit a further pick is refused with “Tối đa N lĩnh vực. Bỏ bớt một mục để chọn …”. With a limit of 1, a new pick replaces the old one.',
+              'Search runs across all 3 levels and returns a flat list; each result shows its level and its path (Group › Industry) and can be chosen right there.',
+              'Labels wrap onto 2 lines — never truncated with “…”. Chosen chips show the level (Cả nhóm · Cả ngành · Chuyên ngành) and the path.',
+              'Phone: one column at a time, drill down with “‹ Quay lại”.',
+              'Matching: a level-1 or level-2 choice matches every job whose industry sits anywhere in that branch.',
+            ],
+            warn: 'The master data mixes capitals and lower case (“ngân hàng thương mại”, “các tổ chức tài chính”). Normalise the labels before this picker ships — with every level selectable, the inconsistency shows on every chip.',
+          },
         ],
         uiFields: [
           {
@@ -450,7 +474,7 @@ export const jobseekerUser: BuildModule = {
             items: [
               { name: 'desiredJobCategory', type: 'select → Category taxonomy', notes: 'picked FIRST because it narrows the role suggestions below it' },
               { name: 'desiredJobRole', type: 'ref → Master data · Job categories & roles (the ROLE level)', notes: 'the #1 recruiter filter; suggestions come from the chosen category. THE ONLY role field backed by a reference list — it is chosen from a dropdown, so it resolves to an id. A job title written on a CV does NOT (see Resume management → work experience); do not confuse the two' },
-              { name: 'desiredIndustry', type: 'multi-select (≤3)', notes: 'the COMPANY’s sector — a different axis from category (a designer can work in Banking or FMCG)' },
+              { name: 'desiredIndustry', type: 'ref[] → Industry node, any level (≤3)', notes: '3-level picker — group, industry or specialty; stored as the chosen node id. The COMPANY’s sector — a different axis from category (a designer can work in Banking or FMCG)' },
             ],
           },
           {
