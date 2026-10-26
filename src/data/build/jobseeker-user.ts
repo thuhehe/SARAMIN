@@ -407,6 +407,126 @@ export const jobseekerUser: BuildModule = {
       },
     },
 
+    // 0b · First sign-in from the old system ─────────────────────────────────
+    // The one-time step a migrated member goes through. Old-system phones were
+    // never verified, so this is the moment the number is proven — and the only
+    // moment the user can correct it.
+    {
+      name: 'First sign-in from the old system',
+      slug: 'first-signin-old-system',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      ready: true,
+      notes: 'A member moved over from the old Saramin VN signs in for the first time: prove it is them with what is on file, verify the phone by Zalo, set a new password. The phone can be set or corrected once, here; after that it is locked.',
+      detail: {
+        refDocs: [
+          { label: 'Figma — User transferring to new system', href: 'https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=6359-32805', meta: 'UI Final' },
+        ],
+        keyPoints: [
+          {
+            vi: '**Một quy tắc cho cả 4 trường hợp:** chứng minh là chủ tài khoản bằng thông tin đã có, rồi bổ sung phần còn thiếu. Email + mật khẩu có SĐT → mã Zalo tới số đó. Email + mật khẩu không có SĐT → mã email, rồi thêm SĐT + mã Zalo. Social → nhà cung cấp đã xác minh danh tính, chỉ cần SĐT + mã Zalo.',
+            en: '**One rule for all 4 cases:** prove it is you with what is already on file, then fill in what is missing. Email + password with a phone → Zalo code to that phone. Email + password without a phone → email code, then add a phone + Zalo code. Social → the provider already proved identity, so only the phone + Zalo code.',
+          },
+          {
+            vi: '**SĐT ở hệ thống cũ chưa từng được xác minh.** Lần đăng nhập đầu tiên là lúc xác minh nó — và là lần duy nhất người dùng được sửa số. Sau đó số bị khoá; chỉ Admin được đặt lại.',
+            en: '**Old-system phones were never verified.** The first sign-in is when the number gets proven — and the only time the user can correct it. After that it is locked; only Admin can reset it.',
+          },
+          {
+            vi: '**Luôn có lối thoát khi số cũ không còn dùng:** dưới ô SĐT bị khoá có link “Số này không còn dùng?” → chuyển sang xác minh bằng email rồi nhập số mới. Không có link này, người mất SIM sẽ kẹt mãi ở bước này.',
+            en: '**Always a way out when the old number is dead:** under the locked phone field, a “Số này không còn dùng?” link switches to email verification and then a new number. Without it, anyone who lost the SIM is stuck at this step for good.',
+          },
+        ],
+        description:
+          'The one-time step between a migrated member’s first sign-in and the new site. It proves the person owns the account, verifies the phone by Zalo (old phones were never verified), collects the new terms consent and, on the email route, a new password.',
+        userStory:
+          'As a member of the old Saramin, I want to sign in with what I already have and confirm my details once, so that I keep my account and CV on the new site without registering again.',
+        requirements: [
+          {
+            label: 'The four jobseeker cases (decided 2026-10-26)',
+            text: 'Which case applies is decided by two facts read from the migrated account: how the user signed in, and whether a usable phone is on file. Every case ends on the same screen (“Please verify your contact information”) plus the required terms checkbox; only the fields differ.',
+            table: {
+              cols: ['Signed in with', 'Phone on file?', 'Fields on the verify screen', 'How they prove it is them', 'Then'],
+              rows: [
+                ['Email + password', 'Yes', 'Phone — **pre-filled, locked** + {{btn:Verify}}. Under it: link “Số này không còn dùng?”', 'Zalo code to the phone on file', 'Set new password → logged in'],
+                ['Email + password', 'Yes, but the user taps “Số này không còn dùng?”', 'Same screen as the next row: Email (locked) + Phone (empty)', 'Email code, then Zalo code to the NEW number', 'Set new password → logged in'],
+                ['Email + password', 'No', 'Email — **pre-filled, locked** + {{btn:Verify}} · Phone — **empty** + {{btn:Verify}}', 'Email code, then Zalo code to the number they enter', 'Set new password → logged in'],
+                ['Social (Google / Facebook)', 'Yes', 'Phone — **pre-filled, editable** + {{btn:Verify}}', 'Already proven by the provider; the Zalo code only proves the number works', 'Logged in'],
+                ['Social (Google / Facebook)', 'No', 'Phone — **empty** + {{btn:Verify}}', 'Already proven by the provider', 'Logged in'],
+              ],
+            },
+            items: [
+              'Why the phone is locked only on the email route: if the old password cannot be trusted, the number on file is the ownership proof, so it cannot be swapped on the same screen. A social sign-in has already proven identity, so the user may correct the number directly.',
+              '{{btn:Continue}} stays disabled until every shown field is verified AND the required terms box is ticked.',
+              'Verified email/phone show a {{tagok:Verified}} state in place of the {{btn:Verify}} button; editing a verified (editable) phone clears its verification.',
+              'After “Set new password” the user is logged in straight away — no second sign-in (Figma note).',
+            ],
+          },
+          {
+            label: 'Company users',
+            table: {
+              cols: ['Step', 'What happens'],
+              rows: [
+                ['1 · Sign in', 'Email + password on the employer login'],
+                ['2 · Email not found', 'Toast “Email or password doesn’t match” — the same message as a wrong password, so the form never reveals which emails exist'],
+                ['2 · Email found', 'Verification email sent; screen “Check your email”'],
+                ['3 · Link clicked', 'Set new password → logged in'],
+              ],
+            },
+            items: ['No phone step for company users at migration.'],
+          },
+          {
+            label: 'The phone is set once',
+            table: {
+              cols: ['When', 'Can the user change the phone?', 'How'],
+              rows: [
+                ['First sign-in (this step)', '{{tagok:Yes — once}}', 'Correct it on the verify screen and prove the new number by Zalo code'],
+                ['After the first sign-in', '{{tagwarn:No}}', 'Locked on the jobseeker side'],
+                ['Lost SIM / number no longer theirs', '{{tag:Only via Admin}}', 'Request through Customer center → admin confirms identity (email code to the account email) → admin resets the phone → the user verifies the new number at next sign-in'],
+              ],
+            },
+            warn: 'Conflict to resolve: Account settings (jobseeker) still draws a self-service phone change with a Zalo code. If the phone is locked after the first verification, that row becomes read-only and its Change flow is removed.',
+          },
+          {
+            label: 'Errors and edge cases',
+            table: {
+              cols: ['Case', 'What happens', 'Message on screen'],
+              rows: [
+                ['Email not found (email route)', 'Stay on login', '“Email or password doesn’t match”'],
+                ['Number already verified on another account', 'Refused; the user enters another number (email route: via “Số này không còn dùng?”)', '“Số điện thoại này đã được dùng cho một tài khoản khác. Vui lòng dùng số khác.”'],
+                ['Old number in a bad format (landline, missing 0, +84, spaces)', 'Normalised during import. Still invalid after that → treated as **no phone on file**', '—'],
+                ['Code not received / no Zalo on that number', 'Email route: “Số này không còn dùng?”. Social route: edit the number', '“Không nhận được mã? Gửi lại sau 60 giây”'],
+                ['Wrong code / too many tries', 'Same OTP rules as sign-up: 6 digits, valid 3 min, resend after 60 s, 5 wrong in 24 h → 24 h lock', '“Mã không đúng. Bạn còn N lần thử.”'],
+                ['User leaves half-way', 'Nothing is saved; the next sign-in starts this step again. The account cannot use the site until the step is finished', '—'],
+              ],
+            },
+          },
+        ],
+        backend: {
+          dataModel: [
+            { name: 'migrationState', type: 'enum', required: true, notes: 'PENDING (imported, step not done) · DONE. Only PENDING accounts are routed to this step' },
+            { name: 'legacyPhone', type: 'string', notes: 'the imported, normalised, UNVERIFIED number. Pre-fills the field; never treated as verified' },
+            { name: 'phoneVerifiedAt', type: 'datetime', notes: 'set by the Zalo code. Once set, the jobseeker cannot change the phone; Admin reset clears it' },
+            { name: 'emailVerifiedAt', type: 'datetime', notes: 'set by the email code (email route without phone, or “Số này không còn dùng?”)' },
+            { name: 'termsAcceptedVersion', type: 'string', required: true, notes: 'the NEW terms; the old system’s consent does not carry over' },
+          ],
+          notes: 'Uniqueness is checked against VERIFIED phones only — unverified legacy numbers may repeat across accounts and must not block anyone. Admin phone reset is logged (who, when, old → new).',
+        },
+        acceptance: [
+          'An email + password account with a phone sees the phone pre-filled and locked, and the “Số này không còn dùng?” link under it.',
+          'The link switches to the email + empty-phone screen; finishing it saves the new verified phone.',
+          'A social account with a phone sees it pre-filled and editable.',
+          'A number already verified on another account is refused with the message above.',
+          'After the step is DONE, the jobseeker has no way to change the phone; Admin can reset it.',
+          'Company users go email → verification email → new password, with no phone step.',
+        ],
+        openQuestions: [
+          'Is the old password checked at sign-in? If yes, the email route has already proven identity and the phone could be editable there too.',
+          'SMS fallback for numbers not on Zalo — or is “Số này không còn dùng?” enough?',
+          'Account settings: remove the self-service phone change (see the conflict above)?',
+        ],
+      },
+    },
+
     // 0c · Onboarding ─────────────────────────────────────────────────────────
     {
       name: 'Onboarding',
