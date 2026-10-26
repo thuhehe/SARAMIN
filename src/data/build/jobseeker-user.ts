@@ -448,7 +448,7 @@ export const jobseekerUser: BuildModule = {
               cols: ['Signed in with', 'Phone on file?', 'Fields on the verify screen', 'How they prove it is them', 'Then'],
               rows: [
                 ['Email + password', 'Yes', 'Phone — **pre-filled, locked** + {{btn:Verify}}. Under it: link “Số này không còn dùng?”', 'Zalo code to the phone on file', 'Set new password → logged in'],
-                ['Email + password', 'Yes, but the user taps “Số này không còn dùng?”', 'Same screen as the next row: Email (locked) + Phone (empty)', 'Email code, then Zalo code to the NEW number', 'Set new password → logged in'],
+                ['Email + password', 'Yes, but the number is old — the user taps “Số này không còn dùng?”', 'Email (locked) + Phone (empty, opens after the email is verified) — step by step in the next block', 'Email code FIRST, then Zalo code to the NEW number', 'Set new password → logged in'],
                 ['Email + password', 'No', 'Email — **pre-filled, locked** + {{btn:Verify}} · Phone — **empty** + {{btn:Verify}}', 'Email code, then Zalo code to the number they enter', 'Set new password → logged in'],
                 ['Social (Google / Facebook)', 'Yes', 'Phone — **pre-filled, editable** + {{btn:Verify}}', 'Already proven by the provider; the Zalo code only proves the number works', 'Logged in'],
                 ['Social (Google / Facebook)', 'No', 'Phone — **empty** + {{btn:Verify}}', 'Already proven by the provider', 'Logged in'],
@@ -459,6 +459,28 @@ export const jobseekerUser: BuildModule = {
               '{{btn:Continue}} stays disabled until every shown field is verified AND the required terms box is ticked.',
               'Verified email/phone show a {{tagok:Verified}} state in place of the {{btn:Verify}} button; editing a verified (editable) phone clears its verification.',
               'After “Set new password” the user is logged in straight away — no second sign-in (Figma note).',
+            ],
+          },
+          {
+            label: 'Case in detail — has a phone on file, but the number is old',
+            text: 'The number on file is the ownership proof for an email + password account. When the user no longer has that number, the email is the only other proof — so the email is verified FIRST, and only then may a new number be added and verified by Zalo. The phone field stays closed until the email is verified, so a new number is never accepted from someone who has not proven they own the account.',
+            table: {
+              cols: ['Step', 'Screen', 'The user', 'The system'],
+              rows: [
+                ['1', 'Verify screen — Phone pre-filled, {{tagmute:locked}}, {{btn:Verify}}; link under it “Số này không còn dùng? Xác minh bằng email”', 'Taps the link', 'Switches the same screen to the email route (no page change, nothing sent yet)'],
+                ['2', 'Email — pre-filled, {{tagmute:locked}} + {{btn:Verify}} · Phone — **empty, disabled**, hint “Xác minh email trước để thêm số mới” · link “Dùng lại số cũ”', 'Taps {{btn:Verify}} next to the email', 'Sends a 6-digit code to the account email (valid 3 min, resend after 60 s)'],
+                ['3', 'Code box under the email + “Time remaining 2:56”', 'Enters the code', 'Email marked {{tagok:Verified}}; the phone field opens'],
+                ['4', 'Phone — empty, editable + {{btn:Verify}}', 'Types the number they use now, taps {{btn:Verify}}', 'Normalises the number and checks it is not VERIFIED on another account (refused with the message in Errors), then sends a Zalo code to the NEW number'],
+                ['5', 'Code box under the phone', 'Enters the Zalo code', 'Phone marked {{tagok:Verified}}'],
+                ['6', 'Terms + {{btn:Continue}}', 'Ticks the required terms, taps {{btn:Continue}}', '{{btn:Continue}} is enabled only when email AND phone are verified and the required terms are ticked'],
+                ['7', 'Set new password', 'Enters a new password', 'Saves: new phone = verified channel, email verified, new terms version; the old number is dropped from the profile (kept in the migration log). Logged in straight away'],
+              ],
+            },
+            items: [
+              '“Dùng lại số cũ” (step 2) returns to the locked old number — for someone who tapped the link by mistake. Anything verified so far is kept.',
+              'No notice is sent to the old number: it was never verified, so it is not a channel we trust.',
+              'Can’t reach the email either (old address closed) → nothing more can be proven on screen. The step shows “Liên hệ Customer center” and Admin resets the account after checking identity.',
+              'Typing the same old number again in step 4 is allowed — it is simply verified by Zalo like any other number.',
             ],
           },
           {
