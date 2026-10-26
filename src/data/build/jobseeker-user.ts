@@ -449,18 +449,37 @@ export const jobseekerUser: BuildModule = {
             table: {
               cols: ['Case', 'Signs in with', 'Phone on file?', 'Steps', 'Verify phone screen'],
               rows: [
-                ['**Case 1**', 'Email + password', 'Yes', 'Popup “Set a new password to continue” → reset-password email (“Check your email”) → set new password → signed in → **Verify phone** → logged in', 'Phone **pre-filled, editable** + {{btn:Verify}} → Zalo code'],
+                ['**Case 1**', 'Email + password', 'Yes', '“Set a new password to continue” screen — the reset-password email is sent the moment they sign in, **no popup** → set new password → signed in → **Verify phone** → logged in', 'Phone **pre-filled, editable** + {{btn:Verify}} → Zalo code'],
                 ['**Case 2**', 'Email + password', 'No', 'Same as Case 1', 'Phone **empty** + {{btn:Verify}} → Zalo code'],
-                ['**Case 3**', 'Social (Google / Facebook)', 'Yes', 'Popup “Verify your phone to continue” → **Verify phone** → logged in. No email or password step — the provider proved identity', 'Phone **pre-filled, editable** + {{btn:Verify}} → Zalo code'],
+                ['**Case 3**', 'Social (Google / Facebook)', 'Yes', '**Verify phone** straight away (one intro line on top, **no popup**) → logged in. No email or password step — the provider proved identity', 'Phone **pre-filled, editable** + {{btn:Verify}} → Zalo code'],
                 ['**Case 4**', 'Social (Google / Facebook)', 'No', 'Same as Case 3', 'Phone **empty** + {{btn:Verify}} → Zalo code'],
                 ['**Case 5**', 'Company user', '—', 'Reset-password email → set new password → logged in', 'No phone step, no Zalo'],
               ],
             },
             items: [
-              'Popup copy (email route): “Tài khoản và dữ liệu của bạn đã được chuyển sang Saramin. Để bảo vệ tài khoản, chúng tôi sẽ gửi email để bạn đặt mật khẩu mới, sau đó bạn xác minh số điện thoại qua Zalo. Chỉ mất khoảng 1 phút.” Social route: “… bạn cần xác minh số điện thoại qua Zalo. Chỉ mất khoảng 1 phút.”',
+              'No popups on either route: the explanation lives on the first screen itself (see the copy block below).',
               'After the new password the user is signed in and lands straight on Verify phone. Every page sends them back to Verify phone until the phone is verified.',
               'Verify phone carries the required terms checkbox (the NEW terms). {{btn:Continue}} is enabled only when the phone is verified and the required terms are ticked.',
               'Editing a pre-filled number before {{btn:Verify}} is normal — the old number is only a suggestion.',
+            ],
+          },
+          {
+            label: 'Screen copy — “Set a new password to continue” and the social intro line',
+            text: 'The popup and the “Check your email” screen said the same thing, so they are ONE screen. It opens right after a migrated email account signs in, and the reset email has already been sent.',
+            table: {
+              cols: ['Element', 'VI', 'EN'],
+              rows: [
+                ['Title', 'Đặt mật khẩu mới để tiếp tục', 'Set a new password to continue'],
+                ['Body', 'Tài khoản và dữ liệu của bạn đã được chuyển sang Saramin mới. Để bảo vệ tài khoản, chúng tôi đã gửi liên kết đặt mật khẩu mới tới **{email}**. Sau đó, bạn chỉ cần xác minh số điện thoại qua Zalo — mất khoảng 1 phút.', 'Your account and data have moved to the new Saramin. To keep your account safe, we’ve sent a link to set a new password to **{email}**. After that, you’ll just verify your phone number with Zalo — it takes about a minute.'],
+                ['Helper', 'Không thấy email? Kiểm tra thư mục spam.', 'Can’t find it? Check your spam folder.'],
+                ['Button', '{{btn:Gửi lại email}} — disabled with a 60 s countdown after each send', '{{btn:Resend email}}'],
+                ['Link', 'Quay lại đăng nhập', 'Back to log in'],
+                ['Social — intro line on Verify phone', 'Tài khoản của bạn đã được chuyển sang Saramin mới. Xác minh số điện thoại để tiếp tục.', 'Your account has moved to the new Saramin. Verify your phone number to continue.'],
+              ],
+            },
+            items: [
+              'The email is sent ON SIGN-IN — no Continue click. Signing in again while a link is still valid shows the same screen WITHOUT sending another email; {{btn:Resend email}} is how they get a new one.',
+              'The email address is shown in full, so the user can tell at once if it is an address they no longer use (→ Customer center).',
             ],
           },
           {
@@ -481,7 +500,8 @@ export const jobseekerUser: BuildModule = {
               cols: ['Case', 'What happens', 'Message on screen'],
               rows: [
                 ['Email not found (email route)', 'Stay on login', '“Email or password doesn’t match” — the same as a wrong password, so the form never reveals which emails exist'],
-                ['Reset email not received / link expired', 'Re-send from “Check your email”; the link follows the normal Forgot-password rules', '“Re-send available in 60s”'],
+                ['Reset email not received / link expired', '{{btn:Resend email}} on the same screen; the link follows the normal Forgot-password rules', '“Không thấy email? Kiểm tra thư mục spam.”'],
+                ['Signs in again while the link is still valid', 'Same screen, no new email sent', '—'],
                 ['New password set, user leaves before Verify phone', 'The next sign-in (with the NEW password) goes straight to Verify phone; no second reset email', '—'],
                 ['Number already verified on another account', 'Refused; the user enters another number', '“Số điện thoại này đã được dùng cho một tài khoản khác. Vui lòng dùng số khác.”'],
                 ['Old number in a bad format (landline, missing 0, +84, spaces)', 'Normalised during import. Still invalid → treated as **no phone on file** (Case 2 / Case 4)', '—'],
@@ -502,7 +522,7 @@ export const jobseekerUser: BuildModule = {
           notes: 'Uniqueness is checked against VERIFIED phones only — unverified legacy numbers may repeat across accounts and must not block anyone.',
         },
         acceptance: [
-          'Case 1/2: an email + password sign-in of a migrated account shows the popup, sends the reset-password email, and after the new password lands on Verify phone.',
+          'Case 1/2: an email + password sign-in of a migrated account sends the reset-password email at once and shows “Set a new password to continue” (no popup); after the new password it lands on Verify phone.',
           'Case 1/3: the old number is pre-filled and editable; Case 2/4: the field is empty.',
           'Leaving after the new password and signing in again goes straight to Verify phone.',
           'A number already verified on another account is refused with the message above.',
@@ -511,6 +531,7 @@ export const jobseekerUser: BuildModule = {
         ],
         openQuestions: [
           'Admin “Reset phone” — build before the Nov 14 launch, or Phase 2?',
+          'Showing “Set a new password to continue” only for EXISTING emails tells anyone which emails are old Saramin accounts. If the old password can still be checked, show the screen only when it matches; otherwise accept the risk (the email only reaches the owner).',
           'SMS fallback for numbers not on Zalo?',
           'Account settings: remove the self-service phone change (see the conflict above)?',
         ],
