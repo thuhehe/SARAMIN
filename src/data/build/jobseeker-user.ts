@@ -442,19 +442,21 @@ export const jobseekerUser: BuildModule = {
           'As a member of the old Saramin, I want to sign in with what I already have and confirm my details once, so that I keep my account and CV on the new site without registering again.',
         requirements: [
           {
-            label: 'The four jobseeker cases (decided 2026-10-26)',
-            text: 'Which case applies is decided by two facts read from the migrated account: how the user signed in, and whether a usable phone is on file. Every case ends on the same screen (“Please verify your contact information”) plus the required terms checkbox; only the fields differ.',
+            label: 'The cases — Case 1 to 5 jobseeker, Case 6 company (decided 2026-10-26)',
+            text: 'Which case applies is decided by two facts read from the migrated account: how the user signed in, and whether a usable phone is on file. Every case ends on the same screen (“Please verify your contact information”) plus the required terms checkbox; only the fields differ. Figma has each case beside its screens (section “CASES × UI”).',
             table: {
-              cols: ['Signed in with', 'Phone on file?', 'Fields on the verify screen', 'How they prove it is them', 'Then'],
+              cols: ['Case', 'Signed in with', 'Phone on file?', 'Fields on the verify screen', 'How they prove it is them', 'Then'],
               rows: [
-                ['Email + password', 'Yes', 'Phone — **pre-filled, locked** + {{btn:Verify}}. Under it: link “Số này không còn dùng?”', 'Zalo code to the phone on file', 'Set new password → logged in'],
-                ['Email + password', 'Yes, but the number is old — the user taps “Số này không còn dùng?”', 'Email (locked) + Phone (empty, opens after the email is verified) — step by step in the next block', 'Email code FIRST, then Zalo code to the NEW number', 'Set new password → logged in'],
-                ['Email + password', 'No', 'Email — **pre-filled, locked** + {{btn:Verify}} · Phone — **empty** + {{btn:Verify}}', 'Email code, then Zalo code to the number they enter', 'Set new password → logged in'],
-                ['Social (Google / Facebook)', 'Yes', 'Phone — **pre-filled, editable** + {{btn:Verify}}', 'Already proven by the provider; the Zalo code only proves the number works', 'Logged in'],
-                ['Social (Google / Facebook)', 'No', 'Phone — **empty** + {{btn:Verify}}', 'Already proven by the provider', 'Logged in'],
+                ['**Case 1**', 'Email + password', 'Yes', 'Phone — **pre-filled, locked** + {{btn:Verify}}. Under it: link “Số này không còn dùng?”', 'Zalo code to the phone on file', 'Set new password → logged in'],
+                ['**Case 2**', 'Email + password', 'Yes, but the number is old — the user taps “Số này không còn dùng?”', 'Email (locked) + Phone (empty, opens after the email is verified) — step by step in the next block', 'Email code FIRST, then Zalo code to the NEW number', 'Set new password → logged in'],
+                ['**Case 3**', 'Email + password', 'No', 'Email — **pre-filled, locked** + {{btn:Verify}} · Phone — **empty** + {{btn:Verify}}', 'Email code, then Zalo code to the number they enter', 'Set new password → logged in'],
+                ['**Case 4**', 'Social (Google / Facebook)', 'Yes', 'Phone — **pre-filled, editable** + {{btn:Verify}}', 'Already proven by the provider; the Zalo code only proves the number works', 'Logged in'],
+                ['**Case 5**', 'Social (Google / Facebook)', 'No', 'Phone — **empty** + {{btn:Verify}}', 'Already proven by the provider', 'Logged in'],
+                ['**Case 6**', 'Company user', '—', 'No verify screen — a verification email', 'The email link', 'Set new password → logged in (next block)'],
               ],
             },
             items: [
+              'Case 3 uses the same two screens as Case 2 (verify email first, then add a phone), without “Dùng lại số cũ”.',
               'Why the phone is locked only on the email route: if the old password cannot be trusted, the number on file is the ownership proof, so it cannot be swapped on the same screen. A social sign-in has already proven identity, so the user may correct the number directly.',
               '{{btn:Continue}} stays disabled until every shown field is verified AND the required terms box is ticked.',
               'Verified email/phone show a {{tagok:Verified}} state in place of the {{btn:Verify}} button; editing a verified (editable) phone clears its verification.',
@@ -462,7 +464,7 @@ export const jobseekerUser: BuildModule = {
             ],
           },
           {
-            label: 'Case in detail — has a phone on file, but the number is old',
+            label: 'Case 2 in detail — has a phone on file, but the number is old',
             text: 'The number on file is the ownership proof for an email + password account. When the user no longer has that number, the email is the only other proof — so the email is verified FIRST, and only then may a new number be added and verified by Zalo. The phone field stays closed until the email is verified, so a new number is never accepted from someone who has not proven they own the account.',
             table: {
               cols: ['Step', 'Screen', 'The user', 'The system'],
@@ -484,7 +486,7 @@ export const jobseekerUser: BuildModule = {
             ],
           },
           {
-            label: 'Company users',
+            label: 'Case 6 — company users',
             table: {
               cols: ['Step', 'What happens'],
               rows: [
