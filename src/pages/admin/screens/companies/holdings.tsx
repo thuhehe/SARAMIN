@@ -86,6 +86,8 @@ const HOLDINGS: Record<string, Inv[]> = {
   'FPT Software': [
     { no: 'INV-003210-07-2026', po: 'PO-003210-07-2026', issued: '01/07/2026', expires: '01/07/2027', amount: '386.400.000 ₫', lines: [
       { name: 'Top job', type: 'Job posting', total: 40, used: 40, shared: { [SM]: 3, [AK]: 1, [PT]: 2 } },
+      /* Job warranty (2026-10-27): two Top job postings closed with no applicant — reposted free, one already used by FPT. */
+      { name: 'Top job', type: 'Job posting', total: 2, used: 1, warranty: { of: 'Top job', on: '05/10/2026', reason: '2 tin Top job hết hạn không có ứng viên — đăng lại miễn phí', validUntil: '01/07/2027' } },
       { name: 'Basic', type: 'Job posting', total: 20, used: 6, shared: { [SM]: 2 } },
     ] },
     { no: 'INV-003464-09-2026', po: 'PO-003464-09-2026', issued: '10/09/2026', expires: '10/09/2027', amount: '512.000.000 ₫', lines: [
