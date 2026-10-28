@@ -1310,5 +1310,62 @@ export const jobManagement: BuildModule = {
         ],
       },
     },
+    {
+      name: 'Job tags — keyword links on the job detail',
+      site: 'Jobseekers',
+      scope: ['FE'],
+      ready: true,
+      notes: 'A strip of keyword chips at the foot of the job detail, BUILT FROM FIELDS THE JOB ALREADY HAS — industry, category, role, level, location, skills, company. Each chip opens the job search with that filter already applied. Nothing new for the employer to fill in. Decided 2026-10-28 after a client asked why the page has no tags; option A only (no SEO landing pages).',
+      detail: {
+        requirements: [
+          {
+            label: '1 · What a job tag is, and why the page has them',
+            text: 'A job tag is a **link**, not a label. It takes one value the job already carries — “Kế toán / Kiểm toán”, “Hà Nội”, “React” — and opens the list of OTHER open jobs with that same value. Saramin KR (hashtags under the posting) and VietnamWorks (“Từ khoá”) both ship it.\n\nIt does two jobs, neither of them for the employer:\n\n1. **Keeps a candidate who landed on the wrong job.** Most job-detail visits come from Google or a shared link. When the job is close but not right, the reader has nowhere to go but back. One tap on “Kiểm toán” or “Hà Nội” gives them the alternatives.\n2. **Internal links for search engines.** Every job page links to the same handful of filtered lists, which tells Google those lists matter. This comes free with the chips; building real SEO landing pages for them is a separate, LATER piece of work and is NOT part of this feature.',
+            items: [
+              '**DECIDED 2026-10-28 — option A only.** Auto-generated chips linking to the existing search page with a filter pre-applied.\n\nConsidered and NOT taken now: (B) dedicated SEO landing pages per tag (clean URL, own title / meta) — real SEO work, deferred, not dropped; (C) employers typing their own tags — rejected outright: free-text tags invite keyword stuffing, spell the same thing five ways, and would need moderation.',
+              '**THE STRIP THE BUILD HID ON 2026-09-15 IS THE STARTING POINT, NOT A NEW COMPONENT.** svn-web already has `FooterUtilities` → `TagChips` at the foot of the job detail, commented out because it (1) only printed the skill list a second time, as keyword searches, and (2) rendered a doubled hash (`##A/B Testing`). This feature replaces its DATA and fixes both faults; the slot and the chip component stay.',
+              '**YES, THE CHIPS REPEAT VALUES FROM “THÔNG TIN VIỆC LÀM” — ON PURPOSE.** That block states facts; the strip is the place to act on them. VietnamWorks repeats them the same way. What was wrong in September was repeating ONLY the skills, as plain keyword searches, which added nothing.',
+            ],
+          },
+          {
+            label: '2 · Which chips, in what order, and where each one goes',
+            text: 'Chips are built from the posting’s STRUCTURED fields, in the order below. A field the posting leaves empty simply produces no chip. The chip text is the catalogue name in the page language (VI / EN / KO) — the same words the “Thông tin việc làm” block prints.',
+            table: {
+              cols: ['#', 'Chip from', 'Posting field', 'Click opens', 'Max'],
+              rows: [
+                ['1', 'Industry', '`hiringBrief.industryId`', '`/search?industry=<code>`', '1'],
+                ['2', 'Job category', '`jobCategoryId`', '`/search?category=<code>`', '1'],
+                ['3', 'Job role', '`roleIds`', '`/search?role=<code>` — one chip per role', '3'],
+                ['4', 'Job level', '`jobLevelIds`', '`/search?level=<code>` — one chip per level', '3'],
+                ['5', 'Location (province)', '`hiringBrief.cityCodes`, else the working locations’ provinces', '`/search?province-code=<code>` — one chip per province', '3'],
+                ['6', 'Skill', '`tags[]` where `kind = SKILL`', '`/search?skill=<code>`', '8'],
+                ['7', 'Company', '`company.slug`', 'The company’s jobs page `/companies/<slug>/jobs`', '1'],
+              ],
+            },
+            items: [
+              '**ORDER IS BROAD → NARROW → COMPANY.** Industry and category first (the widest lists), then role, level, place, skills, and the employer last. The reader who wants alternatives meets the broad links first.',
+              '**NEVER A CHIP FOR:** benefits (`kind = BENEFIT` — “Bảo hiểm” is not a way to find a job), salary, contract or work type, education, headcount. Only fields the search page can filter on become chips.',
+              '**NO DUPLICATES.** Two chips with the same text in the same language (e.g. an industry and a category both named “Bất động sản”) collapse into the FIRST one in the order above.',
+              '**ANONYMOUS POSTING (SRM-737) — NO COMPANY CHIP.** The posting hides its employer everywhere else; a company link here would undo that.',
+              '**NO CODE, NO CHIP.** The search page filters on catalogue CODES; the job detail payload carries ids (and skill names). Resolve id → code through the catalogues the page already fetches. A value that cannot be resolved to a code (catalogue down, row deactivated) is DROPPED — never fall back to a free-text `?keyword=` link, which lands on a different, fuzzier list than the chip promises. If the skill tags do not carry a code today, svn-be adds it to the tag payload.',
+            ],
+          },
+          {
+            label: '3 · How the strip looks and behaves',
+            items: [
+              '**WHERE:** the foot of the job detail panel — the slot `FooterUtilities` already occupies — after the company block and the relevant-jobs carousel, before the page’s ad banner. Same on desktop and mobile.',
+              '**HEADING:** “Từ khoá” / “Keywords” / “키워드”, then the chips wrapping onto as many lines as they need.',
+              '**CHIP TEXT HAS NO “#”.** Plain catalogue name, so nothing can double it. Same chip style the page uses elsewhere; hover darkens it.',
+              '**FIRST 10 CHIPS SHOW, THE REST BEHIND “+”** (the existing `TagChips` toggle; “−” collapses again). The collapse is in the markup only — every chip is in the HTML from the first render, so search engines see all the links.',
+              '**REAL LINKS, SAME TAB.** Each chip is an `<a href>` rendered on the server, followable (no `nofollow`). Opening in the same tab is deliberate: the reader is leaving this job for a list, and “back” returns them here.',
+              '**ZERO CHIPS → NO STRIP.** No heading, no empty gap.',
+              '**THE SEARCH PAGE SHOWS THE FILTER IT WAS GIVEN.** Landing on `/search?industry=…` shows that industry selected in the filter bar, removable like any filter the reader picked. Nothing new to build here as long as the param is one `/search` already reads.',
+              '**MEASURED.** Every chip link carries `entry=job-tag`, a new search-entry token next to `header-panel` / `search-bar` / `suggest`, so analytics can say how many searches the tags start. That number is what decides whether option B is ever worth building.',
+              '**PREVIEW PAGE:** the employer’s job preview (`/jobs/preview`) shows the strip exactly as the live page will.',
+            ],
+          },
+        ],
+      },
+    },
   ],
 }
