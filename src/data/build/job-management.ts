@@ -942,7 +942,7 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'The live list under the job search box while the candidate types or pastes. THREE groups from three sources — keywords (master data), jobs (titles of open postings), companies (names) — in a fixed priority with flexible slots. Decided 2026-10-28 for SRM-1052, where a pasted job title showed “Không có kết quả” in the dropdown yet found the job on Enter.',
+      notes: 'The live list under the job search box while the candidate types or pastes. THREE groups from three sources — keywords (job categories only), jobs (titles of open postings), companies (names) — in a fixed priority with flexible slots. Decided 2026-10-28 for SRM-1052, where a pasted job title showed “Không có kết quả” in the dropdown yet found the job on Enter.',
       detail: {
         requirements: [
           {
@@ -951,13 +951,14 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Priority', 'Group (label)', 'Source', 'Base slots', 'Ceiling', 'Click opens'],
               rows: [
-                ['1', '**Từ khoá** — Keywords', 'Master data: job category · occupation (role) · specialisation · industry · skill', '5', '7', '`/search` with **that filter applied** — the same links the job tags use'],
+                ['1', '**Từ khoá** — Keywords', 'Master data — **job categories only**', '5', '7', '`/search?category=<code>` — that category **applied as a filter**, the same link the job tags use'],
                 ['2', '**Việc làm** — Jobs', 'Titles of OPEN, publicly visible postings', '3', '6', 'That job’s **detail page** `/jobs/<slug>`'],
                 ['3', '**Công ty** — Companies', 'Names of active companies with at least one open, named posting', '2', '4', 'The **company detail page** `/companies/<slug>`'],
               ],
             },
             items: [
-              '**WHY KEYWORDS COME FIRST.** A keyword is a filter: clicking “Business Analyst” opens every BA job, cleanly. A job title is one posting, and titles are messy — VietnamWorks shows “UI UX Designer” and “UI/UX Designer” as two suggestions because it treats raw titles as search terms. We never do: a job title appears ONLY as a specific job that opens that job.',
+              '**KEYWORDS = JOB CATEGORIES ONLY (decided 2026-10-28).** Not occupation, specialisation, industry or skill. A category is broad, there are few of them, and each opens a large, clean list — exactly what a suggestion above the jobs should be. Industry, skill and the narrower role levels stay reachable from the filter panel on the results page; suggesting them here mixed five vocabularies into one short list.',
+              '**WHY KEYWORDS COME FIRST.** A keyword is a filter: clicking “Kế toán / Kiểm toán” opens every job in that category, cleanly. A job title is one posting, and titles are messy — VietnamWorks shows “UI UX Designer” and “UI/UX Designer” as two suggestions because it treats raw titles as search terms. We never do: a job title appears ONLY as a specific job that opens that job.',
               '**WHY COMPANIES COME LAST** — except when the query IS a company name (rule 3).',
               '**LOCATIONS ARE NOT IN THE DROPDOWN.** The search bar has its own location picker beside the keyword field; a “Hà Nội” row among job keywords mixes two controls. The build’s `location` suggestion group is dropped from this list.',
             ],
@@ -979,7 +980,6 @@ export const jobManagement: BuildModule = {
             },
             items: [
               '**WHY CEILINGS.** Ten job rows is a results page, not a suggestion list — a reader who wants that many should press Enter. The ceiling also keeps one group from swallowing the dropdown.',
-              '**AT MOST 3 PER MASTER-DATA TYPE** inside Keywords, so “react / reactjs / react native / redux” cannot fill it with skills. A group held back by this cap COUNTS AS SHORT, and its spare slots move on like any other.',
               '**WHAT COUNTS AS A MATCH** — the only gate, in every group: the name CONTAINS the query, ignoring Vietnamese accents (“ke toan” finds “Kế toán”), in either language (“accountant” finds “Kế toán”); and the row leads somewhere live — a keyword or company with ZERO open jobs is not a match.',
               '**ORDER INSIDE A GROUP:** name starts with the query → a word in it starts with the query → contains it. Ties: Keywords and Companies by most open jobs; Jobs by newest auto-refresh (the same tie rule as the results list).',
             ],
@@ -996,7 +996,7 @@ export const jobManagement: BuildModule = {
             items: [
               '**PASTING IS TYPING.** A pasted keyword triggers the same suggestions as a typed one — the SRM-1052 report was a paste.',
               '**STARTS AT 2 CHARACTERS.** One letter (“u”) only returns noise.',
-              '**EACH ROW:** Keywords — search icon + name + type label (*Ngành nghề · Vị trí · Chuyên môn · Lĩnh vực · Kỹ năng*). Jobs — company logo + job title + company name, label *Việc làm*. Companies — logo + name, label *Công ty*. The part matching the query is **bold**.',
+              '**EACH ROW:** Keywords — search icon + category name, label *Ngành nghề*. Jobs — company logo + job title + company name, label *Việc làm*. Companies — logo + name, label *Công ty*. The part matching the query is **bold**.',
               '**ANONYMOUS POSTINGS (SRM-737)** appear in Jobs with the Saramin mark and “Saramin’s Client” — never the real name or logo — and NEVER make their employer appear in Companies or count toward its open jobs. Typing the real company name must not reveal them.',
               '**NO “KHÔNG CÓ KẾT QUẢ”.** The dropdown cannot know what a full search will find (Enter also reads descriptions and requirements), so it never claims there is nothing. With no suggestion it says **“Không có gợi ý cho ‘…’ — nhấn Enter để tìm”** / *“No suggestions for ‘…’ — press Enter to search”*.',
               '**ENTER WITHOUT PICKING A ROW** runs the full keyword search on what was typed — unchanged.',

@@ -19,12 +19,13 @@ Task này **mở rộng** dropdown thành **3 nhóm**, đọc từ 3 nguồn, th
 
 | Ưu tiên | Nhóm | Nguồn | Slot cơ bản | Trần |
 |---|---|---|---|---|
-| 1 | **Từ khoá** | Master data: job category · occupation · specialisation (group) · industry · skill | 5 | 7 |
+| 1 | **Từ khoá** | Master data — **chỉ job categories** | 5 | 7 |
 | 2 | **Việc làm** | Title của job **đang mở và public** (cùng điều kiện với trang kết quả search) | 3 | 6 |
 | 3 | **Công ty** | Tên công ty đang active, có **≥ 1 job đang mở và không ẩn danh** | 2 | 4 |
 
+- **Từ khoá chỉ lấy job categories.** **Bỏ** occupation, specialisation (group), industry, skill khỏi dropdown.
 - **Bỏ nhóm `location`** khỏi dropdown. Thanh search đã có ô chọn địa điểm riêng.
-- Mỗi row Việc làm cần: `slug`, `title`, tên công ty, logo. Mỗi row Công ty cần: `slug`, tên, logo, số job đang mở. Mỗi row Từ khoá cần: `code`, tên, **loại** (để FE dựng filter URL).
+- Mỗi row Việc làm cần: `slug`, `title`, tên công ty, logo. Mỗi row Công ty cần: `slug`, tên, logo, số job đang mở. Mỗi row Từ khoá cần: `code` và tên của category.
 
 ### 1.2 Chia slot linh động — tổng tối đa 10 dòng
 
@@ -42,8 +43,6 @@ Task này **mở rộng** dropdown thành **3 nhóm**, đọc từ 3 nguồn, th
 | 0 / 0 / 6 | 0 / 0 / **4** | 4 |
 | 2 / 1 / 1 | 2 / 1 / 1 | 4 |
 | 0 / 0 / 0 | — | 0 |
-
-**Mỗi loại master data tối đa 3 dòng** trong nhóm Từ khoá. Nhóm bị chặn bởi giới hạn này **tính là thiếu**, và slot thừa chuyển sang nhóm sau như bình thường.
 
 ### 1.3 Thế nào là “khớp”, và thứ tự trong nhóm
 
@@ -66,15 +65,17 @@ Tên công ty **bắt đầu bằng** chuỗi gõ (vd. “fpt”, “bosch”) v
 Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm bị lọc** theo địa điểm đó. Từ khoá và Công ty không bị ảnh hưởng.
 
 ### AC — Task 1
-- ☐ Gõ “Business Ana” → có nhóm Từ khoá (vd. Business Analyst), nhóm Việc làm (vd. Senior Business Analyst, Business Analyst (Fintech)), và nhóm Công ty nếu có tên khớp.
+- ☐ Gõ “ke toan” → nhóm Từ khoá có category “Kế toán / Kiểm toán”, nhóm Việc làm có các job có title chứa “kế toán”, nhóm Công ty nếu có tên khớp.
+- ☐ Gõ “Business Ana” → nhóm Việc làm có Senior Business Analyst, Business Analyst (Fintech)…; nhóm Từ khoá chỉ có kết quả nếu có **category** khớp.
+- ☐ Gõ tên một skill (vd. “React”, “Java”) hoặc một industry không trùng tên category nào → **không** có dòng skill / industry nào trong nhóm Từ khoá.
 - ☐ Dán đúng title của 1 job đang mở → job đó xuất hiện trong nhóm Việc làm.
 - ☐ Tổng số dòng không bao giờ quá 10. Các ca trong bảng 1.2 trả đúng số dòng từng nhóm.
-- ☐ Không nhóm nào vượt trần: Từ khoá ≤ 7, Việc làm ≤ 6, Công ty ≤ 4. Mỗi loại master data ≤ 3.
+- ☐ Không nhóm nào vượt trần: Từ khoá ≤ 7, Việc làm ≤ 6, Công ty ≤ 4.
 - ☐ “ke toan” và “accountant” đều ra “Kế toán”.
 - ☐ Từ khoá, công ty có 0 job đang mở → không xuất hiện. Job đã đóng hoặc tắt exposure → không xuất hiện.
 - ☐ Gõ “fpt” → công ty FPT ở dòng 1.
 - ☐ Gõ tên thật của công ty chỉ có job ẩn danh → công ty **không** xuất hiện; job hiện là “Saramin’s Client”.
-- ☐ Không còn nhóm `location` trong response.
+- ☐ Response chỉ còn 3 nhóm: category, job, company. Không còn `occupation`, `specialisationGroup`, `specialisation`, `industry`, `skill`, `location`.
 
 ---
 
@@ -83,7 +84,7 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 ### 2.1 Hiển thị
 
 - **Một cột**, 3 nhóm theo thứ tự: **Từ khoá → Việc làm → Công ty**. Mỗi nhóm có tiêu đề nhỏ; nhóm rỗng thì ẩn cả tiêu đề.
-- **Từ khoá:** icon kính lúp + tên + nhãn loại bên phải (*Ngành nghề · Vị trí · Chuyên môn · Lĩnh vực · Kỹ năng*).
+- **Từ khoá:** icon kính lúp + tên category, nhãn *Ngành nghề*.
 - **Việc làm:** logo + title + tên công ty, nhãn *Việc làm*.
 - **Công ty:** logo + tên, nhãn *Công ty*.
 - **In đậm** phần khớp với chuỗi đã gõ.
@@ -93,12 +94,10 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 
 | Bấm | Đi tới |
 |---|---|
-| Từ khoá | `/search?<param>=<code>` — **filter**, không phải keyword. **Đổi so với hiện tại** (đang submit thành keyword search). |
+| Từ khoá | `/search?category=<code>` — **filter**, không phải keyword. **Đổi so với hiện tại** (đang submit thành keyword search). |
 | Việc làm | Trang **chi tiết việc làm** `/jobs/<slug>` |
 | Công ty | Trang **chi tiết công ty** `/companies/<slug>` (không phải danh sách job của công ty) |
 | Enter, không chọn dòng nào | Keyword search như hiện tại |
-
-Map loại → param của `/search`: job category → `category`, occupation → `role`, specialisation (group) → `attribute`, industry → `industry`, skill → `skill`. Nếu loại nào `/search` chưa đọc được thì bỏ loại đó khỏi gợi ý; **không** fallback sang `?keyword=`.
 
 ### 2.3 Hành vi
 
@@ -124,6 +123,7 @@ Map loại → param của `/search`: job category → `category`, occupation �
 ## Không làm trong task này
 
 - ❌ Dùng title job làm **từ khoá gợi ý**. Title chỉ xuất hiện dưới dạng **một job cụ thể**.
+- ❌ Gợi ý occupation, specialisation, industry, skill. Từ khoá **chỉ** là job categories.
 - ❌ Gợi ý địa điểm trong dropdown (đã có ô chọn địa điểm riêng).
 - ❌ Cột / khối “việc làm bạn sẽ thích” cạnh gợi ý.
 - ❌ Sửa lỗi chính tả hoặc tìm gần đúng (fuzzy / typo).
