@@ -2,7 +2,7 @@
 
 **Module:** Job management · **Site:** Jobseeker (svn-web + svn-be) · **Loại:** BE + FE
 **Requirement chi tiết (source of truth):** https://saramin-eta.vercel.app/m/job-management/search-suggestions-the-dropdown-under-the-search-box
-**Design:** Figma frame “Search - Clicked & entered keyword”
+**Design:** https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=6482-44634&t=EfWD7YxOiYtHu45l-1
 
 ---
 
