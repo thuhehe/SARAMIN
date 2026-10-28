@@ -938,6 +938,78 @@ export const jobManagement: BuildModule = {
       },
     },
     {
+      name: 'Search suggestions — the dropdown under the search box',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'The live list under the job search box while the candidate types or pastes. THREE groups from three sources — keywords (master data), jobs (titles of open postings), companies (names) — in a fixed priority with flexible slots. Decided 2026-10-28 for SRM-1052, where a pasted job title showed “Không có kết quả” in the dropdown yet found the job on Enter.',
+      detail: {
+        requirements: [
+          {
+            label: '1 · Three groups, one priority order — Keywords → Jobs → Companies',
+            text: 'Until 2026-10 the dropdown read **master data only**, so a title an employer typed (“Business Analyst (Fintech)”) could never appear in it — and the dropdown said “Không có kết quả” while Enter found the job. That is the bug in SRM-1052: two parts of one search box disagreeing.\n\nThe dropdown now reads three sources, shown as three groups in this order. The order IS the priority: it decides both what is shown first and who gets spare slots.',
+            table: {
+              cols: ['Priority', 'Group (label)', 'Source', 'Base slots', 'Ceiling', 'Click opens'],
+              rows: [
+                ['1', '**Từ khoá** — Keywords', 'Master data: job category · occupation (role) · specialisation · industry · skill', '5', '7', '`/search` with **that filter applied** — the same links the job tags use'],
+                ['2', '**Việc làm** — Jobs', 'Titles of OPEN, publicly visible postings', '3', '6', 'That job’s **detail page** `/jobs/<slug>`'],
+                ['3', '**Công ty** — Companies', 'Names of active companies with at least one open, named posting', '2', '4', 'The **company detail page** `/companies/<slug>`'],
+              ],
+            },
+            items: [
+              '**WHY KEYWORDS COME FIRST.** A keyword is a filter: clicking “Business Analyst” opens every BA job, cleanly. A job title is one posting, and titles are messy — VietnamWorks shows “UI UX Designer” and “UI/UX Designer” as two suggestions because it treats raw titles as search terms. We never do: a job title appears ONLY as a specific job that opens that job.',
+              '**WHY COMPANIES COME LAST** — except when the query IS a company name (rule 3).',
+              '**LOCATIONS ARE NOT IN THE DROPDOWN.** The search bar has its own location picker beside the keyword field; a “Hà Nội” row among job keywords mixes two controls. The build’s `location` suggestion group is dropped from this list.',
+            ],
+          },
+          {
+            label: '2 · Flexible slots — a short group gives its slots to the next one',
+            text: 'Ten rows at most. Every group first takes what it has, up to its BASE. Slots left over go down the priority order — Keywords, then Jobs, then Companies — each group filling up to its CEILING before the next one gets any. If slots are STILL left, the list is simply shorter. Never pad it with rows that do not match what was typed.',
+            table: {
+              cols: ['Found (keyword / job / company)', 'Shown', 'Rows', 'What happened'],
+              rows: [
+                ['8 / 5 / 3', '**5 / 3 / 2**', '10', 'Every group has enough — base split.'],
+                ['8 / 5 / **0**', '**7** / 3 / 0', '10', 'No company: its 2 slots go to Keywords (up to their ceiling 7).'],
+                ['8 / **1** / 4', '**7** / 1 / 2', '10', 'One job: its 2 spare slots go to Keywords.'],
+                ['**1** / 8 / 4', '1 / **6** / **3**', '10', 'One keyword: 4 spare → Jobs fill to their ceiling 6 (+3) → Companies take the last one (+1).'],
+                ['**0** / **0** / 6', '0 / 0 / **4**', '4', 'Only companies match — capped at 4, nothing padded.'],
+                ['2 / 1 / 1', '2 / 1 / 1', '4', 'Little matches — a short list is the honest list.'],
+                ['0 / 0 / 0', '—', '0', 'Empty state (rule 4).'],
+              ],
+            },
+            items: [
+              '**WHY CEILINGS.** Ten job rows is a results page, not a suggestion list — a reader who wants that many should press Enter. The ceiling also keeps one group from swallowing the dropdown.',
+              '**AT MOST 3 PER MASTER-DATA TYPE** inside Keywords, so “react / reactjs / react native / redux” cannot fill it with skills. A group held back by this cap COUNTS AS SHORT, and its spare slots move on like any other.',
+              '**WHAT COUNTS AS A MATCH** — the only gate, in every group: the name CONTAINS the query, ignoring Vietnamese accents (“ke toan” finds “Kế toán”), in either language (“accountant” finds “Kế toán”); and the row leads somewhere live — a keyword or company with ZERO open jobs is not a match.',
+              '**ORDER INSIDE A GROUP:** name starts with the query → a word in it starts with the query → contains it. Ties: Keywords and Companies by most open jobs; Jobs by newest auto-refresh (the same tie rule as the results list).',
+            ],
+          },
+          {
+            label: '3 · When the query is a company name, the company goes to the top',
+            items: [
+              'If a company’s name STARTS WITH the query and it has open, named postings (“fpt”, “bosch”, “shinhan”), that company row moves to **row 1**. It still uses one of the Companies slots — the counts in rule 2 do not change, only its position.',
+              'Someone who types a company’s name wants that company, not a skill that happens to share the letters.',
+            ],
+          },
+          {
+            label: '4 · How the dropdown behaves',
+            items: [
+              '**PASTING IS TYPING.** A pasted keyword triggers the same suggestions as a typed one — the SRM-1052 report was a paste.',
+              '**STARTS AT 2 CHARACTERS.** One letter (“u”) only returns noise.',
+              '**EACH ROW:** Keywords — search icon + name + type label (*Ngành nghề · Vị trí · Chuyên môn · Lĩnh vực · Kỹ năng*). Jobs — company logo + job title + company name, label *Việc làm*. Companies — logo + name, label *Công ty*. The part matching the query is **bold**.',
+              '**ANONYMOUS POSTINGS (SRM-737)** appear in Jobs with the Saramin mark and “Saramin’s Client” — never the real name or logo — and NEVER make their employer appear in Companies or count toward its open jobs. Typing the real company name must not reveal them.',
+              '**NO “KHÔNG CÓ KẾT QUẢ”.** The dropdown cannot know what a full search will find (Enter also reads descriptions and requirements), so it never claims there is nothing. With no suggestion it says **“Không có gợi ý cho ‘…’ — nhấn Enter để tìm”** / *“No suggestions for ‘…’ — press Enter to search”*.',
+              '**ENTER WITHOUT PICKING A ROW** runs the full keyword search on what was typed — unchanged.',
+              '**LOCATION CHIP** filters the Jobs group only (a job in Đà Nẵng is not suggested to someone searching Hà Nội). Keywords and Companies ignore it.',
+              '**KEYBOARD:** ↑ ↓ move through all rows across groups, Enter opens the highlighted row, Esc closes.',
+              '**NOTHING TYPED YET:** unchanged — recent searches and popular keywords.',
+              '**NOT IN THIS LIST:** recommended jobs unrelated to the query (VietnamWorks’ “Việc làm bạn sẽ thích” column shows construction jobs for “softw”). Suggestions answer what was typed, nothing else.',
+            ],
+          },
+        ],
+      },
+    },
+    {
       name: 'Recommended jobs — matched to a jobseeker’s profile',
       site: 'Logic',
       scope: ['BE', 'FE'],
