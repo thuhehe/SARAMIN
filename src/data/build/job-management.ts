@@ -942,14 +942,14 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'The live list under the job search box while the candidate types or pastes. THREE groups, TWO rows each, in this order: companies (names) → keywords (job categories only) → jobs (titles of open postings). Decided 2026-10-28 for SRM-1052, where a pasted job title showed “Không có kết quả” in the dropdown yet found the job on Enter.',
+      notes: 'The live list under the job search box while the candidate types or pastes. THREE groups, 2 rows each by default and 6 rows in total, in this order: companies (names) → keywords (job categories only) → jobs (titles of open postings). A group with fewer than 2 gives its rows to the others — jobs first, then companies, then keywords. Decided 2026-10-28 for SRM-1052, where a pasted job title showed “Không có kết quả” in the dropdown yet found the job on Enter.',
       detail: {
         requirements: [
           {
             label: '1 · Three groups, two rows each — Companies → Keywords → Jobs',
-            text: 'Until 2026-10 the dropdown read **master data only**, so a title an employer typed (“Business Analyst (Fintech)”) could never appear in it — and the dropdown said “Không có kết quả” while Enter found the job. That is the bug in SRM-1052: two parts of one search box disagreeing.\n\nThe dropdown now reads three sources, shown as three groups in this order, **at most 2 rows each — 6 rows at most in total**.',
+            text: 'Until 2026-10 the dropdown read **master data only**, so a title an employer typed (“Business Analyst (Fintech)”) could never appear in it — and the dropdown said “Không có kết quả” while Enter found the job. That is the bug in SRM-1052: two parts of one search box disagreeing.\n\nThe dropdown now reads three sources, shown as three groups in this order — **2 rows each by default, 6 rows at most in total** (rule 2 moves spare rows between groups).',
             table: {
-              cols: ['Order', 'Group', 'Source', 'Max rows', 'Click opens'],
+              cols: ['Order', 'Group', 'Source', 'Base rows', 'Click opens'],
               rows: [
                 ['1', '**Công ty** — Companies', 'Names of active companies with at least one open, named posting', '2', 'The **company detail page** `/companies/<slug>`'],
                 ['2', '**Từ khoá** — Keywords', 'Master data — **job categories only**', '2', '`/search?category=<code>` — that category **applied as a filter**, the same link the job tags use'],
@@ -957,27 +957,31 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              '**DECIDED 2026-10-28 — 2 / 2 / 2, in the order of the design “Search - Clicked & entered keyword”.** Replaces the earlier draft of 10 rows with flexible slots. The dropdown is a shortcut, not a results page: six rows fit without scrolling, and everything else is one Enter away.',
+              '**DECIDED 2026-10-28 — 6 rows, 2 / 2 / 2 by default, in the order of the design “Search - Clicked & entered keyword”.** Replaces the earlier draft of 10 rows. The dropdown is a shortcut, not a results page: six rows fit without scrolling, and everything else is one Enter away.',
               '**KEYWORDS = JOB CATEGORIES ONLY.** Not occupation, specialisation, industry or skill. A category is broad, there are few of them, and each opens a large, clean list. Industry, skill and the narrower role levels stay reachable from the filter panel on the results page.',
               '**A JOB TITLE IS NEVER A KEYWORD ROW.** It appears only as a specific job that opens that job. Raw titles as search terms give rows like “UI UX Designer” and “UI/UX Designer” side by side.',
               '**LOCATIONS ARE NOT IN THE DROPDOWN.** The search bar has its own location picker; the build’s `location` suggestion group is dropped from this list.',
             ],
           },
           {
-            label: '2 · A short group stays short — no backfill, no padding',
-            text: 'Each group shows what it matched, **up to 2**. A group with fewer matches shows fewer rows; a group with none is hidden, heading and all. Spare rows are NOT handed to another group, and rows that do not match what was typed are never added to fill the space.',
+            label: '2 · A short group gives its rows to the others — Jobs, then Companies, then Keywords',
+            text: '1. Each group first takes what it matched, **up to 2**.\n2. Spare rows = 6 − rows used.\n3. Spare rows go to the other groups in this order: **Jobs → Companies → Keywords**. A group takes as many as it still has before the next one gets any.\n4. Rows still spare → the list is simply shorter. Never pad it with rows that do not match what was typed.\n\nThe DISPLAY order never changes — Companies, Keywords, Jobs — only how many rows each group gets. A group with no match is hidden, heading and all.',
             table: {
               cols: ['Found (company / keyword / job)', 'Shown', 'Rows'],
               rows: [
-                ['5 / 3 / 9', '**2 / 2 / 2**', '6'],
-                ['0 / 1 / 9', '0 / 1 / 2', '3'],
-                ['1 / 0 / 0', '1 / 0 / 0', '1'],
+                ['5 / 3 / 9', '**2 / 2 / 2**', '6 — every group has enough'],
+                ['3 / **0** / 9', '2 / 0 / **4**', '6 — no keyword: its 2 rows go to Jobs'],
+                ['**1** / 2 / 9', '1 / 2 / **3**', '6 — one company: its spare row goes to Jobs'],
+                ['6 / **0** / **1**', '**5** / 0 / 1', '6 — Jobs have only 1, so the 3 spare rows go to Companies'],
+                ['**0** / 5 / **0**', '0 / **5** / 0', '5 — only keywords match; Jobs and Companies have nothing to take, Keywords take the rest'],
+                ['0 / 1 / 2', '0 / 1 / 2', '3 — nothing left anywhere, so the list is shorter'],
                 ['0 / 0 / 0', '—', '0 — empty state (rule 3)'],
               ],
             },
             items: [
               '**WHAT COUNTS AS A MATCH** — the only gate, in every group: the name CONTAINS the query, ignoring Vietnamese accents (“ke toan” finds “Kế toán”), in either language (“accountant” finds “Kế toán”); and the row leads somewhere live — a company or category with ZERO open jobs is not a match.',
-              '**WHICH 2 WIN:** name starts with the query → a word in it starts with the query → contains it. Ties: companies and categories by most open jobs; jobs by newest auto-refresh (the same tie rule as the results list).',
+              '**WHY JOBS FIRST, KEYWORDS LAST:** a pasted or typed job title is what SRM-1052 was about, so jobs get the spare room first; there are only ~20 categories, so Keywords rarely have more to give anyway.',
+              '**WHICH ROWS WIN inside a group:** name starts with the query → a word in it starts with the query → contains it. Ties: companies and categories by most open jobs; jobs by newest auto-refresh (the same tie rule as the results list).',
               '**NO DUPLICATE ROWS.** The same company, category or job never appears twice.',
             ],
           },

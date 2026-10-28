@@ -10,7 +10,7 @@
 
 Hiện tại `GET /api/{lang}/jobs/suggest` **chỉ đọc master data**: job category, occupation, specialisation group, specialisation, industry, skill, và location. Vì vậy một title do nhà tuyển dụng tự gõ (vd. *“Business Analyst (Fintech)”*) **không bao giờ** hiện trong dropdown. Kết quả là dropdown báo *“Không có kết quả”*, trong khi bấm Enter vẫn tìm ra job. Đây chính là bug SRM-1052: hai phần của cùng một ô search trả lời khác nhau.
 
-Task này đổi dropdown thành **3 nhóm, mỗi nhóm tối đa 2 dòng**, theo đúng thứ tự trong design.
+Task này đổi dropdown thành **3 nhóm, mặc định mỗi nhóm 2 dòng, tổng tối đa 6 dòng**, theo đúng thứ tự trong design. Nhóm nào ít hơn 2 thì nhóm khác bù vào.
 
 ---
 
@@ -18,7 +18,7 @@ Task này đổi dropdown thành **3 nhóm, mỗi nhóm tối đa 2 dòng**, the
 
 ### 1.1 Ba nhóm, thứ tự cố định
 
-| Thứ tự | Nhóm | Nguồn | Tối đa |
+| Thứ tự hiển thị | Nhóm | Nguồn | Mặc định |
 |---|---|---|---|
 | 1 | **Công ty** | Tên công ty đang active, có **≥ 1 job đang mở và không ẩn danh** | **2** |
 | 2 | **Từ khoá** | Master data — **chỉ job categories** | **2** |
@@ -31,25 +31,31 @@ Task này đổi dropdown thành **3 nhóm, mỗi nhóm tối đa 2 dòng**, the
 - **Title job không bao giờ là dòng Từ khoá.** Title chỉ xuất hiện trong nhóm Việc làm.
 - Mỗi row Công ty cần: `slug`, tên. Mỗi row Từ khoá cần: `code`, tên category. Mỗi row Việc làm cần: `slug`, `title`.
 
-### 1.2 Nhóm thiếu thì để thiếu — không bù, không chèn
+### 1.2 Nhóm thiếu thì nhóm khác bù — Việc làm → Công ty → Từ khoá
 
-- Mỗi nhóm hiện số kết quả khớp, **tối đa 2**.
-- Ít hơn 2 → hiện ít hơn. Không có → **ẩn cả nhóm**.
-- **Không** lấy slot trống của nhóm này bù cho nhóm khác.
-- **Không** chèn kết quả không khớp để cho đủ.
+1. Mỗi nhóm lấy số kết quả khớp, **tối đa 2**.
+2. Slot thừa = 6 − số dòng đã dùng.
+3. Chia slot thừa theo thứ tự ưu tiên: **Việc làm → Công ty → Từ khoá**. Nhóm trước lấy hết phần nó còn có rồi mới tới nhóm sau.
+4. Vẫn còn thừa → **hiện ít hơn 6 dòng**. **Không** chèn kết quả không khớp để cho đủ.
+
+- **Thứ tự hiển thị không đổi** (Công ty → Từ khoá → Việc làm), chỉ số dòng của mỗi nhóm thay đổi.
+- Nhóm không có kết quả nào → **ẩn cả nhóm**.
 
 | Tìm được (công ty / từ khoá / việc làm) | Hiện | Tổng |
 |---|---|---|
-| 5 / 3 / 9 | 2 / 2 / 2 | 6 |
-| 0 / 1 / 9 | 0 / 1 / 2 | 3 |
-| 1 / 0 / 0 | 1 / 0 / 0 | 1 |
+| 5 / 3 / 9 | 2 / 2 / 2 | 6 — đủ cả |
+| 3 / **0** / 9 | 2 / 0 / **4** | 6 — không có từ khoá, 2 slot bù cho Việc làm |
+| **1** / 2 / 9 | 1 / 2 / **3** | 6 — thiếu 1 công ty, bù cho Việc làm |
+| 6 / **0** / **1** | **5** / 0 / 1 | 6 — Việc làm chỉ có 1, 3 slot thừa bù cho Công ty |
+| **0** / 5 / **0** | 0 / **5** / 0 | 5 — chỉ có từ khoá; Việc làm, Công ty không còn gì để bù |
+| 0 / 1 / 2 | 0 / 1 / 2 | 3 — không nhóm nào còn kết quả để bù |
 | 0 / 0 / 0 | — | 0 (empty state, xem 2.3) |
 
-### 1.3 Thế nào là “khớp”, và 2 dòng nào được chọn
+### 1.3 Thế nào là “khớp”, và dòng nào được chọn
 
 - **Khớp** = tên **chứa** chuỗi đã gõ, **không phân biệt dấu** (“ke toan” → “Kế toán”), khớp **cả tên VI lẫn EN**.
 - Công ty hoặc category có **0 job đang mở** → **không** tính là khớp.
-- **Chọn 2 dòng theo thứ tự:** bắt đầu bằng chuỗi gõ → một từ bắt đầu bằng chuỗi gõ → chứa chuỗi gõ.
+- **Trong mỗi nhóm, chọn dòng theo thứ tự:** bắt đầu bằng chuỗi gõ → một từ bắt đầu bằng chuỗi gõ → chứa chuỗi gõ.
 - **Bằng nhau thì:** Công ty và Từ khoá xếp theo **số job đang mở** nhiều hơn; Việc làm xếp theo **auto-refresh mới nhất** (giống luật tie của trang kết quả).
 - **Không trùng dòng:** một công ty, category hay job không xuất hiện 2 lần.
 
@@ -64,8 +70,10 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 
 ### AC — Task 1
 - [ ] Gõ “ux” khi có ≥ 2 kết quả mỗi nhóm → đúng 6 dòng, thứ tự: 2 công ty → 2 từ khoá → 2 việc làm.
-- [ ] Không nhóm nào có quá 2 dòng.
-- [ ] Nhóm Từ khoá không có kết quả → tổng chỉ còn 4 dòng; slot trống **không** được bù bằng công ty hay việc làm.
+- [ ] Tổng số dòng không bao giờ quá 6.
+- [ ] Từ khoá không có kết quả, Việc làm có nhiều → hiện 2 công ty + **4 việc làm**.
+- [ ] Từ khoá không có kết quả, Việc làm chỉ có 1, Công ty có nhiều → hiện **5 công ty** + 1 việc làm.
+- [ ] Các ca trong bảng 1.2 trả đúng số dòng từng nhóm. Bù luôn theo thứ tự Việc làm → Công ty → Từ khoá.
 - [ ] Dán đúng title của 1 job đang mở → job đó xuất hiện trong nhóm Việc làm.
 - [ ] Gõ “ke toan” → nhóm Từ khoá có category “Kế toán / Kiểm toán”.
 - [ ] Gõ tên một skill (vd. “React”, “Java”) → **không** có dòng skill nào trong nhóm Từ khoá.
@@ -86,7 +94,7 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 - **Từ khoá:** icon kính lúp + tên category.
 - **Việc làm:** icon cặp + title (1 dòng, quá dài thì “…”), nhãn *Việc làm* bên phải.
 - **In đậm** phần khớp với chuỗi đã gõ.
-- **Không cuộn**: tối đa 6 dòng nên luôn vừa khung.
+- **Không cuộn**: tổng tối đa 6 dòng nên luôn vừa khung.
 - Footer (tắt gợi ý · đóng) và panel công ty quan tâm bên phải: **giữ nguyên như hiện tại**.
 
 ### 2.2 Bấm vào đâu đi tới đâu
@@ -108,7 +116,7 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 - Sự kiện analytics khi chọn gợi ý (`sendSuggestSelect`) ghi thêm **nhóm** đã chọn: `company` / `keyword` / `job`.
 
 ### AC — Task 2
-- [ ] Thứ tự hiển thị đúng: Công ty → Từ khoá → Việc làm; nhóm rỗng không chiếm chỗ.
+- [ ] Thứ tự hiển thị đúng: Công ty → Từ khoá → Việc làm, kể cả khi một nhóm được bù thêm dòng; nhóm rỗng không chiếm chỗ.
 - [ ] Dán title job → dropdown hiện job đó, **không** hiện “Không có kết quả”.
 - [ ] Bấm một công ty → mở đúng trang chi tiết công ty.
 - [ ] Bấm một từ khoá → mở `/search` với category đó **đang được chọn** ở thanh filter, bỏ chọn được.
@@ -122,7 +130,6 @@ Nếu thanh search đang chọn địa điểm thì **chỉ nhóm Việc làm b�
 
 ## Không làm trong task này
 
-- ❌ Bù slot trống của nhóm này sang nhóm khác. Mỗi nhóm tối đa 2, thiếu thì để thiếu.
 - ❌ Dùng title job làm **từ khoá gợi ý**.
 - ❌ Gợi ý occupation, specialisation, industry, skill. Từ khoá **chỉ** là job categories.
 - ❌ Gợi ý địa điểm trong dropdown (đã có ô chọn địa điểm riêng).
