@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel, isVerified } from '@/pages/admin/data/companies'
-import { INVOICES, POS, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus, fmtUnit } from '@/pages/admin/data/sales'
+import { INVOICES, POS, QUOTE_CATALOG, VAT_RATE, invPay, invPayInfo, invStage, payStatus, qrState, fmtUnit } from '@/pages/admin/data/sales'
 import type { Inv } from '@/pages/admin/data/sales'
 import { MOCK_TODAY, asDate, dateBefore, money, vnWords } from '@/pages/admin/lib/fmt'
-import { PayCell } from '@/pages/admin/screens/sales/_shared'
+import { PayCell, QrLine } from '@/pages/admin/screens/sales/_shared'
 import { InvoicePdfModal } from '@/pages/admin/screens/sales/invoicePdf'
 import { InfoBit } from '@/pages/admin/ui/fields'
 import { ListPage } from '@/pages/admin/ui/list'
@@ -20,9 +20,19 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
      read that fact, so the PO's payment column follows by construction rather than
      by a second update that could fail on its own. Local state here only because
      the mock has no store. */
-  const [paidNow, setPaidNow] = useState<string | null>(null)
-  const pay = invPay(inv)
-  const payNow = payStatus(paidNow ?? pay.paidAt, pay.poIssued)
+  const [paidNow, setPaidNow] = useState<{ at: string; amount: number } | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const base = invPay(inv)
+  /* ONE button, and the AMOUNT decides the status: less than what is left →
+     Partially paid, all of it → Paid. A second "confirm partially" button would be
+     a second name for the same act. */
+  const pay = paidNow ? { ...base, paidAt: paidNow.at, paidAmount: (base.paidAt ? base.paidAmount ?? base.total : 0) + paidNow.amount } : base
+  const payNow = payStatus(pay)
+  const remaining = pay.total - (pay.paidAt ? pay.paidAmount ?? pay.total : 0)
+  const [amt, setAmt] = useState(String(remaining))
+  const [rcvd, setRcvd] = useState(dateBefore(0))
+  const srcPo = POS.find((p) => p.code === inv.po)
+  const qr = srcPo ? qrState(srcPo, pay.paidAt) : null
   /* `customer` on an invoice may be the record name, the legal name or the display
      name depending on which row wrote it — match on all of them, or the buyer block
      silently prints as a company when it should print as an individual. */
@@ -56,7 +66,7 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
             {/* The second, independent axis. An issued invoice can still be unpaid,
                 and an unpaid one can still be overdue — none of which is a document
                 status, so it gets its own badge instead of changing that one. */}
-            <PayCell paidAt={paidNow ?? pay.paidAt} poIssued={pay.poIssued} />
+            <PayCell facts={pay} />
           </h2>
           <p className="text-[11.5px] text-muted">{st.vi} · {inv.customer}</p>
         </div>
@@ -93,12 +103,12 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
           {inv.step === 'requested' && (
             <button className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xuất hóa đơn chính<span className="ml-1 font-normal opacity-90">· Kế toán</span></button>
           )}
-          {/* KẾ TOÁN ONLY, and only while the money is outstanding — Unpaid or
-              Overdue. It is independent of the document status: an invoice can be
+          {/* KẾ TOÁN ONLY, and only while money is outstanding — Unpaid, Partially
+              paid or Overdue. It is independent of the document status: an invoice can be
               issued and unpaid, or still a draft and already paid. */}
           {payNow !== 'Paid' && (
             <button
-              onClick={() => setPaidNow(dateBefore(0))}
+              onClick={() => { setAmt(String(remaining)); setConfirming(true) }}
               title={`Xác nhận đã nhận tiền. Ghi vào PO ${inv.po} — cột Thanh toán của PO cập nhật theo. Chỉ Kế toán.`}
               className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90"
             >
@@ -133,6 +143,8 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
         <InfoBit label="Từ PO" value={inv.po} mono />
         <InfoBit label="Thanh toán đã xác nhận" value={inv.payment ?? '—'} mono hint={inv.payment ? `bởi ${inv.issuer}` : 'chưa có'} />
       </div>
+      {/* The PO's QR line, read-only here — the same notice, from the same PO. */}
+      {qr && <div className="-mt-2 mb-4 rounded-lg border border-line bg-canvas/40 px-3.5 py-2"><QrLine qr={qr} /></div>}
 
       <div className="rounded-xl border border-line bg-surface p-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -174,6 +186,40 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
       </div>
 
       {pdf && <InvoicePdfModal inv={inv} co={invCo} onClose={() => setPdf(false)} />}
+      {confirming && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-16">
+          <div className="w-full max-w-[380px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+            <div className="flex items-start justify-between border-b border-line px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold text-ink">Confirm payment</p>
+                <p className="truncate font-mono text-[11px] text-muted">{inv.code} · {inv.po}</p>
+              </div>
+              <span className="cursor-pointer pl-3 text-faint" onClick={() => setConfirming(false)}>✕</span>
+            </div>
+            <div className="space-y-3 p-4">
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Số tiền nhận</label>
+                <input value={amt} onChange={(e) => setAmt(e.target.value.replace(/[^0-9]/g, ''))} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] tabular-nums outline-none focus:border-brand" />
+                <p className="mt-1 text-[10.5px] text-faint">Còn lại {remaining.toLocaleString('en-US')} ₫ — ít hơn số này là <b className="text-ink/70">Partially paid</b>, bằng là <b className="text-ink/70">Paid</b>.</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Ngày nhận</label>
+                <input value={rcvd} onChange={(e) => setRcvd(e.target.value)} placeholder="dd/mm/yyyy" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] tabular-nums outline-none focus:border-brand" />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-3">
+              <button onClick={() => setConfirming(false)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-ink hover:bg-canvas">Huỷ</button>
+              <button
+                onClick={() => { setPaidNow({ at: rcvd, amount: Math.min(Number(amt) || 0, remaining) }); setConfirming(false) }}
+                disabled={!Number(amt)}
+                className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -195,7 +241,7 @@ export function AdminInvoices() {
   const archived = INVOICES.filter((i) => i.step === 'archived' && inPeriod(invDate(i), period)).length
   const expiring = rows.filter((i) => i.activateBy !== '—' && (asDate(i.activateBy).getTime() - MOCK_TODAY.getTime()) / 86_400_000 <= 60).length
   const sumOf = (rs: Inv[]) => rs.reduce((n, i) => n + i.total, 0)
-  const collected = rows.filter((i) => invPay(i).paidAt)
+  const collected = rows.filter((i) => payStatus(invPay(i)) === 'Paid')
   return (
     <div className="space-y-3">
     <PeriodBar summary={`${rows.length} hoá đơn trong kỳ`} />
@@ -229,7 +275,7 @@ export function AdminInvoices() {
           <span className="truncate font-mono text-[11px] text-muted">{i.po}</span>,
           <span className="tabular-nums">{i.total.toLocaleString('en-US')} ₫</span>,
           <Pill tone={st.tone}>{st.en}</Pill>,
-          <PayCell {...invPay(i)} />,
+          <PayCell facts={invPay(i)} qr={(() => { const p = POS.find((x) => x.code === i.po); return p ? qrState(p) : null })()} />,
           /* An em-dash, not a blank — a PO issued before these fields existed
              recorded no term, which is not the same as having none. */
           <span className={cn('truncate', pay.payTerms ? 'text-ink/80' : 'text-faint')}>{pay.payTerms ?? '—'}</span>,

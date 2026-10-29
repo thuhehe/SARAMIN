@@ -1,6 +1,7 @@
 import { AC_STATUS, coId, coLabel } from '@/pages/admin/data/companies'
 import type { Company } from '@/pages/admin/data/companies'
-import { PAY_META, PAY_TERMS_DAYS, SARAMIN_BLUE, SARAMIN_MARK_D, daysFromDoc, payStatus } from '@/pages/admin/data/sales'
+import { PAY_META, SARAMIN_BLUE, SARAMIN_MARK_D, payLate, payStatus } from '@/pages/admin/data/sales'
+import type { PayFacts, QrState } from '@/pages/admin/data/sales'
 import { InfoBit } from '@/pages/admin/ui/fields'
 import { Pill } from '@/pages/admin/ui/status'
 
@@ -44,17 +45,34 @@ export function SaraminMark({ width = 104, fill = SARAMIN_BLUE }: { width?: numb
 }
 
 /** Payment read-out. Overdue also says HOW late, because "overdue" alone does not
-    tell a rep whether to send a reminder or escalate. */
-export function PayCell({ paidAt, poIssued }: { paidAt?: string; poIssued: string }) {
-  const st = payStatus(paidAt, poIssued)
-  const late = daysFromDoc(poIssued) - PAY_TERMS_DAYS
+    tell a rep whether to send a reminder or escalate. On a Wooribank row the QR
+    rides underneath as a small note — never a column of its own, because a QR is
+    a notice about one email, not a status of the money. */
+export function PayCell({ facts, qr }: { facts: PayFacts; qr?: QrState | null }) {
+  const st = payStatus(facts)
   return (
-    <span className="flex min-w-0 items-center gap-1.5" title={PAY_META[st].vi}>
-      <Pill tone={PAY_META[st].tone}>{st}</Pill>
-      {/* The collection DATE moved to its own column (2026-08-23). What stays here
-          is the lateness, which is not a date the rep records but a number derived
-          from one they have not — it belongs beside the status it explains. */}
-      {st === 'Overdue' && <span className="shrink-0 text-[10px] font-medium text-rose-600 tabular-nums">+{late}d</span>}
+    <span className="flex min-w-0 flex-col items-start gap-0.5">
+      <span className="flex min-w-0 items-center gap-1.5" title={PAY_META[st].vi}>
+        <Pill tone={PAY_META[st].tone}>{st}</Pill>
+        {/* The collection DATE moved to its own column (2026-08-23). What stays here
+            is the lateness, which is not a date the rep records but a number derived
+            from one they have not — it belongs beside the status it explains. */}
+        {st === 'Overdue' && <span className="shrink-0 text-[10px] font-medium text-rose-600 tabular-nums">+{payLate(facts)}d</span>}
+      </span>
+      {/* Only the two states a rep acts on. A QR already paid is said by the chip. */}
+      {qr?.kind === 'sent' && <span className="text-[10px] text-muted tabular-nums">QR hết hạn {qr.expires.slice(0, 5)}</span>}
+      {qr?.kind === 'expired' && <span className="text-[10px] font-medium text-rose-600 tabular-nums">QR đã hết hạn {qr.expires.slice(0, 5)}</span>}
     </span>
   )
+}
+
+/** The QR line on the PO / invoice detail. Read-only, three states, no button —
+    an expired QR is gone for good; the customer pays by ordinary transfer and
+    Kế toán confirms it on the invoice. */
+export function QrLine({ qr }: { qr: QrState | null }) {
+  if (!qr) return null
+  const dm = (d: string) => d.slice(0, 5)
+  if (qr.kind === 'paid') return <p className="text-[11.5px] font-medium text-emerald-700">✓ Đã thanh toán qua QR ngày {dm(qr.paidAt!)}</p>
+  if (qr.kind === 'expired') return <p className="text-[11.5px] font-medium text-rose-600">QR đã hết hạn {dm(qr.expires)} — khách chưa thanh toán qua QR</p>
+  return <p className="text-[11.5px] text-ink/80">QR đã gửi {dm(qr.sent)} · hết hạn 23:59 ngày {dm(qr.expires)}</p>
 }

@@ -2,10 +2,10 @@ import { useContext, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ScreenNavCtx, useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANIES, coLabel } from '@/pages/admin/data/companies'
-import { PAY_METHODS, PAY_TERMS, POS, PO_TONE, QUOTE_CATALOG, VAT_RATE, draftInvOf, poDraftBtn, poExpiry, poLive, poNext, poStage, poStep } from '@/pages/admin/data/sales'
+import { PAY_METHODS, PAY_TERMS, POS, PO_TONE, QUOTE_CATALOG, VAT_RATE, draftInvOf, payStatus, poDraftBtn, poExpiry, poLive, poNext, poPay, poStage, poStep, qrState } from '@/pages/admin/data/sales'
 import type { Po, PayMethod, PayTerms } from '@/pages/admin/data/sales'
-import { money, vnWords } from '@/pages/admin/lib/fmt'
-import { PayCell } from '@/pages/admin/screens/sales/_shared'
+import { dateBefore, money, vnWords } from '@/pages/admin/lib/fmt'
+import { PayCell, QrLine } from '@/pages/admin/screens/sales/_shared'
 import { InvoicePdfModal } from '@/pages/admin/screens/sales/invoicePdf'
 import { ListPage } from '@/pages/admin/ui/list'
 import { PeriodBar, inPeriod, usePeriod } from '@/pages/admin/ui/period'
@@ -33,6 +33,11 @@ function EditPoModal({ po, onClose }: { po: Po; onClose: () => void }) {
   const [otherTerms, setOtherTerms] = useState('')
   const [method, setMethod] = useState<PayMethod>(po.payMethod ?? 'Chuyển khoản')
   const [paidAt, setPaidAt] = useState(po.paidAt?.replace(/\./g, '/') ?? '')
+  const [expected, setExpected] = useState(po.expectedPayAt ?? '')
+  /* Once the bank has made the QR its expiry is fixed, and a QR is never re-sent —
+     so moving the date here would only make the PO disagree with the QR the
+     customer is holding. */
+  const qrLocked = po.payMethod === 'Wooribank' && !!po.qrSentAt
   const Label = ({ children }: { children: React.ReactNode }) => (
     <label className="mb-1 block text-[11.5px] font-medium text-ink/80">{children}</label>
   )
@@ -78,6 +83,18 @@ function EditPoModal({ po, onClose }: { po: Po; onClose: () => void }) {
           </div>
 
           <div>
+            <Label>Ngày dự kiến thu tiền / Expected payment date</Label>
+            <input
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              disabled={qrLocked}
+              placeholder="dd/mm/yyyy"
+              className={cn(box, 'tabular-nums placeholder:text-faint', qrLocked && 'cursor-not-allowed bg-canvas text-muted')}
+            />
+            {qrLocked && <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Đã khoá — QR Wooribank đã gửi và hết hạn 23:59 ngày này. QR không gửi lại được.</p>}
+          </div>
+
+          <div>
             <Label>Ngày thu tiền</Label>
             <input
               value={paidAt}
@@ -86,10 +103,10 @@ function EditPoModal({ po, onClose }: { po: Po; onClose: () => void }) {
               className={cn(box, 'tabular-nums placeholder:text-faint')}
             />
             {/* The one field with a consequence outside this dialog, so it is stated
-                where it is typed: Paid / Unpaid / Overdue are derived from this date
-                and from nothing else. */}
+                where it is typed: the payment status is derived from the payments,
+                never typed. */}
             <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
-              Trạng thái <b className="text-ink/70">Paid · Unpaid · Overdue</b> được tính từ ngày này — không có ô trạng thái riêng để sửa.
+              <b className="text-ink/70">Payment status</b> được tính từ các khoản thu — không có ô trạng thái riêng để sửa.
             </p>
           </div>
         </div>
@@ -110,6 +127,10 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
      something already on screen. */
   const [draftPdf, setDraftPdf] = useState(false)
   const [editPay, setEditPay] = useState(false)
+  /* Send email is where a Wooribank QR is born — local state only because the
+     mock has no store. */
+  const [qrSent, setQrSent] = useState(po.qrSentAt)
+  const qr = qrState({ ...po, qrSentAt: qrSent })
   const poCo = COMPANIES.find((x) => x.name === po.co)
     ?? COMPANIES.find((x) => x.name === po.customer || x.legalName === po.customer || coLabel(x) === po.customer)
   const step = poStep(po)
@@ -166,6 +187,13 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           {/* Available at EVERY step, including Expired: the money on a lapsed PO
               still arrives and still has to be recorded. Nothing it edits is on
               the document, so nothing it edits can be invalidated by expiry. */}
+          <button
+            onClick={() => po.payMethod === 'Wooribank' && !qrSent && setQrSent(dateBefore(0))}
+            title={po.payMethod === 'Wooribank' ? 'Gửi PO cho khách — email kèm mã QR Wooribank' : 'Gửi PO cho khách'}
+            className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand"
+          >
+            Send email
+          </button>
           <button onClick={() => setEditPay(true)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-brand hover:text-brand">
             Sửa thông tin thanh toán
           </button>
@@ -176,6 +204,20 @@ function PoDetail({ po, onBack }: { po: Po; onBack: () => void }) {
           beside it and the buttons already say what this PO is and what may be
           done to it; the rules behind them live in the requirement, not repeated
           on every record a rep opens. */}
+
+      {/* Thanh toán — the money's axis, beside the document's. The QR is ONE line
+          in here, not a status: it never moves the chip, and an expired QR has no
+          button because there is nothing to resend. */}
+      <div className="mt-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-5">
+          <div><p className="text-[10.5px] text-faint">Payment status</p><div className="mt-0.5"><PayCell facts={poPay(po)} /></div></div>
+          <div><p className="text-[10.5px] text-faint">Điều khoản TT</p><p className="text-[12px] text-ink/80">{po.payTerms ?? '—'}</p></div>
+          <div><p className="text-[10.5px] text-faint">Phương thức TT</p><p className="text-[12px] text-ink/80">{po.payMethod ?? '—'}</p></div>
+          <div><p className="text-[10.5px] text-faint">Ngày dự kiến thu tiền</p><p className="text-[12px] tabular-nums text-ink/80">{po.expectedPayAt ?? '—'}</p></div>
+          <div><p className="text-[10.5px] text-faint">Ngày thu tiền</p><p className="text-[12px] tabular-nums text-ink/80">{po.paidAt?.replace(/\./g, '/') ?? '—'}{po.paidAmount !== undefined && <span className="text-muted"> · {po.paidAmount.toLocaleString('en-US')} ₫</span>}</p></div>
+        </div>
+        {qr && <div className="mt-2 border-t border-line pt-2"><QrLine qr={qr} /></div>}
+      </div>
 
       {/* document */}
       <div className="mt-4 rounded-xl border border-line bg-surface p-4">
@@ -248,8 +290,10 @@ export function AdminPOs() {
      window rather than typed, so "Active 9" can never mean nine ever. */
   const inRange = POS.filter((p) => inPeriod(p.issued, period))
   const byStage = (en: string) => inRange.filter((p) => poStage(poStep(p)).en === en).length
-  const paid = inRange.filter((p) => p.paidAt)
+  const paid = inRange.filter((p) => payStatus(poPay(p)) === 'Paid')
   const sumOf = (rs: Po[]) => rs.reduce((n, p) => n + p.total, 0)
+  // What is still owed — a Partially paid PO counts only its remainder.
+  const owed = inRange.reduce((n, p) => n + (p.paidAt ? p.total - (p.paidAmount ?? p.total) : p.total), 0)
   return (
     <div className="space-y-3">
     <PeriodBar summary={`${inRange.length} PO trong kỳ`} />
@@ -257,7 +301,7 @@ export function AdminPOs() {
       <MiniStat label="PO" value={inRange.length} sub="phát hành trong kỳ" />
       <MiniStat label="Tổng giá trị" value={money(sumOf(inRange))} sub="sau VAT" />
       <MiniStat label="Đã thu tiền" value={paid.length} sub={`${money(sumOf(paid))} đã về tài khoản`} />
-      <MiniStat label="Chưa thu" value={money(sumOf(inRange.filter((p) => !p.paidAt)))} sub={`${inRange.length - paid.length} PO còn chờ tiền`} tone={inRange.length - paid.length > 0 ? 'warn' : undefined} />
+      <MiniStat label="Chưa thu" value={money(owed)} sub={`${inRange.length - paid.length} PO còn chờ tiền`} tone={inRange.length - paid.length > 0 ? 'warn' : undefined} />
     </div>
     <ListPage
       tabs={[{ label: 'All', count: inRange.length, active: true }, { label: 'Active', count: byStage('Active') }, { label: 'Draft invoice', count: byStage('Draft invoice') }, { label: 'Invoice requested', count: byStage('Invoice requested') }, { label: 'Invoice issued', count: byStage('Invoice issued') }, { label: 'Expired', count: byStage('Expired') }]}
@@ -292,7 +336,7 @@ export function AdminPOs() {
         <button onClick={() => goTo('admin-quotes', p.quote)} className="min-w-0 truncate text-left font-mono text-[11px] text-brand hover:underline">{p.quote}</button>,
         <span className="tabular-nums">{p.total.toLocaleString('en-US')} ₫</span>,
         <Pill tone={PO_TONE[poStep(p)]}>{poStage(poStep(p)).en}</Pill>,
-        <PayCell paidAt={p.paidAt} poIssued={p.issued} />,
+        <PayCell facts={poPay(p)} qr={qrState(p)} />,
         /* An em-dash, not a blank: a PO issued before these fields existed has no
            term recorded, which is a different thing from having none. */
         <span className={cn('truncate', p.payTerms ? 'text-ink/80' : 'text-faint')}>{p.payTerms ?? '—'}</span>,

@@ -555,22 +555,25 @@ export const poDraftBtn = (step: PoStep) => poLive(step)
    the transfer). So payment is tracked on its own and never folded into PoStep or
    InvStep — the moment it becomes a stage, one of the two has to lie.
 
-   Only two of the three values are STORED, and only one of them as a fact:
-     Paid     paidAt has a date. The one thing a human records.
-     Unpaid   no paidAt yet, and inside the 14-day window.
-     Overdue  no paidAt and MORE THAN 14 DAYS since the PO was issued. Derived, so
-              it turns over by itself at midnight — nobody has to run anything, and
-              there is no stored "overdue" that can go stale.
+   FOUR values, all DERIVED from the payments Kế toán confirmed (or the bank's QR
+   callback created) — nothing here is typed by hand (SRM-1080, 2026-10-22):
+     Unpaid          no payment yet. The default from the moment the PO is issued.
+     Partially paid  some money in, some still owed. Stays here until Paid — it
+                     never turns Overdue (a 50/50 customer who paid half is on time).
+     Paid            payments add up to the total.
+     Overdue         the OFFICIAL invoice is ≥ 30 days old and nothing is paid.
+                     Derived, so it turns over by itself at midnight.
 
-   Counted from the PO's issue date, not the invoice's: the customer's obligation
-   starts when the order is confirmed, and an invoice issued late must not reset
-   the clock the customer is already late against. */
-export const PAY_TERMS_DAYS = 14
-type PayStatus = 'Paid' | 'Unpaid' | 'Overdue'
+   The 30 days count from the OFFICIAL invoice's issue date (day 0, VN time) — not
+   from the PO, and never from the Expected payment date. No legal invoice means no
+   due date yet, so a Draft or an Invoice requested is never Overdue. */
+export const OVERDUE_DAYS = 30
+type PayStatus = 'Paid' | 'Partially paid' | 'Unpaid' | 'Overdue'
 export const PAY_META: Record<PayStatus, { tone: StatusTone; vi: string }> = {
-  Paid: { tone: 'active', vi: 'Đã thanh toán' },
+  Paid: { tone: 'active', vi: 'Đã thanh toán đủ' },
+  'Partially paid': { tone: 'schedule', vi: 'Đã thanh toán một phần — còn dư nợ' },
   Unpaid: { tone: 'pending', vi: 'Chưa thanh toán' },
-  Overdue: { tone: 'rejected', vi: `Quá hạn — hơn ${PAY_TERMS_DAYS} ngày kể từ ngày xuất PO` },
+  Overdue: { tone: 'rejected', vi: `Quá hạn — hóa đơn chính đã xuất ≥ ${OVERDUE_DAYS} ngày, chưa thanh toán` },
 }
 /** Dotted or slashed dd.mm.yyyy → days elapsed against the mock's fixed today. */
 export const daysFromDoc = (d: string) => {
@@ -578,29 +581,54 @@ export const daysFromDoc = (d: string) => {
   if (!dd || !mm || !yy) return 0
   return Math.round((MOCK_TODAY.getTime() - new Date(yy, mm - 1, dd).getTime()) / 86_400_000)
 }
+/** What the payment status is computed from. `invIssued` is the OFFICIAL invoice
+    date only — empty while the invoice is a draft or merely requested. */
+export type PayFacts = { paidAt?: string; paidAmount?: number; total: number; invIssued?: string }
+export const poPay = (p: Po): PayFacts => ({
+  paidAt: p.paidAt, paidAmount: p.paidAmount, total: p.total,
+  invIssued: p.step === 'invoiced' ? p.invIssued : undefined,
+})
 /* An invoice's payment status is its PO's — the same money, read from one place.
    Confirming on the invoice therefore updates the PO by construction rather than by
    a second write that could fail on its own. */
 const poOf = (code: string) => POS.find((p) => p.code === code)
-export const invPay = (i: Inv): { paidAt?: string; poIssued: string } => {
+export const invPay = (i: Inv): PayFacts => {
   const po = poOf(i.po)
-  // Older rows carry a payment reference instead of a date; treat it as paid.
-  return { paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined), poIssued: po?.issued ?? i.issued }
+  return po ? poPay(po) : { total: i.total, invIssued: i.step === 'issued' ? i.issued : undefined }
 }
 
-/* The three payment fields, READ THROUGH TO THE PO — never copied onto the
-   invoice. An invoice is the fiscal half of a PO, not a second record: the money
-   was agreed once, on one document, and a rep who corrects the method on the PO
-   must not then find the invoice list still showing the old one. Same reason
-   `invPay` reaches through for the paid date rather than storing it twice. */
-export const invPayInfo = (i: Inv): { payTerms?: PayTerms; payMethod?: PayMethod; paidAt?: string } => {
+/* The payment fields, READ THROUGH TO THE PO — never copied onto the invoice. An
+   invoice is the fiscal half of a PO, not a second record: the money was agreed
+   once, on one document, and a rep who corrects the method on the PO must not
+   then find the invoice list still showing the old one. */
+export const invPayInfo = (i: Inv): { payTerms?: PayTerms; payMethod?: PayMethod; paidAt?: string; expectedPayAt?: string } => {
   const po = poOf(i.po)
-  return { payTerms: po?.payTerms, payMethod: po?.payMethod, paidAt: po?.paidAt ?? (i.payment ? i.issued : undefined) }
+  return { payTerms: po?.payTerms, payMethod: po?.payMethod, paidAt: po?.paidAt, expectedPayAt: po?.expectedPayAt }
 }
 
-export function payStatus(paidAt: string | undefined, poIssued: string): PayStatus {
-  if (paidAt) return 'Paid'
-  return daysFromDoc(poIssued) > PAY_TERMS_DAYS ? 'Overdue' : 'Unpaid'
+export function payStatus(f: PayFacts): PayStatus {
+  if (f.paidAt) return f.paidAmount !== undefined && f.paidAmount < f.total ? 'Partially paid' : 'Paid'
+  return f.invIssued && daysFromDoc(f.invIssued) >= OVERDUE_DAYS ? 'Overdue' : 'Unpaid'
+}
+/** Days past the 30-day mark — day 30 itself reads “+0d”. */
+export const payLate = (f: PayFacts) => (f.invIssued ? daysFromDoc(f.invIssued) - OVERDUE_DAYS : 0)
+
+/* ── Wooribank QR — a NOTICE, not a status ───────────────────────────────────
+   Exists only when the method is Wooribank AND Sales has pressed Send email: the
+   email carries the QR, and the QR dies at 23:59 (VN) on the Expected payment
+   date. Dead means dead — there is no resend and no new QR. It never moves the
+   payment status; it is a line on the PO / invoice detail and a small note on the
+   lists. “Paid by QR” is read off the payment itself: a full payment received on
+   or before the QR's last day (the bank callback, or Kế toán confirming with that
+   receipt date). */
+export type QrState = { kind: 'sent' | 'expired' | 'paid'; sent: string; expires: string; paidAt?: string }
+const dot = (d: string) => d.replace(/\./g, '/')
+export function qrState(p: Po, paidAt = p.paidAt): QrState | null {
+  if (p.payMethod !== 'Wooribank' || !p.qrSentAt || !p.expectedPayAt) return null
+  const base = { sent: p.qrSentAt, expires: p.expectedPayAt }
+  const full = payStatus({ ...poPay(p), paidAt }) === 'Paid'
+  if (paidAt && full && asDate(dot(paidAt)).getTime() <= asDate(p.expectedPayAt).getTime()) return { kind: 'paid', ...base, paidAt: dot(paidAt) }
+  return MOCK_TODAY.getTime() > asDate(p.expectedPayAt).getTime() ? { kind: 'expired', ...base } : { kind: 'sent', ...base }
 }
 
 /** `invNo` is allocated by the provider the moment the FIRST draft is issued, so
@@ -621,15 +649,23 @@ export type Po = { code: string; customer: string; co?: string; poNo?: string; q
   payTerms?: PayTerms
   /** Phương thức thanh toán — how the money actually comes in. */
   payMethod?: PayMethod
-  /** Ngày thu tiền — the date Kế toán confirmed the money arrived. The ONLY stored
-      payment FACT; Paid / Unpaid / Overdue are all derived from it. */
-  paidAt?: string }
+  /** Ngày thu tiền — the date of the latest payment Kế toán confirmed (or the bank's
+      QR callback created). With `paidAmount` it is the payment FACT every payment
+      status is derived from. */
+  paidAt?: string
+  /** Sum of the confirmed payments, when short of the total. Absent = paid in full. */
+  paidAmount?: number
+  /** Expected payment date — chosen by Sales at Issue PO, REQUIRED. A plan, not a
+      fact: it is not the Overdue clock. For Wooribank it is the QR's last day. */
+  expectedPayAt?: string
+  /** Wooribank only — the day Sales pressed Send email and the QR went out. */
+  qrSentAt?: string }
 
 /* Fixed lists rather than free text: both are reported on (“how much of the book
    is 50/50?”, “how many customers still pay cash?”), and a free-text field cannot
    be counted. `Others` is the pressure valve, and it carries its own note. */
 export const PAY_TERMS = ['100% in advance', '50 / 50', 'Others'] as const
-export const PAY_METHODS = ['Chuyển khoản', 'Tiền mặt', 'Bù trừ công nợ', 'Khác'] as const
+export const PAY_METHODS = ['Chuyển khoản', 'Wooribank', 'Tiền mặt', 'Bù trừ công nợ', 'Khác'] as const
 export type PayTerms = (typeof PAY_TERMS)[number]
 export type PayMethod = (typeof PAY_METHODS)[number]
 /* A PO lapses at the end of the month it was issued in — the same end-of-month
@@ -654,26 +690,35 @@ export const POS: Po[] = [
      expiry job has already caught, which is why four of them read Expired no
      matter what step they were left in. */
 
-  // Issued inside the 14-day payment window and not yet paid — the plain Unpaid
-  // case. Without a row like this the column only ever shows the two loud states
-  // and nobody sees what "on time" looks like.
   // The worked example, invoiced. Its lines come from the quotation's `detail`
   // through invoiceLinesFrom — see invOf.
-  { code: 'PO-005866-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', paidAt: '08.08.2026', quote: 'QUO-009916-08-2026', total: 11_470, step: 'invoiced', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 2, invNo: '1C26TTD-177', invIssued: '07/08/2026' },
-  { code: 'PO-005865-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
-  { code: 'PO-005864-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
-  { code: 'PO-005863-08-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
-  { code: 'PO-005862-08-2026', payTerms: '100% in advance', payMethod: 'Tiền mặt', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
+  { code: 'PO-005866-08-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', expectedPayAt: '12/08/2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', paidAt: '08.08.2026', quote: 'QUO-009916-08-2026', total: 11_470, step: 'invoiced', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 2, invNo: '1C26TTD-177', invIssued: '07/08/2026' },
+  // Wooribank, QR emailed and still live — case A on the PO detail.
+  { code: 'PO-005865-08-2026', payTerms: '100% in advance', payMethod: 'Wooribank', expectedPayAt: '20/08/2026', qrSentAt: '03/08/2026', customer: 'Công ty CP Nam Long', co: 'Công ty CP Nam Long', poNo: 'PO-NL/2026/012', quote: 'QUO-009912-08-2026', total: 18_500_000, step: 'active', issued: '03.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 3 },
+  // Paid through the QR before it expired — case D: the QR line turns green.
+  { code: 'PO-005864-08-2026', payTerms: '100% in advance', payMethod: 'Wooribank', expectedPayAt: '10/08/2026', qrSentAt: '04/08/2026', customer: 'CÔNG TY TNHH DEKON VIỆT NAM', poNo: 'PO-DK/2026/031', paidAt: '07.08.2026', quote: 'QUO-009911-08-2026', total: 12_960_000, step: 'invoiced', issued: '04.08.2026', seller: 'Nguyễn Hoàng Oanh', product: 2, qty: 1, invNo: '1C26TTD-173', invIssued: '06/08/2026' },
+  // 50/50, first half in — Partially paid, and it stays so however long it waits.
+  { code: 'PO-005863-08-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', paidAt: '06.08.2026', paidAmount: 20_412_000, expectedPayAt: '05/09/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', poNo: 'PO-VP/2026/044', quote: 'QUO-009908-08-2026', total: 40_824_000, step: 'requested', issued: '05.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 6, invNo: '1C26TTD-175' },
+  { code: 'PO-005862-08-2026', payTerms: '100% in advance', payMethod: 'Tiền mặt', expectedPayAt: '15/08/2026', customer: 'CÔNG TY TNHH AM SOFTWARE VIỆT NAM', co: 'Công ty TNHH AM Software Việt Nam', quote: 'QUO-009909-08-2026', total: 6_588_000, step: 'draft-inv', issued: '06.08.2026', seller: 'Nguyễn Thị Lan', product: 1, qty: 1, invNo: '1C26TTD-176' },
+
+  /* The two clocks, side by side (SRM-1080). The QR clock and the Overdue clock are
+     independent: the first row's QR is dead but its official invoice is 12 days
+     old, so it is still Unpaid — only the QR line is red (case B). The second
+     paid nothing 37 days after its official invoice, so it is Overdue +7d and no
+     QR is involved at all (case C). Both are invoiced, so month-end expiry does
+     not touch them. */
+  { code: 'PO-005857-07-2026', payTerms: '100% in advance', payMethod: 'Wooribank', expectedPayAt: '31/07/2026', qrSentAt: '20/07/2026', customer: 'Công ty TNHH Vạn Phát', co: 'Công ty TNHH Vạn Phát', quote: 'QUO-009904-07-2026', total: 25_920_000, step: 'invoiced', issued: '20.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 4, invNo: '1C26TTD-171', invIssued: '27/07/2026' },
+  { code: 'PO-005856-07-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', expectedPayAt: '10/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', quote: 'QUO-009903-07-2026', total: 19_440_000, step: 'invoiced', issued: '01.07.2026', seller: 'Trần Quốc Trung', product: 0, qty: 6, invNo: '1C26TTD-169', invIssued: '02/07/2026' },
 
   /* Left at "Invoice requested" in July and never made official. Expiry beats it:
      the PO reads Expired and its invoice is Archived — the single clearest proof
      that a draft does not stop the clock. */
-  { code: 'PO-005861-07-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
+  { code: 'PO-005861-07-2026', payTerms: '50 / 50', payMethod: 'Chuyển khoản', expectedPayAt: '25/07/2026', customer: 'Công ty CP Hoàng Gia', co: 'Công ty CP Hoàng Gia', paidAt: '20.07.2026', quote: 'QUO-009907-07-2026', total: 87_505_977, step: 'requested', issued: '18.07.2026', seller: 'Trần Quốc Trung', product: 2, qty: 8, invNo: '1C26TTD-170' },
   // never got past Active — expired with no invoice at all
-  { code: 'PO-005860-07-2026', payTerms: 'Others', payMethod: 'Chuyển khoản', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
+  { code: 'PO-005860-07-2026', payTerms: 'Others', payMethod: 'Chuyển khoản', expectedPayAt: '31/07/2026', customer: 'Công ty TNHH Sao Mai', co: 'Công ty TNHH Sao Mai', quote: 'QUO-009910-07-2026', total: 126_360_120, step: 'active', issued: '16.07.2026', seller: 'Trần Quốc Trung', product: 1, qty: 19 },
   // a June draft, lapsed on 30/06 — not on a rolling 30 days
-  { code: 'PO-005859-06-2026', payTerms: '100% in advance', payMethod: 'Bù trừ công nợ', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
-  { code: 'PO-005858-06-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
+  { code: 'PO-005859-06-2026', payTerms: '100% in advance', payMethod: 'Bù trừ công nợ', expectedPayAt: '30/06/2026', customer: 'Công ty TNHH Minh Long', quote: 'QUO-009906-06-2026', total: 32_400_000, step: 'draft-inv', issued: '24.06.2026', seller: 'Nguyễn Thị Lan', product: 0, qty: 10, invNo: '1C26TTD-168' },
+  { code: 'PO-005858-06-2026', payTerms: '100% in advance', payMethod: 'Chuyển khoản', expectedPayAt: '20/06/2026', customer: 'Công ty CP Đông Á', quote: 'QUO-009905-06-2026', total: 21_600_000, step: 'active', issued: '09.06.2026', seller: 'Phạm Quang Huy', product: 0, qty: 7 },
 ]
 export const PO_TONE: Record<PoStep, StatusTone> = { active: 'pending', 'draft-inv': 'draft', requested: 'schedule', invoiced: 'active', expired: 'expired' }
 
@@ -706,13 +751,13 @@ const invOf = (p: Po): Inv => ({
   customer: p.customer,
   co: p.co,
   po: p.code,
-  payment: poStep(p) === 'invoiced' ? 'PAY-1042' : undefined,
+  payment: p.paidAt ? 'PAY-1042' : undefined,
   total: p.total,
   issued: p.invIssued ?? '—',
   activateBy: p.invIssued ? activateByOf(p.invIssued) : '—',
   product: p.product,
   qty: p.qty,
-  issuer: poStep(p) === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
+  issuer: p.paidAt || poStep(p) === 'invoiced' ? 'Lê Thị Kế Toán' : p.seller,
   calc: (() => { const d = QUOTES.find((q) => q.code === p.quote)?.detail; return d ? invoiceLinesFrom(d) : undefined })(),
 })
 export const INVOICES: Inv[] = POS.filter((p) => p.invNo && PO_TO_INV[poStep(p)]).map(invOf)

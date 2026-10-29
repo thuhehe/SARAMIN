@@ -18,6 +18,10 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
   const [otherTerms, setOtherTerms] = useState('')
   const [method, setMethod] = useState<string>(PAY_METHODS[0])
   const [paidAt, setPaidAt] = useState('')
+  /* Required — the PO cannot be issued without it. A PLAN, not the Overdue clock:
+     Overdue counts 30 days from the official invoice. For Wooribank it is also the
+     day the QR dies, at 23:59 VN time. */
+  const [expected, setExpected] = useState('')
   /* Who THIS document is issued to. Defaults from the company record and can be
      changed per PO — VN practice: "xuất hóa đơn theo thông tin nào?" is asked at
      the deal, not fixed forever at account creation. Changing it here never
@@ -162,6 +166,21 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
                 </select>
               </div>
 
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Ngày dự kiến thu tiền / Expected payment date <span className="text-rose-600">*</span></label>
+                <input
+                  value={expected}
+                  onChange={(e) => setExpected(e.target.value)}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] tabular-nums outline-none placeholder:text-faint focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">
+                  {method === 'Wooribank'
+                    ? <>Mã QR gửi kèm email PO sẽ <b className="text-ink/70">hết hạn 23:59 ngày này</b>, và không gửi lại được.</>
+                    : 'Ngày dự kiến khách trả — không phải mốc Overdue (Overdue tính 30 ngày từ hóa đơn chính).'}
+                </p>
+              </div>
+
               {/* Empty at issue in the normal case — the money has not arrived yet.
                   It is on this form only because a PO is sometimes written up after
                   payment, and forcing that rep into Edit PO straight after issuing
@@ -174,7 +193,7 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
                   placeholder="dd/mm/yyyy"
                   className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] tabular-nums outline-none placeholder:text-faint focus:border-brand"
                 />
-                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Trạng thái Paid · Unpaid · Overdue được tính từ ngày này.</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-faint">Ngày tiền về thực tế — khác với ngày dự kiến ở trên.</p>
               </div>
             </div>
           </div>
@@ -198,7 +217,13 @@ export function CreatePOModal({ c, onClose }: { c: Company; onClose: () => void 
           <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-ink/40">Cancel</button>
           {/* No "Save draft": a PO has no draft state — it is Active from the moment
               it is issued, so the only outcomes here are issue it or don't. */}
-          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">Issue PO →</button>
+          <button
+            disabled={!expected}
+            title={expected ? undefined : 'Chọn Ngày dự kiến thu tiền trước khi issue PO'}
+            className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Issue PO →
+          </button>
         </div>
       </div>
     </div>

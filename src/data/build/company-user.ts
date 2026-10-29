@@ -579,7 +579,7 @@ export const companyUser: BuildModule = {
             table: {
               cols: ['Term', 'Means here', 'Defined in'],
               rows: [
-                ['Order (PO · đơn hàng)', 'The commercial document the customer received and pays against — numbered **PO-…**, one per purchase. Carries the lines (product × qty), the total incl. VAT, the bank details and the 14-day payment terms. It is never edited or cancelled: it expires at the end of its issue month if no official invoice follows.', 'CRM → Purchase order'],
+                ['Order (PO · đơn hàng)', 'The commercial document the customer received and pays against — numbered **PO-…**, one per purchase. Carries the lines (product × qty), the total incl. VAT, the bank details and the expected payment date. It is never edited or cancelled: it expires at the end of its issue month if no official invoice follows.', 'CRM → Purchase order'],
                 ['VAT invoice (hóa đơn GTGT)', 'The fiscal document Accounting issues for an order, with a legal number from the e-invoice provider. Issuing the **official** invoice is what provisions the products. A **draft** invoice provisions nothing and is never shown to the customer. At most one invoice per order.', 'CRM → Invoices'],
                 ['Entitlement', 'product + remaining quota + validity — one row on this page. Created by provisioning, decremented by use, never typed.', 'Products & Packages → “Entitlement is the single downstream record”'],
                 ['Provisioning', 'The system turning the order’s lines into entitlements when the official invoice is issued. Immediate, and idempotent on the invoice id (the provider’s issue event can fire twice).', 'CRM → “Provisioning — what happens when the OFFICIAL invoice is issued”'],
@@ -906,8 +906,8 @@ export const companyUser: BuildModule = {
             en: 'One row = one ORDER (PO-…), not one invoice. An order can exist without an invoice; an invoice never exists without an order.',
           },
           {
-            vi: 'Trạng thái thanh toán là sự thật bên CRM: Paid được LƯU (paidAt, do Kế toán xác nhận); Unpaid và Overdue được SUY RA từ 14 ngày kể từ ngày xuất đơn hàng. Trang này không ghi gì.',
-            en: 'Payment status is CRM’s fact: Paid is STORED (paidAt, confirmed by Accounting); Unpaid and Overdue are DERIVED from the 14 days since the order’s issue date. This page writes nothing.',
+            vi: 'Trạng thái thanh toán là sự thật bên CRM, SUY RA từ các khoản thu Kế toán xác nhận (hoặc ngân hàng xác nhận qua QR): Paid · Partially paid · Unpaid; Overdue khi hóa đơn chính đã xuất ≥ 30 ngày mà chưa trả đồng nào. Trang này không ghi gì.',
+            en: 'Payment status is CRM’s fact, DERIVED from the payments Accounting confirmed (or the bank confirmed through the QR): Paid · Partially paid · Unpaid; Overdue once the official invoice is ≥ 30 days old with nothing paid. This page writes nothing.',
           },
           {
             vi: 'Không có nút “Pay now”. Giai đoạn 1 không thanh toán trực tuyến — nút trên dòng chưa trả mở ĐƠN HÀNG với thông tin chuyển khoản và hạn trả.',
@@ -921,19 +921,20 @@ export const companyUser: BuildModule = {
         requirements: [
           {
             label: 'Payment status — the same three values Accounting sees',
-            text: 'The status on a row is the order’s payment status from CRM → “Payment status — a third axis”. One stored fact (paidAt), two derived values, and the same 14-day clock — so the employer and the rep are always looking at the same answer.',
+            text: 'The status on a row is the order’s payment status from CRM → “Payment status — a third axis”. Same payments, same 30-days-from-the-official-invoice clock (SRM-1080) — so the employer and the rep are always looking at the same answer.',
             table: {
               cols: ['Status', 'Means', 'Stored or derived', 'Pill'],
               rows: [
-                ['**Paid**', 'Accounting confirmed the money arrived', 'STORED — paidAt', '{{tagok:Paid 03/09/2026}}'],
-                ['**Unpaid**', 'No payment yet, still inside the 14 days counted from the order’s issue date', 'DERIVED — no paidAt, within terms', '{{tagwarn:Unpaid · due 16/09/2026}}'],
-                ['**Overdue**', 'No payment and more than 14 days since the order was issued', 'DERIVED — turns over by itself at midnight', '{{tag:Overdue · 32 days}}'],
+                ['**Paid**', 'The confirmed payments add up to the total', 'DERIVED — from the payments', '{{tagok:Paid 03/09/2026}}'],
+                ['**Partially paid**', 'Some money in, a balance still owed. Never turns Overdue', 'DERIVED — from the payments', '{{tagwarn:Partially paid · 8,450,000 ₫ remaining}}'],
+                ['**Unpaid**', 'No payment yet. With an official invoice it shows the due date (invoice date + 30 days); without one there is no due date yet', 'DERIVED — no payment', '{{tagwarn:Unpaid · due 16/09/2026}}'],
+                ['**Overdue**', 'No payment and the official invoice is ≥ 30 days old', 'DERIVED — turns over by itself at midnight', '{{tag:Overdue · 32 days}}'],
                 ['**Expired**', 'The order lapsed at the end of its issue month with no official invoice — there is nothing to pay', 'DERIVED from the PO status', '{{tagmute:Expired}} — All tab only'],
               ],
             },
             items: [
-              'The 14 days count from the ORDER’s issue date, never the invoice’s — the customer’s obligation starts when the order is confirmed, and an invoice issued late must not reset a clock they are already behind on.',
-              'Partial payment (terms “50 / 50”) shows under Unpaid or Overdue with the remainder: “Paid 50 % · 8,450,000 ₫ remaining”. It is not a fourth tab.',
+              'The 30 days count from the OFFICIAL invoice’s issue date (day 0, VN time) — not from the order and not from the expected payment date. An order with no official invoice yet is never Overdue; it expires at month end instead.',
+              'Partially paid sits under the **Unpaid** tab with the remainder on its pill. It is not a fourth tab, and it never moves to Overdue.',
               'Expired is a row state, not a payment status: it sits under All with a grey pill and is excluded from the three payment tabs. It stays visible so an employer who let an order lapse sees why nothing was provisioned.',
               'The Home dashboard alert “Order awaiting payment” links here filtered to Unpaid + Overdue.',
             ],
@@ -1029,7 +1030,7 @@ export const companyUser: BuildModule = {
         behaviors: [
           'The list loads for the default period (3M) on All; changing a tab, chip or date and pressing Search re-queries with counts.',
           '{{btn:Invoice}} and {{btn:View order}} open the PDF in a new tab through a signed URL; the click is logged on the order.',
-          'An Unpaid row shows its due date; at midnight after the 14th day it reads Overdue with the day count — no job, no stored flag.',
+          'An Unpaid row with an official invoice shows its due date (invoice date + 30); on day 30 it reads Overdue with the day count — no job, no stored flag. A Partially paid row never does.',
           'When Accounting confirms a payment in CRM, the row reads Paid dd/mm/yyyy on the next load and the Home dashboard alert clears.',
           'Saramin Korea’s points / coupons / cart quick menu is not rendered — the VN product model has none of them.',
         ],
@@ -1060,10 +1061,10 @@ export const companyUser: BuildModule = {
             'Home dashboard (“Order awaiting payment” alert links here)',
           ],
           notes:
-            'A read model over CRM’s PO + invoice + payment fact. No table of its own, no writes. Unpaid / Overdue are computed in the query from issuedAt and today, so the customer and the rep see the same value at the same moment.',
+            'A read model over CRM’s PO + invoice + payment fact. No table of its own, no writes. Unpaid / Overdue are computed in the query from the official invoice’s issue date and today, so the customer and the rep see the same value at the same moment.',
         },
         acceptance: [
-          'An order issued today with no payment shows Unpaid with a due date 14 days out; on the 15th morning it shows Overdue · 1 day with no other change.',
+          'An official invoice issued today with no payment shows Unpaid with a due date 30 days out; on day 30 it shows Overdue, on day 31 Overdue · 1 day, with no other change.',
           'Confirming the payment in CRM turns the pill to Paid dd/mm/yyyy on the next load.',
           'A row whose official invoice exists offers Invoice as the primary button whatever its payment status; a row without one offers View order and the note “VAT invoice pending”; a draft is never downloadable.',
           'The Amount equals the total after VAT on the order PDF to the đồng.',
@@ -1074,7 +1075,7 @@ export const companyUser: BuildModule = {
         openQuestions: [
           'Show the e-invoice lookup code (mã tra cứu) on the row so the customer can verify the invoice on the provider portal without opening the PDF? Recommended — it is the number their accountant actually types.',
           'Should Expired orders be shown at all, or only in HQ’s view? Recommended shown — it explains a missing provisioning.',
-          'Partial payments: do we show the paid instalments as separate dates, or only the remainder? Depends on whether CRM records one paidAt or a list.',
+          'Partial payments: do we show the paid instalments as separate dates, or only the remainder? CRM now records a list of payments (date + amount), so both are possible.',
         ],
       },
     },
