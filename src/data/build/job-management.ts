@@ -1197,7 +1197,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Signal', 'Full points', 'Partial', 'Zero'],
               rows: [
-                ['**Occupation & role · 42**', '**42** — same ROLE, and the jobseeker DECLARED it', 'Four rungs down the **Category › Group › Role** tree, each at 80% when the value was INFERRED rather than declared: same **Group**, different role → **30** (declared) / **24** (inferred) · same **Category**, different group → **17** / **14**', 'Different category → **0**'],
+                ['**Occupation & role · 42**', '**42** — same ROLE, and the jobseeker DECLARED it', 'Three rungs further down the **Category › Group › Role** tree — declared / inferred: same role, inferred → **34** · same **Group**, different role → **30** / **24** · same **Category**, different group → **17** / **14**', 'Different category → **0**'],
                 ['**Location · 20**', '**20** — desired city AND desired work type · also **20** for a REMOTE posting, from anywhere', '**14** right city, different work type · **10** a neighbouring province (HCMC ↔ Bình Dương / Đồng Nai / Long An, Hà Nội ↔ Bắc Ninh / Hưng Yên)', 'Any other province'],
                 ['**Experience · 14**', '**14** — their years sit inside the posting’s range · also **14** when the posting states “no experience required”', '**10** up to 2 years over · **7** up to 1 year under · **5** more than 2 years over', 'More than 1 year under the minimum'],
                 ['**Salary · 12**', '**12** — their figure sits inside the band, or the band is entirely above it', '**8** asking up to 10% over · **4** asking 10–20% over · **6** either side says “Thỏa thuận”', 'Asking more than 20% over the maximum'],
@@ -1208,6 +1208,7 @@ export const jobManagement: BuildModule = {
             },
             items: [
               'OVER-QUALIFIED BEATS UNDER-QUALIFIED, on purpose. Someone with 6 years against a 2–4 year posting can do the job; someone with 1 year cannot yet. The points say so.',
+              'THE 80% RULE APPLIES TO EVERY SIGNAL, not only to occupation. Wherever the value being compared came from the FALLBACK column or from behaviour rather than from something the jobseeker typed, that signal scores **80% of its declared value, rounded**. Location 20 → **16** when the city was learned from behaviour or read off their Profile. Industry 5 → **4** when it came from the companies on their CV. Experience, salary, skills and education have no inferred form — they are read from one place each, so the question does not arise.',
               'THE SAME TREE AS → [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job), deliberately. That page scores job-against-job on **Category › Group › Role** with the same four rungs at the same proportions (45 / 32 / 18 / 0 against our 42 / 30 / 17 / 0). Two recommendation surfaces built on two different models of one tree is how a dev ends up writing the distance function twice and getting different answers.',
               'READ THE TREE THE RIGHT WAY UP: a **Category** contains **Groups**, and a Group contains **Roles**. 21 categories, 477 roles. The middle rung is the one that earns its place — without it the ladder jumps straight from one role to a bucket holding 42 of them, and a Frontend Developer lands level with a Data Engineer.',
               'ONE RUNG ONLY, THE HIGHEST THAT APPLIES. Any job matching the declared role scores 42 and does NOT also collect the Group and Category rungs underneath it — they are steps on one ladder, not points to be added up.',
@@ -1911,6 +1912,110 @@ export const jobManagement: BuildModule = {
       },
     },
 
+    {
+      name: 'Recommended candidates — matched to an employer’s job',
+      site: 'Logic',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'JOB ↔ JOBSEEKER — the EMPLOYER’S half of the match, on the company Home. The same calculation as Recommended jobs, read from the other end: there we rank jobs for one person, here we rank people for one job. SRM-1345.',
+      detail: {
+        requirements: [
+          {
+            label: '1 · What the list is anchored to — the employer’s most recent job',
+            text: 'The section is anchored on A JOB. It used to be anchored on a Talent pool folder, and that can never work: `talent_pool` holds `id · company_id · name · kind · created_by · created_at · updated_at` and nothing else. No role, no level, no location, nothing to match against. **A folder is where results are SAVED. It is not the brief that produces them.**\n\nTHE ANCHOR IS THE MOST RECENT JOB THE EMPLOYER CREATED — draft or published, whichever was edited last.\n\nVN — Neo vào tin tuyển dụng gần nhất mà NTD tạo, kể cả tin nháp. Không neo vào thư mục.',
+            table: {
+              cols: ['The company has', 'Anchor', 'Heading'],
+              rows: [
+                ['One or more jobs (draft or published)', 'The one edited most recently', 'Ứng viên phù hợp với vị trí — *tên tin*'],
+                ['No job at all', 'Nothing — see section 5', '**Hồ sơ mới cập nhật**'],
+              ],
+            },
+            items: [
+              'ORDER BY LAST UPDATED, NOT BY CREATED. A draft abandoned six months ago must not drive the Home page over a job the recruiter was editing this morning.',
+              'THE HEADING NAMES THE JOB, and the Figma already does this — the chip reads “Backend developer with 3+ years experience…”, not a folder name. A recruiter has to be able to see what the list is answering without clicking anything.',
+              'GIVE THEM A DROPDOWN to switch to another of their jobs. The most recent one is only the default.',
+              'THE FOLDER DOES NOT DISAPPEAR — it changes job. It stops being the question and becomes the destination: “Lưu vào thư mục…” on each card.',
+            ],
+          },
+          {
+            label: '2 · ONE calculation — a draft is NOT a special case',
+            text: 'A draft and a published job go through exactly the same scoring. There is no minimum-information check on a draft, no “is this draft good enough” gate, and no second code path.\n\nA half-filled draft is not rejected — it simply scores LOW, automatically, because of the rule in section 3. That is the whole mechanism.\n\n**Decided 2026-11-03.** VN — Một logic duy nhất. Tin nháp thiếu thông tin thì tự khắc điểm thấp, không cần luật riêng.',
+            items: [
+              'WHY NO GATE. A gate is a second rule that has to be maintained, argued about and kept in sync with the first one — and it would have to answer “how much information is enough?”, which nobody can answer. Letting the score fall on its own needs no answer and no extra code.',
+              'A DRAFT IS WORTH ANCHORING ON. The moment a recruiter is writing a job is the single best moment in the funnel to show them matching people. Nothing is leaked: it is their own company’s draft.',
+              'THE SCORING ENGINE IS `ApplicantMatch`, UNCHANGED IN STRUCTURE — the same seven signals the applicant board already uses. It does not care whether the job is published. Only the rule in section 3 changes.',
+            ],
+          },
+          {
+            label: '3 · Information the job does not state is worth 0 — it is NOT thrown away',
+            text: 'This is the one real change, and everything else above depends on it.\n\nTODAY the calculation **renormalises**: a signal the job does not state is removed, and the remaining weights are stretched back up to 100. A job that states only a location would score every candidate in that city at 100%.\n\nFROM NOW: every signal keeps its full weight, and a signal the job does not state earns **0** of it. The total is always out of the same 100.\n\nVN — Tín hiệu nào tin không khai thì được 0 điểm, không bị loại ra khỏi mẫu số. Luôn tính trên thang 100.',
+            table: {
+              cols: ['Signal', 'Full weight', 'Draft states only a location'],
+              rows: [
+                ['Kinh nghiệm', '22', '0'],
+                ['Địa điểm', '21', '**21**'],
+                ['Kỹ năng', '20', '0'],
+                ['Nhóm nghề', '20', '0'],
+                ['Lương', '9', '0'],
+                ['Ngành', '5', '0'],
+                ['Học vấn', '3', '0'],
+                ['**Tổng tối đa**', '**100**', '**21**'],
+              ],
+            },
+            items: [
+              'THAT IS THE POINT: a draft with only a city in it can never produce a card above 21%, so it can never look like a confident match. No gate needed — the number tells the truth by itself.',
+              'IT ALSO FIXES A REAL DEFECT. With renormalising, two cards side by side in one row are not on the same scale: one was scored out of 4 signals and the other out of 7, and both print a percentage. A job that states LESS scores HIGHER. Absolute scoring puts every card on the same 100.',
+              '**KNOCK-ON FOR THE APPLICANT BOARD — needs a decision from the BA before build.** `ApplicantMatch` is shared with the employer’s applicant list. Switching to absolute scoring does NOT change the ORDER there (every applicant to one job is divided by the same number, so the ranking is identical either way) — it only lowers the percentage shown on a lightly-filled posting. Pick one: hide the % badge below a floor, or print “3/7 tiêu chí khớp” instead of a percentage. Do not leave it unstated, or a thin posting will show 14% against every applicant and the board will look broken.',
+            ],
+          },
+          {
+            label: '4 · One floor, applied to the result — not to the draft',
+            text: 'Because a thin job scores low on purpose, there has to be a point below which the row is not worth showing. This is a floor on the OUTPUT and it applies to published jobs exactly as it does to drafts — it is not a draft rule.\n\nTHE RULE: if the best candidate scores below **40**, the anchor produced nothing usable. Drop to section 5 and change the heading.',
+            items: [
+              'WHY A FLOOR AT ALL: at 15% the cards are not wrong, they are meaningless, and a row of meaningless cards under a confident heading is how a recruiter learns to stop looking at that part of the page.',
+              '40 IS A SETTING, not a constant in the code — it should sit beside the match weights so it can be moved without a deploy.',
+              'ONE RULE, BOTH CASES. A published job with nothing filled in gets the same treatment as a thin draft. No branch, no exception.',
+            ],
+          },
+          {
+            label: '5 · When there is no usable job — “Hồ sơ mới cập nhật”',
+            text: 'The section still renders. It does NOT go blank and it does NOT show an empty state here — but **the heading changes**, because the content changed.\n\nThe original problem was never “showing people when there is no job”. It was **promising a match that never happened**. Rename the section and the problem is gone.\n\nVN — Vẫn hiện section, nhưng đổi tiêu đề thành “Hồ sơ mới cập nhật”. Không gắn badge.',
+            table: {
+              cols: ['Step', 'Rule'],
+              rows: [
+                ['1 · Filter', 'The hard filters in section 6. Nothing else may appear.'],
+                ['2 · Prefer', 'Candidates whose desired industry or job category matches **the company’s own industry** (`company.industry_id`) come first. Even with no job posted, we know what business they are in.'],
+                ['3 · Sort', 'Most recently updated CV first — a fresh CV means someone actually looking.'],
+                ['4 · Spread', 'At most ONE card per job category, or the row comes out as three QA testers.'],
+                ['5 · Rotate', 'Change the set daily. Otherwise a handful of people who edit their CV often take every slot and the recruiter sees the same three faces all week.'],
+              ],
+            },
+            items: [
+              'NO “TOP PICK!” BADGE IN THIS MODE, and no percentage. There is no score, so a confidence label would be a lie. The badge belongs only to section 1–4.',
+              'SAY WHY THEY ARE THERE — one quiet line under the heading: “Hồ sơ vừa cập nhật trong ngành Truyền thông – Giải trí”. One sentence is the whole difference between a suggestion and a random list.',
+              'DO NOT USE YEARS OF EXPERIENCE AS A QUALITY SIGNAL, and never age or gender. More years is not better, it is only different, and it depends entirely on the role.',
+            ],
+          },
+          {
+            label: '6 · Who is allowed to appear at all',
+            text: 'These run BEFORE any scoring or sorting, in every mode including section 5. A candidate who fails any of them is not in the pool.',
+            table: {
+              cols: ['Filter', 'Why'],
+              rows: [
+                ['CV search is switched ON by the candidate', 'We have no right to show someone who did not agree to be found. Non-negotiable.'],
+                ['The CV is Qualified', 'The CV-quality gate already exists — see → [CV qualification](/m/resume-management/cv-qualification-apply-cv-search). A CV we could not read must never reach the company Home.'],
+                ['The CV has experience, skills and education filled in', 'Below that there is nothing for a recruiter to judge, whatever the score says.'],
+                ['Not already in one of this company’s pools', 'A person the company has already saved is not a discovery. Showing them again wastes the slot.'],
+              ],
+            },
+            items: [
+              'THE CARD IS THE EXISTING ONE from the Figma — years of experience, latest company, skill chips. The only additions this feature makes are the heading, the optional “Top pick!” badge, and “Lưu vào thư mục…”.',
+              'THE KOREAN CHIPS IN THE FIGMA (응답률, 평균 근속) ARE NOT PART OF THIS TICKET. We hold neither a response rate nor an average tenure for a VN candidate, so they must not ship as empty chips.',
+            ],
+          },
+        ],
+      },
+    },
     {
       name: 'Job tags — keyword links on the job detail',
       site: 'Jobseekers',

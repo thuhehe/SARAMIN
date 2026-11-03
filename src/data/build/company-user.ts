@@ -328,6 +328,10 @@ export const companyUser: BuildModule = {
               ],
             },
           },
+          {
+            label: 'The “Recommended candidates” panel — Home shows it, another feature owns it',
+            text: 'The candidate row near the foot of Home is anchored on **the employer’s most recently edited job**, draft or published — never on a Talent pool folder, which holds only a name and cannot define anything. When the company has no usable job the panel stays on screen but **renames itself** to “Hồ sơ mới cập nhật”, because the content stopped being a match.\n\nThe scoring, the zero-for-missing-information rule, the 40-point floor and the eligibility filters all live in → [Recommended candidates](/m/job-management/recommended-candidates-matched-to-an-employer-s-job). Home only renders what that feature returns — the read-only rule above applies here too.\n\nSRM-1345.',
+          },
         ],
         uiFields: [
           {
