@@ -1412,6 +1412,49 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
+            label: '18b · ONBOARDING — the live “N jobs match” counter in the wizard',
+            text: 'Above the progress bar the wizard prints a number: “**2** job postings match the information you provided so far.” It appears on **step 3 (experience)** and **step 4 (education)** only — steps 1, 2 and 5 carry a sentence with no number in it.\n\nIt is NOT a count of search results. It calls the SAME scoring engine this page describes, over the answers typed so far. That is the whole point: the number the wizard promises and the cards it ends on have to be one calculation, or the jobseeker is told “12 jobs match” and then shown four they do not recognise.\n\nVN — Con số trên thanh tiến trình chỉ hiện ở bước 3 và bước 4. Nó gọi đúng engine chấm điểm của trang này chứ không phải đếm kết quả tìm kiếm — để con số hứa với ứng viên và danh sách hiện ra ở cuối không mâu thuẫn với nhau.',
+            table: {
+              cols: ['Step', 'What the banner says', 'Number'],
+              rows: [
+                ['1 · Role / industry / contract type', '“Enter the job you are looking for…”', '—'],
+                ['2 · Locations', '“I’m looking for a suitable job posting…”', '—'],
+                ['**3 · Years of experience**', '“**N** job postings match the information you provided so far.”', '**Yes**'],
+                ['**4 · Highest education**', '“**N** job postings match more accurately by reflecting the requirements.”', '**Yes**'],
+                ['5 · Expected salary', '“Input your desired salary…”', '—'],
+              ],
+            },
+            items: [
+              'IT RECOMPUTES ON EVERY ANSWER, not once per step. Step 4’s number already reflects the years picked on step 3. Never cached — the answers are still changing.',
+              'IT READS THE ANSWERS IN FRONT OF IT, NOT THE SAVED PROFILE. Nothing has been saved yet at this point in the wizard. The answers are scored as a throwaway work preference. An existing jobseeker re-walking the wizard still has their CVs read, so their number will differ from a brand-new account giving identical answers.',
+              'WHAT IS SENT — the FIRST role picked (not all three), the industries, the cities, the education level, the years. **What is NOT sent: contract type, desired salary, the 2nd and 3rd role picks.** Those four answers cannot move the number, which is why step 5 shows no number at all.',
+              'NO ANSWERS YET, NOT SIGNED IN, OR ANYTHING FAILS → NO NUMBER. The banner falls back to the sentence without a number. It never prints 0 as a way of saying “we could not work it out” — 0 has to mean zero.',
+              'THE NUMBER CAN GO **DOWN** WHEN THEY ANSWER MORE, and this is correct, not a bug. Each answer adds a comparison. A job that states a minimum education the jobseeker does not have scores 0 on that comparison (section 15), and its total falls. A job sitting just above the cut-off drops below it, and the count shrinks. Step 3 saying 2 and step 4 saying 0 is the rule working.',
+              'A WIZARD USER HAS NO CV YET, so the skills comparison earns nothing on every job that lists required skills — and under section 15 it still counts against them. Low numbers here are expected, and the number is NOT a promise about how good the matches are.',
+            ],
+          },
+          {
+            label: '18c · DECISION NEEDED — what “match” means for that counter',
+            text: 'The counter needs a line to count ABOVE. Today the build has one: a job is counted when it scores **50 or more out of 100**, distinct jobs only. The new logic on this page has no such line — it keeps the **top 80** and stops (sections 1 and 2).\n\nThose two rules cannot both hold. If we keep “top 80” and nothing else, the counter reads 80 on step 3, 80 on step 4, and 80 for everybody — a number that never moves teaches the jobseeker to ignore the banner.\n\nVN — Hiện tại build đếm những tin đạt từ **50 điểm trở lên**. Logic mới ở trang này không có ngưỡng nào, chỉ lấy 80 tin đầu. Hai cái này không thể cùng đúng — cần chọn một.',
+            warn: 'Pick one before this is built. Option A — keep a score cut-off (50 today) purely for this counter, and say so on this page. Option B — count the jobs left after NARROW and REMOVE, before scoring, so the counter measures “how many jobs are even eligible for you” rather than “how good they are”. Option C — drop the number from the wizard and keep the count-free sentence, which already exists and is already translated.',
+            table: {
+              cols: ['', 'The counter (today’s build)', 'The feed on this page'],
+              rows: [
+                ['Scored against', 'The answers being typed', 'The saved profile + behaviour'],
+                ['If the filters match nothing', '**Counts 0.** Never widened.', 'Filters are dropped and jobs are shown anyway'],
+                ['Cut-off', '**50 out of 100, always**', 'None — top 80'],
+                ['Max 2 jobs per company', 'No', 'Yes'],
+                ['How many', 'Everything that clears the cut-off', '80, then split across four surfaces'],
+                ['Shuffle / log rows / match %', 'None of them', 'All of them'],
+              ],
+            },
+            items: [
+              'THE COUNTER MUST NEVER WIDEN ITS FILTERS. The feed is allowed to drop its filters and show jobs anyway rather than show an empty rail (section 16). The counter is not: widening the filters and then reporting the bigger number is the banner lying about what it measured. Zero is an honest answer and must stay possible.',
+              'WHICHEVER OPTION WINS, THE COUNTER AND THE END-OF-ONBOARDING CARDS MUST COME FROM ONE CALCULATION. The reason the build calls the recommendation engine here instead of a search count is exactly this. Do not re-implement the counter against a job search.',
+              'ALSO DECIDE WHETHER TO SEND SALARY. Step 5 asks for expected salary and the counter never receives it — so the last answer the jobseeker gives is the one that visibly changes nothing. Either send it and show a number on step 5 too, or accept that the wizard stops reacting at step 4.',
+            ],
+          },
+          {
             label: '19 · MY DASHBOARD ① — “Việc làm phù hợp với bạn” (the score rail)',
             text: 'The signed-in dashboard carries TWO job sections, and they must answer two different questions — otherwise they return overlapping lists and the page reads as one rail printed twice. Neither introduces a new ranking model: this one is the match score above, section ② is the [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job) job↔job sort. Anything wanting a third model has to justify why the two we have are wrong.',
             items: [
@@ -1961,20 +2004,21 @@ export const jobManagement: BuildModule = {
         requirements: [
           {
             label: '1 · What the list is anchored to — a job, picked by status then by last edit',
-            text: 'The section is anchored on A JOB. It used to be anchored on a Talent pool folder, and that can never work: `talent_pool` holds `id · company_id · name · kind · created_by · created_at · updated_at` and nothing else. No role, no level, no location, nothing to match against. **A folder is where results are SAVED. It is not the brief that produces them.**\n\nTHE ANCHOR IS THE EMPLOYER’S MOST REAL JOB, NOT THEIR NEWEST. Status decides the tier; inside a tier, the most recently edited job wins. Confirmed 2026-11-03.\n\nVN — Chọn theo trạng thái trước (OPEN → SCHEDULE → REVIEW → DRAFT), trong cùng một bậc thì lấy tin sửa gần nhất. Không neo vào thư mục.',
+            text: 'The section is anchored on A JOB. It used to be anchored on a Talent pool folder, and that can never work: `talent_pool` holds `id · company_id · name · kind · created_by · created_at · updated_at` and nothing else. No role, no level, no location, nothing to match against. **A folder is where results are SAVED. It is not the brief that produces them.**\n\nTHE ANCHOR IS THE EMPLOYER’S MOST REAL JOB, NOT THEIR NEWEST. Status decides the tier; inside a tier, the most recently edited job wins. Confirmed 2026-11-03.\n\nVN — Chọn theo trạng thái trước (OPEN → SCHEDULE → DRAFT), trong cùng một bậc thì lấy tin sửa gần nhất. Không neo vào thư mục.',
             table: {
               cols: ['Priority', 'Status', 'Why it sits here'],
               rows: [
                 ['**1**', '`OPEN` — and not past its deadline', 'Actually hiring. Anyone surfaced for it can be contacted today.'],
                 ['**2**', '`SCHEDULE`', 'Decided and signed off, only waiting for its date.'],
-                ['**3**', '`REVIEW`', 'The employer finished it and submitted it — it is waiting on admin approval, nothing else. Far more real than a draft, and the tier easiest to forget.'],
-                ['**4**', '`DRAFT`', 'May never be published, but it still beats having no anchor at all.'],
+                ['**3**', '`DRAFT`', 'May never be published, but it still beats having no anchor at all.'],
                 ['—', '`CLOSED`', '**Never anchors.** A closed posting is not hiring.'],
+                ['—', '`REVIEW`', 'A dead value — see below. A legacy row ranks with `DRAFT`.'],
                 ['—', 'No job in any tier', 'Heading becomes **Hồ sơ mới cập nhật** — see section 5.'],
               ],
             },
             items: [
               'INSIDE A TIER, ORDER BY LAST UPDATED — NOT BY CREATED. This matters more than it looks: a company with twenty OPEN jobs has no idea why “the newest” was chosen, whereas “the one you were last editing” explains itself in a sentence. It also stops a draft abandoned six months ago from outranking a job the recruiter touched this morning.',
+              'THERE IS NO `REVIEW` TIER, AND NOBODY SHOULD ADD ONE. The enum still lists the value, but `JobStatus` states that nothing has produced it since **V468**: a company self-service publish used to be redirected there when the owning company’s `jobApprovalMode` was MANUAL, and it now always publishes straight to `OPEN`. The value survives only so a row written before that change still reads back. If such a row exists, rank it with `DRAFT`.',
               'AN `OPEN` JOB PAST ITS DEADLINE COUNTS AS CLOSED and drops out of tier 1 — otherwise Home offers candidates for a posting nobody can apply to any more.',
               'THE `exposure` FLAG IS IRRELEVANT HERE. It hides a posting from JOBSEEKERS. This is the company’s own dashboard, so a job with exposure off still anchors normally: they are still hiring, they are just not advertising.',
               'CONSIDERED AND NOT TAKEN — anchoring on the job that NEEDS candidates most, i.e. the OPEN job with the fewest applicants for its age. It is better product thinking (a posting with 50 applicants does not need help; one with none after two weeks does), but rejected for phase 1 on two grounds: the default stops being explainable to the recruiter, and the dropdown already makes a wrong default cost one click. Revisit when there is real data on which postings starve.',
