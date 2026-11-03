@@ -2078,10 +2078,10 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '4 · One floor, applied to the result — not to the draft',
-            text: 'Because a thin job scores low on purpose, there has to be a point below which the row is not worth showing. This is a floor on the OUTPUT and it applies to published jobs exactly as it does to drafts — it is not a draft rule.\n\nTHE RULE: if the best candidate scores below **40**, the anchor produced nothing usable. Drop to section 5 and change the heading.',
+            text: 'Because a thin job scores low on purpose, there has to be a point below which the row is not worth showing. This is a floor on the OUTPUT and it applies to published jobs exactly as it does to drafts — it is not a draft rule.\n\nTHE RULE: if the best candidate scores below **40**, the anchor produced nothing usable. Drop to section 5 and change the heading. **Confirmed 2026-11-03.**',
             items: [
               'WHY A FLOOR AT ALL: at 15% the cards are not wrong, they are meaningless, and a row of meaningless cards under a confident heading is how a recruiter learns to stop looking at that part of the page.',
-              '40 IS A SETTING, not a constant in the code — it should sit beside the match weights so it can be moved without a deploy.',
+              '40 IS A SETTING, not a constant in the code — it sits beside the match weights so it can be moved without a deploy. The value is agreed; where it lives is not negotiable.',
               'ONE RULE, BOTH CASES. A published job with nothing filled in gets the same treatment as a thin draft. No branch, no exception.',
             ],
           },
@@ -2112,7 +2112,7 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['CV search is switched ON by the candidate', 'We have no right to show someone who did not agree to be found. Non-negotiable.'],
                 ['The CV is Qualified', 'The CV-quality gate already exists — see → [CV qualification](/m/resume-management/cv-qualification-apply-cv-search). A CV we could not read must never reach the company Home.'],
-                ['The CV has experience, skills and education filled in', 'Below that there is nothing for a recruiter to judge, whatever the score says.'],
+                ['The CV has **work experience and education** filled in', 'Below that there is nothing for a recruiter to judge, whatever the score says. **Skills are NOT required here** — decided 2026-11-03. Only 26% of roles have authored skills, so demanding them would empty the pool for three quarters of the catalogue; and a candidate with no skills on file can still reach the list through desired role or category in section 2b.'],
                 ['Not already in one of this company’s pools', 'A person the company has already saved is not a discovery. Showing them again wastes the slot.'],
               ],
             },
@@ -2128,7 +2128,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['#', 'Decision', 'Status'],
               rows: [
-                ['1', 'The **40-point floor** in section 4. The number is a placeholder, not a researched value.', 'Waiting on the BA'],
+                ['1', 'The **40-point floor** in section 4.', '**Confirmed 2026-11-03** — 40 it is, held as a setting beside the weights.'],
                 ['2', 'What the **Applicants board** prints once scoring is absolute: hide the % badge below a floor, or print “3/7 tiêu chí khớp” instead of a percentage.', 'Waiting on the BA'],
               ],
             },
