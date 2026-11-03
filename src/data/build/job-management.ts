@@ -1439,7 +1439,7 @@ export const jobManagement: BuildModule = {
             text: 'Nothing on this page is being built. It is here so the reasoning behind the earlier design stays readable — the weights, the renormalise rule and the four different headings.',
             warn: 'DO NOT IMPLEMENT FROM THIS PAGE. The current design is → [Recommended jobs (NEW logic)](/m/job-management/recommended-jobs-new-logic). Where the two disagree, the NEW page wins.',
             items: [
-              'WHAT CHANGED, in one line each, so you know why to look at the other page. Role and category became ONE signal on a four-rung Category › Group ‹ Role ladder. A signal with nothing to compare now scores 0 instead of having its points redistributed. Behaviour — views, saves, applications — now widens what the jobseeker is matched against. The admin weights screen is gone. The four headings became one.',
+              'WHAT CHANGED, in one line each, so you know why to look at the other page. Role and category became ONE signal on a four-rung Category › Group › Role ladder. A signal with nothing to compare now scores 0 instead of having its points redistributed. Behaviour — views, saves, applications — now widens what the jobseeker is matched against. The admin weights screen is gone. The four headings became one.',
             ],
           },
           {
