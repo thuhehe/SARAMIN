@@ -2032,6 +2032,23 @@ export const jobManagement: BuildModule = {
               'THE KOREAN CHIPS IN THE FIGMA (응답률, 평균 근속) ARE NOT PART OF THIS TICKET. We hold neither a response rate nor an average tenure for a VN candidate, so they must not ship as empty chips.',
             ],
           },
+          {
+            label: '7 · Two decisions this feature is waiting on — SRM-1345',
+            text: 'Both were raised on 2026-11-03 and posted to the ticket. Neither blocks the retrieve step or the scoring itself — both block the NUMBER a user ends up seeing.',
+            warn: 'Decision 2 must not reach build unanswered. `ApplicantMatch` is shared with the employer’s applicant list, and a lightly-filled posting there will print 14% beside every applicant.',
+            table: {
+              cols: ['#', 'Decision', 'Status'],
+              rows: [
+                ['1', 'The **40-point floor** in section 4. The number is a placeholder, not a researched value.', 'Waiting on the BA'],
+                ['2', 'What the **Applicants board** prints once scoring is absolute: hide the % badge below a floor, or print “3/7 tiêu chí khớp” instead of a percentage.', 'Waiting on the BA'],
+              ],
+            },
+            items: [
+              'WHY DECISION 2 IS NOT OPTIONAL. Absolute scoring does NOT change the order on the applicant board — every applicant to one job is divided by the same number, so the ranking comes out identical either way. It changes only the printed number, and on a thin posting that number drops hard. Leaving it unstated does not avoid the decision; it ships the worse answer by default.',
+              'NEITHER IS A REASON TO HOLD THE REST. Sections 1–3 and 5–6 are complete and buildable. Only the floor value and the applicant-board badge are open.',
+              'TICKET: **SRM-1345** (sub-task · reviewer Thu). The three-step logic was posted there as a comment on 2026-11-03, and that comment links back to this page.',
+            ],
+          },
         ],
       },
     },
