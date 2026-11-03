@@ -65,11 +65,9 @@ const ADMIN_NAV_PAGES = new Set([
   'admin-banners', 'admin-image-gallery', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
-  // Matching settings + report. Preventative: no feature renders either screen
-  // yet, so no link is being suppressed today — they are listed because the set
-  // covers every screen a spec page CAN show, and the gap would only surface as
-  // a missing link the day a feature points at one.
-  'admin-matching-settings', 'admin-matching-report',
+  // Matching report only — the settings screen was removed with SRM-1338 (the
+  // weights live in code, Recommended jobs (NEW logic) §22).
+  'admin-matching-report',
   // 'admin-audit-log' is OFF THE NAV (client, 2026-08) — screen + registry entry stay
   // so restoring it is one line, and auditing is still referenced by other modules.
   'admin-master-data', 'admin-unresolved-terms', 'admin-audit-log', 'admin-environment', 'admin-departments',

@@ -56,7 +56,6 @@ const adminIssuer = screen(() => import('@/pages/admin/screens/system/issuer'), 
 const adminMembership = screen(() => import('@/pages/admin/screens/system/membership'), 'AdminMembership')
 const adminMasterData = screen(() => import('@/pages/admin/screens/system/masterData'), 'AdminMasterData')
 const adminAuditLog = screen(() => import('@/pages/admin/screens/system/auditLog'), 'AdminAuditLog')
-const adminMatchingSettings = screen(() => import('@/pages/admin/screens/system/matching'), 'AdminMatchingSettings')
 const adminMatchingReport = screen(() => import('@/pages/admin/screens/system/matching'), 'AdminMatchingReport')
 const adminEnvironment = screen(() => import('@/pages/admin/screens/system/environment'), 'AdminEnvironment')
 const adminDepartments = screen(() => import('@/pages/admin/screens/directory/departments'), 'AdminDepartments')
@@ -122,7 +121,6 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-membership': adminMembership,
   'admin-master-data': adminMasterData,
   'admin-audit-log': adminAuditLog,
-  'admin-matching-settings': adminMatchingSettings,
   'admin-matching-report': adminMatchingReport,
   'admin-environment': adminEnvironment,
   'admin-departments': adminDepartments,

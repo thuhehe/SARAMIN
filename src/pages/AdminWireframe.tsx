@@ -103,10 +103,9 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   // configures is displayed by CRM → Customers, which cross-references back to here.
   'admin-membership': { module: 'admin-system', feature: 'Membership tiers' },
   'admin-master-data': { module: 'admin-system', feature: 'Master data' },
-  // Both point at the Resume-management feature that specifies them — the weights
-  // and the log belong to the matching logic, not to the admin shell.
-  'admin-matching-settings': { module: 'resume-management', feature: 'Recommended jobs — matched to a jobseeker’s profile' },
-  'admin-matching-report': { module: 'resume-management', feature: 'Recommended jobs — matched to a jobseeker’s profile' },
+  // The report belongs to the matching logic, not to the admin shell — it is
+  // specified by the NEW-logic page (§22). The weights screen is gone (SRM-1338).
+  'admin-matching-report': { module: 'job-management', feature: 'Recommended jobs (NEW logic) — matched to a jobseeker’s profile' },
   'admin-environment': { module: 'admin-system', feature: 'Environment' },
   'admin-departments': { module: 'admin-system', feature: 'Departments' },
 }
@@ -327,9 +326,6 @@ const NAV_GROUPS: NavGroup[] = [
       // Static site copy — configuration, not a sold service.
       { label: 'Pages', specId: 'admin-pages' },
       { label: 'Master data', specId: 'admin-master-data' },
-      // The 8 score weights + the salary exchange rate. HQ-only configuration that
-      // changes how another module behaves — same reason Products sits here.
-      { label: 'Matching settings', specId: 'admin-matching-settings' },
       // The taxonomy's maintenance queue, and the answer to "who keeps the skill
       // list from rotting". Fed from BOTH sides — employer searches that matched
       // nothing and CV imports that resolved nothing — because one alias fixes both.

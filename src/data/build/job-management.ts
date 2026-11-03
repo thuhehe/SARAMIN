@@ -1031,6 +1031,27 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
+            label: '0b · The four matching features — what they share, and who feeds which screen',
+            text: 'Four features answer four questions. They are deliberately built on ONE set of rules, so a developer writes each thing once. Audited 2026-11-03 against the other three pages and the four SRM-1330 sub-tasks; the rules below are the reconciled ones — where a page said otherwise, that page was corrected the same day.\n\nVN — Bốn tính năng, một bộ luật chung. Bảng dưới là bản đã đối chiếu ngày 2026-11-03; trang nào nói khác đã được sửa cùng ngày.',
+            table: {
+              cols: ['Feature', 'Question it answers', 'Sign-in', 'Ticket', 'Page'],
+              rows: [
+                ['**Recommended jobs** (this page)', 'Which jobs fit THIS PERSON — profile + CVs + behaviour', 'Jobseeker', 'SRM-1338', '—'],
+                ['**Relevant jobs**', 'Which jobs are like THIS JOB — job ↔ job, reads no profile', 'None', 'SRM-1331', '→ [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job)'],
+                ['**Recommended candidates**', 'Which people fit THIS JOB — the same score as this page, read from the employer’s end', 'Employer', 'SRM-1345', '→ [Recommended candidates](/m/job-management/recommended-candidates-matched-to-an-employer-s-job)'],
+                ['**Onboarding job count**', 'How many jobs match THIS SET OF ANSWERS — a filter count, no score at all', 'None', 'SRM-1347', 'sections 18b–18e below'],
+              ],
+            },
+            items: [
+              'ONE WEIGHT TABLE for Recommended jobs AND Recommended candidates — section 7: occupation 42 · location 20 · experience 14 · salary 12 · industry 5 · skills 4 · education 3. The employer side reads the same table from the other end with DECLARED facts only (behaviour is personal data — section 5). Relevant jobs has its own job↔job table (taxonomy 45 · level 15 · location 15 · salary 10 · skills 8 · industry 4 · work type 3) because it compares two postings, not a person and a posting; both tables walk the same Category › Group › Role ladder at the same proportions.',
+              'ONE DEFINITION OF “APPLIED”: an application row exists for this jobseeker and this job, in ANY status. Hidden from this feed, from Relevant jobs for a signed-in reader, from the Batch apply picker, and by the “ẩn việc đã ứng tuyển” switch on Saved jobs. Not “live applications only” — one EXISTS check, no status table (section 4).',
+              'ONE MISSING-DATA RULE on all three scored features: a signal that cannot be compared scores 0 and the total stays out of 100 — never re-scale (section 15). The only exception is how a percentage is PRINTED on the employer’s applicant board (section 15, last two bullets); it changes no ranking.',
+              'ONE YEARS → RUNG TABLE (section 18d), used wherever years of experience meet a posting that states a level instead of a year band: the onboarding count, this score (section 8, experience row) and the candidate score.',
+              'WHO FEEDS WHICH SCREEN — job detail: Relevant jobs (public, cached) draws FIRST and this feed takes the rest (section 18). After-apply / Batch apply popup: THIS feed, strict score order, not Relevant jobs (18f). Onboarding results: this feed (section 1 of the screen) plus a plain role search (section 2) — 18a. Company Home: Recommended candidates. Nothing is fed by two features at once.',
+              'NO MINIMUM SCORE on this feed — the pool is the 80 best and the heading never changes (sections 2, 16). Recommended candidates DOES have a floor (40), because there three cards sit under a heading that names a job and carry a “Top pick” badge; that difference is deliberate and written on that page.',
+            ],
+          },
+          {
             label: '1 · How we pick the jobs to show',
             text: 'Four stages: NARROW → SCORE → REMOVE → ARRANGE.\n\nThe score is an internal number. The jobseeker never sees it — it only decides what order the cards come in.\n\nVN — Bốn bước: thu hẹp → chấm điểm → loại bỏ → sắp xếp. Điểm số chỉ dùng nội bộ để xếp thứ tự, ứng viên không nhìn thấy con số đó.',
             table: {
@@ -1097,7 +1118,7 @@ export const jobManagement: BuildModule = {
             text: 'Once a jobseeker has applied to a job, that job is gone from their recommendations. Permanently.\n\nIt does not matter what happened to the application afterwards — whether they withdrew it, the employer rejected it, or they were hired. Applied is applied.\n\nVN — Đã ứng tuyển là ẩn vĩnh viễn. Không quan tâm hồ sơ sau đó bị huỷ, bị từ chối hay đã trúng tuyển.',
             items: [
               'ONE CHECK, NOT A STATUS TABLE: does an application row exist for this jobseeker and this job? Yes → the job never appears in the feed again. There is nothing else to look at.',
-              'THE SAME ANSWER ON EVERY SCREEN that asks this question — this feed, the relevant-jobs list on a job detail page, and the “ẩn việc đã ứng tuyển” switch on Saved jobs. One definition, no per-screen variation.',
+              'THE SAME ANSWER ON EVERY SCREEN that asks this question — this feed, the relevant-jobs list on a job detail page, the Batch apply picker, and the “ẩn việc đã ứng tuyển” switch on Saved jobs. One definition — an application row EXISTS, whatever its status — no per-screen variation. (Relevant jobs 1c used to say “live applications only”; reconciled to this rule 2026-11-03.)',
               'HIDDEN IS NOT DELETED. The job still appears in search, on the company page, and in the jobseeker’s own “Việc làm đã ứng tuyển” list. It is only kept out of a feed whose whole purpose is “what to do next”.',
               'IT STILL COUNTS AS BEHAVIOUR. An application is the strongest signal we have about what this person wants, so the job’s role, category and city go on shaping their feed (section 5) even though the job itself is now hidden.',
               'REMOVE THEM BEFORE THE 80 IS CUT, not after. Otherwise a jobseeker who has applied to twenty jobs this month gets a pool of 60, and the pool quietly shrinks as they use the product.',
@@ -1134,7 +1155,7 @@ export const jobManagement: BuildModule = {
                 ['**The job is live**', 'Always', 'Status is OPEN · not past its expiry date · not past its posting expiry · the employer has not switched exposure off · the company account is ACTIVE.'],
                 ['**Category**', 'Only if they named a category **or** a desired role', 'The job must be linked to at least one of: the category they picked **∪** the category their desired role belongs to. Named neither → this condition is skipped entirely.'],
                 ['**Province**', 'Only if they named a province **AND** did **not** tick “sẵn sàng chuyển chỗ ở”', 'The job’s province, or one of its company locations, must be one of theirs — **OR the job is REMOTE**, which passes from anywhere. Ticked “will relocate” → skipped entirely, because they told us the city is a preference, not a requirement. It still earns points in the score.'],
-                ['**Same category as the job on screen**', 'Only on the **job detail** page', 'On that one surface the jobseeker is reading a specific posting, so the pool is narrowed to its category too. Nowhere else.'],
+                ['**Same category as the job on screen**', 'Only on the **job detail** page', 'On that one surface the jobseeker is reading a specific posting, so the pool is narrowed to its category too. Nowhere else — NOT on Batch apply (decided 2026-11-03): the popup draws from the plain pool, because with 42 points on occupation the top of the pool is already the same field, and one pool is simpler than two.'],
                 ['Everything else', 'Never', 'Salary, skills, experience, education and industry are **not** filters. They only earn points. Filtering on them would hide jobs the jobseeker could still want.'],
               ],
             },
@@ -1188,7 +1209,7 @@ export const jobManagement: BuildModule = {
                  'Right city **and** right work type → **20** declared / **16** inferred\nA **REMOTE** posting → **20**, from anywhere\nRight city, other work type → **14**\nNeighbouring province → **10**\nAny other province → **0**'],
                 ['**Experience**\n**14**',
                  'Years of experience on their **Profile**.\n\n**If empty:** computed from the work history on their CV.',
-                 'Inside the posting’s range → **14**\nPosting says “no experience required” → **14**\nUp to 2 years over → **10**\nUp to 1 year under → **7**\nMore than 2 years over → **5**\nMore than 1 year under → **0**'],
+                 'Inside the posting’s range → **14**\nPosting says “no experience required” → **14**\nUp to 2 years over → **10**\nUp to 1 year under → **7**\nMore than 2 years over → **5**\nMore than 1 year under → **0**\n\n**Posting states no year band but states a LEVEL** (most self-served postings — only ~22% carry a band): map their years to a rung with the 18d table — same rung → **14** · one rung apart → **7** · further → **0**\nNeither band nor level → **0** (section 15)'],
                 ['**Salary**\n**12**',
                  'Desired salary in their work preference.\n\n**No fallback** — nobody can guess this.',
                  'Inside the band, or the band is entirely above it → **12**\nAsking up to 10% over → **8**\nAsking 10–20% over → **4**\nEither side says “Thỏa thuận” → **6**\nAsking more than 20% over → **0**'],
@@ -1360,7 +1381,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '16 · If the jobseeker has not filled in everything',
-            text: 'Not everyone completes their profile. The calculation does not change — there is simply less to compare, so the results are less accurate.\n\nTHE HEADING DOES NOT CHANGE EITHER. It is always **“Gợi ý việc làm”**. One heading, on every surface, for every jobseeker.\n\nVN — Luôn dùng một tiêu đề duy nhất: “Gợi ý việc làm”. Không đổi theo lượng thông tin.',
+            text: 'Not everyone completes their profile. The calculation does not change — there is simply less to compare, so the results are less accurate.\n\nTHE HEADING DOES NOT CHANGE EITHER. Each surface has ONE heading — the Figma’s wording for that screen (“Việc làm phù hợp với bạn” on My dashboard, “Recommended jobs” on the job detail) — and it never varies with how much we know about the person. No FOR_YOU / LIKE_YOUR_CV / MATCHING / FEATURED grades, no “relaxed” heading: the build’s four-grade heading is retired with this page.\n\nVN — Mỗi màn hình một tiêu đề cố định theo Figma. Không đổi theo lượng thông tin, không còn 4 cấp tiêu đề như build hiện tại.',
             table: {
               cols: ['The jobseeker has…', 'What the feed can judge', 'What carries the weight'],
               rows: [
@@ -1402,20 +1423,38 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '18 · Where recommended jobs appear',
-            text: 'Four places, all fed from the same pool of 80 (section 2). Three of them shuffle it; Batch apply does not.\n\nVN — Bốn chỗ, cùng lấy từ một pool 80 tin. Ba chỗ xáo trộn, riêng Batch apply xếp theo điểm.',
+            text: 'Four places, all fed from the same pool of 80 (section 2). Three of them shuffle it; Batch apply does not. Card counts are the Figma’s (SRM-1338), recorded here so the four screens stop quoting four different numbers.\n\nVN — Bốn chỗ, cùng lấy từ một pool 80 tin. Ba chỗ xáo trộn, riêng Batch apply xếp theo điểm. Số thẻ mỗi chỗ ghi trong bảng.',
             table: {
-              cols: ['Page', 'Who sees it', 'Order', 'Note'],
+              cols: ['Page', 'Who sees it', 'Order', 'Cards', 'Note'],
               rows: [
-                ['**End of onboarding**', 'Only jobseekers who just answered the onboarding questions', 'Shuffled', 'Built on the work preference they have just typed. This is the reward for filling in the form.'],
-                ['**My dashboard**', 'Every signed-in jobseeker', 'Shuffled', 'The screen they come back to. Two rails live here — sections 19 to 21.'],
-                ['**Job detail page**', 'Every signed-in jobseeker', 'Shuffled', '⚠ This page ALSO carries a “similar jobs” list, which is a DIFFERENT feature with a different calculation → [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job). Two sections, two specs; do not merge them.'],
-                ['**Batch apply**', 'Every signed-in jobseeker', '**Strict score order**', 'The one place rank is honest, because several jobs are ticked at once.'],
+                ['**End of onboarding** — section 1 of the results screen', 'Jobseekers who just finished the wizard', 'Shuffled', '**6 per page, 30 in all** (pager 1/5)', 'Built on the work preference they just typed. Read ONCE, after the answers are saved, then paged in the browser — the endpoint has no offset, and re-reading re-scores. Section 2 of that screen is a plain role search — 18a.'],
+                ['**My dashboard** — “Việc làm phù hợp với bạn”', 'Every signed-in jobseeker', 'Shuffled', '**6**, carousel; each arrow click moves ONE card, not three', 'The screen they come back to. One rail — section 19.'],
+                ['**Job detail** — “Recommended jobs”, below “Similar jobs”', 'Signed in: this feed. **Not signed in: Relevant jobs rows 7–12** (decided 2026-11-03)', 'Shuffled', '**6** rows', 'Relevant jobs draws FIRST — it is public and cached. This section then skips every id Relevant jobs is showing, so no card appears twice. Pool narrowed to the on-screen job’s category (section 6).'],
+                ['**Batch apply** — the after-apply popup', 'The jobseeker who just applied', '**Strict score order**', 'Up to **30** rows, **5** ticked per batch', 'The one place rank is honest. NOT anchored on the applied job (section 6) and NOT fed by Relevant jobs — one feed, one popup. The popup itself: 18f.'],
               ],
             },
             items: [
-              'A VISITOR WHO IS NOT SIGNED IN GETS NOTHING FROM THIS FEATURE. It needs a jobseeker to match against. What a visitor sees on a job detail page is the job↔job list, which reads no profile at all.',
-              'THE JOB DETAIL PAGE IS THE ONE PEOPLE CONFUSE. “Việc làm tương tự” compares the job on screen with other jobs. “Gợi ý việc làm” compares the READER with other jobs. Same page, two questions, two specs. The two lists are also de-duplicated against each other so no card appears twice.',
+              'A VISITOR WHO IS NOT SIGNED IN HAS NO PROFILE TO MATCH, so the job-detail “Recommended jobs” section cannot be personal for them. Rather than leave a hole in the page, it shows the NEXT six rows of the Relevant jobs list (rows 7–12 — that list already fetches ~12 for its own reasons), under a heading that does not claim to know them: “Có thể bạn quan tâm”. Everywhere else a visitor sees nothing from this feature.',
+              'THE JOB DETAIL PAGE IS THE ONE PEOPLE CONFUSE. “Việc làm tương tự” compares the job on screen with other jobs and is the same for everybody. “Recommended jobs” compares the READER with other jobs. Same page, two questions, two specs — and ONE de-duplication rule: Relevant jobs claims first, this feed skips its ids.',
               'BATCH APPLY IS THE MOST IMPORTANT SURFACE and should be built first. It is the only one where the order directly decides what gets applied to, and the only one that does not shuffle.',
+              'TWO MORE CONSUMERS EXIST IN THE BUILD — the keyword strip on the search page and the job-alert email. Both read this same feed today. They keep doing so (pool of 80, shuffled; the alert never repeats a job it already sent) and are NOT in SRM-1338’s scope.',
+            ],
+          },
+          {
+            label: '18a · ONBOARDING RESULTS — two sections, two sources',
+            text: 'The results screen (“Based on what you entered, here are your best matches!”) has TWO lists, and they are not the same feature.\n\nVN — Màn kết quả onboarding có hai danh sách: trên là feed cá nhân (pool 80, xáo trộn), dưới là tìm kiếm thuần theo vị trí đã chọn. Tin đã hiện ở trên không hiện lại ở dưới.',
+            table: {
+              cols: ['Section', 'Source', 'Rule'],
+              rows: [
+                ['**1 · Best matches** — 6 per page, pager 1/5', 'This feed — the pool of 80, shuffled', 'Read once after the answers are saved; paged in the browser. Fewer than 30 in the pool → fewer pages, never padded.'],
+                ['**2 · “Jobs for {Desired job role}”** — one carousel row', 'A plain job SEARCH, not the score', 'Of the roles picked in step 1 (≤3), take the one whose CATEGORY has the most open jobs. List that category’s open jobs — rows with the EXACT role first, then the rest of the category — newest first. The heading prints the picked role’s name. Skip every id section 1 is showing.'],
+              ],
+            },
+            items: [
+              'WHY CATEGORY, NOT EXACT ROLE, FOR THE POOL: exact-role lists come back with two or three rows in most of the catalogue — the same reason the wizard counter matches at category level (18c). The category keeps the row full; putting the exact-role rows first keeps the heading honest for the cards the reader meets first.',
+              'WHY “MOST JOBS” DECIDES WHICH ROLE: a candidate who picked three roles gets one row, and it should be the one that can fill it. Ties → the first role they picked.',
+              'NO SCORE, NO SHUFFLE, NO LOG in section 2 — it is a search result, and `GET /jobs/search?category=…` already pages. Section 1 writes the recommendation log as usual (section 22).',
+              'NOTHING PICKED IN STEP 1 → no section 2. Section 1 still renders (section 6 — an empty profile has the widest pool).',
             ],
           },
           {
@@ -1469,7 +1508,7 @@ export const jobManagement: BuildModule = {
             },
             items: [
               'A JOB ONLY ESCAPES THE EXPERIENCE CRITERION when the employer said nothing about seniority in EITHER field. That is a far smaller set than “left the year band blank”.',
-              'THE YEARS → RUNG MAPPING IS A PRODUCT DECISION, agreed once and written here — not improvised per screen. Proposed, **to confirm**: 0 years → Thực tập sinh / Mới tốt nghiệp · 1–2 → Nhân viên · 3–5 → Chuyên viên / Trưởng nhóm · trên 5 → Quản lý trở lên.',
+              'THE YEARS → RUNG MAPPING IS A PRODUCT DECISION, agreed once and written here — not improvised per screen. **Decided 2026-11-03**, on the real `job_level.sort_order` ladder (intern 1 · fresher 2 · junior 3 · mid 4 · senior 5 · lead 6 · manager 7 · director 8 · c-level 9): Fresher tick or 0 years → **fresher (2)** · under 1 year → **2** · 1–2 years → **junior (3)** · 3–4 → **mid (4)** · 5–7 → **senior (5)** · 8–11 → **lead (6)** · 12–14 → **manager (7)** · 15+ → **director (8)**. A posting with several levels compares against its LOWEST. The same table serves the match score (section 8, experience row) and the candidate score — one table, one place.',
               'ADJACENT SURVIVES deliberately. One rung apart is a stretch, not a mismatch; two rungs apart is an intern against a director. This is the same tolerance the match score already uses, so the two never disagree about who is under-qualified.',
               'CHECK THE COVERAGE BEFORE BUILDING. Count OPEN jobs with a year band, and OPEN jobs with at least one `job_level_link` row. If BOTH are near zero, no rule will separate the two numbers, and step 4 should carry no number at all — that is the one case where “the numbers are the same” is the right answer, and it has to be written here when it happens.',
             ],
@@ -1496,43 +1535,65 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '19 · MY DASHBOARD ① — “Việc làm phù hợp với bạn” (the score rail)',
-            text: 'The signed-in dashboard carries TWO job sections, and they must answer two different questions — otherwise they return overlapping lists and the page reads as one rail printed twice. Neither introduces a new ranking model: this one is the match score above, section ② is the [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job) job↔job sort. Anything wanting a third model has to justify why the two we have are wrong.',
+            label: '18f · BATCH APPLY — the after-apply popup itself',
+            text: 'The popup that opens the moment an application is submitted (“Job application complete!”) lists this feed in strict score order and lets the candidate apply to several at once. Each row has to answer one question fast — “should I apply to this one too?”. Fields below; anything not listed is not on the row.\n\nMoved here from the Relevant jobs page on 2026-11-03: the popup is fed by THIS feed, not by job↔job similarity.\n\nVN — Popup sau khi nộp đơn lấy feed cá nhân, xếp đúng theo điểm. Không tick sẵn, tối đa 5 tin một lượt, footer ghi CV sẽ gửi.',
+            table: {
+              cols: ['Field', 'Reads from', 'Rule'],
+              rows: [
+                ['Checkbox', '—', 'Selects the row for the bulk button. **NOT pre-checked.** At most **5** ticked per batch — the sixth checkbox disables with a one-line hint.'],
+                ['Job title', '`job.title` in the UI language', 'One line, ellipsis. Never wraps — the row height is fixed so the list scans.'],
+                ['Company', '`company.name`', 'Second line, regular weight.'],
+                ['Reason chips', 'The score’s own reasons for this row, highest-earning first', 'Up to **2** chips, positive signals only (“Cùng Hồ Chí Minh”, “Đúng vị trí mong muốn”, “2 kỹ năng chung”). Never a miss, never a chip for something the score ignores. No percentage.'],
+                ['Salary', '`salaryType` · `salaryMin/Max` · `salaryCurrency`', 'Same rendering as every other job card: “Thỏa thuận”, or the band with its one-sided forms. One format across the product.'],
+                ['Contract · work type · location', '`contractType` · `jobType` · provinces', '“Full-time · Hybrid · Hồ Chí Minh”. One line.'],
+                ['Deadline', '`deadline`', '“Còn 29 ngày”. Amber at ≤ 3 days. Expired jobs never reach the list.'],
+                ['Save', 'Saved jobs', 'Star toggle, same component as the job list. “Lưu tất cả việc làm” saves every visible row not yet saved; when every row is saved it flips to “Bỏ lưu tất cả”.'],
+                ['Apply (per row)', '—', 'A single application for that row — one confirmation, the same email as a normal apply.'],
+                ['Info strip', '—', '“Gợi ý theo hồ sơ của bạn — xếp theo mức phù hợp.” One sentence, the same words as the rule. NOT “similar to the one you applied for”.'],
+              ],
+            },
             items: [
-              'SOURCE — the match score, computed against the jobseeker’s PROFILE plus EVERY CV they hold, best score per job. Not the searchable CV specifically.',
-              'GATE — open · not expired · moderation approved · exposure on. Deliberately NOT the candidate’s own visibility or searchable flag: a Hidden candidate still gets recommendations, because hiding controls who can find THEM, not what they are shown.',
-              'EXCLUDED — already applied · already dismissed · saved (those belong to their own rail) · anything section ② has already taken.',
-              'ORDER — drawn from the pool of 80 in the seeded shuffle, like every surface except Batch apply (section 2). The score picks WHICH 80; it does not rank this rail. Ties inside the pool cut break on profile completeness, then last-active, then CV updated-at. Recency never enters the score itself.',
-              'THE CARD SHOWS THE SCORE PLUS ONE REASON LINE — “Cùng Hồ Chí Minh · Frontend Engineer”. Never the bare number: a percentage with no reason invites exactly one question and answers none of it.',
-              '★ THERE IS A MINIMUM SCORE, and it is not optional. The heading is a PROMISE — “việc làm phù hợp” — and a 28% match printed under it breaks that promise in a way the user can check for themselves. Start at a provisional floor of 50 and SHOW FEWER THAN 3 RATHER THAN PAD. TopDev’s own recommendation engine lists the absence of this threshold as a known defect — a very weak match is still shown as a match whenever nothing better exists. Do not inherit it.',
-              'THE FLOOR IS A MEASUREMENT, NOT A GUESS — the recommendation log required in section 22 is what sets it: the score band at which application rate stops falling is the real threshold. 50 is a placeholder until that data exists.',
-              '★ COLD START — IT WORKS WITH NO CV AT ALL, and this is the assumption most likely to be got wrong. Work preference is collected at ONBOARDING and is worth 63 of 100 (location + work type 26, role + category 23, salary 9, industry 5); with education and years, a candidate holding ZERO CVs is still scored on about 94 points. Only skills (4) and language (2) need a CV — so “no CV → no recommendations” is false, and the empty state for it must not be built.',
-              'IF THEY HAVE NOT DONE ONBOARDING EITHER — show the onboarding prompt, NOT jobs. Newest-jobs padding under a heading that says “phù hợp với bạn” is a claim the user can disprove at a glance, and it teaches them to distrust the rail permanently.',
-              'COUNT — 3 cards visible, up to about 9 behind a horizontal scroll.',
+              'NOT PRE-CHECKED. Saramin KR and TopDev pre-check every suggested row, so one tap on the bulk button fires five applications the candidate may not have read. We start with nothing selected and the button shows the count: an accidental mass-apply is unrecoverable for the candidate, and low-intent applications flood the employer inbox.',
+              'THE BULK BUTTON reads “Ứng tuyển (n) việc đã chọn”, disabled at n = 0, one confirmation, then ONE request that applies to each row in its own transaction and sends ONE confirmation email for the batch. The Korean label “Simultaneous support” is a machine translation of 동시지원 and must not ship.',
+              'THE FOOTER NAMES THE CV THAT WILL BE SENT — “CV dùng để ứng tuyển: Frontend Engineer CV ✎”, defaulting to the CV used for the application just made. It MUST be a Qualified CV: if the candidate switches to one that is Not enough information or Can’t read, the bulk button disables and says why (“CV chưa đủ điều kiện”).',
+              'SORT ON THE CLIENT, over the rows already fetched. “Matching” (default) is the order the feed sent — the score order; “Newest” re-sorts the same rows. Never re-fetch with a sort parameter: the feed would re-score and could hand back a different 30, deleting rows the candidate had ticked.',
+              'THE LIST IS HIDDEN ONLY WHEN THE POOL IS EMPTY — the popup then shows the confirmation, the CV line and a **View my applications** link. With a pool, show what there is; two rows are an honest answer.',
+              'REPLACE THE KOREAN “RESUME HIGHLIGHT” BANNER. That slot is worth keeping for ONE prompt: if the candidate’s CV search is OFF, show “Cho phép nhà tuyển dụng tìm thấy bạn →” linking to the My CVs toggle; hide it when already on.',
+            ],
+          },
+          {
+            label: '19 · MY DASHBOARD ① — “Việc làm phù hợp với bạn” (the score rail)',
+            text: 'One rail, fed from the pool of 80 like every other surface.\n\nREWRITTEN 2026-11-03: the earlier text here was carried over from the OLD page and contradicted sections 2, 7 and 16 — it asked for a 50-point floor, a percentage and a reason line on the card, quoted the old weights (26 / 23 / 9 / 5) and a Language signal that no longer exists.\n\nVN — Một dải, lấy từ pool 80. Không sàn điểm, không in %, 6 thẻ, mỗi lần bấm mũi tên trượt đúng một thẻ.',
+            table: {
+              cols: ['Rule', 'Value'],
+              rows: [
+                ['Source', 'The pool of 80 (section 2), seeded shuffle — the same cards all day, different ones tomorrow'],
+                ['Cards', '**6**, in a carousel showing 3; each arrow click moves ONE card (SRM-1338)'],
+                ['Excluded', 'Applied (section 4) · dismissed · saved jobs (they have their own rail)'],
+                ['Floor', '**None.** The pool is already the 80 best; fewer than 6 in the pool → show fewer, never pad'],
+                ['On the card', 'Title · company · level · deadline · Apply · star. **No percentage, no reason line** (section 16)'],
+                ['Heading', '“Việc làm phù hợp với bạn” — fixed. Onboarding not done yet → the onboarding banner above the rail is the prompt; the rail still renders from whatever the profile has (section 16)'],
+              ],
+            },
+            items: [
+              'ONE COMPANY PER ROW applies here as everywhere (section 2).',
+              'NO “CV: {name}” LINE on the card for now — the build parses `matchedResumeId` but this page has no cheap way to print the CV’s name; section 17’s wording is the target for a surface that already holds the CV list.',
             ],
           },
           {
             label: '20 · MY DASHBOARD ② — “Tương tự việc bạn vừa xem” (the seeded rail)',
-            text: 'The behaviour rail. It answers a different question from ① — “what else is like the thing I am weighing up right now?” — and it reuses the job↔job list wholesale rather than scoring anything.',
+            text: 'DEFERRED — not in SRM-1338, and not drawn in the current Figma of My dashboard. Kept here as the design to reach for when a second rail is wanted, so it is not re-invented.',
             items: [
-              'SOURCE — the Relevant jobs job↔job list for a job the candidate recently VIEWED. That list is already computed and cached per job, so this rail costs one cache lookup and no per-user ranking at all.',
-              'ORDER — that feature’s own priority sort, unchanged: same category is a hard gate, then role, then location, then level, then newest breaks ties.',
-              '★ ONE SEED PER RAIL, AND NAME IT IN THE HEADING — “Tương tự: Senior Frontend Engineer · FPT Software”. Same principle as the skill suggestion chips: every suggestion carries its source, which makes it checkable and stops it reading as surveillance. For more breadth add a SECOND rail for the second seed; never blend two seeds into one list, which produces a rail nobody can explain.',
-              'SEED ONLY FROM THE LAST ~7 DAYS. “Similar to” a job they have forgotten looking at is noise wearing the clothes of personalisation.',
-              'EXCLUDED — the seed job itself · other jobs from the SAME COMPANY as the seed (those get their own section, per Relevant jobs) · already applied · saved.',
-              'NO SCORE ON THESE CARDS. The rail is not ordered by score, and a number that does not explain the order is worse than no number.',
-              'HIDE THE WHOLE RAIL BELOW 3 CARDS — never pad it. A padded “similar jobs” rail is how a recommendation surface starts lying.',
-              'NEW USERS SEE NOTHING HERE, and that is correct. No views, no seed, no rail — section ① is the floor that keeps the dashboard from being empty.',
+              'IF BUILT: one seed = a job the candidate VIEWED in the last ~7 days; the rail is that job’s → [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job) list, unchanged (new logic: every posting scored, no category gate, 2 per company). The heading names the seed: “Tương tự: Senior Frontend Engineer · FPT Software”.',
+              'EXCLUDED — the seed itself · applied (section 4) · saved. NO score on these cards; hide the rail below 3 cards rather than pad it; a new user with no views sees nothing here, and that is correct.',
             ],
           },
           {
             label: '21 · MY DASHBOARD — the rules that connect the two sections',
+            text: 'Only relevant once section 20 is built. Two rules, both already used on the job detail page (section 18).',
             items: [
-              '★ SECTION ② CLAIMS ITS JOBS FIRST, and this is counter-intuitive enough to be worth stating plainly. Its pool is tiny — one category, one seed — while ① draws on the whole board. If ① picked first it could strip ②’s best cards and push it under its 3-card minimum, hiding the rail entirely, while ① backfills without noticing anything was taken. THE NARROW RAIL ALWAYS CLAIMS BEFORE THE WIDE ONE.',
-              'ONE JOB APPEARS IN ONE SECTION ONLY. Without this the same card repeats down the page, and a dashboard that repeats itself reads as broken rather than as helpful.',
-              'COMPUTE ONCE PER SESSION AND CACHE. Any dashboard that reshuffles on every load feels unreliable. Recompute when the profile or a CV changes, or after an application.',
-              'THE ONLY NEW DATA EITHER SECTION NEEDS IS LAST-N VIEWED JOB IDS. Everything else — the score, the job↔job lists, their caches — already exists. Worth knowing before anyone scopes this as a large piece of work.',
-              'SECTION ② IS PERSONAL, THE LIST BEHIND IT IS NOT. Relevant jobs is deliberately “the same list for everyone, signed in or not” and cached per job; what is personal here is only WHICH job seeds it. Nobody should read this rail as a reason to make that cache per-user.',
+              'THE NARROW RAIL CLAIMS FIRST. Section ② has a tiny pool (one seed); section ① draws on the whole board. ② picks its cards, then ① skips those ids — the same order as Relevant jobs before this feed on a job detail page. ONE JOB APPEARS IN ONE SECTION ONLY.',
+              'SECTION ② IS PERSONAL, THE LIST BEHIND IT IS NOT. Relevant jobs stays “the same list for everyone” and cached per job; what is personal is only WHICH job seeds it. Nobody should read this rail as a reason to make that cache per-user.',
             ],
           },
           {
@@ -1544,7 +1605,7 @@ export const jobManagement: BuildModule = {
                 ['The weights', 'In code, with a version number', 'A weight is part of the calculation, not a setting — see below.'],
                 ['**The log**', '**Yes — Phase 1**', 'One row every time a job is SHOWN, plus what happened next. Without it the numbers stay a guess for the life of the product.'],
                 ['A report over the log', 'Later', 'The log runs to millions of rows and nobody reads it by hand. But the TABLE has to exist from day one.'],
-                ['Admin screen for the weights', '**No**', 'Dropped.'],
+                ['Admin screen for the weights', '**No — remove it**', 'Dropped. The tab that exists in the build (`/system/general-settings?tab=recommended-jobs`) is REMOVED in SRM-1338; the weights move into code. The exchange-rate setting on that page stays.'],
                 ['Admin screen for the VND/USD rate', 'Yes — keep', 'Different thing entirely: a rate is a number an operator maintains and reviews, not part of the formula.'],
               ],
             },
@@ -1884,12 +1945,12 @@ export const jobManagement: BuildModule = {
       site: 'Logic',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'JOB ↔ JOB. Shown on a job detail page and in the after-apply popup — “jobs like this one”. Works for visitors who are not signed in, because it never reads a profile. Not to be confused with Recommended jobs, which is JOBSEEKER ↔ JOB.',
+      notes: 'JOB ↔ JOB. The “Similar jobs” section on a job detail page — “jobs like this one” — and, for a visitor who is not signed in, the page’s second section too. Works for visitors because it never reads a profile. NOT the after-apply popup: that is fed by Recommended jobs (JOBSEEKER ↔ JOB) since 2026-11-03.',
       detail: {
         requirements: [
           {
             label: '1 · EVERY job is scored — there is no category gate',
-            text: 'The job detail page and the after-apply popup show jobs similar to THE JOB ON SCREEN, not jobs matching the jobseeker. Every open posting is scored against the anchor out of 100 and the best six are shown.\n\nTHERE IS NO HARD FILTER. An earlier draft required the same job category and dropped everything else; that can leave a posting with no similar jobs at all, and an empty section is the one outcome this feature must never produce. Scoring everything removes that failure by construction — and the fallback writes itself: a posting with nothing in its own field still scores on location, level, salary and work type, so the list becomes “same city, same seniority, similar pay”. That is a reasonable suggestion, not filler.\n\nIt also has to work for a reader we know nothing about: a job detail page is PUBLIC, most readers are not signed in, and the same list is served to all of them — which is what lets it cache.\n\nVN — Mọi tin đều được chấm điểm, không lọc cứng theo category. Nhờ vậy không bao giờ có tin nào thiếu “việc làm tương tự”.',
+            text: 'The job detail page shows jobs similar to THE JOB ON SCREEN, not jobs matching the jobseeker. Every open posting is scored against the anchor out of 100 and the best six are shown.\n\nTHERE IS NO HARD FILTER. An earlier draft required the same job category and dropped everything else; that can leave a posting with no similar jobs at all, and an empty section is the one outcome this feature must never produce. Scoring everything removes that failure by construction — and the fallback writes itself: a posting with nothing in its own field still scores on location, level, salary and work type, so the list becomes “same city, same seniority, similar pay”. That is a reasonable suggestion, not filler.\n\nIt also has to work for a reader we know nothing about: a job detail page is PUBLIC, most readers are not signed in, and the same list is served to all of them — which is what lets it cache.\n\nVN — Mọi tin đều được chấm điểm, không lọc cứng theo category. Nhờ vậy không bao giờ có tin nào thiếu “việc làm tương tự”.',
             table: {
               cols: ['Signal', 'Points', 'Full points when…', 'Partial'],
               rows: [
@@ -1912,18 +1973,19 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '1a · Missing data — who gets penalised and who does not',
-            text: 'Two postings rarely state the same fields. The rule turns on WHICH side is silent, because the two cases mean different things.',
+            text: 'Two postings rarely state the same fields. ONE rule, the same as the other two scored features: a signal that cannot be compared scores 0, and the total stays out of 100.',
             table: {
               cols: ['Case', 'What we do', 'Why'],
               rows: [
-                ['The ANCHOR does not state it', 'DROP that signal and redistribute its points across the rest, so the total is still 100.', 'We have no basis to compare. Scoring every candidate 0 on it would punish all of them for the anchor’s silence, and would cap every score below 100 for no reason the reader could see.'],
-                ['The anchor states it, the CANDIDATE does not', 'The candidate scores **0** on that signal. No redistribution.', 'The anchor asked a question this posting does not answer, so it genuinely is less comparable. Redistributing here would promote a vague posting above one that stated its level and differed.'],
-                ['Neither states it', 'Dropped, like the first row.', 'Same reason — nothing to compare.'],
+                ['The ANCHOR does not state it', 'Every candidate scores **0** on that signal. The total stays out of 100 — nothing is redistributed.', 'The order is unchanged either way (the same points are missing from every row), so redistribution bought nothing but a second rule. One rule across all three scored features — Recommended jobs section 15.'],
+                ['The anchor states it, the CANDIDATE does not', 'The candidate scores **0** on that signal. No redistribution.', 'The anchor asked a question this posting does not answer, so it genuinely is less comparable.'],
+                ['Neither states it', '**0**, like the first row.', 'Nothing to compare.'],
               ],
             },
             items: [
-              'VN — Tin đang xem không khai → bỏ mục đó, chia lại điểm, tổng vẫn 100. Tin đang xem có khai mà tin kia không khai → tin kia ăn 0 điểm mục đó.',
-              'THIS IS THE OPPOSITE OF THE OLD RULE, which scored every missing signal 0 and never redistributed — so a posting that stated no level could never exceed 85 and a sparsely-filled anchor produced uniformly low scores. With no category gate to guarantee a result, redistribution is what keeps the ranking meaningful at the thin end of the market.',
+              'VN — Bên nào không khai thì mục đó 0 điểm. Không chia lại điểm. Tổng luôn trên thang 100 — cùng một luật với Recommended jobs.',
+              'REVISED 2026-11-03. An earlier draft of this block dropped an anchor-silent signal and redistributed its points. That changed no ordering — every candidate lost the same points — and it was the one place the three matching features disagreed about missing data. It is also what `JobSimilarity` already does today, so the build has less to change, not more.',
+              'WHAT IT COSTS: an anchor that states little tops out lower, so its list more often carries the “Việc làm khác tại {tỉnh}” headline (1b). That is honest — the postings really are held together by less.',
               'SALARY IN TWO CURRENCIES is converted before comparing, using the admin-held rate — never a raw number comparison. Same rule as the jobseeker match score.',
             ],
           },
@@ -1932,10 +1994,10 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Step', 'Rule'],
               rows: [
-                ['Always exclude', 'The job being viewed · closed and expired postings · exposure off · companies that are not active. For a SIGNED-IN reader, also every job they have a LIVE application on — see 1c.'],
+                ['Always exclude', 'The job being viewed · closed and expired postings · exposure off · companies that are not active. For a SIGNED-IN reader, also every job they have applied to — any application row, any status — see 1c.'],
                 ['Per company', 'At most **2** postings from one company, keeping its two highest-scoring.'],
                 ['Order', 'Score ↓ → posted date ↓ → id ↓.'],
-                ['Show', '**6 cards.** No minimum score — the list is always full while the market has six postings to give.'],
+                ['Show', '**6 cards.** No minimum score — the list is always full while the market has six postings to give. The API returns ~12 rows: 7–12 feed the page’s second section for a visitor who is not signed in (Recommended jobs section 18).'],
                 ['Headline', 'If the TOP score is below 40, the section renders as “Việc làm khác tại {tỉnh/thành}” instead of “Việc làm tương tự”. Still six cards, no false promise.'],
               ],
             },
@@ -1949,17 +2011,17 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '1c · A signed-in reader does not see jobs they are already applying to',
-            text: 'Someone signed in should not be offered a job they already have a live application on — opening it would only show an apply button that refuses. So we SUBTRACT those rows. Nothing else changes: same scores, same order, same cards.\n\nThe difficulty is that this page is cached and must STAY cached. So the subtraction does not happen on the server.\n\nVN — Người đã đăng nhập không thấy những việc mình đang ứng tuyển. Chỉ bỏ bớt dòng, không đổi thứ tự.',
+            text: 'Someone signed in should not be offered a job they have already applied to — opening it would only show an apply button that refuses. So we SUBTRACT those rows. Nothing else changes: same scores, same order, same cards.\n\nThe difficulty is that this page is cached and must STAY cached. So the subtraction does not happen on the server.\n\nVN — Người đã đăng nhập không thấy những việc mình đang ứng tuyển. Chỉ bỏ bớt dòng, không đổi thứ tự.',
             table: {
               cols: ['Who is reading', 'What they see'],
               rows: [
                 ['Not signed in', 'The full list, exactly as cached. Nothing is hidden — we do not know who they are.'],
-                ['Signed in, nothing live', 'The same list as everyone else.'],
-                ['Signed in, with live applications', 'The same list minus those jobs. Everything left keeps its position.'],
+                ['Signed in, never applied to any of them', 'The same list as everyone else.'],
+                ['Signed in, has applied to some of them', 'The same list minus those jobs. Everything left keeps its position.'],
               ],
             },
             items: [
-              '“LIVE APPLICATION” MEANS THE SAME THING HERE AS EVERYWHERE ELSE — đã nộp, đang sàng lọc, phỏng vấn, đã nhận offer. A withdrawn, rejected or hired application does NOT hide the job, because the jobseeker may apply again. One definition, three screens.',
+              '“APPLIED” MEANS THE SAME THING HERE AS EVERYWHERE ELSE — an application row exists for this jobseeker and this job, in ANY status (Recommended jobs section 4). Withdrawn, rejected, hired: still hidden. One EXISTS check, one definition, every screen. (Revised 2026-11-03 — this block used to hide live applications only, and was the one page that disagreed.)',
               'HOW: THE SERVER SENDS ONE CACHED LIST TO EVERYBODY and the browser removes the reader’s own rows. The page already asks “have I applied to this one?” to draw the apply button, so the answer is already on its way — no extra round trip. Filtering on the server would make every job detail page a per-person page and the cache would be gone.',
               'ASK FOR MORE ROWS THAN THE SECTION SHOWS — about 12 for a row of 6. Removing two or three out of twelve still fills the row; removing them out of exactly six leaves a visibly short one.',
               'DO NOT LET CARDS VANISH IN FRONT OF THE READER. Draw the row once the answer about their own applications has arrived — the page already waits for it. Showing six cards and then deleting two makes the page jump and reads as a bug.',
@@ -2003,32 +2065,10 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '4 · The after-apply popup — what each card shows',
-            text: 'The popup that opens the moment an application is submitted (“Job application complete!”) lists 3–8 relevant jobs from the rule above and lets the candidate apply to several at once. Each card has to answer one question fast — “should I apply to this one too?” — and, per the rule that every suggestion carries its reason, it has to say WHY it is here. Fields below; anything not listed is not on the card.',
-            table: {
-              cols: ['Field', 'Reads from', 'Rule'],
-              rows: [
-                ['Checkbox', '—', 'Selects the row for the bulk button. **NOT pre-checked** — see below.'],
-                ['Job title', '`job.title` in the UI language', 'One line, ellipsis. Never wraps — the card height is fixed so 5 rows scan as a list.'],
-                ['Company', '`company.name`', 'Second line, regular weight. Logo optional; text is the requirement.'],
-                ['**Why it is here** — reason chips', 'The signals that earned this card its points, compared to the job just applied to: **role / group / category** · **location** · **level** · **shared skills**', 'Up to three chips, highest-scoring signal first. A chip that MATCHES renders highlighted (the Korean card’s teal); a near-match renders plain with its relation — “Cùng nhóm ngành”, “Tỉnh lân cận”, “Lệch 1 bậc”. Skills appear only as a count and only when at least two are shared: “2 kỹ năng chung”.'],
-                ['Salary', '`salaryType` · `salaryMin/Max` · `salaryCurrency`', 'Same rendering as every other job card: “Thỏa thuận”, or the band with its one-sided forms (“Từ 15 triệu”, “Lên đến 30 triệu”). One format across the product.'],
-                ['Contract · work type', '`contractType` · `jobType`', '“Full-time · Hybrid”. Two words, one line.'],
-                ['Deadline', '`deadline`', '“Còn 29 ngày”. Amber at ≤ 3 days. Expired jobs never reach the list (excluded by the rule above).'],
-                ['Save', 'Saved jobs', 'Star toggle, same component as the job list.'],
-                ['Open', 'Job detail', 'Per-row action is **View job**, never Apply — see “one apply path”.'],
-                ['New badge', '`postedAt` < 3 days', 'Optional. Small “Mới” tag on the title line.'],
-              ],
-            },
+            text: 'MOVED 2026-11-03. The popup is fed by **Recommended jobs** — the reader’s own best matches in strict score order — not by this job↔job list. Its fields, the not-pre-checked rule, the 5-per-batch cap, the CV footer and the bulk button are specified at → [Recommended jobs §18f](/m/job-management/recommended-jobs-new-logic#18f-batch-apply-the-after-apply-popup-itself).\n\nThis page feeds ONLY the “Similar jobs” section of the job detail page — and rows 7–12 to its second section for a visitor who is not signed in (1b).\n\nVN — Popup sau khi nộp đơn KHÔNG lấy danh sách này nữa; nó lấy Recommended jobs. Trang này chỉ nuôi section “Việc làm tương tự”.',
             items: [
-              'NOT PRE-CHECKED. Saramin KR and TopDev pre-check every suggested row, so one tap on the bulk button fires five applications the candidate may not have read. We start with nothing selected and the button shows the count. Two reasons: an accidental mass-apply is unrecoverable for the candidate, and low-intent applications flood the employer inbox — which is the surface our employer-side quality work is trying to keep clean.',
-              'ONE APPLY PATH. The per-row button opens the job; the ONLY way to apply from this popup is the bulk button. Two apply buttons on one screen are two flows to test and two ways to double-apply to the same job.',
-              'THE REASON CHIPS ARE SCORING SIGNALS AND NOTHING ELSE. Every chip is a signal that actually earned points, so the card explains its own position. Do not add chips for things the score ignores (company size, benefits, contract type) — a highlighted chip the sort ignored is a lie about why the card ranks where it does.',
-              'THE FOOTER NAMES THE CV THAT WILL BE SENT — “CV dùng để ứng tuyển: Frontend Engineer CV ✎”, defaulting to the CV used for the application just made. It MUST be a Qualified CV: if the candidate switches to one that is Not enough information or Can’t read, the bulk button disables and says why (“CV chưa đủ điều kiện”). Applying re-checks nothing — the CV carries its verdict in from upload — so this is the one place the popup has to look at CV status.',
-              'THE BULK BUTTON reads “Ứng tuyển (n) việc đã chọn”, disabled at n = 0, one confirmation, then n separate applications each evaluated on its own. The Korean label “Simultaneous support” is a machine translation of 동시지원 and must not ship.',
-              'REPLACE THE KOREAN “RESUME HIGHLIGHT” BANNER. That top-right card sells a paid KR product we do not have. The slot is worth keeping for ONE prompt: if the candidate’s CV search is OFF, show “Cho phép nhà tuyển dụng tìm thấy bạn →” linking to the My CVs toggle; hide it when already on. Right after applying is the moment they most want to be found.',
-              'NO SORT DROPDOWN. The list is ordered by the rule (role → location → level → newest) and that order is the point; “By registration date” would hide the reasoning. “All Scraps” becomes a plain **Saved jobs** link.',
-              'THE INFO STRIP GETS A TOOLTIP, not just an icon: “Same category as the job you applied to, ranked by matching role, then location, then level.” One sentence, the same words as the rule.',
-              'BELOW 3 CARDS THE LIST IS HIDDEN (rule above) — the popup then shows only the confirmation, the CV line and a **View my applications** link. A padded list of two is how a recommendation surface starts lying.',
+              'WHY: one popup fed by two features is two lists to explain. The reader has just applied; the most useful next applications are their best matches overall — and with 42 of 100 points on occupation, those are already in the same field as the job they applied to.',
+              'THE EARLIER TEXT HERE described reason chips for a gate-and-sort model (“category is the gate so no chip”), a fixed sort (role → location → level → newest) and a “hide below 3 cards” rule. All three are gone with the move; the popup’s chips are the feed’s own reasons (18f).',
             ],
           },
         ],
@@ -2074,7 +2114,7 @@ export const jobManagement: BuildModule = {
             items: [
               'WHY NO GATE. A gate is a second rule that has to be maintained, argued about and kept in sync with the first one — and it would have to answer “how much information is enough?”, which nobody can answer. Letting the score fall on its own needs no answer and no extra code.',
               'A DRAFT IS WORTH ANCHORING ON. The moment a recruiter is writing a job is the single best moment in the funnel to show them matching people. Nothing is leaked: it is their own company’s draft.',
-              'THE SCORING ENGINE IS `ApplicantMatch`, UNCHANGED IN STRUCTURE — the same seven signals the applicant board already uses. It does not care whether the job is published. Only the rule in section 3 changes.',
+              'THE SCORING ENGINE IS `ApplicantMatch` — the same seven signals, the SAME POINTS and the same ladders as → [Recommended jobs §7–§9](/m/job-management/recommended-jobs-new-logic#7-how-the-score-is-calculated), read from the other end. It does not care whether the job is published. Two things change against the build: the weights (unified 2026-11-03) and the missing-data rule — both in section 3.',
             ],
           },
           {
@@ -2089,7 +2129,7 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'WITHOUT THIS STEP THE SCORE LETS STRANGERS THROUGH. Location (21) plus experience (22) alone is 43 — over the floor in section 4 — so somebody in the same city with roughly the right number of years would qualify for a job in a completely unrelated field. The floor cannot catch that; only this step can.',
+              'WITHOUT THIS STEP THE SCORE LETS STRANGERS THROUGH. Location (20) plus experience (14) plus salary (12) is 46 — over the floor in section 4 — so somebody in the same city with the right years and the right salary would qualify for a job in a completely unrelated field. The floor cannot catch that; only this step can.',
               'IT IS AN **OR**, NOT AN AND. This is a recommendation, not a search: cast wide here, then let the score in section 3 do the ranking. An AND would return almost nobody on a VN database this size.',
               'IT IS ALSO WHAT MAKES A THIN DRAFT RESOLVE ITSELF. A draft with no role, no category and no skills matches nobody at this step, so the list comes back empty and the panel falls through to section 5 — no draft-specific rule anywhere, exactly as decided in section 2.',
               'MATCH ON BOTH WHAT THEY WANT AND WHAT THEY CAN DO. Desired role and category say what they are looking for; the CV’s skills say what they are able to do. An employer needs both to be true, so both are allowed to admit a candidate here and both are scored later.',
@@ -2097,24 +2137,26 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '3 · Information the job does not state is worth 0 — it is NOT thrown away',
-            text: 'This is the one real change, and everything else above depends on it.\n\nTODAY the calculation **renormalises**: a signal the job does not state is removed, and the remaining weights are stretched back up to 100. A job that states only a location would score every candidate in that city at 100%.\n\nFROM NOW: every signal keeps its full weight, and a signal the job does not state earns **0** of it. The total is always out of the same 100.\n\nVN — Tín hiệu nào tin không khai thì được 0 điểm, không bị loại ra khỏi mẫu số. Luôn tính trên thang 100.',
+            text: 'This is the one real change, and everything else above depends on it.\n\nTODAY the calculation **renormalises**: a signal the job does not state is removed, and the remaining weights are stretched back up to 100. A job that states only a location would score every candidate in that city at 100%.\n\nFROM NOW: every signal keeps its full weight, and a signal the job does not state earns **0** of it. The total is always out of the same 100. And the weights are the SAME TABLE as Recommended jobs — unified 2026-11-03; this page used to print the build’s v3 table (22 / 21 / 20 / 20 / 9 / 5 / 3) while calling itself “the same calculation”.\n\nVN — Tín hiệu nào tin không khai thì được 0 điểm, không bị loại ra khỏi mẫu số. Luôn tính trên thang 100. Trọng số dùng chung với Recommended jobs.',
             table: {
-              cols: ['Signal', 'Full weight', 'Draft states only a location'],
+              cols: ['Signal', 'Points', 'From the job', 'From the candidate — DECLARED only', 'Draft states only a location'],
               rows: [
-                ['Kinh nghiệm', '22', '0'],
-                ['Địa điểm', '21', '**21**'],
-                ['Kỹ năng', '20', '0'],
-                ['Nhóm nghề', '20', '0'],
-                ['Lương', '9', '0'],
-                ['Ngành', '5', '0'],
-                ['Học vấn', '3', '0'],
-                ['**Tổng tối đa**', '**100**', '**21**'],
+                ['Occupation & role', '42', '`job_role_link` + category', 'desired roles (≤3) + desired category; if both empty, the latest job title on the CV (inferred → 34). NO behaviour — that is personal data', '0'],
+                ['Location & work type', '20', 'province(s) + job type', 'desired cities + work type; if empty, the Profile city (inferred → 16)', '**20**'],
+                ['Experience', '14', 'year band, else level (18d rung table)', 'years on the Profile; if empty, computed from the CV', '0'],
+                ['Salary', '12', 'band + currency', 'desired salary + currency — converted first', '0'],
+                ['Industry', '5', '`company.industry_id`', 'desired industries; if empty, the CV’s companies’ industries (→ 4)', '0'],
+                ['Skills', '4', 'the job’s skills', 'the CV’s skills', '0'],
+                ['Education', '3', 'required level', 'education on the CV', '0'],
+                ['**Total**', '**100**', '', '', '**20**'],
               ],
             },
             items: [
-              'THAT IS THE POINT: a draft with only a city in it can never produce a card above 21%, so it can never look like a confident match. No gate needed — the number tells the truth by itself.',
+              'THAT IS THE POINT: a draft with only a city in it can never produce a card above 20%, so it can never look like a confident match. No gate needed — the number tells the truth by itself.',
+              'THE LADDERS ARE THE ONES IN RECOMMENDED JOBS §8 — same role 42 / same group 30 / same category 17; inside the year band 14, adjacent rung 7; and so on. Do not copy them here; one table, one place. The inferred-value discount (80%) applies the same way.',
+              'DECLARED ONLY. The jobseeker feed widens a person’s roles and cities from what they open, save and apply to (Recommended jobs §5). That behaviour is never joined into anything employer-facing, so this score reads the declared fields and the CV fallbacks — nothing learned.',
               'IT ALSO FIXES A REAL DEFECT. With renormalising, two cards side by side in one row are not on the same scale: one was scored out of 4 signals and the other out of 7, and both print a percentage. A job that states LESS scores HIGHER. Absolute scoring puts every card on the same 100.',
-              '**KNOCK-ON FOR THE APPLICANT BOARD — needs a decision from the BA before build.** `ApplicantMatch` is shared with the employer’s applicant list. Switching to absolute scoring does NOT change the ORDER there (every applicant to one job is divided by the same number, so the ranking is identical either way) — it only lowers the percentage shown on a lightly-filled posting. Pick one: hide the % badge below a floor, or print “3/7 tiêu chí khớp” instead of a percentage. Do not leave it unstated, or a thin posting will show 14% against every applicant and the board will look broken.',
+              '**KNOCK-ON FOR THE APPLICANT BOARD** (section 7 — not a blocker). `ApplicantMatch` is shared with the employer’s applicant list. Absolute scoring does NOT change the ORDER there (every applicant to one job is divided by the same number) — it only lowers the percentage printed on a lightly-filled posting. The printing rule is already set in → [Recommended jobs §15](/m/job-management/recommended-jobs-new-logic#15-a-signal-with-nothing-to-compare-scores-0-we-never-re-scale): fewer than half the signals comparable → no percentage; CV skills that did not resolve → skills count as unknown.',
             ],
           },
           {
@@ -2183,13 +2225,14 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '7 · Two decisions this feature is waiting on — SRM-1345',
-            text: 'The selection logic in sections 1–6 is complete and buildable. What follows is one closed decision and one knock-on for a different screen — neither holds this feature up.',
+            text: 'The selection logic in sections 1–6 is complete and buildable. What follows is two closed decisions and one knock-on for a different screen — none of them holds this feature up.',
             warn: 'Whoever changes `ApplicantMatch` must tell the Applicants screen’s owner. The ranking there does not move — every applicant to one job is divided by the same number — but the printed percentage drops on a lightly-filled posting.',
             table: {
               cols: ['#', 'Decision', 'Status'],
               rows: [
                 ['1', 'The **40-point floor** in section 4.', '**Confirmed 2026-11-03** — 40 it is, held as a setting beside the weights.'],
                 ['2', 'The **Applicants board** shares `ApplicantMatch`, so absolute scoring changes the percentage it prints on a thin posting. Its ranking is unaffected.', 'A consequence for whoever builds that screen — **not a blocker here**, and not a question for this ticket.'],
+                ['3', 'The **weight table** — this page printed the build’s v3 weights (22 / 21 / 20 / 20 / 9 / 5 / 3) while calling itself “the same calculation” as Recommended jobs (42 / 20 / 14 / 12 / 5 / 4 / 3).', '**Unified 2026-11-03 (audit)** — one table, Recommended jobs §7; section 3 of this page now reads from it. Declared sources only on this side.'],
               ],
             },
             items: [

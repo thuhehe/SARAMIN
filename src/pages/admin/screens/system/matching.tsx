@@ -1,70 +1,14 @@
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { ListPage } from '@/pages/admin/ui/list'
 import { Bars, StatCards } from '@/pages/admin/ui/stats'
 
-/* ── Matching settings — the 8 score weights + the exchange rate ──────────────
-   The recommendation and applicant-ranking score is ONE calculation with eight
-   weighted signals. The weights are our estimate, not research, so this screen
-   exists for one reason: they can be corrected without a code deploy.
-
-   Two things make it safe to hand to an operator. The total must be exactly 100
-   before Save is enabled — a set of weights that sums to 93 silently rescales
-   every score in the product. And Save creates a new VERSION rather than editing
-   the current one, so a score computed last month can still be explained. */
-export function AdminMatchingSettings() {
-  const [w, setW] = useState<Record<string, number>>({
-    skills: 4, years: 28, location: 26, category: 23, salary: 9, industry: 5, education: 3, language: 2,
-  })
-  const SIGNALS: { key: string; label: string; reads: string }[] = [
-    { key: 'skills', label: 'Skills', reads: 'CV skills ↔ job skills (same master list)' },
-    { key: 'years', label: 'Years of experience + level', reads: 'Years + seniority derived from job titles' },
-    { key: 'location', label: 'Location + work type', reads: 'Desired location & work type ↔ job location' },
-    { key: 'category', label: 'Desired job role + category', reads: 'Desired role ↔ job role (exact id), else category' },
-    { key: 'salary', label: 'Expected salary', reads: 'Expected salary ↔ job salary range' },
-    { key: 'industry', label: 'Industry', reads: 'Desired industry ↔ company industry' },
-    { key: 'education', label: 'Education level', reads: 'Highest education ↔ job minimum' },
-    { key: 'language', label: 'Foreign language', reads: 'CV language + level ↔ job requirement' },
-  ]
-  const total = Object.values(w).reduce((a, b) => a + b, 0)
-  const ok = total === 100
-  const bump = (k: string, d: number) => setW((x) => ({ ...x, [k]: Math.max(0, Math.min(100, x[k] + d)) }))
-
-  return (
-    <div className="space-y-4">
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-        These weights decide the order of <b className="font-semibold">recommended jobs</b> for every jobseeker AND the order of <b className="font-semibold">applicants</b> on every job.
-        They are a starting estimate — tune them against the Matching report, not by opinion. Saving creates a new version; scores already computed keep the version that produced them.
-      </p>
-
-      <div className="overflow-hidden rounded-xl border border-line">
-        <div className="grid grid-cols-[1.3fr_1.7fr_auto] gap-3 border-b border-line bg-canvas/60 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
-          <span>Signal</span><span>What it compares</span><span className="text-right">Points</span>
-        </div>
-        {SIGNALS.map((sig) => (
-          <div key={sig.key} className="grid grid-cols-[1.3fr_1.7fr_auto] items-center gap-3 border-b border-line-soft px-4 py-2 last:border-b-0">
-            <span className="text-[12.5px] font-medium text-ink">{sig.label}</span>
-            <span className="text-[11.5px] text-muted">{sig.reads}</span>
-            <span className="flex items-center gap-1.5">
-              <button onClick={() => bump(sig.key, -1)} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[13px] leading-none text-muted hover:bg-canvas">−</button>
-              <span className="w-9 text-center text-[13px] font-semibold tabular-nums text-ink">{w[sig.key]}</span>
-              <button onClick={() => bump(sig.key, 1)} className="grid h-6 w-6 place-items-center rounded-md border border-line text-[13px] leading-none text-muted hover:bg-canvas">+</button>
-            </span>
-          </div>
-        ))}
-        {/* The guard: Save is impossible unless the weights sum to exactly 100. */}
-        <div className={cn('grid grid-cols-[1.3fr_1.7fr_auto] items-center gap-3 border-t px-4 py-2.5', ok ? 'border-line bg-canvas/40' : 'border-rose-200 bg-rose-50')}>
-          <span className={cn('text-[12.5px] font-semibold', ok ? 'text-ink' : 'text-rose-700')}>Total</span>
-          <span className={cn('text-[11.5px]', ok ? 'text-faint' : 'font-medium text-rose-700')}>
-            {ok ? 'Must always be exactly 100.' : `Must be exactly 100 — currently ${total}. Save is disabled.`}
-          </span>
-          <span className={cn('w-full text-right text-[13px] font-bold tabular-nums', ok ? 'text-emerald-700' : 'text-rose-700')}>{total}</span>
-        </div>
-      </div>
-
-    </div>
-  )
-}
+/* ── There is NO matching-settings screen any more (SRM-1338, 2026-11-03) ───────
+   The seven score weights are part of the calculation, not configuration: they
+   live in code under a version number and change through a reviewed code change
+   (Recommended jobs (NEW logic) §22). The editor that used to sit here — eight
+   signals, a sum-to-100 guard, Save-creates-a-version — is removed together with
+   the build's General settings → Recommended jobs tab. The VND/USD exchange rate
+   stays a setting, on its own page. What remains below is the REPORT: the one
+   screen that can say whether the weights are any good. */
 
 /* ── Matching report — does a higher score actually produce applications? ──────
    The one screen that tells us whether the weights above are any good. It reads
@@ -81,7 +25,7 @@ export function AdminMatchingReport() {
         { label: 'Recommendations shown', value: '1.84M', delta: '30 ngày', up: true },
         { label: 'Click rate', value: '11.2%', delta: '0.8pt', up: true },
         { label: 'Apply rate', value: '3.4%', delta: '0.2pt', up: true },
-        { label: 'Weight version', value: 'v4' },
+        { label: 'Weight version', value: 'v4 (in code)' },
       ]} />
 
       <div>
@@ -110,14 +54,13 @@ export function AdminMatchingReport() {
             { label: 'Reading', w: '1.8fr' },
           ]}
           rows={[
-            ['Skills', '4', '6.8%', '1.1%', '+5.7pt', 'Strong gap where it fires — but it fires only on the 26% of roles with taxonomy skills. Cut to 4 on 2026-09-19 until coverage and aliases exist; this gap is the case for raising it back.'],
-            ['Years of experience + level', '28', '4.4%', '2.0%', '+2.4pt', 'Working as expected — carries the model with Location.'],
-            ['Location + work type', '26', '4.9%', '1.6%', '+3.3pt', 'Stronger than its weight suggested — raised in v4.'],
-            ['Desired job role + category', '23', '3.9%', '2.4%', '+1.5pt', 'Working.'],
-            ['Expected salary', '9', '3.6%', '2.9%', '+0.7pt', 'Weak. Many jobseekers leave salary blank, so it scores neutral often.'],
-            ['Industry', '5', '3.5%', '3.1%', '+0.4pt', 'Barely moves anything — reduce it and give the points to Location.'],
+            ['Occupation & role (Category › Group › Role)', '42', '4.6%', '1.9%', '+2.7pt', 'Carries the model, as intended — what the person would actually do all day.'],
+            ['Location + work type', '20', '4.9%', '1.6%', '+3.3pt', 'Stronger than its weight suggests — the first dial to turn.'],
+            ['Experience + level', '14', '4.4%', '2.0%', '+2.4pt', 'Working. The level-rung fallback is what keeps it alive on postings with no year band.'],
+            ['Expected salary', '12', '3.6%', '2.9%', '+0.7pt', 'Weak. Many jobseekers leave salary blank, so it scores 0 often.'],
+            ['Industry', '5', '3.5%', '3.1%', '+0.4pt', 'Barely moves anything.'],
+            ['Skills', '4', '6.8%', '1.1%', '+5.7pt', 'Strong gap where it fires — but it fires only on the 26% of roles with taxonomy skills. This gap is the case for raising it once coverage and aliases exist.'],
             ['Education level', '3', '3.4%', '3.2%', '+0.2pt', 'No measurable effect.'],
-            ['Foreign language', '2', '5.1%', '3.3%', '+1.8pt', 'Small weight, real effect — only fires on the few jobs that ask.'],
           ]}
         />
       </div>
@@ -128,7 +71,7 @@ export function AdminMatchingReport() {
           cols={[{ label: 'Page', w: '1.4fr' }, { label: 'Shown', w: '1fr', align: 'r' }, { label: 'Click rate', w: '1fr', align: 'r' }, { label: 'Apply rate', w: '1fr', align: 'r' }]}
           rows={[
             ['Homepage section', '1.21M', '9.8%', '2.6%'],
-            ['Job detail — similar jobs', '402K', '14.1%', '4.8%'],
+            ['Job detail — recommended jobs', '402K', '14.1%', '4.8%'],
             ['After applying', '186K', '17.6%', '6.2%'],
             ['After onboarding', '51K', '12.4%', '5.1%'],
           ]}

@@ -544,13 +544,33 @@ export const jobseekerUser: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
       mockup: 'js-onboarding',
-      notes: 'The 3-step wizard that collects WORK PREFERENCE. Basic information is already collected at sign-up.',
+      notes: 'The onboarding wizard that collects WORK PREFERENCE — FIVE steps as built since 2026-09-08 (first block). Basic information is already collected at sign-up.',
       detail: {
         description:
-          'Straight after an account is created, a short guided wizard collects WORK PREFERENCE — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. THREE topic-grouped steps, each framed with a live job-count carrot, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Work-preference field (group 2 — see Resume management → Candidate data). Basic information was already taken at sign-up, and CV content comes from the CV: the wizard asks nothing from either.',
+          'Straight after an account is created, a short guided wizard collects WORK PREFERENCE — the Saramin-KR pattern, deliberately NOT a VietnamWorks-style long form. FIVE one-question steps as built (the 3-step layout further down is the original design, superseded — see the first block), with a job-count line on steps 3 and 4, ending on a page of MATCHED JOBS that leads into creating a CV. Every field here is a Work-preference field (group 2 — see Resume management → Candidate data). Basic information was already taken at sign-up, and CV content comes from the CV: the wizard asks nothing from either.',
         userStory:
           'As a new jobseeker, I want to answer a few quick questions and immediately see jobs that match, so that I know the site is worth my time before I invest in a CV.',
         requirements: [
+          {
+            label: 'REVISED 2026-11-03 — the wizard is FIVE steps, as built on 2026-09-08',
+            text: 'The Figma redesign and the build moved the wizard from three topic-grouped steps to five one-question steps. The blocks below this one describe the ORIGINAL 3-step layout and are kept for the field rules they carry (industry picker, salary contract); where they disagree with this table, this table wins. The two job-count lines (steps 3 and 4) are specified at → [Recommended jobs §18b–18e](/m/job-management/recommended-jobs-new-logic#18b-onboarding-the-two-numbers-in-the-wizard-steps-3-and-4), and the results screen at → [§18a](/m/job-management/recommended-jobs-new-logic#18a-onboarding-results-two-sections-two-sources).',
+            table: {
+              cols: ['Step', 'Asks', 'Fields written', 'Job-count line?'],
+              rows: [
+                ['1', 'What work — job role (≤3, 2-level picker) · industry (≤3) · contract type (≤3)', '`desiredRoleIds` (the build stores only the first pick today — svn-web handoff §5) · `desiredIndustryIds` · `desiredContractTypeIds` (no BE field yet — handoff §1)', 'No — a sentence without a number'],
+                ['2', 'Where — job locations (≤3)', '`desiredLocationIds`', 'No'],
+                ['3', 'Years of experience — years + months, or “Fresher”', '`yearsOfExperience` · `monthsOfExperience` · `desiredExperienceBandId` (derived)', '**Yes — N₃**, counted on steps 1 + 2'],
+                ['4', 'Highest education', '`highestEducationId`', '**Yes — N₄**, counted on steps 1 + 2 + 3'],
+                ['5', 'Expected salary — amount, VND / USD, “Thương lượng” tick', '`desiredSalaryAmount` · `desiredSalaryCurrency` · negotiable (no BE field yet — handoff §2)', 'No'],
+                ['Results', '“Based on what you entered, here are your best matches!”', 'Section 1: Recommended jobs, 6 per page × 5 · Section 2: “Jobs for {role}” search row', '—'],
+              ],
+            },
+            items: [
+              'YEARS AND EDUCATION ARE ASKED HERE after all. The “ONE GROUP PER STEP” warning below predates the redesign; the client chose the five-question flow and the two fields now live on steps 3 and 4. They remain Basic-information fields on the profile — the wizard just collects them.',
+              'DESIRED WORK TYPE (remote / hybrid / on-site) IS NO LONGER ASKED in the wizard; it stays editable in My profile, and an old answer is not cleared by re-running the wizard.',
+              'SOURCE: svn-web `docs/handoff/onboarding-wizard-be-gaps.md` (FE → BE hand-off, five open gaps) and `docs/onboarding/be-field-gaps.md`.',
+            ],
+          },
           {
             label: 'The six fields this wizard writes — and nothing else',
             text: 'The wizard has three steps: step 1 asks what kind of work, step 2 asks where and how, step 3 asks the expected salary. Between them they collect these six fields and no others — the screen and this table must always agree, and a field that appears in one but not the other is the mistake this table exists to catch.',
@@ -572,7 +592,7 @@ export const jobseekerUser: BuildModule = {
               'Desired work type is capped at 3 of its 4 values, which needs the reason stated or someone will “fix” it: selecting all four matches exactly the same jobs as selecting none, so the fourth pick adds nothing. Capping at 3 keeps every selection meaningful and sends the “anything goes” answer to the control that already means it — leaving them all off. It also matches the ≤3 cap on desired industry and desired work location, so all three multi-selects read the same.',
               'Leaving desired work type empty does NOT narrow anything — it simply rules nothing out, so the candidate still sees every kind of job.',
             ],
-            warn: 'ONE GROUP PER STEP is what keeps this wizard short: sign-up takes Basic information, this wizard takes Work preference, the CV carries work history, education detail and skills. Years of experience and highest education are Basic information and were ALREADY taken at registration — do not re-add them here.',
+            warn: 'SUPERSEDED 2026-11-03 for years and education — the built wizard asks both (REVISED block above). Original rule: ONE GROUP PER STEP is what keeps this wizard short: sign-up takes Basic information, this wizard takes Work preference, the CV carries work history, education detail and skills. Years of experience and highest education are Basic information and were ALREADY taken at registration — do not re-add them here.',
           },
           {
             label: 'Industry picker — any of the 3 levels can be chosen (decided 2026-10-25)',
