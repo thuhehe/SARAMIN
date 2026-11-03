@@ -1141,12 +1141,12 @@ export const jobManagement: BuildModule = {
               '**① RECORD IT FIRST — Phase 1.** Add one flag to the log row saying the 500 limit was reached. It is one column, and it is the only way to find out whether this ever actually happens before building anything to fix it.',
               '② THEN, IF THE LOG SAYS IT MATTERS: count before fetching. If fewer than about 2,000 jobs pass the filter, score all of them. The counting query is cheap.',
               '③ THE PROPER FIX: order the pool by how many of the jobseeker’s wanted roles / categories / cities each job hits, and only then by date. Then the 500 we keep are the 500 most likely to score well, instead of the 500 most recent.',
-              'WHY NOT JUST SCORE ALL 3,000? The arithmetic is cheap — 8 comparisons per job. The cost is READING 3,000 jobs together with their roles, skills and locations, and then repeating that once per CV. The goal is to keep 500, but to keep the RIGHT 500.',
+              'WHY NOT JUST SCORE ALL 3,000? The arithmetic is cheap — seven comparisons per job. The cost is READING 3,000 jobs together with their roles, skills and locations, and then repeating that once per CV. The goal is to keep 500, but to keep the RIGHT 500.',
             ],
           },
           {
             label: '7 · How the score is calculated',
-            text: 'Eight signals, 100 points in total. Each signal compares ONE thing between the job and the jobseeker, and the points are added up.\n\nThe point values are FIXED IN THE CODE. There is no admin screen for them — section 22 says why, and what replaces it.\n\nVN — Tám tiêu chí, tổng 100 điểm. Trọng số cố định trong code, không có màn hình admin để chỉnh.',
+            text: 'Seven signals, 100 points in total. Each signal compares ONE thing between the job and the jobseeker, and the points are added up.\n\nThe point values are FIXED IN THE CODE. There is no admin screen for them — section 22 says why, and what replaces it.\n\nVN — Tám tiêu chí, tổng 100 điểm. Trọng số cố định trong code, không có màn hình admin để chỉnh.',
             table: {
               cols: ['Signal', 'Points', 'What is compared'],
               rows: [
@@ -1207,7 +1207,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '9 · The rules behind that scoring table',
-            text: 'Six rules that apply across every signal in section 8. None of them is visible in the numbers themselves.',
+            text: 'The rules that apply across every signal in section 8. None of them is visible in the numbers themselves.',
             items: [
               'ONE RUNG ONLY, THE HIGHEST THAT APPLIES. Any job matching the declared role scores 42 and does NOT also collect the Group and Category rungs underneath it — they are steps on one ladder, not points to be added up.',
               'READ THE TREE THE RIGHT WAY UP: a **Category** contains **Groups**, and a Group contains **Roles**. 21 categories, 477 roles. The middle rung is the one that earns its place — without it the ladder jumps straight from one role to a bucket holding 42 of them, and a Frontend Developer lands level with a Data Engineer.',
@@ -1359,8 +1359,8 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['Profile only', 'Almost nothing — most signals score 0', 'Newest and most-applied-to jobs, in their city if the Profile states one'],
                 ['Profile + work preference', 'What they WANT — right city, right field, right salary', 'Role, location, category, salary'],
-                ['Profile + CV', 'What they CAN DO, plus role and city via the fallbacks in 2a', 'Role (from the CV’s job title), experience, skills, education'],
-                ['Profile + work preference + CV', 'Everything — the full 100 points are reachable', 'All eight signals'],
+                ['Profile + CV', 'What they CAN DO, plus role and city via the “if empty” lines in section 8', 'Role (from the CV’s job title), experience, skills, education'],
+                ['Profile + work preference + CV', 'Everything — the full 100 points are reachable', 'All seven signals'],
                 ['Any of the above, **plus 90 days of behaviour**', 'Wider and more accurate, without them typing anything', 'Roles, categories and cities learned from what they opened, saved and applied to (section 5)'],
               ],
             },
@@ -1395,19 +1395,20 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '18 · Where recommended jobs appear',
-            text: 'Four places. Two of them are attached to a specific job, which changes the calculation slightly.',
+            text: 'Four places, all fed from the same pool of 80 (section 2). Three of them shuffle it; Batch apply does not.\n\nVN — Bốn chỗ, cùng lấy từ một pool 80 tin. Ba chỗ xáo trộn, riêng Batch apply xếp theo điểm.',
             table: {
-              cols: ['Page', 'Who sees it', 'Based on'],
+              cols: ['Page', 'Who sees it', 'Order', 'Note'],
               rows: [
-                ['After onboarding', 'Only users who just answered the onboarding questions', 'Their new work preference. This is the reward for filling in the form.'],
-                ['Homepage section', 'Everyone (all 4 cases in section 16)', 'The jobseeker’s profile + CVs'],
-                ['Job detail page', 'Everyone, including visitors who are NOT signed in', 'Mostly the job on screen — a different calculation, specced in **Relevant jobs**'],
-                ['After applying to a job', 'Everyone', 'Mostly the job just applied to — the **Relevant jobs** calculation, minus jobs already applied to'],
+                ['**End of onboarding**', 'Only jobseekers who just answered the onboarding questions', 'Shuffled', 'Built on the work preference they have just typed. This is the reward for filling in the form.'],
+                ['**My dashboard**', 'Every signed-in jobseeker', 'Shuffled', 'The screen they come back to. Two rails live here — sections 19 to 21.'],
+                ['**Job detail page**', 'Every signed-in jobseeker', 'Shuffled', '⚠ This page ALSO carries a “similar jobs” list, which is a DIFFERENT feature with a different calculation → [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job). Two sections, two specs; do not merge them.'],
+                ['**Batch apply**', 'Every signed-in jobseeker', '**Strict score order**', 'The one place rank is honest, because several jobs are ticked at once.'],
               ],
             },
             items: [
-              'On the job detail page and the after-apply page, “similar jobs” must also look at the job on the screen — same category, similar skills, similar level — not only at the jobseeker. Otherwise someone browsing outside their usual field gets a list that ignores what they are reading.',
-              'The after-apply page is the most useful one for a brand-new user. We may know nothing about them, but the job they just applied to tells us a lot.',
+              'A VISITOR WHO IS NOT SIGNED IN GETS NOTHING FROM THIS FEATURE. It needs a jobseeker to match against. What a visitor sees on a job detail page is the job↔job list, which reads no profile at all.',
+              'THE JOB DETAIL PAGE IS THE ONE PEOPLE CONFUSE. “Việc làm tương tự” compares the job on screen with other jobs. “Gợi ý việc làm” compares the READER with other jobs. Same page, two questions, two specs. The two lists are also de-duplicated against each other so no card appears twice.',
+              'BATCH APPLY IS THE MOST IMPORTANT SURFACE and should be built first. It is the only one where the order directly decides what gets applied to, and the only one that does not shuffle.',
             ],
           },
           {
