@@ -988,11 +988,11 @@ export const jobManagement: BuildModule = {
           {
             label: '3 · How the dropdown behaves',
             items: [
-              '**EACH ROW:** Company — building icon + name, label *Công ty*. Keyword — search icon + category name. Job — briefcase icon + job title (one line, ellipsis), label *Việc làm*. The part matching the query is **bold**.',
+              '**EACH ROW:** Company — building icon + name, label **Công ty**. Keyword — search icon + category name. Job — briefcase icon + job title (one line, ellipsis), label **Việc làm**. The part matching the query is **bold**.',
               '**PASTING IS TYPING.** A pasted keyword triggers the same suggestions as a typed one — the SRM-1052 report was a paste.',
               '**STARTS AT 2 CHARACTERS.** One letter only returns noise.',
               '**ANONYMOUS POSTINGS (SRM-737)** appear in Jobs as a normal job row and NEVER make their employer appear in Companies or count toward its open jobs. Typing the real company name must not reveal them.',
-              '**NO “KHÔNG CÓ KẾT QUẢ”.** The dropdown cannot know what a full search will find (Enter also reads descriptions and requirements), so it never claims there is nothing. With no suggestion it says **“Không có gợi ý cho ‘…’ — nhấn Enter để tìm”** / *“No suggestions for ‘…’ — press Enter to search”*.',
+              '**NO “KHÔNG CÓ KẾT QUẢ”.** The dropdown cannot know what a full search will find (Enter also reads descriptions and requirements), so it never claims there is nothing. With no suggestion it says **“Không có gợi ý cho ‘…’ — nhấn Enter để tìm”** / **“No suggestions for ‘…’ — press Enter to search”**.',
               '**ENTER WITHOUT PICKING A ROW** runs the full keyword search on what was typed — unchanged.',
               '**LOCATION CHIP** filters the Jobs group only. Companies and Keywords ignore it.',
               '**KEYBOARD:** ↑ ↓ move through all rows across groups, Enter opens the highlighted row, Esc closes.',
@@ -1224,7 +1224,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '10 · Worked example — one jobseeker, three jobs, end to end',
-            text: '**Linh** declared **Marketing Executive · Marketing · Hồ Chí Minh · 20 triệu**. Her Profile says 3 years. Her CV carries *Facebook Ads · Google Analytics · Content Writing*, a Bachelor’s degree, and a previous job at an e-commerce company. **She never filled in a desired industry.**\n\nOver the last 90 days she applied to one job, saved one, and opened six.',
+            text: '**Linh** declared **Marketing Executive · Marketing · Hồ Chí Minh · 20 triệu**. Her Profile says 3 years. Her CV carries **Facebook Ads · Google Analytics · Content Writing**, a Bachelor’s degree, and a previous job at an e-commerce company. **She never filled in a desired industry.**\n\nOver the last 90 days she applied to one job, saved one, and opened six.',
             table: {
               cols: ['What we know about Linh', 'She typed it', 'We worked it out'],
               rows: [
@@ -1964,7 +1964,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['The company has', 'Anchor', 'Heading'],
               rows: [
-                ['One or more jobs (draft or published)', 'The one edited most recently', 'Ứng viên phù hợp với vị trí — *tên tin*'],
+                ['One or more jobs (draft or published)', 'The one edited most recently', 'Ứng viên phù hợp với vị trí — **tên tin**'],
                 ['No job at all', 'Nothing — see section 5', '**Hồ sơ mới cập nhật**'],
               ],
             },
