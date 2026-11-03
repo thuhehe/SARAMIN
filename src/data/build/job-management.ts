@@ -1129,7 +1129,7 @@ export const jobManagement: BuildModule = {
             label: '6 · The job pool — why a good match can be missed entirely',
             text: 'Stage 1 does not score every open job. It takes at most **500**, and today it takes the **500 newest** that pass the filter.\n\nSo if 3,000 jobs pass the filter, 2,500 are thrown away before anybody scores them. A job that would have matched 98% but was posted last month never appears — not because it lost, but because it was never judged.\n\nVN — Hệ thống chỉ chấm điểm tối đa 500 tin, và hiện lấy theo NGÀY ĐĂNG mới nhất chứ không phải theo độ phù hợp.',
             table: {
-              cols: ['The jobseeker', 'Jobs passing the filter', 'Does the limit bite?'],
+              cols: ['The jobseeker', 'How many jobs pass the filter', 'Is the 500 limit reached?'],
               rows: [
                 ['Filled in work preference properly', 'roughly 200–400', 'No — never reaches 500.'],
                 ['Left work preference mostly empty', 'almost every open job', '**Yes, hard.** They only ever see the newest 500.'],
@@ -1170,9 +1170,9 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '8 · Where each signal reads from, and what happens when it is empty',
-            text: 'The jobseeker has three sources and only the first is guaranteed: **Profile** (always), **Work preference** (often empty), **CV** (often absent).\n\nTwo DIFFERENT relationships are at work here, and they must not be written with the same arrow:\n\n• **COMBINED** — work preference and behaviour are UNIONED into one set. Both are used, always, at the same time (section 5).\n• **FALLBACK** — the CV is read ONLY IF that combined set came out completely empty. It is a replacement for nothing, never an addition.\n\nVN — Work preference và hành vi thì **GỘP** lại, dùng đồng thời. CV chỉ là **DỰ PHÒNG**, chỉ đọc khi tập gộp rỗng hoàn toàn.',
+            text: 'Every signal compares one thing on the JOB against one thing on the JOBSEEKER. This table says where each half is read from.\n\nThe jobseeker has three sources and only the first is guaranteed: **Profile** (always there), **Work preference** (often empty), **CV** (often absent). So every signal also names a second place to look.\n\nThe last two columns work differently from each other:\n\n• **Column 3** — use EVERYTHING in it, at the same time. What they typed and what their behaviour says are added together into one set (section 5).\n• **Column 4** — read it ONLY when column 3 came out completely empty. It is the last resort, never an extra.\n\nVN — Cột 3 thì **GỘP** tất cả lại, dùng đồng thời. Cột 4 là **DỰ PHÒNG**, chỉ đọc khi cột 3 rỗng hoàn toàn.',
             table: {
-              cols: ['Signal', 'Job side reads', 'MAIN — all of these COMBINED', 'FALLBACK — only if MAIN is completely empty'],
+              cols: ['Signal', 'What the JOB says', 'What the JOBSEEKER says — use ALL of these together', 'If the jobseeker has NONE of those, use this instead'],
               rows: [
                 ['Occupation & role · 42', 'The posting’s roles and its category', 'desired roles (≤3) **+** desired category **+** roles and categories learned from behaviour', 'The job title and its category from the most recent position on their CV'],
                 ['Location · 20', 'City + remote / hybrid / on-site', 'desired cities **+** cities learned from behaviour', 'The city on their **Profile**'],
@@ -1195,7 +1195,7 @@ export const jobManagement: BuildModule = {
             label: '9 · The rubric — what earns full, partial and zero on each signal',
             text: 'Full points are rarely all-or-nothing. Each signal has a middle band, because “wrong city” and “next province over” are not the same answer.\n\nVN — Mỗi tiêu chí đều có mức giữa. Sai hoàn toàn mới 0 điểm.',
             table: {
-              cols: ['Signal', 'Full points', 'Partial', 'Zero'],
+              cols: ['Signal', 'Full points when…', 'Fewer points when…', 'No points when…'],
               rows: [
                 ['**Occupation & role · 42**', '**42** — same ROLE, and the jobseeker DECLARED it', 'Three rungs further down the **Category › Group › Role** tree — declared / inferred: same role, inferred → **34** · same **Group**, different role → **30** / **24** · same **Category**, different group → **17** / **14**', 'Different category → **0**'],
                 ['**Location · 20**', '**20** — desired city AND desired work type · also **20** for a REMOTE posting, from anywhere', '**14** right city, different work type · **10** a neighbouring province (HCMC ↔ Bình Dương / Đồng Nai / Long An, Hà Nội ↔ Bắc Ninh / Hưng Yên)', 'Any other province'],
@@ -1416,7 +1416,7 @@ export const jobManagement: BuildModule = {
             label: '20 · The log — the one thing we must build so the score can be improved',
             text: 'The point values in section 7 are our estimate. Some of them are wrong. This section is about how we find out WHICH.\n\nDECIDED: there is **no admin screen for the weights**. They live in the code, as a numbered version. Changing one is a code change, reviewed like any other.\n\nVN — Không làm màn hình admin cho trọng số; trọng số nằm trong code và có đánh số version. Nhưng BẮT BUỘC phải có log.',
             table: {
-              cols: ['', 'Build it?', 'Why'],
+              cols: ['What', 'Build it?', 'Why'],
               rows: [
                 ['The weights', 'In code, with a version number', 'A weight is part of the calculation, not a setting — see below.'],
                 ['**The log**', '**Yes — Phase 1**', 'One row every time a job is SHOWN, plus what happened next. Without it the numbers stay a guess for the life of the product.'],
