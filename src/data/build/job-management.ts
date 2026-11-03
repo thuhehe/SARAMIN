@@ -1959,17 +1959,24 @@ export const jobManagement: BuildModule = {
       detail: {
         requirements: [
           {
-            label: '1 · What the list is anchored to — the employer’s most recent job',
-            text: 'The section is anchored on A JOB. It used to be anchored on a Talent pool folder, and that can never work: `talent_pool` holds `id · company_id · name · kind · created_by · created_at · updated_at` and nothing else. No role, no level, no location, nothing to match against. **A folder is where results are SAVED. It is not the brief that produces them.**\n\nTHE ANCHOR IS THE MOST RECENT JOB THE EMPLOYER CREATED — draft or published, whichever was edited last.\n\nVN — Neo vào tin tuyển dụng gần nhất mà NTD tạo, kể cả tin nháp. Không neo vào thư mục.',
+            label: '1 · What the list is anchored to — a job, picked by status then by last edit',
+            text: 'The section is anchored on A JOB. It used to be anchored on a Talent pool folder, and that can never work: `talent_pool` holds `id · company_id · name · kind · created_by · created_at · updated_at` and nothing else. No role, no level, no location, nothing to match against. **A folder is where results are SAVED. It is not the brief that produces them.**\n\nTHE ANCHOR IS THE EMPLOYER’S MOST REAL JOB, NOT THEIR NEWEST. Status decides the tier; inside a tier, the most recently edited job wins. Confirmed 2026-11-03.\n\nVN — Chọn theo trạng thái trước (OPEN → SCHEDULE → REVIEW → DRAFT), trong cùng một bậc thì lấy tin sửa gần nhất. Không neo vào thư mục.',
             table: {
-              cols: ['The company has', 'Anchor', 'Heading'],
+              cols: ['Priority', 'Status', 'Why it sits here'],
               rows: [
-                ['One or more jobs (draft or published)', 'The one edited most recently', 'Ứng viên phù hợp với vị trí — **tên tin**'],
-                ['No job at all', 'Nothing — see section 5', '**Hồ sơ mới cập nhật**'],
+                ['**1**', '`OPEN` — and not past its deadline', 'Actually hiring. Anyone surfaced for it can be contacted today.'],
+                ['**2**', '`SCHEDULE`', 'Decided and signed off, only waiting for its date.'],
+                ['**3**', '`REVIEW`', 'The employer finished it and submitted it — it is waiting on admin approval, nothing else. Far more real than a draft, and the tier easiest to forget.'],
+                ['**4**', '`DRAFT`', 'May never be published, but it still beats having no anchor at all.'],
+                ['—', '`CLOSED`', '**Never anchors.** A closed posting is not hiring.'],
+                ['—', 'No job in any tier', 'Heading becomes **Hồ sơ mới cập nhật** — see section 5.'],
               ],
             },
             items: [
-              'ORDER BY LAST UPDATED, NOT BY CREATED. A draft abandoned six months ago must not drive the Home page over a job the recruiter was editing this morning.',
+              'INSIDE A TIER, ORDER BY LAST UPDATED — NOT BY CREATED. This matters more than it looks: a company with twenty OPEN jobs has no idea why “the newest” was chosen, whereas “the one you were last editing” explains itself in a sentence. It also stops a draft abandoned six months ago from outranking a job the recruiter touched this morning.',
+              'AN `OPEN` JOB PAST ITS DEADLINE COUNTS AS CLOSED and drops out of tier 1 — otherwise Home offers candidates for a posting nobody can apply to any more.',
+              'THE `exposure` FLAG IS IRRELEVANT HERE. It hides a posting from JOBSEEKERS. This is the company’s own dashboard, so a job with exposure off still anchors normally: they are still hiring, they are just not advertising.',
+              'CONSIDERED AND NOT TAKEN — anchoring on the job that NEEDS candidates most, i.e. the OPEN job with the fewest applicants for its age. It is better product thinking (a posting with 50 applicants does not need help; one with none after two weeks does), but rejected for phase 1 on two grounds: the default stops being explainable to the recruiter, and the dropdown already makes a wrong default cost one click. Revisit when there is real data on which postings starve.',
               'THE HEADING NAMES THE JOB, and the Figma already does this — the chip reads “Backend developer with 3+ years experience…”, not a folder name. A recruiter has to be able to see what the list is answering without clicking anything.',
               'GIVE THEM A DROPDOWN to switch to another of their jobs. The most recent one is only the default.',
               'THE FOLDER DOES NOT DISAPPEAR — it changes job. It stops being the question and becomes the destination: “Lưu vào thư mục…” on each card.',
