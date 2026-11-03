@@ -1181,10 +1181,10 @@ export const jobManagement: BuildModule = {
               cols: ['Signal', 'Where it comes from on the jobseeker', 'What a job scores for matching it'],
               rows: [
                 ['**Occupation & role**\n**42**',
-                 'Use ALL at once: desired roles (≤3) **+** desired category **+** roles and categories learned from behaviour.\n\n**If all of that is empty:** the job title and its category from the most recent position on their CV.',
+                 '**1 · What they declared** — desired roles (≤3) + desired category.\n**2 · What their behaviour says** — roles and categories of jobs they applied to, saved, or opened 3+ times (section 5).\n→ **1 and 2 are used TOGETHER**, always. Neither waits for the other to be empty.\n\n**3 · Only when 1 AND 2 are both empty:** the job title and its category from the most recent position on their CV.',
                  'Same **role** → **42** declared / **34** inferred\nSame **Group**, other role → **30** / **24**\nSame **Category**, other group → **17** / **14**\nDifferent category → **0**'],
                 ['**Location**\n**20**',
-                 'Use ALL at once: desired cities **+** cities learned from behaviour.\n\n**If empty:** the city on their Profile.',
+                 '**1 · What they declared** — desired cities.\n**2 · What their behaviour says** — cities of jobs they applied to, saved, or opened 3+ times.\n→ **1 and 2 are used TOGETHER**, always.\n\n**3 · Only when 1 AND 2 are both empty:** the city on their Profile.',
                  'Right city **and** right work type → **20** declared / **16** inferred\nA **REMOTE** posting → **20**, from anywhere\nRight city, other work type → **14**\nNeighbouring province → **10**\nAny other province → **0**'],
                 ['**Experience**\n**14**',
                  'Years of experience on their **Profile**.\n\n**If empty:** computed from the work history on their CV.',
@@ -1204,7 +1204,8 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'THE MIDDLE COLUMN HAS TWO HALVES AND THEY WORK DIFFERENTLY. The list before the break is **combined** — use every part of it at the same time. The line after **If empty** is a **last resort** — read it only when that whole list came out with nothing in it, never as an extra on top.',
+              'BEHAVIOUR IS NOT A FALLBACK — IT IS A SOURCE. Sources **1** and **2** are read at the same time and merged into one set. A jobseeker who declared nothing but has been opening accounting jobs is matched on accounting straight away; we do not wait for anything to be empty first.\n\nOnly source **3** waits. It is a last resort, read when 1 and 2 BOTH came out with nothing, and never added on top of them.',
+              'SO THE CV IS REACHED ONLY BY SOMEBODY BRAND NEW — no work preference, and not one application, save, or third view in 90 days. For everybody else source 2 has something in it, and the CV line is never consulted for this signal.',
               'THE ORDER TO IMPLEMENT IT IN, per signal — three steps, no ambiguity. **①** Build the set from the combined list. **②** Is it EMPTY? Only then read the “If empty” line. **③** Still nothing → that signal scores **0** (section 15).',
               'DECLARED vs INFERRED. A value the jobseeker TYPED scores the left number. A value we worked out ourselves — from their behaviour, or from the “If empty” line — scores the right one, which is **80% of it, rounded**. They never said it, so we claim slightly less. Experience, salary, skills and education have one number each because they are read from one place.',
               'WITH PROFILE + CV AND NO WORK PREFERENCE AT ALL, the “If empty” lines still reach occupation, location, experience, industry and education — 84 of the 100 points. Only salary (12) is out of reach entirely. That is the whole reason that column exists.',
