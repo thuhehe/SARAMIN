@@ -1948,6 +1948,24 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
+            label: '2b · Who counts as a candidate for this job at all — the step that carries the logic',
+            text: 'Before anything is scored, the pool is narrowed to people who are plausibly candidates FOR THIS JOB. This is not a performance trick. It is the definition.\n\nTake a candidate when ANY of these is true:\n\n• their desired roles overlap the job’s roles\n• their desired category is the job’s category\n• the skills on their CV overlap the skills on the job\n\nCap the pool at **500** — the same constant the jobseeker-side feed already uses.\n\nVN — Chỉ lấy người trùng role, hoặc trùng nhóm nghề, hoặc trùng kỹ năng. Tối đa 500 người rồi mới chấm điểm.',
+            table: {
+              cols: ['Read from the job', 'Compared against'],
+              rows: [
+                ['`job_role_link` — every role on the posting', '`candidate_desired_role` (up to 3)'],
+                ['`job_category_id`', '`candidate_profile.desired_category_id`'],
+                ['The job’s skills', 'The skills on the candidate’s CV'],
+              ],
+            },
+            items: [
+              'WITHOUT THIS STEP THE SCORE LETS STRANGERS THROUGH. Location (21) plus experience (22) alone is 43 — over the floor in section 4 — so somebody in the same city with roughly the right number of years would qualify for a job in a completely unrelated field. The floor cannot catch that; only this step can.',
+              'IT IS AN **OR**, NOT AN AND. This is a recommendation, not a search: cast wide here, then let the score in section 3 do the ranking. An AND would return almost nobody on a VN database this size.',
+              'IT IS ALSO WHAT MAKES A THIN DRAFT RESOLVE ITSELF. A draft with no role, no category and no skills matches nobody at this step, so the list comes back empty and the panel falls through to section 5 — no draft-specific rule anywhere, exactly as decided in section 2.',
+              'MATCH ON BOTH WHAT THEY WANT AND WHAT THEY CAN DO. Desired role and category say what they are looking for; the CV’s skills say what they are able to do. An employer needs both to be true, so both are allowed to admit a candidate here and both are scored later.',
+            ],
+          },
+          {
             label: '3 · Information the job does not state is worth 0 — it is NOT thrown away',
             text: 'This is the one real change, and everything else above depends on it.\n\nTODAY the calculation **renormalises**: a signal the job does not state is removed, and the remaining weights are stretched back up to 100. A job that states only a location would score every candidate in that city at 100%.\n\nFROM NOW: every signal keeps its full weight, and a signal the job does not state earns **0** of it. The total is always out of the same 100.\n\nVN — Tín hiệu nào tin không khai thì được 0 điểm, không bị loại ra khỏi mẫu số. Luôn tính trên thang 100.',
             table: {
