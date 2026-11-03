@@ -1025,7 +1025,7 @@ export const jobManagement: BuildModule = {
             },
             items: [
               'WE USE WHAT THEY SAID **AND** WHAT THEY DID. Work preference and CV say what they want and what they can do. Their saves, views and applications say what they actually go for. The second one is new, and section 5 is where it is written up.',
-              'WE NEVER HIDE THE LIST. Even a brand-new jobseeker still sees jobs — just less personalised ones, under a more honest heading. Section 14.',
+              'WE NEVER HIDE THE LIST. Even a brand-new jobseeker still sees jobs — just less personalised ones, under the same heading as everybody else. Section 14.',
               'WE CALCULATE FRESH EVERY TIME and never store the list. Jobs expire and new ones arrive daily, so a stored list is wrong within hours.',
               'EVERY TIME THE FEED IS SHOWN, IT ALSO WRITES — one log row per card displayed. That log is the only way the score can ever be checked or improved. Section 20.',
             ],
