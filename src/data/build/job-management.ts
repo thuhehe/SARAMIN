@@ -1037,16 +1037,16 @@ export const jobManagement: BuildModule = {
               cols: ['Stage', 'What happens', 'Written up in'],
               rows: [
                 ['**1 · Narrow**', 'One database query picks the jobs worth scoring, from what the jobseeker wants and what they have been doing.', 'sections 5 and 6'],
-                ['**2 · Score**', 'Every job in that set gets a number from 0 to 100.', 'sections 7 and 13'],
+                ['**2 · Score**', 'Every job in that set gets a number from 0 to 100.', 'sections 7 and 15'],
                 ['**3 · Remove**', 'Drop jobs they already applied to, dismissed, or that expired.', 'section 4'],
                 ['**4 · Arrange**', 'Keep the top 80, then shuffle them across the four surfaces — except Batch apply, which takes them in score order.', 'sections 2 and 3'],
               ],
             },
             items: [
               'WE USE WHAT THEY SAID **AND** WHAT THEY DID. Work preference and CV say what they want and what they can do. Their saves, views and applications say what they actually go for. The second one is new, and section 5 is where it is written up.',
-              'WE NEVER HIDE THE LIST. Even a brand-new jobseeker still sees jobs — just less personalised ones, under the same heading as everybody else. Section 14.',
+              'WE NEVER HIDE THE LIST. Even a brand-new jobseeker still sees jobs — just less personalised ones, under the same heading as everybody else. Section 16.',
               'WE CALCULATE FRESH EVERY TIME and never store the list. Jobs expire and new ones arrive daily, so a stored list is wrong within hours.',
-              'EVERY TIME THE FEED IS SHOWN, IT ALSO WRITES — one log row per card displayed. That log is the only way the score can ever be checked or improved. Section 20.',
+              'EVERY TIME THE FEED IS SHOWN, IT ALSO WRITES — one log row per card displayed. That log is the only way the score can ever be checked or improved. Section 22.',
             ],
           },
           {
@@ -1146,7 +1146,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '7 · How the score is calculated',
-            text: 'Eight signals, 100 points in total. Each signal compares ONE thing between the job and the jobseeker, and the points are added up.\n\nThe point values are FIXED IN THE CODE. There is no admin screen for them — section 20 says why, and what replaces it.\n\nVN — Tám tiêu chí, tổng 100 điểm. Trọng số cố định trong code, không có màn hình admin để chỉnh.',
+            text: 'Eight signals, 100 points in total. Each signal compares ONE thing between the job and the jobseeker, and the points are added up.\n\nThe point values are FIXED IN THE CODE. There is no admin screen for them — section 22 says why, and what replaces it.\n\nVN — Tám tiêu chí, tổng 100 điểm. Trọng số cố định trong code, không có màn hình admin để chỉnh.',
             table: {
               cols: ['Signal', 'Points', 'What is compared'],
               rows: [
@@ -1155,7 +1155,7 @@ export const jobManagement: BuildModule = {
                 ['**Experience & level**', '**14**', 'Years of experience, and seniority.'],
                 ['**Salary**', '**12**', 'The job’s band against what they asked for. Across currencies, converted with the stored rate.'],
                 ['**Industry**', '**5**', 'The company’s industry against the industries they want.'],
-                ['**Skills**', '**4**', 'CV skills against job skills. Small ON PURPOSE — section 12.'],
+                ['**Skills**', '**4**', 'CV skills against job skills. Small ON PURPOSE — section 14.'],
                 ['**Education**', '**3**', 'Education level required against education held.'],
                 ['**Total**', '**100**', ''],
               ],
@@ -1163,9 +1163,9 @@ export const jobManagement: BuildModule = {
             items: [
               'OCCUPATION & ROLE IS THE BIGGEST SIGNAL, and it should be: it is the one thing that says what the person would actually DO all day. Every other signal describes the circumstances around the job rather than the job itself.',
               'ROLE AND CATEGORY ARE **ONE** SIGNAL, NOT TWO, because every job role belongs to exactly one category (`job_role.job_category_id`). Matching the role therefore matches the category automatically — scoring both would award 42 points twice over for a single fact, and would hand 24 of them to a job that only shares the category. They are the SAME measurement at two resolutions, so they share one budget and the finer answer wins. Section 9 has the rungs.',
-              'SKILLS IS ONLY 4 POINTS — a decision about DATA, not about importance. The skill list has 731 rows, zero aliases, and skills authored for 26% of job roles. Section 12 states what has to be true before it goes up.',
-              'THE JOBSEEKER NEVER SEES THIS NUMBER. It sorts the cards and does nothing else. What tells them how confident we are is the HEADING above the list — section 14.',
-              'THE EMPLOYER SIDE RUNS THE SAME CALCULATION read from the other end, and there the number IS printed beside an applicant. That is the one place the rules differ — section 13.',
+              'SKILLS IS ONLY 4 POINTS — a decision about DATA, not about importance. The skill list has 731 rows, zero aliases, and skills authored for 26% of job roles. Section 14 states what has to be true before it goes up.',
+              'THE JOBSEEKER NEVER SEES THIS NUMBER. It sorts the cards and does nothing else. What tells them how confident we are is the HEADING above the list — section 16.',
+              'THE EMPLOYER SIDE RUNS THE SAME CALCULATION read from the other end, and there the number IS printed beside an applicant. That is the one place the rules differ — section 15.',
             ],
           },
           {
@@ -1199,7 +1199,7 @@ export const jobManagement: BuildModule = {
             },
             items: [
               'THE MIDDLE COLUMN HAS TWO HALVES AND THEY WORK DIFFERENTLY. The list before the break is **combined** — use every part of it at the same time. The line after **If empty** is a **last resort** — read it only when that whole list came out with nothing in it, never as an extra on top.',
-              'THE ORDER TO IMPLEMENT IT IN, per signal — three steps, no ambiguity. **①** Build the set from the combined list. **②** Is it EMPTY? Only then read the “If empty” line. **③** Still nothing → that signal scores **0** (section 13).',
+              'THE ORDER TO IMPLEMENT IT IN, per signal — three steps, no ambiguity. **①** Build the set from the combined list. **②** Is it EMPTY? Only then read the “If empty” line. **③** Still nothing → that signal scores **0** (section 15).',
               'DECLARED vs INFERRED. A value the jobseeker TYPED scores the left number. A value we worked out ourselves — from their behaviour, or from the “If empty” line — scores the right one, which is **80% of it, rounded**. They never said it, so we claim slightly less. Experience, salary, skills and education have one number each because they are read from one place.',
               'WITH PROFILE + CV AND NO WORK PREFERENCE AT ALL, the “If empty” lines still reach occupation, location, experience, industry and education — 84 of the 100 points. Only salary (12) is out of reach entirely. That is the whole reason that column exists.',
               'WITH PROFILE ONLY — no CV, no work preference, no behaviour yet — almost nothing can be compared and nearly every signal scores 0. That is honest: we have been told nothing. The feed then falls back to the newest and most-applied-to jobs, in the jobseeker’s own city if the Profile states one.',
@@ -1216,36 +1216,73 @@ export const jobManagement: BuildModule = {
               'A DIFFERENT CATEGORY SCORES 0 BUT IS NOT EXCLUDED HERE. The filtering happens in stage 1 (section 6), which already narrows to the jobseeker’s categories — so do NOT add a second gate inside the score.',
               'OVER-QUALIFIED BEATS UNDER-QUALIFIED, on purpose. Someone with 6 years against a 2–4 year posting can do the job; someone with 1 year cannot yet. The points say so.',
               'A POSTING WITH SEVERAL ROLES takes its BEST-SCORING role, not an average. A posting looking for either a Content Marketer or a Brand Manager should not be punished for being open to two.',
-              '“THỎA THUẬN” IS A STATED ANSWER, NOT A BLANK — 6 points, half credit. A large share of Vietnamese postings say it, and scoring them 0 would push most of the market to the bottom of every feed. A posting whose salary field is genuinely EMPTY still scores 0 (section 13). Same rule on the jobseeker’s side when they tick “lương thương lượng”.',
+              '“THỎA THUẬN” IS A STATED ANSWER, NOT A BLANK — 6 points, half credit. A large share of Vietnamese postings say it, and scoring them 0 would push most of the market to the bottom of every feed. A posting whose salary field is genuinely EMPTY still scores 0 (section 15). Same rule on the jobseeker’s side when they tick “lương thương lượng”.',
               'THE NEIGHBOURING-PROVINCE BAND NEEDS A SMALL TABLE in master data — roughly 10 pairs covering the two metro areas (HCMC ↔ Bình Dương / Đồng Nai / Long An, Hà Nội ↔ Bắc Ninh / Hưng Yên). Without it that band scores 0 and somebody in Thủ Đức never sees a job in Dĩ An, 8km away.',
               'ROUND ONCE, AT THE END. Round each signal and the rounding errors add up to a visible difference between two jobs that matched identically.',
               'THE OTHER SIGNALS DO NOT OVERLAP THE WAY ROLE AND CATEGORY DID. **Industry** is what the COMPANY does, **occupation** is what the JOB is — a Marketing role at a bank is Marketing × Banking, two independent facts. **Experience** and **level** already share one budget. **Skills** are derived from roles in the occupation graph, so they correlate — but the skills come off the CV (what the person CAN do) and the role off their preference (what they WANT), which are different claims, and 4 points is too small to distort anything either way.',
             ],
           },
           {
-            label: '10 · Worked example',
-            text: 'Job: Senior Frontend Engineer · role **Frontend Engineer** · Hồ Chí Minh · 3–5 years · needs React, TypeScript, Git, Docker, AWS · 30–45 triệu · IT category · Software industry. **It states no education requirement.**\n\nJobseeker: 4 years’ experience · has React, TypeScript, Git · wants role **Frontend Engineer** · wants Hồ Chí Minh · wants 35 triệu · wants IT · wants Software · has a Bachelor.',
+            label: '10 · Worked example — one jobseeker, three jobs, end to end',
+            text: '**Linh** declared *Marketing Executive · Marketing · Hồ Chí Minh · 20 triệu*. Her Profile says 3 years. Her CV carries *Facebook Ads · Google Analytics · Content Writing*, a Bachelor’s degree, and a previous job at an e-commerce company. **She never filled in a desired industry.**\n\nOver the last 90 days she applied to one job, saved one, and opened six.',
             table: {
-              cols: ['Signal', 'Points possible', 'Points earned', 'Why'],
+              cols: ['What we know about Linh', 'She typed it', 'We worked it out'],
               rows: [
-                ['Occupation & role', '42', '**42**', 'Wants Frontend Engineer; the job’s role IS Frontend Engineer — the top rung. Its group and the IT category come with it and are NOT scored again.'],
-                ['Location & work type', '20', '**20**', 'Wants HCMC, job is in HCMC.'],
-                ['Experience & level', '14', '**14**', '4 years sits inside 3–5.'],
-                ['Salary', '12', '**12**', '35 triệu sits inside 30–45.'],
-                ['Industry', '5', '**5**', 'Wants Software, company is Software.'],
-                ['Skills', '4', '**2**', 'Matched 3 of the job’s 5 skills → 4 × ⅗ = 2.4, rounded to 2.'],
-                ['Education', '3', '**0**', '⚠ The job states no education requirement, so there is nothing to compare. **0 points — and the 3 points are NOT redistributed.**'],
-                ['**TOTAL**', '**100**', '**95**', 'Always out of 100. Section 13.'],
+                ['Role', 'Marketing Executive', 'Chuyên viên Marketing *(she applied)*\nContent Marketing *(she saved)*'],
+                ['Category', 'Marketing', '—'],
+                ['City', 'Hồ Chí Minh', 'Bình Dương *(she opened 4 jobs there)*'],
+                ['Industry', '*(blank)*', 'Thương mại điện tử *(the “if empty” line — read off her CV)*'],
+                ['Experience · Salary · Education · Skills', '3 years · 20 triệu · Bachelor · 3 skills', '—'],
+                ['Thương mại điện tử — opened only **2** jobs', '—', '❌ Not counted. Opening needs **3 different** jobs.'],
               ],
             },
             items: [
-              'LOOK AT THE EDUCATION ROW — it is the whole of section 13 in one line. The job stayed silent, so it lost 3 points. Had those 3 points been spread over the other signals instead, this job would come back as 98% rather than 95%: a higher score for saying less.',
-              'MISSING TWO SKILLS COSTS 2 POINTS. That is deliberate while the skill list is unfinished (section 12) and it is the lever to pull once it is fixed — not the formula.',
-              'THE JOBSEEKER SEES NONE OF THIS. No percentage on the card. What they see is the heading (section 14) and, if we show a reason at all, the two signals that earned the most: here “Frontend Engineer · Hồ Chí Minh”. A bare percentage tells them nothing they can act on.',
+              'THE LAST ROW IS THE ONE PEOPLE MISS. Two opened jobs is not a pattern, so e-commerce does NOT enter her set through behaviour. It still reaches the industry signal, but through the “if empty” line on her CV — a different route, and it scores as inferred either way.',
             ],
           },
           {
-            label: '11 · Worked example — salary in two currencies',
+            label: '11 · The same three jobs, scored',
+            text: 'Three jobs survive the filter. Every number below comes straight off the table in section 8.',
+            table: {
+              cols: ['Signal', '**A** · Content Marketing · Lazada · HCMC', '**B** · Chuyên viên MKT · Lazada · Bình Dương', '**C** · Marketing Executive · VNG · HCMC'],
+              rows: [
+                ['Occupation & role · 42', '**34**\nright role, but we inferred it', '**34**\nright role, inferred', '**42**\nthe role she TYPED'],
+                ['Location · 20', '**20**\nHCMC, declared', '**16**\nBình Dương, inferred → 80%', '**20**\nHCMC, declared'],
+                ['Experience · 14', '**14**\n3 yrs inside 2–4', '**14**\n3 yrs inside 3–5', '**10**\nwants 1–2, she is 1 yr over'],
+                ['Salary · 12', '**12**\n20tr inside 18–25', '**12**\n20tr inside 20–28', '**0**\ncaps at 16tr — she asks 25% more'],
+                ['Industry · 5', '**4**\ne-commerce, inferred', '**4**\ne-commerce, inferred', '**0**\nSoftware ≠ e-commerce'],
+                ['Skills · 4', '**2.7**\n2 of the 3 asked for', '**4**\nboth of them', '**0**\nasks for Google Ads'],
+                ['Education · 3', '**3**\nBachelor = Bachelor', '**0**\n⚠ the posting states none', '**3**\nBachelor = Bachelor'],
+                ['**TOTAL**', '**90**', '**84**', '**75**'],
+              ],
+            },
+            items: [
+              'JOB C KEEPS 42 OF ITS 75 POINTS FROM ONE FACT — *Marketing Executive* is the role Linh TYPED. The pay is 25% below what she asked, the industry is wrong and not one skill matches, and it still lands at 75. That is what putting 42 points on the occupation axis buys: what she SAYS she wants outranks almost everything else.',
+              'JOBS A AND B SCORE 34 ON THE SAME AXIS, not 42 — their roles are right, but Linh never typed them. We read them off a job she applied to and a job she saved. Inferred, so 80%.',
+              'JOB B IS ONLY IN THE LIST BECAUSE OF BEHAVIOUR. Bình Dương appears nowhere in her profile; it is there because she opened four jobs in that province. And because it is inferred, the location signal pays **16**, not 20.',
+              'JOB B LOSES 3 POINTS FOR A FIELD THE EMPLOYER LEFT BLANK, and they are NOT handed to the other signals. Spread them and B would read 84 ÷ 97 = **87%** and beat A — a higher score for stating less. Section 15.',
+              'ROUNDED ONCE, AT THE END. A is 89.7 → **90**. Round the skills 2.7 on its own and you get 90 by a different route today and a wrong answer tomorrow.',
+            ],
+          },
+          {
+            label: '12 · What Linh actually sees',
+            text: 'All three jobs go into her pool of 80. The job she applied to — *Chuyên viên Marketing · Shopee* — does not.',
+            table: {
+              cols: ['Surface', 'What she sees'],
+              rows: [
+                ['**Batch apply**', 'A, then B, then C — strict score order, because this is the screen where position decides what gets applied to.'],
+                ['**My dashboard**', 'Four cards drawn from the shuffled 80. Same four all day, different four tomorrow.'],
+                ['**Job detail** · **Onboarding**', 'Their own four from the same pool. She does not meet the same cards everywhere.'],
+              ],
+            },
+            items: [
+              'THE SHOPEE JOB IS GONE FOR GOOD — she applied to it, so it never returns, whatever happens to that application (section 4). But its role still shapes her feed: it is **why job B scores 34** instead of nothing.',
+              'A AND B ARE BOTH LAZADA. If the shuffle deals them into the same row, the row keeps one and pulls the next card from the pool instead — one company per row (section 2).',
+              'SHE SEES NO NUMBERS. Not 90, not 84, not 75. The score chose her 80 and ordered Batch apply; everything else it does is invisible to her.',
+            ],
+          },
+          {
+            label: '13 · Worked example — salary in two currencies',
             text: 'Job: 1,200–1,800 USD / month. Jobseeker: expects 35,000,000 VND / month. Do they fit? The salary signal is worth 12 points, and there are three possible behaviours. Exchange rate held in master data: 1 USD = 25,000 VND.',
             table: {
               cols: ['Approach', 'What the system does', 'Result', 'Verdict'],
@@ -1259,11 +1296,11 @@ export const jobManagement: BuildModule = {
               'THIS IS WHAT THE CLIENT WAS ASKING FOR — not a live currency service, just one number an admin types in and reviews every few months. That is why it is safe: it behaves like a setting, not like an external dependency.',
               'THE JOBSEEKER AND THE EMPLOYER NEVER SEE A CONVERTED NUMBER. The job still shows “1,200–1,800 USD”, the profile still shows “35,000,000 ₫”. The conversion happens only inside the comparison, so nobody is ever shown a figure they did not write.',
               'THE SALARY SIGNAL IS 12 POINTS (section 7). STORE THE RATE VERSION on every score, next to the weight version. When a score changes after the rate is updated, that is the record which explains it.',
-              'IF NO RATE IS CONFIGURED, salary scores **0** for that job — not full points. Full points would hand every USD posting 12 free points over a VND posting that actually had to match, which is the same defect section 13 exists to remove. Scoring 0 is also what creates the pressure to set the rate: one number, typed once, and it stops being a problem. Never fall back to ①.',
+              'IF NO RATE IS CONFIGURED, salary scores **0** for that job — not full points. Full points would hand every USD posting 12 free points over a VND posting that actually had to match, which is the same defect section 15 exists to remove. Scoring 0 is also what creates the pressure to set the rate: one number, typed once, and it stops being a problem. Never fall back to ①.',
             ],
           },
           {
-            label: '12 · How skills are matched (the part that decides the score)',
+            label: '14 · How skills are matched (the part that decides the score)',
             text: 'Skills are 4 of the 100 points. They are worth so little because the data behind them is not ready: 731 skill rows, zero aliases, job titles and typos still in the list, and skills authored for only 26% of job roles. Extraction also returns just 3–5 skills from a typical CV. The signal cannot carry more than 4 points yet, and it goes up by measurement, not by opinion — coverage past ~70% of roles with aliases in place, and a median of 5+ readable skills per uploaded CV. The short version: skills are NOT free text on either side. Both the CV and the job store a link to the same row in one master list, and matching compares those links — not words.',
             table: {
               cols: ['Question', 'Answer'],
@@ -1282,14 +1319,14 @@ export const jobManagement: BuildModule = {
               '① THEY ARE NOT FILTERED OUT. Skills rank, they never exclude. That candidate still scores on desired role, category, years, location and salary — 96 of the 100 points do not involve skills at all, so a candidate we could extract nothing from is still ranked on the seven signals we CAN read. They rank lower; they do not disappear.',
               '② `skill_relation` ALREADY EXISTS in the client’s database — skill↔skill edges, currently 0 rows. A few dozen hand-written edges (Python → Data Analysis, n8n → Automation) give partial credit for a neighbouring skill immediately, with no new table and no model.',
               '③ THE UNMATCHED-TERM QUEUE IS THE DISCOVERY MECHANISM. When 200 candidates type “n8n” and it is not in the list, that queue is what tells the taxonomy owner to add it. An emerging skill is invisible until someone tries to type it — which is exactly why the queue has to be staffed.',
-              'ONLY 26% OF ROLES HAVE SKILLS TODAY — 122 of 477, in IT, Marketing, Design, HR and Planning. The other 16 categories (service, construction, accounting, driving, education, medical…) have none, so for those candidates and those jobs the score runs on role, location and years. On the feed that costs those jobs 4 points and nothing else — which is exactly why skills are weighted at 4 and not at 20. The points are not redistributed (section 13); there are simply too few of them to distort anything.',
-              'ON THE EMPLOYER BOARD IT IS NOT FINE FOR THE CANDIDATE, so one rule protects them THERE — and only there, because that screen ranks people against each other. If a CV’s extracted skill terms did not resolve to the taxonomy, score skills as UNKNOWN and redistribute — never as “no evidence”. (On the jobseeker’s own feed this does not arise: a gap in their CV costs the same 4 points against every job, so no order moves. Section 13.) A chef whose trade has no vocabulary in our list must not rank as though they submitted a blank CV. Our data gap is not their fault, and the unmatched-term queue already tells us which case it is.',
+              'ONLY 26% OF ROLES HAVE SKILLS TODAY — 122 of 477, in IT, Marketing, Design, HR and Planning. The other 16 categories (service, construction, accounting, driving, education, medical…) have none, so for those candidates and those jobs the score runs on role, location and years. On the feed that costs those jobs 4 points and nothing else — which is exactly why skills are weighted at 4 and not at 20. The points are not redistributed (section 15); there are simply too few of them to distort anything.',
+              'ON THE EMPLOYER BOARD IT IS NOT FINE FOR THE CANDIDATE, so one rule protects them THERE — and only there, because that screen ranks people against each other. If a CV’s extracted skill terms did not resolve to the taxonomy, score skills as UNKNOWN and redistribute — never as “no evidence”. (On the jobseeker’s own feed this does not arise: a gap in their CV costs the same 4 points against every job, so no order moves. Section 15.) A chef whose trade has no vocabulary in our list must not rank as though they submitted a blank CV. Our data gap is not their fault, and the unmatched-term queue already tells us which case it is.',
               'AND NEVER SHOW THEM AN EMPTY PICKER — a candidate in an unauthored category gets no suggestions and almost no autocomplete hits. Either hide the skills step, or say what is happening: “Chúng tôi đang xây dựng danh sách kỹ năng cho ngành của bạn — hãy nhập kỹ năng bạn dùng, chúng tôi sẽ thêm vào.”',
               'PHASE 2, no UI change: replace exact skill matching with embedding nearness, so React ↔ Next.js and Python ↔ Pandas score partial credit automatically instead of waiting for someone to write the edge. The screen consumes one number and a reason list either way.',
             ],
           },
           {
-            label: '13 · A signal with nothing to compare scores 0 — we never re-scale',
+            label: '15 · A signal with nothing to compare scores 0 — we never re-scale',
             text: 'This is the most important rule on the page.\n\nA signal with nothing to compare scores **0**, and the total is still out of 100. The points are never stretched to fill the gap.\n\nVN — Tiêu chí nào không so sánh được thì 0 điểm. KHÔNG chia lại điểm. Tổng luôn trên thang 100.',
             table: {
               cols: ['Signal', 'Job A — states everything', 'Job B — no experience / industry / education'],
@@ -1310,12 +1347,12 @@ export const jobManagement: BuildModule = {
               'READ THE TWO COLUMNS AGAIN. Both jobs earned exactly **53 points** from exactly the same comparisons, so they must score the same. Stretching the points to fill the gap would put Job B 15 points ahead — not for being a better match, but for giving itself fewer chances to lose. That is why we do not do it: it REWARDS A JOB FOR STAYING SILENT.',
               'WHO THIS ACTUALLY AFFECTS. Every field on the job form is required, so a job created on the site always states everything. This rule exists for **migrated jobs**, which may arrive with gaps. Without it those migrated jobs float to the top of every feed — quietly, with nothing broken, nothing logged and nobody able to see why.',
               'A FIELD THE **JOBSEEKER** LEFT BLANK IS SCORED 0 TOO, and that costs nothing. A blank in their profile takes the same points off EVERY job, so the order does not move at all — and since they never see the number, a lower total is not something they can notice.',
-              '⚠ THE EMPLOYER BOARD IS THE EXCEPTION, because there the number is printed next to a person. Two rules hold only on that screen. ① When FEWER THAN HALF the signals could be compared, show no percentage at all rather than a low one — an applicant with a thin profile must not read as a weak candidate. The back end already has a value meaning “nothing measurable”; this is what it is for. ② Keep the protection in section 12: when a CV’s skill terms failed to RESOLVE against our list — a chef, a driver, a site foreman — skills count as unknown and are redistributed, never scored as “no evidence”. Our data gap is not their fault.',
+              '⚠ THE EMPLOYER BOARD IS THE EXCEPTION, because there the number is printed next to a person. Two rules hold only on that screen. ① When FEWER THAN HALF the signals could be compared, show no percentage at all rather than a low one — an applicant with a thin profile must not read as a weak candidate. The back end already has a value meaning “nothing measurable”; this is what it is for. ② Keep the protection in section 14: when a CV’s skill terms failed to RESOLVE against our list — a chef, a driver, a site foreman — skills count as unknown and are redistributed, never scored as “no evidence”. Our data gap is not their fault.',
               'WHY THE EXCEPTION IS SAFE THERE BUT NOT HERE. On the feed we rank JOBS for one person, so a gap in the person affects every card equally and changes no order. On the employer board we rank PEOPLE for one job, so a gap in a person moves them against the others — which is exactly when re-scaling earns its keep.',
             ],
           },
           {
-            label: '14 · If the jobseeker has not filled in everything',
+            label: '16 · If the jobseeker has not filled in everything',
             text: 'Not everyone completes their profile. The calculation does not change — there is simply less to compare, so the results are less accurate.\n\nTHE HEADING DOES NOT CHANGE EITHER. It is always **“Gợi ý việc làm”**. One heading, on every surface, for every jobseeker.\n\nVN — Luôn dùng một tiêu đề duy nhất: “Gợi ý việc làm”. Không đổi theo lượng thông tin.',
             table: {
               cols: ['The jobseeker has…', 'What the feed can judge', 'What carries the weight'],
@@ -1335,7 +1372,7 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '15 · SPECIAL CASE — the jobseeker has more than one CV',
+            label: '17 · SPECIAL CASE — the jobseeker has more than one CV',
             text: 'A jobseeker can have up to 3 CVs. One of them can be marked “let employers find me by this CV”. That mark is ONLY about employer search. It has nothing to do with recommendations.',
             table: {
               cols: ['Situation', 'What the recommendation feed does'],
@@ -1343,7 +1380,7 @@ export const jobManagement: BuildModule = {
                 ['3 CVs, one is marked for employer search', 'Uses ALL 3 CVs. The mark is ignored here.'],
                 ['3 CVs, none is marked', 'Uses all 3 CVs. Works exactly the same — nothing is missing.'],
                 ['1 CV', 'Uses that CV.'],
-                ['No CV at all', 'Uses the profile only. See section 14, first or second row.'],
+                ['No CV at all', 'Uses the profile only. See section 16, first or second row.'],
                 ['Account is set to Hidden', 'Still gets recommendations. Hidden only stops EMPLOYERS from finding them.'],
               ],
             },
@@ -1357,13 +1394,13 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '16 · Where recommended jobs appear',
+            label: '18 · Where recommended jobs appear',
             text: 'Four places. Two of them are attached to a specific job, which changes the calculation slightly.',
             table: {
               cols: ['Page', 'Who sees it', 'Based on'],
               rows: [
                 ['After onboarding', 'Only users who just answered the onboarding questions', 'Their new work preference. This is the reward for filling in the form.'],
-                ['Homepage section', 'Everyone (all 4 cases in section 14)', 'The jobseeker’s profile + CVs'],
+                ['Homepage section', 'Everyone (all 4 cases in section 16)', 'The jobseeker’s profile + CVs'],
                 ['Job detail page', 'Everyone, including visitors who are NOT signed in', 'Mostly the job on screen — a different calculation, specced in **Relevant jobs**'],
                 ['After applying to a job', 'Everyone', 'Mostly the job just applied to — the **Relevant jobs** calculation, minus jobs already applied to'],
               ],
@@ -1374,7 +1411,7 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '17 · MY DASHBOARD ① — “Việc làm phù hợp với bạn” (the score rail)',
+            label: '19 · MY DASHBOARD ① — “Việc làm phù hợp với bạn” (the score rail)',
             text: 'The signed-in dashboard carries TWO job sections, and they must answer two different questions — otherwise they return overlapping lists and the page reads as one rail printed twice. Neither introduces a new ranking model: this one is the match score above, section ② is the [Relevant jobs](/m/job-management/relevant-jobs-matched-to-another-job) job↔job sort. Anything wanting a third model has to justify why the two we have are wrong.',
             items: [
               'SOURCE — the match score, computed against the jobseeker’s PROFILE plus EVERY CV they hold, best score per job. Not the searchable CV specifically.',
@@ -1383,14 +1420,14 @@ export const jobManagement: BuildModule = {
               'ORDER — drawn from the pool of 80 in the seeded shuffle, like every surface except Batch apply (section 2). The score picks WHICH 80; it does not rank this rail. Ties inside the pool cut break on profile completeness, then last-active, then CV updated-at. Recency never enters the score itself.',
               'THE CARD SHOWS THE SCORE PLUS ONE REASON LINE — “Cùng Hồ Chí Minh · Frontend Engineer”. Never the bare number: a percentage with no reason invites exactly one question and answers none of it.',
               '★ THERE IS A MINIMUM SCORE, and it is not optional. The heading is a PROMISE — “việc làm phù hợp” — and a 28% match printed under it breaks that promise in a way the user can check for themselves. Start at a provisional floor of 50 and SHOW FEWER THAN 3 RATHER THAN PAD. TopDev’s own recommendation engine lists the absence of this threshold as a known defect — a very weak match is still shown as a match whenever nothing better exists. Do not inherit it.',
-              'THE FLOOR IS A MEASUREMENT, NOT A GUESS — the recommendation log required in section 20 is what sets it: the score band at which application rate stops falling is the real threshold. 50 is a placeholder until that data exists.',
+              'THE FLOOR IS A MEASUREMENT, NOT A GUESS — the recommendation log required in section 22 is what sets it: the score band at which application rate stops falling is the real threshold. 50 is a placeholder until that data exists.',
               '★ COLD START — IT WORKS WITH NO CV AT ALL, and this is the assumption most likely to be got wrong. Work preference is collected at ONBOARDING and is worth 63 of 100 (location + work type 26, role + category 23, salary 9, industry 5); with education and years, a candidate holding ZERO CVs is still scored on about 94 points. Only skills (4) and language (2) need a CV — so “no CV → no recommendations” is false, and the empty state for it must not be built.',
               'IF THEY HAVE NOT DONE ONBOARDING EITHER — show the onboarding prompt, NOT jobs. Newest-jobs padding under a heading that says “phù hợp với bạn” is a claim the user can disprove at a glance, and it teaches them to distrust the rail permanently.',
               'COUNT — 3 cards visible, up to about 9 behind a horizontal scroll.',
             ],
           },
           {
-            label: '18 · MY DASHBOARD ② — “Tương tự việc bạn vừa xem” (the seeded rail)',
+            label: '20 · MY DASHBOARD ② — “Tương tự việc bạn vừa xem” (the seeded rail)',
             text: 'The behaviour rail. It answers a different question from ① — “what else is like the thing I am weighing up right now?” — and it reuses the job↔job list wholesale rather than scoring anything.',
             items: [
               'SOURCE — the Relevant jobs job↔job list for a job the candidate recently VIEWED. That list is already computed and cached per job, so this rail costs one cache lookup and no per-user ranking at all.',
@@ -1404,7 +1441,7 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '19 · MY DASHBOARD — the rules that connect the two sections',
+            label: '21 · MY DASHBOARD — the rules that connect the two sections',
             items: [
               '★ SECTION ② CLAIMS ITS JOBS FIRST, and this is counter-intuitive enough to be worth stating plainly. Its pool is tiny — one category, one seed — while ① draws on the whole board. If ① picked first it could strip ②’s best cards and push it under its 3-card minimum, hiding the rail entirely, while ① backfills without noticing anything was taken. THE NARROW RAIL ALWAYS CLAIMS BEFORE THE WIDE ONE.',
               'ONE JOB APPEARS IN ONE SECTION ONLY. Without this the same card repeats down the page, and a dashboard that repeats itself reads as broken rather than as helpful.',
@@ -1414,7 +1451,7 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            label: '20 · The log — the one thing we must build so the score can be improved',
+            label: '22 · The log — the one thing we must build so the score can be improved',
             text: 'The point values in section 7 are our estimate. Some of them are wrong. This section is about how we find out WHICH.\n\nDECIDED: there is **no admin screen for the weights**. They live in the code, as a numbered version. Changing one is a code change, reviewed like any other.\n\nVN — Không làm màn hình admin cho trọng số; trọng số nằm trong code và có đánh số version. Nhưng BẮT BUỘC phải có log.',
             table: {
               cols: ['What', 'Build it?', 'Why'],
