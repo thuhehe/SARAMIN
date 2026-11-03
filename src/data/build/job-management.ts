@@ -1244,7 +1244,7 @@ export const jobManagement: BuildModule = {
             label: '11 · The same three jobs, scored',
             text: 'Three jobs survive the filter. Every number below comes straight off the table in section 8.',
             table: {
-              cols: ['Signal', '**A** · Content Marketing · Lazada · HCMC', '**B** · Chuyên viên MKT · Lazada · Bình Dương', '**C** · Marketing Executive · VNG · HCMC'],
+              cols: ['Signal', 'A · Content Marketing · Lazada · HCMC', 'B · Chuyên viên MKT · Lazada · Bình Dương', 'C · Marketing Executive · VNG · HCMC'],
               rows: [
                 ['Occupation & role · 42', '**34**\nright role, but we inferred it', '**34**\nright role, inferred', '**42**\nthe role she TYPED'],
                 ['Location · 20', '**20**\nHCMC, declared', '**16**\nBình Dương, inferred → 80%', '**20**\nHCMC, declared'],
