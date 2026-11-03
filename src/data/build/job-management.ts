@@ -1884,7 +1884,7 @@ export const jobManagement: BuildModule = {
             label: '2 · Worked example — the full arithmetic',
             text: 'The reader is on: **Senior Frontend Engineer · FPT Software · Hồ Chí Minh · Senior · IT/Software · 30–45 triệu · skills: React, TypeScript, Git, Docker, AWS** (5 skills — the denominator for the skills signal).',
             table: {
-              cols: ['Candidate posting', 'Taxonomy 45', 'Level 15', 'Loc 15', 'Salary 10', 'Skills 8', 'Ind 4', 'Type 3', '**Total**'],
+              cols: ['Candidate posting', 'Taxonomy 45', 'Level 15', 'Loc 15', 'Salary 10', 'Skills 8', 'Ind 4', 'Type 3', 'Total'],
               rows: [
                 ['React Developer · Tiki · HCM · Senior · 32–48tr · shares React, TypeScript, Git', 'same role **45**', '**15**', '**15**', '**10**', '3/5 → **4.8**', '**4**', '**3**', '**96.8 → 97**'],
                 ['Backend Engineer · Shopee · HCM · Senior · 30–45tr · shares Docker', 'same group **32**', '**15**', '**15**', '**10**', '1/5 → **1.6**', '**4**', '**3**', '**80.6 → 81**'],
