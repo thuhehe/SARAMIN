@@ -1062,9 +1062,9 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'SHUFFLE WITH A SEED, NOT AT RANDOM. Use the jobseeker’s id plus today’s date as the seed. Then the order is **stable all day** — they can find the card they saw this morning — and **different tomorrow**. A truly random order means they can never go back to a job they half-remember, and we can never reproduce what they were shown when they complain.',
+              'SEEDED SHUFFLE — REQUIRED. Never call a plain random function. The seed is the jobseeker’s id plus today’s date. Then the order is **stable all day** — they can find the card they saw this morning — and **different tomorrow**. A truly random order means they can never go back to a job they half-remember, and we can never reproduce what they were shown when they complain.',
               'NO PER-COMPANY SCORING RULE. We do not compare companies or reserve slots for them. The pool is the 80 best jobs for this person, full stop.',
-              'ONE CHEAP GUARD WORTH ADDING: within a single row, do not show the same company twice. Shuffling 80 can still deal three FPT Software cards side by side, and a row that looks like one employer’s advertisement is the thing the shuffle was supposed to prevent. This is a de-duplication pass on the row being rendered, not a score.',
+              'ONE COMPANY PER ROW — REQUIRED. Within a single rendered row, never show the same company twice: take the first card from that company, skip the rest, and pull the next card from the pool instead. Shuffling 80 can still deal three FPT Software cards side by side, and a row that reads as one employer’s advertisement is exactly what the shuffle exists to prevent. This is a de-duplication pass while rendering the row — it compares company ids, it does not compare scores and it reserves nothing.',
               'REMOVE DUPLICATE POSTINGS BEFORE THE 80 IS CUT. Same company + same job title + same location = one job, keep the newest. Otherwise one job posted twice takes two of the 80 places.',
               '80 IS A SETTING, not a fixed rule. It wants to be large enough that four surfaces do not run out of distinct cards, and small enough that everything in it is genuinely a good match. Start at 80 and let the log say whether it should move.',
             ],
