@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """docs/tasks/*.md → the HTML the BB PM editor keeps. Usage: python3 -I docs/tasks/_md2html.py docs/tasks/<ticket>.md
 The H1 is the ticket title and is dropped; everything else becomes <h2>/<p>/<ul><li><p>/<table><tr><th|td><p>/<a>/<img>/<pre><code>.
-Send the output as `description` through the PM MCP update_issue — a Markdown description is mangled the first time someone saves it in the editor."""import re, sys, html, pathlib
+Send the output as `description` through the PM MCP update_issue — a Markdown description is mangled the first time someone saves it in the editor."""
+import re, sys, html, pathlib
 
 def inline(t: str) -> str:
     t = html.escape(t, quote=False)
