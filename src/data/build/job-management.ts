@@ -2136,13 +2136,33 @@ export const jobManagement: BuildModule = {
                 ['2 · Prefer', 'Candidates whose desired industry or job category matches **the company’s own industry** (`company.industry_id`) come first. Even with no job posted, we know what business they are in.'],
                 ['3 · Sort', 'Most recently updated CV first — a fresh CV means someone actually looking.'],
                 ['4 · Spread', 'At most ONE card per job category, or the row comes out as three QA testers.'],
-                ['5 · Rotate', 'Change the set daily. Otherwise a handful of people who edit their CV often take every slot and the recruiter sees the same three faces all week.'],
+                ['5 · Rotate', 'Daily, by the general rule in section 5b — it is not a fallback-only behaviour.'],
               ],
             },
             items: [
               'NO “TOP PICK!” BADGE IN THIS MODE, and no percentage. There is no score, so a confidence label would be a lie. The badge belongs only to section 1–4.',
               'SAY WHY THEY ARE THERE — one quiet line under the heading: “Hồ sơ vừa cập nhật trong ngành Truyền thông – Giải trí”. One sentence is the whole difference between a suggestion and a random list.',
               'DO NOT USE YEARS OF EXPERIENCE AS A QUALITY SIGNAL, and never age or gender. More years is not better, it is only different, and it depends entirely on the role.',
+            ],
+          },
+          {
+            label: '5b · The list changes every day — a general rule, in BOTH modes',
+            text: 'A recruiter opens Home most mornings. If the same three faces sit there all week the section becomes wallpaper, and the day it finally has someone worth seeing, nobody looks.\n\nTHE RULE, and it is the same shape the jobseeker feed already uses: **the score picks the POOL, a shuffle seeded on today’s date picks who is shown from it.** This applies to the scored mode AND to “Hồ sơ mới cập nhật” — it is not a fallback-only trick.\n\nVN — Điểm chọn ra pool, còn hôm nay hiện ai thì do phép xáo trộn gieo theo ngày quyết định. Áp dụng cho cả hai chế độ.',
+            table: {
+              cols: ['', 'Scored mode', '“Hồ sơ mới cập nhật”'],
+              rows: [
+                ['The pool', 'Everyone above the 40-point floor, capped at the **top 30**', 'Everyone who passes section 6, ordered by CV recency, capped at the **top 30**'],
+                ['Who shows today', 'A shuffle of that pool, seeded on **company id + today’s date**', 'Same mechanism, same seed'],
+                ['Reload at lunch', 'The same people — the seed has not changed', 'The same people'],
+                ['Tomorrow', 'A different draw from the same pool', 'A different draw'],
+              ],
+            },
+            items: [
+              'SEEDED, NEVER RANDOM. Two reasons, both practical: a recruiter who saw someone this morning must be able to find them again this afternoon, and when they ask “who did you show us on Tuesday?” we have to be able to answer. A random shuffle makes both impossible. Seed it on company id + date and the answer is reproducible forever.',
+              'INSIDE THE CHOSEN SET, STILL ORDER BY SCORE. The shuffle decides WHO appears; it does not decide the order they appear in. This is the one place this feature differs from the jobseeker rail, and deliberately: that rail is a long row where position matters little, this is three cards where the best match should read first. Daily variety and best-first are not in conflict — they are answering different questions.',
+              'IT COMPOSES WITH THE IGNORE RULE, and the order matters: drop anyone shown 3 times without a click (section 3) FIRST, then shuffle what is left. Shuffling first would keep re-dealing people the recruiter has already passed over.',
+              'A POOL SMALLER THAN THE ROW IS NOT A BUG. If only two candidates clear the floor, the row shows two, every day, until the data changes. Do not pad it from below the floor to fill the row — that is the exact failure the floor exists to prevent.',
+              'WHY 30 AND NOT 80. The jobseeker feed keeps 80 because four different surfaces draw from it. Here there is one surface showing three cards, so 30 gives roughly ten days of variety before anyone repeats, without reaching so far down the ranking that the row stops being a recommendation.',
             ],
           },
           {
