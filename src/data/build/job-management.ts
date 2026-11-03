@@ -1118,7 +1118,7 @@ export const jobManagement: BuildModule = {
               'WHAT WE TAKE FROM EACH JOB THEY ACTED ON: its **job role**, its **category**, its **city**. Nothing else — not the salary, not the company, not the skills.',
               'ONLY THE LAST 90 DAYS. What somebody looked at a year ago is not what they want now.',
               'KEEP AT MOST 3 OF EACH — top 3 roles, top 3 categories, top 3 cities, by how often they appear. Without a limit the set grows until it matches everything, and the feed stops being personal at all.',
-              'WORKED EXAMPLE. The jobseeker declared *Marketing · HCMC* in their profile. Over the last month they saved 2 accounting jobs and opened 5 more. **Kế toán** now joins their role set, so accounting jobs in HCMC start appearing beside the marketing ones — and we never had to ask them to go back and edit their profile.',
+              'WORKED EXAMPLE. The jobseeker declared **Marketing · HCMC** in their profile. Over the last month they saved 2 accounting jobs and opened 5 more. **Kế toán** now joins their role set, so accounting jobs in HCMC start appearing beside the marketing ones — and we never had to ask them to go back and edit their profile.',
               'DO **NOT** ALSO GIVE BONUS POINTS FOR BEHAVIOUR. That would count the same evidence twice — once by widening the set, once by scoring it. Behaviour changes **which jobs are considered**, never **how a job is scored**.',
               'ONE MORE USE, AND ONLY ONE: when two jobs have the SAME score, show the one they have not opened yet first. A job they already looked at and walked away from should not take the top slot twice.',
               'NOTHING HERE NEEDS A NEW TABLE. `job_view`, `scrap` and `job_application` all exist today and the feed reads none of them. ⚠ One limit to design around: `job_view` keeps ONE row per (jobseeker, job) holding the LAST view time — so we can count how many DIFFERENT jobs they opened, never how many times they opened one.',
@@ -1224,14 +1224,14 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '10 · Worked example — one jobseeker, three jobs, end to end',
-            text: '**Linh** declared *Marketing Executive · Marketing · Hồ Chí Minh · 20 triệu*. Her Profile says 3 years. Her CV carries *Facebook Ads · Google Analytics · Content Writing*, a Bachelor’s degree, and a previous job at an e-commerce company. **She never filled in a desired industry.**\n\nOver the last 90 days she applied to one job, saved one, and opened six.',
+            text: '**Linh** declared **Marketing Executive · Marketing · Hồ Chí Minh · 20 triệu**. Her Profile says 3 years. Her CV carries *Facebook Ads · Google Analytics · Content Writing*, a Bachelor’s degree, and a previous job at an e-commerce company. **She never filled in a desired industry.**\n\nOver the last 90 days she applied to one job, saved one, and opened six.',
             table: {
               cols: ['What we know about Linh', 'She typed it', 'We worked it out'],
               rows: [
-                ['Role', 'Marketing Executive', 'Chuyên viên Marketing *(she applied)*\nContent Marketing *(she saved)*'],
+                ['Role', 'Marketing Executive', 'Chuyên viên Marketing (she applied)\nContent Marketing (she saved)'],
                 ['Category', 'Marketing', '—'],
-                ['City', 'Hồ Chí Minh', 'Bình Dương *(she opened 4 jobs there)*'],
-                ['Industry', '*(blank)*', 'Thương mại điện tử *(the “if empty” line — read off her CV)*'],
+                ['City', 'Hồ Chí Minh', 'Bình Dương (she opened 4 jobs there)'],
+                ['Industry', '— nothing —', 'Thương mại điện tử (the “if empty” line — read off her CV)'],
                 ['Experience · Salary · Education · Skills', '3 years · 20 triệu · Bachelor · 3 skills', '—'],
                 ['Thương mại điện tử — opened only **2** jobs', '—', '❌ Not counted. Opening needs **3 different** jobs.'],
               ],
@@ -1257,7 +1257,7 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'JOB C KEEPS 42 OF ITS 75 POINTS FROM ONE FACT — *Marketing Executive* is the role Linh TYPED. The pay is 25% below what she asked, the industry is wrong and not one skill matches, and it still lands at 75. That is what putting 42 points on the occupation axis buys: what she SAYS she wants outranks almost everything else.',
+              'JOB C KEEPS 42 OF ITS 75 POINTS FROM ONE FACT — **Marketing Executive** is the role Linh TYPED. The pay is 25% below what she asked, the industry is wrong and not one skill matches, and it still lands at 75. That is what putting 42 points on the occupation axis buys: what she SAYS she wants outranks almost everything else.',
               'JOBS A AND B SCORE 34 ON THE SAME AXIS, not 42 — their roles are right, but Linh never typed them. We read them off a job she applied to and a job she saved. Inferred, so 80%.',
               'JOB B IS ONLY IN THE LIST BECAUSE OF BEHAVIOUR. Bình Dương appears nowhere in her profile; it is there because she opened four jobs in that province. And because it is inferred, the location signal pays **16**, not 20.',
               'JOB B LOSES 3 POINTS FOR A FIELD THE EMPLOYER LEFT BLANK, and they are NOT handed to the other signals. Spread them and B would read 84 ÷ 97 = **87%** and beat A — a higher score for stating less. Section 15.',
@@ -1266,7 +1266,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '12 · What Linh actually sees',
-            text: 'All three jobs go into her pool of 80. The job she applied to — *Chuyên viên Marketing · Shopee* — does not.',
+            text: 'All three jobs go into her pool of 80. The job she applied to — **Chuyên viên Marketing · Shopee** — does not.',
             table: {
               cols: ['Surface', 'What she sees'],
               rows: [
@@ -1340,7 +1340,7 @@ export const jobManagement: BuildModule = {
                 ['Education', '0 / 3 — stated, did not match', '— not stated'],
                 ['**Points actually earned**', '**53**', '**53**'],
                 ['**The rule — missing scores 0**', '53 / 100 = **53%**', '53 / 100 = **53%**'],
-                ['*If the points were stretched instead*', '*53 / 100 = 53%*', '*53 / 78 = **68%** — wrong*'],
+                ['If the points were stretched instead', '53 / 100 = 53%', '53 / 78 = **68%** — wrong'],
               ],
             },
             items: [
