@@ -2151,24 +2151,22 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'THE CARD IS THE EXISTING ONE from the Figma — years of experience, latest company, skill chips. The only additions this feature makes are the heading, the optional “Top pick!” badge, and “Lưu vào thư mục…”.',
-              'THE KOREAN CHIPS IN THE FIGMA (응답률, 평균 근속) ARE NOT PART OF THIS TICKET. We hold neither a response rate nor an average tenure for a VN candidate, so they must not ship as empty chips.',
+              'WHAT THE CARD SHOWS IS NOT THIS PAGE’S BUSINESS. This feature decides WHICH candidates appear and in what order; the card layout is the Figma’s. Nothing here adds, removes or renames a field on it.',
             ],
           },
           {
             label: '7 · Two decisions this feature is waiting on — SRM-1345',
-            text: 'Both were raised on 2026-11-03 and posted to the ticket. Neither blocks the retrieve step or the scoring itself — both block the NUMBER a user ends up seeing.',
-            warn: 'Decision 2 must not reach build unanswered. `ApplicantMatch` is shared with the employer’s applicant list, and a lightly-filled posting there will print 14% beside every applicant.',
+            text: 'The selection logic in sections 1–6 is complete and buildable. What follows is one closed decision and one knock-on for a different screen — neither holds this feature up.',
+            warn: 'Whoever changes `ApplicantMatch` must tell the Applicants screen’s owner. The ranking there does not move — every applicant to one job is divided by the same number — but the printed percentage drops on a lightly-filled posting.',
             table: {
               cols: ['#', 'Decision', 'Status'],
               rows: [
                 ['1', 'The **40-point floor** in section 4.', '**Confirmed 2026-11-03** — 40 it is, held as a setting beside the weights.'],
-                ['2', 'What the **Applicants board** prints once scoring is absolute: hide the % badge below a floor, or print “3/7 tiêu chí khớp” instead of a percentage.', 'Waiting on the BA'],
+                ['2', 'The **Applicants board** shares `ApplicantMatch`, so absolute scoring changes the percentage it prints on a thin posting. Its ranking is unaffected.', 'A consequence for whoever builds that screen — **not a blocker here**, and not a question for this ticket.'],
               ],
             },
             items: [
-              'WHY DECISION 2 IS NOT OPTIONAL. Absolute scoring does NOT change the order on the applicant board — every applicant to one job is divided by the same number, so the ranking comes out identical either way. It changes only the printed number, and on a thin posting that number drops hard. Leaving it unstated does not avoid the decision; it ships the worse answer by default.',
-              'NEITHER IS A REASON TO HOLD THE REST. Sections 1–3 and 5–6 are complete and buildable. Only the floor value and the applicant-board badge are open.',
+              'THE ORDER ON THE APPLICANT BOARD DOES NOT MOVE. Every applicant to one job is divided by the same number, so absolute scoring ranks them identically. Only the printed percentage changes, and only on a posting that states little.',
               'TICKET: **SRM-1345** (sub-task · reviewer Thu). The three-step logic was posted there as a comment on 2026-11-03, and that comment links back to this page.',
             ],
           },
