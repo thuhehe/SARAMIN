@@ -38,13 +38,13 @@ LIMIT 500
 
 ### Bước 3 — Chấm điểm: CÙNG bảng với Recommended jobs, thang 100, tin không khai = 0
 
-> Requirement: [mục 3](https://saramin-eta.vercel.app/m/job-management/recommended-candidates-matched-to-an-employer-s-job#3-information-the-job-does-not-state-is-worth-0-it-is-not-thrown-away) · thang điểm chi tiết ở [Recommended jobs mục 8](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-every-signal-where-it-comes-from-and-what-it-scores) — **không chép lại, một bảng một chỗ**
+> Requirement: [mục 3](https://saramin-eta.vercel.app/m/job-management/recommended-candidates-matched-to-an-employer-s-job#3-information-the-job-does-not-state-is-worth-0-it-is-not-thrown-away) · thang điểm chi tiết ở [Recommended jobs mục 7](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#7-how-the-score-is-calculated) — **không chép lại, một bảng một chỗ**
 
 | Tín hiệu | Điểm | Lấy từ tin | So với ứng viên — chỉ dữ liệu **tự khai** | Tin nháp chỉ có địa điểm |
 |---|---|---|---|---|
 | Vị trí & role | 42 | `job_role_link` + category | desired role (≤3) + desired category; cả hai trống → job title gần nhất trên CV (suy ra → 34). **Không đọc hành vi** | 0 |
 | Địa điểm & hình thức | 20 | tỉnh + job type | desired location + work type; trống → tỉnh trên Profile (suy ra → 16) | **20** |
-| Kinh nghiệm | 14 | dải năm, không có thì cấp bậc (bảng năm → bậc 18d) | years_of_experience; trống → tính từ CV | 0 |
+| Kinh nghiệm | 14 | dải năm, không có thì cấp bậc (bảng năm → bậc 12d) | years_of_experience; trống → tính từ CV | 0 |
 | Lương | 12 | salary_min/max + currency | desired_salary + currency — quy đổi theo tỷ giá admin trước | 0 |
 | Ngành | 5 | `company.industry_id` | desired industry; trống → ngành các công ty trên CV (→ 4) | 0 |
 | Kỹ năng | 4 | kỹ năng của tin | kỹ năng trong CV | 0 |
@@ -52,7 +52,7 @@ LIMIT 500
 | **Tổng** | **100** | | | **20** |
 
 - **Bỏ renormalise** của `ApplicantMatch` hiện tại. Tín hiệu tin không khai = 0, luôn trên thang 100. Tin chỉ có địa điểm → trần 20/100 — không cần gate, con số tự nói thật.
-- Thang từng tín hiệu (cùng role 42 / cùng group 30 / cùng category 17; trong dải năm 14, lệch 1 bậc 7; …) **đúng như Recommended jobs mục 8**. Giá trị suy ra ăn 80%.
+- Thang từng tín hiệu (cùng role 42 / cùng group 30 / cùng category 17; trong dải năm 14, lệch 1 bậc 7; …) **đúng như Recommended jobs mục 7**. Giá trị suy ra ăn 80%.
 - **Chỉ dữ liệu tự khai + CV.** Không dùng tập role/tỉnh mở rộng từ hành vi của ứng viên — đó là dữ liệu cá nhân, không được join sang phía NTD.
 - Khác tiền tệ → quy đổi bằng `exchange_rate` admin nhập; không có tỷ giá → lương 0 điểm.
 
@@ -94,4 +94,4 @@ Pool:  giữ tối đa 30 người cao điểm nhất
 
 ---
 
-**Hệ quả cần báo cho người làm màn hình Applicants:** màn hình đó dùng chung `ApplicantMatch`. Đổi trọng số + chấm tuyệt đối **không đổi thứ tự** bên đó (mọi ứng viên của cùng một tin chia cho cùng một số), chỉ làm **% in ra thấp đi** trên tin điền sơ sài. Luật in % đã có ở [Recommended jobs mục 15](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#15-a-signal-with-nothing-to-compare-scores-0-we-never-re-scale): dưới một nửa số tín hiệu so được → không in %; kỹ năng CV không resolve → tính là chưa biết. Không chặn ticket này.
+**Hệ quả cần báo cho người làm màn hình Applicants:** màn hình đó dùng chung `ApplicantMatch`. Đổi trọng số + chấm tuyệt đối **không đổi thứ tự** bên đó (mọi ứng viên của cùng một tin chia cho cùng một số), chỉ làm **% in ra thấp đi** trên tin điền sơ sài. Luật in % đã có ở [Recommended jobs mục 9](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#9-a-signal-with-nothing-to-compare-scores-0-we-never-re-scale): dưới một nửa số tín hiệu so được → không in %; kỹ năng CV không resolve → tính là chưa biết. Không chặn ticket này.

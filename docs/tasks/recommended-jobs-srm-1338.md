@@ -20,13 +20,13 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T1 · Trọng số mới và cách chấm
 
-> Requirement: [mục 7](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#7-how-the-score-is-calculated) · [mục 8](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-every-signal-where-it-comes-from-and-what-it-scores) · [mục 9](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#9-the-rules-behind-that-scoring-table) · [mục 15](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#15-a-signal-with-nothing-to-compare-scores-0-we-never-re-scale)
+> Requirement: [mục 7](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#7-how-the-score-is-calculated) · [mục 8 — ví dụ Linh](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-worked-example-linh-and-three-jobs-signal-by-signal) · [mục 9](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#9-a-signal-with-nothing-to-compare-scores-0-we-never-re-scale)
 
 | Tín hiệu | Điểm | So gì |
 |---|---|---|
 | Vị trí & role | **42** | MỘT tín hiệu, thang Category › Group › Role: cùng role 42 · cùng group 30 · cùng category 17 · khác 0. Giá trị suy ra (hành vi / "if empty") ăn 80% → 34 / 24 / 14 |
 | Địa điểm & hình thức | **20** | Đúng tỉnh + đúng hình thức 20 (suy ra 16) · tin remote 20 · đúng tỉnh khác hình thức 14 · tỉnh lân cận 10 · khác 0 |
-| Kinh nghiệm | **14** | Trong dải 14 · tin "không yêu cầu" 14 · thừa ≤2 năm 10 · thiếu ≤1 năm 7 · thừa >2 năm 5 · thiếu >1 năm 0. **Tin không khai dải năm nhưng khai cấp bậc** → quy đổi năm → bậc theo bảng 18d: cùng bậc 14 · lệch 1 bậc 7 · còn lại 0 |
+| Kinh nghiệm | **14** | Trong dải 14 · tin "không yêu cầu" 14 · thừa ≤2 năm 10 · thiếu ≤1 năm 7 · thừa >2 năm 5 · thiếu >1 năm 0. **Tin không khai dải năm nhưng khai cấp bậc** → quy đổi năm → bậc theo bảng 12d: cùng bậc 14 · lệch 1 bậc 7 · còn lại 0 |
 | Lương | **12** | Trong dải hoặc dải cao hơn mong muốn 12 · đòi hơn ≤10% 8 · 10–20% 4 · một bên "Thỏa thuận" 6 · >20% 0. Khác tiền tệ → quy đổi theo tỷ giá admin; **không có tỷ giá → 0** |
 | Ngành | **5** | Trùng 5 (suy ra 4) · cùng cha 3 · khác 0 |
 | Kỹ năng | **4** | 4 × (khớp ÷ yêu cầu); skill ESSENTIAL tính đôi hai vế |
@@ -34,13 +34,13 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 **Checklist**
 - [ ] `matching_weight_version` thêm hàng v4 = 42/20/14/12/5/4/3, tổng 100. **Bỏ endpoint `GET/POST /api/admin/matching-settings` và tab admin** — trọng số là code có version, không phải setting
-- [ ] **Bỏ renormalise.** Tín hiệu không so được = 0, tổng luôn trên 100 (mục 15). Sửa luôn javadoc "signal leaves the calculation"
+- [ ] **Bỏ renormalise.** Tín hiệu không so được = 0, tổng luôn trên 100 (mục 9). Sửa luôn javadoc "signal leaves the calculation"
 - [ ] Role + category gộp thành MỘT tín hiệu 42 (bỏ cách "đúng role 20 / trúng category w/2" hiện tại). Thang 4 nấc viết sẵn; Group tính như Category cho tới SRM-1315
 - [ ] Giá trị **suy ra** (từ hành vi — T2, hoặc dòng "if empty") ăn 80% điểm, làm tròn. Giá trị ứng viên **tự khai** ăn đủ
-- [ ] Kinh nghiệm: giữ bậc thang cấp bậc của v3 nhưng theo bảng năm → bậc ở 18d (chung với SRM-1347), lệch 1 bậc = 7/14
+- [ ] Kinh nghiệm: giữ bậc thang cấp bậc của v3 nhưng theo bảng năm → bậc ở 12d (chung với SRM-1347), lệch 1 bậc = 7/14
 - [ ] "Thỏa thuận" là câu trả lời, ăn 6; ô lương **trống** ăn 0
 - [ ] Làm tròn **một lần** ở tổng
-- [ ] Nhiều CV: chấm từng CV, mỗi tin giữ điểm cao nhất (mục 17). Không gộp CV
+- [ ] Nhiều CV: chấm từng CV, mỗi tin giữ điểm cao nhất (mục 11). Không gộp CV
 - [ ] Bảng tỉnh lân cận (~10 cặp) trong master data; chưa có thì nấc 10 điểm = 0
 
 ---
@@ -85,7 +85,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T4 · API và tiêu đề
 
-> Requirement: [mục 16](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#16-if-the-jobseeker-has-not-filled-in-everything) · [mục 18](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18-where-recommended-jobs-appear)
+> Requirement: [mục 10](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#10-if-the-jobseeker-has-not-filled-in-everything) · [mục 12](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12-where-recommended-jobs-appear)
 
 **Checklist**
 - [ ] `GET /me/job-recommendations?surface&size&jobId` giữ đường dẫn. `size` tối đa 80
@@ -98,7 +98,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T5 · Onboarding — màn kết quả có HAI section
 
-> Requirement: [mục 18a](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18a-onboarding-results-two-sections-two-sources)
+> Requirement: [mục 12a](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12a-onboarding-results-two-sections-two-sources)
 
 | Section | Nguồn | Luật |
 |---|---|---|
@@ -118,7 +118,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T6 · Job detail — "Recommended jobs" dưới "Similar jobs"
 
-> Requirement: [mục 18](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18-where-recommended-jobs-appear)
+> Requirement: [mục 12](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12-where-recommended-jobs-appear)
 
 | Người đọc | Section "Similar jobs" | Section "Recommended jobs" |
 |---|---|---|
@@ -136,7 +136,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T7 · Batch apply — popup sau khi nộp đơn
 
-> Requirement: [mục 18f](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18f-batch-apply-the-after-apply-popup-itself)
+> Requirement: [mục 12f](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12f-batch-apply-the-after-apply-popup-itself)
 
 Đây là list quan trọng nhất: **không xáo trộn, luôn xếp điểm cao nhất lên đầu.** Popup lấy **feed này**, không lấy Similar jobs (chốt 2026-11-03 — SRM-1331 bỏ phần popup).
 
@@ -157,7 +157,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ## T8 · My dashboard — "Việc làm phù hợp với bạn"
 
-> Requirement: [mục 19](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#19-my-dashboard-viec-lam-phu-hop-voi-ban-the-score-rail)
+> Requirement: [mục 13](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#13-my-dashboard-viec-lam-phu-hop-voi-ban-the-score-rail)
 
 https://dev-saramin.saramin.vn/ho-so-ca-nhan
 
@@ -167,7 +167,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 - [ ] Thẻ: tiêu đề · công ty · job level · ngày · Apply · sao. **Không %, không chip lý do**
 - [ ] Không sàn điểm; pool < 6 → hiện ít hơn, không lấp
 - [ ] Tiêu đề cố định "Việc làm phù hợp với bạn". Chưa onboarding → banner nhắc ở trên vẫn là lời mời, dải vẫn render từ những gì profile có
-- [ ] Rail "Tương tự việc bạn vừa xem" (mục 20) **không làm** trong ticket này
+- [ ] Rail "Tương tự việc bạn vừa xem" (mục 14) **không làm** trong ticket này
 
 ![My dashboard](https://bb-project-management.s3.ap-southeast-1.amazonaws.com/attachments/b5c52123-6595-4648-9dd8-8ba3711938b8.png)
 
@@ -177,8 +177,8 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 
 | # | Thao tác | Kết quả mong đợi |
 |---|---|---|
-| 1 | Ví dụ Linh ở [mục 10–12](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#10-worked-example-one-jobseeker-three-jobs-end-to-end) | A = 90 · B = 84 · C = 75; Batch apply ra đúng A, B, C |
-| 2 | Tin không khai kinh nghiệm / ngành / học vấn (mục 15) | Mất đúng 14 + 5 + 3 điểm, các tín hiệu khác không đổi, **không** chia lại |
+| 1 | Ví dụ Linh ở [mục 8](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-worked-example-linh-and-three-jobs-signal-by-signal) | A = 90 · B = 84 · C = 75; Batch apply ra đúng A, B, C |
+| 2 | Tin không khai kinh nghiệm / ngành / học vấn (mục 9) | Mất đúng 14 + 5 + 3 điểm, các tín hiệu khác không đổi, **không** chia lại |
 | 3 | Ứng viên khai Marketing · HCM, 90 ngày qua lưu 2 tin kế toán | Tin kế toán ở HCM vào pool, chấm vị trí ở mức 34 (suy ra) |
 | 4 | Mở 2 tin e-commerce (chưa đủ 3) | Ngành e-commerce **không** vào tập hành vi |
 | 5 | Reload dashboard 3 lần trong ngày | Cùng 6 thẻ, cùng thứ tự. Ngày mai khác |
@@ -202,6 +202,6 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 - Số tin ở bước 3 / 4 của wizard → **SRM-1347** (đếm theo bộ lọc, không dùng engine này)
 - Section "Similar jobs" → **SRM-1331**
 - Recommended candidates phía NTD → **SRM-1345** (dùng lại bảng trọng số này, nên làm sau)
-- Rail "Tương tự việc bạn vừa xem" trên dashboard — mục 20, hoãn
+- Rail "Tương tự việc bạn vừa xem" trên dashboard — mục 14, hoãn
 - SEARCH strip và JOB_ALERT — không đổi hành vi, chỉ không được vỡ
 - Báo cáo đọc `recommendation_impression` — sau

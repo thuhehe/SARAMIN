@@ -1,7 +1,7 @@
 # [Feature][BE][FE][Jobseeker] Onboarding — con số "N tin phù hợp" ở bước 3 và 4
 
 **Requirement (nguồn sự thật):**
-https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic — mục 18b · 18c · 18d · 18e
+https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic — mục 12b · 12c · 12d · 12e
 
 > **Audit 2026-11-03:** logic không đổi, chỉ chốt bảng năm → bậc (T3) trên thang 9 bậc thật của `job_level`. Section 2 của màn kết quả ("Jobs for {role}") thuộc SRM-1338 T5, không phải task này.
 
@@ -25,7 +25,7 @@ Thay đổi: **đếm theo bộ lọc, không chấm điểm**. Không CV, khôn
 
 ## T1 · Hai con số đếm gì
 
-> Requirement: [mục 18b](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18b-onboarding-the-two-numbers-in-the-wizard-steps-3-and-4)
+> Requirement: [mục 12b](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12b-onboarding-the-two-numbers-in-the-wizard-steps-3-and-4)
 
 **Chỉ có hai con số.** Bước 1, 2, 5 giữ câu không có số.
 
@@ -49,7 +49,7 @@ Mỗi banner tính trên những câu trả lời **đã xong trước bước �
 
 ## T2 · Luật cốt lõi — bỏ trống thì không loại
 
-> Requirement: [mục 18c](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18c-the-one-rule-the-two-numbers-stand-on)
+> Requirement: [mục 12c](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12c-the-one-rule-the-two-numbers-stand-on)
 
 > **Tin nào bỏ trống một trường thì KHÔNG BAO GIỜ bị loại vì trường đó. Chỉ loại khi tin GHI RÕ một điều trái với câu trả lời.**
 
@@ -74,7 +74,7 @@ Phần lớn tin VN bỏ trống lĩnh vực, hình thức hợp đồng và d�
 
 ## T3 · Kinh nghiệm đọc HAI nguồn, không phải một
 
-> Requirement: [mục 18d](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18d-experience-has-two-sources-not-one)
+> Requirement: [mục 12d](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12d-experience-has-two-sources-not-one)
 
 `min_experience_years` **không bắt buộc** trên form đăng tin, bỏ trống ở hầu hết tin tự đăng. Chỉ đọc cột đó thì **N₄ = N₃ gần như mọi lần** — bước 4 in lại con số bước 3 trong khi câu chữ nói "khớp chính xác hơn".
 
@@ -86,7 +86,7 @@ Phần lớn tin VN bỏ trống lĩnh vực, hình thức hợp đồng và d�
 
 Một tin chỉ thoát tiêu chí kinh nghiệm khi NTD không nói gì về cấp bậc ở **cả hai** trường — tập đó nhỏ hơn nhiều "bỏ trống dải năm".
 
-**Bảng quy đổi số năm → bậc — ĐÃ CHỐT 2026-11-03**, trên thang thật `job_level.sort_order` (intern 1 · fresher 2 · junior 3 · mid 4 · senior 5 · lead 6 · manager 7 · director 8 · c-level 9). Bảng này dùng chung với tín hiệu kinh nghiệm của SRM-1338 / 1345 — **một chỗ duy nhất** (requirement mục 18d):
+**Bảng quy đổi số năm → bậc — ĐÃ CHỐT 2026-11-03**, trên thang thật `job_level.sort_order` (intern 1 · fresher 2 · junior 3 · mid 4 · senior 5 · lead 6 · manager 7 · director 8 · c-level 9). Bảng này dùng chung với tín hiệu kinh nghiệm của SRM-1338 / 1345 — **một chỗ duy nhất** (requirement mục 12d):
 
 | Số năm ứng viên | Bậc |
 |---|---|
@@ -110,7 +110,7 @@ Một tin chỉ thoát tiêu chí kinh nghiệm khi NTD không nói gì về c�
 
 ## T4 · N₄ ≤ N₃, và khi hai số bằng nhau
 
-> Requirement: [mục 18e](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#18e-n-is-never-larger-than-n-and-what-to-do-when-they-are-equal)
+> Requirement: [mục 12e](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12e-n-is-never-larger-than-n-and-what-to-do-when-they-are-equal)
 
 Lọc AND thì thêm tiêu chí chỉ có thể **bớt** tin. "Khớp chính xác hơn" = **chính xác hơn**, không phải **nhiều hơn**.
 

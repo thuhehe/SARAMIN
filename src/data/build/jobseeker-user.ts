@@ -553,7 +553,7 @@ export const jobseekerUser: BuildModule = {
         requirements: [
           {
             label: 'REVISED 2026-11-03 — the wizard is FIVE steps, as built on 2026-09-08',
-            text: 'The Figma redesign and the build moved the wizard from three topic-grouped steps to five one-question steps. The blocks below this one describe the ORIGINAL 3-step layout and are kept for the field rules they carry (industry picker, salary contract); where they disagree with this table, this table wins. The two job-count lines (steps 3 and 4) are specified at → [Recommended jobs §18b–18e](/m/job-management/recommended-jobs-new-logic#18b-onboarding-the-two-numbers-in-the-wizard-steps-3-and-4), and the results screen at → [§18a](/m/job-management/recommended-jobs-new-logic#18a-onboarding-results-two-sections-two-sources).',
+            text: 'The Figma redesign and the build moved the wizard from three topic-grouped steps to five one-question steps. The blocks below this one describe the ORIGINAL 3-step layout and are kept for the field rules they carry (industry picker, salary contract); where they disagree with this table, this table wins. The two job-count lines (steps 3 and 4) are specified at → [Recommended jobs §12b–12e](/m/job-management/recommended-jobs-new-logic#12b-onboarding-the-two-numbers-in-the-wizard-steps-3-and-4), and the results screen at → [§12a](/m/job-management/recommended-jobs-new-logic#12a-onboarding-results-two-sections-two-sources).',
             table: {
               cols: ['Step', 'Asks', 'Fields written', 'Job-count line?'],
               rows: [
