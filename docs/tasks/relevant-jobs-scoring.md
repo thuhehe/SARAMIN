@@ -77,8 +77,9 @@ Thay đổi: **bỏ gate, chấm điểm mọi tin đang mở**, lấy 6 tin cao
 - [ ] Sắp xếp: **điểm ↓ → ngày đăng ↓ → id ↓**
 - [ ] Trả về **6 thẻ**. **Bỏ ngưỡng `role_score + level_score > 0`** — không còn ngưỡng tối thiểu nào
 - [ ] API trả thêm 1 cờ cho FE biết điểm cao nhất có < 40 hay không (để đổi tiêu đề — xem T4). Điểm số **vẫn không được trả ra ngoài**
-- [ ] Giữ cache theo từng tin, tính lại mỗi giờ hoặc khi tin thay đổi
-- [ ] Nếu pool quá lớn: chỉ chấm 2.000 tin mới nhất đang mở
+- [ ] Cache theo từng tin, hết hạn sau 1 giờ hoặc khi tin thay đổi. **Tính LAZY**: dựng list ở request đầu tiên sau khi cache hết hạn, KHÔNG chạy theo lịch cho mọi tin đang mở (tin không ai mở thì không tốn gì)
+- [ ] **Không copy giới hạn 500 tin của Recommended jobs** — bên đó là ngân sách cho một request của một người; list này tính một lần cho mỗi tin rồi dùng chung cho mọi người xem
+- [ ] **Không bao giờ cắt pool theo ngày đăng** (bỏ ý "2.000 tin mới nhất" — quyết định 2026-11-04). Nếu sau này thật sự cần giới hạn: chỉ chấm `cùng category ∪ cùng tỉnh` với tin đang xem (hợp hai điều kiện rộng, không phải cổng), và **cắt SAU khi chấm**, không cắt trước
 
 ---
 
