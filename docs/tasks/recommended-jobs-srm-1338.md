@@ -75,7 +75,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 - [ ] Khử trùng `company + title + province`, giữ tin mới nhất, **trước** khi cắt 80
 - [ ] Cắt **top 80** theo điểm. **Không ngưỡng điểm.** Không cap công ty trong pool
 - [ ] Bỏ của `JobFeed`: ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, cap `max(2, size/10)`
-- [ ] **Xáo trộn gieo theo (jobseeker id + ngày)** cho ONBOARDING / HOMEPAGE / JOB_DETAIL. AFTER_APPLY giữ nguyên thứ tự điểm
+- [ ] **Xáo trộn gieo theo (jobseeker id + ngày + surface; JOB_DETAIL thêm id tin đang xem)** cho ONBOARDING / HOMEPAGE / JOB_DETAIL — ba màn hình không bao giờ ra cùng 6 thẻ, cùng màn hình thì cả ngày không đổi, **không xáo lại mỗi lần tải trang**. AFTER_APPLY giữ nguyên thứ tự điểm (chốt 2026-11-04)
 - [ ] Khi render một hàng: **một công ty một hàng** — gặp công ty trùng thì bỏ qua lấy thẻ kế tiếp trong pool (FE hoặc BE đều được, nhưng một chỗ)
 - [ ] **Cắt 500 trước khi chấm** theo thứ tự: tin có ≥1 role trong tập role của ứng viên (khai + hành vi) đứng trước → rồi `publish DESC`; LIMIT 500. Ứng viên không có role nào → chỉ theo `publish DESC` (mục 6, quyết định 2026-11-04)
 - [ ] Log impression như cũ + **cột cờ "quá 500 tin qua bộ lọc"** (mục 6)
@@ -194,6 +194,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 13 | Tin USD, ứng viên VND, dải thực giao nhau | Ăn đủ 12 điểm; xoá tỷ giá → 0 điểm |
 | 14 | Mở admin General settings | Không còn tab Recommended jobs; tỷ giá vẫn sửa được |
 | 15 | Bất kỳ màn hình nào | Không có % nào được in |
+| 16 | Mở dashboard rồi mở một job detail cùng ngày; reload từng trang | Hai bộ thẻ khác nhau; reload không đổi; ngày mai cả hai đổi |
 
 ---
 
