@@ -69,7 +69,7 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 > Requirement: [mục 2](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#2-one-pool-of-80-shuffled-across-the-four-surfaces) · [mục 4](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#4-a-job-they-applied-to-never-comes-back) · [mục 6](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#6-which-jobs-get-scored-at-all-the-filter-then-the-500-limit)
 
 **Checklist**
-- [ ] Cổng lọc giữ như v3: G1 live · G2 exposure + công ty ACTIVE + MST · G3 loại trừ · G4 tỉnh (bỏ khi "sẵn sàng chuyển chỗ") · G5 category (= desired category ∪ category của desired role, trên `job_category_link`). Rỗng → nới G4/G5, gắn cờ `relaxed` vào log — **không đổi tiêu đề** (xem T4)
+- [ ] Cổng lọc giữ như v3: G1 live · G2 exposure + công ty ACTIVE + MST · G3 loại trừ · G4 tỉnh (bỏ khi "sẵn sàng chuyển chỗ") · G5 category (= desired category ∪ category của desired role, trên `job_category_link`). **Dưới 6 tin** (chưa đủ một hàng) → nới theo 2 bước: bỏ G4 trước, vẫn dưới 6 thì bỏ cả G5; gắn cờ `relaxed` vào log — **không đổi tiêu đề** (xem T4). JOB_DETAIL không bao giờ nới (mục 6, quyết định 2026-11-04)
 - [ ] **G6 (neo category tin đang xem) chỉ còn ở JOB_DETAIL.** Bỏ ở AFTER_APPLY — popup lấy pool thường
 - [ ] Loại **tin đã có đơn — bất kỳ trạng thái** (một `NOT EXISTS job_application`, giữ như G3 hiện tại) và tin đã dismiss, **trước** khi cắt 80
 - [ ] Khử trùng `company + title + province`, giữ tin mới nhất, **trước** khi cắt 80
@@ -77,7 +77,8 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 - [ ] Bỏ của `JobFeed`: ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, cap `max(2, size/10)`
 - [ ] **Xáo trộn gieo theo (jobseeker id + ngày)** cho ONBOARDING / HOMEPAGE / JOB_DETAIL. AFTER_APPLY giữ nguyên thứ tự điểm
 - [ ] Khi render một hàng: **một công ty một hàng** — gặp công ty trùng thì bỏ qua lấy thẻ kế tiếp trong pool (FE hoặc BE đều được, nhưng một chỗ)
-- [ ] Log impression như cũ + **cột cờ đã chạm giới hạn 500** (mục 6, phương án ①)
+- [ ] **Cắt 500 trước khi chấm** theo thứ tự: tin có ≥1 role trong tập role của ứng viên (khai + hành vi) đứng trước → rồi `publish DESC`; LIMIT 500. Ứng viên không có role nào → chỉ theo `publish DESC` (mục 6, quyết định 2026-11-04)
+- [ ] Log impression như cũ + **cột cờ "quá 500 tin qua bộ lọc"** (mục 6)
 - [ ] 80 và 500 là hằng số có tên, một chỗ
 
 ---
@@ -184,6 +185,8 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 6 | Pool có 4 tin FPT đứng đầu | Một hàng không có 2 thẻ FPT; Batch apply vẫn liệt kê cả 4 |
 | 7 | Đã nộp đơn, sau đó rút đơn | Tin đó vẫn **không** quay lại feed, ở mọi vị trí |
 | 8 | Tin đăng 2 lần cùng công ty / tiêu đề / tỉnh | Chỉ 1 dòng trong pool |
+| 8b | Khai Frontend · HCM, lọc xong chỉ còn 3 tin | Bỏ G4 chạy lại → đủ ≥6 thì dừng (tin Frontend ở Hà Nội / remote vào); log có `relaxed`; tiêu đề không đổi. Trên job detail: không nới, hiện 3 tin |
+| 8c | Lọc xong còn 800 tin, 150 tin đúng role | Cả 150 tin đúng role nằm trong 500 tin được chấm; log có cờ "quá 500" |
 | 9 | Job detail, đã đăng nhập | Không tin nào xuất hiện ở cả Similar jobs lẫn Recommended jobs |
 | 10 | Job detail, chưa đăng nhập | Section 2 = dòng 7–12 của Similar jobs, tiêu đề "Có thể bạn quan tâm" |
 | 11 | Popup sau khi nộp đơn, tick 6 tin | Checkbox thứ 6 không tick được; bấm nút → 5 đơn, 1 email |
