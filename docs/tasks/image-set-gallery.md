@@ -186,25 +186,33 @@ DELETE /admin/artwork-tags/:id              // trả về số cụm bị ảnh 
 
 > SRM-1412 · priority HIGH · phụ thuộc Subtask 1, dùng picker của 2 và ô tag của 3
 
-Dialog mở ra là **chọn luồng trước**, không giấu luồng hai sau một cái link nhỏ — link nhỏ đọc như "phương án chữa cháy", không ai dùng.
+**Một màn duy nhất** — không toggle chế độ, không wizard 2 bước.
 
-| Luồng | Khi nào | Làm gì |
-|---|---|---|
-| **① Một ảnh gốc → cắt 3 khung** | Mặc định | Thả **1 ảnh ≥1600×1200**. Khung crop khoét trên nền tối (thấy cùng lúc phần giữ và phần bỏ), **focal point kéo được** + thanh zoom. Bên phải là 3 khung, bấm để chuyển; mỗi khung có *Tệp riêng* và *Bỏ trống*. |
-| **② Tải riêng từng khung** | 3 ảnh khác nhau, hoặc cắt từ 1 ảnh không ra | 3 ô thả riêng, đúng tỉ lệ. Chế độ này **không cắt lại** — tải gì in nấy. |
+```
+┌ Tạo cụm ảnh ──────────────────────────────┐
+│ ① [ Thả một ảnh gốc — tự cắt cả 3 khung ] │
+│ ② [ Ngang ] [ Dọc ] [ Tròn ]   mỗi khung: │
+│      Cắt · Thay tệp · Bỏ trống            │
+│ ③ Tên · Hết hạn · Tag · Ngành *           │
+│                      [Huỷ] [Tạo cụm]      │
+└───────────────────────────────────────────┘
+```
 
-- **Ảnh tròn mặc định cắt từ khung DỌC** theo cùng focal point → bình thường chỉ cần **1 lần tải lên**, không phải 3. Đây là điểm làm cho cả tính năng đáng làm.
-- *Bỏ trống* từng khung là lựa chọn **rõ ràng và đảo ngược được**, để cụm thiếu là một quyết định chứ không phải tai nạn
-- Bước 2 phân loại: tên (optional) · hạn bản quyền (optional) · **ngành (bắt buộc)** · tag (optional)
-- Nút "Tạo cụm" **chỉ disable khi chưa có ngành** hoặc chưa có khung nào
+- **Hai cách tải ảnh KHÔNG phải hai lựa chọn loại trừ nhau.** Thả ảnh gốc → tự cắt vào mọi khung **đang trống**. Thả tệp thẳng vào một khung → khung đó dùng tệp riêng. **Trộn cả hai trên cùng một cụm là bình thường** — "ngang và dọc cắt từ ảnh gốc, tròn chụp riêng" là ca có thật, bản cũ có toggle thì không diễn đạt được.
+- **Ảnh gốc không bao giờ đè lên khung đã có tệp riêng.** Cắt đè lên một ảnh người ta cố ý tải lên là thứ duy nhất làm màn này mất tin cậy. Gỡ ảnh gốc chỉ xoá các khung cắt từ nó; khung tải tay giữ nguyên.
+- **Cắt là một overlay ngay trên dialog**, mở bằng nút *Cắt* của từng khung: ảnh gốc phủ nền, khung crop khoét trên scrim tối (thấy cùng lúc phần giữ và phần bỏ), có focal point + zoom, và vẽ sẵn **vùng an toàn** (ô `badge`, dấu `☆`) để cắt theo thẻ thật.
+- **Ảnh tròn mặc định cắt từ khung DỌC** theo cùng focal point → thường chỉ cần một lần tải lên.
+- Mỗi khung in rõ nguồn: **✂ cắt từ ảnh gốc** hay **tệp riêng** — sáu tháng sau câu "sao thẻ hover trông khác vậy" phải trả lời được ngay trên màn hình.
+- **Phân loại nằm cùng màn**, không phải bước 2. Chỉ **Ngành** chặn nút lưu; tên, tag, hạn để trống được.
+- Dòng trạng thái ở footer nói thẳng lý do còn chặn (*"cụm thiếu…"*, *"chưa chọn ngành"*) chứ không chỉ disable nút — nút xám không lý do là cách form này hay bị tắc nhất.
 
 **Acceptance**
-- [ ] Tải 1 ảnh → ra đủ 3 khung, không phải tải thêm lần nào
-- [ ] Kéo focal point → cả 3 khung cắt lại theo, preview cập nhật
-- [ ] Bấm "Bỏ trống" khung tròn → vẫn tạo được cụm, cụm đó đánh dấu thiếu
-- [ ] Luồng ② tải 2/3 khung → tạo được cụm thiếu 1 khung
-- [ ] Chưa chọn ngành → nút tạo disable, có chữ giải thích
-- [ ] Đổi luồng ①↔② không mất dữ liệu đã nhập ở bước 2
+- [ ] Thả 1 ảnh gốc → cả 3 khung tự có ảnh, không phải thao tác thêm
+- [ ] Tải tệp riêng cho khung tròn, rồi thả ảnh gốc → ngang + dọc được cắt, **khung tròn giữ nguyên tệp riêng**
+- [ ] Gỡ ảnh gốc → chỉ các khung ✂ trống lại, khung tệp riêng còn nguyên
+- [ ] Bấm *Cắt* → overlay mở đúng tỉ lệ khung đó, có focal point + zoom + vùng an toàn
+- [ ] Bấm *Bỏ trống* khung tròn → vẫn tạo được cụm, cụm đó đánh dấu thiếu
+- [ ] Chưa chọn ngành → nút tạo disable **và** footer nói rõ lý do
 
 ---
 

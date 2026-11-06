@@ -217,20 +217,19 @@ export const bannersPopups: BuildModule = {
             ],
           },
           {
-            label: 'Creating a set — two routes, both named up front',
-            text: 'The create dialog opens on a choice, rather than hiding the second route behind a link that reads like error recovery.',
-            table: {
-              cols: ['Route', 'When', 'What happens'],
-              rows: [
-                ['**① Một ảnh gốc → cắt 3 khung**', 'The normal case', 'Drop ONE master ≥1600×1200. A crop stage shows the picture with the active frame cut out of a dark scrim, a draggable focal point and a zoom slider. Switch frames on the right; each can be re-cropped, replaced with its own file, or left empty.'],
-                ['**② Tải riêng từng khung**', 'Three different shots, or a crop that cannot work', 'Three drop zones at the right aspect ratios. No re-cropping — what you upload is what prints.'],
-              ],
-            },
+            label: 'Creating a set — one screen: drop a master, crop the frames, classify',
+            text: 'REVISED 06/11/2026. The first cut asked you to choose "one master" vs "upload each frame" before you had done anything, then pushed classification onto a second step. Both were wrong, and for the same reason: they made the user commit to a shape before they had seen the picture.',
             items: [
-              'THE CIRCLE DEFAULTS TO A 1:1 CROP OF THE PORTRAIT, on the same focal point. That is what makes the normal set cost ONE upload rather than three.',
-              'Per-frame “Bỏ trống” is explicit and reversible, so an incomplete set is a decision rather than an accident.',
-              'Step 2 classifies the set: name (optional), expiry (optional), industry (required, tree picker), tags (optional). Industries are PROPOSED from the chosen tags via the legacy topic map — shown, never applied without a click.',
+              'ONE SCREEN, NO MODE TOGGLE. A master dropzone at the top; the three frames beneath it; name, expiry, tag and industry underneath that. Drop, check the crops, pick an industry, save — one pass.',
+              'THE TWO UPLOAD ROUTES ARE NOT ALTERNATIVES. Dropping a master fills every EMPTY frame by cropping it. Dropping a file straight onto a frame makes that frame use its own picture. MIXING THEM ON ONE SET IS NORMAL — "landscape and portrait cropped from the master, circle shot separately" is a real case, and the old toggle made it impossible to express.',
+              'A MASTER NEVER OVERWRITES A FRAME THAT ALREADY HAS ITS OWN FILE. Re-cropping over a deliberate upload is the single behaviour that would make this screen untrustworthy. Removing the master clears only the frames derived FROM it; hand-uploaded frames survive.',
+              'CROPPING IS AN OVERLAY ON THE SAME DIALOG, per frame, opened by “Cắt”. The master fills the stage, a scrim darkens everything outside the frame, and the card’s own furniture (the badge box, the ☆) is drawn on top — so the crop is judged against a real card instead of a guess.',
+              'THE CIRCLE DEFAULTS TO A 1:1 CROP OF THE PORTRAIT on the same focal point. That is what makes the normal set cost ONE upload rather than three.',
+              'Each frame shows where its picture came from — ✂ for cropped-from-master, "tệp riêng" for its own file — because six months later "why does the hover card look different" has to be answerable from the screen.',
+              'Per-frame “Bỏ trống” stays explicit and reversible, so an incomplete set is a decision rather than an accident.',
+              'CLASSIFICATION IS ON THE SAME SCREEN, not a step 2. Only industry gates the save; name, tag and expiry sit beside it and can be left blank.',
             ],
+            warn: 'The counter in the footer states both blockers in plain words — "cụm thiếu, không dùng làm ảnh tự điền" and "chưa chọn ngành" — rather than only disabling the button. A disabled button with no reason is the most common way a form like this stalls.',
           },
         ],
         uiFields: [
