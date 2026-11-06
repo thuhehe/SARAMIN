@@ -130,7 +130,7 @@ Dropdown nằm **trên cùng dialog**, trước mọi field khác, vì nó quy�
 | Bảng | Thay đổi |
 |---|---|
 | `invoice` | **DROP** `uq_invoice_po`; **ADD** `tranche_no INT NOT NULL DEFAULT 1` + `UNIQUE (po_id, tranche_no)` + `CHECK (tranche_no >= 1)` |
-| `invoice` | **ADD** `scope VARCHAR(16) NOT NULL DEFAULT 'FULL'` — `FULL` \| `PARTIAL` |
+| `invoice` | **ADD** `scope VARCHAR(16) NOT NULL DEFAULT 'FULL'` — `FULL` hoặc `PARTIAL` |
 | `invoice` | Xem **Quyết định D1**: có thể phải **ADD lại** cột `status` |
 | `invoice_line` | `product_id` → **NULLABLE**; **ADD** `is_manual BOOLEAN NOT NULL DEFAULT FALSE`; `CHECK (is_manual OR product_id IS NOT NULL)` |
 | Backfill | Mọi hóa đơn đang có: `tranche_no = 1`, `scope = 'FULL'` — không đổi hành vi dữ liệu cũ |
