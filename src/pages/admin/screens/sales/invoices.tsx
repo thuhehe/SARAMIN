@@ -13,9 +13,145 @@ import { PeriodBar, inPeriod, usePeriod } from '@/pages/admin/ui/period'
 import { MiniStat } from '@/pages/admin/ui/stats'
 import { Pill } from '@/pages/admin/ui/status'
 
+/* ── Xuất hóa đơn chính thức — toàn bộ, một phần, hoặc phần còn lại ──────────
+   Kế toán chọn GIÁ TRỊ XUẤT trước khi tờ hóa đơn được filing, vì lựa chọn đó
+   quyết định dòng hàng hóa in ra: toàn bộ đơn hàng in lại các dòng của PO, một
+   phần in ĐÚNG MỘT dòng do kế toán gõ tay ("… (ĐỢT 1)") với đơn giá tự nhập.
+   Mọi con số còn lại suy ra từ đơn giá — kế toán không gõ tiền thuế hay tổng
+   tiền, vì gõ tay một con số đã tính được là mời sai số vào tờ hóa đơn.
+
+   Một đơn hàng vì thế có thể cần NHIỀU tờ hóa đơn, mỗi tờ một số pháp lý
+   riêng. Số tiền còn lại = PO trước thuế − các đợt đã phát hành (không tính
+   đợt đã hủy), và nó là thứ duy nhất chặn đơn giá nhập vào. */
+export type Tranche = { no: number; name: string; net: number }
+
+function IssueDialog({ inv, left, no, onClose, onIssue }: {
+  inv: Inv; left: number; no: number; onClose: () => void; onIssue: (t: Tranche) => void
+}) {
+  /* Đợt 1 mặc định là toàn bộ. Từ đợt 2 thì "toàn bộ" không còn là lựa chọn
+     thật — phần đó đã nằm trên tờ trước rồi — nên dropdown mở sẵn ở một phần
+     và option kia bị khóa, kèm lý do. */
+  const [mode, setMode] = useState<'full' | 'partial'>(no === 1 ? 'full' : 'partial')
+  /* Chỉ từ đợt 2 trở đi. Ở đợt 1, "số tiền còn lại" chính là cả đơn hàng, nên
+     checkbox sẽ chỉ là một cách gọi khác của option "toàn bộ". */
+  const [useLeft, setUseLeft] = useState(false)
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState('')
+  const typed = Number(price) || 0
+  const net = mode === 'full' || useLeft ? left : typed
+  const vat = Math.round((net * VAT_RATE) / 100)
+  const over = mode === 'partial' && !useLeft && typed > left
+  const blocked = mode === 'partial' && (!name.trim() || net <= 0 || over)
+  const num = (n: number) => n.toLocaleString('en-US')
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/30 px-4 py-10">
+      <div className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="flex items-start justify-between border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold text-ink">Xuất hóa đơn chính thức<span className="ml-1.5 font-normal text-muted">· Kế toán</span></p>
+            <p className="truncate font-mono text-[11px] text-muted">{inv.code} · {inv.po} · đợt {no}</p>
+          </div>
+          <span className="cursor-pointer pl-3 text-faint" onClick={onClose}>✕</span>
+        </div>
+
+        <div className="space-y-3.5 p-4">
+          <div>
+            <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Giá trị xuất hóa đơn</label>
+            <select
+              value={mode}
+              onChange={(e) => { setMode(e.target.value as 'full' | 'partial'); setUseLeft(false) }}
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] outline-none focus:border-brand"
+            >
+              <option value="full" disabled={no > 1}>Toàn bộ giá trị đơn hàng{no > 1 ? ' — đã xuất một phần rồi' : ''}</option>
+              <option value="partial">Một phần giá trị đơn hàng</option>
+            </select>
+            <p className="mt-1 text-[10.5px] text-faint">
+              {mode === 'full'
+                ? 'Dòng hàng hóa copy từ PO, không sửa — cách hệ thống đang làm.'
+                : <>Một dòng duy nhất, kế toán gõ tay. Chưa xuất: <b className="tabular-nums text-ink/70">{num(left)} ₫</b> (trước thuế).</>}
+            </p>
+          </div>
+
+          {mode === 'partial' && (
+            <>
+              {/* Chỉ xuất hiện từ hóa đơn thứ 2. Tick thì ĐƠN GIÁ bị khóa và tự
+                  điền; TÊN HÀNG HÓA thì không — tên là thứ duy nhất hệ thống
+                  không suy ra được, và nó mang số hợp đồng + số đợt. */}
+              {no > 1 && (
+                <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+                  <input type="checkbox" checked={useLeft} onChange={(e) => setUseLeft(e.target.checked)} className="mt-0.5" />
+                  <span className="text-[11.5px] leading-relaxed text-ink/80">
+                    <b>Xuất số tiền còn lại</b> — hệ thống tự tính <span className="tabular-nums">{num(left)} ₫</span> và tự suy ra đơn giá.
+                    <span className="block text-[10.5px] text-faint">Tên hàng hóa, dịch vụ vẫn phải nhập tay.</span>
+                  </span>
+                </label>
+              )}
+
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Tên hàng hóa, dịch vụ <span className="text-rose-600">*</span></label>
+                <textarea
+                  value={name}
+                  onChange={(e) => setName(e.target.value.slice(0, 255))}
+                  rows={2}
+                  placeholder={`Dịch vụ tuyển dụng Saramin theo hợp đồng số … (ĐỢT ${no})`}
+                  className="w-full resize-none rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed outline-none focus:border-brand"
+                />
+                <p className="mt-1 text-[10.5px] text-faint">In nguyên văn lên tờ hóa đơn. Tối đa 255 ký tự ({name.length}/255).</p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11.5px] font-medium text-ink/80">Đơn giá (chưa thuế) <span className="text-rose-600">*</span></label>
+                <input
+                  value={useLeft ? num(left) : price}
+                  onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
+                  readOnly={useLeft}
+                  placeholder="174300000"
+                  className={cn('w-full rounded-md border px-3 py-2 text-[12.5px] tabular-nums outline-none focus:border-brand',
+                    over ? 'border-rose-400 bg-rose-50/40' : 'border-line bg-surface', useLeft && 'bg-canvas/60 text-muted')}
+                />
+                {over && <p className="mt-1 text-[10.5px] font-medium text-rose-700">Vượt quá số tiền chưa xuất hóa đơn của đơn hàng ({num(left)} ₫).</p>}
+              </div>
+            </>
+          )}
+
+          {/* Hệ thống tự tính — không ô nào ở đây gõ được. Số lượng và ĐVT cố
+              định vì tờ hóa đơn mẫu là 1 Gói; đơn giá × 1 = thành tiền. */}
+          <div className="rounded-lg border border-line bg-canvas/40 px-3 py-2.5 text-[11.5px]">
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-faint">Hệ thống tự tính</p>
+            <div className="flex justify-between"><span className="text-muted">ĐVT · Số lượng</span><span>Gói · <span className="tabular-nums">1</span></span></div>
+            <div className="flex justify-between"><span className="text-muted">Thành tiền trước thuế</span><span className="tabular-nums">{num(net)} ₫</span></div>
+            <div className="flex justify-between"><span className="text-muted">Thuế GTGT ({VAT_RATE}%)</span><span className="tabular-nums">{num(vat)} ₫</span></div>
+            <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><span>Tổng tiền thanh toán</span><span className="tabular-nums">{num(net + vat)} ₫</span></div>
+            <p className="mt-1.5 text-[10.5px] italic leading-relaxed text-faint">Số tiền viết bằng chữ: {net > 0 ? vnWords(net + vat) : '—'}.</p>
+            <p className="mt-1.5 border-t border-line pt-1.5 text-[10.5px] text-muted">
+              Còn lại sau đợt này: <b className={cn('tabular-nums', left - net === 0 ? 'text-emerald-700' : 'text-ink/70')}>{num(Math.max(left - net, 0))} ₫</b>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-3">
+          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-ink hover:bg-canvas">Huỷ</button>
+          <button
+            onClick={() => onIssue({ no, name: mode === 'full' ? 'Toàn bộ giá trị đơn hàng' : name.trim(), net })}
+            disabled={blocked}
+            className="rounded-lg bg-amber-600 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          >
+            Xuất hóa đơn chính
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
   useDetailCrumb(inv.code, onBack)
   const [pdf, setPdf] = useState(false)
+  /* Các đợt đã phát hành trên ĐƠN HÀNG này. Local state chỉ vì mock không có
+     store — thật thì đây là các dòng `invoice` cùng `po_id`, đọc theo
+     `tranche_no`, và một đợt bị hủy thì rơi khỏi tổng này. */
+  const [issuing, setIssuing] = useState(false)
+  const [tranches, setTranches] = useState<Tranche[]>([])
   /* Confirming payment is ONE write, against the PO. The invoice and the PO both
      read that fact, so the PO's payment column follows by construction rather than
      by a second update that could fail on its own. Local state here only because
@@ -48,6 +184,10 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
   const sub = inv.calc ? inv.calc.base : Math.round(inv.total / (1 + VAT_RATE / 100))
   const vat = inv.total - sub
   const st = invStage(inv)
+  /* Số tiền còn lại được tính trên TRƯỚC THUẾ, vì đó là con số kế toán gõ vào ô
+     Đơn giá — thuế là hệ quả, không phải thứ chia được theo đợt. */
+  const issuedNet = tranches.reduce((n, t) => n + t.net, 0)
+  const left = sub - issuedNet
   return (
     <div>
 
@@ -100,8 +240,19 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
               </>
             )
           )}
+          {/* Một nút, và nó mở DIALOG chứ không file thẳng — giá trị xuất là một
+              lựa chọn (toàn bộ / một phần), và một đơn hàng có thể cần nhiều tờ.
+              Hết số tiền chưa xuất thì nút tắt, vì "xuất thêm" lúc đó là xuất
+              vượt giá trị đơn hàng. */}
           {inv.step === 'requested' && (
-            <button className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Xuất hóa đơn chính<span className="ml-1 font-normal opacity-90">· Kế toán</span></button>
+            left > 0 ? (
+              <button onClick={() => setIssuing(true)} className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
+                {tranches.length ? `Xuất hóa đơn đợt ${tranches.length + 1}` : 'Xuất hóa đơn chính'}
+                <span className="ml-1 font-normal opacity-90">· Kế toán</span>
+              </button>
+            ) : (
+              <button disabled title="Đơn hàng đã xuất hóa đơn đủ giá trị" className="cursor-not-allowed rounded-lg bg-canvas px-3 py-1.5 text-[12px] font-semibold text-faint">Đã xuất đủ giá trị</button>
+            )
           )}
           {/* KẾ TOÁN ONLY, and only while money is outstanding — Unpaid, Partially
               paid or Overdue. It is independent of the document status: an invoice can be
@@ -146,6 +297,29 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
       {/* The PO's QR line, read-only here — the same notice, from the same PO. */}
       {qr && <div className="-mt-2 mb-4 rounded-lg border border-line bg-canvas/40 px-3.5 py-2"><QrLine qr={qr} /></div>}
 
+      {/* Chỉ hiện khi đơn hàng được xuất làm nhiều đợt. Một tờ một số pháp lý
+          riêng, nên cái người đọc cần là "đơn hàng này đã xuất bao nhiêu, còn
+          bao nhiêu" — con số chặn mọi đợt sau. */}
+      {tranches.length > 0 && (
+        <div className="mb-4 rounded-lg border border-line bg-canvas/40 px-3.5 py-2.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">Xuất theo đợt · PO {inv.po}</p>
+            <p className="text-[11.5px] text-muted">
+              Đã xuất <b className="tabular-nums text-ink/80">{issuedNet.toLocaleString('en-US')} ₫</b> / {sub.toLocaleString('en-US')} ₫ ·
+              còn lại <b className={cn('tabular-nums', left === 0 ? 'text-emerald-700' : 'text-amber-700')}>{left.toLocaleString('en-US')} ₫</b> <span className="text-faint">(trước thuế)</span>
+            </p>
+          </div>
+          <div className="mt-1.5 space-y-1">
+            {tranches.map((t) => (
+              <div key={t.no} className="flex items-baseline justify-between gap-3 border-t border-line pt-1 text-[11.5px] first:border-0 first:pt-0">
+                <span className="min-w-0 truncate"><b className="text-ink/75">Đợt {t.no}</b> <span className="text-muted">{t.name}</span></span>
+                <span className="shrink-0 tabular-nums text-ink/80">{t.net.toLocaleString('en-US')} ₫ <span className="text-faint">+ VAT {Math.round((t.net * VAT_RATE) / 100).toLocaleString('en-US')}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-line bg-surface p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="text-[11.5px] leading-relaxed">
@@ -186,6 +360,15 @@ function InvoiceDetail({ inv, onBack }: { inv: Inv; onBack: () => void }) {
       </div>
 
       {pdf && <InvoicePdfModal inv={inv} co={invCo} onClose={() => setPdf(false)} />}
+      {issuing && (
+        <IssueDialog
+          inv={inv}
+          left={left}
+          no={tranches.length + 1}
+          onClose={() => setIssuing(false)}
+          onIssue={(t) => { setTranches((xs) => [...xs, t]); setIssuing(false) }}
+        />
+      )}
       {confirming && (
         <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 px-4 pt-16">
           <div className="w-full max-w-[380px] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
