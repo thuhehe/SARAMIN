@@ -64,13 +64,14 @@ const SEED: Row[] = [
 
 /** Why a row cannot be saved. Empty rows are not errors — they are the slack a
     spreadsheet always has at the bottom. */
-function rowError(r: Row): string | null {
+type CellError = { col: Col; msg: string }
+function rowError(r: Row): CellError | null {
   if (isBlank(r)) return null
-  if (!r.img.trim()) return 'Thiếu ảnh'
-  if (!FMTS.includes(r.fmt.trim())) return `Format phải là ${FMTS.join(' · ')}`
-  if (!r.industry.trim()) return 'Thiếu Industry — bắt buộc'
-  if (!INDUSTRY_INDEX[r.industry]) return 'Ngành không có trong Master data'
-  if (r.expiry.trim() && !/^\d{2}\/\d{2}\/\d{4}$/.test(r.expiry.trim())) return 'Ngày phải là dd/mm/yyyy'
+  if (!r.img.trim()) return { col: 'img', msg: 'Thiếu ảnh' }
+  if (!FMTS.includes(r.fmt.trim())) return { col: 'fmt', msg: `Format phải là ${FMTS.join(' · ')}` }
+  if (!r.industry.trim()) return { col: 'industry', msg: 'Thiếu Industry — bắt buộc' }
+  if (!INDUSTRY_INDEX[r.industry]) return { col: 'industry', msg: 'Ngành không có trong Master data' }
+  if (r.expiry.trim() && !/^\d{2}\/\d{2}\/\d{4}$/.test(r.expiry.trim())) return { col: 'expiry', msg: 'Ngày phải là dd/mm/yyyy' }
   return null
 }
 /** A blank Name NEVER groups with another blank Name — two unnamed pictures are
@@ -183,10 +184,17 @@ export function AdminImageBulkImport() {
   }, [rows])
 
   const errs = rows.map(rowError)
+  const issues = errs.map((e, i) => (e ? { i, ...e } : null)).filter(Boolean) as { i: number; col: Col; msg: string }[]
   const filled = rows.filter((r) => !isBlank(r)).length
   const bad = errs.filter(Boolean).length
   const ok = filled - bad
   const goodGroups = [...groups.entries()].filter(([, is]) => is.some((i) => !errs[i])).length
+  /* A set that will be created without all three frames — worth a number, because
+     "12 cụm" and "12 cụm, 4 thiếu tròn" are very different batches. */
+  const partialSets = [...groups.values()].filter((is) => {
+    const good = is.filter((i) => !errs[i])
+    return good.length > 0 && new Set(good.map((i) => rows[i].fmt)).size < RENDITIONS.length
+  }).length
   const unknownTags = [...new Set(rows.flatMap((r) => r.tags.split(',').map((t) => t.trim()).filter(Boolean)))]
     .filter((t) => !TAGS.some((x) => x.name.toLowerCase() === t.toLowerCase()))
 
@@ -244,10 +252,11 @@ export function AdminImageBulkImport() {
             return (
               <div
                 key={r}
-                className={cn(GRID, 'items-stretch border-b border-line-soft text-[11.5px]',
-                  err ? 'bg-rose-50/60' : grouped && gi !== undefined && gi % 2 === 0 ? 'bg-brand-soft/20' : '')}
+                className={cn(GRID, 'h-[30px] items-stretch border-b border-line-soft text-[11.5px]',
+                  grouped && gi !== undefined && gi % 2 === 0 ? 'bg-brand-soft/15' : '')}
+                title={grouped ? `${members.length} dòng cùng tên — gộp thành 1 cụm` : undefined}
               >
-                <span className="relative flex items-center justify-center px-1 text-[10px] text-faint">
+                <span className={cn('relative flex items-center justify-center px-1 text-[10px]', err ? 'font-semibold text-rose-600' : 'text-faint')}>
                   {grouped && <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: `hsl(${(gi ?? 0) * 67 + 200} 60% 60%)` }} />}
                   {r + 1}
                 </span>
@@ -255,8 +264,17 @@ export function AdminImageBulkImport() {
                 {COLS.map((col, c) => {
                   const active = sel.r === r && sel.c === c
                   const common = 'w-full bg-transparent px-2 py-1.5 outline-none'
+                  const cellBad = err?.col === col.key
                   return (
-                    <span key={col.key} className={cn('relative border-l border-line-soft', active && 'ring-1 ring-inset ring-brand')}>
+                    <span
+                      key={col.key}
+                      title={cellBad ? err.msg : undefined}
+                      className={cn('relative border-l border-line-soft', cellBad && 'bg-rose-100', active && 'ring-1 ring-inset ring-brand')}
+                    >
+                      {/* A red corner, not a row of its own — inserting a full-width
+                          banner between data rows is what stops a grid reading as a
+                          grid, and the reason lives in the tooltip and the list below. */}
+                      {cellBad && <span className="pointer-events-none absolute right-0 top-0 border-[4px] border-transparent border-r-rose-500 border-t-rose-500" />}
                       {col.key === 'fmt' ? (
                         <select
                           id={`bc-${r}-${c}`}
@@ -307,8 +325,7 @@ export function AdminImageBulkImport() {
                           onClick={() => setSel({ r, c })}
                           onKeyDown={(e) => onKey(e, r, c)}
                           onChange={(e) => set(r, col.key, e.target.value)}
-                          placeholder={col.key === 'name' && !grouped ? '' : ''}
-                          className={common}
+                          className={cn(common, col.key === 'name' && grouped && !first && 'text-faint')}
                         />
                       )}
 
@@ -333,17 +350,6 @@ export function AdminImageBulkImport() {
                   )}
                 </span>
 
-                {err && (
-                  <span className="col-span-8 border-t border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700">
-                    ↳ dòng {r + 1}: {err}
-                  </span>
-                )}
-                {grouped && first && (
-                  <span className="col-span-8 px-2 py-0.5 text-[10px] text-brand">
-                    ↳ {members.length} dòng này gộp thành <b>1 cụm</b> — {RENDITIONS.filter((x) => members.some((i) => rows[i].fmt === x.label)).map((x) => x.label.toLowerCase()).join(' · ') || 'chưa có format nào'}
-                    {members.length < 3 && <span className="text-amber-700"> · thiếu {RENDITIONS.filter((x) => !members.some((i) => rows[i].fmt === x.label)).map((x) => x.label.toLowerCase()).join(' · ')}</span>}
-                  </span>
-                )}
 
                 {picker === r && (
                   <span className="col-span-8 border-t border-line bg-surface p-2.5">
@@ -369,6 +375,23 @@ export function AdminImageBulkImport() {
         </div>
       </div>
 
+      {issues.length > 0 && (
+        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+          <p className="mb-1 text-[11px] font-semibold text-rose-800">{issues.length} dòng cần sửa — bấm để nhảy tới ô</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+            {issues.map((e) => (
+              <button
+                key={e.i}
+                onClick={() => focusCell(e.i, COLS.findIndex((c) => c.key === e.col))}
+                className="text-[11px] text-rose-700 hover:underline"
+              >
+                dòng {e.i + 1} · <b>{COLS.find((c) => c.key === e.col)?.label}</b>: {e.msg}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {unknownTags.length > 0 && (
         <p className="mt-2 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] text-brand">
           Tag mới sẽ được tạo khi lưu: <b>{unknownTags.join(' · ')}</b> — tag lạ không bị từ chối, vì bắt khách chọn từ danh sách cố định là cách nhanh nhất để họ bỏ trống cột này.
@@ -379,6 +402,7 @@ export function AdminImageBulkImport() {
         <p className="text-[11.5px] text-muted">
           <b className="text-ink/80 tabular-nums">{ok}</b> dòng hợp lệ → <b className="text-ink/80 tabular-nums">{goodGroups}</b> cụm
           {bad > 0 && <span className="text-rose-700"> · <b className="tabular-nums">{bad}</b> dòng lỗi (bị bỏ qua)</span>}
+          {partialSets > 0 && <span className="text-amber-700"> · {partialSets} cụm chưa đủ 3 khung</span>}
           {filled === 0 && <span className="text-faint"> · bảng còn trống</span>}
         </p>
         <div className="flex gap-2">
