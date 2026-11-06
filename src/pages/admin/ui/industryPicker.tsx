@@ -96,6 +96,10 @@ export function IndustryTreePicker({ value, onChange, limit }: { value: string[]
   const toggle = (id: string) => {
     setNote('')
     if (value.includes(id)) return onChange(value.filter((v) => v !== id))
+    /* Spec (Jobseeker · Industry picker): at the limit a further pick is refused —
+       EXCEPT with a limit of 1, where the new pick replaces the old one. A
+       single-value field that makes you unselect first is a field people fight. */
+    if (limit === 1) return onChange([id])
     if (limit && value.length >= limit) return setNote(`Tối đa ${limit} lĩnh vực. Bỏ bớt một mục để chọn thêm.`)
     /* MERGE: taking a parent absorbs whatever was chosen beneath it, so the same
        branch is never stored twice at two depths. */
