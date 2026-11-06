@@ -32,6 +32,7 @@ const adminPages = screen(() => import('@/pages/admin/screens/content/pages'), '
 const adminCatalog = screen(() => import('@/pages/admin/screens/products/catalog'), 'AdminCatalog')
 const adminPlacements = screen(() => import('@/pages/admin/screens/products/placements'), 'AdminPlacements')
 const adminImageGallery = screen(() => import('@/pages/admin/screens/products/gallery'), 'AdminImageGallery')
+const adminImageBulk = screen(() => import('@/pages/admin/screens/products/bulkImport'), 'AdminImageBulkImport')
 const adminBundles = screen(() => import('@/pages/admin/screens/products/bundles'), 'AdminBundles')
 const adminCredits = screen(() => import('@/pages/admin/screens/products/credits'), 'AdminCredits')
 const adminOrders = screen(() => import('@/pages/admin/screens/products/credits'), 'AdminOrders')
@@ -95,6 +96,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   'admin-catalog': adminCatalog,
   'admin-placements': adminPlacements,
   'admin-image-gallery': adminImageGallery,
+  'admin-image-bulk': adminImageBulk,
   'admin-bundles': adminBundles,
   'admin-credits': adminCredits,
   'admin-orders': adminOrders,

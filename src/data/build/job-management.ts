@@ -382,6 +382,48 @@ export const jobManagement: BuildModule = {
               'Admin is unaffected by every row here: HQ picks the Free tier or a PO line and may publish past the company’s remaining slots (concierge override, audited).',
             ],
           },
+          {
+            label: 'Card artwork — one set fills all three frames, and Industry fills it first',
+            text: 'DECIDED 06/11/2026. The paid bands print the SAME photograph three ways — landscape on the card at rest, portrait on the card expanded by hover, circle on the round-thumbnail band. The form therefore asks for ONE artwork set, not three pictures, and in the normal case asks for nothing at all: picking Industry fills all three slots before anyone opens a picker. Full structure: Banners & pop-ups → Image gallery.',
+            table: {
+              cols: ['State', 'How it got there', 'What the form shows', 'If Industry changes afterwards'],
+              rows: [
+                ['**auto**', 'Industry was set and the slots were untouched — the system resolved the least-used complete set for that industry', '“✓ Tự điền theo ngành <Industry> — cụm «…»”, all three thumbnails filled', '**Re-resolves silently.** Nobody chose, so nothing is overwritten.'],
+                ['**manual**', 'The operator picked a whole set in the picker', '“Chọn tay — cụm «…»”, plus “↺ Về ảnh tự điền”', '**Left alone**, and a warning says the artwork no longer follows the industry. An automatic swap would undo a decision silently.'],
+                ['**mixed**', 'The operator used “Chọn riêng khung này” on one or more slots', '“Ghép từ N cụm”', 'Left alone, same warning as manual.'],
+                ['**empty**', 'The industry has no complete set, not even a neutral one', '“⚠ Ngành <X> chưa có cụm đầy đủ nào — chưa điền được”', 'Re-resolves on the next industry change; the coverage panel in the gallery is already flagging this industry.'],
+              ],
+            },
+            items: [
+              'THE DEFAULT PATH IS ZERO CLICKS. Industry is set in Job information, which is why Card artwork sits AFTER it in the form: put the picture step earlier and the operator is asked to choose before the system knows which pictures suit the job.',
+              'THE CHANGE PATH IS ONE CLICK. “Đổi ảnh…” opens a SET-FIRST picker — each row is a whole set drawn as its three renditions, and the button says “Dùng cả cụm”. Tabs: Gợi ý theo ngành (the default — sets carrying this industry, plus the neutral “Mọi ngành” ones) · Tất cả cụm · Ảnh của công ty · Tải lên.',
+              'MIXING IS POSSIBLE BUT DELIBERATE. “Chọn riêng khung này” under a slot opens the same picker filtered to that rendition and changes only it. It is the exception — three frames from three different scenes make the hover card look like it jumped to a different posting — so it costs one extra click instead of shaping the default.',
+              'ROTATION IS PART OF THE RULE, NOT A REFINEMENT. The resolver takes the LEAST-USED complete set, not the first match. First-match puts one photograph on every card of an industry; the homepage then looks like a template, which is worse than the placement not being sold.',
+              'WHICH RENDITIONS ARE REQUIRED COMES FROM THE PACKAGE: a package that never prints a circle must not block Post over a missing circle. The right-rail checklist shows ONE “Card artwork” line, resolved against the placements the chosen product actually feeds — replacing today’s flat “Card photo (at rest)” row.',
+              'THE JOB STORES THREE ASSET IDS, never the set id. Re-cropping, replacing or archiving a set in the library must not repaint a posting that is already running; `appliedSetId` is kept alongside for display only, and is null once the artwork is mixed.',
+              'Employer uploads stay on the job and on that company’s own private sets — never promoted into the shared library, because we hold no right to redistribute their photo to another company. Their real workplace photo still outranks stock when they supply one.',
+            ],
+          },
+          {
+            label: 'Which artwork sets a job can reach — the industry chain',
+            text: 'ADDED 06/11/2026, once image sets became taggable at any of the three industry levels. The job holds ONE industry node, at any level; a set holds SEVERAL, at any level. They do not meet by equality — they meet on the ANCESTOR CHAIN, and the resolver returns a tier rather than a yes/no.',
+            table: {
+              cols: ['Tier', 'Relationship', 'Example — job is “Logistics › Freight & transport › Road freight”', 'Rank'],
+              rows: [
+                ['**0 · ancestor**', 'the set is tagged at the job’s own node, or above it', 'a set tagged *Road freight* (depth 3), *Freight & transport* (2) or *Logistics* (1)', 'best, and DEEPER WINS — the specialty set beats the group one'],
+                ['**1 · descendant**', 'the set is tagged BELOW the job’s node', 'job says *Logistics*, set says *Road freight*', 'after every ancestor match — it is a guess about a job that did not commit'],
+                ['**2 · neutral**', '`anyIndustry`', 'a skyline, a team portrait', 'last resort; never counted as coverage'],
+              ],
+            },
+            items: [
+              'ORDER IS (tier ASC, matched depth DESC, usage ASC, random). Read plainly: take the most specific real match; among equally specific ones take the least-used; break the tie randomly.',
+              'TIER 0 IS THE DIRECTION THAT MUST ALWAYS WORK. Tagging one photograph at group level is how a library of twenty-five sets covers a taxonomy of sixty nodes — without it, every specialty would need its own photo and the seed set becomes unaffordable.',
+              'DEEPER-WINS IS WHAT MAKES THE SPECIALTY TAG WORTH ANYTHING. If a group-tagged set could outrank a specialty-tagged one, nobody would ever tag at level 3 and the whole tree collapses back to twelve flat values.',
+              'TIER 1 EXISTS SO A VAGUE JOB STILL GETS A PICTURE: a job tagged only “Logistics” would otherwise see nothing but neutral sets, which is a worse card than a warehouse photo that is one branch too specific.',
+              'THE PICKER PRINTS THE TIER on every suggested row — “Khớp chuyên ngành”, “Khớp ngành”, “Khớp nhóm”, “Ngành con”, “Mọi ngành”. A ranked list nobody can check is just an order, and the first question an operator asks is “why is that one first?”.',
+              'The job form’s own industry field is UNCHANGED: the shared 3-level picker, limit 1. Nothing here asks the employer to think about artwork when choosing their sector.',
+            ],
+          },
         ],
         uiFields: [
           {
@@ -424,13 +466,17 @@ export const jobManagement: BuildModule = {
             ],
           },
           {
-            group: 'Display pictures — only when the product feeds a picture placement',
+            group: 'Card artwork — only when the product feeds a picture placement',
             items: [
-              { name: 'placementImages', type: 'JobPlacementImage[]', notes: 'ONE entry per image slot on the placements the selected product feeds. Two slots → two pictures, one slot → one, no picture placement → the step does not exist. The COUNT comes from the Placements registry, never from the job and never hard-coded in the form.' },
-              { name: '· slotKey', type: 'ref → Placement.imageSlots[].key', required: true, notes: 'which frame this fills, and therefore which aspect and safe areas the preview draws' },
-              { name: '· source', type: "enum('upload'|'gallery')", required: true, notes: 'the employer’s own photo, or a pick from the Image gallery' },
-              { name: '· galleryImageId / uploadUrl', type: 'uuid? / string?', notes: 'exactly one is set, per source' },
-              { name: '· focalPointOverride', type: '{ x, y }?', notes: 'lets this job nudge the crop without touching the shared library picture' },
+              { name: '(job industry)', type: 'ref → Industry node, any level', notes: 'NOT a new field — the existing `industry`. Recorded here because it is the input the whole artwork step resolves on, and because WHICH LEVEL it was tagged at decides how specific a set the job can be matched with.' },
+              { name: 'artworkSet', type: 'ref → ArtworkSet', notes: 'DISPLAY ONLY, and null once the slots are mixed. The job does not resolve its pictures through this — it is what the form prints as “cụm «…»” so the operator can see the three frames came from one scene.' },
+              { name: 'landscapeAssetId', type: 'uuid → ArtworkAsset', notes: '596×336 (16:9) — the card at rest on the paid bands' },
+              { name: 'portraitAssetId', type: 'uuid → ArtworkAsset', notes: '600×800 (3:4) — the card expanded by hover' },
+              { name: 'circleAssetId', type: 'uuid → ArtworkAsset', notes: '240×240 (1:1) — the round-thumbnail band' },
+              { name: 'artworkSource', type: "enum('auto'|'manual'|'mixed'|'company')", required: true, notes: 'THE WHOLE STATE MACHINE. `auto` re-resolves when Industry changes; every other value is left alone and only flagged. Without this field the form cannot tell a prefill it may replace from a decision it must not touch.' },
+              { name: '(required renditions)', type: 'derived', notes: 'NOT a field — resolved from the placements the chosen product feeds, via the Placements registry. A package that prints no circle must not block Post over a missing circle, and the count is never hard-coded in the form.' },
+              { name: 'focalPointOverride', type: '{ x, y }?', notes: 'per-slot, lets this job nudge the crop without touching the shared library set' },
+              { name: '(employer upload)', type: 'file', notes: 'becomes a private set on that company with the same three-rendition shape — one master, three crops. Never enters the shared library.' },
             ],
           },
           {
@@ -517,6 +563,14 @@ export const jobManagement: BuildModule = {
           notes: 'ONE jobs table behind both surfaces. `source` (admin | company) records which door the row came in through, and it is the only difference the data carries — the two endpoint families must never diverge in what they accept.',
         },
         acceptance: [
+          'Setting Industry fills all three Card artwork slots with no click, and the block reads “tự điền theo ngành”.',
+          'Two jobs created back-to-back in the same industry receive DIFFERENT artwork sets while unused complete sets remain.',
+          'A job tagged at a SPECIALTY prefers a set tagged at that specialty over a set tagged at its group, even when the group set is less used.',
+          'A job tagged at a GROUP can still be filled by a set tagged at one of its specialties, ranked after any group-level match.',
+          'Every suggested row in the picker states why it was offered (khớp chuyên ngành / ngành / nhóm · ngành con · mọi ngành).',
+          'Picking a set in the picker fills all three slots at once; “Chọn riêng khung này” changes exactly one and marks the job “ghép từ N cụm”.',
+          'Changing Industry re-fills auto artwork and leaves manual / mixed artwork untouched, with a warning.',
+          'A package that prints no circle does not block Post over a missing circle rendition.',
           'HQ can create a job for any company and it appears active on the JS site.',
           'A company user can post a job and see it go live (Open) immediately — no approval wait.',
           'Draft → Publish transitions correctly; audit log records the actor.',

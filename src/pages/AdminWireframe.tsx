@@ -63,6 +63,7 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-jobseekers': { module: 'jobseeker-user', feature: 'User management' },
   // Content
   'admin-image-gallery': { module: 'banners-popups', feature: 'Image gallery' },
+  'admin-image-bulk': { module: 'banners-popups', feature: 'Bulk image import' },
   'admin-banners': { module: 'banners-popups', feature: 'Create banner + Banner list' },
   'admin-slots': { module: 'banners-popups', feature: 'Slot occupancy' },
   // Billing & products
@@ -296,6 +297,7 @@ const NAV_GROUPS: NavGroup[] = [
       // beside Placements rather than under Service because it is configuration a
       // placement reads, not something a customer bought.
       { label: 'Image gallery', specId: 'admin-image-gallery' },
+      { label: 'Nhập ảnh hàng loạt', specId: 'admin-image-bulk' },
       // The discount programmes the quotation builder applies by itself, keyed on
       // the customer's status. Settings, not coupon codes — nobody types one.
       { label: 'Discount programmes', specId: 'admin-promotions' },

@@ -1,203 +1,466 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { GALLERY, GALLERY_TOPICS, INDUSTRY_TOPICS, PENDING_SEED, imgStyle } from '@/pages/admin/data/products'
-import type { GalleryImg, PendingFile } from '@/pages/admin/data/products'
+import {
+  ARTWORK_SETS, INDUSTRIES_L1, RENDITIONS, TAGS,
+  imgStyle, isComplete, missingOf, ownCoverage, setLabel, suggestIndustries, tagName,
+} from '@/pages/admin/data/products'
+import type { ArtworkSet, Rendition } from '@/pages/admin/data/products'
+import { industryBranch, industryLevel, industryName, industryPath } from '@/pages/admin/data/industries'
+import { ScreenNavCtx } from '@/pages/admin/ctx'
+import { IndustryTreePicker } from '@/pages/admin/ui/industryPicker'
 import { Pill } from '@/pages/admin/ui/status'
 
-export function AdminImageGallery() {
-  /* Two ways in, one classification: pick a topic directly, or pick an industry
-     and let the map resolve which topics it prefers. */
-  const [topic, setTopic] = useState('')
-  const [industry, setIndustry] = useState('')
-  const [role, setRole] = useState<'' | 'subject' | 'background'>('')
-  const [q, setQ] = useState('')
-  const [showArchived, setShowArchived] = useState(false)
-  const [open, setOpen] = useState<GalleryImg | null>(null)
-  const [showMap, setShowMap] = useState(false)
-  const [uploading, setUploading] = useState(false)
-
-  const mapped = industry ? (INDUSTRY_TOPICS.find(([i]) => i === industry)?.[1] ?? []) : []
-  const shown = GALLERY.filter((g) => (showArchived ? true : !g.archived))
-    .filter((g) => !topic || g.topics.includes(topic))
-    .filter((g) => !industry || g.topics.some((t) => mapped.includes(t)))
-    .filter((g) => !role || g.role === role)
-    .filter((g) => !q.trim() || (g.title + ' ' + g.tags.join(' ')).toLowerCase().includes(q.trim().toLowerCase()))
-
-  const stock = (t: string) => GALLERY.filter((g) => !g.archived && g.topics.includes(t)).length
-  /* a topic under 3 pictures is a topic whose default repeats across the grid */
-  const thinTopics = GALLERY_TOPICS.filter((t) => stock(t) < 3)
-  /* and the industries that hurts — every topic they map to is thin */
-  const thinIndustries = INDUSTRY_TOPICS.filter(([, ts]) => ts.every((t) => stock(t) < 3)).map(([i]) => i)
-
+/** The three renditions of a set, at their real aspect ratios. One hue across all
+    three because it IS one photograph — the claim the set makes, shown not asserted. */
+function RenditionStrip({ set }: { set: ArtworkSet }) {
+  /* `cn` is a plain join, not tailwind-merge: two rounded-* classes on one element
+     race in the stylesheet. The radius lives in the box string ONLY. */
+  const box: Record<Rendition, string> = {
+    landscape: 'h-[54px] w-[96px] rounded-md',
+    portrait: 'h-[54px] w-[40px] rounded-md',
+    circle: 'h-[54px] w-[54px] rounded-full',
+  }
   return (
-    <div>
-      <p className="mb-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted">
-        Ảnh dùng cho <b className="text-ink/70">vị trí hiển thị có khung ảnh</b> — tin đăng mượn từ đây khi sản phẩm của
-        nó chiếm một placement cần ảnh. Phân loại theo <b className="text-ink/70">chủ đề</b> — thứ duy nhất thuộc về bản
-        thân tấm ảnh. Ngành vẫn là lối vào quen thuộc, nhưng đi qua <b className="text-ink/70">bảng ánh xạ ngành → chủ đề</b>,
-        nên không tấm ảnh nào phải mang một cái nhãn ngành mà nó không thể chứng minh.
-      </p>
-
-      {thinTopics.length > 0 && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
-          <b>{thinTopics.length} chủ đề chưa đủ 3 ảnh</b> — {thinTopics.join(' · ')}.
-          {thinIndustries.length > 0 && (
-            <> Kéo theo <b>{thinIndustries.join(' · ')}</b> không còn ảnh mặc định nào tử tế.</>
-          )}
-          {' '}Dưới mức này thì ảnh mặc định sẽ lặp lại trên trang chủ, trông tệ hơn cả không bán placement.
-        </div>
-      )}
-
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <div className="relative">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên ảnh, từ khoá…" className="w-[220px] rounded-lg border border-line bg-surface py-1 pl-7 pr-2 text-[11.5px] outline-none focus:border-brand" />
-        </div>
-        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', topic ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
-          <span className={topic ? 'text-brand/70' : 'text-faint'}>Chủ đề</span>
-          <select value={topic} onChange={(e) => { setTopic(e.target.value); setIndustry('') }} className={cn('max-w-[190px] cursor-pointer bg-transparent text-[11.5px] outline-none', topic ? 'font-medium text-brand' : 'text-ink')}>
-            <option value="">Tất cả</option>
-            {GALLERY_TOPICS.map((t) => <option key={t} value={t}>{t} ({stock(t)})</option>)}
-          </select>
-        </label>
-        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', industry ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
-          <span className={industry ? 'text-brand/70' : 'text-faint'}>Theo ngành</span>
-          <select value={industry} onChange={(e) => { setIndustry(e.target.value); setTopic('') }} className={cn('max-w-[190px] cursor-pointer bg-transparent text-[11.5px] outline-none', industry ? 'font-medium text-brand' : 'text-ink')}>
-            <option value="">—</option>
-            {INDUSTRY_TOPICS.map(([i]) => <option key={i} value={i}>{i}</option>)}
-          </select>
-        </label>
-        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', role ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
-          <span className={role ? 'text-brand/70' : 'text-faint'}>Vai trò</span>
-          <select value={role} onChange={(e) => setRole(e.target.value as typeof role)} className={cn('cursor-pointer bg-transparent text-[11.5px] outline-none', role ? 'font-medium text-brand' : 'text-ink')}>
-            <option value="">Tất cả</option>
-            <option value="subject">Chủ thể (cảnh)</option>
-            <option value="background">Ảnh nền</option>
-          </select>
-        </label>
-        <button onClick={() => setShowMap((v) => !v)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', showMap ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>
-          Bảng ngành → chủ đề
-        </button>
-        <button onClick={() => setShowArchived((v) => !v)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', showArchived ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>
-          Hiện cả ảnh đã lưu trữ
-        </button>
-        <button onClick={() => setUploading(true)} className="ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">＋ Tải ảnh lên</button>
-      </div>
-
-      {industry && (
-        <p className="mb-2 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] text-brand">
-          <b>{industry}</b> → {mapped.join(' · ')} — ảnh mặc định lấy từ <b>{mapped[0]}</b>, chọn tấm ít dùng nhất trước.
-        </p>
-      )}
-
-      {showMap && (
-        <div className="mb-3 overflow-hidden rounded-xl border border-line">
-          <div className="grid grid-cols-[1fr_2fr] gap-x-4 bg-canvas/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
-            <span>Ngành</span><span>Chủ đề (theo thứ tự ưu tiên)</span>
-          </div>
-          {INDUSTRY_TOPICS.map(([i, ts]) => (
-            <div key={i} className="grid grid-cols-[1fr_2fr] items-center gap-x-4 border-t border-line-soft px-3 py-1.5 text-[11.5px]">
-              <span className="truncate">{i}</span>
-              <span className="flex flex-wrap gap-1">
-                {ts.map((t, n) => (
-                  <span key={t} className={cn('rounded-full border px-1.5 py-px text-[10px]', n === 0 ? 'border-brand/30 bg-brand-soft font-medium text-brand' : 'border-line bg-canvas text-muted', stock(t) < 3 && 'border-amber-300 bg-amber-50 text-amber-800')}>
-                    {t} · {stock(t)}
-                  </span>
-                ))}
-              </span>
-            </div>
-          ))}
-          <p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-relaxed text-faint">
-            12 dòng × 2–4 chủ đề — một màn hình cấu hình. Chủ đề <b>đầu tiên</b> là nơi ảnh mặc định được lấy ra.
-            Thêm hoặc đổi tên một ngành thì sửa đúng một dòng ở đây, thay vì gắn nhãn lại hàng trăm tấm ảnh.
-          </p>
-        </div>
-      )}
-
-      <p className="mb-1.5 text-[11px] text-faint">
-        Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{shown.length}</b> / Tổng{' '}
-        <b className="font-semibold text-ink/70 tabular-nums">{GALLERY.filter((g) => !g.archived).length}</b> ảnh đang dùng được
-      </p>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {shown.map((g) => (
-          <button key={g.id} onClick={() => setOpen(g)} className="overflow-hidden rounded-xl border border-line bg-surface text-left transition-colors hover:border-brand">
-            <span className="relative block h-[104px]" style={imgStyle(g.hue)}>
-              {g.archived && <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">Đã lưu trữ</span>}
-              <span className="absolute bottom-1.5 right-1.5 rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white">{g.uses} tin dùng</span>
+    <span className="flex items-end gap-1.5">
+      {RENDITIONS.map((r) => {
+        const has = set.renditions[r.key]
+        return (
+          <span key={r.key} className="block">
+            <span
+              className={cn('relative block overflow-hidden border', box[r.key], has ? 'border-line' : 'border-dashed border-amber-300 bg-amber-50')}
+              style={has ? imgStyle(set.hue) : undefined}
+            >
+              {!has && <span className="absolute inset-0 grid place-items-center text-[9px] font-medium text-amber-700">trống</span>}
+              {has?.derived && <span className="absolute bottom-0 right-0 bg-black/45 px-1 text-[8px] text-white" title="Cắt ra từ ảnh gốc">✂</span>}
             </span>
-            <span className="block p-2.5">
-              <span className="block truncate text-[12px] font-medium text-ink">{g.title}</span>
-              <span className="mt-1 flex flex-wrap items-center gap-1">
-                {g.topics.map((t) => (
-                  <span key={t} className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-muted">{t}</span>
-                ))}
-                {g.role === 'background' && <span className="rounded-full border border-brand/30 bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">nền</span>}
-              </span>
-              {g.expires && (
-                <span className="mt-1 block text-[10px] text-faint">Bản quyền đến {g.expires}</span>
-              )}
-            </span>
-          </button>
+            <span className="mt-0.5 block text-center text-[9px] text-faint">{r.label}</span>
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+/** A set's industries as chips, each showing which LEVEL it was tagged at — the
+    thing that decides how wide its reach is, so it belongs on the chip. */
+function IndustryChips({ set, max }: { set: ArtworkSet; max?: number }) {
+  if (set.anyIndustry) return <span className="rounded-full border border-brand/30 bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">Mọi ngành</span>
+  const shown = max ? set.industries.slice(0, max) : set.industries
+  return (
+    <>
+      {shown.map((id) => (
+        <span key={id} className="inline-flex items-center gap-1 rounded-full border border-brand/25 bg-brand-soft px-1.5 py-px text-[10px] text-brand" title={industryPath(id)}>
+          <span className="text-[8.5px] font-semibold text-brand/60">L{industryLevel(id)}</span>
+          {industryName(id)}
+        </span>
+      ))}
+      {max && set.industries.length > max && <span className="text-[10px] text-faint">+{set.industries.length - max}</span>}
+    </>
+  )
+}
+
+/* ── Tag field ────────────────────────────────────────────────────────────────
+   Tags are NOT a closed master list: HQ types a new one and it exists. That is
+   deliberate — the taxonomy that must hold still is INDUSTRY, and forcing every
+   loose label ("tết", "nữ giới", "ngoài trời") through a master-data release is
+   how tagging quietly stops happening.
+
+   Creating from the field itself, rather than from a separate admin screen, is
+   the whole difference: the moment you need a tag is WHILE classifying a picture,
+   not before. */
+function TagField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const hits = TAGS.filter((t) => !value.includes(t.id) && t.name.toLowerCase().includes(q.trim().toLowerCase()))
+  const exact = TAGS.find((t) => t.name.toLowerCase() === q.trim().toLowerCase())
+  const canCreate = q.trim() !== '' && !exact
+  const add = (id: string) => { onChange([...value, id]); setQ(''); setOpen(false) }
+  const create = () => {
+    const id = 't-' + Date.now().toString(36)
+    TAGS.push({ id, name: q.trim() })   // wireframe only; a real build POSTs /admin/artwork-tags
+    add(id)
+  }
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1.5">
+        {value.map((id) => (
+          <span key={id} className="inline-flex items-center gap-1 rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] text-muted">
+            {tagName(id)}
+            <button onClick={() => onChange(value.filter((x) => x !== id))} className="text-faint hover:text-ink">✕</button>
+          </span>
         ))}
+        <input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); if (hits[0] && !canCreate) add(hits[0].id); else if (canCreate) create() }
+            if (e.key === 'Backspace' && q === '' && value.length) onChange(value.slice(0, -1))
+          }}
+          placeholder={value.length ? 'thêm tag…' : 'Gõ để tìm hoặc tạo tag mới…'}
+          className="min-w-[150px] flex-1 bg-transparent py-0.5 text-[11.5px] outline-none placeholder:text-faint"
+        />
       </div>
-
-      {open && <GalleryImageModal img={open} onClose={() => setOpen(null)} />}
-      {uploading && <GalleryUploadModal thinTopics={thinTopics} onClose={() => setUploading(false)} />}
-
-      <p className="mt-3 text-[11px] leading-relaxed text-faint">
-        Ảnh phân loại theo <b>chủ đề</b>, không theo ngành: một tấm ảnh là một <b>cảnh</b>, còn ngành là chuyện của
-        doanh nghiệp. Nhờ vậy mỗi ảnh chỉ cần 1–2 nhãn thay vì hai mươi, và danh sách ngành có đổi thì chỉ sửa bảng ánh
-        xạ. Ảnh <b>không bao giờ bị xoá</b>, chỉ lưu trữ: tin đang chạy vẫn trỏ vào nó.
-        Nhà tuyển dụng <b>không tải ảnh lên thư viện này</b> — ảnh họ tự tải chỉ nằm trên tin của họ, vì mình không có
-        quyền phát hành lại ảnh đó cho công ty khác.
-      </p>
+      {open && (q.trim() !== '' || hits.length > 0) && (
+        <div className="absolute z-30 mt-1 max-h-[180px] w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-lg">
+          {canCreate && (
+            <button onMouseDown={(e) => { e.preventDefault(); create() }} className="flex w-full items-center gap-1.5 border-b border-line-soft px-2.5 py-1.5 text-left text-[11.5px] font-medium text-brand hover:bg-brand-soft">
+              ＋ Tạo tag “{q.trim()}”
+            </button>
+          )}
+          {hits.map((t) => (
+            <button key={t.id} onMouseDown={(e) => { e.preventDefault(); add(t.id) }} className="block w-full px-2.5 py-1.5 text-left text-[11.5px] text-ink/85 hover:bg-canvas">{t.name}</button>
+          ))}
+          {hits.length === 0 && !canCreate && <p className="px-2.5 py-1.5 text-[11px] text-faint">Không có tag nào khớp.</p>}
+        </div>
+      )}
     </div>
   )
 }
 
-function GalleryUploadModal({ thinTopics, onClose }: { thinTopics: string[]; onClose: () => void }) {
+/* ── Tag manager ──────────────────────────────────────────────────────────────
+   Rename and delete, because a tag list nobody can tidy becomes forty near-
+   duplicates within a quarter. Deleting a tag detaches it from every set and
+   never deletes a set: losing a label is not a reason to lose a photograph. */
+function TagManager({ onClose }: { onClose: () => void }) {
+  const [, force] = useState(0)
+  const [newName, setNewName] = useState('')
+  const usage = (id: string) => ARTWORK_SETS.filter((s) => !s.archived && s.tags.includes(id)).length
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6" onClick={onClose}>
+      <div className="my-4 w-full max-w-[520px] rounded-2xl border border-line bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div>
+            <p className="text-[15px] font-bold">Quản lý tag</p>
+            <p className="text-[11px] text-muted">HQ tự tạo, sửa tên và xoá — không cần phát hành master data.</p>
+          </div>
+          <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
+        </div>
+        <div className="p-5">
+          <div className="mb-3 flex gap-1.5">
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tên tag mới…" className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] outline-none focus:border-brand" />
+            <button
+              disabled={!newName.trim()}
+              onClick={() => { TAGS.push({ id: 't-' + Date.now().toString(36), name: newName.trim() }); setNewName(''); force((n) => n + 1) }}
+              className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >＋ Tạo</button>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto rounded-lg border border-line">
+            {TAGS.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 border-b border-line-soft px-2.5 py-1.5 last:border-b-0">
+                <input
+                  defaultValue={t.name}
+                  onBlur={(e) => { t.name = e.target.value.trim() || t.name; force((n) => n + 1) }}
+                  className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-[11.5px] text-ink outline-none hover:border-line focus:border-brand"
+                />
+                <span className="shrink-0 text-[10px] text-faint">{usage(t.id)} cụm</span>
+                <button
+                  onClick={() => {
+                    const n = usage(t.id)
+                    if (n === 0 || confirm(`Xoá tag “${t.name}”? ${n} cụm đang gắn sẽ bị gỡ nhãn — ảnh vẫn giữ nguyên.`)) {
+                      ARTWORK_SETS.forEach((s) => { s.tags = s.tags.filter((x) => x !== t.id) })
+                      TAGS.splice(TAGS.findIndex((x) => x.id === t.id), 1)
+                      force((k) => k + 1)
+                    }
+                  }}
+                  className="shrink-0 text-[11px] text-faint hover:text-rose-600"
+                >Xoá</button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+            Đổi tên áp dụng ngay cho mọi cụm đang gắn. Xoá thì <b>chỉ gỡ nhãn</b> — không cụm ảnh nào bị xoá theo.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function AdminImageGallery() {
+  const goto = useContext(ScreenNavCtx)
+  const [group, setGroup] = useState('')
+  const [tag, setTag] = useState('')
+  const [fit, setFit] = useState<'' | 'complete' | 'partial'>('')
+  const [q, setQ] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const [open, setOpen] = useState<ArtworkSet | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [managingTags, setManagingTags] = useState(false)
+
+  /* Filtering by a GROUP means its whole branch — a set tagged "Road freight" has
+     to appear under Logistics, or the filter lies about what the library holds. */
+  const branch = group ? industryBranch(group) : []
+  const shown = ARTWORK_SETS.filter((s) => (showArchived ? true : !s.archived))
+    .filter((s) => !group || s.anyIndustry || s.industries.some((i) => branch.includes(i)))
+    .filter((s) => !tag || s.tags.includes(tag))
+    .filter((s) => !fit || (fit === 'complete' ? isComplete(s) : !isComplete(s)))
+    .filter((s) => !q.trim() || (setLabel(s) + ' ' + s.tags.map(tagName).join(' ')).toLowerCase().includes(q.trim().toLowerCase()))
+
+  return (
+    <div>
+      {/* Coverage gaps are NOT banners. They are read off the two controls that can
+          act on them: the group filter prints each group's complete-set count, and
+          "Phiên bản · Còn thiếu" lists the unfinished sets. A warning you cannot
+          click is just noise sitting above the work. */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="relative">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên cụm, tag…" className="w-[190px] rounded-lg border border-line bg-surface py-1 pl-7 pr-2 text-[11.5px] outline-none focus:border-brand" />
+        </div>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', group ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={group ? 'text-brand/70' : 'text-faint'}>Nhóm ngành</span>
+          <select value={group} onChange={(e) => setGroup(e.target.value)} className={cn('max-w-[180px] cursor-pointer bg-transparent text-[11.5px] outline-none', group ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">Tất cả</option>
+            {INDUSTRIES_L1.map((id) => <option key={id} value={id}>{industryName(id)} ({ownCoverage(id)})</option>)}
+          </select>
+        </label>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', tag ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={tag ? 'text-brand/70' : 'text-faint'}>Tag</span>
+          <select value={tag} onChange={(e) => setTag(e.target.value)} className={cn('max-w-[150px] cursor-pointer bg-transparent text-[11.5px] outline-none', tag ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">Tất cả</option>
+            {TAGS.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </label>
+        <label className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px]', fit ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted')}>
+          <span className={fit ? 'text-brand/70' : 'text-faint'}>Phiên bản</span>
+          <select value={fit} onChange={(e) => setFit(e.target.value as typeof fit)} className={cn('cursor-pointer bg-transparent text-[11.5px] outline-none', fit ? 'font-medium text-brand' : 'text-ink')}>
+            <option value="">Tất cả</option>
+            <option value="complete">Đủ cả 3</option>
+            <option value="partial">Còn thiếu</option>
+          </select>
+        </label>
+        <button onClick={() => setShowArchived((v) => !v)} className={cn('rounded-lg border px-2.5 py-1 text-[11.5px]', showArchived ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>
+          Hiện cả cụm đã lưu trữ
+        </button>
+        <button onClick={() => setManagingTags(true)} className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[11.5px] text-muted hover:border-ink/30">
+          Quản lý tag
+        </button>
+        <div className="ml-auto flex gap-1.5">
+          <button onClick={() => goto('admin-image-bulk')} className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] font-medium text-ink hover:border-brand">⇪ Nhập hàng loạt</button>
+          <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">＋ Tạo cụm ảnh</button>
+        </div>
+      </div>
+
+      <p className="mb-1.5 text-[11px] text-faint">
+        Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{shown.length}</b> / Tổng{' '}
+        <b className="font-semibold text-ink/70 tabular-nums">{ARTWORK_SETS.filter((s) => !s.archived).length}</b> cụm đang dùng được
+        {group && <> · <b className="text-ink/70">{industryName(group)}</b> có <b className="text-ink/70 tabular-nums">{ownCoverage(group)}</b> cụm đầy đủ trong nhánh này</>}
+      </p>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {shown.map((s, n) => (
+          <button key={s.id} onClick={() => setOpen(s)} className="rounded-xl border border-line bg-surface p-2.5 text-left transition-colors hover:border-brand">
+            <span className="flex items-start justify-between gap-2">
+              <RenditionStrip set={s} />
+              <span className="shrink-0 text-right">
+                <span className="block rounded bg-canvas px-1.5 py-0.5 text-[10px] text-muted">{s.uses} tin dùng</span>
+                {s.archived && <span className="mt-1 block rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">Lưu trữ</span>}
+              </span>
+            </span>
+            <span className={cn('mt-2 block truncate text-[12.5px]', s.title ? 'font-medium text-ink' : 'italic text-faint')}>{setLabel(s, n + 1)}</span>
+            <span className="mt-1 flex flex-wrap items-center gap-1"><IndustryChips set={s} max={3} /></span>
+            <span className="mt-1 flex flex-wrap items-center gap-1">
+              {s.tags.map((t) => <span key={t} className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-muted">{tagName(t)}</span>)}
+              {s.expires && <span className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-faint">hết hạn {s.expires}</span>}
+            </span>
+            {!isComplete(s) && !s.archived && (
+              <span className="mt-1.5 block text-[10px] font-medium text-amber-700">⚠ Thiếu {missingOf(s).join(' · ').toLowerCase()} — không được dùng làm ảnh tự điền</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {open && <SetModal set={open} onClose={() => setOpen(null)} />}
+      {creating && <CreateSetModal onClose={() => setCreating(false)} />}
+      {managingTags && <TagManager onClose={() => setManagingTags(false)} />}
+    </div>
+  )
+}
+
+/* ── One set ─────────────────────────────────────────────────────────────── */
+function SetModal({ set, onClose }: { set: ArtworkSet; onClose: () => void }) {
+  const [industries, setIndustries] = useState<string[]>(set.industries)
+  const [any, setAny] = useState(!!set.anyIndustry)
+  const [tags, setTags] = useState<string[]>(set.tags)
+  const [title, setTitle] = useState(set.title ?? '')
+  const [expires, setExpires] = useState(set.expires ?? '')
+  const canSave = any || industries.length > 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
+      <div className="my-4 w-full max-w-[720px] rounded-xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={setLabel(set) + ' — đặt tên (không bắt buộc)'}
+              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-[14px] font-bold text-ink outline-none placeholder:font-normal placeholder:italic placeholder:text-faint hover:border-line focus:border-brand"
+            />
+            <p className="px-1 text-[11px] text-muted">{set.uses} tin đang dùng{set.expires ? ` · bản quyền đến ${set.expires}` : ''}</p>
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-ink">✕</button>
+        </div>
+
+        <div className="p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Ba phiên bản</p>
+          <div className="flex flex-wrap items-start gap-4">
+            {RENDITIONS.map((r) => {
+              const has = set.renditions[r.key]
+              const box = r.key === 'landscape' ? 'h-[108px] w-[192px] rounded-lg' : r.key === 'portrait' ? 'h-[108px] w-[81px] rounded-lg' : 'h-[108px] w-[108px] rounded-full'
+              return (
+                <div key={r.key}>
+                  <div className={cn('relative overflow-hidden border', box, has ? 'border-line' : 'border-2 border-dashed border-amber-300 bg-amber-50')} style={has ? imgStyle(set.hue) : undefined}>
+                    {has ? (
+                      <>
+                        <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">badge</span>
+                        <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
+                        <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand" title="Focal point" />
+                      </>
+                    ) : (
+                      <span className="grid h-full place-items-center text-[11px] font-medium text-amber-700">Chưa có</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10.5px] font-medium text-ink">{r.label} · {r.px}</p>
+                  <p className="text-[10px] text-faint">{r.where}</p>
+                  <p className="mt-1 flex gap-1.5 text-[10.5px]">
+                    {has
+                      ? <><button className="text-brand hover:underline">Cắt lại</button><span className="text-faint">·</span><button className="text-brand hover:underline">Thay tệp</button></>
+                      : <><button className="text-brand hover:underline">Cắt từ ảnh gốc</button><span className="text-faint">·</span><button className="text-brand hover:underline">Tải tệp riêng</button></>}
+                  </p>
+                  {has?.derived && <p className="mt-0.5 text-[10px] text-faint">✂ cắt từ ảnh gốc</p>}
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-wide text-faint">
+            Ngành <span className="text-rose-500">*</span>
+            <span className="ml-1.5 font-normal normal-case tracking-normal text-faint">— bắt buộc. Chọn ở bất kỳ cấp nào: nhóm · ngành · chuyên ngành</span>
+          </p>
+          <label className={cn('mb-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px]', any ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted')}>
+            <input type="checkbox" checked={any} onChange={(e) => setAny(e.target.checked)} className="accent-current" />
+            Mọi ngành (ảnh trung tính — dùng làm dự phòng)
+          </label>
+          <div className={cn(any && 'pointer-events-none opacity-40')}>
+            <IndustryTreePicker value={industries} onChange={setIndustries} />
+          </div>
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+            Gắn ở <b>nhóm</b> thì cả nhánh dùng được tấm ảnh này; gắn ở <b>chuyên ngành</b> thì chỉ tin đúng chuyên ngành
+            đó mới ưu tiên nó. Tin đăng luôn lấy <b>mức khớp sâu nhất</b> trước, nên một cụm gắn nhóm không bao giờ chặn
+            mất một cụm gắn chuyên ngành.
+          </p>
+
+          <div className="mt-4 grid grid-cols-[1fr_170px] gap-4">
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                Tag <span className="ml-1.5 font-normal normal-case tracking-normal text-faint">— không bắt buộc, gõ để tạo mới</span>
+              </p>
+              <TagField value={tags} onChange={setTags} />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Hết hạn</p>
+              <input value={expires} onChange={(e) => setExpires(e.target.value)} placeholder="dd/mm/yyyy" className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none focus:border-brand" />
+              <p className="mt-1 text-[10px] leading-relaxed text-faint">Để trống nếu bản quyền vĩnh viễn.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-3">
+          <span className="text-[11px] text-faint">
+            {!canSave
+              ? <span className="text-amber-700">Chưa có ngành — bắt buộc trước khi lưu</span>
+              : isComplete(set)
+                ? <>Đủ cả 3 phiên bản — <b className="text-ink/70">được dùng làm ảnh tự điền</b></>
+                : <span className="text-amber-700">Thiếu {missingOf(set).join(' · ').toLowerCase()} — chỉ chọn tay được</span>}
+          </span>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Đóng</button>
+            <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Lưu trữ</button>
+            <button disabled={!canSave} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Lưu thay đổi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Create a set ─────────────────────────────────────────────────────────────
+   TWO ROUTES, named at the top instead of discovered:
+
+     ① one master → crop three frames    the normal case, ONE upload
+     ② upload each frame separately      three different shots, or a crop that
+                                         genuinely cannot work
+
+   Naming both routes up front is the difference between a tool and a workaround:
+   a quiet "upload your own file" link per frame reads as error recovery. */
+type Mode = 'crop' | 'files'
+
+/** The crop stage: the master fills the frame, a scrim darkens everything outside
+    it, so what is KEPT and what is thrown away are visible at the same time. */
+function CropStage({ active, hue, zoom, setZoom }: { active: Rendition; hue: number; zoom: number; setZoom: (n: number) => void }) {
+  const frame = active === 'landscape' ? 'h-[146px] w-[260px] rounded-md' : active === 'portrait' ? 'h-[208px] w-[156px] rounded-md' : 'h-[186px] w-[186px] rounded-full'
+  return (
+    <div>
+      <div className="relative grid h-[272px] place-items-center overflow-hidden rounded-xl border border-line bg-black">
+        <div className="absolute inset-0" style={{ ...imgStyle(hue), transform: `scale(${zoom})` }} />
+        <div className="absolute inset-0 bg-black/60" />
+        <div className={cn('relative overflow-hidden border-2 border-white/90', frame)}>
+          <div className="absolute inset-0" style={{ ...imgStyle(hue), transform: `scale(${zoom})` }} />
+          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand shadow" title="Focal point" />
+          <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">badge</span>
+          <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
+        </div>
+        <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
+          Kéo ảnh để chỉnh khung · chấm xanh là focal point
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-[10.5px] text-faint">Thu phóng</span>
+        <input type="range" min={100} max={200} value={zoom * 100} onChange={(e) => setZoom(Number(e.target.value) / 100)} className="h-1 flex-1 accent-brand" />
+        <span className="w-[36px] text-right text-[10.5px] tabular-nums text-muted">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => setZoom(1)} className="text-[10.5px] text-brand hover:underline">Đặt lại</button>
+      </div>
+    </div>
+  )
+}
+
+function CreateSetModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<1 | 2>(1)
-  const [files, setFiles] = useState<PendingFile[]>([])
-  const [topics, setTopics] = useState<string[]>([])
-  const [role, setRole] = useState<'subject' | 'background'>('subject')
-  const [source, setSource] = useState('')
-  const [licence, setLicence] = useState('')
+  const [mode, setMode] = useState<Mode>('crop')
+  const [dropped, setDropped] = useState(false)
+  const [active, setActive] = useState<Rendition>('landscape')
+  const [zoom, setZoom] = useState(1)
+  const [skip, setSkip] = useState<Rendition[]>([])
+  /* mode ② — each frame is its own file, so each carries its own filled state */
+  const [files, setFiles] = useState<Partial<Record<Rendition, boolean>>>({})
+  const [title, setTitle] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [industries, setIndustries] = useState<string[]>([])
+  const [any, setAny] = useState(false)
   const [expires, setExpires] = useState('')
+  const hue = 212
 
-  /* PER-IMAGE topics, keyed by file name. A batch is rarely all one thing — this
-     drop alone is warehouse, meeting, engineer and clinic — so the topic field
-     lives on the ROW, and the chips in step 2 are only a bulk shortcut into it. */
-  const [perFile, setPerFile] = useState<Record<string, string[]>>({})
-
-  const accepted = files.filter((f) => f.ok)
-  const rejected = files.filter((f) => !f.ok)
-  const topicsFor = (name: string) => perFile[name] ?? topics
-  const togglePerFile = (name: string, t: string) =>
-    setPerFile((p) => {
-      const cur = p[name] ?? topics
-      return { ...p, [name]: cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t] }
-    })
-  const toggleTopic = (t: string) => setTopics((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]))
-  /* every accepted picture needs a topic — an untagged one can never be found in
-     the picker and can never be an industry's default */
-  const untagged = accepted.filter((f) => topicsFor(f.name).length === 0)
-  /* licence and source are what make a picture publishable — the classification can
-     be corrected later, an unlicensed photo on a paid placement cannot */
-  const ready = accepted.length > 0 && untagged.length === 0 && source.trim() !== '' && licence !== ''
-  /* how much of the coverage gap this batch actually closes */
-  const fixes = [...new Set(accepted.flatMap((f) => topicsFor(f.name)))].filter((t) => thinTopics.includes(t))
+  const have = (r: Rendition) => (mode === 'crop' ? dropped && !skip.includes(r) : !!files[r])
+  const count = RENDITIONS.filter((r) => have(r.key)).length
+  const suggested = suggestIndustries(tags)
+  /* Industry is the ONLY gate. Name, tag and expiry are optional by design — a
+     stock pack of forty pictures never gets forty hand-written names, and a rule
+     nobody can satisfy is a rule that gets worked around. */
+  const ready = count > 0 && (any || industries.length > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-4 w-full max-w-[720px] rounded-2xl border border-line bg-surface shadow-2xl">
+      <div className="my-4 w-full max-w-[800px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
           <div>
-            <p className="text-[15px] font-bold">Tải ảnh lên thư viện</p>
+            <p className="text-[15px] font-bold">Tạo cụm ảnh</p>
             <p className="text-[11px] text-muted">
-              <span className={cn(step === 1 ? 'font-semibold text-brand' : '')}>1 · Chọn tệp</span>
+              <span className={cn(step === 1 ? 'font-semibold text-brand' : '')}>1 · Ảnh &amp; ba khung</span>
               <span className="mx-1.5 text-faint">→</span>
-              <span className={cn(step === 2 ? 'font-semibold text-brand' : '')}>2 · Phân loại cả lô</span>
+              <span className={cn(step === 2 ? 'font-semibold text-brand' : '')}>2 · Phân loại cụm</span>
             </p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
@@ -205,233 +468,167 @@ function GalleryUploadModal({ thinTopics, onClose }: { thinTopics: string[]; onC
 
         {step === 1 ? (
           <div className="p-5">
-            <button
-              onClick={() => setFiles(PENDING_SEED)}
-              className="grid w-full place-items-center gap-1 rounded-xl border-2 border-dashed border-line bg-canvas/40 px-4 py-8 text-center hover:border-brand hover:bg-brand-soft/40"
-            >
-              <span className="text-[22px]">🖼️</span>
-              <span className="text-[13px] font-semibold text-ink">Kéo thả ảnh vào đây, hoặc bấm để chọn tệp</span>
-              <span className="text-[11px] text-muted">JPG · PNG · WebP — tối thiểu <b>1600 × 1200</b>, chọn nhiều tệp một lúc</span>
-            </button>
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {([
+                ['crop', '① Một ảnh gốc → cắt 3 khung', 'Tải một ảnh ≥1600×1200 rồi kéo khung cho từng tỉ lệ. Cùng một cảnh ở cả ba khung.'],
+                ['files', '② Tải riêng từng khung', 'Ba tệp đã cắt sẵn, hoặc ba góc chụp khác nhau. Dùng khi cắt từ một ảnh không ra.'],
+              ] as const).map(([k, t, hint]) => (
+                <button key={k} onClick={() => setMode(k)} className={cn('rounded-xl border p-3 text-left', mode === k ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-ink/30')}>
+                  <span className={cn('block text-[12.5px] font-semibold', mode === k ? 'text-brand' : 'text-ink')}>{t}</span>
+                  <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted">{hint}</span>
+                </button>
+              ))}
+            </div>
 
-            {files.length > 0 && (
-              <>
-                <div className="mt-3 space-y-1.5">
-                  {files.map((f, i) => (
-                    <div key={f.name} className={cn('flex items-center gap-2.5 rounded-lg border px-2.5 py-2', f.ok ? 'border-line' : 'border-rose-200 bg-rose-50')}>
-                      <span className="h-9 w-12 shrink-0 rounded" style={imgStyle(f.hue)} />
-                      <span className="min-w-0 flex-1">
-                        {f.ok ? (
-                          <input
-                            value={f.title}
-                            onChange={(e) => setFiles((p) => p.map((x, n) => (n === i ? { ...x, title: e.target.value } : x)))}
-                            className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-[12.5px] font-medium text-ink outline-none hover:border-line focus:border-brand"
-                          />
-                        ) : (
-                          <span className="block px-1 text-[12.5px] font-medium text-rose-700">{f.name}</span>
-                        )}
-                        <span className="block px-1 font-mono text-[10.5px] text-faint">{f.name} · {f.w}×{f.h}</span>
-                      </span>
-                      {/* Topics belong on the ROW: a drop is rarely one subject — this
-                          batch alone is warehouse, meeting, engineer and clinic. Multi-select,
-                          because one picture can honestly be two topics. */}
-                      {f.ok && (
-                        <span className="flex min-w-[190px] max-w-[240px] shrink-0 flex-wrap items-center gap-1">
-                          {topicsFor(f.name).map((t) => (
-                            <span key={t} className="inline-flex items-center gap-1 rounded-full border border-brand bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">
-                              {t}
-                              <button onClick={() => togglePerFile(f.name, t)} className="text-brand/60 hover:text-brand">✕</button>
-                            </span>
-                          ))}
-                          <select
-                            value=""
-                            onChange={(e) => e.target.value && togglePerFile(f.name, e.target.value)}
-                            className={cn(
-                              'cursor-pointer rounded-full border border-dashed bg-surface px-1.5 py-px text-[10px] outline-none hover:border-ink/30',
-                              topicsFor(f.name).length === 0 ? 'border-amber-300 text-amber-700' : 'border-line text-muted',
-                            )}
-                          >
-                            <option value="">{topicsFor(f.name).length === 0 ? 'Chọn chủ đề…' : '＋ chủ đề'}</option>
-                            {GALLERY_TOPICS.filter((t) => !topicsFor(f.name).includes(t)).map((t) => (
-                              <option key={t} value={t}>{t}{thinTopics.includes(t) ? ' ▲' : ''}</option>
-                            ))}
-                          </select>
-                        </span>
-                      )}
-                      {f.ok
-                        ? <Pill tone="active">Đạt</Pill>
-                        : <span title="Ảnh nhỏ hơn 1600×1200 — bị từ chối ngay, không phóng to" className="shrink-0"><Pill tone="rejected">Quá nhỏ</Pill></span>}
-                      <button onClick={() => setFiles((p) => p.filter((_, n) => n !== i))} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+            {mode === 'crop' ? (
+              !dropped ? (
+                <button onClick={() => setDropped(true)} className="grid w-full place-items-center gap-1 rounded-xl border-2 border-dashed border-line bg-canvas/40 px-4 py-10 text-center hover:border-brand hover:bg-brand-soft/40">
+                  <span className="text-[22px]">🖼️</span>
+                  <span className="text-[13px] font-semibold text-ink">Kéo thả <b>một ảnh gốc</b> vào đây</span>
+                  <span className="text-[11px] text-muted">JPG · PNG · WebP — tối thiểu <b>1600 × 1200</b>, đủ để cắt cả 16:9, 3:4 và 1:1</span>
+                </button>
+              ) : (
+                <>
+                  <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-line px-2.5 py-2">
+                    <span className="h-9 w-12 shrink-0 rounded" style={imgStyle(hue)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block px-1 text-[12.5px] font-medium text-ink">engineers-workshop-04.jpg</span>
+                      <span className="block px-1 font-mono text-[10.5px] text-faint">3200×2400 · 2.1 MB</span>
+                    </span>
+                    <Pill tone="active">Đạt</Pill>
+                    <button onClick={() => { setDropped(false); setSkip([]) }} className="shrink-0 text-[11px] text-faint hover:text-ink">✕</button>
+                  </div>
+
+                  <div className="grid grid-cols-[1fr_190px] gap-4">
+                    <CropStage active={active} hue={hue} zoom={zoom} setZoom={setZoom} />
+                    <div>
+                      <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-faint">Khung đang cắt</p>
+                      <div className="space-y-1.5">
+                        {RENDITIONS.map((r) => {
+                          const off = skip.includes(r.key)
+                          const thumb = r.key === 'landscape' ? 'h-[27px] w-[48px] rounded' : r.key === 'portrait' ? 'h-[36px] w-[27px] rounded' : 'h-[32px] w-[32px] rounded-full'
+                          return (
+                            <div key={r.key} className={cn('rounded-lg border p-1.5', active === r.key ? 'border-brand bg-brand-soft/50' : 'border-line')}>
+                              <button onClick={() => setActive(r.key)} className="flex w-full items-center gap-2 text-left">
+                                <span className={cn('shrink-0 border border-line', thumb, off && 'opacity-25')} style={imgStyle(hue)} />
+                                <span className="min-w-0 flex-1">
+                                  <span className={cn('block text-[11px] font-medium', active === r.key ? 'text-brand' : 'text-ink')}>{r.label}</span>
+                                  <span className="block text-[9.5px] text-faint">{r.px}</span>
+                                </span>
+                                {off && <span className="shrink-0 text-[9px] text-amber-700">bỏ trống</span>}
+                              </button>
+                              <div className="mt-1 flex gap-1.5 text-[10px]">
+                                <button className="text-brand hover:underline">Tệp riêng</button>
+                                <span className="text-faint">·</span>
+                                <button onClick={() => setSkip((p) => (off ? p.filter((x) => x !== r.key) : [...p, r.key]))} className={cn('hover:underline', off ? 'font-medium text-brand' : 'text-faint')}>
+                                  {off ? 'Thêm lại' : 'Bỏ trống'}
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="mt-2 text-[10px] leading-relaxed text-faint">
+                        Ảnh <b>tròn</b> mặc định cắt từ khung <b>dọc</b> theo cùng focal point — gần như không bao giờ phải tải tệp thứ ba.
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                </>
+              )
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  {RENDITIONS.map((r) => {
+                    const on = !!files[r.key]
+                    return (
+                      <div key={r.key}>
+                        <button
+                          onClick={() => setFiles((p) => ({ ...p, [r.key]: !p[r.key] }))}
+                          className={cn('grid h-[104px] w-full place-items-center gap-0.5 rounded-lg border-2 border-dashed px-2 text-center', on ? 'border-brand' : 'border-line bg-canvas/40 hover:border-brand')}
+                          style={on ? imgStyle(hue) : undefined}
+                        >
+                          {on ? (
+                            <span className="rounded bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">{r.key}-04.jpg</span>
+                          ) : (
+                            <>
+                              <span className="text-[17px]">＋</span>
+                              <span className="text-[11px] font-semibold text-ink">Tải ảnh {r.label.toLowerCase()}</span>
+                              <span className="text-[10px] text-muted">{r.px} · {r.ratio}</span>
+                            </>
+                          )}
+                        </button>
+                        <p className="mt-1 text-[10.5px] font-medium text-ink">{r.label} · {r.ratio}</p>
+                        <p className="text-[10px] text-faint">{r.where}</p>
+                        {on && <button onClick={() => setFiles((p) => ({ ...p, [r.key]: false }))} className="mt-0.5 text-[10px] text-faint hover:text-ink">Gỡ tệp</button>}
+                      </div>
+                    )
+                  })}
                 </div>
-                {rejected.length > 0 && (
-                  <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] leading-relaxed text-rose-800">
-                    <b>{rejected.length} tệp bị từ chối</b> vì nhỏ hơn 1600×1200. Ảnh phải cắt được cho cả khung dọc 3:4 lẫn
-                    ngang 3:2 — phóng to một ảnh nhỏ chỉ chuyển vấn đề sang trang chủ.
-                  </p>
-                )}
-                <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
-                  Tên ảnh sửa được ngay ở đây — đây là chuỗi mà ô tìm kiếm sẽ khớp, không phải tên tệp.
-                  <b className="text-ink/70"> Chủ đề đặt trên từng ảnh</b> (chọn nhiều được), vì một lô thả vào hiếm khi cùng một
-                  cảnh — chính lô này đã là kho vận · họp nhóm · kỹ thuật · y tế. ▲ là chủ đề đang thiếu ảnh.
+                <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                  Mỗi khung một tệp, đúng tỉ lệ ghi trên ô — ở chế độ này hệ thống <b>không cắt lại</b>. Khung nào để trống
+                  thì cụm vẫn tạo được, nhưng <b className="text-amber-700">cụm thiếu không bao giờ được chọn làm ảnh tự điền</b>.
                 </p>
               </>
             )}
           </div>
         ) : (
           <div className="p-5">
-            <p className="mb-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-[11.5px] text-brand">
-              Áp cho cả <b>{accepted.length} ảnh</b> vừa chọn. Sửa riêng từng tấm sau, ở màn chi tiết.
-            </p>
-
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Gắn nhanh cho cả lô — ảnh cho thấy cái gì</p>
-            <div className="flex flex-wrap gap-1.5">
-              {GALLERY_TOPICS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { toggleTopic(t); setPerFile((p) => Object.fromEntries(accepted.map((f) => { const cur = p[f.name] ?? []; return [f.name, cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]] })) )}}
-                  className={cn('rounded-full border px-2.5 py-1 text-[11.5px]', topics.includes(t) ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}
-                >
-                  {t}
-                  {thinTopics.includes(t) && <span className="ml-1 text-[10px] text-amber-600" title="Chủ đề đang thiếu ảnh">▲</span>}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-              Bấm một chủ đề ở đây là <b>gắn cho cả {accepted.length} ảnh</b> — tiện khi cả gói stock cùng một cảnh.
-              Khác nhau thì sửa từng ảnh ở bước 1. ▲ là chủ đề chưa đủ 3 ảnh — thêm vào đó là vá đúng chỗ đang thủng.
-            </p>
-
-            {/* One place sets a topic — the row in step 1. Here we only report what
-                came back from it, because the same field edited in two screens is the
-                fastest way to make two answers. */}
-            <div className="mt-2 rounded-lg border border-line bg-canvas/40 px-3 py-2 text-[11px] leading-relaxed text-muted">
-              Chủ đề đã đặt trên từng ảnh ở bước 1: {' '}
-              {[...new Set(accepted.flatMap((f) => topicsFor(f.name)))].length === 0
-                ? <b className="text-amber-700">chưa ảnh nào có chủ đề</b>
-                : <b className="text-ink/70">{[...new Set(accepted.flatMap((f) => topicsFor(f.name)))].join(' · ')}</b>}
-              {accepted.some((f) => topicsFor(f.name).length === 0) && (
-                <span className="text-amber-700"> — còn {accepted.filter((f) => topicsFor(f.name).length === 0).length} ảnh chưa gắn, quay lại bước 1 để bổ sung.</span>
-              )}
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[1fr_170px] gap-4">
               <div>
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Vai trò <span className="text-rose-500">*</span></p>
-                <div className="flex gap-1.5">
-                  {([['subject', 'Chủ thể (cảnh)'], ['background', 'Ảnh nền']] as const).map(([k, l]) => (
-                    <button key={k} onClick={() => setRole(k)} className={cn('flex-1 rounded-lg border px-2.5 py-1.5 text-[11.5px]', role === k ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted hover:border-ink/30')}>{l}</button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-                  Khung hero 2 ảnh cần <b>một nền + một chủ thể</b>; hai chủ thể cạnh nhau là hai tấm ảnh đánh nhau.
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                  Tên cụm <span className="ml-1 font-normal normal-case tracking-normal text-faint">— không bắt buộc</span>
                 </p>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="vd. Nhóm kỹ sư trong xưởng — để trống cũng được" className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none focus:border-brand" />
               </div>
               <div>
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Bản quyền <span className="text-rose-500">*</span></p>
-                <select value={licence} onChange={(e) => setLicence(e.target.value)} className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand">
-                  <option value="">— chọn —</option>
-                  <option>Stock · thuê bao (có hạn)</option>
-                  <option>Stock · mua vĩnh viễn</option>
-                  <option>Nội bộ · Saramin chụp</option>
-                  <option>Khách hàng cấp quyền</option>
-                </select>
-                {licence.includes('có hạn') && (
-                  <input value={expires} onChange={(e) => setExpires(e.target.value)} placeholder="Hết hạn — dd/mm/yyyy" className="mt-1.5 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand" />
-                )}
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Hết hạn</p>
+                <input value={expires} onChange={(e) => setExpires(e.target.value)} placeholder="dd/mm/yyyy" className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none focus:border-brand" />
               </div>
             </div>
 
-            <div className="mt-4">
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">Nguồn <span className="text-rose-500">*</span></p>
-              <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="Shutterstock · pack #4821 · hoặc: shoot nội bộ 08/2026" className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-brand" />
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-                Nguồn và bản quyền là <b>bắt buộc</b>: một tấm ảnh không rõ quyền nằm trên placement khách đã trả tiền là
-                rủi ro pháp lý, và khi thuê bao hết hạn thì đây là thứ duy nhất giúp tìm ra hết những gì phải gỡ.
-              </p>
-            </div>
-
-            {fixes.length > 0 && (
-              <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
-                Lô này bổ sung cho <b>{fixes.join(' · ')}</b> — {accepted.length} ảnh, đủ đưa chủ đề qua ngưỡng 3 ảnh.
+            <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-wide text-faint">
+              Ngành <span className="text-rose-500">*</span> <span className="ml-1 font-normal normal-case tracking-normal">— bắt buộc. Chọn ở bất kỳ cấp nào</span>
+            </p>
+            {suggested.length > 0 && industries.length === 0 && !any && (
+              <p className="mb-1.5 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] text-brand">
+                Từ tag đã chọn, đề xuất ở cấp nhóm: <b>{suggested.map(industryName).join(' · ')}</b>
+                <button onClick={() => setIndustries(suggested)} className="ml-2 font-semibold underline">Nhận tất cả</button>
               </p>
             )}
+            <label className={cn('mb-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px]', any ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted')}>
+              <input type="checkbox" checked={any} onChange={(e) => setAny(e.target.checked)} className="accent-current" />
+              Mọi ngành (ảnh trung tính — dùng làm dự phòng)
+            </label>
+            <div className={cn(any && 'pointer-events-none opacity-40')}>
+              <IndustryTreePicker value={industries} onChange={setIndustries} />
+            </div>
+
+            <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-wide text-faint">
+              Tag <span className="ml-1 font-normal normal-case tracking-normal">— không bắt buộc, gõ để tạo mới</span>
+            </p>
+            <TagField value={tags} onChange={setTags} />
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+              Chỉ <b>Ngành</b> là bắt buộc. Tên, tag và hạn bản quyền để trống được — một lô stock bốn mươi ảnh không ai
+              ngồi đặt tên từng tấm, và một quy tắc không ai theo nổi là quy tắc sẽ bị lách.
+            </p>
           </div>
         )}
 
         <div className="flex items-center justify-between gap-2 border-t border-line px-5 py-3">
           <span className="text-[11px] text-faint">
-            {files.length === 0 ? 'Chưa chọn tệp nào' : `${accepted.length} ảnh hợp lệ${rejected.length ? ` · ${rejected.length} bị loại` : ''}`}
+            {count === 0 ? 'Chưa có khung nào' : `${count}/3 phiên bản`}
+            {count > 0 && count < 3 && <span className="text-amber-700"> · cụm thiếu, không được dùng làm ảnh tự điền</span>}
           </span>
           <div className="flex gap-2">
             <button onClick={step === 1 ? onClose : () => setStep(1)} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">
               {step === 1 ? 'Huỷ' : '← Quay lại'}
             </button>
             {step === 1 ? (
-              <button disabled={accepted.length === 0} onClick={() => setStep(2)} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
-                Tiếp tục · phân loại →
-              </button>
+              <button disabled={count === 0} onClick={() => setStep(2)} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Tiếp tục · phân loại →</button>
             ) : (
-              <button disabled={!ready} onClick={onClose} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
-                Thêm {accepted.length} ảnh vào thư viện
-              </button>
+              <button disabled={!ready} onClick={onClose} className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Tạo cụm</button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** One picture: how it crops into each placement frame, and what it is licensed for. */
-function GalleryImageModal({ img, onClose }: { img: GalleryImg; onClose: () => void }) {
-  /* the frames the site actually paints — the aspect comes from the placement row */
-  const FRAMES = [
-    { label: 'Thẻ nhỏ (lưới platinum)', ratio: '596 × 258', cls: 'h-[86px] w-[199px]' },
-    { label: 'Thẻ lớn (hero)', ratio: '600 × 1120', cls: 'h-[187px] w-[100px]' },
-    { label: 'Ô vuông (mobile)', ratio: '1:1', cls: 'h-[120px] w-[120px]' },
-  ]
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={onClose}>
-      <div className="w-full max-w-[640px] rounded-xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
-          <div>
-            <p className="text-[14px] font-bold">{img.title}</p>
-            <p className="text-[11px] text-muted">{img.licence}{img.expires ? ` · đến ${img.expires}` : ''} · đang được {img.uses} tin dùng</p>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-ink">✕</button>
-        </div>
-        <div className="p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">Cắt theo từng khung — một ảnh gốc, không cắt sẵn</p>
-          <div className="flex flex-wrap items-end gap-3">
-            {FRAMES.map((f) => (
-              <div key={f.ratio}>
-                <div className={cn('relative overflow-hidden rounded-lg border border-line', f.cls)} style={imgStyle(img.hue)}>
-                  {/* safe areas the card paints its own furniture into */}
-                  <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">badge</span>
-                  <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
-                  <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand" title="Focal point" />
-                </div>
-                <p className="mt-1 text-[10.5px] text-muted">{f.label} · {f.ratio}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-faint">
-            Chấm xanh là <b>focal point</b> — điểm mọi khung cắt phải giữ lại. Lưu <b>một ảnh gốc ≥1600×1200</b> rồi cắt
-            theo tỉ lệ lúc render; cắt sẵn từng khung thì mỗi lần thêm một kích thước mới (bản mobile chẳng hạn) là phải
-            cắt lại cả thư viện bằng tay. Ô <i>badge</i> và dấu ☆ là vùng thẻ tự vẽ đè lên — chủ thể không được nằm ở đó.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {img.topics.map((t) => <span key={t} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] text-muted">{t}</span>)}
-            <span className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] text-muted">{img.role === 'background' ? 'Ảnh nền' : 'Chủ thể (cảnh)'}</span>
-            {img.tags.map((t) => <span key={t} className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand">#{t}</span>)}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-          <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Close</button>
-          <button className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Lưu trữ</button>
-          <button className="rounded-lg bg-brand px-3.5 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">Lưu thay đổi</button>
         </div>
       </div>
     </div>

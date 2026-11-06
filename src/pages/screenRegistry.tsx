@@ -62,7 +62,7 @@ const ADMIN_NAV_PAGES = new Set([
   // Image gallery sits beside Placements in the nav — it is configuration a
   // placement reads (the stock pictures its image slots draw from), not something
   // a customer bought.
-  'admin-banners', 'admin-image-gallery', 'admin-pages',
+  'admin-banners', 'admin-image-gallery', 'admin-image-bulk', 'admin-pages',
   'admin-analytics-dashboard', 'admin-sales-report', 'admin-recruit-report', 'admin-revenue-report', 'admin-user-behavior',
   'admin-staff', 'admin-users', 'admin-roles', 'admin-issuer', 'admin-membership',
   // Matching report only — the settings screen was removed with SRM-1338 (the

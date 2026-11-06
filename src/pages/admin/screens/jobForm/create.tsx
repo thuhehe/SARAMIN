@@ -5,6 +5,8 @@ import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANY_BENEFITS, TITLE_I18N } from '@/pages/admin/data/jobForm'
 import { CATALOG } from '@/pages/admin/data/products'
+import { INDUSTRY_INDEX, industryPath } from '@/pages/admin/data/industries'
+import { JobArtworkGroup } from '@/pages/admin/screens/jobForm/artwork'
 import { CompanyInfoCard, JobSkillsField } from '@/pages/admin/screens/jobForm/fields'
 import { BiTArea, ChipField, FField, LabelRow, SelectField, TArea } from '@/pages/admin/ui/fields'
 import { DemoRow, JobGroup, RadioOpts, ShowToggle, Stepper } from '@/pages/admin/ui/form'
@@ -28,6 +30,16 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
   const [postMenu, setPostMenu] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const [titleLang, setTitleLang] = useState<'VI' | 'EN'>('VI')
+  /* Industry is STATE now, not a constant: Card artwork resolves off it, so the
+     prototype has to let it change for the auto-fill to be demonstrable at all.
+     It holds a NODE ID from the 3-level master tree — a job may be tagged at the
+     group, the industry or the specialty, and which level it picked is exactly
+     what decides how specific an artwork set it can be matched with. The real
+     screen uses the shared 3-level picker (limit 1); this flat list of paths is
+     the wireframe's stand-in for it. */
+  const [industry, setIndustry] = useState('fmcg-fb-pack')
+  const INDUSTRY_OPTIONS = Object.keys(INDUSTRY_INDEX).map((id) => industryPath(id))
+  const idOfPath = (path: string) => Object.keys(INDUSTRY_INDEX).find((id) => industryPath(id) === path) ?? industry
   const G2 = 'grid grid-cols-2 gap-3'
   const G3 = 'grid grid-cols-3 gap-3'
 
@@ -176,7 +188,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             <SelectField label="Work type" req value="In office" createLabel="Create work type" options={['In office', 'Remote', 'Hybrid', 'Oversea']} /><SelectField label="Contract type" req value="Fulltime" createLabel="Create contract type" options={['Fulltime', 'Part-time', 'Fixed-term contract', 'Internship', 'Probation', 'Freelance', 'Seasonal']} />
           </div>
           <div className={G2}>
-            <SelectField label="Industry" req value="FMCG" createLabel="Create industry" options={['IT / Software', 'FMCG', 'Banking / Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Logistics']} />
+            <SelectField label="Industry" req value={industryPath(industry)} onChange={(v) => setIndustry(idOfPath(v))} createLabel="Create industry" options={INDUSTRY_OPTIONS} extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— 3 cấp, chọn ở cấp nào cũng được</span>} />
             <JobSkillsField />
           </div>
           {/* A working location is a NAMED office saved on the company, not a
@@ -228,6 +240,20 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             companyBenefits={COMPANY_BENEFITS}
             companyName="NEC Vietnam"
           />
+        </JobGroup>
+
+        {/* ═══ CARD ARTWORK (one set, three renditions) ════════════════════ */}
+        {/* Sits after Job content and BEFORE Candidate expectation, matching the
+            live admin — and after Job information on purpose, because Industry is
+            what fills it. Put it earlier and the operator is asked to pick a
+            picture before the system knows which pictures suit the job. */}
+        <JobGroup title="Card artwork">
+          <p className="text-[11px] leading-relaxed text-muted">
+            Ảnh các dải trả phí in cho tin này — <b className="text-ink/70">một cụm, ba khung</b>: ngang (thẻ lúc nghỉ),
+            dọc (thẻ mở rộng khi hover), tròn (dải thẻ tròn). Chỉ có ở gói có placement ảnh; gói Basic không in khung nào
+            và phần này sẽ rỗng.
+          </p>
+          <JobArtworkGroup industry={industry} />
         </JobGroup>
 
         {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}

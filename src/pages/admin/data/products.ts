@@ -2,6 +2,7 @@
  * The product catalogue: what is for sale, how it is fulfilled, the packages that
  * bundle it, and the discount programmes on top.
  */
+import { INDUSTRY_TREE, industryBranch, industryMatch } from '@/pages/admin/data/industries'
 import type { Account } from '@/pages/admin/data/companies'
 import type { StatusTone } from '@/pages/admin/lib/tone'
 
@@ -94,61 +95,167 @@ export function deckCapOf(p: Placement): number | null {
   return null
 }
 
-/* ── Image gallery ───────────────────────────────────────────────────────────
-   The stock pictures a JOB borrows when its product feeds a placement with image
-   slots. Classified by TOPIC — what the picture SHOWS — because that is the only
-   thing intrinsic to a photograph: two people at a laptop is a business scene
-   that serves IT, banking, marketing and a school office equally, and calling it
-   "IT / Software" is a claim about the employer, not about the frame.
+/* ── Image gallery · ARTWORK SETS ────────────────────────────────────────────
+   The library does not hold loose pictures any more. It holds SETS: one visual
+   idea, carrying up to three RENDITIONS of the same photograph — ngang (thẻ lúc
+   nghỉ), dọc (thẻ mở rộng khi hover), tròn (dải thẻ tròn).
 
-   Industry keeps its entry point through INDUSTRY_TOPICS: a small ordered map,
-   so "filter by industry" still works and the automatic default still resolves,
-   without any picture carrying an industry it cannot support. Rename an industry
-   and one map row changes instead of hundreds of pictures being re-tagged. */
-export type GalleryImg = {
-  id: string; title: string; topics: string[]; tags: string[]
-  /** a scene with people/objects, or a texture the card lays a logo over */
-  role: 'subject' | 'background'
-  /** stand-in for the photo — the wireframe paints a gradient rather than shipping stock */
-  hue: number
-  uses: number; licence: string; expires?: string; archived?: boolean
-}
-export const GALLERY: GalleryImg[] = [
-  { id: 'g1', title: 'Kho hàng · xe nâng', topics: ['Kho vận'], tags: ['xe nâng', 'trong nhà'], role: 'subject', hue: 210, uses: 12, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g2', title: 'Dây chuyền sản xuất', topics: ['Nhà máy · sản xuất', 'Kỹ thuật'], tags: ['máy móc'], role: 'subject', hue: 24, uses: 7, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g3', title: 'Nhóm họp trong văn phòng', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 268, uses: 41, licence: 'Stock · Unsplash+' },
-  { id: 'g4', title: 'Phòng khám · điều dưỡng', topics: ['Y tế · chăm sóc', 'Nhóm người'], tags: ['bệnh viện'], role: 'subject', hue: 160, uses: 5, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g5', title: 'Lập trình viên & màn hình code', topics: ['Công nghệ', 'Văn phòng'], tags: ['màn hình'], role: 'subject', hue: 200, uses: 23, licence: 'Stock · Unsplash+' },
-  { id: 'g6', title: 'Quầy bán lẻ · khách hàng', topics: ['Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 340, uses: 9, licence: 'Stock · Shutterstock', expires: '28/02/2026' },
-  { id: 'g7', title: 'Công trường xây dựng', topics: ['Công trường', 'Kỹ thuật'], tags: ['ngoài trời', 'mũ bảo hộ'], role: 'subject', hue: 40, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g8', title: 'Lớp học · giảng viên', topics: ['Lớp học · đào tạo', 'Nhóm người'], tags: ['bảng'], role: 'subject', hue: 96, uses: 6, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g9', title: 'Sảnh khách sạn', topics: ['Nhà hàng · khách sạn'], tags: ['dịch vụ'], role: 'subject', hue: 12, uses: 2, licence: 'Stock · Unsplash+' },
-  { id: 'g10', title: 'Quầy giao dịch ngân hàng', topics: ['Văn phòng', 'Bán lẻ · cửa hàng'], tags: ['khách hàng'], role: 'subject', hue: 224, uses: 15, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g11', title: 'Toà nhà cao tầng (nền)', topics: ['Toà nhà · kiến trúc'], tags: ['ngoài trời', 'skyline'], role: 'background', hue: 190, uses: 18, licence: 'Stock · Unsplash+' },
-  { id: 'g12', title: 'Gradient xanh (nền)', topics: ['Trừu tượng · nền'], tags: ['nền'], role: 'background', hue: 246, uses: 11, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g13', title: 'Cây xanh · ánh sáng tự nhiên', topics: ['Thiên nhiên · môi trường'], tags: ['ngoài trời', 'xanh'], role: 'background', hue: 130, uses: 4, licence: 'Stock · Unsplash+' },
-  { id: 'g14', title: 'Xe tải giao hàng', topics: ['Vận tải'], tags: ['ngoài trời'], role: 'subject', hue: 350, uses: 6, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g15', title: 'Kệ hàng siêu thị (cũ)', topics: ['Bán lẻ · cửa hàng'], tags: [], role: 'subject', hue: 300, uses: 0, licence: 'Stock · hết hạn', archived: true },
-  { id: 'g16', title: 'Bàn làm việc · laptop', topics: ['Văn phòng'], tags: ['bàn làm việc'], role: 'subject', hue: 258, uses: 33, licence: 'Stock · Unsplash+' },
-  { id: 'g17', title: 'Trao đổi trong phòng họp', topics: ['Văn phòng', 'Nhóm người'], tags: ['phòng họp'], role: 'subject', hue: 236, uses: 19, licence: 'Stock · Unsplash+' },
-  { id: 'g18', title: 'Kỹ sư kiểm tra máy', topics: ['Kỹ thuật', 'Nhà máy · sản xuất'], tags: ['mũ bảo hộ'], role: 'subject', hue: 32, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g19', title: 'Kỹ sư hiện trường', topics: ['Kỹ thuật', 'Công trường'], tags: ['ngoài trời'], role: 'subject', hue: 48, uses: 5, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g20', title: 'Chia hàng trong kho', topics: ['Kho vận'], tags: ['thùng hàng'], role: 'subject', hue: 196, uses: 10, licence: 'Stock · Unsplash+' },
-  { id: 'g21', title: 'Đóng gói đơn hàng', topics: ['Kho vận', 'Vận tải'], tags: ['thùng hàng'], role: 'subject', hue: 182, uses: 4, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g22', title: 'Đội ngũ chụp chung', topics: ['Nhóm người'], tags: ['chân dung nhóm'], role: 'subject', hue: 288, uses: 27, licence: 'Stock · Unsplash+' },
-  { id: 'g23', title: 'Server room · hạ tầng', topics: ['Công nghệ'], tags: ['trung tâm dữ liệu'], role: 'subject', hue: 214, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g24', title: 'Bo mạch · cận cảnh', topics: ['Công nghệ', 'Trừu tượng · nền'], tags: ['cận cảnh'], role: 'background', hue: 172, uses: 7, licence: 'Stock · Unsplash+' },
-  { id: 'g25', title: 'Thùng carton thương hiệu', topics: ['Sản phẩm · bao bì'], tags: ['tĩnh vật', 'đóng gói'], role: 'subject', hue: 22, uses: 5, licence: 'Stock · Unsplash+' },
-  { id: 'g26', title: 'Hàng tiêu dùng bày trên bàn', topics: ['Sản phẩm · bao bì', 'Bán lẻ · cửa hàng'], tags: ['tĩnh vật'], role: 'subject', hue: 104, uses: 3, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g27', title: 'Ống nghiệm · mô hình phân tử', topics: ['Nghiên cứu · phòng lab'], tags: ['R&D'], role: 'background', hue: 208, uses: 8, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g28', title: 'Kỹ thuật viên trong phòng lab', topics: ['Nghiên cứu · phòng lab', 'Y tế · chăm sóc'], tags: ['áo blouse'], role: 'subject', hue: 174, uses: 2, licence: 'Nội bộ · shoot 2026' },
-  { id: 'g29', title: 'Biểu đồ tài chính trên máy tính bảng', topics: ['Dữ liệu · biểu đồ', 'Công nghệ'], tags: ['cận cảnh bàn tay'], role: 'background', hue: 188, uses: 14, licence: 'Stock · Unsplash+' },
-  { id: 'g30', title: 'Bảng số liệu · màn hình', topics: ['Dữ liệu · biểu đồ'], tags: ['màn hình'], role: 'background', hue: 220, uses: 6, licence: 'Stock · Unsplash+' },
-  { id: 'g31', title: 'Nhà máy nhìn từ trên cao', topics: ['Nhà xưởng · ngoại cảnh', 'Nhà máy · sản xuất'], tags: ['flycam', 'ngoài trời'], role: 'background', hue: 200, uses: 9, licence: 'Stock · Shutterstock', expires: '31/12/2026' },
-  { id: 'g32', title: 'Toàn cảnh khu công nghiệp', topics: ['Nhà xưởng · ngoại cảnh'], tags: ['ngoài trời'], role: 'background', hue: 30, uses: 4, licence: 'Stock · Unsplash+' },
-  { id: 'g33', title: 'Bắt tay · chúc mừng (cận cảnh)', topics: ['Nhóm người'], tags: ['cận cảnh bàn tay', 'cử chỉ'], role: 'subject', hue: 306, uses: 21, licence: 'Stock · Unsplash+' },
-  { id: 'g34', title: 'Bàn làm việc · sổ và đồng hồ', topics: ['Văn phòng'], tags: ['tĩnh vật'], role: 'background', hue: 44, uses: 12, licence: 'Stock · Unsplash+' },
+   Why a set and not three images: the three frames on the jobseeker site are the
+   SAME card in three states. Picking them one by one means searching the library
+   three times and hoping the three results are the same scene — which is exactly
+   what happens on stg-admin today, where "Pick image" opens once per rendition.
+   Grouping them makes the normal path one click, and the automatic default
+   possible at all: you cannot auto-fill three slots from three unrelated lists.
+
+   Classification sits on the SET, never on a rendition: topics (what it shows,
+   for browsing) and industries (level-1 master data, for the automatic fill).
+   INDUSTRY_TOPICS survives as the seeding map — it proposes industries for a new
+   set from its topics, so nobody tags twenty-four sets by hand. */
+export type Rendition = 'landscape' | 'portrait' | 'circle'
+export const RENDITIONS: { key: Rendition; label: string; ratio: string; px: string; box: string; where: string }[] = [
+  { key: 'landscape', label: 'Ngang', ratio: '16:9', px: '596 × 336', box: 'h-[60px] w-[107px]', where: 'thẻ lúc nghỉ — dải trả phí' },
+  { key: 'portrait', label: 'Dọc', ratio: '3:4', px: '600 × 800', box: 'h-[60px] w-[45px]', where: 'thẻ mở rộng khi hover' },
+  { key: 'circle', label: 'Tròn', ratio: '1:1', px: '240 × 240', box: 'h-[60px] w-[60px] rounded-full', where: 'dải thẻ ảnh tròn' },
 ]
+
+export type ArtworkSet = {
+  id: string
+  /** OPTIONAL. A set is identified by what it shows, and HQ bulk-loads stock packs
+      where naming forty pictures is busywork nobody does. Unnamed sets fall back to
+      "Cụm #<n>" in every list, so the grid never renders a blank row. */
+  title?: string
+  /** stand-in for the photograph — ONE hue per set, because all three renditions
+      are the same picture; two different hues in a row would be the bug. */
+  hue: number
+  /** REQUIRED. Industry node ids at ANY of the three levels. This is the only
+      mandatory classification: a set with no industry can never be auto-filled,
+      so it would enter the library already invisible. */
+  industries: string[]
+  /** a neutral set any industry may draw from — the fallback when an industry is empty */
+  anyIndustry?: boolean
+  /** OPTIONAL. Tag ids → TAGS, which HQ creates, renames and deletes freely. */
+  tags: string[]
+  /** which renditions exist, and whether each was CROPPED from the master (the
+      normal case — one upload) or supplied as its own file (when a crop cannot work) */
+  renditions: Partial<Record<Rendition, { derived: boolean }>>
+  /** OPTIONAL. Licence expiry — the one date that lets a single query find
+      everything to pull when a stock subscription lapses. */
+  expires?: string
+  uses: number
+  archived?: boolean
+}
+
+/* ── Tags ─────────────────────────────────────────────────────────────────────
+   NOT master data with a migration behind it. HQ invents a tag the moment it is
+   useful ("tết", "nữ giới", "ngoài trời"), renames it when the wording drifts and
+   deletes it when a campaign ends. That is the whole point: the taxonomy that has
+   to hold still is INDUSTRY; tags are the loose, human layer on top.
+
+   Deleting a tag removes it from every set that carried it and never deletes a
+   set — a label going away is not a reason to lose a photograph. */
+export type Tag = { id: string; name: string; uses?: number }
+export const TAGS: Tag[] = [
+  { id: 't-office', name: 'Văn phòng' },
+  { id: 't-eng', name: 'Kỹ thuật' },
+  { id: 't-factory', name: 'Nhà máy · sản xuất' },
+  { id: 't-plant', name: 'Nhà xưởng · ngoại cảnh' },
+  { id: 't-wh', name: 'Kho vận' },
+  { id: 't-transport', name: 'Vận tải' },
+  { id: 't-site', name: 'Công trường' },
+  { id: 't-retail', name: 'Bán lẻ · cửa hàng' },
+  { id: 't-product', name: 'Sản phẩm · bao bì' },
+  { id: 't-health', name: 'Y tế · chăm sóc' },
+  { id: 't-lab', name: 'Nghiên cứu · phòng lab' },
+  { id: 't-class', name: 'Lớp học · đào tạo' },
+  { id: 't-horeca', name: 'Nhà hàng · khách sạn' },
+  { id: 't-tech', name: 'Công nghệ' },
+  { id: 't-data', name: 'Dữ liệu · biểu đồ' },
+  { id: 't-people', name: 'Nhóm người' },
+  { id: 't-building', name: 'Toà nhà · kiến trúc' },
+  { id: 't-nature', name: 'Thiên nhiên · môi trường' },
+  { id: 't-abstract', name: 'Trừu tượng · nền' },
+]
+export const tagName = (id: string) => TAGS.find((t) => t.id === id)?.name ?? id
+/** what a set is called in a list when nobody named it */
+export const setLabel = (s: ArtworkSet, n?: number) => s.title?.trim() || `Cụm #${n ?? s.id.replace(/\D/g, '')}`
+
+const ALL = { landscape: { derived: false }, portrait: { derived: true }, circle: { derived: true } }
+const LP = { landscape: { derived: false }, portrait: { derived: true } }
+
+export const ARTWORK_SETS: ArtworkSet[] = [
+  { id: 's1', title: 'Kho hàng · xe nâng', hue: 210, tags: ['t-wh'], industries: ['log-wh', 'mfg'], renditions: ALL, uses: 12, expires: '31/12/2026' },
+  { id: 's2', title: 'Dây chuyền sản xuất', hue: 24, tags: ['t-factory', 't-eng'], industries: ['mfg'], renditions: LP, uses: 7, expires: '31/12/2026' },
+  { id: 's3', title: 'Nhóm họp trong văn phòng', hue: 268, tags: ['t-office', 't-people'], industries: ['it', 'fin', 'med', 'edu', 'hos'], renditions: ALL, uses: 41 },
+  { id: 's4', title: 'Phòng khám · điều dưỡng', hue: 160, tags: ['t-health', 't-people'], industries: ['hc'], renditions: ALL, uses: 5 },
+  { id: 's5', title: 'Lập trình viên & màn hình code', hue: 200, tags: ['t-tech', 't-office'], industries: ['it', 'tel'], renditions: ALL, uses: 23 },
+  { id: 's6', title: 'Quầy bán lẻ · khách hàng', hue: 340, tags: ['t-retail'], industries: ['ret', 'fmcg'], renditions: { landscape: { derived: false } }, uses: 9, expires: '28/02/2026' },
+  { id: 's7', title: 'Công trường xây dựng', hue: 40, tags: ['t-site', 't-eng'], industries: ['con'], renditions: LP, uses: 3, expires: '31/12/2026' },
+  { id: 's8', title: 'Lớp học · giảng viên', hue: 96, tags: ['t-class', 't-people'], industries: ['edu'], renditions: ALL, uses: 6 },
+  { id: 's9', title: 'Sảnh khách sạn', hue: 12, tags: ['t-horeca'], industries: ['hos'], renditions: ALL, uses: 2 },
+  { id: 's10', title: 'Quầy giao dịch ngân hàng', hue: 224, tags: ['t-office', 't-retail'], industries: ['fin-bank-retail', 'ret'], renditions: ALL, uses: 15, expires: '31/12/2026' },
+  { id: 's11', title: 'Toà nhà cao tầng (nền)', hue: 190, tags: ['t-building'], industries: [], anyIndustry: true, renditions: ALL, uses: 18 },
+  { id: 's12', title: 'Gradient xanh (nền)', hue: 246, tags: ['t-abstract'], industries: [], anyIndustry: true, renditions: ALL, uses: 11 },
+  { id: 's13', title: 'Xe tải giao hàng', hue: 350, tags: ['t-transport'], industries: ['log-freight-road'], renditions: LP, uses: 6, expires: '31/12/2026' },
+  { id: 's14', title: 'Bàn làm việc · laptop', hue: 258, tags: ['t-office'], industries: ['it', 'fin', 'med', 'tel', 'fmcg', 'ret', 'edu'], renditions: ALL, uses: 33 },
+  { id: 's15', title: 'Kỹ sư kiểm tra máy', hue: 32, tags: ['t-eng', 't-factory'], industries: ['mfg', 'con'], renditions: ALL, uses: 8, expires: '31/12/2026' },
+  { id: 's16', title: 'Đội ngũ chụp chung', hue: 288, tags: ['t-people'], industries: [], anyIndustry: true, renditions: ALL, uses: 27 },
+  { id: 's17', title: 'Server room · hạ tầng', hue: 214, tags: ['t-tech'], industries: ['it-hw', 'tel-dc'], renditions: ALL, uses: 9, expires: '31/12/2026' },
+  { id: 's18', title: 'Thùng carton thương hiệu', hue: 22, tags: ['t-product'], industries: ['fmcg-fb-pack', 'ret'], renditions: ALL, uses: 5 },
+  { id: 's19', title: 'Kỹ thuật viên phòng lab', hue: 174, tags: ['t-lab', 't-health'], industries: ['hc-pharma'], renditions: LP, uses: 2 },
+  { id: 's20', title: 'Biểu đồ tài chính trên máy tính bảng', hue: 188, tags: ['t-data', 't-tech'], industries: ['fin', 'it', 'tel', 'med'], renditions: ALL, uses: 14 },
+  { id: 's21', title: 'Nhà máy nhìn từ trên cao', hue: 200, tags: ['t-plant', 't-factory'], industries: ['mfg', 'log'], renditions: LP, uses: 9, expires: '31/12/2026' },
+  { id: 's22', title: 'Kệ hàng siêu thị (cũ)', hue: 300, tags: ['t-retail'], industries: ['ret'], renditions: { landscape: { derived: false } }, uses: 0, archived: true },
+  { id: 's23', title: 'Đóng gói đơn hàng', hue: 182, tags: ['t-wh', 't-transport'], industries: ['log', 'fmcg'], renditions: ALL, uses: 4 },
+  { id: 's24', title: 'Bắt tay · chúc mừng (cận cảnh)', hue: 306, tags: ['t-people'], industries: [], anyIndustry: true, renditions: ALL, uses: 21 },
+]
+
+/** A set is COMPLETE when it can fill all three frames. Only complete sets can be
+    an industry's automatic default — a half-set leaves a hole on the hover card. */
+export const isComplete = (s: ArtworkSet) => RENDITIONS.every((r) => s.renditions[r.key])
+export const missingOf = (s: ArtworkSet) => RENDITIONS.filter((r) => !s.renditions[r.key]).map((r) => r.label)
+
+/** COVERAGE counts a group's OWN complete sets — tagged at the group itself or
+    anywhere inside its branch, since a set tagged "Road freight" is Logistics
+    coverage. Neutral (anyIndustry) sets are a safety net, not coverage: if twelve
+    groups all fall back on the same four neutral photographs the homepage repeats
+    exactly as badly, so counting them would make the floor unreachable. */
+export const ownCoverage = (groupId: string) => {
+  const branch = industryBranch(groupId)
+  return ARTWORK_SETS.filter((s) => !s.archived && isComplete(s) && s.industries.some((i) => branch.includes(i))).length
+}
+
+/* ── Resolving artwork for a job ─────────────────────────────────────────────
+   The job holds ONE industry node, at any of the three levels; a set holds
+   SEVERAL, at any level. They meet through `industryMatch`, which returns a TIER
+   instead of a boolean:
+
+     tier 0 · ancestor — the set is tagged at the job's node or above it; `depth`
+              says how specific the matched node was (3 = specialty, 1 = group)
+     tier 1 · descendant — the set is tagged below the job's node
+     tier 2 · neutral (anyIndustry)
+
+   Ordering by (tier, -depth, uses) IS the resolution rule: most specific real
+   match first, ties broken on least-used, neutral only when nothing else exists. */
+export type RankedSet = { set: ArtworkSet; tier: 0 | 1 | 2; depth: number }
+export function rankedSetsFor(jobIndustryId: string): RankedSet[] {
+  return ARTWORK_SETS.filter((s) => !s.archived)
+    .map((s) => {
+      const m = industryMatch(s.industries, jobIndustryId, s.anyIndustry)
+      return m ? { set: s, tier: m.tier, depth: m.depth } : null
+    })
+    .filter((r): r is RankedSet => r !== null)
+    .sort((a, b) => a.tier - b.tier || b.depth - a.depth || a.set.uses - b.set.uses)
+}
+/** every set this job may draw from, best fit first */
+export const setsFor = (jobIndustryId: string) => rankedSetsFor(jobIndustryId).map((r) => r.set)
+/** THE AUTOMATIC DEFAULT: best-fitting COMPLETE set. Least-used is not a
+    refinement — "first match" puts one photograph on every card of an industry. */
+export const autoSetFor = (jobIndustryId: string) =>
+  rankedSetsFor(jobIndustryId).find((r) => isComplete(r.set))?.set ?? null
+/** why a set was offered — printed in the picker so the ranking is readable */
+export const matchLabel = (r: RankedSet) =>
+  r.tier === 2 ? 'Mọi ngành' : r.tier === 1 ? 'Ngành con' : r.depth === 3 ? 'Khớp chuyên ngành' : r.depth === 2 ? 'Khớp ngành' : 'Khớp nhóm'
+
 /** Master data → Image topic. ~12 values, and it does not grow when the industry list does. */
 export const GALLERY_TOPICS = [
   'Văn phòng', 'Kỹ thuật', 'Nhà máy · sản xuất', 'Nhà xưởng · ngoại cảnh', 'Kho vận', 'Vận tải',
@@ -171,6 +278,24 @@ export const INDUSTRY_TOPICS: [string, string[]][] = [
   ['Media & Advertising', ['Văn phòng', 'Nhóm người', 'Trừu tượng · nền']],
   ['Telecommunications', ['Công nghệ', 'Dữ liệu · biểu đồ', 'Toà nhà · kiến trúc']],
 ]
+/** Level-1 industry (Master data). The set carries these DIRECTLY now; the map
+    above is demoted to a seeding aid — it proposes industries for a new set from
+    its topics, so the twenty-four existing sets were classified once, not by hand. */
+export const INDUSTRIES_L1 = INDUSTRY_TREE.map((n) => n.id)
+const TOPIC_SEED_ID: Record<string, string> = {
+  'IT / Software': 'it', 'Telecommunications': 'tel', 'Banking / Finance': 'fin', 'FMCG': 'fmcg',
+  'Retail': 'ret', 'Manufacturing': 'mfg', 'Logistics': 'log', 'Construction & Real Estate': 'con',
+  'Healthcare': 'hc', 'Education': 'edu', 'Hospitality & Tourism': 'hos', 'Media & Advertising': 'med',
+}
+/** PROPOSES group-level industries for a new set from its topics, so nobody
+    classifies two dozen sets from a blank form. It proposes; it never writes. */
+export const suggestIndustries = (tagIds: string[]) => {
+  const names = tagIds.map(tagName)
+  return INDUSTRY_TOPICS.filter(([, ts]) => ts.some((t) => names.includes(t))).map(([i]) => TOPIC_SEED_ID[i]).filter(Boolean)
+}
+/** the floor: below three COMPLETE sets an industry's automatic default repeats */
+export const INDUSTRY_FLOOR = 3
+
 /** the wireframe's stand-in for a photograph */
 export const imgStyle = (hue: number) => ({
   background: `linear-gradient(135deg, hsl(${hue} 55% 62%), hsl(${hue + 28} 45% 42%))`,
