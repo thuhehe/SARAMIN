@@ -4,7 +4,7 @@ import { BenefitsField } from '@/components/BenefitsField'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANY_BENEFITS, TITLE_I18N } from '@/pages/admin/data/jobForm'
-import { CATALOG } from '@/pages/admin/data/products'
+import { CATALOG, RENDITIONS, shapesForSku } from '@/pages/admin/data/products'
 import { INDUSTRY_INDEX, industryPath } from '@/pages/admin/data/industries'
 import { JobArtworkGroup } from '@/pages/admin/screens/jobForm/artwork'
 import { CompanyInfoCard, JobSkillsField } from '@/pages/admin/screens/jobForm/fields'
@@ -80,6 +80,12 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
   /* No PO on the Company surface means NO product — never the free tier, which is
      Admin-only. An employer without an active PO has nothing to post from. */
   const productOptions = (hasPo ? paidProducts : isAdmin ? freeProducts : []).map(label)
+  /* The product is STATE because Card artwork reads off it: which frames a
+     posting is asked for comes from the placements its product feeds, not from a
+     fixed list of three. */
+  const [productLabel, setProductLabel] = useState('')
+  const pickedProduct = (hasPo ? paidProducts : freeProducts).find((c) => label(c) === (productLabel || productOptions[0])) ?? null
+  const need = pickedProduct ? shapesForSku(pickedProduct.sku) : []
 
   return (
     <div className="max-w-[860px]">
@@ -120,6 +126,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
               label="Product (Main)"
               req
               value={productOptions[0] ?? '— no product available —'}
+              onChange={setProductLabel}
               options={productOptions}
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">{hasPo ? '— lines on the selected PO' : '— free tier (no PO)'}</span>}
             />
@@ -242,18 +249,22 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
           />
         </JobGroup>
 
-        {/* ═══ CARD ARTWORK (one set, three renditions) ════════════════════ */}
+        {/* ═══ CARD ARTWORK ════════════════════════════════════════════════ */}
         {/* Sits after Job content and BEFORE Candidate expectation, matching the
-            live admin — and after Job information on purpose, because Industry is
-            what fills it. Put it earlier and the operator is asked to pick a
-            picture before the system knows which pictures suit the job. */}
+            live admin — and after BOTH Posting setup and Job information on
+            purpose: the product decides WHICH frames are asked for, the industry
+            decides WHICH pictures fill them. Put it earlier and the operator is
+            asked to choose before the system knows either. */}
         <JobGroup title="Card artwork">
           <p className="text-[11px] leading-relaxed text-muted">
-            Ảnh các dải trả phí in cho tin này — <b className="text-ink/70">một cụm, ba khung</b>: ngang (thẻ lúc nghỉ),
-            dọc (thẻ mở rộng khi hover), tròn (dải thẻ tròn). Chỉ có ở gói có placement ảnh; gói Basic không in khung nào
-            và phần này sẽ rỗng.
+            Khung ảnh tin này cần là <b className="text-ink/70">do placement của gói quyết định</b>, không phải lúc nào
+            cũng đủ ba.{' '}
+            {need.length > 0
+              ? <>Gói <b className="text-ink/70">{pickedProduct?.name}</b> in{' '}
+                  <b className="text-ink/70">{RENDITIONS.filter((r) => need.includes(r.key)).map((r) => `${r.label.toLowerCase()} (${r.where})`).join(' · ')}</b>.</>
+              : <>Gói <b className="text-ink/70">{pickedProduct?.name ?? '—'}</b> không chiếm placement nào có khung ảnh.</>}
           </p>
-          <JobArtworkGroup industry={industry} />
+          <JobArtworkGroup industry={industry} need={need} />
         </JobGroup>
 
         {/* ═══ CANDIDATE EXPECTATION ════════════════════════════════════════ */}

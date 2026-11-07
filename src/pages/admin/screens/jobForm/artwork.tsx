@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  ARTWORK_SETS, RENDITIONS, TAGS, autoSetFor, imgStyle, isComplete, matchLabel, missingOf,
+  ARTWORK_SETS, RENDITIONS, TAGS, autoSetFor, covers, imgStyle, matchLabel, missingFor,
   rankedSetsFor, setLabel, tagName,
 } from '@/pages/admin/data/products'
 import type { ArtworkSet, RankedSet, Rendition } from '@/pages/admin/data/products'
@@ -41,10 +41,10 @@ function fill(set: ArtworkSet | null): Picked {
 }
 
 /** The artwork as the paid bands will print it. */
-function SlotRow({ picked, onSlot }: { picked: Picked; onSlot?: (r: Rendition) => void }) {
+function SlotRow({ picked, need, onSlot }: { picked: Picked; need: Rendition[]; onSlot?: (r: Rendition) => void }) {
   return (
     <div className="flex flex-wrap items-start gap-3">
-      {RENDITIONS.map((r) => {
+      {RENDITIONS.filter((r) => need.includes(r.key)).map((r) => {
         const s = picked[r.key]
         /* `cn` is a plain join, so the radius lives in the box string only — a
            wrapper adding its own rounded-* would race this one in the stylesheet. */
@@ -76,10 +76,25 @@ function SlotRow({ picked, onSlot }: { picked: Picked; onSlot?: (r: Rendition) =
   )
 }
 
-export function JobArtworkGroup({ industry }: { industry: string }) {
+export function JobArtworkGroup({ industry, need }: { industry: string; need: Rendition[] }) {
+  /* NOTHING TO ASK FOR. A product whose placements print no picture gets no
+     artwork section — not an empty one. An empty section reads as "you forgot
+     something" on a posting that will never render a frame. */
+  if (need.length === 0) {
+    return (
+      <p className="rounded-md border border-line bg-canvas/50 px-3 py-2 text-[11px] leading-relaxed text-muted">
+        Gói đang chọn <b className="text-ink/70">không in khung ảnh nào</b> trên các placement nó chiếm, nên tin này
+        không cần ảnh. Đổi sang gói có placement ảnh thì phần này hiện lại.
+      </p>
+    )
+  }
+  return <ArtworkPicker industry={industry} need={need} />
+}
+
+function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[] }) {
   /* The automatic default resolves the moment Industry is known. It is a PREFILL,
      never a lock: `source` records who chose, and that is the whole state machine. */
-  const auto = useMemo(() => autoSetFor(industry), [industry])
+  const auto = useMemo(() => autoSetFor(industry, need), [industry, need])
   const [picked, setPicked] = useState<Picked>(() => fill(auto))
   const [source, setSource] = useState<Source>('auto')
   const [industryAtPick, setIndustryAtPick] = useState(industry)
@@ -97,7 +112,7 @@ export function JobArtworkGroup({ industry }: { industry: string }) {
 
   const pool = rankedSetsFor(industry).map((r) => r.set)
   const one = sameSet(picked)
-  const filled = RENDITIONS.filter((r) => picked[r.key]).length
+  const filled = RENDITIONS.filter((r) => need.includes(r.key) && picked[r.key]).length
   const apply = (set: ArtworkSet, slot?: Rendition) => {
     if (slot) {
       setPicked((p) => ({ ...p, [slot]: set }))
@@ -150,22 +165,23 @@ export function JobArtworkGroup({ industry }: { industry: string }) {
         </div>
       )}
 
-      <SlotRow picked={picked} onSlot={(r) => setOpen({ slot: r })} />
+      <SlotRow picked={picked} need={need} onSlot={(r) => setOpen({ slot: r })} />
 
       <p className="text-[10.5px] leading-relaxed text-faint">
         <b className="text-ink/70">Ba khung, một lần chọn.</b> Ngành của tin là{' '}
         <b className="text-ink/70">{industryPath(industry)}</b> (cấp {industryLevel(industry)}) —{' '}
-        <b className="text-ink/70">{pool.filter(isComplete).length} cụm đầy đủ</b> với tới được, tính cả cụm gắn ở{' '}
+        <b className="text-ink/70">{pool.filter((x) => covers(x, need)).length} cụm đủ khung</b> với tới được, tính cả cụm gắn ở{' '}
         <b>nhóm cha</b> và cụm <i>Mọi ngành</i>. Hệ thống lấy <b>mức khớp sâu nhất</b> trước, trong cùng mức thì lấy{' '}
         <b>cụm ít dùng nhất</b>, để một tấm ảnh không phủ kín trang chủ. Tin đăng lưu{' '}
         <b className="text-ink/70">ba mã ảnh</b>, không lưu mã cụm — sửa hay lưu trữ cụm trong thư viện{' '}
         <b>không làm đổi ảnh của tin đang chạy</b>.
-        {filled < 3 && <span className="text-amber-700"> Còn {3 - filled} khung trống — gói nào in khung đó thì sẽ bị chặn khi đăng.</span>}
+        {filled < need.length && <span className="text-amber-700"> Còn {need.length - filled} khung trống — gói này in khung đó nên sẽ bị chặn khi đăng.</span>}
       </p>
 
       {open && (
         <PickArtworkModal
           industry={industry}
+          need={need}
           slot={open.slot}
           current={picked}
           onApply={apply}
@@ -182,9 +198,10 @@ export function JobArtworkGroup({ industry }: { industry: string }) {
    exists on the same screen but is reached deliberately — through "Chọn riêng
    khung này" on the slot, which is what `slot` carries in. */
 function PickArtworkModal({
-  industry, slot, current, onApply, onClose,
+  industry, need, slot, current, onApply, onClose,
 }: {
   industry: string
+  need: Rendition[]
   slot?: Rendition
   current: Picked
   onApply: (s: ArtworkSet, slot?: Rendition) => void
@@ -194,6 +211,7 @@ function PickArtworkModal({
   const [q, setQ] = useState('')
   const [topic, setTopic] = useState('')
   const [completeOnly, setCompleteOnly] = useState(!slot)
+  const needLabel = RENDITIONS.filter((r) => need.includes(r.key)).map((r) => r.label.toLowerCase()).join(' · ')
 
   /* "Gợi ý theo ngành" keeps the resolver's own ranking — best match first — so
      the list is in the order the system would have chosen. "Tất cả cụm" has no
@@ -203,7 +221,7 @@ function PickArtworkModal({
     : ARTWORK_SETS.filter((s) => !s.archived).sort((a, b) => a.uses - b.uses).map((s) => ({ set: s, tier: 0 as const, depth: 0 }))
   const rows = ranked
     .filter(({ set: s }) => (slot ? !!s.renditions[slot] : true))
-    .filter(({ set: s }) => (completeOnly ? isComplete(s) : true))
+    .filter(({ set: s }) => (completeOnly ? covers(s, need) : true))
     .filter(({ set: s }) => !topic || s.tags.includes(topic))
     .filter(({ set: s }) => !q.trim() || setLabel(s).toLowerCase().includes(q.trim().toLowerCase()))
 
@@ -218,7 +236,7 @@ function PickArtworkModal({
             <p className="text-[11px] text-muted">
               {slot
                 ? <>Chỉ thay <b>một khung</b> — hai khung còn lại giữ nguyên. Tin sẽ được đánh dấu <i>ghép từ nhiều cụm</i>.</>
-                : <>Chọn một cụm là nhận cả <b>ba khung</b> cùng lúc.</>}
+                : <>Gói này in <b>{needLabel}</b> — chọn một cụm là nhận hết các khung đó cùng lúc.</>}
             </p>
           </div>
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-canvas">✕</button>
@@ -281,7 +299,7 @@ function PickArtworkModal({
               {!slot && (
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1 text-[11.5px] text-muted">
                   <input type="checkbox" checked={completeOnly} onChange={(e) => setCompleteOnly(e.target.checked)} className="accent-brand" />
-                  Chỉ cụm đủ 3 khung
+                  Chỉ cụm đủ khung gói cần
                 </label>
               )}
               <span className="ml-auto text-[11px] text-faint">{rows.length} cụm · {tab === 'suggested' ? 'khớp sâu nhất, rồi ít dùng nhất' : 'ít dùng nhất lên trước'}</span>
@@ -333,7 +351,7 @@ function PickArtworkModal({
                         </span>
                         <span className="mt-0.5 block text-[10px] text-faint">
                           {s.uses} tin đang dùng
-                          {!isComplete(s) && <span className="text-amber-700"> · thiếu {missingOf(s).join(', ').toLowerCase()}</span>}
+                          {!covers(s, need) && <span className="text-amber-700"> · thiếu {missingFor(s, need).join(', ').toLowerCase()}</span>}
                         </span>
                       </span>
                       <button onClick={() => onApply(s, slot)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90">

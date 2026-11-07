@@ -28,20 +28,27 @@ export const FILL_META: Record<FillRoute, { label: string; tone: StatusTone; hin
   booked: { label: 'Booked', tone: 'pending', hint: 'Sold as a time window on the slot. Capacity-capped, so it needs an availability calendar.' },
   both: { label: 'Tier + booked', tone: 'rejected', hint: 'Two supply routes competing for the same positions — needs an explicit priority rule.' },
 }
-export type Placement = { id: string; page: 'Home' | 'Search'; ref: string; name: string; size: string; shown: string; cap: string; route: FillRoute; fedBy: string }
+/** Which artwork shapes a placement actually prints. This is the field the job
+    form reads: a posting is asked for the shapes its product's placements need,
+    and for nothing else. Asking every posting for all three was the old defect —
+    a Basic Plus job that only ever renders a round thumbnail was being blocked
+    over a missing portrait nobody would see.
+    WIREFRAME ASSUMPTION: the exact mapping below is read off the KR cards and the
+    Products deck and still needs confirming per row. */
+export type Placement = { id: string; page: 'Home' | 'Search'; ref: string; name: string; size: string; shown: string; cap: string; route: FillRoute; fedBy: string; shapes?: Rendition[] }
 export const PLACEMENTS: Placement[] = [
   { id: 'home-hero', page: 'Home', ref: '1.1', name: 'Main Banner (Hero)', size: '1536 × 371 px', shown: '1 at a time', cap: 'max 6 · rotate 3s', route: 'booked', fedBy: 'Banner placement product · client-supplied image + link' },
   { id: 'home-feature-co', page: 'Home', ref: '1.2', name: 'Feature company (logos)', size: 'Logo from profile', shown: '6 logos', cap: 'max 12 · random per reload', route: 'booked', fedBy: 'Feature company product · logo auto-pulled from company profile' },
-  { id: 'home-super-hot', page: 'Home', ref: '1.3', name: 'Công việc Hot hôm nay', size: 'Job card + image', shown: '4 jobs', cap: 'unlimited pool · random per reload', route: 'both', fedBy: 'Top Job tier (first 10 days) — AND sold standalone (10 ngày)' },
+  { id: 'home-super-hot', page: 'Home', ref: '1.3', name: 'Công việc Hot hôm nay', size: 'Job card + image', shown: '4 jobs', cap: 'unlimited pool · random per reload', route: 'both', fedBy: 'Top Job tier (first 10 days) — AND sold standalone (10 ngày)', shapes: ['landscape', 'portrait'] },
   { id: 'home-top-co', page: 'Home', ref: '1.4', name: 'Top Companies Hiring Now', size: 'Logo + cover', shown: '2 companies', cap: 'max 5 · rotate 5s', route: 'booked', fedBy: 'Công ty nổi bật product (10 ngày)' },
-  { id: 'home-popular-jobs', page: 'Home', ref: '1.5', name: 'Popular Jobs', size: 'Job row', shown: '20 postings', cap: '+4 fixed premium positions', route: 'both', fedBy: 'Distinction + Top Job tiers · 4 fixed positions sold as an add-on' },
-  { id: 'home-highlight-co', page: 'Home', ref: '1.6', name: 'Highlight Companies', size: 'Job row', shown: '20 postings', cap: '+5 fixed premium positions', route: 'both', fedBy: 'Basic Plus tier · 5 fixed positions sold as an add-on' },
+  { id: 'home-popular-jobs', page: 'Home', ref: '1.5', name: 'Popular Jobs', size: 'Job row', shown: '20 postings', cap: '+4 fixed premium positions', route: 'both', fedBy: 'Distinction + Top Job tiers · 4 fixed positions sold as an add-on', shapes: ['circle'] },
+  { id: 'home-highlight-co', page: 'Home', ref: '1.6', name: 'Highlight Companies', size: 'Job row', shown: '20 postings', cap: '+5 fixed premium positions', route: 'both', fedBy: 'Basic Plus tier · 5 fixed positions sold as an add-on', shapes: ['circle'] },
   { id: 'home-new-jobs', page: 'Home', ref: '1.7', name: 'Công việc mới (Job Basic)', size: 'Job row', shown: 'List', cap: 'Bottom of page', route: 'tier', fedBy: 'Basic tier' },
   { id: 'home-adsense', page: 'Home', ref: '1.8', name: 'Banner adsense', size: '1260 × 120 px', shown: '1 at a time', cap: 'max 6 · refresh on reload', route: 'booked', fedBy: 'Banner placement product · below “Hot Categories”' },
-  { id: 'home-tailored', page: 'Home', ref: '1.9', name: 'Jobs Tailored For You', size: 'Job card', shown: 'List', cap: '—', route: 'tier', fedBy: 'Guests: Distinction + Top Job · Logged in: personalised by profile & behaviour' },
+  { id: 'home-tailored', page: 'Home', ref: '1.9', name: 'Jobs Tailored For You', size: 'Job card', shown: 'List', cap: '—', route: 'tier', fedBy: 'Guests: Distinction + Top Job · Logged in: personalised by profile & behaviour', shapes: ['landscape'] },
   { id: 'home-popup', page: 'Home', ref: '1.10', name: 'Homepage pop-up', size: 'Custom creative', shown: '1 at a time', cap: 'priority decides · frequency-capped', route: 'booked', fedBy: 'Popup placement product · per campaign, CTA configurable' },
   { id: 'search-highlight-co', page: 'Search', ref: '2.1', name: 'Highlight Company', size: 'Company block', shown: '1 company', cap: 'unlimited · random per reload', route: 'booked', fedBy: 'Highlight Company product → links to company profile' },
-  { id: 'search-highlight-jobs', page: 'Search', ref: '2.2', name: 'Highlight Jobs', size: 'Job row', shown: 'Unlimited', cap: 'shuffled per search session', route: 'tier', fedBy: 'Basic Plus · Distinction · Top Job (tier sets the rank band)' },
+  { id: 'search-highlight-jobs', page: 'Search', ref: '2.2', name: 'Highlight Jobs', size: 'Job row', shown: 'Unlimited', cap: 'shuffled per search session', route: 'tier', fedBy: 'Basic Plus · Distinction · Top Job (tier sets the rank band)', shapes: ['circle'] },
   { id: 'search-adsense', page: 'Search', ref: '2.3', name: 'Banner adsense', size: '425 × 160 px', shown: '1 at a time', cap: 'unlimited · position varies on reload', route: 'booked', fedBy: 'Banner placement product · interleaved between results' },
 ]
 
@@ -239,6 +246,21 @@ export const ARTWORK_SETS: ArtworkSet[] = [
 /** A set is COMPLETE when it can fill all three frames. Only complete sets can be
     an industry's automatic default — a half-set leaves a hole on the hover card. */
 export const isComplete = (s: ArtworkSet) => RENDITIONS.every((r) => s.renditions[r.key])
+/* ── What a posting actually needs ───────────────────────────────────────────
+   "Complete" is not a property of the SET on its own — it is a question about a
+   set AND a placement. A posting whose product only ever prints a round
+   thumbnail must not be refused a set that has ngang and tròn but no dọc: the
+   missing frame is one nobody will ever render. Asking every posting for all
+   three was the defect; `need` is what fixes it. */
+export const shapesOfPlacements = (ids: string[]): Rendition[] =>
+  RENDITIONS.map((r) => r.key).filter((k) => ids.some((id) => PLACEMENTS.find((p) => p.id === id)?.shapes?.includes(k)))
+/** the shapes a product's own placements print — the union, in canonical order */
+export const shapesForSku = (sku: string): Rendition[] =>
+  shapesOfPlacements(CATALOG.find((c) => c.sku === sku)?.feeds ?? [])
+/** does this set carry every shape the posting needs? */
+export const covers = (s: ArtworkSet, need: Rendition[]) => need.every((k) => !!s.renditions[k])
+export const missingFor = (s: ArtworkSet, need: Rendition[]) =>
+  RENDITIONS.filter((r) => need.includes(r.key) && !s.renditions[r.key]).map((r) => r.label)
 export const missingOf = (s: ArtworkSet) => RENDITIONS.filter((r) => !s.renditions[r.key]).map((r) => r.label)
 
 /** COVERAGE counts a group's OWN complete sets — tagged at the group itself or
@@ -277,8 +299,8 @@ export function rankedSetsFor(jobIndustryId: string): RankedSet[] {
 export const setsFor = (jobIndustryId: string) => rankedSetsFor(jobIndustryId).map((r) => r.set)
 /** THE AUTOMATIC DEFAULT: best-fitting COMPLETE set. Least-used is not a
     refinement — "first match" puts one photograph on every card of an industry. */
-export const autoSetFor = (jobIndustryId: string) =>
-  rankedSetsFor(jobIndustryId).find((r) => isComplete(r.set))?.set ?? null
+export const autoSetFor = (jobIndustryId: string, need: Rendition[] = RENDITIONS.map((r) => r.key)) =>
+  rankedSetsFor(jobIndustryId).find((r) => covers(r.set, need))?.set ?? null
 /** why a set was offered — printed in the picker so the ranking is readable */
 export const matchLabel = (r: RankedSet) =>
   r.tier === 2 ? 'Mọi ngành' : r.tier === 1 ? 'Ngành con' : r.depth === 3 ? 'Khớp chuyên ngành' : r.depth === 2 ? 'Khớp ngành' : 'Khớp nhóm'
@@ -426,13 +448,13 @@ export const SLOT_CONTENT: Record<SlotContent, { vi: string; needs: string }> = 
   company: { vi: 'Logo & trang công ty', needs: 'Tự lấy logo/cover từ hồ sơ công ty' },
 }
 
-export const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean; content?: SlotContent; addonKind?: 'label' | 'placement'; slot?: string }[] = [
+export const CATALOG: { sku: string; name: string; type: string; role: ProductRole; price: string; fulfilment: string; status: 'Active' | 'Inactive'; includes?: string[]; entitlement?: Entitlement; activateWithin?: number; trial?: boolean; content?: SlotContent; addonKind?: 'label' | 'placement'; slot?: string; feeds?: string[] }[] = [
   // ── Job posting ───────────────────────────────────────────────────────────
-  { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free' },
-  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active' },
-  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['ADD-HLCOMPANIES', 'SVC-EMAIL-DEV'] },
-  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS'] },
-  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS', 'ADD-LABEL-HOTJOB', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'] },
+  { sku: 'JOB-FREE', name: 'Tin Free (Admin đăng hộ)', type: 'Job posting', role: 'Main', price: '0 ₫', fulfilment: '14 ngày · không vị trí nổi bật', status: 'Active', entitlement: 'free', feeds: [] },
+  { sku: 'JOB-BASIC', name: 'Tin Basic', type: 'Job posting', role: 'Main', price: '2,710,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 15 ngày', status: 'Active', feeds: ['home-new-jobs'] },
+  { sku: 'JOB-BASICPLUS', name: 'Tin Basic Plus', type: 'Job posting', role: 'Main', price: '6,100,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 10 ngày', status: 'Active', includes: ['ADD-HLCOMPANIES', 'SVC-EMAIL-DEV'], feeds: ['home-highlight-co', 'search-highlight-jobs'] },
+  { sku: 'JOB-DISTINCTION', name: 'Tin Distinction', type: 'Job posting', role: 'Main', price: '12,000,000 ₫ ⓒ', fulfilment: '30 ngày · làm mới 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS'], feeds: ['home-popular-jobs', 'home-tailored', 'search-highlight-jobs'] },
+  { sku: 'JOB-TOPJOB', name: 'Tin Top Job', type: 'Job posting', role: 'Main', price: '13,800,000 ₫ ⓒ', fulfilment: '30 ngày · mỗi ngày ×7 rồi 5 ngày', status: 'Active', includes: ['ADD-POPULARJOBS', 'ADD-LABEL-HOTJOB', 'SVC-FB-TOPDEV', 'SVC-EMAIL-DEV'], feeds: ['home-super-hot', 'home-popular-jobs', 'home-tailored', 'search-highlight-jobs'] },
   // Shorter window than the 12-month default on purpose: a giveaway that can be
   // banked for a year is a liability on the books, not an incentive to start.
   { sku: 'JOB-TRIAL', name: 'Tin đăng dùng thử (Basic Job)', type: 'Job posting', role: 'Main', price: '500,000 ₫', fulfilment: '15 ngày · 1 slot · 1 lần / MST', status: 'Active', activateWithin: 3, trial: true },
