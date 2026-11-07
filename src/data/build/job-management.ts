@@ -428,7 +428,7 @@ export const jobManagement: BuildModule = {
               'CHANGING THE PRODUCT RE-RESOLVES THE FRAME LIST. Going Top Job → Basic Plus drops the two frames that are no longer printed; going back asks for them again. Artwork the operator picked by hand is kept for the frames that survive.',
               'This supersedes the earlier line "which renditions are required comes from the package" — same intent, but the package was never the thing that knew. The placement is.',
             ],
-            warn: 'The placement → shapes mapping in the mockup is READ OFF the KR cards and the Products deck and still needs confirming row by row with the client. Which bands print a circle, and whether Jobs Tailored For You prints a landscape at all, are the two least certain rows. Subtask 2 (SRM-1409) also still says the resolver picks a set with "đủ 3 format" — that line needs amending to "đủ khung mà placement cần".',
+            warn: 'The placement → shapes mapping in the mockup is READ OFF the KR cards and the Products deck and still needs confirming row by row with the client. Which bands print a circle, and whether Jobs Tailored For You prints a landscape at all, are the two least certain rows. SRM-1409 and SRM-1408 both carried the old "đủ 3 format" rule and were amended on 07/11/2026 to match this block.',
           },
           {
             label: 'Which artwork sets a job can reach — the industry chain',
