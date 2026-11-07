@@ -50,7 +50,26 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
      free tier, for an employer it is simply "nothing to post from" — never a
      free job. */
   const NO_PO = isAdmin ? '— none (Free job) —' : '— none —'
-  const [po, setPo] = useState(NO_PO)
+  const OWN_PO = 'PO-2026-0042 · active · signed 12/07/2026'
+  const label = (c: (typeof CATALOG)[number]) => `${c.name} · ${c.fulfilment.split(' · ')[0]}`
+  /* `?artwork=1` opens the form on a package that ACTUALLY asks for artwork.
+     WHICH package is deliberately not written down: the form takes the active
+     main job-posting product whose placements ask for the most frames. A
+     product is configurable — anyone can build a new one and hand it whatever
+     placements they like — so a link that named a SKU would rot the first time
+     the catalogue changed, and would also read as if artwork belonged to that
+     one package. Without the param the form opens on the free tier, which
+     feeds no placement that prints a frame, so Card artwork correctly says the
+     package asks for none — right, but useless to link a reviewer at. A paid
+     product also needs a PO, since the paid list is only offered once one is
+     picked, so the param takes one. */
+  const wantArtwork = new URLSearchParams(window.location.search).get('artwork') !== null
+  const urlProduct = wantArtwork
+    ? ([...CATALOG]
+        .filter((c) => c.type === 'Job posting' && c.role !== 'Add-on' && c.status === 'Active' && shapesForSku(c.sku).length > 0)
+        .sort((a, b) => shapesForSku(b.sku).length - shapesForSku(a.sku).length)[0] ?? null)
+    : null
+  const [po, setPo] = useState(urlProduct && urlProduct.entitlement !== 'free' ? OWN_PO : NO_PO)
   const hasPo = po !== NO_PO
   /* SHARED QUOTA — a PO another company bought and let this one use (CRM →
      Shared quota). Listed in the same picker, in its own group, because to the
@@ -75,7 +94,6 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
      the PO's add-on lines, so no PO → no add-ons, even for HQ. */
   const addonsOf = (kind: 'placement' | 'label') =>
     CATALOG.filter((c) => c.type === 'Job posting' && c.role === 'Add-on' && c.addonKind === kind && c.status === 'Active')
-  const label = (c: (typeof CATALOG)[number]) => `${c.name} · ${c.fulfilment.split(' · ')[0]}`
   const NO_ADDON = '— không gắn —'
   /* No PO on the Company surface means NO product — never the free tier, which is
      Admin-only. An employer without an active PO has nothing to post from. */
@@ -83,7 +101,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
   /* The product is STATE because Card artwork reads off it: which frames a
      posting is asked for comes from the placements its product feeds, not from a
      fixed list of three. */
-  const [productLabel, setProductLabel] = useState('')
+  const [productLabel, setProductLabel] = useState(urlProduct ? label(urlProduct) : '')
   /* `?focus=<section id>` scrolls to a section and flashes it. A ticket that says
      "open the job form and scroll to Card artwork" wastes the first minute of
      every developer who opens it; the link should arrive there. */
@@ -130,8 +148,8 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             <SelectField
               label="Purchase order (PO)"
               value={po}
-              onChange={setPo}
-              options={[NO_PO, 'PO-2026-0042 · active · signed 12/07/2026', 'PO-2026-0039 · active · signed 02/06/2026', SHARED_PO, SHARED_PO_EMPTY, SHARED_PO_2]}
+              onChange={(v) => { setPo(v); setProductLabel('') }}
+              options={[NO_PO, OWN_PO, 'PO-2026-0039 · active · signed 02/06/2026', SHARED_PO, SHARED_PO_EMPTY, SHARED_PO_2]}
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">— paid products only · own POs first, then “shared by …”</span>}
             />
             {/* keyed on the PO so the product resets rather than keeping a stale
@@ -140,7 +158,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
               key={po}
               label="Product (Main)"
               req
-              value={productOptions[0] ?? '— no product available —'}
+              value={productLabel || productOptions[0] || '— no product available —'}
               onChange={setProductLabel}
               options={productOptions}
               extra={<span className="ml-2 text-[10.5px] font-normal text-faint">{hasPo ? '— lines on the selected PO' : '— free tier (no PO)'}</span>}
