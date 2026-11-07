@@ -299,7 +299,7 @@ function CropOverlay({ format, hue, onDone, onCancel }: {
             <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
           </div>
           <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
-            Kéo ảnh để chỉnh khung · chấm xanh là focal point
+            Kéo ảnh để chỉnh khung · chấm xanh là focal point · ảnh giữ nguyên tỉ lệ gốc, không bị bóp méo
           </span>
         </div>
         <div className="mt-2 flex items-center gap-2">
