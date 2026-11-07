@@ -1,4 +1,4 @@
-# [Admin] Image gallery — gom ảnh thành IMAGE SET, 3 format, tag tự tạo, nhập hàng loạt từ Excel
+# [Admin] Image gallery — gom ảnh thành IMAGE SET, 3 format, tag tự tạo, bảng nhập hàng loạt
 
 **Module:** Banners & Pop-ups → Image gallery · **Site:** Admin · **Loại:** BE + FE
 **Ticket:** [SRM-1407](https://pm.burningbros.kr/projects/SRM/board?open=47fe6d39-0016-410a-bd8f-afcf073530e7) · 5 subtask
@@ -37,7 +37,7 @@ Mỗi subtask là **một tính năng trọn vẹn** — BE và FE đi cùng nha
 | 2 | SRM-1409 | Liên kết theo Industry | **Industry là field bắt buộc** → chưa có picker thì chưa lưu nổi một cụm nào. |
 | 3 | SRM-1410 | Tạo 1 set hình | Lúc thư viện **bắt đầu có dữ liệu**. Trước nó mọi màn đều rỗng. |
 | 4 | SRM-1412 | Liên kết vô topic tags | Tag **optional** → không chặn gì. Ô tag ở màn tạo stub tạm rồi nối vào đây. |
-| 5 | SRM-1417 | Tạo set hình hàng loạt | Cần đủ model, ngành và tag mới nhập hàng loạt được. |
+| 5 | SRM-1417 | Tạo set hình hàng loạt | Bảng nhập trong admin; cần đủ model, ngành và tag mới làm được. |
 
 **Lưu ý về Subtask 2:** phần *gắn ngành + picker* phải xong trước Subtask 3, nhưng phần *resolver* (tin đăng tự nhận ảnh) chỉ test được sau khi thư viện có cụm đầy đủ — tức sau Subtask 3. Có thể tách hai nhịp trong cùng một ticket.
 
@@ -222,42 +222,72 @@ DELETE /admin/artwork-tags/:id              // trả về số cụm bị ảnh 
 
 ## Subtask 5 — Tạo set hình hàng loạt
 
-> SRM-1417 · phụ thuộc Subtask 1, 2, 3
-> **File mẫu:** `public/templates/gallery-images-import-template.xlsx` (sinh bằng `scripts/make_gallery_import_template.py`)
+> SRM-1417 · phụ thuộc Subtask 1, 2, 3 (dùng lại picker ngành và ô tag)
 
-**Là một TRANG, không phải modal** — bảng review phải cuộn và soi được.
+**Một TRANG CÓ BẢNG NHẬP TRỰC TIẾP trong admin.** Không có file .xlsx, không tải mẫu, không upload ngược.
 
-Cấu trúc sheet: **một dòng = một ảnh**; các dòng **trùng cột Name** gộp thành một cụm. Người điền file không cần hiểu khái niệm "cụm" — chỉ cần biết "tấm này là bản ngang của Văn phòng HN". Bắt khách diễn đạt quan hệ 1-3 trong một bảng phẳng là chỗ các import kiểu này thường chết.
+> ⚠️ **Bản .xlsx round-trip đã BỎ (06/11).** Tài liệu nào còn nhắc tới nó là bản cũ. Không làm nữa: `POST /import/validate`, `POST /import/commit`, `GET /template.xlsx`, `scripts/make_gallery_import_template.py`, `public/templates/*.xlsx`, và file xuất dòng lỗi.
 
-| Cột | Bắt buộc | Validate |
+### Vì sao bỏ file
+
+| Vấn đề của round-trip | Bảng nhập làm gì thay |
+|---|---|
+| Link Drive — nguồn lỗi lớn nhất: sai quyền chia sẻ, rate limit, trả HTML thay vì ảnh | **Thả file thẳng vào ô** — không link, không fetch bên thứ ba, không có quyền nào để sai |
+| File mẫu sinh từ master data → đổi ngành một lần là mọi bản copy trong inbox khách thành sai, không ai báo | Picker ngành đọc master data **trực tiếp**, không có bản copy nào để cũ |
+| Validate thành một lượt riêng — người sửa ô không còn nhìn thấy bảng đã sinh ra nó | **Từng ô validate ngay lúc gõ**, tại chỗ, lý do hiện dưới dòng |
+
+**Mất gì:** khách không chuẩn bị offline rồi email được nữa. Bù lại bằng **paste từ Sheets** — nên paste không phải tiện ích, nó là đường migration.
+
+### Cấu trúc bảng — MỘT DÒNG = MỘT CỤM
+
+`Name` · `Ngang` · `Dọc` · `Tròn` · `Industry` · `Topics` · `Expiry`
+
+- **Name** — optional nhưng **phải UNIQUE**; tên là handle của cả cụm. Trống thì fallback `Cụm #n`.
+- **Ngang · Dọc · Tròn** — ba cột, mỗi cột một slot; file thả vào slot nào **render đúng hình dạng slot đó**.
+- **Industry** — chips, chọn ở bất kỳ cấp nào trong 3 cấp, có nhãn cấp. **Bắt buộc.**
+- **Topics** — ô tag tạo-tại-chỗ, kèm "Quản lý topic" ở thanh header.
+
+> **HÌNH DẠNG CHÍNH LÀ NHÃN.** Ảnh nhầm slot thấy ngay khi cột tròn vẽ thành hình tròn; trong bảng toàn chữ thì nó đọc như một dòng đúng cho tới lúc thẻ render. **Slot trống là một hình đang chờ** — nhìn qua 40 dòng biết ngay cụm nào thiếu.
+
+### Copy giữa các cụm — thao tác cả trang sống nhờ nó
+
+Industry là field duy nhất có việc thật: pick 3 cấp cho từng cụm. Làm tay 40 lần chính là thứ đẩy người ta quay về Excel.
+
+| Nút | Khi nào hiện | Làm gì |
 |---|---|---|
-| Name | Không | Trùng tên → gộp 1 cụm. Tên trống → mỗi dòng thành cụm riêng, **không gộp các dòng trống với nhau**. |
-| Image link | **Có** | Link Drive mở được bằng link. |
-| Format | **Có** | Đúng một trong `Ngang` · `Dọc` · `Tròn`. |
-| Industry | **Có** | Phải khớp node có thật trong master data. |
-| Topics tag | Không | Cách nhau dấu phẩy. **Tag lạ thì TẠO MỚI**, không reject. |
-| Licence expiry | Không | dd/mm/yyyy. |
+| **⧉ Copy** | Ô đang focus | Lấy giá trị ô đó — cả chips |
+| **⇲ Paste** | Ô focus **cùng cột**, sau khi đã copy | Thả giá trị vào cụm này |
+| **⇊ Fill down** | Ô đang focus | Đẩy xuống **mọi cụm bên dưới** trong một thao tác |
+| `Ctrl+C` / `Ctrl+V` / `Ctrl+D` | — | Y hệt ba cái trên, từ bàn phím |
 
-```
-POST /admin/image-sets/import/validate   // multipart .xlsx → kết quả từng dòng, KHÔNG ghi gì
-POST /admin/image-sets/import/commit     // tạo set, trả created / skipped / failed
-GET  /admin/image-sets/import/template.xlsx
-```
+- **Nút có CHỮ, không chỉ icon** — `⧉` trần là đoán, `⧉ Copy` thì không. Thêm một dải trên bảng ghi lại ba thao tác để thấy trước khi click vào ô nào.
+- **Chỉ hiện trên ô đang focus**, không rải khắp 40 dòng.
+- **Paste kiểm theo kiểu cột**: Industry không rơi vào được Topics — nhận bừa là nhét node id vào tag list, lỗi nổ muộn hơn nhiều ở chỗ khác.
+- **Slot ảnh KHÔNG copy được** — hai cụm dùng chung một tấm ảnh đúng là thứ thư viện sinh ra để tránh.
 
-- **Dòng lỗi bị bỏ qua, phần còn lại vẫn nhập.** Một ô sai chính tả không được chặn cả lô 40 ảnh.
-- Xuất được file `.xlsx` chỉ chứa dòng lỗi để gửi lại khách.
-- Trước khi commit: preview các **cụm** sẽ tạo, vẽ 3 khung, khung thiếu gạch đứt. In rõ `N dòng hợp lệ → M cụm`.
-- Tải lại file đã sửa: **bỏ qua cụm đã tồn tại**, không tạo trùng.
+### Thả ảnh — hai hành vi, chọn một lần
 
-> ⚠️ **Bẫy đã gặp:** dropdown trong file .xlsx phải ghi `dataValidation/formula1` **không có dấu `=` ở đầu** và trỏ qua *defined name*. Excel bỏ qua lỗi này nhưng **Google Sheets xoá sạch rule** — khách mở file thấy ô text trơn, không dropdown, không báo lỗi.
+Một **toggle trên đầu bảng**, không hỏi từng ảnh: 40 ảnh là 40 lần cùng một quyết định.
+
+| Toggle | Thả file vào slot | Dùng khi |
+|---|---|---|
+| **Dùng nguyên file** | Vào thẳng slot, render đúng hình dạng — xong | File đã cắt sẵn đúng tỉ lệ |
+| **Mở khung cắt** | Mở crop frame đúng tỉ lệ slot | Ảnh thô còn phải căn khung |
+
+- **Không bao giờ kéo giãn ảnh cho vừa.** Ảnh di chuyển và phóng to bên trong crop frame theo đúng aspect của nó — mặt bị bóp méo tệ hơn cắt sát.
+- Slot đã có ảnh vẫn giữ link **"Cắt lại"** khi toggle đang bật.
 
 **Acceptance**
-- [ ] 3 dòng cùng Name với Ngang/Dọc/Tròn → **1 cụm đầy đủ**
-- [ ] 2 dòng cùng Name chỉ có Ngang/Dọc → 1 cụm thiếu tròn, preview báo rõ
-- [ ] Dòng ngành sai → fail đúng dòng đó, các dòng khác vẫn nhập
-- [ ] Dòng không có Industry → fail
-- [ ] Tag lạ trong file → sau khi nhập, tag đó tồn tại trong hệ thống
-- [ ] File mẫu tải về mở bằng Google Sheets có dropdown Industry 636 mục chạy được
+- [ ] Một cụm là **một dòng**; ba format nằm ngang trên cùng dòng
+- [ ] Slot tròn vẽ hình tròn, slot dọc vẽ dọc — thả nhầm thấy ngay
+- [ ] Slot trống hiện như hình đang chờ, quét 40 dòng biết ngay cụm nào thiếu
+- [ ] Trùng Name → báo lỗi tại ô, không cho lưu
+- [ ] Không có Industry → báo lỗi tại ô
+- [ ] ⧉ Copy / ⇲ Paste / ⇊ Fill down chạy đúng, `Ctrl+C/V/D` ra cùng kết quả
+- [ ] Paste Industry vào cột Topics → **bị từ chối**
+- [ ] Slot ảnh không copy được
+- [ ] Toggle "mở khung cắt" → crop frame đúng tỉ lệ slot, **không kéo giãn**
+- [ ] Paste từ Google Sheets → ra đúng các cột
 
 ---
 

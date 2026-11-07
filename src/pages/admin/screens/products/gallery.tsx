@@ -328,9 +328,12 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
   const [slots, setSlots] = useState<Record<Rendition, SlotSource>>({ landscape: null, portrait: null, circle: null })
   const [cropping, setCropping] = useState<Rendition | null>(null)
   const [title, setTitle] = useState('')
+  /* The generic name a blank field falls back to. Read off the library size so it
+     is stable and non-colliding; shown as the placeholder so it is a visible
+     default rather than a surprise after saving. */
+  const autoName = `Hình ${ARTWORK_SETS.length + 1}`
   const [tags, setTags] = useState<string[]>([])
   const [industries, setIndustries] = useState<string[]>([])
-  const [any, setAny] = useState(false)
   const [expires, setExpires] = useState('')
   const hue = 212
 
@@ -359,7 +362,7 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
   const suggested = suggestIndustries(tags)
   /* Industry is the ONLY gate. A stock pack of forty pictures never gets forty
      hand-written names, and a rule nobody can satisfy is one that gets dodged. */
-  const ready = count > 0 && (any || industries.length > 0)
+  const ready = count > 0 && industries.length > 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
@@ -409,11 +412,23 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
                 <div key={r.key} className="rounded-xl border border-line p-2.5">
                   <div className={cn(r.key === 'landscape' ? '' : 'flex justify-center')}>
                     {s ? (
-                      <div className={cn('relative overflow-hidden border border-line', box)} style={imgStyle(hue)}>
+                      /* Clicking the PICTURE opens the crop. A text link below it is
+                         a second place to look for something the image already
+                         affords — and on a frame you are judging by eye, the thing
+                         you want to adjust is the thing you are looking at. */
+                      <button
+                        onClick={() => setCropping(r.key)}
+                        title={`Bấm để cắt khung ${r.label.toLowerCase()}`}
+                        className={cn('group relative block overflow-hidden border border-line', box)}
+                        style={imgStyle(hue)}
+                      >
                         <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">badge</span>
                         <span className="absolute right-1 top-1 text-[11px] text-white/90">☆</span>
                         {s.derived && <span className="absolute bottom-0 right-0 bg-black/45 px-1 text-[9px] text-white" title="Cắt từ ảnh gốc">✂</span>}
-                      </div>
+                        <span className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+                          <span className="rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-ink">✂ Cắt</span>
+                        </span>
+                      </button>
                     ) : (
                       <button
                         onClick={() => setSlot(r.key, { derived: false })}
@@ -429,7 +444,8 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
                   <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[10.5px]">
                     {s ? (
                       <>
-                        {master && <><button onClick={() => setCropping(r.key)} className="font-medium text-brand hover:underline">Cắt</button><span className="text-faint">·</span></>}
+                        <span className="text-faint">Bấm ảnh để cắt</span>
+                        <span className="text-faint">·</span>
                         <button onClick={() => setSlot(r.key, { derived: false })} className="text-brand hover:underline">Thay tệp</button>
                         <span className="text-faint">·</span>
                         <button onClick={() => setSlot(r.key, null)} className="text-faint hover:text-ink">Bỏ trống</button>
@@ -455,7 +471,12 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-[1fr_150px] gap-3">
               <div>
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-faint">Tên cụm <span className="ml-1 font-normal normal-case tracking-normal">— không bắt buộc</span></p>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="vd. Nhóm kỹ sư trong xưởng" className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none focus:border-brand" />
+                {/* Nobody names forty stock pictures, so a blank name is filled in
+                    rather than refused — and the generated name is SHOWN as the
+                    placeholder, so it is a default the operator can see and accept
+                    rather than something that appears after saving. */}
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoName} className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] outline-none focus:border-brand" />
+                <p className="mt-0.5 text-[9.5px] text-faint">Để trống thì hệ thống đặt là <b className="text-ink/70">{autoName}</b>.</p>
               </div>
               <div>
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-faint">Hết hạn</p>
@@ -471,19 +492,17 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
             <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wide text-faint">
               Ngành <span className="text-rose-500">*</span> <span className="ml-1 font-normal normal-case tracking-normal">— bắt buộc. Chọn ở bất kỳ cấp nào</span>
             </p>
-            {suggested.length > 0 && industries.length === 0 && !any && (
+            {suggested.length > 0 && industries.length === 0 && (
               <p className="mb-1.5 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] text-brand">
                 Từ tag đã chọn, đề xuất: <b>{suggested.map(industryName).join(' · ')}</b>
                 <button onClick={() => setIndustries(suggested)} className="ml-2 font-semibold underline">Nhận tất cả</button>
               </p>
             )}
-            <label className={cn('mb-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px]', any ? 'border-brand bg-brand-soft font-medium text-brand' : 'border-line bg-surface text-muted')}>
-              <input type="checkbox" checked={any} onChange={(e) => setAny(e.target.checked)} className="accent-current" />
-              Mọi ngành (ảnh trung tính — dùng làm dự phòng)
-            </label>
-            <div className={cn(any && 'pointer-events-none opacity-40')}>
-              <IndustryTreePicker value={industries} onChange={setIndustries} />
-            </div>
+            {/* No "Mọi ngành" here. Industry is the one required field, and an
+                escape hatch next to it is the thing people click to get past a
+                required field. A genuinely neutral set is still possible — flag it
+                on the set afterwards, in the detail view, as a deliberate edit. */}
+            <IndustryTreePicker value={industries} onChange={setIndustries} />
           </div>
         </div>
 
@@ -491,7 +510,7 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
           <span className="text-[11px] text-faint">
             {count === 0 ? 'Chưa có khung nào' : `${count}/3 khung`}
             {count > 0 && count < 3 && <span className="text-amber-700"> · cụm thiếu, không dùng làm ảnh tự điền</span>}
-            {count > 0 && !any && industries.length === 0 && <span className="text-amber-700"> · chưa chọn ngành</span>}
+            {count > 0 && industries.length === 0 && <span className="text-amber-700"> · chưa chọn ngành</span>}
           </span>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Huỷ</button>
