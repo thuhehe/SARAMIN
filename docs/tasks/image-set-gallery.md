@@ -29,15 +29,17 @@ Task này đổi đơn vị lưu trữ từ **ảnh** sang **cụm ảnh (image 
 
 ## Thứ tự làm
 
-Mỗi subtask là **một tính năng trọn vẹn** — BE và FE đi cùng nhau, không tách lớp.
+Mỗi subtask là **một tính năng trọn vẹn** — BE và FE đi cùng nhau, không tách lớp. Thứ tự dưới đây là thứ tự Dev nên làm, không phải thứ tự tuỳ ý.
 
-```
-Subtask 1 (quản lý hình theo set)   ← chặn tất cả
-        ├── Subtask 2 (industry)  ─┐
-        ├── Subtask 3 (tags)      ─┤  2 và 3 song song được
-        └── Subtask 4 (tạo 1 set) ←┘  dùng picker của 2 và ô tag của 3
-                └── Subtask 5 (nhập hàng loạt)
-```
+| # | Ticket | Subtask | Vì sao ở vị trí này |
+|---|---|---|---|
+| 1 | SRM-1408 | Quản lý hình theo set | Nền tảng. Không có bảng thì không có gì để gắn ngành hay tag. |
+| 2 | SRM-1409 | Liên kết theo Industry | **Industry là field bắt buộc** → chưa có picker thì chưa lưu nổi một cụm nào. |
+| 3 | SRM-1410 | Tạo 1 set hình | Lúc thư viện **bắt đầu có dữ liệu**. Trước nó mọi màn đều rỗng. |
+| 4 | SRM-1412 | Liên kết vô topic tags | Tag **optional** → không chặn gì. Ô tag ở màn tạo stub tạm rồi nối vào đây. |
+| 5 | SRM-1417 | Tạo set hình hàng loạt | Cần đủ model, ngành và tag mới nhập hàng loạt được. |
+
+**Lưu ý về Subtask 2:** phần *gắn ngành + picker* phải xong trước Subtask 3, nhưng phần *resolver* (tin đăng tự nhận ảnh) chỉ test được sau khi thư viện có cụm đầy đủ — tức sau Subtask 3. Có thể tách hai nhịp trong cùng một ticket.
 
 ---
 
@@ -144,9 +146,45 @@ GET /artwork/pick?industry=&format=&completeOnly=&q=
 
 ---
 
-## Subtask 3 — Liên kết image set vô topic tags
+## Subtask 3 — Tạo 1 set hình
 
-> SRM-1410 · phụ thuộc Subtask 1
+> SRM-1410 · priority HIGH · phụ thuộc Subtask 1 và **Subtask 2** (Industry bắt buộc nên chưa có picker thì chưa lưu nổi cụm nào). Ô tag stub tạm, nối vào ở Subtask 4.
+>
+> **Đây là lúc thư viện bắt đầu có dữ liệu** — trước nó màn danh sách và chi tiết đều rỗng.
+
+**Một màn duy nhất** — không toggle chế độ, không wizard 2 bước.
+
+```
+┌ Tạo cụm ảnh ──────────────────────────────┐
+│ ① [ Thả một ảnh gốc — tự cắt cả 3 khung ] │
+│ ② [ Ngang ] [ Dọc ] [ Tròn ]   mỗi khung: │
+│      Cắt · Thay tệp · Bỏ trống            │
+│ ③ Tên · Hết hạn · Tag · Ngành *           │
+│                      [Huỷ] [Tạo cụm]      │
+└───────────────────────────────────────────┘
+```
+
+- **Hai cách tải ảnh KHÔNG phải hai lựa chọn loại trừ nhau.** Thả ảnh gốc → tự cắt vào mọi khung **đang trống**. Thả tệp thẳng vào một khung → khung đó dùng tệp riêng. **Trộn cả hai trên cùng một cụm là bình thường** — "ngang và dọc cắt từ ảnh gốc, tròn chụp riêng" là ca có thật, bản cũ có toggle thì không diễn đạt được.
+- **Ảnh gốc không bao giờ đè lên khung đã có tệp riêng.** Cắt đè lên một ảnh người ta cố ý tải lên là thứ duy nhất làm màn này mất tin cậy. Gỡ ảnh gốc chỉ xoá các khung cắt từ nó; khung tải tay giữ nguyên.
+- **Cắt là một overlay ngay trên dialog**, mở bằng nút *Cắt* của từng khung: ảnh gốc phủ nền, khung crop khoét trên scrim tối (thấy cùng lúc phần giữ và phần bỏ), có focal point + zoom, và vẽ sẵn **vùng an toàn** (ô `badge`, dấu `☆`) để cắt theo thẻ thật.
+- **Ảnh tròn mặc định cắt từ khung DỌC** theo cùng focal point → thường chỉ cần một lần tải lên.
+- Mỗi khung in rõ nguồn: **✂ cắt từ ảnh gốc** hay **tệp riêng** — sáu tháng sau câu "sao thẻ hover trông khác vậy" phải trả lời được ngay trên màn hình.
+- **Phân loại nằm cùng màn**, không phải bước 2. Chỉ **Ngành** chặn nút lưu; tên, tag, hạn để trống được.
+- Dòng trạng thái ở footer nói thẳng lý do còn chặn (*"cụm thiếu…"*, *"chưa chọn ngành"*) chứ không chỉ disable nút — nút xám không lý do là cách form này hay bị tắc nhất.
+
+**Acceptance**
+- [ ] Thả 1 ảnh gốc → cả 3 khung tự có ảnh, không phải thao tác thêm
+- [ ] Tải tệp riêng cho khung tròn, rồi thả ảnh gốc → ngang + dọc được cắt, **khung tròn giữ nguyên tệp riêng**
+- [ ] Gỡ ảnh gốc → chỉ các khung ✂ trống lại, khung tệp riêng còn nguyên
+- [ ] Bấm *Cắt* → overlay mở đúng tỉ lệ khung đó, có focal point + zoom + vùng an toàn
+- [ ] Bấm *Bỏ trống* khung tròn → vẫn tạo được cụm, cụm đó đánh dấu thiếu
+- [ ] Chưa chọn ngành → nút tạo disable **và** footer nói rõ lý do
+
+---
+
+## Subtask 4 — Liên kết image set vô topic tags
+
+> SRM-1412 · phụ thuộc Subtask 1. **Để sau Subtask 3 vì tag là field optional** — không chặn việc tạo cụm, nên không chặn gì cả.
 
 Lớp nhãn **tự do** để người dùng tìm bằng mắt.
 
@@ -182,41 +220,7 @@ DELETE /admin/artwork-tags/:id              // trả về số cụm bị ảnh 
 
 ---
 
-## Subtask 4 — Tạo 1 set hình
-
-> SRM-1412 · priority HIGH · phụ thuộc Subtask 1, dùng picker của 2 và ô tag của 3
-
-**Một màn duy nhất** — không toggle chế độ, không wizard 2 bước.
-
-```
-┌ Tạo cụm ảnh ──────────────────────────────┐
-│ ① [ Thả một ảnh gốc — tự cắt cả 3 khung ] │
-│ ② [ Ngang ] [ Dọc ] [ Tròn ]   mỗi khung: │
-│      Cắt · Thay tệp · Bỏ trống            │
-│ ③ Tên · Hết hạn · Tag · Ngành *           │
-│                      [Huỷ] [Tạo cụm]      │
-└───────────────────────────────────────────┘
-```
-
-- **Hai cách tải ảnh KHÔNG phải hai lựa chọn loại trừ nhau.** Thả ảnh gốc → tự cắt vào mọi khung **đang trống**. Thả tệp thẳng vào một khung → khung đó dùng tệp riêng. **Trộn cả hai trên cùng một cụm là bình thường** — "ngang và dọc cắt từ ảnh gốc, tròn chụp riêng" là ca có thật, bản cũ có toggle thì không diễn đạt được.
-- **Ảnh gốc không bao giờ đè lên khung đã có tệp riêng.** Cắt đè lên một ảnh người ta cố ý tải lên là thứ duy nhất làm màn này mất tin cậy. Gỡ ảnh gốc chỉ xoá các khung cắt từ nó; khung tải tay giữ nguyên.
-- **Cắt là một overlay ngay trên dialog**, mở bằng nút *Cắt* của từng khung: ảnh gốc phủ nền, khung crop khoét trên scrim tối (thấy cùng lúc phần giữ và phần bỏ), có focal point + zoom, và vẽ sẵn **vùng an toàn** (ô `badge`, dấu `☆`) để cắt theo thẻ thật.
-- **Ảnh tròn mặc định cắt từ khung DỌC** theo cùng focal point → thường chỉ cần một lần tải lên.
-- Mỗi khung in rõ nguồn: **✂ cắt từ ảnh gốc** hay **tệp riêng** — sáu tháng sau câu "sao thẻ hover trông khác vậy" phải trả lời được ngay trên màn hình.
-- **Phân loại nằm cùng màn**, không phải bước 2. Chỉ **Ngành** chặn nút lưu; tên, tag, hạn để trống được.
-- Dòng trạng thái ở footer nói thẳng lý do còn chặn (*"cụm thiếu…"*, *"chưa chọn ngành"*) chứ không chỉ disable nút — nút xám không lý do là cách form này hay bị tắc nhất.
-
-**Acceptance**
-- [ ] Thả 1 ảnh gốc → cả 3 khung tự có ảnh, không phải thao tác thêm
-- [ ] Tải tệp riêng cho khung tròn, rồi thả ảnh gốc → ngang + dọc được cắt, **khung tròn giữ nguyên tệp riêng**
-- [ ] Gỡ ảnh gốc → chỉ các khung ✂ trống lại, khung tệp riêng còn nguyên
-- [ ] Bấm *Cắt* → overlay mở đúng tỉ lệ khung đó, có focal point + zoom + vùng an toàn
-- [ ] Bấm *Bỏ trống* khung tròn → vẫn tạo được cụm, cụm đó đánh dấu thiếu
-- [ ] Chưa chọn ngành → nút tạo disable **và** footer nói rõ lý do
-
----
-
-## Subtask 5 — Tạo set hình hàng loạt từ Excel
+## Subtask 5 — Tạo set hình hàng loạt
 
 > SRM-1417 · phụ thuộc Subtask 1, 2, 3
 > **File mẫu:** `public/templates/gallery-images-import-template.xlsx` (sinh bằng `scripts/make_gallery_import_template.py`)
