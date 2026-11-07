@@ -80,10 +80,11 @@ export function AdminImageGallery() {
 
   return (
     <div>
-      {/* Coverage gaps are NOT banners. They are read off the two controls that can
-          act on them: the group filter prints each group's complete-set count, and
-          "Phiên bản · Còn thiếu" lists the unfinished sets. A warning you cannot
-          click is just noise sitting above the work. */}
+      {/* Coverage gaps are NOT banners. The group filter prints each group's
+          fully-cropped count, and any card missing a frame says so on itself. The
+          "Phiên bản" filter went with the warning panels on the client's
+          instruction (06/11) — a warning you cannot click is just noise sitting
+          above the work. */}
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <div className="relative">
           <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-faint">🔍</span>
@@ -118,7 +119,7 @@ export function AdminImageGallery() {
       <p className="mb-1.5 text-[11px] text-faint">
         Hiển thị <b className="font-semibold text-ink/70 tabular-nums">{shown.length}</b> / Tổng{' '}
         <b className="font-semibold text-ink/70 tabular-nums">{ARTWORK_SETS.filter((s) => !s.archived).length}</b> cụm đang dùng được
-        {group && <> · <b className="text-ink/70">{industryName(group)}</b> có <b className="text-ink/70 tabular-nums">{ownCoverage(group)}</b> cụm đầy đủ trong nhánh này</>}
+        {group && <> · <b className="text-ink/70">{industryName(group)}</b> có <b className="text-ink/70 tabular-nums">{ownCoverage(group)}</b> cụm đủ cả 3 khung trong nhánh này</>}
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -138,7 +139,7 @@ export function AdminImageGallery() {
               {s.expires && <span className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-faint">hết hạn {s.expires}</span>}
             </span>
             {!isComplete(s) && !s.archived && (
-              <span className="mt-1.5 block text-[10px] font-medium text-amber-700">⚠ Thiếu {missingOf(s).join(' · ').toLowerCase()} — không được dùng làm ảnh tự điền</span>
+              <span className="mt-1.5 block text-[10px] font-medium text-amber-700">⚠ Thiếu {missingOf(s).join(' · ').toLowerCase()} — chỉ tự điền cho gói không in khung đó</span>
             )}
           </button>
         ))}
@@ -245,8 +246,8 @@ function SetModal({ set, onClose }: { set: ArtworkSet; onClose: () => void }) {
             {!canSave
               ? <span className="text-amber-700">Chưa có ngành — bắt buộc trước khi lưu</span>
               : isComplete(set)
-                ? <>Đủ cả 3 phiên bản — <b className="text-ink/70">được dùng làm ảnh tự điền</b></>
-                : <span className="text-amber-700">Thiếu {missingOf(set).join(' · ').toLowerCase()} — chỉ chọn tay được</span>}
+                ? <>Đủ cả 3 khung — <b className="text-ink/70">tự điền được cho mọi gói</b></>
+                : <>Thiếu {missingOf(set).join(' · ').toLowerCase()} — <b className="text-ink/70">vẫn tự điền được cho gói không in khung đó</b></>}
           </span>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Đóng</button>

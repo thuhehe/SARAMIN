@@ -185,7 +185,7 @@ export const bannersPopups: BuildModule = {
             },
             items: [
               'COMPLETENESS IS RELATIVE TO THE PLACEMENT — it is not a property of the set on its own. A set COVERS a posting when it holds every frame that posting’s product actually prints, so one set holding ngang + tròn is complete for a Basic Plus posting and incomplete for a Top Job one. Only a set that COVERS may be an automatic default; a set missing a frame the card really will render leaves the hover empty, which is worse than the card the placement was sold as.',
-              'An incomplete set stays hand-pickable for the formats it does have. It is not an error; it is a set someone has not finished, and the gallery has a “Phiên bản · Còn thiếu” filter that lists exactly those.',
+              'A set missing a frame is NOT an error and is not shelved. It stays hand-pickable for the frames it has, and it is still an automatic default for any posting that does not print the missing one. Each card states its own gap (“⚠ Thiếu dọc — chỉ tự điền cho gói không in khung đó”); there is no “Phiên bản” filter — it was removed with the warning panels on 06/11/2026.',
               'The exact pixel sizes come from the Placements registry, not from this list. Which formats a posting actually REQUIRES is derived from the placements its product feeds — a package that never prints a circle must not block Post over a missing circle.',
             ],
           },
@@ -303,8 +303,8 @@ export const bannersPopups: BuildModule = {
         ],
         behaviors: [
           'The grid lists SETS, each drawn as its three formats side by side at their real aspect ratios — the same hue across all three is the wireframe proving they are one photograph. A missing format renders as a dashed “trống” box rather than being omitted.',
-          'Filters: nhóm ngành (whole branch, with each group’s set count printed in the option) · tag · phiên bản (đủ cả 3 / còn thiếu) · đã lưu trữ, plus keyword search over name and tag names.',
-          'COVERAGE IS READ OFF THE FILTERS, NOT BANNERS. The group filter prints the count; “Phiên bản · Còn thiếu” lists the unfinished sets. The earlier amber warning panels were removed on the client’s instruction (06/11/2026) — a warning you cannot click is noise sitting above the work.',
+          'Filters: nhóm ngành (whole branch, with each group’s fully-cropped set count printed in the option) · tag · đã lưu trữ, plus keyword search over name and tag names. There is deliberately NO “phiên bản” filter — it went with the warning panels on 06/11/2026.',
+          'COVERAGE IS READ OFF THE GRID, NOT BANNERS. The group filter prints each group’s fully-cropped count, and any card missing a frame says so on itself. The intro paragraph, the two amber warning panels and the “Phiên bản” filter were all removed on the client’s instruction (06/11/2026) — a warning you cannot click is noise sitting above the work.',
           'Saving a set is blocked until it has at least one industry. No other field blocks save.',
           '“MỌI NGÀNH” IS NOT OFFERED ON THE CREATE FORM (07/11/2026). Industry is the one required field there, and an escape hatch sitting next to a required field is the control people click to get past it — which is how a library fills up with neutral sets nobody chose deliberately. The flag still exists on the SET DETAIL, so a genuinely neutral picture is made by creating it normally and then marking it, as a separate decision somebody has to mean.',
           'A BLANK NAME IS FILLED IN, NOT REFUSED. Nobody names forty stock pictures, so an empty name becomes a generated generic one (“Hình 25”). The generated name is shown as the field’s placeholder with a line stating it will be used, so it is a default the operator can see and overrule rather than something that appears after saving.',
