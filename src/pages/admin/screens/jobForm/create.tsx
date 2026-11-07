@@ -4,7 +4,7 @@ import { BenefitsField } from '@/components/BenefitsField'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
 import { useDetailCrumb } from '@/pages/admin/ctx'
 import { COMPANY_BENEFITS, TITLE_I18N } from '@/pages/admin/data/jobForm'
-import { CATALOG, RENDITIONS, shapesForSku } from '@/pages/admin/data/products'
+import { CATALOG, shapesForSku } from '@/pages/admin/data/products'
 import { INDUSTRY_INDEX, industryPath } from '@/pages/admin/data/industries'
 import { JobArtworkGroup } from '@/pages/admin/screens/jobForm/artwork'
 import { CompanyInfoCard, JobSkillsField } from '@/pages/admin/screens/jobForm/fields'
@@ -289,14 +289,11 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             decides WHICH pictures fill them. Put it earlier and the operator is
             asked to choose before the system knows either. */}
         <JobGroup title="Card artwork" id="card-artwork">
-          <p className="text-[11px] leading-relaxed text-muted">
-            Khung ảnh tin này cần là <b className="text-ink/70">do placement của gói quyết định</b>, không phải lúc nào
-            cũng đủ ba.{' '}
-            {need.length > 0
-              ? <>Gói <b className="text-ink/70">{pickedProduct?.name}</b> in{' '}
-                  <b className="text-ink/70">{RENDITIONS.filter((r) => need.includes(r.key)).map((r) => `${r.label.toLowerCase()} (${r.where})`).join(' · ')}</b>.</>
-              : <>Gói <b className="text-ink/70">{pickedProduct?.name ?? '—'}</b> không chiếm placement nào có khung ảnh.</>}
-          </p>
+          {/* No preamble. That the package's placements decide which frames are
+              asked for is spec (Job management · "Which frames a posting is
+              asked for"), and the section already SHOWS it: only the needed
+              frames are drawn, and a package that prints none replaces the
+              whole block with one line. */}
           <JobArtworkGroup industry={industry} need={need} />
         </JobGroup>
 

@@ -5,7 +5,7 @@ import {
   rankedSetsFor, setLabel, tagName,
 } from '@/pages/admin/data/products'
 import type { ArtworkSet, RankedSet, Rendition } from '@/pages/admin/data/products'
-import { industryLevel, industryName, industryPath } from '@/pages/admin/data/industries'
+import { industryName, industryPath } from '@/pages/admin/data/industries'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CARD ARTWORK on the job form.
@@ -64,10 +64,13 @@ function SlotRow({ picked, need, onSlot }: { picked: Picked; need: Rendition[]; 
                 <span className="grid h-full place-items-center text-[10.5px] text-faint">trống</span>
               )}
             </div>
-            <p className="mt-1 text-[10.5px] font-medium text-ink">{r.label} · {r.px}</p>
-            <p className="text-[10px] text-faint">{r.where}</p>
+            {/* No caption. The shape IS the label — a 16:9 rectangle, a tall
+                rectangle and a circle are told apart by looking, and the pixel
+                size is a build fact that belongs in the spec, not on a form the
+                operator reads fifty times a day. (Job management · "Card
+                artwork" carries the sizes and where each frame prints.) */}
             {onSlot && (
-              <button onClick={() => onSlot(r.key)} className="mt-0.5 text-[10.5px] text-brand hover:underline">Chọn riêng khung này</button>
+              <button onClick={() => onSlot(r.key)} className="mt-1.5 text-[10.5px] text-brand hover:underline">Chọn riêng khung này</button>
             )}
           </div>
         )
@@ -110,7 +113,6 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
     setPicked(fill(autoSetFor(industry)))
   }
 
-  const pool = rankedSetsFor(industry).map((r) => r.set)
   const one = sameSet(picked)
   const filled = RENDITIONS.filter((r) => need.includes(r.key) && picked[r.key]).length
   const apply = (set: ArtworkSet, slot?: Rendition) => {
@@ -127,12 +129,13 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
 
   return (
     <>
+      {/* A BADGE MARKS A DEVIATION, NOT THE DEFAULT. The auto fill used to
+          announce itself ("✓ Tự điền theo ngành X — cụm «…»"); it was the one
+          state that needs no announcing, and it put a sentence at the top of
+          the section on every single posting. Silence now means "the system
+          filled this"; a badge means a human stepped in, or nothing could be
+          filled — the two cases actually worth a glance. */}
       <div className="flex flex-wrap items-center gap-2">
-        {source === 'auto' && one && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-800">
-            ✓ Tự điền theo ngành <b>{industryName(industry)}</b> — cụm “{setLabel(one)}”
-          </span>
-        )}
         {source === 'manual' && one && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11.5px] font-medium text-brand">
             Chọn tay — cụm “{setLabel(one)}”
@@ -167,16 +170,16 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
 
       <SlotRow picked={picked} need={need} onSlot={(r) => setOpen({ slot: r })} />
 
-      <p className="text-[10.5px] leading-relaxed text-faint">
-        <b className="text-ink/70">Ba khung, một lần chọn.</b> Ngành của tin là{' '}
-        <b className="text-ink/70">{industryPath(industry)}</b> (cấp {industryLevel(industry)}) —{' '}
-        <b className="text-ink/70">{pool.filter((x) => covers(x, need)).length} cụm đủ khung</b> với tới được, tính cả cụm gắn ở{' '}
-        <b>nhóm cha</b> và cụm <i>Mọi ngành</i>. Hệ thống lấy <b>mức khớp sâu nhất</b> trước, trong cùng mức thì lấy{' '}
-        <b>cụm ít dùng nhất</b>, để một tấm ảnh không phủ kín trang chủ. Tin đăng lưu{' '}
-        <b className="text-ink/70">ba mã ảnh</b>, không lưu mã cụm — sửa hay lưu trữ cụm trong thư viện{' '}
-        <b>không làm đổi ảnh của tin đang chạy</b>.
-        {filled < need.length && <span className="text-amber-700"> Còn {need.length - filled} khung trống — gói này in khung đó nên sẽ bị chặn khi đăng.</span>}
-      </p>
+      {/* The explainer that stood here — how many sets reach this industry, that
+          the deepest match wins, that the job stores three asset ids — is spec,
+          not UI. It is in Job management · "Card artwork". What the operator
+          still needs AT THE MOMENT OF FILLING THE FORM is the one line below:
+          this posting cannot be published yet. */}
+      {filled < need.length && (
+        <p className="text-[11px] font-medium text-amber-700">
+          Còn {need.length - filled} khung trống — gói này in khung đó nên sẽ bị chặn khi đăng.
+        </p>
+      )}
 
       {open && (
         <PickArtworkModal
