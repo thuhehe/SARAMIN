@@ -388,7 +388,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['State', 'How it got there', 'What the form shows', 'If Industry changes afterwards'],
               rows: [
-                ['**auto**', 'Industry was set and the slots were untouched — the system resolved the least-used complete set for that industry', '“✓ Tự điền theo ngành <Industry> — cụm «…»”, all three thumbnails filled', '**Re-resolves silently.** Nobody chose, so nothing is overwritten.'],
+                ['**auto**', 'Industry was set and the slots were untouched — the system resolved the least-used set COVERING the frames this product prints', '“✓ Tự điền theo ngành <Industry> — cụm «…»”, every frame the product prints filled', '**Re-resolves silently.** Nobody chose, so nothing is overwritten.'],
                 ['**manual**', 'The operator picked a whole set in the picker', '“Chọn tay — cụm «…»”, plus “↺ Về ảnh tự điền”', '**Left alone**, and a warning says the artwork no longer follows the industry. An automatic swap would undo a decision silently.'],
                 ['**mixed**', 'The operator used “Chọn riêng khung này” on one or more slots', '“Ghép từ N cụm”', 'Left alone, same warning as manual.'],
                 ['**empty**', 'No set for that industry COVERS the frames this product prints — not even a neutral one', '“⚠ Ngành <X> chưa có cụm nào đủ khung gói này cần — chưa điền được”', 'Re-resolves on the next industry change. Note the state is per PRODUCT as well as per industry: the same industry can be empty for Top Job and filled for Basic Plus.'],
@@ -400,7 +400,7 @@ export const jobManagement: BuildModule = {
               'THE PICKER IS A GRID, THREE CARDS PER ROW — not a list. Choosing a picture is a visual comparison, and a one-set-per-row list shows three candidates per screen while spending most of the width on empty space beside them. A grid turns "scroll and squint" into "look and click", which is the whole reason a human opens this dialog instead of taking the automatic fill.',
               'EACH CARD DRAWS ONLY THE FRAMES THIS POSTING NEEDS, and in slot mode only the frame being replaced. Showing a portrait the package never prints invites the operator to judge a set on something that will not be rendered.',
               'MIXING IS POSSIBLE BUT DELIBERATE. “Chọn riêng khung này” under a slot opens the same picker filtered to that rendition and changes only it. It is the exception — three frames from three different scenes make the hover card look like it jumped to a different posting — so it costs one extra click instead of shaping the default.',
-              'ROTATION IS PART OF THE RULE, NOT A REFINEMENT. The resolver takes the LEAST-USED complete set, not the first match. First-match puts one photograph on every card of an industry; the homepage then looks like a template, which is worse than the placement not being sold.',
+              'ROTATION IS PART OF THE RULE, NOT A REFINEMENT. The resolver takes the LEAST-USED covering set, not the first match. First-match puts one photograph on every card of an industry; the homepage then looks like a template, which is worse than the placement not being sold.',
               'WHICH RENDITIONS ARE REQUIRED COMES FROM THE PACKAGE: a package that never prints a circle must not block Post over a missing circle. The right-rail checklist shows ONE “Card artwork” line, resolved against the placements the chosen product actually feeds — replacing today’s flat “Card photo (at rest)” row.',
               'THE FORM ASKS FOR THE NEEDED SHAPES AND NOTHING ELSE. `need` is the union of the shapes printed by the placements the chosen product feeds (Placement.shapes → Products & Packages · Placements registry). Changing the product changes which frames the section shows — a Basic Plus posting that only ever renders a round thumbnail is asked for a circle, not for three frames it will never use.',
               'A PRODUCT THAT PRINTS NO PICTURE GETS NO SECTION — not an empty one. An empty artwork block on a Basic posting reads as “you forgot something” about a card that will never render a frame, and an operator who believes it goes looking for an upload that does not exist. The block is replaced by one line saying the current package prints no frames and that changing package brings it back.',
@@ -592,7 +592,7 @@ export const jobManagement: BuildModule = {
         },
         acceptance: [
           'Setting Industry fills all three Card artwork slots with no click, and the block reads “tự điền theo ngành”.',
-          'Two jobs created back-to-back in the same industry receive DIFFERENT artwork sets while unused complete sets remain.',
+          'Two jobs created back-to-back in the same industry receive DIFFERENT artwork sets while unused covering sets remain.',
           'A job tagged at a SPECIALTY prefers a set tagged at that specialty over a set tagged at its group, even when the group set is less used.',
           'A job tagged at a GROUP can still be filled by a set tagged at one of its specialties, ranked after any group-level match.',
           'Every suggested row in the picker states why it was offered (khớp chuyên ngành / ngành / nhóm · ngành con · mọi ngành).',
