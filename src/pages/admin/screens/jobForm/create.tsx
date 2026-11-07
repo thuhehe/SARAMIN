@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { BenefitsField } from '@/components/BenefitsField'
 import { WorkingLocationsField } from '@/components/WorkingLocationsField'
@@ -84,6 +84,21 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
      posting is asked for comes from the placements its product feeds, not from a
      fixed list of three. */
   const [productLabel, setProductLabel] = useState('')
+  /* `?focus=<section id>` scrolls to a section and flashes it. A ticket that says
+     "open the job form and scroll to Card artwork" wastes the first minute of
+     every developer who opens it; the link should arrive there. */
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('focus')
+    if (!id) return
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(id)
+      if (!el) return
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      el.classList.add('ring-2', 'ring-brand', 'rounded-lg')
+      window.setTimeout(() => el.classList.remove('ring-2', 'ring-brand', 'rounded-lg'), 2200)
+    }, 350)
+    return () => window.clearTimeout(t)
+  }, [])
   const pickedProduct = (hasPo ? paidProducts : freeProducts).find((c) => label(c) === (productLabel || productOptions[0])) ?? null
   const need = pickedProduct ? shapesForSku(pickedProduct.sku) : []
 
@@ -255,7 +270,7 @@ export function AdminJobCreate({ onBack, surface = 'admin' }: { onBack: () => vo
             purpose: the product decides WHICH frames are asked for, the industry
             decides WHICH pictures fill them. Put it earlier and the operator is
             asked to choose before the system knows either. */}
-        <JobGroup title="Card artwork">
+        <JobGroup title="Card artwork" id="card-artwork">
           <p className="text-[11px] leading-relaxed text-muted">
             Khung ảnh tin này cần là <b className="text-ink/70">do placement của gói quyết định</b>, không phải lúc nào
             cũng đủ ba.{' '}

@@ -113,6 +113,11 @@ export function AdminImageBulkImport() {
 
   const errs = sets.map((s, i) => setError(s, i, sets))
   const ok = sets.filter((s, i) => !isBlankSet(s) && !errs[i]).length
+  /* Counted in SETS, not rows — one row IS one set here. Only two numbers are
+     worth printing: what will be created, and what is blocking. A third count of
+     "sets without all 3 frames" would be noise: a set missing a frame is a
+     legitimate set for any package that never prints it. */
+  const bad = sets.filter((s, i) => !isBlankSet(s) && errs[i]).length
 
   /* The copy controls are WORDS, not icons, and they appear on the focused cell.
      Nobody discovers Ctrl+C in a web grid, and a bare ⧉ is a guess — this is the
@@ -140,6 +145,7 @@ export function AdminImageBulkImport() {
           <span className="text-faint">· {cropOnDrop ? 'đang bật' : 'đang tắt — thả là xong'}</span>
         </label>
         <div className="ml-auto flex items-center gap-2">
+          {bad > 0 && <span className="text-[11.5px] font-medium text-amber-700">{bad} cụm còn lỗi</span>}
           <button onClick={() => setManageTags(true)} className="rounded-lg border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-muted hover:border-brand">Quản lý topic</button>
           <button onClick={() => goto('admin-image-gallery')} className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted hover:border-ink/40">Huỷ</button>
           <button disabled={ok === 0} onClick={() => goto('admin-image-gallery')} className="rounded-lg bg-brand px-4 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Tạo {ok} cụm</button>

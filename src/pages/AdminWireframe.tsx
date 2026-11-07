@@ -345,6 +345,12 @@ const NAV_GROUPS: NavGroup[] = [
    on Job list instead. Listed here so a link to a de-navved screen still opens it,
    while the sidebar stays exactly as the client asked. */
 const OFF_NAV: { group: string; item: NavItem }[] = [
+  /* The create form is reached from "+ New job" on the job list, but a ticket
+     needs to drop a developer ON it — "open the list, find the button, scroll"
+     is three steps where the link should have been one. Registered here so
+     `?screen=admin-job-create` opens the form itself; pair it with
+     `&focus=<section id>` to land on a section. */
+  { group: 'Recruitment', item: { label: 'New job (create form)', specId: 'admin-job-create' } },
   { group: 'CRM', item: { label: 'Account usage', specId: 'admin-account-usage' } },
   // Not a page of its own in the console — it is the company record on Products &
   // billing. Registered so the spec page can open the record ON that tab.

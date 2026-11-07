@@ -145,7 +145,7 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
         )}
         {!one && source === 'auto' && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-medium text-amber-800">
-            ⚠ Ngành <b>{industryName(industry)}</b> chưa có cụm đầy đủ nào — chưa điền được
+            ⚠ Ngành <b>{industryName(industry)}</b> chưa có cụm nào đủ khung gói này cần — chưa điền được
           </span>
         )}
         <button onClick={() => setOpen({})} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink hover:border-brand">
@@ -229,7 +229,7 @@ function PickArtworkModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="my-4 w-full max-w-[760px] rounded-2xl border border-line bg-surface shadow-2xl">
+      <div className="my-4 w-full max-w-[980px] rounded-2xl border border-line bg-surface shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
           <div>
             <p className="text-[15px] font-bold">{slot ? `Chọn ảnh cho khung ${slotLabel}` : 'Chọn cụm ảnh'}</p>
@@ -305,7 +305,7 @@ function PickArtworkModal({
               <span className="ml-auto text-[11px] text-faint">{rows.length} cụm · {tab === 'suggested' ? 'khớp sâu nhất, rồi ít dùng nhất' : 'ít dùng nhất lên trước'}</span>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto border-t border-line px-5 py-3">
+            <div className="max-h-[420px] overflow-y-auto border-t border-line px-5 py-3">
               {tab === 'suggested' && (
                 <p className="mb-2 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] leading-relaxed text-brand">
                   Cụm với tới được <b>{industryPath(industry)}</b> — gắn đúng ngành này, gắn ở một <b>nhóm cha</b>,
@@ -313,55 +313,64 @@ function PickArtworkModal({
                   muốn một cảnh ngoài ngành — không có gì chặn, chỉ là không được đề xuất.
                 </p>
               )}
-              <div className="space-y-2">
+              {/* A GRID, not a list. Picking a picture is a visual comparison: the
+                  eye wants several candidates side by side, and a one-per-row list
+                  shows three at a time with most of the width spent on empty space.
+                  Three cards per row turns "scroll and squint" into "look and click". */}
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                 {rows.map((rk) => {
                   const s = rk.set
                   const inUse = RENDITIONS.some((r) => current[r.key]?.id === s.id)
+                  /* In slot mode only the frame being replaced is worth showing —
+                     the other two are not what is being chosen. */
+                  const frames = RENDITIONS.filter((r) => (slot ? r.key === slot : need.includes(r.key)))
                   return (
-                    <div key={s.id} className={cn('flex items-center gap-3 rounded-xl border p-2.5', inUse ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-ink/30')}>
-                      <span className="flex items-end gap-1.5">
-                        {RENDITIONS.map((r) => {
+                    <div key={s.id} className={cn('flex flex-col rounded-xl border p-2.5', inUse ? 'border-brand bg-brand-soft/40' : 'border-line hover:border-ink/30')}>
+                      <div className="flex min-h-[52px] items-end gap-1.5">
+                        {frames.map((r) => {
                           const has = s.renditions[r.key]
-                          const dim = slot && r.key !== slot
                           const box = r.key === 'landscape' ? 'h-[46px] w-[82px] rounded' : r.key === 'portrait' ? 'h-[46px] w-[35px] rounded' : 'h-[46px] w-[46px] rounded-full'
                           return (
-                            <span key={r.key} className={cn('relative block overflow-hidden border', box, has ? 'border-line' : 'border-dashed border-amber-300 bg-amber-50', dim && 'opacity-30')} style={has ? imgStyle(s.hue) : undefined}>
+                            <span key={r.key} className={cn('relative block shrink-0 overflow-hidden border', box, has ? 'border-line' : 'border-dashed border-amber-300 bg-amber-50')} style={has ? imgStyle(s.hue) : undefined}>
                               {!has && <span className="absolute inset-0 grid place-items-center text-[8px] text-amber-700">—</span>}
                             </span>
                           )
                         })}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] font-medium text-ink">{setLabel(s)}</span>
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1">
-                          {/* WHY this set was offered. Without it a ranked list is
-                              just an order nobody can check. */}
-                          {tab === 'suggested' && (
-                            <span className={cn('rounded-full px-1.5 py-px text-[10px] font-semibold',
-                              rk.tier === 0 && rk.depth === 3 ? 'bg-emerald-100 text-emerald-800'
-                                : rk.tier === 0 ? 'bg-brand-soft text-brand'
-                                : 'bg-canvas text-muted')}>
-                              {matchLabel(rk)}
-                            </span>
-                          )}
-                          {s.anyIndustry
-                            ? <span className="rounded-full border border-brand/30 bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">Mọi ngành</span>
-                            : s.industries.slice(0, 2).map((i) => <span key={i} className="rounded-full border border-brand/25 bg-brand-soft px-1.5 py-px text-[10px] text-brand" title={industryPath(i)}>{industryName(i)}</span>)}
-                          {s.tags.map((t: string) => <span key={t} className="rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-muted">{tagName(t)}</span>)}
-                        </span>
-                        <span className="mt-0.5 block text-[10px] text-faint">
-                          {s.uses} tin đang dùng
-                          {!covers(s, need) && <span className="text-amber-700"> · thiếu {missingFor(s, need).join(', ').toLowerCase()}</span>}
-                        </span>
-                      </span>
-                      <button onClick={() => onApply(s, slot)} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90">
+                        {inUse && <span className="ml-auto self-start rounded-full bg-brand px-1.5 py-px text-[9px] font-semibold text-white">đang dùng</span>}
+                      </div>
+
+                      <p className="mt-1.5 truncate text-[12.5px] font-medium text-ink" title={setLabel(s)}>{setLabel(s)}</p>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {/* WHY this set was offered. Without it a ranked grid is
+                            just an order nobody can check. */}
+                        {tab === 'suggested' && (
+                          <span className={cn('rounded-full px-1.5 py-px text-[10px] font-semibold',
+                            rk.tier === 0 && rk.depth === 3 ? 'bg-emerald-100 text-emerald-800'
+                              : rk.tier === 0 ? 'bg-brand-soft text-brand'
+                              : 'bg-canvas text-muted')}>
+                            {matchLabel(rk)}
+                          </span>
+                        )}
+                        {s.anyIndustry
+                          ? <span className="rounded-full border border-brand/30 bg-brand-soft px-1.5 py-px text-[10px] font-medium text-brand">Mọi ngành</span>
+                          : s.industries.slice(0, 2).map((i) => <span key={i} className="max-w-[110px] truncate rounded-full border border-brand/25 bg-brand-soft px-1.5 py-px text-[10px] text-brand" title={industryPath(i)}>{industryName(i)}</span>)}
+                        {s.tags.slice(0, 2).map((t: string) => <span key={t} className="max-w-[90px] truncate rounded-full border border-line bg-canvas px-1.5 py-px text-[10px] text-muted">{tagName(t)}</span>)}
+                      </div>
+
+                      <p className="mt-1 text-[10px] text-faint">
+                        {s.uses} tin đang dùng
+                        {!covers(s, need) && <span className="text-amber-700"> · thiếu {missingFor(s, need).join(', ').toLowerCase()}</span>}
+                      </p>
+
+                      <button onClick={() => onApply(s, slot)} className="mt-2 w-full rounded-lg bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90">
                         {slot ? `Dùng cho khung ${slotLabel}` : 'Dùng cả cụm'}
                       </button>
                     </div>
                   )
                 })}
                 {rows.length === 0 && (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
+                  <p className="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
                     Không có cụm nào khớp. Bỏ bớt bộ lọc, mở <b>Tất cả cụm</b>, hoặc tải ảnh riêng cho tin này.
                   </p>
                 )}

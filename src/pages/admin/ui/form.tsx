@@ -7,9 +7,9 @@ export function EmptySec({ what }: { what: string }) {
 }
 
 /** A form section: a big underlined header with its fields below (VietnamWorks-style). */
-export function JobGroup({ title, children }: { title: string; children: React.ReactNode }) {
+export function JobGroup({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-4">
+    <section id={id} className="scroll-mt-4 space-y-4">
       <h3 className="border-b-2 border-line pb-2 text-[18px] font-bold tracking-tight text-ink">{title}</h3>
       <div className="space-y-4">{children}</div>
     </section>
