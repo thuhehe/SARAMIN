@@ -2,7 +2,7 @@ import { useContext, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   ARTWORK_SETS, INDUSTRIES_L1, RENDITIONS, TAGS,
-  imgStyle, isComplete, missingOf, ownCoverage, setLabel, suggestIndustries, tagName,
+  cleanTagName, findTag, imgStyle, isComplete, missingOf, ownCoverage, setLabel, suggestIndustries, tagKey, tagName,
 } from '@/pages/admin/data/products'
 import type { ArtworkSet, Rendition } from '@/pages/admin/data/products'
 import { industryBranch, industryLevel, industryName, industryPath } from '@/pages/admin/data/industries'
@@ -71,13 +71,18 @@ function IndustryChips({ set, max }: { set: ArtworkSet; max?: number }) {
 function TagField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
-  const hits = TAGS.filter((t) => !value.includes(t.id) && t.name.toLowerCase().includes(q.trim().toLowerCase()))
-  const exact = TAGS.find((t) => t.name.toLowerCase() === q.trim().toLowerCase())
-  const canCreate = q.trim() !== '' && !exact
+  const hits = TAGS.filter((t) => !value.includes(t.id) && tagKey(t.name).includes(tagKey(q)))
+  /* An existing tag is matched on the NORMALISED key, so "  Văn Phòng " finds
+     "Văn phòng" instead of offering to create a second one. */
+  const exact = findTag(q)
+  const canCreate = cleanTagName(q) !== '' && !exact
   const add = (id: string) => { onChange([...value, id]); setQ(''); setOpen(false) }
   const create = () => {
+    const name = cleanTagName(q)
+    const dup = findTag(name)
+    if (dup) return add(dup.id)          // typed a duplicate: reuse, never a second row
     const id = 't-' + Date.now().toString(36)
-    TAGS.push({ id, name: q.trim() })   // wireframe only; a real build POSTs /admin/artwork-tags
+    TAGS.push({ id, name })              // wireframe only; a real build POSTs /admin/artwork-tags
     add(id)
   }
   return (
@@ -142,7 +147,11 @@ function TagManager({ onClose }: { onClose: () => void }) {
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tên tag mới…" className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] outline-none focus:border-brand" />
             <button
               disabled={!newName.trim()}
-              onClick={() => { TAGS.push({ id: 't-' + Date.now().toString(36), name: newName.trim() }); setNewName(''); force((n) => n + 1) }}
+              onClick={() => {
+                const name = cleanTagName(newName)
+                if (name && !findTag(name)) TAGS.push({ id: 't-' + Date.now().toString(36), name })
+                setNewName(''); force((n) => n + 1)
+              }}
               className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >＋ Tạo</button>
           </div>
@@ -151,7 +160,15 @@ function TagManager({ onClose }: { onClose: () => void }) {
               <div key={t.id} className="flex items-center gap-2 border-b border-line-soft px-2.5 py-1.5 last:border-b-0">
                 <input
                   defaultValue={t.name}
-                  onBlur={(e) => { t.name = e.target.value.trim() || t.name; force((n) => n + 1) }}
+                  onBlur={(e) => {
+                    const name = cleanTagName(e.target.value)
+                    const clash = findTag(name)
+                    /* Renaming onto an existing name would create the duplicate the
+                       key exists to prevent, so it is refused rather than merged —
+                       merging two tags silently moves pictures nobody asked to move. */
+                    if (name && (!clash || clash.id === t.id)) t.name = name
+                    force((n) => n + 1)
+                  }}
                   className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-[11.5px] text-ink outline-none hover:border-line focus:border-brand"
                 />
                 <span className="shrink-0 text-[10px] text-faint">{usage(t.id)} cụm</span>

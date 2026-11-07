@@ -176,6 +176,33 @@ export const TAGS: Tag[] = [
   { id: 't-abstract', name: 'Trừu tượng · nền' },
 ]
 export const tagName = (id: string) => TAGS.find((t) => t.id === id)?.name ?? id
+
+/* ── Normalising a tag name ───────────────────────────────────────────────────
+   Tags are free text, so the ONLY thing standing between a tidy list and forty
+   near-duplicates is what happens on save.
+
+   `cleanTagName` is what gets STORED — it keeps the creator's capitalisation,
+   because "CV" and "Tết" are not improved by being lowercased on the chip.
+   `tagKey` is the comparison key, used for the unique index and for "does this
+   already exist": same text, case-folded.
+
+   NFC is the step that actually matters here and the one most likely to be
+   skipped. Vietnamese diacritics have two legal encodings — "ă" is either one
+   code point (U+0103) or two (a + U+0306). Two tags can look identical on screen,
+   differ in bytes, and sail straight past a UNIQUE index. Normalising both on the
+   way in is the only fix; comparing rendered strings is not one.
+
+   Accents are KEPT. "ma", "mà" and "má" are three different words — stripping
+   diacritics to dedupe would merge tags that mean nothing like each other. */
+export const cleanTagName = (s: string) =>
+  s.normalize('NFC')
+    .replace(/^[\s#]+/, '')        // people type "#tết" out of hashtag habit
+    .replace(/\s+/g, ' ')          // tabs, nbsp and double spaces all collapse
+    .trim()
+    .slice(0, 50)
+export const tagKey = (s: string) => cleanTagName(s).toLowerCase()
+/** the existing tag with this name, whatever its spacing / case / encoding */
+export const findTag = (name: string) => TAGS.find((t) => tagKey(t.name) === tagKey(name))
 /** what a set is called in a list when nobody named it */
 export const setLabel = (s: ArtworkSet, n?: number) => s.title?.trim() || `Cụm #${n ?? s.id.replace(/\D/g, '')}`
 

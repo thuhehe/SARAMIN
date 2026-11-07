@@ -169,7 +169,7 @@ export const bannersPopups: BuildModule = {
             },
             items: [
               'A set also carries its THREE FORMAT SLOTS (below) and a derived usage count. Nothing else.',
-              'DROPPED from the earlier draft, and worth flagging: `role` (subject/background) and the mandatory `source`/`licence` fields. Role was feeding the 2-slot hero rule in Placements, and licence/source were the legal-exposure guard. Expiry date now carries part of what licence did. **Open question for the client** — see below.',
+              'DROPPED, and now CLOSED (07/11/2026): `role` (subject/background) and the mandatory `source`/`licence` fields. See “Three fields deliberately NOT on the set” below for what was decided and why.',
             ],
             warn: 'INDUSTRY IS THE ONLY GATE, and it has to stay that way in the API too, not just the form. A set created through bulk import, or through a future API, must be rejected with no industry for exactly the same reason — otherwise the library quietly fills with pictures the resolver can never reach, and the homepage holes come back with nobody able to explain why.',
           },
@@ -206,6 +206,44 @@ export const bannersPopups: BuildModule = {
               '“Mọi ngành” is an explicit FLAG, not “all 11 groups ticked” — so a new group added to master data inherits it instead of being silently excluded.',
               'Filtering the gallery by a group means its WHOLE BRANCH, or the filter lies about what the library holds.',
             ],
+          },
+          {
+            label: 'Three fields deliberately NOT on the set — decided 07/11/2026',
+            text: 'All three were raised as open questions and all three are now closed. Recorded here because "why is there no licence field" is a question that comes back every six months.',
+            table: {
+              cols: ['Field', 'Decision', 'Why'],
+              rows: [
+                ['`role` (subject / background)', '**Dropped for good**', 'It was raised because an earlier draft of this spec claimed the Placements 2-slot hero needed "one background + one subject". **That rule does not exist.** No placement consumes two gallery pictures: the hero is a client-supplied finished creative, Feature company and Top Companies pull logos and covers from the company profile, and the job-card placements take one image. The flag had no reader.'],
+                ['`source` / `licence type`', '**Dropped**', 'There is no field anywhere today where anyone enters them, so "mandatory before Activate" was a rule the UI never offered a way to satisfy. **`Expiry date` is the whole of what we track.**'],
+                ['Format as a stored "role"', '**Not needed**', '`format` (ngang / doc / tron) already carries which frame a picture fills, and the UI shows the shape of each slot. Nothing else needs naming.'],
+              ],
+            },
+            items: [
+              'ROLE ≠ FORMAT, and the two got conflated while deciding this. `format` is which of the three frames a file fills — visible in the UI as the shape of the drop zone. `role` was a judgement about the PHOTOGRAPH (a scene with people in it, versus a texture a logo is laid over). Dropping `role` loses nothing because nothing reads it; `format` stays and is required per file.',
+              'RESIDUAL RISK, STATED ONCE: with no `source`, a stock licence that lapses can be found by date but the provider and asset id are not recorded anywhere. If a provider ever disputes usage, the audit trail is the expiry date and nothing else. Accepted deliberately — adding a field nobody fills is not a control.',
+            ],
+          },
+          {
+            label: 'Tag names — the normalisation rule',
+            text: 'DECIDED 07/11/2026. Tags are free text, so the only thing standing between a tidy list and forty near-duplicates is what happens on save.',
+            table: {
+              cols: ['Step', 'Rule', 'Why'],
+              rows: [
+                ['1 · Strip leading `#` and spaces', '`"  #tết"` → `"tết"`', 'People type the hash out of hashtag habit; it is not part of the name.'],
+                ['2 · Collapse whitespace', 'Any run of space / tab / nbsp → one space', '`"Văn  phòng"` and `"Văn phòng"` are the same tag.'],
+                ['3 · **Unicode NFC**', '`"ă"` as `a`+`◌̆` → the single code point `U+0103`', '**The step most likely to be skipped, and the one that matters most in Vietnamese.** Diacritics have two legal encodings; two tags can look identical, differ in bytes, and sail straight past a UNIQUE index.'],
+                ['4 · Trim, cap at 50 chars', '—', 'A tag is a label, not a sentence.'],
+                ['5 · Store as typed', 'Keep the creator’s capitalisation', '`"CV"` and `"Tết"` are not improved by being lowercased on the chip.'],
+                ['6 · Compare case-folded', '`key = lowercase(steps 1–4)`; UNIQUE on `key`, not on `name`', '`"Văn phòng"` and `"văn phòng"` are one tag.'],
+              ],
+            },
+            items: [
+              'ACCENTS ARE KEPT. "ma", "mà" and "má" are three different words — stripping diacritics to deduplicate would merge tags that mean nothing like each other. The key is case-insensitive, never accent-insensitive.',
+              'Creating a tag whose key already exists RETURNS THE EXISTING TAG. No error, no second row — the operator typed a duplicate and simply gets the tag they meant.',
+              'Renaming a tag onto a key another tag already holds is REFUSED, not merged. Merging would silently move every picture carrying one label onto another, which nobody asked for.',
+              'The same `cleanTagName` / `tagKey` pair runs on the create form, the tag manager AND the bulk entry grid. Three different normalisations is the same bug as none.',
+            ],
+            warn: 'Normalise on the way IN, at the API, not only in the UI. A tag created through the bulk grid or a future import must land with the same key, or the UNIQUE index starts rejecting rows the UI considers new.',
           },
           {
             label: 'Tags are created, renamed and deleted by HQ — not master data',
@@ -332,9 +370,6 @@ export const bannersPopups: BuildModule = {
           'Replacing a format in the library does not change the picture on a posting that is already running.',
         ],
         openQuestions: [
-          'ROLE (subject / background) was dropped from the set. The Placements 2-slot hero rule assumed it — "one background + one subject", because two subjects side by side fight each other. Does that rule still hold, and if so where does the flag live now?',
-          'SOURCE and LICENCE TYPE were dropped; only Expiry date survives. An unlicensed picture on a paid placement is the client’s legal exposure. Is the expiry date alone enough, or do we keep a free-text `source` for the audit trail?',
-          'Tag names: free text, or normalised (trim + collapse case) on save? Free text means “Văn phòng” and “văn phòng ” both exist by week two.',
           'Seed volume: the floor is 3 complete sets per level-1 group, 11 groups, with neutral sets counting for none of them — so roughly 35–40 masters, each of which must crop cleanly to 16:9, 3:4 AND 1:1. Who licenses them?',
         ],
       },
