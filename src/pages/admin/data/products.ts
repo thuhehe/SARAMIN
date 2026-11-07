@@ -243,8 +243,9 @@ export const ARTWORK_SETS: ArtworkSet[] = [
   { id: 's24', title: 'Bắt tay · chúc mừng (cận cảnh)', hue: 306, tags: ['t-people'], industries: [], anyIndustry: true, renditions: ALL, uses: 21 },
 ]
 
-/** A set is COMPLETE when it can fill all three frames. Only complete sets can be
-    an industry's automatic default — a half-set leaves a hole on the hover card. */
+/** A set holds ALL THREE frames. This is a property of the set alone, so it is
+    only good for library bookkeeping — the card badge and the coverage floor.
+    It is NOT the test for using a set: that is covers(set, need), below. */
 export const isComplete = (s: ArtworkSet) => RENDITIONS.every((r) => s.renditions[r.key])
 /* ── What a posting actually needs ───────────────────────────────────────────
    "Complete" is not a property of the SET on its own — it is a question about a
@@ -263,7 +264,7 @@ export const missingFor = (s: ArtworkSet, need: Rendition[]) =>
   RENDITIONS.filter((r) => need.includes(r.key) && !s.renditions[r.key]).map((r) => r.label)
 export const missingOf = (s: ArtworkSet) => RENDITIONS.filter((r) => !s.renditions[r.key]).map((r) => r.label)
 
-/** COVERAGE counts a group's OWN complete sets — tagged at the group itself or
+/** COVERAGE counts a group's OWN fully-cropped sets — tagged at the group itself or
     anywhere inside its branch, since a set tagged "Road freight" is Logistics
     coverage. Neutral (anyIndustry) sets are a safety net, not coverage: if twelve
     groups all fall back on the same four neutral photographs the homepage repeats
@@ -297,7 +298,8 @@ export function rankedSetsFor(jobIndustryId: string): RankedSet[] {
 }
 /** every set this job may draw from, best fit first */
 export const setsFor = (jobIndustryId: string) => rankedSetsFor(jobIndustryId).map((r) => r.set)
-/** THE AUTOMATIC DEFAULT: best-fitting COMPLETE set. Least-used is not a
+/** THE AUTOMATIC DEFAULT: the best-fitting set that COVERS `need` — the frames
+    this posting's product actually prints, not all three. Least-used is not a
     refinement — "first match" puts one photograph on every card of an industry. */
 export const autoSetFor = (jobIndustryId: string, need: Rendition[] = RENDITIONS.map((r) => r.key)) =>
   rankedSetsFor(jobIndustryId).find((r) => covers(r.set, need))?.set ?? null
@@ -342,7 +344,8 @@ export const suggestIndustries = (tagIds: string[]) => {
   const names = tagIds.map(tagName)
   return INDUSTRY_TOPICS.filter(([, ts]) => ts.some((t) => names.includes(t))).map(([i]) => TOPIC_SEED_ID[i]).filter(Boolean)
 }
-/** the floor: below three COMPLETE sets an industry's automatic default repeats */
+/** the floor, counted in FULLY-CROPPED sets: one that crops to all three serves
+    every package, so it is the honest unit for "is this industry stocked yet". */
 export const INDUSTRY_FLOOR = 3
 
 /** the wireframe's stand-in for a photograph */
