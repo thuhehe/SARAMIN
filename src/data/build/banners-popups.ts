@@ -201,7 +201,7 @@ export const bannersPopups: BuildModule = {
               ],
             },
             items: [
-              'The resolver orders by (tier, −depth, least-used) and takes the first set that COVERS the frames the posting’s product prints — not the first set that happens to hold all three. Least-used is not a refinement: plain “first match” puts one photograph on every card of an industry, which is the failure this whole feature exists to prevent.',
+              'The resolver orders by (tier, −depth, least-used) and takes the first SINGLE set that COVERS the frames the posting’s product prints — not the first set that happens to hold all three. Least-used is not a refinement: plain “first match” puts one photograph on every card of an industry, which is the failure this whole feature exists to prevent. When no ONE set covers the whole need it combines the fewest sets that do (10/11/2026) — the two-step rule is written out in Job management → Card artwork.',
               'A set may carry SEVERAL industries, at mixed levels. One office photo honestly serves IT, banking and marketing; single-select would force the same file to be uploaded once per industry.',
               '“Mọi ngành” is an explicit FLAG, not “all 11 groups ticked” — so a new group added to master data inherits it instead of being silently excluded.',
               'Filtering the gallery by a group means its WHOLE BRANCH, or the filter lies about what the library holds.',
@@ -316,7 +316,7 @@ export const bannersPopups: BuildModule = {
           'HQ uploads to the shared library; employers never do. An employer’s upload stays on their job (and on their company’s own private sets) and is never promoted into the shared library — we do not hold the right to redistribute their photo to another company.',
           'Industry is REQUIRED on every path that creates a set: the form, the bulk import, and any API.',
           'Industry and tags sit on the SET, never on an individual format. Three formats of one photograph cannot honestly be classified differently.',
-          'A set can be an automatic default when it COVERS the frames the posting prints — `covers(set, need)`, never “holds all three”. A set missing a frame that posting does need stays hand-pickable for the frames it has.',
+          'A set can be an automatic default when it COVERS the frames the posting prints — `covers(set, need)`, never “holds all three”. A set missing a frame that posting does need stays hand-pickable for the frames it has — and since 10/11/2026 it is also used AUTOMATICALLY to fill those frames, when no single set covers the whole need.',
           'A set is never deleted, only archived — live jobs and past renders point at its format files.',
           'Deleting a tag never deletes a set.',
           'The gallery carries no company branding, no baked-in text and no logos — the card draws those itself.',
@@ -351,7 +351,7 @@ export const bannersPopups: BuildModule = {
             'DELETE /admin/image-sets/:id/formats/:format — leave a slot empty',
             'GET · POST /admin/artwork-tags · PATCH /admin/artwork-tags/:id · DELETE /admin/artwork-tags/:id (detaches from all sets)',
             'GET /artwork/pick?industry=&tag=&format=&covers=&q= — the job-form picker; Active only, best-fit then least-used',
-            'GET /artwork/default?industry=&shapes=ngang,tron — the resolver: Active sets that COVER the requested shapes, ranked (tier, −depth, usage asc). Returns one file id per REQUESTED shape, not always three; an empty shapes list returns empty rather than an error.',
+            'GET /artwork/default?industry=&shapes=ngang,tron — the resolver: Active sets that COVER the requested shapes, ranked (tier, −depth, usage asc). Returns one file id per REQUESTED shape, not always three; an empty shapes list returns empty rather than an error. When no single set covers every requested shape it falls back to the fewest sets that do, and the response names the set each file came from so the form can say “ghép từ N cụm”.',
           ],
           integrations: [
             'Master data (Industry, all 3 levels — the automation axis)',

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  ARTWORK_SETS, RENDITIONS, TAGS, autoSetFor, covers, imgStyle, matchLabel, missingFor,
+  ARTWORK_SETS, RENDITIONS, TAGS, autoFillFor, covers, imgStyle, matchLabel, missingFor,
   rankedSetsFor, setLabel, tagName,
 } from '@/pages/admin/data/products'
 import type { ArtworkSet, RankedSet, Rendition } from '@/pages/admin/data/products'
@@ -97,8 +97,14 @@ export function JobArtworkGroup({ industry, need }: { industry: string; need: Re
 function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[] }) {
   /* The automatic default resolves the moment Industry is known. It is a PREFILL,
      never a lock: `source` records who chose, and that is the whole state machine. */
-  const auto = useMemo(() => autoSetFor(industry, need), [industry, need])
-  const [picked, setPicked] = useState<Picked>(() => fill(auto))
+  /* TWO STEPS — 10/11/2026. First the best SINGLE set covering every frame (one
+     scene); only if none does, the resolver combines greedily. Stopping at step 1
+     left the section empty, and so would a partial set — an empty required frame
+     blocks Post either way, so "take the one that at least has ngang" is not a
+     fallback on its own. See autoFillFor. */
+  const af = useMemo(() => autoFillFor(industry, need), [industry, need])
+  const auto = af.sets.length === 1 ? af.sets[0] : null
+  const [picked, setPicked] = useState<Picked>(() => af.frames)
   const [source, setSource] = useState<Source>('auto')
   const [industryAtPick, setIndustryAtPick] = useState(industry)
   const [open, setOpen] = useState<null | { slot?: Rendition }>(null)
@@ -110,7 +116,9 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
   const stale = industry !== industryAtPick
   if (stale && source === 'auto') {
     setIndustryAtPick(industry)
-    setPicked(fill(autoSetFor(industry)))
+    /* `need` must be passed: re-resolving against all three frames would ask a
+       Basic Plus posting for a dọc it never prints. */
+    setPicked(autoFillFor(industry, need).frames)
   }
 
   const one = sameSet(picked)
@@ -146,16 +154,26 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
             Ghép từ {new Set(RENDITIONS.map((r) => picked[r.key]?.id).filter(Boolean)).size} cụm
           </span>
         )}
-        {!one && source === 'auto' && (
+        {/* AUTO-GHÉP IS BADGED THOUGH NOBODY DEVIATED. It is not an accusation,
+            it is the one thing the operator cannot see by looking at the frames:
+            the card at rest and the card on hover are two different scenes. They
+            may well accept it — but they should know before the posting is live. */}
+        {source === 'auto' && af.sets.length > 1 && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-medium text-amber-800">
-            ⚠ Ngành <b>{industryName(industry)}</b> chưa có cụm nào đủ khung gói này cần — chưa điền được
+            Tự ghép từ {af.sets.length} cụm — ngành này chưa có cụm nào đủ khung gói cần
+          </span>
+        )}
+        {source === 'auto' && af.missing.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-medium text-amber-800">
+            ⚠ Ngành <b>{industryName(industry)}</b> không có cụm nào mang khung{' '}
+            <b>{af.missing.map((k) => RENDITIONS.find((r) => r.key === k)!.label.toLowerCase()).join(' · ')}</b> — còn trống
           </span>
         )}
         <button onClick={() => setOpen({})} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink hover:border-brand">
           Đổi ảnh…
         </button>
-        {source !== 'auto' && auto && (
-          <button onClick={() => { setPicked(fill(auto)); setSource('auto'); setIndustryAtPick(industry) }} className="text-[11.5px] text-brand hover:underline">
+        {source !== 'auto' && af.sets.length > 0 && (
+          <button onClick={() => { setPicked(af.frames); setSource('auto'); setIndustryAtPick(industry) }} className="text-[11.5px] text-brand hover:underline">
             ↺ Về ảnh tự điền
           </button>
         )}
@@ -164,7 +182,9 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
       {stale && source !== 'auto' && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
           Ngành đã đổi thành <b>{industryPath(industry)}</b>, nhưng ảnh đang là ảnh <b>chọn tay</b> nên hệ thống <b>không tự đổi</b>.
-          {auto && <> Muốn theo ngành mới thì bấm <b>↺ Về ảnh tự điền</b> (“{setLabel(auto)}”).</>}
+          {af.sets.length > 0 && (
+            <> Muốn theo ngành mới thì bấm <b>↺ Về ảnh tự điền</b>{auto ? <> (“{setLabel(auto)}”)</> : <> (ghép từ {af.sets.length} cụm)</>}.</>
+          )}
         </div>
       )}
 
