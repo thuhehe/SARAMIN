@@ -48,7 +48,7 @@ function SlotRow({ picked, need, onSlot }: { picked: Picked; need: Rendition[]; 
         const s = picked[r.key]
         /* `cn` is a plain join, so the radius lives in the box string only — a
            wrapper adding its own rounded-* would race this one in the stylesheet. */
-        const box = r.key === 'landscape' ? 'h-[92px] w-[164px] rounded-lg' : r.key === 'portrait' ? 'h-[92px] w-[69px] rounded-lg' : 'h-[92px] w-[92px] rounded-full'
+        const box = r.key === 'landscape' ? 'h-[92px] w-[213px] rounded-lg' : r.key === 'portrait' ? 'h-[92px] w-[49px] rounded-lg' : 'h-[92px] w-[92px] rounded-full'
         return (
           <div key={r.key}>
             <div
@@ -64,7 +64,7 @@ function SlotRow({ picked, need, onSlot }: { picked: Picked; need: Rendition[]; 
                 <span className="grid h-full place-items-center text-[10.5px] text-faint">trống</span>
               )}
             </div>
-            {/* No caption. The shape IS the label — a 16:9 rectangle, a tall
+            {/* No caption. The shape IS the label — a 2.3:1 strip, a tall
                 rectangle and a circle are told apart by looking, and the pixel
                 size is a build fact that belongs in the spec, not on a form the
                 operator reads fifty times a day. (Job management · "Card
@@ -278,7 +278,7 @@ function PickArtworkModal({
             <div className="grid w-full place-items-center gap-1 rounded-xl border-2 border-dashed border-line bg-canvas/40 px-4 py-8 text-center">
               <span className="text-[22px]">🖼️</span>
               <span className="text-[13px] font-semibold text-ink">Kéo thả một ảnh gốc</span>
-              <span className="text-[11px] text-muted">≥ 1600 × 1200 — hệ thống cắt sẵn cả ba khung từ focal point</span>
+              <span className="text-[11px] text-muted">≥ 600 × 1120 — hệ thống cắt sẵn cả ba khung từ focal point</span>
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-faint">
               Ảnh tải ở đây <b>chỉ nằm trên tin này</b> và trên cụm riêng của công ty — không vào thư viện chung.
@@ -332,7 +332,7 @@ function PickArtworkModal({
                       <div className="flex min-h-[52px] items-end gap-1.5">
                         {frames.map((r) => {
                           const has = s.renditions[r.key]
-                          const box = r.key === 'landscape' ? 'h-[46px] w-[82px] rounded' : r.key === 'portrait' ? 'h-[46px] w-[35px] rounded' : 'h-[46px] w-[46px] rounded-full'
+                          const box = r.key === 'landscape' ? 'h-[46px] w-[106px] rounded' : r.key === 'portrait' ? 'h-[46px] w-[25px] rounded' : 'h-[46px] w-[46px] rounded-full'
                           return (
                             <span key={r.key} className={cn('relative block shrink-0 overflow-hidden border', box, has ? 'border-line' : 'border-dashed border-amber-300 bg-amber-50')} style={has ? imgStyle(s.hue) : undefined}>
                               {!has && <span className="absolute inset-0 grid place-items-center text-[8px] text-amber-700">—</span>}

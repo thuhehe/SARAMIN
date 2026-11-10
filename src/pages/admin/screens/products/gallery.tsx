@@ -17,8 +17,8 @@ function RenditionStrip({ set }: { set: ArtworkSet }) {
   /* `cn` is a plain join, not tailwind-merge: two rounded-* classes on one element
      race in the stylesheet. The radius lives in the box string ONLY. */
   const box: Record<Rendition, string> = {
-    landscape: 'h-[54px] w-[96px] rounded-md',
-    portrait: 'h-[54px] w-[40px] rounded-md',
+    landscape: 'h-[54px] w-[125px] rounded-md',
+    portrait: 'h-[54px] w-[29px] rounded-md',
     circle: 'h-[54px] w-[54px] rounded-full',
   }
   return (
@@ -182,7 +182,7 @@ function SetModal({ set, onClose }: { set: ArtworkSet; onClose: () => void }) {
           <div className="flex flex-wrap items-start gap-4">
             {RENDITIONS.map((r) => {
               const has = set.renditions[r.key]
-              const box = r.key === 'landscape' ? 'h-[108px] w-[192px] rounded-lg' : r.key === 'portrait' ? 'h-[108px] w-[81px] rounded-lg' : 'h-[108px] w-[108px] rounded-full'
+              const box = r.key === 'landscape' ? 'h-[108px] w-[249px] rounded-lg' : r.key === 'portrait' ? 'h-[108px] w-[58px] rounded-lg' : 'h-[108px] w-[108px] rounded-full'
               return (
                 <div key={r.key}>
                   <div className={cn('relative overflow-hidden border', box, has ? 'border-line' : 'border-2 border-dashed border-amber-300 bg-amber-50')} style={has ? imgStyle(set.hue) : undefined}>
@@ -280,8 +280,8 @@ function CropOverlay({ format, hue, onDone, onCancel }: {
 }) {
   const [zoom, setZoom] = useState(1)
   const r = RENDITIONS.find((x) => x.key === format)!
-  const frame = format === 'landscape' ? 'h-[150px] w-[267px] rounded-md'
-    : format === 'portrait' ? 'h-[216px] w-[162px] rounded-md'
+  const frame = format === 'landscape' ? 'h-[116px] w-[268px] rounded-md'
+    : format === 'portrait' ? 'h-[216px] w-[116px] rounded-md'
     : 'h-[192px] w-[192px] rounded-full'
   return (
     <div className="absolute inset-0 z-10 flex flex-col rounded-2xl bg-surface">
@@ -382,7 +382,7 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
             <button onClick={dropMaster} className="grid w-full place-items-center gap-0.5 rounded-xl border-2 border-dashed border-line bg-canvas/40 px-4 py-6 text-center hover:border-brand hover:bg-brand-soft/40">
               <span className="text-[19px]">🖼️</span>
               <span className="text-[12.5px] font-semibold text-ink">Thả <b>một ảnh gốc</b> — tự cắt cho cả ba khung bên dưới</span>
-              <span className="text-[10.5px] text-muted">JPG · PNG · WebP, tối thiểu <b>1600 × 1200</b>. Không bắt buộc — có thể tải thẳng vào từng khung.</span>
+              <span className="text-[10.5px] text-muted">JPG · PNG · WebP, tối thiểu <b>600 × 1120</b>. Không bắt buộc — có thể tải thẳng vào từng khung.</span>
             </button>
           ) : (
             <div className="flex items-center gap-2.5 rounded-xl border border-line px-2.5 py-2">
@@ -407,7 +407,7 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
             {RENDITIONS.map((r) => {
               const s = slots[r.key]
               const box = r.key === 'landscape' ? 'h-[92px] w-full rounded-lg'
-                : r.key === 'portrait' ? 'h-[92px] w-[69px] rounded-lg'
+                : r.key === 'portrait' ? 'h-[92px] w-[49px] rounded-lg'
                 : 'h-[92px] w-[92px] rounded-full'
               return (
                 <div key={r.key} className="rounded-xl border border-line p-2.5">

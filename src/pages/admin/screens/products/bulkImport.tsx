@@ -37,8 +37,8 @@ const W = { idx: 'w-[26px]', name: 'w-[140px]', ind: 'w-[230px]', tags: 'w-[172p
 const SLOT_W: Record<Rendition, string> = { landscape: 'w-[114px]', portrait: 'w-[88px]', circle: 'w-[88px]' }
 /** the slot preview, at the real aspect — the shape itself names the format */
 const SHAPE: Record<Rendition, string> = {
-  landscape: 'h-[42px] w-[75px] rounded',
-  portrait: 'h-[56px] w-[42px] rounded',
+  landscape: 'h-[32px] w-[74px] rounded',
+  portrait: 'h-[56px] w-[30px] rounded',
   circle: 'h-[50px] w-[50px] rounded-full',
 }
 const blankSet = (): ImgSet => ({ name: '', industries: [], tags: [], expiry: '', imgs: {} })
@@ -325,8 +325,8 @@ export function AdminImageBulkImport() {
 function CropOverlay({ rendition, hue, onClose }: { rendition: Rendition; hue: number; onClose: () => void }) {
   const [zoom, setZoom] = useState(1)
   const r = RENDITIONS.find((x) => x.key === rendition)!
-  const frame = rendition === 'landscape' ? 'h-[146px] w-[260px] rounded-md'
-    : rendition === 'portrait' ? 'h-[208px] w-[156px] rounded-md'
+  const frame = rendition === 'landscape' ? 'h-[113px] w-[261px] rounded-md'
+    : rendition === 'portrait' ? 'h-[208px] w-[111px] rounded-md'
     : 'h-[180px] w-[180px] rounded-full'
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-6" onClick={onClose}>

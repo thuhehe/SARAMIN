@@ -120,8 +120,14 @@ export function deckCapOf(p: Placement): number | null {
    set from its topics, so nobody tags twenty-four sets by hand. */
 export type Rendition = 'landscape' | 'portrait' | 'circle'
 export const RENDITIONS: { key: Rendition; label: string; ratio: string; px: string; box: string; where: string }[] = [
-  { key: 'landscape', label: 'Ngang', ratio: '16:9', px: '596 × 336', box: 'h-[60px] w-[107px]', where: 'thẻ lúc nghỉ — dải trả phí' },
-  { key: 'portrait', label: 'Dọc', ratio: '3:4', px: '600 × 800', box: 'h-[60px] w-[45px]', where: 'thẻ mở rộng khi hover' },
+  /* THE SIZES ARE THE CARD'S OWN, not round numbers: they come from svn-be
+     (`ArtworkFrame`) via the admin's `artwork-frames.ts`, already at the 2x the
+     public card downscales from. Landscape is a 2.3:1 STRIP and portrait a 1:1.9
+     TOWER — not 16:9 and 3:4, which is what this table said until 10/11/2026 and
+     what the drawings below were shaped to. A frame judged by eye has to be drawn
+     at its real shape, so every box in the screens matches these numbers. */
+  { key: 'landscape', label: 'Ngang', ratio: '≈2.3:1', px: '596 × 258', box: 'h-[60px] w-[139px]', where: 'thẻ lúc nghỉ — dải trả phí' },
+  { key: 'portrait', label: 'Dọc', ratio: '≈1:1.9', px: '600 × 1120', box: 'h-[60px] w-[32px]', where: 'thẻ mở rộng khi hover' },
   { key: 'circle', label: 'Tròn', ratio: '1:1', px: '240 × 240', box: 'h-[60px] w-[60px] rounded-full', where: 'dải thẻ ảnh tròn' },
 ]
 

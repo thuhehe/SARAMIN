@@ -178,8 +178,8 @@ export const bannersPopups: BuildModule = {
             table: {
               cols: ['Format', 'Size', 'Where it prints', 'May be empty?'],
               rows: [
-                ['**Ngang** (landscape)', '596 × 336 · 16:9', 'The card at rest on the paid bands', 'Yes'],
-                ['**Dọc** (portrait)', '600 × 800 · 3:4', 'The card expanded on hover', 'Yes'],
+                ['**Ngang** (landscape)', '596 × 258 · ≈2.3:1', 'The card at rest on the paid bands', 'Yes'],
+                ['**Dọc** (portrait)', '600 × 1120 · ≈1:1.9', 'The card expanded on hover', 'Yes'],
                 ['**Tròn** (circle)', '240 × 240 · 1:1', 'The round-thumbnail band', 'Yes'],
               ],
             },
@@ -323,7 +323,7 @@ export const bannersPopups: BuildModule = {
         ],
         states: [
           'Set: holds all 3 · missing 1–2 formats (still an automatic default for a posting that does not print them) · unnamed (renders as “Cụm #n”) · archived',
-          'Create · step 1: route ① no master yet · master rejected (<1600×1200) · master accepted with 3 crops · a frame deliberately left empty · route ② with 1–3 files',
+          'Create · step 1: route ① no master yet · master rejected (<600×1120) · master accepted with 3 crops · a frame deliberately left empty · route ② with 1–3 files',
           'Create · step 2: no industry (save disabled) · ready',
           'Tag: in use by N sets · unused · delete confirmation',
           'Licence expiring within 30 days · expired',
@@ -375,7 +375,7 @@ export const bannersPopups: BuildModule = {
           'Replacing a format in the library does not change the picture on a posting that is already running.',
         ],
         openQuestions: [
-          'Seed volume: the floor is 3 complete sets per level-1 group, 11 groups, with neutral sets counting for none of them — so roughly 35–40 masters, each of which must crop cleanly to 16:9, 3:4 AND 1:1. Who licenses them?',
+          'Seed volume: the floor is 3 complete sets per level-1 group, 11 groups, with neutral sets counting for none of them — so roughly 35–40 masters, each of which must crop cleanly to a 2.3:1 strip, a 1:1.9 tower AND a square. Who licenses them?',
         ],
       },
     },
@@ -513,7 +513,7 @@ export const bannersPopups: BuildModule = {
           'Dropping a file on a slot fills it and renders it at that slot’s shape; with the crop toggle on, the drop opens the crop frame first.',
           '“＋ thêm N cụm trống” adds a batch of empty rows, with N editable in place.',
           'Pasting a block writes from the active cell outward, creating rows when the block is taller than the grid, and resolving industry paths to node ids as it goes.',
-          'Each uploaded image is run through the same ≥1600×1200 check as the single-set form. Under that, the row fails rather than being upscaled.',
+          'Each uploaded image is run through the same ≥600×1120 check as the single-set form. Under that, the row fails rather than being upscaled.',
           'Saving creates the sets, skipping the invalid rows and leaving them in the grid to be fixed.',
           '“＋ 10 dòng” and “Xoá dòng trống” handle the two housekeeping actions a grid always needs.',
         ],

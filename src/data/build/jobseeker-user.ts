@@ -699,6 +699,165 @@ export const jobseekerUser: BuildModule = {
       },
     },
 
+    // 0d · Product tour ──────────────────────────────────────────────────────
+    {
+      name: 'Product tour',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE', 'UI'],
+      notes:
+        'The per-page coach-mark tours, and the ONE global off switch they all obey. Written 2026-11-10, after the build shipped the per-page tours with no shared way to dismiss them.',
+      detail: {
+        description:
+          'Each jobseeker page runs its own short coach-mark tour the first time a user lands on it. Per page is the right unit — a tour cannot survive a page load, so one 20-step tour spanning the site is not buildable without state the pages do not share. But as built, each tour only knows about itself: closing the CV-create tour does nothing for the dashboard tour that fires on the next click, so a user who does not want to be taught has to refuse the lesson once per page. This feature adds ONE user-level preference that every tour reads before it decides to open, two ways out of it (hide for a while, or turn off for good), and one way back in.',
+        userStory:
+          'As a jobseeker who already knows my way around, I want one place to turn the guided tours off, so that I am not dismissing a new popup on every page I open.',
+        keyPoints: [
+          {
+            vi: 'Một người dùng — một công tắc. Mọi tour đều đọc cùng một preference trước khi mở, không tour nào tự quyết.',
+            en: 'One user, one switch. Every tour reads the same preference before it opens; no tour decides for itself.',
+          },
+          {
+            vi: '“X” chỉ đóng tour của trang hiện tại. Công tắc toàn site nằm ở “Bỏ qua” dưới chân popup.',
+            en: 'The X closes only this page’s tour. The site-wide switch is “Bỏ qua” in the popup footer.',
+          },
+          {
+            vi: '“Ẩn tạm thời” = 7 ngày và KHÔNG đánh dấu tour đã xem. “Không hiện lại nữa” = tắt hẳn, bật lại ở menu tài khoản.',
+            en: '“Ẩn tạm thời” = 7 days and does NOT mark the tours as seen. “Không hiện lại nữa” = off until re-enabled from the account menu.',
+          },
+          {
+            vi: 'Preference lưu trên TÀI KHOẢN, không phải localStorage — tắt ở máy này thì máy khác cũng tắt.',
+            en: 'The preference is stored on the ACCOUNT, not in localStorage — turning tours off on one device turns them off everywhere.',
+          },
+          {
+            vi: 'Bỏ qua 2 tour liên tiếp thì tour thứ 3 tự hỏi có muốn tắt tất cả không — người dùng không phải tự đi tìm công tắc.',
+            en: 'After two tours closed in a row, the third one offers to turn them all off — the user never has to go looking for the switch.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'Three ways out of a tour — only two of them are global',
+            text: 'The complaint is that dismissing a tour on one page teaches the site nothing. These are the three exits and exactly how far each one reaches. The X stays what it is today; the two new ones are the menu items.',
+            table: {
+              cols: ['Control', 'Label the user sees', 'Reaches', 'Lasts', 'Marks the tour seen?'],
+              rows: [
+                ['X · Esc · click outside', '—', 'This page’s tour only', 'Permanent for that page', 'Yes — that tour does not open again'],
+                ['Reaching the last step', '“Xong”', 'This page’s tour only', 'Permanent for that page', 'Yes'],
+                ['Bỏ qua → item 1', 'Ẩn tạm thời', 'Every tour, every page', '7 days, then tours resume by themselves', 'No — each tour can still run later'],
+                ['Bỏ qua → item 2', 'Không hiện lại nữa', 'Every tour, every page', 'Until re-enabled from the account menu', 'No — re-enabling replays the unseen ones'],
+              ],
+            },
+            items: [
+              'Sub-labels in the menu, so the difference is readable without trying it: “Không hiện hướng dẫn nào trong 7 ngày.” and “Tắt toàn bộ hướng dẫn. Bật lại trong menu tài khoản.”',
+            ],
+          },
+          {
+            label: 'The preference — three values, one of which expires by itself',
+            text: 'Stored per jobseeker account. A tour reads it at mount and does not render at all when the value is not `on`; it never renders and then hides, which flashes.',
+            table: {
+              cols: ['Value', 'Means', 'Set by', 'Leaves this value when'],
+              rows: [
+                ['`on` *(default)*', 'Each page’s tour opens on first visit', 'Default on a new account', '—'],
+                ['`snoozed`', 'No tour opens anywhere', '“Ẩn tạm thời”', '`tourSnoozedUntil` passes → read as `on`, with no job to flip it'],
+                ['`off`', 'No tour opens anywhere', '“Không hiện lại nữa”', 'Only “Xem lại hướng dẫn” in the account menu'],
+              ],
+            },
+            items: [
+              '`snoozed` and `off` differ ONLY in how they end. Neither touches the per-page seen list, so neither loses the user’s progress through the tours.',
+              'Which tours have already run is a separate list of tour keys (`tourSeen`), written by the X and by finishing — never by the two menu items.',
+              'Expiry is an absolute timestamp, not a countdown: a user who does not come back for a month is not owed six days of silence.',
+            ],
+          },
+          {
+            label: 'Where the switch sits — popup footer, left',
+            text: 'A text button “Bỏ qua ▾” at the footer-left opens a two-item menu downwards. This moves “Quay lại” across to sit beside “Tiếp theo”; the step dots stay centred. The X stays in the top-right corner and keeps its current meaning.',
+            items: [
+              'The menu opens DOWNWARD, below the card, so it never covers the step text the user is in the middle of reading.',
+              'Choosing “Không hiện lại nữa” applies immediately — no confirm dialog. A toast carries the undo instead: “Đã tắt hướng dẫn trên toàn hệ thống. Bật lại bất cứ lúc nào trong menu tài khoản.” with “Hoàn tác”, 8 seconds.',
+              '“Ẩn tạm thời” applies silently — the popup just closes. Nothing to undo that a page refresh in 7 days does not undo anyway.',
+            ],
+          },
+          {
+            label: 'The way back in — “Xem lại hướng dẫn” in the account menu',
+            text: 'One entry in the account dropdown, ALWAYS visible — including while tours are on, because it is also how a user replays a tour they skipped.',
+            items: [
+              'Clicking it sets the preference to `on`, clears `tourSnoozedUntil`, clears `tourSeen`, and starts the current page’s tour immediately — so the click visibly does something instead of promising that something will happen later.',
+              'This is the only re-entry point in Phase 1. No separate Settings toggle: two switches for one preference is how they end up disagreeing.',
+            ],
+          },
+          {
+            label: 'The two-strike prompt — the part that actually fixes the annoyance',
+            text: 'Most users will never open the “Bỏ qua” menu; they will keep hitting X and keep being irritated. So the site offers after watching them do it twice.',
+            items: [
+              'A counter (`tourSkipStreak`) goes up on every tour closed with X or Esc, and resets to 0 when a tour is finished or when the preference changes.',
+              'At 2, the NEXT tour that would open renders a strip above its title: “Bạn đã bỏ qua 2 hướng dẫn gần đây. Tắt tất cả?” with “Tắt hướng dẫn” and “Tiếp tục xem”.',
+              '“Tắt hướng dẫn” = the same action as “Không hiện lại nữa”, toast included. “Tiếp tục xem” dismisses the strip and resets the counter, so it is offered at most once per streak.',
+            ],
+          },
+        ],
+        behaviors: [
+          {
+            group: 'Opening',
+            items: [
+              'A tour checks the preference BEFORE rendering anything. Preference not `on`, or this tour’s key already in `tourSeen` → nothing mounts.',
+              'Only one tour on screen at a time. If two could open on the same route, the one with the lower `order` wins and the other waits for the next visit.',
+              'A tour that cannot find the anchor element for its first step does not open at all, and does not count towards the skip streak.',
+            ],
+          },
+          {
+            group: 'Dismissing',
+            items: [
+              'Esc behaves exactly as the X. Clicking the dimmed backdrop does too.',
+              'Both menu items close the popup immediately and write the preference in the same request — no optimistic UI that can be contradicted by a failed save.',
+              'If the save fails, the popup stays closed for this page view and the write is retried on the next page load; the user is not shown an error for a preference.',
+            ],
+          },
+          {
+            group: 'Signed out',
+            items: [
+              'Guests get the same three values in localStorage under the same keys.',
+              'On sign-in the two are merged: the ACCOUNT value wins where both exist; `tourSeen` is the union of the two lists.',
+            ],
+          },
+        ],
+        states: [
+          'Preference `snoozed` or `off`, page has an unseen tour → nothing renders. No badge, no placeholder, no “tours are off” notice.',
+          '`tourSnoozedUntil` has passed → treated as `on` at read time. No scheduled job flips the row; the row is corrected on next write.',
+          'Tours turned off on device A → device B stops at its next page load, not mid-tour.',
+          'Re-enabled when every tour has already been seen → `tourSeen` is cleared, so the current page’s tour replays rather than the click doing nothing.',
+          '“Hoàn tác” pressed after the toast has gone → not possible; the toast is the only undo, and after it the account menu is the way back.',
+          'A tour’s steps change after a user has seen it (new tour version) → out of scope for Phase 1; a changed tour does not re-open for users who have seen the old one.',
+        ],
+        backend: {
+          dataModel: [
+            { name: 'tourPreference', type: "enum('on','snoozed','off')", required: true, notes: 'Default `on`. Read before any tour mounts.' },
+            { name: 'tourSnoozedUntil', type: 'datetime · nullable', notes: 'Set to now + 7 days by “Ẩn tạm thời”. Null for `on` and `off`. A value in the past means `on`.' },
+            { name: 'tourSeen', type: 'json · array of tour keys', notes: 'e.g. `["cv-create","dashboard","job-search"]`. Written by X and by finishing; cleared by “Xem lại hướng dẫn”.' },
+            { name: 'tourSkipStreak', type: 'int', required: true, notes: 'Default 0. +1 per tour closed with X/Esc; reset on finish, on any preference change, and on “Tiếp tục xem”.' },
+          ],
+          endpoints: [
+            'GET /api/me/tour-state → `{ preference, snoozedUntil, seen[], skipStreak }` — served with the session payload, not as a separate round trip on every page.',
+            'PATCH /api/me/tour-state → sets any of the four. One endpoint, because every write here is the same write.',
+          ],
+          notes:
+            'No new table: four columns on the jobseeker user record. The tour step content itself stays in the frontend — this feature stores only whether and when to show it.',
+        },
+        acceptance: [
+          'Closing a tour with X on one page, then opening another page, still shows that page’s tour — today’s behaviour, unchanged.',
+          'Choosing “Ẩn tạm thời” on any page → no tour opens on any page for 7 days; on day 8 the unseen tours open again.',
+          'Choosing “Không hiện lại nữa” → no tour opens anywhere; the toast offers “Hoàn tác” for 8 seconds; pressing it restores the previous value exactly.',
+          'The preference survives sign-out / sign-in and shows the same on a second browser.',
+          'Two tours closed with X in a row → the third one opens with the “Tắt tất cả?” strip; “Tiếp tục xem” removes it and it is not offered again until another two are skipped.',
+          '“Xem lại hướng dẫn” in the account menu, pressed while tours are off → the current page’s tour starts within the same click, with no reload.',
+        ],
+        openQuestions: [
+          'Is 7 days the right snooze window, or should “Ẩn tạm thời” mean “for this session” — which is cheaper to build and closer to what an irritated user means by “later”?',
+          'Does a tour closed at step 1 count as seen, or should it reopen on the next visit until it has actually been read through?',
+          'The two-strike prompt is our proposal, not something the client asked for. Keep it in Phase 1, or ship the menu alone and add the prompt once we can see how many users hit X twice?',
+          'Should finishing every tour on the site set the preference to `off` by itself, or stay `on` so that tours added later still appear?',
+        ],
+      },
+    },
+
     // 1 · HQ oversight ────────────────────────────────────────────────────────
     {
       name: 'User management',
