@@ -31,6 +31,7 @@ const adminUnresolvedTerms = screen(() => import('@/pages/admin/screens/usage/un
 const adminPages = screen(() => import('@/pages/admin/screens/content/pages'), 'AdminPages')
 const adminCatalog = screen(() => import('@/pages/admin/screens/products/catalog'), 'AdminCatalog')
 const adminPlacements = screen(() => import('@/pages/admin/screens/products/placements'), 'AdminPlacements')
+const adminPlacementLoad = screen(() => import('@/pages/admin/screens/products/placementLoad'), 'AdminPlacementLoad')
 const adminImageGallery = screen(() => import('@/pages/admin/screens/products/gallery'), 'AdminImageGallery')
 const adminImageBulk = screen(() => import('@/pages/admin/screens/products/bulkImport'), 'AdminImageBulkImport')
 const adminBundles = screen(() => import('@/pages/admin/screens/products/bundles'), 'AdminBundles')
@@ -95,6 +96,7 @@ export const ADMIN_PROTOTYPES: Record<string, ComponentType> = {
   // Billing & products
   'admin-catalog': adminCatalog,
   'admin-placements': adminPlacements,
+  'admin-placement-load': adminPlacementLoad,
   'admin-image-gallery': adminImageGallery,
   'admin-image-bulk': adminImageBulk,
   'admin-bundles': adminBundles,

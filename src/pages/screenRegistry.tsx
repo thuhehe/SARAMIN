@@ -54,6 +54,9 @@ const ADMIN_NAV_PAGES = new Set([
   // them suppressed the link for pages that DO exist, which is the opposite of what
   // this set is for.
   'admin-catalog', 'admin-bundles', 'admin-placements', 'admin-promotions',
+  // Placement load sits beside Placements: the registry says what a band CAN show,
+  // this one says what it actually shows and what never gets a turn.
+  'admin-placement-load',
   // ONE page for all manual services (the per-service split was reverted — five
   // products across a hundred companies is one list at the grain of company ×
   // service). 'admin-account-usage' is OFF THE NAV for now (client, 2026-08) but the

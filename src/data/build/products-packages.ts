@@ -613,6 +613,117 @@ export const productsPackages: BuildModule = {
         ],
       },
     },
+    // 2b · Placement load ─────────────────────────────────────────────────────
+    {
+      name: 'Placement load — what each band actually shows',
+      site: 'Admin',
+      scope: ['BE', 'FE'],
+      mockup: 'admin-placement-load',
+      detail: {
+        description:
+          'Placements registry nói một band ĐƯỢC PHÉP hiển thị bao nhiêu. Màn hình này nói nó ĐANG hiển thị bao nhiêu, và còn bao nhiêu tin xếp hàng phía sau. Một trang jobseeker được vẽ lại thành sơ đồ: mỗi band là lưới slot thật của nó — đúng số cột, đúng số dòng như trên trang — ô đặc là slot có tin, ô viền đứt là slot bỏ trống.',
+        userStory:
+          'As an HQ product owner, after I map a product onto jobs I want to open the page as a slot map and see, band by band, how many jobs are filling it and how many are queued behind, so that I can tell whether the area is oversold or sitting half empty.',
+        keyPoints: [
+          {
+            vi: 'ĐÚNG HAI CON SỐ mỗi band: bao nhiêu tin đang hiển thị, và bao nhiêu tin đang chờ — hoặc bao nhiêu slot đang trống nếu thiếu tin. Không thêm chỉ số nào khác.',
+            en: 'EXACTLY TWO NUMBERS per band: how many jobs are showing, and how many are queued — or how many slots sit empty when there are not enough jobs.',
+          },
+          {
+            vi: 'Lưới slot phải đúng số cột / số dòng của trang thật, không phải một dãy ô cho có. 30 slot của Latest jobs là 5 cột × 6 dòng vì trang chủ vẽ đúng như vậy.',
+            en: 'The slot grid must match the real page: 30 slots on Latest jobs is 5 columns × 6 rows because that is how the homepage lays it out.',
+          },
+          {
+            vi: 'Mỗi band hiển thị luôn danh sách sản phẩm đang feed vào nó — đó là cầu nối giữa Product mapping và cái người dùng nhìn thấy.',
+            en: 'Each band also lists the products feeding it — that is the link between Product mapping and what a visitor sees.',
+          },
+          {
+            vi: 'Màn hình CHỈ ĐỌC. Không sửa số ô, không gỡ tin — cấu hình vẫn nằm ở Products → Placements.',
+            en: 'READ-ONLY. No slot count is edited and no job is removed here — configuration stays on Products → Placements.',
+          },
+        ],
+        sections: [
+          {
+            heading: 'Hai tình huống, hai con số',
+            early: true,
+            text: 'Chỉ có hai trường hợp, và màn hình không cần nói gì hơn hai con số dưới đây.',
+            table: {
+              cols: ['Tình huống', 'Điều kiện', 'Lưới vẽ ra', 'Hai con số'],
+              rows: [
+                ['TH1 — thừa tin', 'eligible > số slot', 'Lấp đầy toàn bộ slot', 'X tin đang hiển thị · (eligible − X) tin đang chờ'],
+                ['TH2 — thiếu tin', 'eligible < số slot', 'Lấp eligible ô, phần còn lại vẽ viền đứt', 'X tin đang hiển thị · (slot − X) slot đang trống'],
+              ],
+            },
+          },
+          {
+            heading: 'Lưới thật của từng band (đo trên stg-saramin 10/11/2026)',
+            text:
+              'Số cột đọc trực tiếp từ toạ độ card trên trang, không ước lượng. Ba band khớp chính xác số slot của registry, nên lưới này là lưới thật chứ không phải quy ước: Highlight jobs 24 = 4 × 6, Latest jobs 30 = 5 × 6, Diverse opportunities 36 = 6 × 6. Korea và Global dùng đúng bộ band này.',
+            table: {
+              cols: ['Band', 'Slot', 'Lưới trên trang'],
+              rows: [
+                ['Super hot - Pinned', '1', '1 thẻ lớn, cao bằng 2 dòng thẻ thường, nằm bên trái lưới Super hot'],
+                ['Super hot - Image', '30', '4 cột'],
+                ['Super hot - Blue highlight', '16', '4 cột × 4 dòng'],
+                ['Super hot - Plain', '24', '4 cột × 6 dòng'],
+                ['Premium jobs', '10', 'dải cuộn ngang 1 dòng, 10 thẻ'],
+                ['Highlight jobs', '24', '4 cột × 6 dòng'],
+                ['Latest jobs', '30', '5 cột × 6 dòng'],
+                ['Diverse opportunities', '36', '6 cột × 6 dòng'],
+                ['Mega menu (2 band)', '40 / 30', '3 cột'],
+              ],
+            },
+          },
+          {
+            heading: '“Đang chờ” — điều Dev phải biết dù màn hình không hiện',
+            warn:
+              'svn-be sắp theo refreshed_at desc, CẮT ở pool_cap ?? items_shown, RỒI MỚI xáo. 19/27 band đang để trống pool_cap, nên ở các band đó tập được xáo đúng bằng số slot — tin ngoài top N không “chờ tới lượt”, nó không nằm trong tập được bốc, và chỉ lên được khi chính nó được refresh lên đầu. Màn hình gộp tất cả vào “đang chờ” theo quyết định của PO (10/11/2026) vì hai con số là đủ cho việc vận hành; nhưng khi ai đó hỏi “bao giờ tin tôi lên?”, câu trả lời phụ thuộc pool_cap chứ không phải thứ tự hàng đợi.',
+          },
+          {
+            heading: 'Phạm vi — cái gì KHÔNG nằm trong màn hình này',
+            items: [
+              'Trang Job search result — dải trên cùng còn lọc theo TỪ KHOÁ, nên số tin đủ điều kiện không phải con số có nghĩa trên một lần render. Bỏ khỏi màn hình (PO chốt 10/11/2026).',
+              'Khối “The choice that sets you apart” ở trang kết quả tìm kiếm — KHÔNG đọc placement nào: cứ tin mua gói từ mức premium trở lên và khớp từ khoá là được đẩy lên, nên không có số slot để vẽ.',
+              'Band BOOKED (banner, popup) — lấp bằng placement_booking chứ không bằng tier; đã có Service → Boosting lo.',
+              'Không có trạng thái / nhãn cảnh báo / xếp hạng mức độ nghiêm trọng. Hai con số tự nói lên vấn đề.',
+            ],
+          },
+        ],
+        backend: {
+          endpoints: [
+            'GET /api/admin/placements — registry: itemsShown, fillRoute, status. ĐÃ CÓ.',
+            'GET /api/admin/jobs/placement-board — { feeds[], loads[] }; feeds[] cho danh sách sản phẩm mỗi band, loads[].showing cho số tin đủ điều kiện. ĐÃ CÓ.',
+          ],
+          notes:
+            'KHÔNG CẦN ENDPOINT MỚI, không bảng mới, không cột mới. Hai con số suy ra thẳng từ hai lời gọi đã có: showing = min(itemsShown, eligible), waiting = max(0, eligible − itemsShown), empty = max(0, itemsShown − eligible), với eligible = loads[].showing. Thứ duy nhất không có trong registry là SỐ CỘT của từng band — FE giữ một bảng ánh xạ slotKey → số cột (xem bảng lưới ở trên), vì đó là layout của trang chứ không phải cấu hình bán hàng. Nếu sau này muốn operator đổi được thì thêm cột vào registry, nhưng đừng thêm trước khi có người cần.',
+        },
+        rules: [
+          'Chỉ liệt kê band fillRoute = TIER và status = ACTIVE.',
+          'Mỗi band vẽ đúng itemsShown ô, xếp theo đúng số cột của trang thật. Ô đặc = slot có tin, ô viền đứt = slot trống.',
+          'Thứ tự band trong một trang đi đúng thứ tự người dùng gặp trên trang (giá giảm dần: Super hot - Pinned xuống Diverse opportunities).',
+          'Màn hình chỉ đọc. Mọi thay đổi cấu hình đi qua Products → Placements.',
+          'Không vẽ tin đang chờ thành ô. Một band có 683 tin chờ thì không vẽ ra được mà vẫn đọc được — nó là một con số.',
+        ],
+        states: [
+          'Band không có tin nào đủ điều kiện — toàn bộ lưới là ô viền đứt, con số đọc “0 tin đang hiển thị · N slot đang trống”.',
+          'Band chưa cấu hình itemsShown (null trong registry) — không vẽ lưới, hiện “Chưa cấu hình” kèm link sang Placements.',
+          'placement-board lỗi hoặc timeout — vẫn vẽ lưới từ registry (số slot đã biết), hai con số thay bằng skeleton.',
+        ],
+        acceptance: [
+          'Mỗi band TIER + ACTIVE của trang đang chọn có đúng một khối, vẽ đúng itemsShown ô theo đúng số cột của trang thật.',
+          'Home - Diverse opportunities: lưới 6 × 6, 36 ô đặc, đọc “36 tin đang hiển thị · 683 tin đang chờ”.',
+          'Home - Latest jobs: lưới 5 × 6, 23 ô đặc + 7 ô viền đứt, đọc “23 tin đang hiển thị · 7 slot đang trống”.',
+          'Korea - Super hot - Image: lưới 4 cột, 3 ô đặc + 27 ô viền đứt, đọc “3 tin đang hiển thị · 27 slot đang trống”.',
+          'Mỗi khối liệt kê đúng các sản phẩm đang feed vào band đó.',
+          'Không có endpoint mới nào được thêm — màn hình chạy bằng /placements + /jobs/placement-board.',
+        ],
+        openQuestions: [
+          '19/27 band đang để trống Pool cap, nên phần “đang chờ” ở các band đó thực tế không bao giờ được bốc. Đây là cố ý hay sót cấu hình? Nếu là sót thì sửa cấu hình giải quyết phần lớn vấn đề mà Dev không phải làm gì.',
+          'Số liệu đọc real-time mỗi lần mở, hay cache ngắn? Real-time đúng hơn nhưng là một lượt đếm trên toàn bảng job cho mỗi band.',
+          'Hai band mega menu đang bị đặt tên chéo nhau (MEGA_MENU_PAGE_JOB_LIST_TRENDING mang tên “Don’t miss these annoucements” và ngược lại). Sửa tên trong registry trước khi màn hình này lên, nếu không người đọc sẽ đối chiếu nhầm band.',
+        ],
+      },
+    },
     // 3 · Discount programmes ─────────────────────────────────────────────────
     {
       name: 'Discount programmes',

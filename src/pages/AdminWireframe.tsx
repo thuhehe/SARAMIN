@@ -70,6 +70,9 @@ const SPEC_TARGET: Record<string, { module: string; feature: string; site?: Site
   'admin-catalog': { module: 'products-packages', feature: 'Products management' },
   'admin-bundles': { module: 'products-packages', feature: 'Packages management' },
   'admin-placements': { module: 'products-packages', feature: 'Placements registry' },
+  // Reads the same registry, answers the question it cannot: is the band's capacity
+  // bigger or smaller than the demand pointed at it.
+  'admin-placement-load': { module: 'products-packages', feature: 'Placement load — what each band actually shows' },
   'admin-promotions': { module: 'products-packages', feature: 'Discount programmes' },
   // Service — the CV-search product after it is sold. Lives with Products &
   // Packages because the row is a package, not a search.
@@ -293,6 +296,10 @@ const NAV_GROUPS: NavGroup[] = [
       // A placement product points at a row here instead of restating
       // "1536×371, max 6, rotate 3s" on every sale.
       { label: 'Placements', specId: 'admin-placements' },
+      // Capacity vs demand on those same rows: how many jobs each band can show,
+      // how many want in, and how many never get drawn. Sits directly under
+      // Placements because it is that page's numbers, read the other way round.
+      { label: 'Tình hình hiển thị', specId: 'admin-placement-load' },
       // The stock pictures those placements' image slots are filled from. It sits
       // beside Placements rather than under Service because it is configuration a
       // placement reads, not something a customer bought.
