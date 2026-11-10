@@ -97,13 +97,12 @@ export function JobArtworkGroup({ industry, need }: { industry: string; need: Re
 function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[] }) {
   /* The automatic default resolves the moment Industry is known. It is a PREFILL,
      never a lock: `source` records who chose, and that is the whole state machine. */
-  /* TWO STEPS — 10/11/2026. First the best SINGLE set covering every frame (one
-     scene); only if none does, the resolver combines greedily. Stopping at step 1
-     left the section empty, and so would a partial set — an empty required frame
-     blocks Post either way, so "take the one that at least has ngang" is not a
-     fallback on its own. See autoFillFor. */
+  /* ONE SET, CHOSEN ON INDUSTRY ALONE — 10/11/2026. Whether it carries every
+     frame the package prints does not enter into the choice: the deepest match
+     wins even when it is missing a crop, and the frames it lacks stay empty for
+     the operator to fill. See autoFillFor. */
   const af = useMemo(() => autoFillFor(industry, need), [industry, need])
-  const auto = af.sets.length === 1 ? af.sets[0] : null
+  const auto = af.set
   const [picked, setPicked] = useState<Picked>(() => af.frames)
   const [source, setSource] = useState<Source>('auto')
   const [industryAtPick, setIndustryAtPick] = useState(industry)
@@ -154,25 +153,21 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
             Ghép từ {new Set(RENDITIONS.map((r) => picked[r.key]?.id).filter(Boolean)).size} cụm
           </span>
         )}
-        {/* AUTO-GHÉP IS BADGED THOUGH NOBODY DEVIATED. It is not an accusation,
-            it is the one thing the operator cannot see by looking at the frames:
-            the card at rest and the card on hover are two different scenes. They
-            may well accept it — but they should know before the posting is live. */}
-        {source === 'auto' && af.sets.length > 1 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-medium text-amber-800">
-            Tự ghép từ {af.sets.length} cụm — ngành này chưa có cụm nào đủ khung gói cần
-          </span>
-        )}
+        {/* THE HOLE IS BADGED THOUGH NOBODY DEVIATED. The automatic fill is chosen
+            on industry alone, so a set that does not carry every frame still wins —
+            and an empty required frame blocks Post. An operator who is only told at
+            the Post button has to come back up and work out which frame; naming it
+            here, beside the frames, is the difference between a hole and a dead end. */}
         {source === 'auto' && af.missing.length > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-medium text-amber-800">
-            ⚠ Ngành <b>{industryName(industry)}</b> không có cụm nào mang khung{' '}
-            <b>{af.missing.map((k) => RENDITIONS.find((r) => r.key === k)!.label.toLowerCase()).join(' · ')}</b> — còn trống
+            ⚠ Cụm “{auto ? setLabel(auto) : '—'}” không có khung{' '}
+            <b>{af.missing.map((k) => RENDITIONS.find((r) => r.key === k)!.label.toLowerCase()).join(' · ')}</b> — chọn tay trước khi đăng
           </span>
         )}
         <button onClick={() => setOpen({})} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink hover:border-brand">
           Đổi ảnh…
         </button>
-        {source !== 'auto' && af.sets.length > 0 && (
+        {source !== 'auto' && auto && (
           <button onClick={() => { setPicked(af.frames); setSource('auto'); setIndustryAtPick(industry) }} className="text-[11.5px] text-brand hover:underline">
             ↺ Về ảnh tự điền
           </button>
@@ -182,8 +177,8 @@ function ArtworkPicker({ industry, need }: { industry: string; need: Rendition[]
       {stale && source !== 'auto' && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
           Ngành đã đổi thành <b>{industryPath(industry)}</b>, nhưng ảnh đang là ảnh <b>chọn tay</b> nên hệ thống <b>không tự đổi</b>.
-          {af.sets.length > 0 && (
-            <> Muốn theo ngành mới thì bấm <b>↺ Về ảnh tự điền</b>{auto ? <> (“{setLabel(auto)}”)</> : <> (ghép từ {af.sets.length} cụm)</>}.</>
+          {auto && (
+            <> Muốn theo ngành mới thì bấm <b>↺ Về ảnh tự điền</b> (“{setLabel(auto)}”).</>
           )}
         </div>
       )}

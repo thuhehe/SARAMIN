@@ -184,7 +184,7 @@ export const bannersPopups: BuildModule = {
               ],
             },
             items: [
-              'COMPLETENESS IS RELATIVE TO THE PLACEMENT — it is not a property of the set on its own. A set COVERS a posting when it holds every frame that posting’s product actually prints, so one set holding ngang + tròn is complete for a Basic Plus posting and incomplete for a Top Job one. Only a set that COVERS may be an automatic default; a set missing a frame the card really will render leaves the hover empty, which is worse than the card the placement was sold as.',
+              'COMPLETENESS IS RELATIVE TO THE PLACEMENT — it is not a property of the set on its own. A set COVERS a posting when it holds every frame that posting’s product actually prints, so one set holding ngang + tròn is complete for a Basic Plus posting and incomplete for a Top Job one. It is what the card badge and the picker warning are computed from — but NOT a condition on the automatic default: that is decided on industry alone (Job management → Card artwork), and a set missing a frame still wins, leaving that frame empty for the operator to fill.',
               'A set missing a frame is NOT an error and is not shelved. It stays hand-pickable for the frames it has, and it is still an automatic default for any posting that does not print the missing one. Each card states its own gap (“⚠ Thiếu dọc — chỉ tự điền cho gói không in khung đó”); there is no “Phiên bản” filter — it was removed with the warning panels on 06/11/2026.',
               'The exact pixel sizes come from the Placements registry, not from this list. Which formats a posting actually REQUIRES is derived from the placements its product feeds — a package that never prints a circle must not block Post over a missing circle.',
             ],
@@ -201,7 +201,7 @@ export const bannersPopups: BuildModule = {
               ],
             },
             items: [
-              'The resolver orders by (tier, −depth, least-used) and takes the first SINGLE set that COVERS the frames the posting’s product prints — not the first set that happens to hold all three. Least-used is not a refinement: plain “first match” puts one photograph on every card of an industry, which is the failure this whole feature exists to prevent. When no ONE set covers the whole need it combines the fewest sets that do (10/11/2026) — the two-step rule is written out in Job management → Card artwork.',
+              'The resolver orders by (tier, −depth, least-used) and takes THE FIRST ROW — full stop. Which frames that set carries is not a filter and not a tie-break (decided 10/11/2026, after a coverage-first draft was rejected): the frames it does not have come back absent and the form leaves them empty. Least-used is not a refinement either: plain “first match” puts one photograph on every card of an industry, which is the failure this whole feature exists to prevent. Written out in Job management → Card artwork.',
               'A set may carry SEVERAL industries, at mixed levels. One office photo honestly serves IT, banking and marketing; single-select would force the same file to be uploaded once per industry.',
               '“Mọi ngành” is an explicit FLAG, not “all 11 groups ticked” — so a new group added to master data inherits it instead of being silently excluded.',
               'Filtering the gallery by a group means its WHOLE BRANCH, or the filter lies about what the library holds.',
@@ -316,7 +316,7 @@ export const bannersPopups: BuildModule = {
           'HQ uploads to the shared library; employers never do. An employer’s upload stays on their job (and on their company’s own private sets) and is never promoted into the shared library — we do not hold the right to redistribute their photo to another company.',
           'Industry is REQUIRED on every path that creates a set: the form, the bulk import, and any API.',
           'Industry and tags sit on the SET, never on an individual format. Three formats of one photograph cannot honestly be classified differently.',
-          'A set can be an automatic default when it COVERS the frames the posting prints — `covers(set, need)`, never “holds all three”. A set missing a frame that posting does need stays hand-pickable for the frames it has — and since 10/11/2026 it is also used AUTOMATICALLY to fill those frames, when no single set covers the whole need.',
+          'ANY active set that matches the industry can be the automatic default, including one that is missing a frame the posting prints — `covers(set, need)` is shown to the operator (the picker’s “thiếu …” note), it does not gate the ranking. The frames the winner lacks come back absent and stay empty, and an empty REQUIRED frame blocks Post.',
           'A set is never deleted, only archived — live jobs and past renders point at its format files.',
           'Deleting a tag never deletes a set.',
           'The gallery carries no company branding, no baked-in text and no logos — the card draws those itself.',
@@ -351,7 +351,7 @@ export const bannersPopups: BuildModule = {
             'DELETE /admin/image-sets/:id/formats/:format — leave a slot empty',
             'GET · POST /admin/artwork-tags · PATCH /admin/artwork-tags/:id · DELETE /admin/artwork-tags/:id (detaches from all sets)',
             'GET /artwork/pick?industry=&tag=&format=&covers=&q= — the job-form picker; Active only, best-fit then least-used',
-            'GET /artwork/default?industry=&shapes=ngang,tron — the resolver: Active sets that COVER the requested shapes, ranked (tier, −depth, usage asc). Returns one file id per REQUESTED shape, not always three; an empty shapes list returns empty rather than an error. When no single set covers every requested shape it falls back to the fewest sets that do, and the response names the set each file came from so the form can say “ghép từ N cụm”.',
+            'GET /artwork/default?industry=&shapes=ngang,tron — the resolver: Active sets matching the industry, ranked (tier, −depth, usage asc), and the FIRST ONE wins whether or not it carries every requested shape. Returns ONE setId + matchReason, plus one file id per requested shape THAT SET HAS — fewer entries than shapes asked for is a normal response, not an error, and the form leaves those frames empty. An empty shapes list returns empty rather than an error. No combining: the endpoint never returns files from more than one set.',
           ],
           integrations: [
             'Master data (Industry, all 3 levels — the automation axis)',

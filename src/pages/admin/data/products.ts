@@ -237,11 +237,12 @@ export const ARTWORK_SETS: ArtworkSet[] = [
   { id: 's12', title: 'Gradient xanh (nền)', hue: 246, tags: ['t-abstract'], industries: [], anyIndustry: true, renditions: ALL, uses: 11 },
   { id: 's13', title: 'Xe tải giao hàng', hue: 350, tags: ['t-transport'], industries: ['log-freight-road'], renditions: LP, uses: 6, expires: '31/12/2026' },
   { id: 's14', title: 'Bàn làm việc · laptop', hue: 258, tags: ['t-office'], industries: ['it', 'fin', 'med', 'tel', 'fmcg', 'ret', 'edu'], renditions: ALL, uses: 33 },
-  /* s15 CARRIES NO CIRCLE ON PURPOSE — 10/11/2026. With it, every branch in this
-     sample had at least one complete set, so the resolver never reached step 2
-     and the combined fill could not be seen in the prototype at all. Xây dựng
-     now has only partial sets (s7 + s15), which is the realistic seeding case:
-     somebody uploaded the scene and never cropped the round one. */
+  /* s15 CARRIES NO CIRCLE ON PURPOSE — 10/11/2026. Xây dựng then has only
+     partial sets (s7 + s15), which is the realistic seeding case: somebody
+     uploaded the scene and never cropped the round one. It is what makes the
+     consequence of the rule visible in the prototype — the winning set is
+     chosen on industry alone, so a Top Job there fills ngang + dọc and leaves
+     tròn empty, and the empty frame blocks Post until somebody fills it. */
   { id: 's15', title: 'Kỹ sư kiểm tra máy', hue: 32, tags: ['t-eng', 't-factory'], industries: ['mfg', 'con'], renditions: LP, uses: 8, expires: '31/12/2026' },
   { id: 's16', title: 'Đội ngũ chụp chung', hue: 288, tags: ['t-people'], industries: [], anyIndustry: true, renditions: ALL, uses: 27 },
   { id: 's17', title: 'Server room · hạ tầng', hue: 214, tags: ['t-tech'], industries: ['it-hw', 'tel-dc'], renditions: ALL, uses: 9, expires: '31/12/2026' },
@@ -309,79 +310,41 @@ export function rankedSetsFor(jobIndustryId: string): RankedSet[] {
 }
 /** every set this job may draw from, best fit first */
 export const setsFor = (jobIndustryId: string) => rankedSetsFor(jobIndustryId).map((r) => r.set)
-/** The best-fitting SINGLE set that COVERS `need` — the frames this posting's
-    product actually prints, not all three. Least-used is not a refinement:
-    "first match" puts one photograph on every card of an industry. Null when no
-    one set carries them all; `autoFillFor` is what the form actually calls. */
-export const autoSetFor = (jobIndustryId: string, need: Rendition[] = RENDITIONS.map((r) => r.key)) =>
-  rankedSetsFor(jobIndustryId).find((r) => covers(r.set, need))?.set ?? null
+/** THE AUTOMATIC DEFAULT — the best-fitting set, on INDUSTRY ALONE.
+
+    `rankedSetsFor` is already in (tier, −depth, least-used) order, so the first
+    row IS the answer: the deepest real match wins, ties go to the least-used set
+    so one photograph does not end up on every card of an industry, and a neutral
+    `anyIndustry` set is reached only when nothing real matches at all.
+
+    WHICH FRAMES THE SET CARRIES DOES NOT ENTER INTO IT — decided 10/11/2026,
+    after a draft that ranked coverage first was rejected. A set tagged for this
+    industry wins even when it is missing a frame the package prints, and the set
+    one rung up that carries all three does NOT take its place. The frames the
+    winner does not have stay EMPTY, and an empty required frame blocks Post, so
+    the operator fills them by hand from the picker.
+
+    That is a deliberate trade. Coverage-first reads better in the abstract, but
+    every neutral set in a healthy library carries all three frames, so coverage
+    would let a gradient beat a real photograph of this industry that happened to
+    be missing one crop. The ladder is the rule the client wants; the hole is
+    visible, named in the form, and one click from being filled. */
+export const autoSetFor = (jobIndustryId: string) => rankedSetsFor(jobIndustryId)[0]?.set ?? null
 
 const framesFrom = (s: ArtworkSet, need: Rendition[]) =>
   Object.fromEntries(need.filter((k) => s.renditions[k]).map((k) => [k, s])) as AutoFill['frames']
 
-/** THE AUTOMATIC DEFAULT, IN TWO STEPS — step 2 added 10/11/2026.
-
-    STEP 1 · ONE REAL SET THAT COVERS EVERYTHING. A single scene across every
-    frame is the whole point of storing sets: the card at rest and the card on
-    hover are the same photograph, and the hover does not look like it jumped to
-    another posting. Among sets that actually reach this industry (tier 0/1),
-    COVERAGE BEATS DEPTH: a set carrying ngang + dọc wins over one tagged a level
-    deeper that carries only ngang.
-
-    STEP 2 · OTHERWISE COMBINE, GREEDILY, REAL SETS FIRST. Take the set filling
-    the MOST still-empty frames, use every frame it has, repeat — over the real
-    matches first, and only then over neutral ones for whatever is still empty.
-    `ranked` is already in (tier, −depth, least-used) order, so the normal ranking
-    survives as the tie-break. Greedy rather than per-frame: resolving each frame
-    on its own scatters three frames over three scenes where two would have done.
-
-    WHY NEUTRAL DOES NOT GET TO WIN STEP 1 — this is the decision that makes the
-    whole rule do anything. Every neutral set in a healthy library carries all
-    three frames, so if "covers everything" alone decided it, a gradient would
-    beat a real photograph of this industry that happened to be missing one
-    frame, and step 2 would never run at all. The card AT REST is the frame
-    almost everyone ever sees. A real server room there, with a gradient behind
-    the hover, is worth more than a gradient in both.
-
-    WHY COMBINE AT ALL. The rule used to stop at step 1 and leave the section
-    empty — which blocks Post. Filling two frames of three and leaving the last
-    one empty blocks Post just the same: a PARTIAL SET IS NOT A FALLBACK, it only
-    makes a blocked posting look finished. Finishing the frames is the only thing
-    that changes the outcome. */
 export type AutoFill = {
+  /** the winning set, chosen on industry alone — null when nothing matches */
+  set: ArtworkSet | null
   frames: Partial<Record<Rendition, ArtworkSet>>
-  /** distinct sets drawn from, in the order they were taken; length > 1 = combined */
-  sets: ArtworkSet[]
-  /** frames no set in reach carries at all — these stay empty and block Post */
+  /** frames of `need` the winner does not carry — these stay empty and block Post */
   missing: Rendition[]
 }
 export function autoFillFor(jobIndustryId: string, need: Rendition[] = RENDITIONS.map((r) => r.key)): AutoFill {
-  const ranked = rankedSetsFor(jobIndustryId)
-  /* tier 2 is `anyIndustry` — a safety net, never a reason to drop a real match. */
-  const real = ranked.filter((r) => r.tier < 2)
-
-  const whole = real.find((r) => covers(r.set, need))?.set
-  if (whole) return { frames: framesFrom(whole, need), sets: [whole], missing: [] }
-
-  const frames: AutoFill['frames'] = {}
-  const sets: ArtworkSet[] = []
-  let left = [...need]
-  const sweep = (pool: RankedSet[]) => {
-    while (left.length) {
-      let best: { set: ArtworkSet; gain: Rendition[] } | null = null
-      for (const r of pool) {
-        const gain = left.filter((k) => !!r.set.renditions[k])
-        if (gain.length && (!best || gain.length > best.gain.length)) best = { set: r.set, gain }
-      }
-      if (!best) return
-      for (const k of best.gain) frames[k] = best.set
-      sets.push(best.set)
-      left = left.filter((k) => !best!.gain.includes(k))
-    }
-  }
-  sweep(real)
-  sweep(ranked)
-  return { frames, sets, missing: left }
+  const set = autoSetFor(jobIndustryId)
+  if (!set) return { set: null, frames: {}, missing: need }
+  return { set, frames: framesFrom(set, need), missing: need.filter((k) => !set.renditions[k]) }
 }
 /** why a set was offered — printed in the picker so the ranking is readable */
 export const matchLabel = (r: RankedSet) =>
