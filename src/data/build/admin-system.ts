@@ -431,6 +431,27 @@ export const adminSystem: BuildModule = {
             ],
           },
         ],
+        requirements: [
+          {
+            label: 'COMPANY HIGHLIGHTS CARRY A SECOND FLAG — “Search tag”, and it is NOT the priority column',
+            text: 'DECIDED 13/11/2026 (Thu). The `company_highlight` catalogue — 76 chips in twelve groups, seeded from the customer’s benefit-card spreadsheet — has served exactly one surface until now: the chip strip on a company page, six per company. It is about to serve a second one, the tag row in the Blue zone on job search (Job management → “THE BLUE ZONE’S TAG ROW”).\n\nNot every chip belongs on a search page, so HQ needs to mark the ones that do. That mark is a new boolean on the catalogue row, surfaced on this screen.',
+            table: {
+              cols: ['What', 'Where', 'Behaviour'],
+              rows: [
+                ['**Search tag** — the flag', 'a column on the Company highlights tab, between Mức ưu tiên and Tiêu chí', 'a switch per chip. **Group heading rows cannot be flagged** — a heading is not a chip, and the server refuses it rather than letting the UI be the only guard.'],
+                ['**“Only flagged” filter**', 'the toolbar, beside the priority filter', 'narrows the table to flagged rows, so HQ can audit the list it has built without scrolling 76 rows.'],
+                ['**“Search tags in use”**', 'a section of its own, **below** the table', 'every flagged chip as one horizontal strip, each removable with ✕. It is the same shape the person picking a company’s tags will see, which is the point of putting it here. **The search box and the priority filter do not touch it** — it is the standing list and must always be whole.'],
+                ['**The table itself**', 'unchanged', 'group tree, catalogue order, drag-to-reorder. A flagged chip **stays in its group**; nothing is hoisted to the top.'],
+              ],
+            },
+            items: [
+              'DO NOT REUSE `priority` FOR THIS. CORE / HIGH_VALUE / STANDARD / PREMIUM is the customer’s editorial weighting — the migration that introduced it says in as many words that it is *not a filter*. It answers “is this chip worth the space on a company page”, which is a different question, and its CORE bucket holds eleven rows where this list wants about twenty. A column with two meanings is a column nobody can read six months later.',
+              'ABOUT EIGHTEEN CHIPS ARE FLAGGED AT MIGRATION, chosen to match the row Saramin KR runs today — signing bonus, performance bonus, 13th month, remote, flexible hours, casual dress, extra leave, maternity, meal and housing allowances, free snacks, company trips and the rest.',
+              'SIX OF KR’S CHIPS HAVE NO EQUIVALENT and are deliberately out of scope: 100+ employees, large corporation, startup, fast growing, long-tenured staff, work-life balance. Those describe the BUSINESS, and this catalogue is a benefits card. Four of the six could be derived from `headcount` and `business_form`, which the company record already holds — worth a separate proposal, not a silent addition here.',
+              'UNFLAGGING A CHIP IN USE removes it from every company that had picked it, in the same transaction. A company row pointing at an unflagged chip would be a search tag nobody authorised, so the cascade is the safe direction — with a confirmation naming how many companies are affected.',
+            ],
+          },
+        ],
         behaviors: [
           'Pick a domain on the left, edit its entries on the right; each domain feeds the matching form dropdown.',
           'Operators can also add a value inline from that form dropdown (＋ Create new…) — it is saved back here, not stored as free text.',

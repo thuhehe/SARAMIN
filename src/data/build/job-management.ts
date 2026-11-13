@@ -885,6 +885,7 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE', 'UI'],
       ready: true,
+      mockup: 'js-search',
       detail: {
         refDocs: [
           {
@@ -944,7 +945,7 @@ export const jobManagement: BuildModule = {
           'Facets: OR within one facet, AND across facets — stated because it is the commonest cause of an unexplained empty result.',
           'The match score never participates in search ranking, in any form. It belongs to the recommendations feed only.',
           '“Last refreshed” means the AUTO-REFRESH timestamp (the paid cadence, or an explicit refresh the employer buys). EDITING A JOB NEVER BUMPS IT — otherwise employers edit-spam to the top of their band.',
-          'No randomness anywhere. Every ordering ends in `jobId`, so the order is total and pagination is stable across page loads.',
+          'No randomness in the RESULT LIST. Every ordering there ends in `jobId`, so the order is total and pagination is stable across page loads. The Blue zone is the one exception and a deliberate one — it sits on page 1 only and never pages, so it re-shuffles per request by design (see “THE BLUE ZONE’S TAG ROW”). Nothing that paginates may be random.',
         ],
         requirements: [
           {
@@ -955,7 +956,7 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['**Top section**', 'Jobs whose PRODUCT covers this placement — the tier’s Placement slots include the search-top area. Membership is set on the product, never on the posting.', '**Last refreshed** first — `lastRefreshedAt`, the auto-refresh the product gives the job. NOT the last edit.', 'A paged carousel (“1 / 2”). Renders nothing when no matching job sits on such a product.'],
                 ['**Job search result** — sort Recommended (default)', 'EVERY matching job.', '1 · Group by the product’s **Sort priority** (Posting ladder), highest rung first. 2 · Inside a group, by **which field held the keyword**: title → skills → category / roles → company → description. 3 · Ties: newest `lastRefreshedAt`.', 'Super star / Hot job are add-on BADGES — they never change the order. **Date posted** and **Closing soonest** sort the same set by that one date and ignore tiers (see “THE THREE SORTS”).'],
-                ['**Blue zone**', 'Matching jobs whose product is sold in a **Premium package** (the Premium package checkbox — Products & Packages → Packages).', '**Companies interleaved** — one job per company in turn (A, B, C, A, B…), then `lastRefreshedAt` inside that rotation.', '**Hidden entirely when fewer than 3 jobs qualify** — no half-empty band. The heading names the companies shown (“Jobs for MB Bank & NIPPA”).'],
+                ['**Blue zone**', 'Matching jobs whose product is sold in a **Premium package** (the Premium package checkbox — Products & Packages → Packages).', '**Companies interleaved** — one job per company in turn (A, B, C, A, B…), then `lastRefreshedAt` inside that rotation.', '**TEN cards, three to a view, arrows step by three.** **Hidden entirely when fewer than 3 jobs qualify** — no half-empty band. The heading names the companies shown (“Jobs for MB Bank & NIPPA”).'],
               ],
             },
             items: [
@@ -963,8 +964,36 @@ export const jobManagement: BuildModule = {
               'THE TOP SECTION AND THE BLUE ZONE ARE PRODUCT FACTS, not posting facts. A posting cannot opt into either; the product it was published on either covers the search-top placement / sits in a Premium package, or it does not. This is what keeps both sections sellable.',
               'INTERLEAVING IS A ROUND-ROBIN over companies ordered by their newest refreshed job; when a company runs out of jobs the rotation continues with the rest. Recommended reading — the client has not stated the tie-break, flagged below.',
               'THE < 3 RULE IS A RENDER RULE, not a search rule: the jobs still appear in the result list under their tier. Only the band is withheld.',
+              'THE BAND HOLDS TEN CARDS, THREE TO A VIEW, AND THE ARROW STEPS THREE (decided 12/11/2026 against Saramin KR’s own band on `/zf_user/search`). The arrow turns a page, it does not nudge the strip by one card — one press and the reader is looking at three postings they have not seen. Ten is what the band ASKS for; fewer qualifying jobs simply means fewer cards, and under three the band is withheld by the rule above.',
             ],
             warn: 'Open — (1) interleaving tie-break when one company holds most of the qualifying jobs (round-robin then remainder is the recommendation); (2) whether a job may appear in BOTH the Top section and the Blue zone at once (recommendation: yes — they are two placements, and de-duplicating would hide a paid product), and whether a job shown in either is also repeated in the result list (recommendation: yes, the list is complete).',
+          },
+          {
+            label: 'THE BLUE ZONE’S TAG ROW — company tags, DEALT OUT so every tag opens a different set of jobs',
+            text: 'DECIDED 13/11/2026 (Thu), after the client asked for the chip row Saramin KR runs on `/zf_user/search`. A row of tag chips sits between the band heading and its cards; clicking one swaps the cards underneath. The vocabulary is **company tags** — the same `company_highlight` catalogue the company-page strip is picked from — never job card tags and never a field of the posting itself. The reason is plain: only that catalogue carries the emoji each chip is drawn with, and an emoji on every chip IS the design.\n\nHERE IS THE PROBLEM THE RULES BELOW EXIST TO SOLVE. A company tag describes the EMPLOYER, not the posting. So while only one customer holds a Premium package, every tag covers every job in the band and **no tag can narrow anything** — click any of them and the same jobs come back. That is accepted rather than designed around: the row earns its place today by **dealing the band’s jobs out between the tags**, so each chip opens a different set; and it becomes a real filter by itself the day a second Premium customer signs, with no code change and no change to this block.',
+            table: {
+              cols: ['#', 'Rule'],
+              rows: [
+                ['**1 · Which tags qualify**', 'The union of the **Search tags** of every company holding a job in the band. Drop any tag covering **fewer than 3** of those jobs. **There is no ceiling** — a tag covering 100% of the band still shows, because with one customer that is every tag.'],
+                ['**2 · How many are shown**', '`jobs in the band ÷ 3`, rounded down, **capped at 8 and floored at 3**. Fewer than 3 survivors → **the whole row is withheld** and the band renders as it does today. Dividing by three is not arbitrary: three cards are on screen at once, and it is what guarantees rule 5 across the opening view.'],
+                ['**3 · Their order**', '**Random, re-rolled on every page load.** When more tags qualify than fit, take the first few after shuffling — so across visits every tag a company picked gets its turn, rather than the same ones winning forever.'],
+                ['**3b · Except the first**', 'The opening tag must be one covering **the most companies** in the band (ties broken at random). Without this, a tag only a small employer holds can be auto-selected and the band opens showing that employer alone, with the biggest customer invisible.'],
+                ['**4 · One tag is always selected**', 'The first tag is selected on arrival. There is **no “All” chip and no unselected state** — KR has none, and showing the unfiltered band beside a filtered one is exactly what makes the absence of filtering visible.'],
+                ['**5 · Dealing**', 'Shuffle the band’s jobs once per request, then deal round-robin: each tag in turn takes the next shuffled job it covers **that no tag has taken yet**. **Only once every job has been dealt may one be used twice.** This is what makes each chip open a different set instead of the same list reordered.'],
+                ['**5b · Poorest tag deals first**', 'Order the deal by how few jobs each tag covers. Otherwise a tag with four eligible jobs is stripped bare by the tags with twenty and opens onto nothing.'],
+                ['**6 · Ten cards per tag, never padded**', 'A tag **never repeats a job of its own**: one covering four jobs shows four cards, not four padded to ten. Tags of unequal length are correct, not a defect.'],
+                ['**7 · No counts on the chips**', 'KR shows none, and with a single Premium customer every count is the same number — which gives the game away faster than any ordering does.'],
+                ['**8 · Companies still interleaved**', 'Inside one tag, two consecutive cards are never the same employer. The band’s existing fairness rule survives the deal.'],
+              ],
+            },
+            items: [
+              'A JOB IS ONLY DEALT TO A TAG ITS COMPANY HOLDS, which opens a trap worth naming: a Premium customer whose Search tags were never filled in has jobs belonging to no tag, and since a tag is always selected, **those jobs would never appear at all** — a paying customer off the band, with nothing logged anywhere. So the fallback is two steps: no Search tags → borrow that company’s **company-page Highlights** (max 6); none of those either → **withhold the row** and show the band whole. Losing the row costs nothing; losing a customer’s postings costs the account.',
+              'THE ROW IS FED BY TWO ADMIN SCREENS, neither of which existed before this. HQ marks which catalogue rows may be used at all — Master data → Company highlights → the **Search tag** flag, specified under Admin · System. Then each company’s own **Search tags** are picked on its Company page tab, at most 12, choosing only from flagged rows. Both must hold real data before this is switched on; the rules above have nothing to render otherwise.',
+              'IMPRESSIONS COUNT WHAT WAS SEEN, NOT WHAT WAS SENT. One response carries up to eight tags × ten cards; the reader sees three. Count a card only while its tag is selected and it sits in the visible three, or the Premium customer’s report inflates roughly eightfold. Log every tag click too — it is the only evidence of which tags anyone uses, and the only basis for pruning the flagged list later.',
+              'SWITCHING TAGS TOUCHES NOTHING ELSE. No request, no URL change, no second search-log row, no movement in the result list below. The whole deal arrives in the first response, so the swap is instant.',
+              'ORDER OF DELIVERY: the Search tag flag, then the per-company picks, then svn-be, then svn-web. Spring drops an unknown `@RequestParam` in silence, so a front end ahead of its back end produces no error anywhere — just a row that does nothing.',
+            ],
+            warn: 'Accepted with eyes open: while one customer holds the only Premium package, this row is presentation rather than filtering. Anyone demoing it should say so — it makes the band look varied, it genuinely serves different jobs per chip, and it becomes a filter when customer #2 arrives. Selling it as a filter today invites the one question it cannot answer.',
           },
           {
             label: 'JOB SEARCH — gate → filter → score → band → order → tail, and relevance is ONLY what the candidate typed',

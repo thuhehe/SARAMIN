@@ -842,6 +842,25 @@ export const crm: BuildModule = {
       },
     },
     {
+      label: 'COMPANY PAGE TAB — Highlights splits in two: one set for the company page, one for job search',
+      text: 'DECIDED 13/11/2026 (Thu). Section 3 of the Company page tab has until now held one set of chips: at most six, picked from the whole 76-row Company highlights catalogue, drawn as the strip under the facts card on the public company page.\n\nIt now holds two sets, because two different surfaces are asking two different questions. The section keeps its number and its title; the split happens inside it.',
+      table: {
+        cols: ['', '3a · Highlights', '3b · Search tags'],
+        rows: [
+          ['Answers', '“what does the company page boast about?”', '“what does a candidate filter the Blue zone by?”'],
+          ['Picked from', 'all 76 catalogue rows', '**only rows HQ flagged as Search tag** (Admin · System → Master data)'],
+          ['Cap', '**6** — unchanged', '**12**'],
+          ['Appears on', 'the public company page', 'the tag row inside the Blue zone on `/search` — see Job management'],
+        ],
+      },
+      items: [
+        'THE TWO SETS ARE INDEPENDENT. The same chip may sit in both; removing it from one leaves the other alone. They are stored separately, and nothing about the existing company-page strip changes.',
+        'TWELVE, NOT SIX, FOR THE SEARCH SET. While one customer holds the only Premium package, the number of Search tags that customer picked IS the ceiling on how many chips the search row can ever show. Six would be a thin row next to the Korean reference; twelve is still one sitting’s work for whoever fills it in.',
+        'THE SAME PICKER DIALOG SERVES BOTH — the searchable table with the group, the priority and the criterion per row. Only its source list and its cap differ. Opened from 3b it says so on the header, or the shorter list reads as a bug.',
+        'A PREMIUM CUSTOMER WITH NO SEARCH TAGS GETS A WARNING, not a blocked save: the banner states what will happen (the row borrows the company-page Highlights; with neither, the row is withheld) and the page saves anyway. Blocking the save would lock the photos, the vision and the benefits over one optional field. “Search tags” also joins the Ready-to-publish checklist, unstarred — invisible means unfilled.',
+      ],
+    },
+    {
           label: 'Activities on the company record — **Sales** activity only',
           table: {
             cols: ['Type', 'Sales must provide', 'Integration'],
