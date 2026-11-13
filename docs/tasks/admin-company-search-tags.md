@@ -4,6 +4,21 @@
 **Mockup (source of truth cho UI):** https://claude.ai/artifact/Czeaekg1FjX1PKmnV6szc4 — **màn 2 · Company page tab** và **màn 3 · Hộp chọn Search tag**
 **Phụ thuộc:** task 1 phải xong trước — mục này chỉ chọn được từ các tag đã gắn cờ `search_tag`.
 
+
+## Màn hình
+
+**CRM → Companies → <công ty> → tab Company page.**
+
+![Company page tab](https://saramin-eta.vercel.app/tickets/srm-1531/company-page.jpg)
+
+**Section 3 tách làm hai.** 3a giữ nguyên hành vi cũ; 3b là phần mới. Banner đỏ hiện vì công ty đang có gói Premium mà 3b còn trống — không chặn lưu.
+
+![Section 3](https://saramin-eta.vercel.app/tickets/srm-1531/section-3.jpg)
+
+**Hộp chọn khi mở từ 3b.** Vẫn là `HighlightPickerDialog` đang chạy, chỉ khác danh sách nguồn và con số tối đa; nhãn trên tiêu đề nói rõ nó đang lọc trong tập nào.
+
+![Hộp chọn Search tag](https://saramin-eta.vercel.app/tickets/srm-1531/picker.jpg)
+
 ---
 
 ## 0. Bối cảnh — đọc trước khi code

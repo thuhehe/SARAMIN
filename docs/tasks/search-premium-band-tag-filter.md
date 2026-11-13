@@ -8,6 +8,25 @@
 
 > **BẢN NÀY VIẾT LẠI TOÀN BỘ.** Bản trước mô tả phương án `companyHighlightId` + facet đếm theo tag; phương án đó đã bị thay. Đừng đọc lại lịch sử của ticket.
 
+
+## Màn hình
+
+**Một khách Premium — 20 tin, 6 tag, mỗi tag 10 card.** Dải chèn sau dòng kết quả thứ 3.
+
+![Dải Premium, một khách Premium](https://saramin-eta.vercel.app/tickets/srm-1497/search-1-company.jpg)
+
+**Hàng tag phóng to.** Tag đầu chọn sẵn, không tag nào có số đếm, 3 card một lượt, mũi tên lật 3.
+
+![Hàng tag](https://saramin-eta.vercel.app/tickets/srm-1497/tag-row.jpg)
+
+**Ba khách Premium — 33 tin, 8 tag.** Cùng bộ luật, không sửa dòng code nào: hàng tag lúc này lọc thật, mỗi tag ra một nhóm công ty khác nhau, và số card mỗi tag không còn đều nhau.
+
+![Dải Premium, ba khách Premium](https://saramin-eta.vercel.app/tickets/srm-1497/search-3-companies.jpg)
+
+**Các con số phía sau**, tính cho tình huống ba khách: 8 tag, tag chỉ lọc được 9 tin chỉ có 9 card, tag chỉ lọc được 4 tin chỉ có 4 card, và 24 ô ở khung nhìn đầu là 24 tin khác nhau.
+
+![Bảng số liệu](https://saramin-eta.vercel.app/tickets/srm-1497/readout.jpg)
+
 ---
 
 ## 0. Bối cảnh — đọc trước khi code

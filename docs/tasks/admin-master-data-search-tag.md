@@ -4,6 +4,17 @@
 **Mockup (source of truth cho UI):** https://claude.ai/artifact/Czeaekg1FjX1PKmnV6szc4 — **màn 1 · Master data**
 **Liên quan:** task 2 (Company page tab) và task 3 (hàng tag trên trang tìm kiếm) đều phụ thuộc task này.
 
+
+## Màn hình
+
+**System → Master data → tab Company highlights.** Cột Search tag nằm giữa Mức ưu tiên và Tiêu chí; bộ lọc "Chỉ tag đã gắn Search tag" và bộ đếm nằm trên thanh công cụ.
+
+![Master data — Company highlights](https://saramin-eta.vercel.app/tickets/srm-1530/master-data.jpg)
+
+**Mục "Search tag đang dùng"** ngay dưới bảng — một hàng chip ngang, bấm × là bỏ cờ. Đây đúng là hình ảnh người nhập liệu sẽ thấy khi chọn Search tag cho một công ty.
+
+![Search tag đang dùng](https://saramin-eta.vercel.app/tickets/srm-1530/search-tag-section.jpg)
+
 ---
 
 ## 0. Bối cảnh — đọc trước khi code
