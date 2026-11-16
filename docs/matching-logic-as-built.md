@@ -34,7 +34,7 @@ Ngoài ra: nút **sao / dismiss** trên thẻ gợi ý → `/me/job-recommendati
 
 ## 1. Engine A — Recommended jobs v4 (người ↔ tin)
 
-Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → Lọc (cắt 500) → Chấm 7 tín hiệu → Pool 80 → chia theo surface → ghi impression.
+Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → Lọc (cắt 500) → Chấm 7 tín hiệu → Pool 50 → chia theo surface → ghi impression.
 
 ### 1.1 Ứng viên là ai — khai + hành vi
 
@@ -83,7 +83,7 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 
 ### 1.4 Pool 80 và cách chia cho từng surface
 
-- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 80** theo điểm (`JobFeed.POOL = 80` trên dev — Long báo đã đổi 50, xem mục 8). **Không ngưỡng điểm.**
+- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 50** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11; Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan") và Long đã sửa — chưa lên dev (mục 8).
 - Nếu có tin neo (`jobId`): tin đó **và bản trùng của nó** bị loại khỏi pool; `exclude` (≤20 id) loại thêm — dùng cho job detail để không ghi impression cho thẻ carousel.
 - Một hàng **6 thẻ**: **một công ty một hàng** — gặp công ty trùng thì lấy thẻ kế tiếp; hết công ty khác nhau thì **vẫn lấp đủ 6** (lặp công ty) để các hàng sau không lệch vị trí.
 
@@ -93,7 +93,7 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 | `ONBOARDING` · `JOB_ALERT` · `SEARCH` | **Điểm cao nhất trước** + một công ty một hàng |
 | `HOMEPAGE` · `JOB_DETAIL` | **Xáo trộn seed trong từng bậc role** (SRM-1491, 16/11) + một công ty một hàng |
 
-- **Xáo trộn trong từng bậc role** (SRM-1491): pool 80 được xếp theo **điểm của riêng tín hiệu Vị trí & role** — role **khai** 42 → role **hành vi** 34 → group 30 / 24 → category 17 / 14 → còn lại 0 — rồi chỉ xáo **bên trong** mỗi bậc. Tin đúng role đã khai không bao giờ đứng sau tin chỉ cùng category dù tin kia hơn điểm địa điểm / lương. Lý do: QA Engineer từng thấy Sysadmin, Helpdesk, Data Engineer đứng trước tin QA.
+- **Xáo trộn trong từng bậc role** (SRM-1491): pool được xếp theo **điểm của riêng tín hiệu Vị trí & role** — role **khai** 42 → role **hành vi** 34 → group 30 / 24 → category 17 / 14 → còn lại 0 — rồi chỉ xáo **bên trong** mỗi bậc. Tin đúng role đã khai không bao giờ đứng sau tin chỉ cùng category dù tin kia hơn điểm địa điểm / lương. Lý do: QA Engineer từng thấy Sysadmin, Helpdesk, Data Engineer đứng trước tin QA.
 - **Seed** = hash(ứng viên, ngày VN, surface, tin neo) → cùng màn hình **ổn định cả ngày**, reload không đổi; mỗi màn hình đảo khác nhau; mai khác. Không bao giờ random thuần.
 - `size` tối đa **80**.
 
@@ -239,7 +239,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 | 8 | Trang chủ | Không có khối gợi ý cá nhân | Guide `/danh-sach-rule`: "block Recommended ở trang chủ là placement" | Guide cũ; placement đã bỏ |
 | 9 | Guide `/danh-sach-rule` — mục "Matching & gợi ý" | — | "logic chưa có" (ghi 04/11) | Đã có từ 05/11 — thay bằng tài liệu này |
 | 10 | Engine C — ai vào vòng chấm | Thêm nhánh **"CV có một skill của tin"** | Trang Recommended candidates nói theo role / category | Mở rộng tập, không đổi cách chấm |
-| 11 | Pool engine A | `JobFeed.POOL = 80` trên dev | Spec và ticket: 80 | Long báo 16/11 đã đổi **50** "theo yêu cầu mới" — chưa thấy trên dev, chưa rõ yêu cầu nào → **Thu xác nhận 80 hay 50** |
+| 11 | Pool engine A | `JobFeed.POOL = 80` trên dev | Spec và ticket: 80 | **Thu chốt 50 (16/11)** — lý do: 80 hơi rộng, chứa nhiều job không liên quan. Long đã sửa, chưa lên dev → **sửa spec + ticket về 50** |
 | 12 | Số tin ở wizard (engine D) | Lọc khác trang tìm việc (mục 4.4) | 1347 test #13: phải khớp trang tìm việc | Thu chốt 12/11 bỏ test #13 → **sửa spec** |
 | 13 | Similar jobs — độ tươi | Cache 1 giờ, làm mới ≤ ~75 phút | Trang Relevant jobs: "tính lại khi tin thay đổi" | Thu chấp nhận 12/11 → **sửa spec** |
 | 14 | Xáo trộn HOMEPAGE / JOB_DETAIL | Xáo **trong từng bậc role** (SRM-1491) | Spec: xáo trộn seed trên cả pool | Bug QA 12/11, merge 16/11 → **thêm vào spec** (mục pool / surfaces) |
@@ -255,5 +255,5 @@ Theo comment của Long trên SRM-1330; code trên `origin/dev` và các nhánh 
 
 1. **Bỏ fallback tỉnh cư trú**: địa điểm chỉ lấy từ Work preference ("Địa điểm mong muốn", tối đa 3 tỉnh); không khai → tín hiệu địa điểm 0 ở Recommended jobs, Recommended candidates và board NTD (vài ứng viên trên board sẽ lại không hiện % như trước 12/11).
 2. **Bỏ bậc tỉnh lân cận** ở cả Recommended jobs (10) và Similar jobs (9): khác tỉnh = 0. Thứ hạng không đổi vì bậc này chưa bao giờ đạt.
-3. **Pool 80 → 50** cho engine A — nguồn "yêu cầu mới" chưa rõ, cần Thu xác nhận (mục 7.11).
+3. **Pool 80 → 50** cho engine A — **Thu đã chốt 50 chiều 16/11** (80 hơi rộng, lẫn nhiều job không liên quan). Chờ lên dev.
 4. **Company Home**: bấm thẻ CÓ trừ lượt mở CV miễn phí; hết lượt → thấy CV che hết chi tiết; thẻ vẫn luôn hiện. (Trùng với cách dev đang chạy — thẻ mở đúng trang CV của Search talent.)
