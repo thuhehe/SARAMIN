@@ -238,7 +238,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 | 7 | Strip gợi ý trên trang search | BE có, FE không gọi | Ngoài phạm vi SRM-1338 | Không có strip |
 | 8 | Trang chủ | Không có khối gợi ý cá nhân | Guide `/danh-sach-rule`: "block Recommended ở trang chủ là placement" | Guide cũ; placement đã bỏ |
 | 9 | Guide `/danh-sach-rule` — mục "Matching & gợi ý" | — | "logic chưa có" (ghi 04/11) | Đã có từ 05/11 — thay bằng tài liệu này |
-| 10 | Engine C — ai vào vòng chấm | Thêm nhánh **"CV có một skill của tin"** | Trang Recommended candidates nói theo role / category | Mở rộng tập, không đổi cách chấm |
+| 10 | Engine C — ai vào vòng chấm | Ba nhánh: role · category · **skill trên CV** | ~~Chỉ role / category~~ — **SAI, đã kiểm lại 16/11**: trang Recommended candidates §2b liệt kê đủ cả ba nhánh, skill nằm trong đó | **Không phải lệch.** Build khớp spec. Dòng này trước đây ghi sai |
 | 11 | Pool engine A | `JobFeed.POOL = 80` trên dev | Spec và ticket: 80 | **Thu chốt 50 (16/11)** — lý do: 80 hơi rộng, chứa nhiều job không liên quan. Long đã sửa, chưa lên dev → **sửa spec + ticket về 50** |
 | 12 | Số tin ở wizard (engine D) | Lọc khác trang tìm việc (mục 4.4) | 1347 test #13: phải khớp trang tìm việc | Thu chốt 12/11 bỏ test #13 → **sửa spec** |
 | 13 | Similar jobs — độ tươi | Cache 1 giờ, làm mới ≤ ~75 phút | Trang Relevant jobs: "tính lại khi tin thay đổi" | Thu chấp nhận 12/11 → **sửa spec** |
