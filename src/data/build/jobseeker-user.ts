@@ -611,12 +611,21 @@ export const jobseekerUser: BuildModule = {
               'No “Tất cả …” / “Toàn bộ …” rows — the parent’s own checkbox is “all”.',
               'Choosing a parent when some of its children are already chosen merges them: the children are removed and the parent takes one slot.',
               'Limit: each chosen node counts 1, whatever its level. Candidate preference: up to 3. Create job: 1 (to confirm). At the limit a further pick is refused with “Tối đa N lĩnh vực. Bỏ bớt một mục để chọn …”. With a limit of 1, a new pick replaces the old one.',
-              'Search runs across all 3 levels and returns a flat list; each result shows its level and its path (Group › Industry) and can be chosen right there.',
+              'Search runs across all 3 levels and returns a flat list; each result shows its level and its path (Group › Industry) and can be chosen right there. It matches the Vietnamese and the English name of every level — see the block below.',
               'Labels wrap onto 2 lines — never truncated with “…”. Chosen chips show the level (Cả nhóm · Cả ngành · Chuyên ngành) and the path.',
               'Phone: one column at a time, drill down with “‹ Quay lại”.',
               'Matching: a level-1 or level-2 choice matches every job whose industry sits anywhere in that branch.',
             ],
             warn: 'The master data mixes capitals and lower case (“ngân hàng thương mại”, “các tổ chức tài chính”). Normalise the labels before this picker ships — with every level selectable, the inconsistency shows on every chip.',
+          },
+          {
+            label: 'Every picker in this wizard searches Vietnamese AND English (2026-11-16)',
+            text: 'Job role, location and industry are all master-data pickers, and they share ONE rule, written once in Admin & system → “Every picker over master data searches BOTH names — VI and EN”. Read the boundary, the tone-folding and the muted other-language hint there; the same rule governs Work preference, the CV builder’s Skills and the job-search filters, so it is deliberately not restated per screen.\n\nWhat it means HERE: on the English wizard “bán hàng” returns the Sales roles; on the Vietnamese wizard “sales” returns Nhân viên kinh doanh and “accountant” returns Kế toán viên; tones are optional in both directions; and a row matched only through the other language prints that name muted beside it.',
+            items: [
+              'This is the first screen a new candidate sees, which is why it is where the gap was found — on production, 16/11/2026, the English wizard answered “bán hàng” with “No match”.',
+              'Industry already behaved this way. Job role and location did not, because their options reached the picker as a single localized label with the other name dropped.',
+              'Nothing else about the wizard moves: same layout, same caps, same stored ids. Implementation list and acceptance criteria: SRM-1564.',
+            ],
           },
         ],
         uiFields: [

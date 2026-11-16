@@ -3266,6 +3266,45 @@ function CvCompareScreen() {
 const VN_PROVINCES = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai', 'Hải Phòng', 'Cần Thơ', 'Bắc Ninh', 'Bình Định', 'Khánh Hoà']
 const WORK_TYPES = ['In office', 'Remote', 'Hybrid', 'Oversea']
 
+/* Tone-insensitive fold, the same shape the build's `foldVi` has: lower-case,
+   strip the dấu, đ → d, punctuation to spaces. Typing the tone marks is exactly
+   what a search box must not require. */
+const fold = (t: string) =>
+  t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, ' ').trim()
+
+/* MASTER DATA IS BILINGUAL AND A PICKER SEARCHES BOTH NAMES — see Admin & system
+   → "Every picker over master data searches BOTH names". `alt` is the name in the
+   language the page is NOT showing; this prototype is in English, so it is the
+   Vietnamese one. It is matched on, and printed muted beside the label when it is
+   the only reason the row matched.
+
+   A row whose two names are the SAME STRING carries no `alt` at all (Marketing,
+   Logistics below) — there is nothing different to search, and printing the label
+   twice is how a hint turns into noise. */
+type TaxonomyRow = { label: string; alt?: string }
+
+const JOB_CATEGORIES: TaxonomyRow[] = [
+  { label: 'Design', alt: 'Thiết kế' },
+  { label: 'IT — Software', alt: 'CNTT — Phần mềm' },
+  { label: 'Marketing' },
+  { label: 'Sales', alt: 'Kinh doanh & Thương mại' },
+  { label: 'Accounting', alt: 'Kế toán' },
+  { label: 'HR', alt: 'Nhân sự' },
+  { label: 'Logistics' },
+  { label: 'Manufacturing', alt: 'Sản xuất' },
+]
+
+const INDUSTRIES: TaxonomyRow[] = [
+  { label: 'IT / Software (all)', alt: 'CNTT / Phần mềm' },
+  { label: 'Banking & finance (all)', alt: 'Tài chính và ngân hàng' },
+  { label: 'Banking › Commercial banks', alt: 'Ngân hàng thương mại' },
+  { label: 'Healthcare (all)', alt: 'Y tế và chăm sóc sức khoẻ' },
+  { label: 'Education › E-learning', alt: 'Giáo dục trực tuyến' },
+  { label: 'Logistics (all)' },
+  { label: 'Retail › E-commerce', alt: 'Bán lẻ › Thương mại điện tử' },
+  { label: 'FMCG (all)', alt: 'Hàng tiêu dùng nhanh' },
+]
+
 function OnboardingScreen() {
   const go = useNav()
   const [step, setStep] = useState<1 | 2 | 3 | 'results'>(1)
@@ -3281,8 +3320,13 @@ function OnboardingScreen() {
   const toggleLoc = (c: string) =>
     setLocs((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
   const [catOpen, setCatOpen] = useState(false)
+  const [catQ, setCatQ] = useState('')
   const [cat, setCat] = useState('Design')
   const [indOpen, setIndOpen] = useState(false)
+  /* Pre-filled with a VIETNAMESE query on an ENGLISH page: open the Desired
+     industry field and the rule is already demonstrated, instead of waiting for a
+     reader to think of typing in the other language. */
+  const [indQ, setIndQ] = useState('ngân hàng')
   const [inds, setInds] = useState<string[]>(['IT / Software (all)', 'Banking › Commercial banks'])
   const toggleInd = (c: string) =>
     setInds((a) => (a.includes(c) ? a.filter((x) => x !== c) : a.length >= 3 ? a : [...a, c]))
@@ -3293,16 +3337,29 @@ function OnboardingScreen() {
      control to hold state for. */
 
   /* One picker for every taxonomy field. `max` set → multi-select with a cap and
-     removable chips; unset → single-select that closes on pick. Open state is
-     held by the parent so this staying inline doesn't reset it on re-render. */
-  const Picker = ({ label, hint, options, open, setOpen, value, onPick, max }: {
-    label: string; hint?: string; options: string[]; open: boolean
-    setOpen: (v: boolean) => void; value: string | string[]
+     removable chips; unset → single-select that closes on pick. Open state AND the
+     query are held by the parent so this staying inline doesn't reset them on
+     re-render. */
+  const Picker = ({ label, hint, options, open, setOpen, query, setQuery, value, onPick, max }: {
+    label: string; hint?: string; options: TaxonomyRow[]; open: boolean
+    setOpen: (v: boolean) => void; query: string; setQuery: (v: string) => void
+    value: string | string[]
     onPick: (v: string) => void; max?: number
   }) => {
     const multi = Array.isArray(value)
     const chosen = multi ? (value as string[]) : []
     const full = (n: string) => multi && !chosen.includes(n) && chosen.length >= (max ?? 99)
+    /* THE WHOLE RULE IS THESE FOUR LINES: match the shown name first, then the
+       other-language one, and remember WHICH matched so the row can say so. The
+       match itself is unchanged — same `includes` on the same folded string; all
+       that widens is what it is run against. */
+    const needle = fold(query)
+    const shown = options.flatMap((row) => {
+      if (!needle) return [{ row, viaAlt: false }]
+      if (fold(row.label).includes(needle)) return [{ row, viaAlt: false }]
+      if (row.alt && fold(row.alt).includes(needle)) return [{ row, viaAlt: true }]
+      return []
+    })
     return (
       <div>
         <p className="mb-1 text-[11.5px] font-medium text-ink">
@@ -3318,25 +3375,43 @@ function OnboardingScreen() {
           <span className="text-faint">{open ? '▴' : '▾'}</span>
         </button>
         {open && (
-          <div className="mt-1 max-h-[168px] overflow-y-auto rounded-lg border border-line bg-surface shadow-sm">
-            {options.map((c) => {
-              const on = multi ? chosen.includes(c) : value === c
-              const off = full(c)
-              return (
-                <button
-                  key={c}
-                  disabled={off}
-                  onClick={() => { onPick(c); if (!multi) setOpen(false) }}
-                  className={cn(
-                    'flex w-full items-center gap-2 border-b border-line-soft px-3 py-2 text-left text-[12px] last:border-b-0',
-                    on ? 'bg-brand-soft/50 font-medium text-brand' : off ? 'text-faint' : 'text-ink/80 hover:bg-canvas/60',
-                  )}
-                >
-                  <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
-                  {c}
-                </button>
-              )
-            })}
+          <div className="mt-1 rounded-lg border border-line bg-surface shadow-sm">
+            <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+              <span className="text-[11px] text-faint">⌕</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Type in Vietnamese or English — either finds it"
+                className="w-full bg-transparent text-[12px] text-ink/80 outline-none placeholder:text-faint"
+              />
+            </div>
+            <div className="max-h-[168px] overflow-y-auto">
+              {shown.length === 0 ? (
+                <p className="px-3 py-2 text-[12px] text-faint">No match</p>
+              ) : shown.map(({ row, viaAlt }) => {
+                const c = row.label
+                const on = multi ? chosen.includes(c) : value === c
+                const off = full(c)
+                return (
+                  <button
+                    key={c}
+                    disabled={off}
+                    onClick={() => { onPick(c); if (!multi) setOpen(false) }}
+                    className={cn(
+                      'flex w-full items-center gap-2 border-b border-line-soft px-3 py-2 text-left text-[12px] last:border-b-0',
+                      on ? 'bg-brand-soft/50 font-medium text-brand' : off ? 'text-faint' : 'text-ink/80 hover:bg-canvas/60',
+                    )}
+                  >
+                    <span className={cn('grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border text-[9px] font-bold', on ? 'border-brand bg-brand text-white' : 'border-line text-transparent')}>✓</span>
+                    <span className="flex-1 truncate">{c}</span>
+                    {/* Matched only through the other language — say which name did it,
+                        or a Vietnamese query answered with an all-English list reads
+                        like the wrong answer. */}
+                    {viaAlt && <span className="shrink-0 text-[10.5px] text-faint">{row.alt}</span>}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
         {multi && chosen.length > 0 && (
@@ -3386,10 +3461,11 @@ function OnboardingScreen() {
                 <div className="mt-3 space-y-3">
                   <Picker
                     label="Desired job category"
-                    options={['Design', 'IT — Software', 'Marketing', 'Sales', 'Accounting', 'HR', 'Logistics', 'Manufacturing']}
+                    options={JOB_CATEGORIES}
                     open={catOpen} setOpen={setCatOpen}
+                    query={catQ} setQuery={setCatQ}
                     value={cat} onPick={setCat}
-                    hint="One category — it drives the role suggestions below."
+                    hint="One category — it drives the role suggestions below. Typing “kinh doanh” here finds Sales."
                   />
                   <div>
                     <p className="mb-1 text-[11.5px] font-medium text-ink">Desired job role</p>
@@ -3398,8 +3474,9 @@ function OnboardingScreen() {
                   </div>
                   <Picker
                     label="Desired industry"
-                    options={['IT / Software (all)', 'Banking & finance (all)', 'Banking › Commercial banks', 'Healthcare (all)', 'Education › E-learning', 'Logistics (all)', 'Retail › E-commerce', 'FMCG (all)']}
+                    options={INDUSTRIES}
                     open={indOpen} setOpen={setIndOpen}
+                    query={indQ} setQuery={setIndQ}
                     value={inds} onPick={toggleInd} max={3}
                     hint="The company’s sector. Pick a whole group, an industry or a specialty — the real field opens the 3-level picker."
                   />

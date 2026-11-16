@@ -142,7 +142,30 @@ export const adminSystem: BuildModule = {
         'Each domain feeds the matching form dropdown; an operator can also add a value inline from that dropdown (＋ Create new…) and it is saved back here.',
         'Adding a value is a DATA change, never a release — this is the same principle as the job taxonomy (see Job management) and the tool rate tables (see Tools).',
         'A value in use cannot simply vanish: renaming is safe, removing needs a merge/replace path so existing records keep resolving.',
+        'Every name on these rows is SEARCHABLE in both languages, on every surface that offers them — see the rule below.',
       ],
+    },
+    {
+      label: 'Every picker over master data searches BOTH names — VI and EN (decided 2026-11-16)',
+      text: 'A master-data row carries a Vietnamese name and an English one. Whatever language the page is in, typing EITHER finds the row.\n\nBefore this, a picker matched only the name it was DISPLAYING. On the English site “bán hàng” returned No match while the catalogue held Bán hàng công nghiệp, Nhân viên bán hàng and Giám sát bán hàng; on the Vietnamese site “sales” missed Nhân viên kinh doanh and “accountant” missed Kế toán viên. A bilingual product was telling half its readers that the right word did not exist — at the first screen after sign-up.\n\nThis is a rule about what is FOUND. It never changes what is SHOWN.',
+      table: {
+        cols: ['Rule', 'What it means'],
+        rows: [
+          ['Either name matches', 'The query is tested against the Vietnamese name and the English one. Which of the two is on screen changes nothing about what is reachable.'],
+          ['Tones are optional', '“ke toan” finds Kế toán viên, “ha noi” finds Hà Nội. Lower-case, strip the dấu, đ → d. Requiring the tone marks is requiring the reader to already know the answer.'],
+          ['Say which name matched', 'A row found ONLY through the other language prints that name small and muted beside its label. Without it, a Vietnamese query answered with an all-English list reads as the wrong answer.'],
+          ['Two identical names → no hint', '“Digital Marketing” is spelled the same in both columns. There is nothing different to search and nothing to show; printing the label twice is how a hint turns into noise.'],
+          ['The displayed label is untouched', 'An English page still prints the English name, a Vietnamese page the Vietnamese one. Search widens; display does not move.'],
+          ['Names only, never the code', '`sales-representative` is a slug nobody types, and matching on it produces hits the reader cannot explain.'],
+          ['Korean', 'Displayed under the existing rule, but SEARCHED as VI + EN — the public catalogue wire carries no Korean name for most domains.'],
+        ],
+      },
+      items: [
+        'WHERE IT APPLIES — every field that offers a master-data list AND has a box to type in: Onboarding (job role, location), Work preference, the CV builder’s Skills, the job-search Ngành nghề / Kỹ năng / Chuyên môn and Lĩnh vực pickers, and the employer’s candidate-search filters. A plain `Select` with no search box (education level, language proficiency) is out of scope — there is nothing to type into.',
+        'THE DATA LAYER ALREADY SUPPORTS IT. Every master-data table carries a generated `search_text` folding code + name_vi + name_en + name_ko, with a trigram index; the public catalogue endpoints already return `nameVi` and `nameEn` side by side. What was missing was the front end, which collapsed the two names into one display label and then searched that label. Nothing here needs a migration.',
+        'ONE IMPLEMENTATION, NOT ONE PER PICKER. The employer job form solved this first (SRM-938); the rule above is that solution stated once for the whole product, and the remaining surfaces reuse its code rather than growing a second copy. SRM-1564 carries the field-by-field list.',
+      ],
+      warn: 'This rule cannot rescue a row that has no real Vietnamese name. On the 02/11 catalogue every row does have an English name, but `name_vi` is IDENTICAL to `name_en` on 12% of job roles, 21% of specialisations and 13% of skills (“Marketing Planner”, “Content Editor”, “Digital Marketing”) — so a Vietnamese reader still will not find them by Vietnamese words. That is a data gap for the BA and the client to close, not a bug in the search.',
     },
     {
       label: 'Master-data entry status',
