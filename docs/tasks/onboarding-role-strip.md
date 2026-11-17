@@ -3,7 +3,7 @@
 **Requirement (nguồn sự thật):**
 https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic — mục 12a
 
-**Parent:** SRM-1330 [JS] Matching logic · **Tách ra từ** SRM-1338 T5
+**Ticket:** SRM-1596 · **Parent:** SRM-1330 [JS] Matching logic · **Tách ra từ** SRM-1338 T5
 
 > **Vì sao tách ticket riêng (chốt 17/11):** khối này **không dùng bộ máy chấm điểm**. Nó là một lượt **tìm kiếm thuần** trên `/jobs/search` — không CV, không hồ sơ, không trọng số, không xáo trộn, không ghi impression. Nằm chung với SRM-1338 thì luật của nó bị đọc nhầm thành luật của Recommended jobs, và đó chính là lỗi đang thấy trên production.
 

@@ -1,4 +1,4 @@
-# [Feature][BE][FE][Jobseeker] Recommended jobs — một pool 80 tin, bốn vị trí hiển thị
+# [Feature][BE][FE][Jobseeker] Recommended jobs — một pool 30 tin, bốn vị trí hiển thị
 
 **Requirement (nguồn sự thật):** https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic — build theo trang này. Trang "OLD logic" chỉ để tham khảo.
 
@@ -12,7 +12,7 @@
 
 Build hiện tại (v3, `docs/architecture/job-recommendation-matching.md`): cổng lọc G1–G7 → `ApplicantMatch` 22/21/20/20/9/5/3 có renormalise → `JobFeed` (ngưỡng 50 để vào danh sách, 60 để in %, xoay trong dải 5 điểm, cap công ty, giáng hạng sau 3 lần hiện không click) → 4 cấp tiêu đề FOR_YOU / LIKE_YOUR_CV / MATCHING / FEATURED → trọng số chỉnh được ở admin.
 
-Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo theo ngày ở 3 vị trí, **Batch apply xếp đúng theo điểm**; **không ngưỡng, không in %, mỗi màn hình một tiêu đề cố định**; trọng số mới **42 / 20 / 14 / 12 / 5 / 4 / 3 nằm trong code**; **hành vi** (xem / lưu / ứng tuyển) mở rộng tập role / category / tỉnh trước khi chấm.
+Thay đổi, tóm tắt: **một pool 30 tin tốt nhất**, xáo trộn gieo theo ngày ở 3 vị trí, **Batch apply xếp đúng theo điểm**; **không ngưỡng, không in %, mỗi màn hình một tiêu đề cố định**; trọng số mới **42 / 20 / 14 / 12 / 5 / 4 / 3 nằm trong code**; **hành vi** (xem / lưu / ứng tuyển) mở rộng tập role / category / tỉnh trước khi chấm.
 
 > **Remove** setting này, trọng số để trong code, không để admin set: https://stg-admin.saramin.vn/system/general-settings?tab=recommended-jobs — tỷ giá USD/VND trên trang đó **giữ**.
 
@@ -64,22 +64,25 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 ---
 
-## T3 · Lọc, pool 80, xáo trộn
+## T3 · Lọc, pool 30, xáo trộn, giãn theo công ty
 
-> Requirement: [mục 2](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#2-one-pool-of-80-shuffled-across-the-four-surfaces) · [mục 4](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#4-a-job-they-applied-to-never-comes-back) · [mục 6](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#6-which-jobs-get-scored-at-all-the-filter-then-the-500-limit)
+> Requirement: [mục 2](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#2-one-pool-of-30-shuffled-across-the-four-surfaces) · [mục 4](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#4-a-job-they-applied-to-never-comes-back) · [mục 6](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#6-which-jobs-get-scored-at-all-the-filter-then-the-500-limit)
 
 **Checklist**
 - [ ] Cổng lọc giữ như v3: G1 live · G2 exposure + công ty ACTIVE + MST · G3 loại trừ · G4 tỉnh (bỏ khi "sẵn sàng chuyển chỗ") · G5 category (= desired category ∪ category của desired role, trên `job_category_link`). **Dưới 6 tin** (chưa đủ một hàng) → nới theo 2 bước: bỏ G4 trước, vẫn dưới 6 thì bỏ cả G5; gắn cờ `relaxed` vào log — **không đổi tiêu đề** (xem T4). JOB_DETAIL không bao giờ nới (mục 6, quyết định 2026-11-04)
 - [ ] **G6 (neo category tin đang xem) chỉ còn ở JOB_DETAIL.** Bỏ ở AFTER_APPLY — popup lấy pool thường
-- [ ] Loại **tin đã có đơn — bất kỳ trạng thái** (một `NOT EXISTS job_application`, giữ như G3 hiện tại) và tin đã dismiss, **trước** khi cắt 80
-- [ ] Khử trùng `company + title + province`, giữ tin mới nhất, **trước** khi cắt 80
-- [ ] Cắt **top 80** theo điểm. **Không ngưỡng điểm.** Không cap công ty trong pool
-- [ ] Bỏ của `JobFeed`: ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, cap `max(2, size/10)`
+- [ ] Loại **tin đã có đơn — bất kỳ trạng thái** (một `NOT EXISTS job_application`, giữ như G3 hiện tại) và tin đã dismiss, **trước** khi cắt 30
+- [ ] Khử trùng `company + title + province`, giữ tin mới nhất, **trước** khi cắt 30
+- [ ] Cắt **top 30** theo điểm. **Không ngưỡng điểm.** ⚠️ Pool đã đổi hai lần: 80 → **50** (16/11) → **30** (17/11). Code trên dev vẫn là 80
+- [ ] Bỏ của `JobFeed`: ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện. **Cap công ty thì giữ** — nhưng là số cứng, không phải `max(2, size/10)` của v3; xem hai gạch dưới
 - [ ] **Xáo trộn gieo theo (jobseeker id + ngày + surface; JOB_DETAIL thêm id tin đang xem)** cho ONBOARDING / HOMEPAGE / JOB_DETAIL — ba màn hình không bao giờ ra cùng 6 thẻ, cùng màn hình thì cả ngày không đổi, **không xáo lại mỗi lần tải trang**. AFTER_APPLY giữ nguyên thứ tự điểm (chốt 2026-11-04)
-- [ ] Khi render một hàng: **một công ty một hàng** — gặp công ty trùng thì bỏ qua lấy thẻ kế tiếp trong pool (FE hoặc BE đều được, nhưng một chỗ)
+- [ ] 🆕 **Tối đa 2 tin / công ty** (ONBOARDING · JOB_DETAIL · HOMEPAGE) — đi xuống danh sách đã chấm, gặp tin thứ 3 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm. **AFTER_APPLY không áp cap này** (T7)
+- [ ] 🆕 **Hai tin cùng công ty cách nhau ít nhất 6 vị trí** (cùng 3 surface trên) — **thay cho luật "một công ty một hàng"**, vì hàng phụ thuộc bề ngang màn hình: trên mobile một hàng = một thẻ. Dựng danh sách từng vị trí một, lấy tin xếp cao nhất còn lại mà công ty của nó **chưa xuất hiện trong 5 vị trí gần nhất**; không còn tin nào hợp lệ thì vẫn lấp (ghi cờ vào log)
+  - Hệ quả: màn 6 thẻ (Job detail, My dashboard) **không bao giờ** lặp công ty — 6 vị trí không lọt vừa trong 6 thẻ. Onboarding 6 thẻ/trang → hai thẻ cùng công ty **không bao giờ cùng một trang**
+  - Làm ở **một chỗ** (BE), không chia đôi FE/BE như luật cũ
 - [ ] **Cắt 500 trước khi chấm** theo thứ tự: tin có ≥1 role trong tập role của ứng viên (khai + hành vi) đứng trước → rồi `publish DESC`; LIMIT 500. Ứng viên không có role nào → chỉ theo `publish DESC` (mục 6, quyết định 2026-11-04)
 - [ ] Log impression như cũ + **cột cờ "quá 500 tin qua bộ lọc"** (mục 6)
-- [ ] 80 và 500 là hằng số có tên, một chỗ
+- [ ] **30** (pool) · **2** (cap công ty) · **6** (khoảng cách) · **3** (nhìn xuống ở AFTER_APPLY) · **500** là hằng số có tên, một chỗ
 
 ---
 
@@ -88,11 +91,11 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 > Requirement: [mục 10](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#10-if-the-jobseeker-has-not-filled-in-everything) · [mục 12](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12-where-recommended-jobs-appear)
 
 **Checklist**
-- [ ] `GET /me/job-recommendations?surface&size&jobId` giữ đường dẫn. `size` tối đa 80
+- [ ] `GET /me/job-recommendations?surface&size&jobId` giữ đường dẫn. `size` tối đa 30
 - [ ] **Bỏ 4 cấp `heading` / `headingKey`** — FE in tiêu đề cố định của Figma cho từng màn hình. `relaxed` chỉ còn đi vào log
 - [ ] **Không trả `matchPercent`** (hoặc luôn null) — không màn hình nào in %. `reasons` vẫn trả, chỉ Batch apply dùng (T7)
 - [ ] `matchedResumeId` giữ nguyên, chưa in ra
-- [ ] SEARCH strip và JOB_ALERT vẫn đọc feed này (pool 80, xáo trộn) — ngoài phạm vi ticket, chỉ không được vỡ
+- [ ] SEARCH strip và JOB_ALERT vẫn đọc feed này (pool 30, xáo trộn) — ngoài phạm vi ticket, chỉ không được vỡ
 
 ---
 
@@ -105,12 +108,12 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 | **1 · Những việc phù hợp nhất** — 6 thẻ/trang, tối đa 5 trang | **Feed này** (xem T3) | **ticket này** |
 | **2 · "Việc làm cho {vị trí}"** — một hàng 3 thẻ | **Search thuần**, không chấm điểm | **đã tách ra ticket riêng (17/11)** |
 
-> **Khối 2 không còn thuộc ticket này.** Luật của nó khác hẳn — search thuần trên `/jobs/search`, không CV, không trọng số, không xáo trộn, không impression — nên nằm chung ở đây là nguồn gốc của việc đọc nhầm. Xem ticket riêng: *[Onboarding] Dải "Việc làm cho {vị trí}"*, cùng parent SRM-1330.
+> **Khối 2 không còn thuộc ticket này.** Luật của nó khác hẳn — search thuần trên `/jobs/search`, không CV, không trọng số, không xáo trộn, không impression — nên nằm chung ở đây là nguồn gốc của việc đọc nhầm. Xem **SRM-1596** — *[Onboarding] Dải "Việc làm cho {vị trí}" ở màn kết quả*, cùng parent SRM-1330.
 
 **Checklist (chỉ còn khối 1)**
 - [ ] Đọc MỘT lần sau khi lưu câu trả lời (Server Action), phân trang ở client
-- [ ] Pool < 30 → ít trang hơn, **không lấp**
-- [ ] Đúng thứ tự điểm, một công ty một hàng
+- [ ] Pool **là** 30 và cap 2 thường để lại ít hơn → **4 trang là bình thường, 5 là tối đa**. Không lấp
+- [ ] Đúng thứ tự điểm; **cap 2 tin/công ty** + **cách nhau ≥ 6 vị trí** (T3) → hai thẻ cùng công ty không bao giờ cùng một trang
 - [ ] Ứng viên **không bao giờ** thấy % phù hợp hay lý do khớp trên thẻ
 - [ ] Số tin ở bước 3 / 4 của wizard → **SRM-1347**, không làm ở đây
 
@@ -140,10 +143,12 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 > Requirement: [mục 12f](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12f-batch-apply-the-after-apply-popup-itself)
 
-Đây là list quan trọng nhất: **không xáo trộn, luôn xếp điểm cao nhất lên đầu.** Popup lấy **feed này**, không lấy Similar jobs (chốt 2026-11-03 — SRM-1331 bỏ phần popup).
+Đây là list quan trọng nhất: **không xáo trộn, luôn xếp điểm cao nhất lên đầu.** Luật công ty ở đây **lỏng hơn** 3 surface kia — không cap, chỉ không cho đứng liền nhau. Popup lấy **feed này**, không lấy Similar jobs (chốt 2026-11-03 — SRM-1331 bỏ phần popup).
 
 **Checklist**
 - [ ] `surface=AFTER_APPLY`, **không neo** vào tin vừa nộp, tối đa 30 dòng, đúng thứ tự điểm
+- [ ] 🆕 **Không cap công ty ở đây** — thứ hạng phải đúng, và ứng viên gặp 4 tin của cùng một nhà tuyển dụng trên màn này là có ích
+- [ ] 🆕 **Không hai tin cùng công ty liền nhau**: đi theo thứ tự điểm, gặp tin cùng công ty với tin vừa đặt thì **nhìn xuống tối đa 3 dòng** để lấy tin khác công ty; cả 3 cũng cùng công ty thì **chấp nhận lặp** và đi tiếp. Không thẻ nào xê dịch quá **3 bậc** so với hạng của nó
 - [ ] **Không tick sẵn.** Tối đa **5** tin một lượt — checkbox thứ 6 disable kèm dòng nhắc
 - [ ] Chip lý do: tối đa **2**, chỉ tín hiệu dương, từ `reasons` của feed. Không in %
 - [ ] Dropdown sort: "Matching" (mặc định, đúng thứ tự BE gửi) · "Newest" — sort **ở client** trên đúng 30 dòng đã có, không gọi lại BE
@@ -165,7 +170,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 
 **Checklist**
 - [ ] **6 tin**, carousel hiện 3; **mỗi lần bấm mũi tên trượt đúng 1 thẻ**, không nhảy 3 thẻ
-- [ ] Lấy từ pool 80 xáo trộn (`surface=HOMEPAGE`, size 6 sau khi áp một-công-ty-một-hàng)
+- [ ] Lấy từ pool 30 xáo trộn (`surface=HOMEPAGE`, size 6 sau khi áp cap 2 + khoảng cách 6 — T3). 6 thẻ = 6 vị trí nên dải này **không bao giờ** lặp công ty
 - [ ] Thẻ: tiêu đề · công ty · job level · ngày · Apply · sao. **Không %, không chip lý do**
 - [ ] Không sàn điểm; pool < 6 → hiện ít hơn, không lấp
 - [ ] Tiêu đề cố định "Việc làm phù hợp với bạn". Chưa onboarding → banner nhắc ở trên vẫn là lời mời, dải vẫn render từ những gì profile có
@@ -184,7 +189,9 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 3 | Ứng viên khai Marketing · HCM, 90 ngày qua lưu 2 tin kế toán | Tin kế toán ở HCM vào pool, chấm vị trí ở mức 34 (suy ra) |
 | 4 | Mở 2 tin e-commerce (chưa đủ 3) | Ngành e-commerce **không** vào tập hành vi |
 | 5 | Reload dashboard 3 lần trong ngày | Cùng 6 thẻ, cùng thứ tự. Ngày mai khác |
-| 6 | Pool có 4 tin FPT đứng đầu | Một hàng không có 2 thẻ FPT; Batch apply vẫn liệt kê cả 4 |
+| 6 | Pool có 4 tin FPT đứng đầu | Onboarding / Job detail / My dashboard: **chỉ 2 tin FPT**, và hai tin đó cách nhau ≥ 6 vị trí (onboarding: khác trang). Batch apply: **vẫn đủ 4**, nhưng không có 2 tin FPT liền nhau |
+| 6b | Pool chỉ có 3 công ty, mỗi công ty 2 tin (6 tin) | Onboarding: 6 thẻ, không hai thẻ cùng công ty liền nhau. Thêm tin thứ 3 của một công ty vào pool → tin đó **bị cap bỏ**, danh sách còn 6 |
+| 6c | Batch apply, 10 tin đầu đều của MB Bank | Hai tin MB Bank **có thể** đứng cạnh nhau (nhìn xuống 3 dòng không thấy công ty khác) — đây là hành vi đúng, không phải bug |
 | 7 | Đã nộp đơn, sau đó rút đơn | Tin đó vẫn **không** quay lại feed, ở mọi vị trí |
 | 8 | Tin đăng 2 lần cùng công ty / tiêu đề / tỉnh | Chỉ 1 dòng trong pool |
 | 8b | Khai Frontend · HCM, lọc xong chỉ còn 3 tin | Bỏ G4 chạy lại → đủ ≥6 thì dừng (tin Frontend ở Hà Nội / remote vào); log có `relaxed`; tiêu đề không đổi. Trên job detail: không nới, hiện 3 tin |
@@ -192,7 +199,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 9 | Job detail, đã đăng nhập | Không tin nào xuất hiện ở cả Similar jobs lẫn Recommended jobs |
 | 10 | Job detail, chưa đăng nhập | Section 2 = dòng 7–12 của Similar jobs, tiêu đề "Có thể bạn quan tâm" |
 | 11 | Popup sau khi nộp đơn, tick 6 tin | Checkbox thứ 6 không tick được; bấm nút → 5 đơn, 1 email |
-| 12 | Onboarding chọn 3 vị trí | Section 1 không đổi; section 2 đã tách sang ticket riêng |
+| 12 | Onboarding chọn 3 vị trí | Section 1 không đổi; section 2 đã tách sang **SRM-1596** |
 | 13 | Tin USD, ứng viên VND, dải thực giao nhau | Ăn đủ 12 điểm; xoá tỷ giá → 0 điểm |
 | 14 | Mở admin General settings | Không còn tab Recommended jobs; tỷ giá vẫn sửa được |
 | 15 | Bất kỳ màn hình nào | Không có % nào được in |
