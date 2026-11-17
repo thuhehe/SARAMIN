@@ -55,10 +55,86 @@ node: { code: row.id, label: industryLabel(row, locale), children: [] }   // nam
 | **R2** | **Không đổi thuật toán khớp của từng picker.** `taxonomy-picker` đang dùng `includes`, `job-role-selector` đang dùng `matchesWordPrefix` — giữ nguyên, chỉ **mở rộng vùng tìm** từ một tên thành hai. Đổi thuật toán là rủi ro hồi quy không cần có trong task này. |
 | **R3** | Bỏ dấu + hạ chữ thường bằng `foldVi` (`lib/fold-vi.ts`), không tự viết hàm chuẩn hoá mới. `ha noi` vẫn phải ra `Hà Nội`, `ke toan` vẫn phải ra `Kế toán viên`. |
 | **R4** | **Nhãn hiển thị không đổi.** Trang EN vẫn in tên EN, trang VI vẫn in tên VI. Task này sửa cái được **tìm**, không sửa cái được **hiện**. |
-| **R5** | Khi một dòng chỉ khớp **qua tên ngôn ngữ kia**, hiện tên đó nhỏ và mờ bên cạnh nhãn — đúng cách `job-quick-pick.tsx` đang làm (`<AltName>`). Không có nó, người dùng gõ `bán hàng` và nhận về một danh sách toàn tiếng Anh sẽ tưởng kết quả sai. |
+| **R5** | **Mọi dòng trong danh sách phải có ít nhất một đoạn được highlight** — trong nhãn, trong dòng phụ, hoặc trong tiêu đề nhóm của nó. Một dòng không có highlight nào là **bug**, không phải lựa chọn thiết kế: người dùng gõ `bán hàng`, nhận về `Retail salesperson` không có chữ nào sáng lên, và kết luận là hệ thống trả sai. Cách hiện cho từng trạng thái ở **mục 2b**. |
 | **R6** | **Không gọi thêm API khi client đã có đủ dữ liệu.** Gần như mọi catalogue đã về client với cả hai tên — chỉ bị service bỏ đi. SRM-938 phải fetch catalogue lần hai vì endpoint facet chỉ trả một tên; mục 7 làm để lần fetch đó biến mất, không phải để nhân nó ra thêm. |
 | **R7** | Locale `ko`: **hiển thị** theo quy tắc hiện có, **tìm kiếm** vẫn là VI + EN (wire không mang `nameKo` cho phần lớn catalogue). |
 | **R8** | Chỉ khớp theo **tên**, không khớp theo `code`. `code` là slug kỹ thuật (`sales-representative`), người dùng không gõ nó, và để nó vào vùng tìm sẽ cho ra kết quả không giải thích được. |
+
+---
+
+## 2b. Hiển thị kết quả — bốn trạng thái, và cách chia nhóm
+
+> **Mockup (nguồn chân lý cho UI):**
+> · [Màn hiện tại — SRI-2337](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=7555-38157)
+> · [Khớp qua tên role](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=7565-23363)
+> · [Khớp qua tên category](https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=7566-23363)
+
+Ô tìm kiếm hiện tại **đã** highlight chữ đã gõ trong kết quả. Đó chính là lý do tìm song ngữ không thể chỉ "thêm dòng vào danh sách": một dòng khớp qua ngôn ngữ kia sẽ nằm giữa các dòng có chữ sáng, mà bản thân nó không sáng chữ nào. Phải nói cho người dùng biết **tại sao** nó ở đó.
+
+### 2b-1. Bốn trạng thái
+
+| Khớp ở đâu | Dòng hiển thị | Dòng phụ (12px, mờ, dưới nhãn) |
+|---|---|---|
+| **Tên đang hiển thị** | highlight tại chỗ | **không có** — y như hôm nay, không thêm gì |
+| **Tên VI của role** | nhãn để trơn | tên VI của **riêng role** + highlight — `VI · Nhân viên bán hàng` |
+| **Tên VI của category** | nhãn để trơn | **không có** — tên category nói MỘT LẦN ở tiêu đề nhóm (xem 2b-3) |
+| **Cả role lẫn category** | nhãn để trơn | cả chuỗi `category > role`, **cả hai đoạn** cùng highlight |
+
+**Không bao giờ dịch cả chuỗi khi chỉ một đoạn khớp.** Dòng phụ tồn tại để giải thích kết quả, không phải để dịch dòng chính. `Kinh doanh & Thương mại > Nhân viên bán hàng` dài xấp xỉ nhãn gốc, nên hai dòng dài bằng nhau sẽ đọc thành **hai kết quả** chứ không phải một kết quả kèm chú thích. Chỉ khi cả hai đoạn cùng khớp thì chuỗi đầy đủ mới chính đáng — lúc đó cả hai đoạn đều có chữ sáng.
+
+**Tiền tố `VI ·` / `EN ·` là bắt buộc.** Không có nó, dòng mờ bên dưới đọc như một chú thích vu vơ. Tiền tố là tên của ngôn ngữ **đang không hiển thị**: trang EN thì `VI ·`, trang VI thì `EN ·`.
+
+**Hai tên trùng nhau thì không có dòng phụ.** `Digital Marketing` viết y hệt ở cả hai cột — in lại lần nữa là nhiễu, không phải thông tin.
+
+### 2b-2. Chia nhóm theo độ cụ thể của chỗ khớp
+
+Thứ tự: **khớp tên đang hiển thị** → **khớp tên role** → **khớp tên category**. Người dùng đọc từ trên xuống, gặp cái quen trước, và tới nhóm lạ thì đã được báo trước.
+
+```
+Matching the name shown · 2          ← chỉ hiện khi nhóm có dòng
+☐ Sales, Marketing, Trade > Bán hàng công nghiệp
+☐ Sales, Marketing, Trade > Bán hàng trực tuyến
+──────────────────────────────────────────────
+Also matching in Vietnamese · 3
+☐ Sales, Marketing, Trade > Retail salesperson
+   VI · Nhân viên bán hàng
+...
+```
+
+**Tiêu đề nhóm chỉ xuất hiện khi nhóm đó có dòng.** Gõ `kinh doanh` ở trang EN thì không dòng nào khớp tên đang hiển thị → nhóm đầu biến mất hẳn, không để lại khoảng trống hay tiêu đề rỗng. Khi chỉ còn **một** nhóm, tiêu đề của nó vẫn giữ — nó chính là lời giải thích.
+
+### 2b-3. Khớp ở category: nói MỘT LẦN ở tiêu đề, không lặp từng dòng
+
+Đây là ca dễ làm hỏng nhất. Vùng tìm của `category-drill-modal` ghép cả tên category lẫn tên role, nên khi category khớp thì **mọi role dưới nó đều khớp** — 12, 20, có khi hơn. Nếu mỗi dòng tự in `VI · Kinh doanh & Thương mại`, kết quả là một cột chữ **giống hệt nhau** lặp 20 lần, và nó nhấn chìm đúng những dòng mà tên role mới là chỗ khớp.
+
+Thay vào đó, gom thành một nhóm riêng và để tiêu đề mang tên category (có highlight), các dòng bên dưới để **trơn**:
+
+```
+Category “Kinh doanh & Thương mại” matched — every role under it · 12
+☐ Sales, Marketing, Trade > Retail salesperson
+☐ Sales, Marketing, Trade > Industrial Sales
+```
+
+Các dòng này **không vi phạm R5**: chữ sáng nằm ở tiêu đề nhóm, và tiêu đề áp cho mọi dòng trong nhóm.
+
+### 2b-4. Sửa nhãn "Select all that contain …"
+
+Hôm nay dòng cuối ghi **"Select all that contain `ma`"**. Với tìm song ngữ câu này thành **sai sự thật** — nó sẽ chọn cả những dòng hiển nhiên không chứa chuỗi đã gõ. Đổi thành:
+
+- EN: **Select all results for “bán hàng”**
+- VI: **Chọn tất cả kết quả cho “bán hàng”**
+
+### Acceptance — mục 2b
+
+- [ ] Không có dòng nào trong danh sách không có highlight (soát bằng mắt trên cả 3 truy vấn ở mục 9, cả 2 locale).
+- [ ] Dòng khớp trực tiếp **không** mọc thêm dòng phụ — so ảnh trước/sau phải giống hệt.
+- [ ] Dòng khớp qua tên role hiện đúng tên VI **của role**, không kèm category.
+- [ ] Khớp qua category: tên category hiện **một lần** ở tiêu đề nhóm; không dòng nào trong nhóm đó có dòng phụ.
+- [ ] Khớp cả hai: dòng phụ là `category > role`, cả hai đoạn cùng sáng.
+- [ ] Trang EN gõ `kinh doanh` → nhóm "Matching the name shown" **không xuất hiện**, không để lại tiêu đề rỗng hay khoảng trắng.
+- [ ] Tiền tố đúng theo locale: trang EN là `VI ·`, trang VI là `EN ·`.
+- [ ] Nhãn dòng cuối không còn chữ "contain"/"chứa".
+- [ ] Thứ tự nhóm: tên hiển thị → tên role → tên category, không đổi giữa hai lần mở cùng một truy vấn.
 
 ---
 
@@ -97,7 +173,7 @@ node: { code: row.id, label: industryLabel(row, locale), children: [] }   // nam
 
 > `searchText` hiện có của `toBilingualItems` là một chuỗi gộp — tìm được, nhưng **không** biết tên nào đã khớp, nên không vẽ được gợi ý R5. Thay `searchText` bằng `altLabel` và bỏ `toBilingualItems`, để cả dự án còn **một** cách làm thay vì hai.
 
-**4c. Một hàm lọc dùng chung.** `matchesBilingual(label, altLabel, query)` — `foldVi` cả hai vế, trả `"label" | "alt" | null`. Mọi picker ở mục 5–7 gọi hàm này; không picker nào tự gọi `foldVi` trên một tên nữa.
+**4c. Một hàm lọc dùng chung, và nó phải trả về CHỖ KHỚP chứ không phải true/false.** `matchesBilingual(row, query)` trả `"label" | "altRole" | "altCategory" | "altBoth" | null`. Mục 2b chia nhóm và chọn dòng phụ theo đúng giá trị này, nên một hàm trả boolean là không đủ — đó cũng là lý do `searchText` (chuỗi gộp) phải biến mất ở 4b. Mọi picker ở mục 5–7 gọi hàm này; không picker nào tự gọi `foldVi` trên một tên nữa.
 
 ### Acceptance — Task 1
 
@@ -105,7 +181,7 @@ node: { code: row.id, label: industryLabel(row, locale), children: [] }   // nam
 - [ ] Toàn bộ test cũ của SRM-938 vẫn xanh, không sửa assertion nào.
 - [ ] `toItems()` trả `altLabel` cho mọi catalogue; `searchText` và `toBilingualItems` đã bị xoá, không còn ai tham chiếu.
 - [ ] `altLabel` là `undefined` khi `name_vi === name_en` (ví dụ `Digital Marketing`) — không hiện gợi ý trùng chính nó.
-- [ ] Unit test cho `matchesBilingual`: khớp qua label, khớp qua alt, khớp cả hai (trả `"label"`), không khớp.
+- [ ] Unit test cho `matchesBilingual`: trả đúng `"label"` / `"altRole"` / `"altCategory"` / `"altBoth"` / `null` cho năm ca tương ứng — đây là đầu vào của cách chia nhóm ở mục 2b, sai một giá trị là sai cả màn hình.
 
 ---
 
@@ -113,10 +189,10 @@ node: { code: row.id, label: industryLabel(row, locale), children: [] }   // nam
 
 Ba component, sửa cùng một kiểu. **Hai màn hình dùng chung component, nên sửa một lần là xong cả hai** — nhưng phải test cả hai.
 
-- `taxonomy-picker.tsx` — đổi `foldVi(o.label).includes(needle)` sang `matchesBilingual(o.label, o.altLabel, query)`.
+- `taxonomy-picker.tsx` — đổi `foldVi(o.label).includes(needle)` sang `matchesBilingual(o, query)`.
 - `category-drill-modal.tsx` — vùng tìm hiện ghép `role.label` với `categoryLabel`; thêm `altLabel` của **cả role lẫn category** vào đó. Gõ `sales` ở trang VI phải mở được nhóm `Kinh doanh & Thương mại` (EN: `Sales, Marketing, Trade`).
 - `job-role-picker.tsx` — vùng tìm cũng ghép `categoryLabel` với `role.label`, sửa cùng kiểu.
-- Dòng kết quả khớp qua `altLabel` hiện `<AltName>` bên phải nhãn (R5).
+- Dòng kết quả vẽ theo **mục 2b**: dòng phụ nằm **dưới** nhãn (không phải bên phải — nhãn ở đây là chuỗi `Category > Role`, đã dài sẵn), 12px, màu mờ, chữ đã gõ sáng trong đó. Các dòng khớp qua category gom thành nhóm riêng và **không** có dòng phụ.
 
 **Locations** cần thêm một bước: `fetchRegions()` đọc `/api/{lang}/regions`, endpoint này chỉ trả **một** `name` đã localize. Đổi nguồn của `options.locations` sang **`GET /api/{lang}/regions/provinces`** — endpoint đã tồn tại, trả đúng `{ id, code, nameVi, nameEn, parentId }`, và javadoc của nó nói thẳng là được tạo ra cho đúng tình huống "picker phải render được bằng cả hai thứ tiếng". `/regions` giữ nguyên cho cây Miền › Tỉnh › Phường của trang tìm việc.
 
@@ -170,8 +246,8 @@ Catalogue 783 kỹ năng, phần lớn là thuật ngữ nghề — đây là ô
 | Endpoint | DTO | Đổi |
 |---|---|---|
 | `GET /api/{lang}/job-attribute-facets` | `JobAttributeFacetDto(id, code, name, categoryCode, kindCode, kindName, count)` | **thêm** `nameVi`, `nameEn` |
-| `GET /api/{lang}/job-role-facets` | `JobRoleFacetDto` | **thêm** `nameVi`, `nameEn` |
-| `GET /api/{lang}/job-category-skills` · `/job-role-skills` | | **thêm** `nameVi`, `nameEn` |
+| `GET /api/{lang}/job-role-facets` | `JobRoleFacetDto(id, code, name, categoryCode, count)` | **thêm** `nameVi`, `nameEn` |
+| `GET /api/{lang}/job-category-skills` · `/job-role-skills` | resolve một `name` ở tầng application | **thêm** `nameVi`, `nameEn` |
 
 Thuần **additive**: `name` giữ nguyên tên, kiểu, vị trí và giá trị; không client nào phải đổi theo. Dữ liệu đã có sẵn trên entity (`job_attribute.name_vi/name_en`, `skill.name_vi/name_en`), chỉ là mapper đang resolve sớm.
 
@@ -200,6 +276,14 @@ Thuần **additive**: `name` giữ nguyên tên, kiểu, vị trí và giá tr�
 - [ ] Hiring → Tìm ứng viên, trang EN, ô tìm trong bộ lọc gõ `kế toán` → ra các nút tiếng Anh tương ứng; trang VI gõ `accounting` → ra tiếng Việt.
 - [ ] Skill picker: như trên.
 - [ ] Tiêu chí đã lưu (saved criteria) và nhãn chip không đổi.
+
+---
+
+# UI
+
+https://www.figma.com/design/ljutPxIbZWjbmpaZfSyeBN/Saramin?node-id=7565-23363&t=MxdoTWnNWM8RQ7RZ-1
+
+![](https://bb-project-management.s3.ap-southeast-1.amazonaws.com/attachments/9fa94971-292f-4248-b414-2352cadac928.png)
 
 ---
 
@@ -241,7 +325,7 @@ Hướng mở rộng sau (không làm bây giờ): bảng `job_role_alias` / `in
 
 ## 11. Không làm trong task này
 
-- ❌ **Ô tìm kiếm từ khoá việc làm** (header `/viec-lam`) — đó là full-text trên nội dung tin tuyển dụng ở svn-be, có bộ từ đồng nghĩa riêng, không phải picker master data.
+- ❌ **Ô tìm kiếm từ khoá việc làm** (ô keyword trên dải tìm kiếm) — đó là full-text trên nội dung tin tuyển dụng ở svn-be, có bộ từ đồng nghĩa riêng, không phải picker master data.
 - ❌ Tìm kiếm bằng **tiếng Hàn**. Wire không mang `nameKo` cho phần lớn catalogue; hiển thị `ko` giữ nguyên quy tắc hiện có.
 - ❌ Đổi **nhãn hiển thị**, thứ tự dòng, cap chọn, `MAX_ROWS`, hay thuật toán khớp của bất kỳ picker nào (R2, R4).
 - ❌ Thêm/sửa/dịch **dòng master data**. Mục 10 là việc của BA.
