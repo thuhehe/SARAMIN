@@ -1310,10 +1310,10 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'JOB C KEEPS 42 OF ITS 75 FROM ONE FACT — Marketing Executive is the role Linh TYPED. Pay 25% short, wrong industry, not one skill in common, and it still lands at 75: what she says she wants outranks almost everything else.',
+              'JOB C KEEPS 42 OF ITS 75 FROM ONE FACT — Marketing Executive is the role Linh TYPED. Pay 25% short, not one skill in common, no industry points — nobody in this example gets any — and it still lands at 75: what she says she wants outranks almost everything else.',
               'JOBS A AND B SCORE 34, NOT 42 — right role, but learned from a job she applied to and one she saved. Inferred, so 80%. B is only in the list at all because of behaviour: Bình Dương is nowhere in her profile.',
-              'JOB B LOSES 3 POINTS FOR A FIELD THE EMPLOYER LEFT BLANK, and they are NOT handed to the other signals — spread them and B reads 84 ÷ 97 = 87% and beats A, a higher score for stating less (section 9).',
-              'ROUNDED ONCE: A is 89.7 → 90. The Shopee job she applied to is in none of the columns — applied is gone for good (section 4) — but its role is why A and B score 34 at all.',
+              'JOB B LOSES 3 POINTS FOR A FIELD THE EMPLOYER LEFT BLANK, and they are NOT handed to the other signals. Spread them and B would read 80 ÷ 97 = **82%** instead of 80 — a higher number for having stated less. Here that is not enough to overtake A at 86; section 9 is the case where it does flip the order.',
+              'ROUNDED ONCE: A is 85.7 → 86. The Shopee job she applied to is in none of the columns — applied is gone for good (section 4) — but its role is why A and B score 34 at all.',
               'WHAT SHE SEES: all three go into her pool of 30. Batch apply lists A, B, C in that order; the dashboard, job detail and onboarding draw their own shuffled cards from the same pool, and A and B are both Lazada, so they can never be within six positions of each other — on a six-card rail that means only one of them is ever on screen (section 2). No number is ever printed.',
             ],
           },
