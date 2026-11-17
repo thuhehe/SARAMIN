@@ -76,13 +76,14 @@ Thay đổi, tóm tắt: **một pool 30 tin tốt nhất**, xáo trộn gieo th
 - [ ] Cắt **top 30** theo điểm. **Không ngưỡng điểm.** ⚠️ Pool đã đổi hai lần: 80 → **50** (16/11) → **30** (17/11). Code trên dev vẫn là 80
 - [ ] Bỏ của `JobFeed`: ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện. **Cap công ty thì giữ** — nhưng là số cứng, không phải `max(2, size/10)` của v3; xem hai gạch dưới
 - [ ] **Xáo trộn gieo theo (jobseeker id + ngày + surface; JOB_DETAIL thêm id tin đang xem)** cho ONBOARDING / HOMEPAGE / JOB_DETAIL — ba màn hình không bao giờ ra cùng 6 thẻ, cùng màn hình thì cả ngày không đổi, **không xáo lại mỗi lần tải trang**. AFTER_APPLY giữ nguyên thứ tự điểm (chốt 2026-11-04)
-- [ ] 🆕 **Tối đa 2 tin / công ty** (ONBOARDING · JOB_DETAIL · HOMEPAGE) — đi xuống danh sách đã chấm, gặp tin thứ 3 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm. **AFTER_APPLY không áp cap này** (T7)
+- [ ] 🆕 **Tối đa 3 tin / công ty** (ONBOARDING · JOB_DETAIL · HOMEPAGE) — đi xuống danh sách đã chấm, gặp tin thứ 4 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm. **AFTER_APPLY không áp cap này** (T7)
+  - 3 ≈ **10% của pool 30**. Đó là cách chọn con số, **không phải công thức**: viết `3` là hằng số, pool đổi thì chốt lại bằng tay
 - [ ] 🆕 **Hai tin cùng công ty cách nhau ít nhất 6 vị trí** (cùng 3 surface trên) — **thay cho luật "một công ty một hàng"**, vì hàng phụ thuộc bề ngang màn hình: trên mobile một hàng = một thẻ. Dựng danh sách từng vị trí một, lấy tin xếp cao nhất còn lại mà công ty của nó **chưa xuất hiện trong 5 vị trí gần nhất**; không còn tin nào hợp lệ thì vẫn lấp (ghi cờ vào log)
   - Hệ quả: màn 6 thẻ (Job detail, My dashboard) **không bao giờ** lặp công ty — 6 vị trí không lọt vừa trong 6 thẻ. Onboarding 6 thẻ/trang → hai thẻ cùng công ty **không bao giờ cùng một trang**
   - Làm ở **một chỗ** (BE), không chia đôi FE/BE như luật cũ
 - [ ] **Cắt 500 trước khi chấm** theo thứ tự: tin có ≥1 role trong tập role của ứng viên (khai + hành vi) đứng trước → rồi `publish DESC`; LIMIT 500. Ứng viên không có role nào → chỉ theo `publish DESC` (mục 6, quyết định 2026-11-04)
 - [ ] Log impression như cũ + **cột cờ "quá 500 tin qua bộ lọc"** (mục 6)
-- [ ] **30** (pool) · **2** (cap công ty) · **6** (khoảng cách) · **3** (nhìn xuống ở AFTER_APPLY) · **500** là hằng số có tên, một chỗ
+- [ ] **30** (pool) · **3** (cap công ty) · **6** (khoảng cách) · **3** (nhìn xuống ở AFTER_APPLY) · **500** là hằng số có tên, một chỗ
 
 ---
 
@@ -112,8 +113,8 @@ Thay đổi, tóm tắt: **một pool 30 tin tốt nhất**, xáo trộn gieo th
 
 **Checklist (chỉ còn khối 1)**
 - [ ] Đọc MỘT lần sau khi lưu câu trả lời (Server Action), phân trang ở client
-- [ ] Pool **là** 30 và cap 2 thường để lại ít hơn → **4 trang là bình thường, 5 là tối đa**. Không lấp
-- [ ] Đúng thứ tự điểm; **cap 2 tin/công ty** + **cách nhau ≥ 6 vị trí** (T3) → hai thẻ cùng công ty không bao giờ cùng một trang
+- [ ] Pool **là** 30 → **5 trang là tối đa**; cap thường để lại ít hơn. Không lấp
+- [ ] Đúng thứ tự điểm; **cap 3 tin/công ty** + **cách nhau ≥ 6 vị trí** (T3) → một công ty được tối đa 3 trong 30 thẻ, và **không bao giờ hai thẻ cùng một trang**
 - [ ] Ứng viên **không bao giờ** thấy % phù hợp hay lý do khớp trên thẻ
 - [ ] Số tin ở bước 3 / 4 của wizard → **SRM-1347**, không làm ở đây
 
@@ -170,7 +171,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 
 **Checklist**
 - [ ] **6 tin**, carousel hiện 3; **mỗi lần bấm mũi tên trượt đúng 1 thẻ**, không nhảy 3 thẻ
-- [ ] Lấy từ pool 30 xáo trộn (`surface=HOMEPAGE`, size 6 sau khi áp cap 2 + khoảng cách 6 — T3). 6 thẻ = 6 vị trí nên dải này **không bao giờ** lặp công ty
+- [ ] Lấy từ pool 30 xáo trộn (`surface=HOMEPAGE`, size 6 sau khi áp cap 3 + khoảng cách 6 — T3). 6 thẻ = 6 vị trí nên dải này **không bao giờ** lặp công ty
 - [ ] Thẻ: tiêu đề · công ty · job level · ngày · Apply · sao. **Không %, không chip lý do**
 - [ ] Không sàn điểm; pool < 6 → hiện ít hơn, không lấp
 - [ ] Tiêu đề cố định "Việc làm phù hợp với bạn". Chưa onboarding → banner nhắc ở trên vẫn là lời mời, dải vẫn render từ những gì profile có
@@ -189,8 +190,8 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 3 | Ứng viên khai Marketing · HCM, 90 ngày qua lưu 2 tin kế toán | Tin kế toán ở HCM vào pool, chấm vị trí ở mức 34 (suy ra) |
 | 4 | Mở 2 tin e-commerce (chưa đủ 3) | Ngành e-commerce **không** vào tập hành vi |
 | 5 | Reload dashboard 3 lần trong ngày | Cùng 6 thẻ, cùng thứ tự. Ngày mai khác |
-| 6 | Pool có 4 tin FPT đứng đầu | Onboarding / Job detail / My dashboard: **chỉ 2 tin FPT**, và hai tin đó cách nhau ≥ 6 vị trí (onboarding: khác trang). Batch apply: **vẫn đủ 4**, nhưng không có 2 tin FPT liền nhau |
-| 6b | Pool chỉ có 3 công ty, mỗi công ty 2 tin (6 tin) | Onboarding: 6 thẻ, không hai thẻ cùng công ty liền nhau. Thêm tin thứ 3 của một công ty vào pool → tin đó **bị cap bỏ**, danh sách còn 6 |
+| 6 | Pool có 4 tin FPT đứng đầu | Onboarding / Job detail / My dashboard: **tối đa 3 tin FPT**, và hai tin bất kỳ cách nhau ≥ 6 vị trí (onboarding: khác trang). Batch apply: **vẫn đủ 4**, nhưng không có 2 tin FPT liền nhau |
+| 6b | Pool chỉ có 3 công ty, mỗi công ty 3 tin (9 tin) | Onboarding: 9 thẻ, không hai thẻ cùng công ty liền nhau (2 trang). Thêm tin thứ 4 của một công ty vào pool → tin đó **bị cap bỏ**, danh sách vẫn 9 |
 | 6c | Batch apply, 10 tin đầu đều của MB Bank | Hai tin MB Bank **có thể** đứng cạnh nhau (nhìn xuống 3 dòng không thấy công ty khác) — đây là hành vi đúng, không phải bug |
 | 7 | Đã nộp đơn, sau đó rút đơn | Tin đó vẫn **không** quay lại feed, ở mọi vị trí |
 | 8 | Tin đăng 2 lần cùng công ty / tiêu đề / tỉnh | Chỉ 1 dòng trong pool |
