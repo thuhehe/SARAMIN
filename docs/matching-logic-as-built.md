@@ -81,11 +81,14 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 - Nhiều CV: chấm **từng CV**, mỗi tin giữ **điểm cao nhất**.
 - Ứng viên **không bao giờ thấy điểm**: API trả `matchPercent = null`, không `heading`, không `relaxed`; `reasons` vẫn trả (chỉ Batch apply dùng làm chip).
 
-### 1.4 Pool 80 và cách chia cho từng surface
+### 1.4 Pool 50, cap 3 tin/công ty và cách chia cho từng surface
 
 - Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 50** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11; Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan") và Long đã sửa — chưa lên dev (mục 8).
+- **Tối đa 3 tin / công ty trong pool** — **Thu chốt 17/11**, **chưa có trong code**. Đi xuống danh sách đã chấm, gặp tin thứ 4 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm, không giữ chỗ: công ty chỉ đủ sức giành 1 chỗ thì vẫn 1 chỗ. Cắt **ngay ở bước lấy pool** nên mọi surface đều hưởng, **kể cả Batch apply** (hôm nay Batch apply giữ mọi công ty).
+  - Lý do: onboarding trên prod hiện 5 trang × 6 thẻ **toàn MB Bank**. Luật "một công ty một hàng" chỉ giãn được vài thẻ đầu; hết công ty khác nhau là nó lấp lặp lại (gạch dưới), nên không có cap thì pool 50 có thể là 50 tin của một nhà tuyển dụng.
+  - Vì sao số cứng chứ không phải %: % siết đúng lúc danh sách đã ngắn (10% của 8 tin = 1) và nới đúng lúc danh sách đầy (10% của 50 = 5, tức mỗi hàng onboarding một thẻ). Mỗi surface lại rút số thẻ khác nhau từ cùng một pool nên "10%" ra mỗi màn hình một con số, không viết thành một luật kiểm thử được. 3/50 ≈ 6%.
 - Nếu có tin neo (`jobId`): tin đó **và bản trùng của nó** bị loại khỏi pool; `exclude` (≤20 id) loại thêm — dùng cho job detail để không ghi impression cho thẻ carousel.
-- Một hàng **6 thẻ**: **một công ty một hàng** — gặp công ty trùng thì lấy thẻ kế tiếp; hết công ty khác nhau thì **vẫn lấp đủ 6** (lặp công ty) để các hàng sau không lệch vị trí.
+- Một hàng **6 thẻ**: **một công ty một hàng** — gặp công ty trùng thì lấy thẻ kế tiếp; hết công ty khác nhau thì **vẫn lấp đủ 6** (lặp công ty) để các hàng sau không lệch vị trí. Đường lùi này đúng, nhưng nó chính là lý do luật trông như hỏng trên prod; có cap 3 ở trên thì gần như không bao giờ chạy tới.
 
 | Surface | Thứ tự |
 |---|---|
@@ -101,7 +104,8 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 
 - `recommendation_impression`: một dòng **mỗi thẻ hiện** — ứng viên · tin · điểm · `v4` · rate version · surface · vị trí · `relaxed` · `pool_capped`. `JOB_ALERT` ghi **sau khi gửi** mail.
 - Click thẻ → `clicked_at`; dismiss → loại vĩnh viễn như tin đã nộp đơn.
-- Không còn (so với v3): ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, cap công ty trong pool, 4 cấp tiêu đề, trọng số chỉnh ở admin, renormalise.
+- Không còn (so với v3): ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, 4 cấp tiêu đề, trọng số chỉnh ở admin, renormalise.
+- **Cap công ty trong pool** có ở v3, v4 bỏ đi — và **Thu chốt 17/11 đưa lại**, ở mức 3 (mục 1.4).
 
 ---
 
@@ -219,7 +223,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 5. **Tỷ giá USD/VND** do admin nhập là thứ duy nhất chỉnh được; dùng hai chiều; thiếu → tín hiệu lương = 0 ở A, B, C.
 6. **Ứng viên không bao giờ thấy %**; NTD thấy % trên board và không thấy trên "Hồ sơ mới cập nhật".
 7. **Năm → bậc** một bảng (mục 4.3).
-8. **Một công ty một hàng 6 thẻ** ở mọi surface có hàng (trừ Batch apply, là danh sách).
+8. **Một công ty một hàng 6 thẻ** ở mọi surface có hàng (trừ Batch apply, là danh sách), và **tối đa 3 tin / công ty trong cả pool** (Thu chốt 17/11, chưa code). Similar jobs đã có luật tương đương từ đầu: **2 tin / công ty** trong 20 tin giữ lại.
 9. Thang occupation **Role › Group › Category** viết sẵn 3 tầng ở cả A, B, C; Group **chưa có dữ liệu** cho tới SRM-1315.
 10. **Một công tắc email** "Nhận email thông báo từ hệ thống" (mặc định bật) chi phối JS 3 và khối gợi ý JS 4 / JS 5; topic `JOB_ALERT` cũ không còn ai đọc.
 
@@ -246,6 +250,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 | 15 | Email JS 4 / JS 5 | Engine E riêng (mục 5) | Trang NEW logic không nhắc email sau khi nộp đơn | SRM-1433 — **thêm vào spec** như một nơi dùng matching |
 | 16 | Email JS 3 — ai nhận | Mọi ứng viên ACTIVE chưa tắt công tắc (mặc định bật) | Spec: opt-in topic Job alert, mặc định tắt | SRM-1433 (10/11) → **sửa spec** |
 | 17 | Rút đơn | Giải phóng tin; carousel Similar jobs hiện lại tin đã rút | Spec: "có dòng đơn là ẩn" ở cả 1338 lẫn 1331 | SRM-1551 (16/11, chốt của BA) → **sửa spec** 1331 |
+| 18 | Cap công ty trong pool engine A | **Không có** — chỉ "một công ty một hàng", và hàng vẫn lấp lặp khi hết công ty | Spec cũ: "NO PER-COMPANY SCORING RULE" | **Thu chốt 17/11: tối đa 3 tin / công ty**, cắt ở bước lấy pool (ảnh hưởng cả Batch apply). Spec đã sửa → **làm code + sửa ticket** |
 
 ---
 
@@ -257,3 +262,4 @@ Theo comment của Long trên SRM-1330; code trên `origin/dev` và các nhánh 
 2. **Bỏ bậc tỉnh lân cận** ở cả Recommended jobs (10) và Similar jobs (9): khác tỉnh = 0. Thứ hạng không đổi vì bậc này chưa bao giờ đạt.
 3. **Pool 80 → 50** cho engine A — **Thu đã chốt 50 chiều 16/11** (80 hơi rộng, lẫn nhiều job không liên quan). Chờ lên dev.
 4. **Company Home**: bấm thẻ CÓ trừ lượt mở CV miễn phí; hết lượt → thấy CV che hết chi tiết; thẻ vẫn luôn hiện. (Trùng với cách dev đang chạy — thẻ mở đúng trang CV của Search talent.)
+5. **Cap 3 tin / công ty trong pool** engine A — **Thu chốt 17/11**. Chưa có trong code và chưa có ticket; spec đã sửa.
