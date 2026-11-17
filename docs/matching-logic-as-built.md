@@ -12,8 +12,8 @@ Năm engine, không engine nào nuôi hai chỗ cùng một câu trả lời:
 
 | # | Nơi hiển thị | Ai thấy | Engine · API | Số thẻ | Thứ tự | Ghi chú |
 |---|---|---|---|---|---|---|
-| 1 | **Onboarding — màn kết quả, section 1** ("những việc phù hợp nhất") | Ứng viên vừa xong wizard | **A** Recommended jobs · `GET /me/job-recommendations?surface=ONBOARDING&size=30` | 30 tin, FE chia **6 / trang** (≤5 trang) | **Đúng thứ tự điểm**, một công ty một hàng (Thu chốt 12/11) | Đọc một lần sau khi lưu câu trả lời; pool mỏng → ít trang hơn, không lấp. Nới được (mục 1.2) |
-| 2 | **Onboarding — section 2** "Jobs for {role}" | Như trên | **Search thuần** `GET /jobs/search?roleCodes=…&sort=posted` — không chấm điểm | Strip, **3 / trang** | Tin **đúng role** trước, rồi phần còn lại của **category** đó; trong mỗi phần: mới nhất trước | Trong ≤3 role đã chọn ở bước 1, lấy role có **category nhiều tin nhất** (hoà → role chọn trước). Bỏ mọi id section 1 đang hiện **trước khi** chia trang |
+| 1 | **Onboarding — màn kết quả, section 1** ("những việc phù hợp nhất") | Ứng viên vừa xong wizard | **A** Recommended jobs · `GET /me/job-recommendations?surface=ONBOARDING&size=30` | 30 tin, FE chia **6 / trang** (≤5 trang) | **Đúng thứ tự điểm**, cap 2 tin/công ty + cách nhau ≥ 6 vị trí (Thu chốt 12/11 và 17/11) | Đọc một lần sau khi lưu câu trả lời; pool mỏng → ít trang hơn, không lấp. Nới được (mục 1.2) |
+| 2 | **Onboarding — section 2** "Jobs for {role}" | Như trên | **Search thuần** `GET /jobs/search?roleCodes=…&sort=posted` — không chấm điểm | Strip, **3 / trang**, hiện khi còn **≥1** tin | Tin **đúng role** trước, rồi phần còn lại của **category** đó; trong mỗi phần: mới nhất trước | Trong ≤3 role đã chọn ở bước 1, lấy role có **category nhiều tin nhất** (hoà → role chọn trước). Bỏ mọi id section 1 đang hiện **trước khi** chia trang. ⚠ **Thu chốt 17/11: chỉ lấy tin ĐÚNG role (bỏ nhánh category), và dưới 3 tin thì ẩn cả khối** — xem mục 7 dòng 19; build chưa làm |
 | 3 | **Onboarding — số tin ở bước 3 và bước 4** | Khách (public, chưa cần tài khoản) | **D** Job count · `GET /onboarding/job-count?roleIds&industryIds&contractTypeIds&regionIds&years` — đếm theo bộ lọc, **không điểm** | Một con số | — | Cap **500 → in "500+"**. Dưới **5** tin tại tỉnh đã chọn → câu có thêm số **toàn quốc**. Bước 4 mà N₄ = N₃ → không in số. **Không cần khớp** số của trang tìm việc (Thu chốt 12/11, mục 4.4) |
 | 4 | **Job detail — carousel "Việc làm tương tự"** | Mọi người, kể cả chưa đăng nhập | **B** Relevant jobs · `GET /jobs/{id}/similar` | **6** | Điểm ↓ → ngày đăng ↓ → id ↓ | Cache **1 giờ / tin**, tính lazy (làm mới tối đa ~75 phút — Thu chấp nhận 12/11). Điểm cao nhất **< 40** → tiêu đề **"Việc làm khác tại {tỉnh}"**, vẫn đủ thẻ. FE xin ~12 dòng |
 | 5a | **Job detail — danh sách "Gợi ý việc làm cho bạn"** | Đã đăng nhập | **A** · `surface=JOB_DETAIL&size=6&jobId=…&exclude=<6 id carousel>` | **6** | Xáo trộn seed (ứng viên + ngày + surface + **jobId**), **trong từng bậc role** (mục 1.4) | **Neo category** tin đang xem, **không bao giờ nới**. Feed rỗng → **ẩn section** (không lấp). Không bao giờ trùng carousel |
@@ -21,7 +21,7 @@ Năm engine, không engine nào nuôi hai chỗ cùng một câu trả lời:
 | 6 | **Popup sau khi nộp đơn — Batch apply** | Người vừa nộp đơn | **A** · `surface=AFTER_APPLY&size=30&jobId=<tin vừa nộp>` | **30** | **Đúng thứ tự điểm**, không xáo | **Không neo** category; tin vừa nộp **và bản trùng của nó** (cùng công ty + tiêu đề + tỉnh) không bao giờ có. Tick tối đa **5** / lượt; sort **Matching / Newest ở client**; chip lý do ≤2 từ `reasons`; "Ứng tuyển tất cả" = **một** request `POST /me/applications/batch`; popup vẫn mở khi danh sách rỗng |
 | 7 | **My page `/ho-so-ca-nhan` — "Việc làm phù hợp với bạn"** | Đã đăng nhập | **A** · `surface=HOMEPAGE&size=6` | **6** | Xáo trộn seed (ứng viên + ngày + surface), **trong từng bậc role** | Tiêu đề cố định; không %, không chip. Cùng 6 thẻ cả ngày, mai khác |
 | 8 | **Trang chủ** (`/`) | — | **Không có khối gợi ý cá nhân.** Component `RecommendedForYouSection` còn trong code nhưng không trang nào render; placement cũ `placement_home_hot_jobs` đã bỏ | — | — | ⚠ Rules register trên guide còn ghi "block Recommended ở trang chủ là placement" — cũ |
-| 9 | **Email JS 3 — Gợi ý việc làm hằng tuần** (thứ Hai **07:00** VN) | **Mọi ứng viên ACTIVE** chưa tắt công tắc **"Nhận email thông báo từ hệ thống"** (mặc định **BẬT**, trang Thông tin tài khoản) — không còn opt-in (SRM-1433, 10/11) | **A** · `surface=JOB_ALERT`, size **6** | 6 | **Đúng thứ tự điểm**, một công ty một hàng | Chỉ quét khi rule email JS 3 đang bật ở admin. **Không gửi lại** tin đã gửi ở alert trước (surface duy nhất có luật này). Dưới **3** tin mới → **không gửi**. Impression ghi **sau** khi gửi. Nút "Ứng tuyển tất cả" → trang `/jobs/apply-all` hiện **đúng các tin trong mail** (bỏ tin đã đóng / đã nộp / đã dismiss), không chấm lại |
+| 9 | **Email JS 3 — Gợi ý việc làm hằng tuần** (thứ Hai **07:00** VN) | **Mọi ứng viên ACTIVE** chưa tắt công tắc **"Nhận email thông báo từ hệ thống"** (mặc định **BẬT**, trang Thông tin tài khoản) — không còn opt-in (SRM-1433, 10/11) | **A** · `surface=JOB_ALERT`, size **6** | 6 | **Đúng thứ tự điểm**, cap 2 tin/công ty + cách nhau ≥ 6 vị trí | Chỉ quét khi rule email JS 3 đang bật ở admin. **Không gửi lại** tin đã gửi ở alert trước (surface duy nhất có luật này). Dưới **3** tin mới → **không gửi**. Impression ghi **sau** khi gửi. Nút "Ứng tuyển tất cả" → trang `/jobs/apply-all` hiện **đúng các tin trong mail** (bỏ tin đã đóng / đã nộp / đã dismiss), không chấm lại |
 | 10 | **Strip trên kết quả tìm kiếm** | — | **A** `surface=SEARCH` (BE chấm trong tập id kết quả search) | — | Điểm | BE có sẵn; **FE không gọi** — trang search chỉ gửi analytics. Không có strip gợi ý trên trang search hiện nay |
 | 11 | **Company Home (NTD) — "Recommended talent"** | NTD có quyền `candidate:search` | **C** Recommended candidates · `GET …/candidates/recommended?jobId&limit=3` | **3** | Best score first trong "draw của ngày" | Dropdown chọn tin của công ty; mode **MATCHED** (thẻ đầu = **Top pick**) hoặc **RECENT** "Hồ sơ mới cập nhật"; tiêu đề in tên tin. **Bấm thẻ → mở đúng trang CV che PI của Search talent**, cùng luật **trừ lượt mở CV miễn phí** của trang đó (Thu chốt 16/11: CÓ trừ); lượt bấm được ghi cho luật "3 lần không bấm" |
 | 12 | **Applicants board của một tin — % phù hợp** | NTD | Cùng `ApplicantMatch`, **chỉ dữ liệu tự khai** | % | — | Dưới **4/7** tín hiệu so được → **không in %**. Đơn **đã rút** không còn trên board (SRM-1551) |
@@ -34,7 +34,7 @@ Ngoài ra: nút **sao / dismiss** trên thẻ gợi ý → `/me/job-recommendati
 
 ## 1. Engine A — Recommended jobs v4 (người ↔ tin)
 
-Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → Lọc (cắt 500) → Chấm 7 tín hiệu → Pool 50 → chia theo surface → ghi impression.
+Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → Lọc (cắt 500) → Chấm 7 tín hiệu → Pool 30 → cap 2 tin/công ty → chia theo surface (giãn ≥ 6 vị trí) → ghi impression.
 
 ### 1.1 Ứng viên là ai — khai + hành vi
 
@@ -81,31 +81,35 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 - Nhiều CV: chấm **từng CV**, mỗi tin giữ **điểm cao nhất**.
 - Ứng viên **không bao giờ thấy điểm**: API trả `matchPercent = null`, không `heading`, không `relaxed`; `reasons` vẫn trả (chỉ Batch apply dùng làm chip).
 
-### 1.4 Pool 50, cap 3 tin/công ty và cách chia cho từng surface
+### 1.4 Pool 30, cap 2 tin/công ty, cách nhau 6 vị trí, và cách chia cho từng surface
 
-- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 50** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11; Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan") và Long đã sửa — chưa lên dev (mục 8).
-- **Tối đa 3 tin / công ty trong pool** — **Thu chốt 17/11**, **chưa có trong code**. Đi xuống danh sách đã chấm, gặp tin thứ 4 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm, không giữ chỗ: công ty chỉ đủ sức giành 1 chỗ thì vẫn 1 chỗ. Cắt **ngay ở bước lấy pool** nên mọi surface đều hưởng, **kể cả Batch apply** (hôm nay Batch apply giữ mọi công ty).
+- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 30** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11; Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan") và Long đã sửa — chưa lên dev (mục 8).
+- **Tối đa 2 tin / công ty** — **Thu chốt 17/11**, **chưa có trong code**. Áp cho **Onboarding, Job detail, My dashboard**; **Batch apply KHÔNG áp** (xem dưới). Đi xuống danh sách đã chấm, gặp tin thứ 3 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm, không giữ chỗ.
   - Lý do: onboarding trên prod hiện 5 trang × 6 thẻ **toàn MB Bank**. Luật "một công ty một hàng" chỉ giãn được vài thẻ đầu; hết công ty khác nhau là nó lấp lặp lại (gạch dưới), nên không có cap thì pool 50 có thể là 50 tin của một nhà tuyển dụng.
-  - Vì sao số cứng chứ không phải %: % siết đúng lúc danh sách đã ngắn (10% của 8 tin = 1) và nới đúng lúc danh sách đầy (10% của 50 = 5, tức mỗi hàng onboarding một thẻ). Mỗi surface lại rút số thẻ khác nhau từ cùng một pool nên "10%" ra mỗi màn hình một con số, không viết thành một luật kiểm thử được. 3/50 ≈ 6%.
+  - Vì sao 2 chứ không phải 3: chiều 16/11 chốt 3 khi pool còn 50 (≈6%). Pool xuống 30 thì 2 giữ đúng tỷ lệ đó — và **onboarding hiện nguyên cả pool**, nên con số cap chính là số lần ứng viên gặp lại nhà tuyển dụng đó.
+  - v3 từng có cap riêng `max(2, size ÷ 10)`; v4 bỏ đi. Đây là đưa lại.
+  - Vì sao số cứng chứ không phải %: % siết đúng lúc danh sách đã ngắn (10% của 8 tin = 1) và nới đúng lúc danh sách đầy. Mỗi surface lại rút số thẻ khác nhau từ cùng một pool nên "10%" ra mỗi màn hình một con số, không viết thành một luật kiểm thử được.
+- **Hai tin cùng công ty cách nhau ít nhất 6 vị trí** — **Thu chốt 17/11**, **chưa có trong code**. Luật này **thay cho** "một công ty một hàng": hàng phụ thuộc bề ngang màn hình (trên mobile một hàng = một thẻ), vị trí thì không. Dựng danh sách từng vị trí một, lấy tin xếp cao nhất còn lại mà công ty của nó **chưa xuất hiện trong 5 vị trí gần nhất**; không còn tin nào hợp lệ thì vẫn lấp (ghi cờ vào log).
+  - Hệ quả miễn phí: màn 6 thẻ (Job detail, My dashboard) **không bao giờ** lặp công ty — 6 vị trí không lọt vừa trong 6 thẻ. Onboarding 6 thẻ/trang thì hai thẻ cùng công ty **không bao giờ cùng một trang**.
+- **Batch apply — luật lỏng hơn, Thu chốt 17/11**: **không cap** (giữ mọi công ty, vì đây là danh sách xếp theo điểm và thứ hạng phải đúng), nhưng **không để hai tin cùng công ty liền nhau**. Đi theo thứ tự điểm; gặp tin cùng công ty với tin vừa đặt thì **tìm xuống tối đa 3 dòng** để lấy tin khác công ty; cả 3 cũng cùng công ty thì chấp nhận lặp và đi tiếp. Không thẻ nào xê dịch quá 3 bậc so với hạng của nó.
 - Nếu có tin neo (`jobId`): tin đó **và bản trùng của nó** bị loại khỏi pool; `exclude` (≤20 id) loại thêm — dùng cho job detail để không ghi impression cho thẻ carousel.
-- Một hàng **6 thẻ**: **một công ty một hàng** — gặp công ty trùng thì lấy thẻ kế tiếp; hết công ty khác nhau thì **vẫn lấp đủ 6** (lặp công ty) để các hàng sau không lệch vị trí. Đường lùi này đúng, nhưng nó chính là lý do luật trông như hỏng trên prod; có cap 3 ở trên thì gần như không bao giờ chạy tới.
 
 | Surface | Thứ tự |
 |---|---|
-| `AFTER_APPLY` | **Đúng thứ tự điểm**, không gom theo công ty |
-| `ONBOARDING` · `JOB_ALERT` · `SEARCH` | **Điểm cao nhất trước** + một công ty một hàng |
-| `HOMEPAGE` · `JOB_DETAIL` | **Xáo trộn seed trong từng bậc role** (SRM-1491, 16/11) + một công ty một hàng |
+| `AFTER_APPLY` | **Đúng thứ tự điểm**; **không cap công ty**, nhưng **không hai tin cùng công ty liền nhau** (nhìn xuống tối đa 3 dòng — 17/11) |
+| `ONBOARDING` · `JOB_ALERT` · `SEARCH` | **Điểm cao nhất trước** + **cap 2 tin/công ty** + **cách nhau ≥ 6 vị trí** (17/11) |
+| `HOMEPAGE` · `JOB_DETAIL` | **Xáo trộn seed trong từng bậc role** (SRM-1491, 16/11) + **cap 2 tin/công ty** + **cách nhau ≥ 6 vị trí** (17/11) |
 
 - **Xáo trộn trong từng bậc role** (SRM-1491): pool được xếp theo **điểm của riêng tín hiệu Vị trí & role** — role **khai** 42 → role **hành vi** 34 → group 30 / 24 → category 17 / 14 → còn lại 0 — rồi chỉ xáo **bên trong** mỗi bậc. Tin đúng role đã khai không bao giờ đứng sau tin chỉ cùng category dù tin kia hơn điểm địa điểm / lương. Lý do: QA Engineer từng thấy Sysadmin, Helpdesk, Data Engineer đứng trước tin QA.
 - **Seed** = hash(ứng viên, ngày VN, surface, tin neo) → cùng màn hình **ổn định cả ngày**, reload không đổi; mỗi màn hình đảo khác nhau; mai khác. Không bao giờ random thuần.
-- `size` tối đa **80**.
+- `size` tối đa **30** (bằng pool; trước là 80).
 
 ### 1.5 Log và tín hiệu ngược
 
 - `recommendation_impression`: một dòng **mỗi thẻ hiện** — ứng viên · tin · điểm · `v4` · rate version · surface · vị trí · `relaxed` · `pool_capped`. `JOB_ALERT` ghi **sau khi gửi** mail.
 - Click thẻ → `clicked_at`; dismiss → loại vĩnh viễn như tin đã nộp đơn.
 - Không còn (so với v3): ngưỡng 50/60, xoay trong dải 5 điểm, giáng hạng sau 3 lần hiện, 4 cấp tiêu đề, trọng số chỉnh ở admin, renormalise.
-- **Cap công ty trong pool** có ở v3, v4 bỏ đi — và **Thu chốt 17/11 đưa lại**, ở mức 3 (mục 1.4).
+- **Cap công ty trong pool** có ở v3, v4 bỏ đi — và **Thu chốt 17/11 đưa lại**, ở mức 2, kèm luật cách nhau 6 vị trí (mục 1.4).
 
 ---
 
@@ -223,7 +227,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 5. **Tỷ giá USD/VND** do admin nhập là thứ duy nhất chỉnh được; dùng hai chiều; thiếu → tín hiệu lương = 0 ở A, B, C.
 6. **Ứng viên không bao giờ thấy %**; NTD thấy % trên board và không thấy trên "Hồ sơ mới cập nhật".
 7. **Năm → bậc** một bảng (mục 4.3).
-8. **Một công ty một hàng 6 thẻ** ở mọi surface có hàng (trừ Batch apply, là danh sách), và **tối đa 3 tin / công ty trong cả pool** (Thu chốt 17/11, chưa code). Similar jobs đã có luật tương đương từ đầu: **2 tin / công ty** trong 20 tin giữ lại.
+8. **Hai tin cùng công ty cách nhau ≥ 6 vị trí** và **tối đa 2 tin / công ty** ở Onboarding · Job detail · My dashboard; **Batch apply** chỉ có luật "không liền nhau", không cap (Thu chốt 17/11, chưa code). Similar jobs đã có luật tương đương từ đầu: **2 tin / công ty** trong 20 tin giữ lại.
 9. Thang occupation **Role › Group › Category** viết sẵn 3 tầng ở cả A, B, C; Group **chưa có dữ liệu** cho tới SRM-1315.
 10. **Một công tắc email** "Nhận email thông báo từ hệ thống" (mặc định bật) chi phối JS 3 và khối gợi ý JS 4 / JS 5; topic `JOB_ALERT` cũ không còn ai đọc.
 
@@ -250,7 +254,8 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 | 15 | Email JS 4 / JS 5 | Engine E riêng (mục 5) | Trang NEW logic không nhắc email sau khi nộp đơn | SRM-1433 — **thêm vào spec** như một nơi dùng matching |
 | 16 | Email JS 3 — ai nhận | Mọi ứng viên ACTIVE chưa tắt công tắc (mặc định bật) | Spec: opt-in topic Job alert, mặc định tắt | SRM-1433 (10/11) → **sửa spec** |
 | 17 | Rút đơn | Giải phóng tin; carousel Similar jobs hiện lại tin đã rút | Spec: "có dòng đơn là ẩn" ở cả 1338 lẫn 1331 | SRM-1551 (16/11, chốt của BA) → **sửa spec** 1331 |
-| 18 | Cap công ty trong pool engine A | **Không có** — chỉ "một công ty một hàng", và hàng vẫn lấp lặp khi hết công ty | Spec cũ: "NO PER-COMPANY SCORING RULE" | **Thu chốt 17/11: tối đa 3 tin / công ty**, cắt ở bước lấy pool (ảnh hưởng cả Batch apply). Spec đã sửa → **làm code + sửa ticket** |
+| 18 | Cap / giãn công ty engine A | **Không có cap**; chỉ "một công ty một hàng", và hàng vẫn lấp lặp khi hết công ty | Spec cũ: "NO PER-COMPANY SCORING RULE" | **Thu chốt 17/11**: pool **30**, **cap 2 tin/công ty** + **cách nhau ≥ 6 vị trí** ở 3 surface xáo trộn; Batch apply **không cap**, chỉ "không liền nhau" (nhìn xuống tối đa 3 dòng). Spec + ticket đã sửa → **làm code** |
+| 19 | Onboarding section 2 — "Jobs for {role}" | Đọc **role + phần còn lại của category**, ghép role trước; vẽ khối ngay khi còn **≥1** tin | §12a (sửa 17/11): **chỉ tin đúng role**, và **dưới 3 tin thì ẩn cả khối** | **Thu chốt 17/11.** Lý do: prod 17/11 in tiêu đề "Việc làm cho Hành chính marketing" trên đúng **một** thẻ, và thẻ đó là *Platform Operations Specialist*. Taxonomy 2 tầng, 1 category ~50 vị trí → "nới sang category" là nới cả ngành. Spec đã sửa → **tách ticket riêng dưới SRM-1330 + làm code** |
 
 ---
 
@@ -262,4 +267,4 @@ Theo comment của Long trên SRM-1330; code trên `origin/dev` và các nhánh 
 2. **Bỏ bậc tỉnh lân cận** ở cả Recommended jobs (10) và Similar jobs (9): khác tỉnh = 0. Thứ hạng không đổi vì bậc này chưa bao giờ đạt.
 3. **Pool 80 → 50** cho engine A — **Thu đã chốt 50 chiều 16/11** (80 hơi rộng, lẫn nhiều job không liên quan). Chờ lên dev.
 4. **Company Home**: bấm thẻ CÓ trừ lượt mở CV miễn phí; hết lượt → thấy CV che hết chi tiết; thẻ vẫn luôn hiện. (Trùng với cách dev đang chạy — thẻ mở đúng trang CV của Search talent.)
-5. **Cap 3 tin / công ty trong pool** engine A — **Thu chốt 17/11**. Chưa có trong code và chưa có ticket; spec đã sửa.
+5. **Pool 50 → 30**, **cap 2 tin / công ty** và **cách nhau ≥ 6 vị trí** (Onboarding · Job detail · My dashboard), **Batch apply không cap nhưng không liền nhau** — **Thu chốt 17/11**. Chưa có trong code; spec và ticket SRM-1338 đã sửa, ticket chuyển **Recheck**.

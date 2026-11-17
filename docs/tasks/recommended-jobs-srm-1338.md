@@ -100,16 +100,18 @@ Thay đổi, tóm tắt: **một pool 80 tin tốt nhất**, xáo trộn gieo th
 
 > Requirement: [mục 12a](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#12a-onboarding-results-two-sections-two-sources)
 
-| Section | Nguồn | Luật |
+| Section | Nguồn | Ticket |
 |---|---|---|
-| **1 · Best matches** — 6 thẻ/trang, 1/5 | Feed này, pool 80 xáo trộn | Đọc MỘT lần sau khi lưu câu trả lời (Server Action), phân trang ở client. Pool < 30 → ít trang hơn, không lấp |
-| **2 · "Jobs for [Desired job role]"** — một hàng carousel | **Search thuần**, không chấm điểm | Trong ≤3 vị trí đã chọn ở bước 1, lấy vị trí có **category nhiều tin đang mở nhất**. Liệt kê tin của category đó — **đúng role lên đầu**, rồi phần còn lại — mới nhất trước. Tiêu đề in **tên role** đã chọn. Bỏ mọi id section 1 đang hiện |
+| **1 · Những việc phù hợp nhất** — 6 thẻ/trang, tối đa 5 trang | **Feed này** (xem T3) | **ticket này** |
+| **2 · "Việc làm cho {vị trí}"** — một hàng 3 thẻ | **Search thuần**, không chấm điểm | **đã tách ra ticket riêng (17/11)** |
 
-**Checklist**
-- [ ] Section 2 gọi `GET /jobs/search?category=…` (đã phân trang), sắp xếp đúng-role-trước ở BE hoặc gọi hai lượt role rồi category
-- [ ] Hoà số tin → lấy vị trí ứng viên chọn trước
-- [ ] Không chọn gì ở bước 1 → không có section 2; section 1 vẫn render
-- [ ] Section 2 không ghi impression log
+> **Khối 2 không còn thuộc ticket này.** Luật của nó khác hẳn — search thuần trên `/jobs/search`, không CV, không trọng số, không xáo trộn, không impression — nên nằm chung ở đây là nguồn gốc của việc đọc nhầm. Xem ticket riêng: *[Onboarding] Dải "Việc làm cho {vị trí}"*, cùng parent SRM-1330.
+
+**Checklist (chỉ còn khối 1)**
+- [ ] Đọc MỘT lần sau khi lưu câu trả lời (Server Action), phân trang ở client
+- [ ] Pool < 30 → ít trang hơn, **không lấp**
+- [ ] Đúng thứ tự điểm, một công ty một hàng
+- [ ] Ứng viên **không bao giờ** thấy % phù hợp hay lý do khớp trên thẻ
 - [ ] Số tin ở bước 3 / 4 của wizard → **SRM-1347**, không làm ở đây
 
 ![Onboarding results](https://bb-project-management.s3.ap-southeast-1.amazonaws.com/attachments/15a26ad7-57c8-4516-906c-50f6e019ccb2.png)
@@ -190,7 +192,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 | 9 | Job detail, đã đăng nhập | Không tin nào xuất hiện ở cả Similar jobs lẫn Recommended jobs |
 | 10 | Job detail, chưa đăng nhập | Section 2 = dòng 7–12 của Similar jobs, tiêu đề "Có thể bạn quan tâm" |
 | 11 | Popup sau khi nộp đơn, tick 6 tin | Checkbox thứ 6 không tick được; bấm nút → 5 đơn, 1 email |
-| 12 | Onboarding chọn 3 vị trí | Section 2 là vị trí có category nhiều tin nhất, tiêu đề in tên role, không trùng section 1 |
+| 12 | Onboarding chọn 3 vị trí | Section 1 không đổi; section 2 đã tách sang ticket riêng |
 | 13 | Tin USD, ứng viên VND, dải thực giao nhau | Ăn đủ 12 điểm; xoá tỷ giá → 0 điểm |
 | 14 | Mở admin General settings | Không còn tab Recommended jobs; tỷ giá vẫn sửa được |
 | 15 | Bất kỳ màn hình nào | Không có % nào được in |
