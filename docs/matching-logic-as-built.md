@@ -83,7 +83,7 @@ Tính **mới mỗi lần gọi**, không lưu danh sách. Pipeline: Person → 
 
 ### 1.4 Pool 30, cap 2 tin/công ty, cách nhau 6 vị trí, và cách chia cho từng surface
 
-- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 30** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11; Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan") và Long đã sửa — chưa lên dev (mục 8).
+- Khử trùng **công ty + tiêu đề + tỉnh** → giữ tin mới nhất; rồi lấy **top 30** theo điểm. **Không ngưỡng điểm.** ⚠ `JobFeed.POOL = 80` trên dev tối 16/11. Thu chốt **50** chiều 16/11 ("80 hơi rộng, chứa nhiều job không liên quan"), rồi **chốt 30 ngày 17/11**. Long mới sửa tới 50 và chưa lên dev; 30 thì chưa ai làm (mục 8).
 - **Tối đa 2 tin / công ty** — **Thu chốt 17/11**, **chưa có trong code**. Áp cho **Onboarding, Job detail, My dashboard**; **Batch apply KHÔNG áp** (xem dưới). Đi xuống danh sách đã chấm, gặp tin thứ 3 của cùng một công ty thì bỏ qua. Không xếp lại, không đổi điểm, không giữ chỗ.
   - Lý do: onboarding trên prod hiện 5 trang × 6 thẻ **toàn MB Bank**. Luật "một công ty một hàng" chỉ giãn được vài thẻ đầu; hết công ty khác nhau là nó lấp lặp lại (gạch dưới), nên không có cap thì pool 50 có thể là 50 tin của một nhà tuyển dụng.
   - Vì sao 2 chứ không phải 3: chiều 16/11 chốt 3 khi pool còn 50 (≈6%). Pool xuống 30 thì 2 giữ đúng tỷ lệ đó — và **onboarding hiện nguyên cả pool**, nên con số cap chính là số lần ứng viên gặp lại nhà tuyển dụng đó.
@@ -247,7 +247,7 @@ Khối "việc làm gợi ý" dưới dòng "Bạn đã ứng tuyển thành cô
 | 8 | Trang chủ | Không có khối gợi ý cá nhân | Guide `/danh-sach-rule`: "block Recommended ở trang chủ là placement" | Guide cũ; placement đã bỏ |
 | 9 | Guide `/danh-sach-rule` — mục "Matching & gợi ý" | — | "logic chưa có" (ghi 04/11) | Đã có từ 05/11 — thay bằng tài liệu này |
 | 10 | Engine C — ai vào vòng chấm | Ba nhánh: role · category · **skill trên CV** | ~~Chỉ role / category~~ — **SAI, đã kiểm lại 16/11**: trang Recommended candidates §2b liệt kê đủ cả ba nhánh, skill nằm trong đó | **Không phải lệch.** Build khớp spec. Dòng này trước đây ghi sai |
-| 11 | Pool engine A | `JobFeed.POOL = 80` trên dev | Spec và ticket: 80 | **Thu chốt 50 (16/11)** — lý do: 80 hơi rộng, chứa nhiều job không liên quan. Long đã sửa, chưa lên dev → **sửa spec + ticket về 50** |
+| 11 | Pool engine A | `JobFeed.POOL = 80` trên dev | ~~Spec và ticket: 80~~ | **Thu chốt 50 (16/11)** rồi **30 (17/11)**. Spec và ticket SRM-1338 đã về **30**; code chưa → **làm code** |
 | 12 | Số tin ở wizard (engine D) | Lọc khác trang tìm việc (mục 4.4) | 1347 test #13: phải khớp trang tìm việc | Thu chốt 12/11 bỏ test #13 → **sửa spec** |
 | 13 | Similar jobs — độ tươi | Cache 1 giờ, làm mới ≤ ~75 phút | Trang Relevant jobs: "tính lại khi tin thay đổi" | Thu chấp nhận 12/11 → **sửa spec** |
 | 14 | Xáo trộn HOMEPAGE / JOB_DETAIL | Xáo **trong từng bậc role** (SRM-1491) | Spec: xáo trộn seed trên cả pool | Bug QA 12/11, merge 16/11 → **thêm vào spec** (mục pool / surfaces) |
@@ -265,6 +265,6 @@ Theo comment của Long trên SRM-1330; code trên `origin/dev` và các nhánh 
 
 1. **Bỏ fallback tỉnh cư trú**: địa điểm chỉ lấy từ Work preference ("Địa điểm mong muốn", tối đa 3 tỉnh); không khai → tín hiệu địa điểm 0 ở Recommended jobs, Recommended candidates và board NTD (vài ứng viên trên board sẽ lại không hiện % như trước 12/11).
 2. **Bỏ bậc tỉnh lân cận** ở cả Recommended jobs (10) và Similar jobs (9): khác tỉnh = 0. Thứ hạng không đổi vì bậc này chưa bao giờ đạt.
-3. **Pool 80 → 50** cho engine A — **Thu đã chốt 50 chiều 16/11** (80 hơi rộng, lẫn nhiều job không liên quan). Chờ lên dev.
+3. **Pool 80 → 50 → 30** cho engine A — Thu chốt 50 chiều 16/11 (80 hơi rộng, lẫn nhiều job không liên quan), rồi **chốt 30 ngày 17/11**. Long mới sửa tới 50 và chưa lên dev.
 4. **Company Home**: bấm thẻ CÓ trừ lượt mở CV miễn phí; hết lượt → thấy CV che hết chi tiết; thẻ vẫn luôn hiện. (Trùng với cách dev đang chạy — thẻ mở đúng trang CV của Search talent.)
 5. **Pool 50 → 30**, **cap 2 tin / công ty** và **cách nhau ≥ 6 vị trí** (Onboarding · Job detail · My dashboard), **Batch apply không cap nhưng không liền nhau** — **Thu chốt 17/11**. Chưa có trong code; spec và ticket SRM-1338 đã sửa, ticket chuyển **Recheck**.
