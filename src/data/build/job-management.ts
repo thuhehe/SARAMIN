@@ -1135,13 +1135,13 @@ export const jobManagement: BuildModule = {
         requirements: [
           {
             label: '0 · The idea in one minute',
-            text: 'If you only need the idea, read this section and stop.\n\nWe know two things about a jobseeker. **What they told us** — their profile, their work preference, their CV. And **what they actually do** — the jobs they open, save and apply to. Put the two together and you have a picture of the work they want.\n\nWe score every open job against that picture, keep the **30 closest** — at most 3 from any one company — throw away the ones they have already applied to, and spread those 30 across the four places on the site where recommendations appear. Only **Batch apply** shows them in strict score order, because that is the screen where getting the order right matters most.\n\nVN — Ghép “những gì ứng viên khai” với “những gì ứng viên thực sự bấm vào” thành một chân dung. Chấm điểm mọi tin đang mở so với chân dung đó, giữ 30 tin gần nhất, bỏ tin đã ứng tuyển, rồi rải ra 4 chỗ. Riêng Batch apply xếp đúng theo điểm.',
+            text: 'If you only need the idea, read this section and stop.\n\nWe know two things about a jobseeker. **What they told us** — their profile, their work preference, their CV. And **what they actually do** — the jobs they open, save and apply to. Put the two together and you have a picture of the work they want.\n\nWe throw away everything they have already applied to, dismissed or that has expired, score what is left against that picture, keep the **30 closest** — at most 3 from any one company — and spread those 30 across the four places on the site where recommendations appear. Only **Batch apply** shows them in strict score order, because that is the screen where getting the order right matters most.\n\nVN — Ghép “những gì ứng viên khai” với “những gì ứng viên thực sự bấm vào” thành một chân dung. Bỏ tin đã ứng tuyển / đã ẩn / đã hết hạn **trước**, rồi mới chấm điểm phần còn lại so với chân dung đó, giữ 30 tin gần nhất (tối đa 3 tin một công ty), rồi rải ra 4 chỗ. Riêng Batch apply xếp đúng theo điểm.',
             table: {
               cols: ['Step', 'In one line', 'Detail in'],
               rows: [
                 ['**1 · Who are they?**', 'What they declared **+** what their behaviour says. One wider set of roles, categories and cities.', 'sections 5 and 7'],
-                ['**2 · Which jobs fit?**', 'Score every open job out of 100 against that set.', 'section 7'],
-                ['**3 · Keep the best 30.**', 'Drop anything they already applied to, and keep at most 3 from any one company.', 'sections 4 and 6'],
+                ['**2 · Which jobs are even in the running?**', 'ONE query. It **drops** everything they already applied to, dismissed, or that has expired — then **keeps** what matches that set. Nothing that will be thrown away is ever scored.', 'sections 4 and 6'],
+                ['**3 · Which of those fit best?**', 'Score each survivor out of 100, keep the best 30, at most 3 from any one company.', 'sections 7 and 2'],
                 ['**4 · Spread them out.**', 'The 30 are shuffled across the four surfaces — except Batch apply, which takes them in score order.', 'section 2'],
               ],
             },
@@ -1154,14 +1154,13 @@ export const jobManagement: BuildModule = {
           },
           {
             label: '1 · How we pick the jobs to show',
-            text: 'Four stages: NARROW → SCORE → REMOVE → ARRANGE.\n\nThe score is an internal number. The jobseeker never sees it — it only decides what order the cards come in.\n\nVN — Bốn bước: thu hẹp → chấm điểm → loại bỏ → sắp xếp. Điểm số chỉ dùng nội bộ để xếp thứ tự, ứng viên không nhìn thấy con số đó.',
+            text: 'Three stages: NARROW → SCORE → ARRANGE.\n\nREMOVING a job they already applied to, dismissed, or that has expired is **not a fourth stage** — it happens inside the narrow query, in the same WHERE clause. Nothing that will be thrown away is ever scored.\n\nThe score is an internal number. The jobseeker never sees it — it only decides what order the cards come in.\n\nVN — Ba bước: thu hẹp → chấm điểm → sắp xếp. Việc **loại** tin đã nộp đơn / đã ẩn / đã hết hạn nằm **ngay trong câu truy vấn thu hẹp**, không phải một bước riêng sau khi chấm. Điểm số chỉ dùng nội bộ để xếp thứ tự, ứng viên không nhìn thấy con số đó.',
             table: {
               cols: ['Stage', 'What happens', 'Written up in'],
               rows: [
-                ['**1 · Narrow**', 'One database query picks the jobs worth scoring, from what the jobseeker wants and what they have been doing.', 'sections 5 and 6'],
-                ['**2 · Score**', 'Every job in that set gets a number from 0 to 100.', 'sections 7 and 9'],
-                ['**3 · Remove**', 'Drop jobs they already applied to, dismissed, or that expired.', 'section 4'],
-                ['**4 · Arrange**', 'Keep the top 30, then shuffle them across the four surfaces — except Batch apply, which takes them in score order.', 'section 2'],
+                ['**1 · Narrow**', 'ONE database query, and it does two things at once. It **drops** every job they have already applied to (any status), dismissed, or that is closed, expired, unexposed or from a company that is not public. Then it **keeps** what matches what they want and what they have been doing.', 'sections 4, 5 and 6'],
+                ['**2 · Score**', 'Every job that survived gets a number from 0 to 100.', 'sections 7 and 9'],
+                ['**3 · Arrange**', 'Keep the top 30, at most 3 per company, then shuffle them across the four surfaces — except Batch apply, which takes them in score order.', 'section 2'],
               ],
             },
             items: [
@@ -1200,7 +1199,7 @@ export const jobManagement: BuildModule = {
               'THE SAME ANSWER ON EVERY SCREEN that asks this question — this feed, the relevant-jobs list on a job detail page, the Batch apply picker, and the “ẩn việc đã ứng tuyển” switch on Saved jobs. One definition — an application row EXISTS, whatever its status — no per-screen variation. (Relevant jobs 1c used to say “live applications only”; reconciled to this rule 2026-11-03.)',
               'HIDDEN IS NOT DELETED. The job still appears in search, on the company page, and in the jobseeker’s own “Việc làm đã ứng tuyển” list. It is only kept out of a feed whose whole purpose is “what to do next”.',
               'IT STILL COUNTS AS BEHAVIOUR. An application is the strongest signal we have about what this person wants, so the job’s role, category and city go on shaping their feed (section 5) even though the job itself is now hidden.',
-              'REMOVE THEM BEFORE THE 30 IS CUT, not after. Otherwise a jobseeker who has applied to twenty jobs this month gets a pool of 60, and the pool quietly shrinks as they use the product.',
+              'REMOVE THEM IN THE NARROW QUERY — the same WHERE clause that picks the jobs worth scoring (section 1), alongside dismissed jobs and anything closed, expired or unexposed. NOT as a pass after scoring.\n\nTWO REASONS, and the second is the one that bites. **(1)** Scoring a job you are about to throw away is wasted work, once per CV, every time the feed is shown. **(2)** If the cut to 30 runs on a list that still holds applied jobs, the pool comes out SHORT: a jobseeker who applied to twenty jobs this month gets 10 real cards where they should have 30, and the feed quietly shrinks the more they use the product. The 30 must be 30 jobs they can actually apply to.',
             ],
           },
           {
