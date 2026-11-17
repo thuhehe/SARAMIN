@@ -185,7 +185,7 @@ https://dev-saramin.saramin.vn/ho-so-ca-nhan
 
 | # | Thao tác | Kết quả mong đợi |
 |---|---|---|
-| 1 | Ví dụ Linh ở [mục 8](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-worked-example-linh-and-three-jobs-signal-by-signal) | A = 90 · B = 84 · C = 75; Batch apply ra đúng A, B, C |
+| 1 | Ví dụ Linh ở [mục 8](https://saramin-eta.vercel.app/m/job-management/recommended-jobs-new-logic#8-worked-example-linh-and-three-jobs-signal-by-signal) | A = **86** · B = **80** · C = 75; Batch apply ra đúng A, B, C. (Số cũ 90 / 84 tính Linh được 4 điểm ngành suy từ công ty trên CV — đường dự phòng đó đã bỏ ngày 16/11, ngành chỉ lấy từ *Ngành mong muốn*.) |
 | 2 | Tin không khai kinh nghiệm / ngành / học vấn (mục 9) | Mất đúng 14 + 5 + 3 điểm, các tín hiệu khác không đổi, **không** chia lại |
 | 3 | Ứng viên khai Marketing · HCM, 90 ngày qua lưu 2 tin kế toán | Tin kế toán ở HCM vào pool, chấm vị trí ở mức 34 (suy ra) |
 | 4 | Mở 2 tin e-commerce (chưa đủ 3) | Ngành e-commerce **không** vào tập hành vi |
