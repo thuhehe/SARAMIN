@@ -3635,44 +3635,49 @@ function OnboardingScreen() {
               <p className="text-[19px] font-bold leading-snug text-ink">We found<br /><span className="text-brand">the best job postings</span> based on the information you entered!</p>
               <p className="mt-1.5 text-[12px] text-muted">Save the ones you like — you can apply immediately after completing your CV. Saved jobs live in <b>My page › Saved jobs</b>.</p>
 
-              {/* matched grid — 2 rows of 3. The score NEVER appears alone: each card
-                  carries the two highest-CONTRIBUTING signals (weight × credit earned),
-                  because a bare percentage invites the one question it cannot answer.
-                  Below the 60 floor a card shows no number at all — see the match-score
-                  requirement in Resume management. */}
+              {/* Section 1 — the personal feed, 6 per page. NO NUMBER ANYWHERE: the
+                  jobseeker never sees a score, a percentage or a reason chip — the score
+                  sorts the cards and does nothing else (Recommended jobs §7, §10). The
+                  percentages this mockup used to print were the old v3 design and were
+                  removed 2026-11-17 to stop the prototype arguing with the spec. */}
               <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
                 {([
-                  ['Product Designer', 'Lantern Digital', 'Hồ Chí Minh', '92% match', '8/10 skills · 4 yrs fits 3–5'],
-                  ['Senior UX Designer', 'Zenpay', 'Hồ Chí Minh', '88% match', '7/10 skills · salary fits'],
-                  ['UI Designer', 'FPT Software', 'Hà Nội', '84% match', '7/10 skills · Design category'],
-                  ['Design Lead', 'Tiki', 'Hồ Chí Minh', '80% match', '6/10 skills · 4 yrs fits 3–6'],
-                  ['Product Designer (Fintech)', 'MoMo', 'Hồ Chí Minh', '78% match', '6/10 skills · IT / Software'],
-                  ['UX Researcher', 'One Mount', 'Hà Nội', '75% match', '5/10 skills · Design category'],
-                ] as [string, string, string, string, string][]).map(([title, co, loc, match, why]) => (
+                  ['Product Designer', 'Lantern Digital', 'Hồ Chí Minh'],
+                  ['Senior UX Designer', 'Zenpay', 'Hồ Chí Minh'],
+                  ['UI Designer', 'FPT Software', 'Hà Nội'],
+                  ['Design Lead', 'Tiki', 'Hồ Chí Minh'],
+                  ['Product Designer (Fintech)', 'MoMo', 'Hồ Chí Minh'],
+                  ['UX Researcher', 'One Mount', 'Hà Nội'],
+                ] as [string, string, string][]).map(([title, co, loc]) => (
                   <div key={title} className="rounded-xl border border-line p-3 hover:border-brand/40">
                     <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]"></div>
                     <p className="text-[12px] font-semibold leading-snug text-ink">{title}</p>
                     <p className="text-[11px] text-ink/70">{co}</p>
                     <p className="mt-0.5 text-[10.5px] text-faint">{loc}</p>
-                    <div className="mt-1.5 flex items-center justify-between">
-                      <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9.5px] font-semibold text-brand">{match}</span>
+                    <div className="mt-1.5 flex items-center justify-end">
                       <span className="cursor-pointer text-[12px] text-faint">☆</span>
                     </div>
-                    <p className="mt-1 text-[9.5px] leading-snug text-faint">{why}</p>
                   </div>
                 ))}
               </div>
               <p className="mt-3 text-center text-[11.5px] text-muted">‹ View more customized job postings <b className="text-brand">1</b> / 5 ›</p>
 
-              {/* second rail — by desired industry */}
-              <p className="mt-5 border-t border-line-soft pt-4 text-[13px] font-bold text-ink">IT / Software openings for you</p>
+              {/* Section 2 — “Jobs for {role}”, a plain SEARCH on the EXACT role the
+                  jobseeker picked (Recommended jobs §12a). Never the category: the heading
+                  names the role, so every card under it is that role. Three cards, no pager,
+                  no score. Postings section 1 is already showing are removed first — and if
+                  FEWER THAN 3 survive that removal, this whole block is not drawn, the way
+                  the Blue zone band hides below three. Rewritten 2026-11-17; it used to
+                  widen to the role's category and could end up drawing one unrelated card
+                  under a heading that still named the role. */}
+              <p className="mt-5 border-t border-line-soft pt-4 text-[13px] font-bold text-ink">Jobs for Product Designer</p>
               <div className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
                 {([
-                  ['Frontend Engineer', 'Shopee', 'Hồ Chí Minh'],
-                  ['Product Owner', 'VNG', 'Hồ Chí Minh'],
-                  ['Business Analyst', 'Techcombank', 'Hà Nội'],
+                  ['Product Designer', 'Katalon', 'Hồ Chí Minh'],
+                  ['Product Designer', 'Base.vn', 'Hà Nội'],
+                  ['Product Designer (Mobile)', 'Haravan', 'Hồ Chí Minh'],
                 ] as [string, string, string][]).map(([title, co, loc]) => (
-                  <div key={title} className="rounded-xl border border-line p-3 hover:border-brand/40">
+                  <div key={`${title}-${co}`} className="rounded-xl border border-line p-3 hover:border-brand/40">
                     <div className="mb-1.5 grid h-8 w-8 place-items-center rounded-md bg-canvas text-[12px]"></div>
                     <p className="text-[12px] font-semibold leading-snug text-ink">{title}</p>
                     <p className="text-[11px] text-ink/70">{co}</p>
