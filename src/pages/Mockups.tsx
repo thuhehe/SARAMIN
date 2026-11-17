@@ -116,63 +116,63 @@ function HomeScreen() {
 }
 
 /* ── The Blue zone and its tag row ───────────────────────────────────────────
-   "Lựa chọn tạo nên sự khác biệt" — jobs whose product sits in a Premium package,
-   inserted after the third result row, page 1 only. Ten cards, three to a view,
-   the arrow steps three.
+   "Lựa chọn tạo nên sự khác biệt" — jobs whose PRODUCT covers this placement,
+   inserted after the third result row, page 1 only. An ORDINARY placement, like
+   Top search: as many employers run here at once as have bought it. Ten cards,
+   three to a view, the arrow steps three.
 
    THE TAG ROW IS THE PART WORTH READING THE SPEC FOR. The chips are COMPANY tags
    (the company_highlight catalogue, which is where the emoji on each chip comes
-   from) — so while Saramin has one Premium customer every chip covers every job
-   in the band and none of them can narrow anything. That is accepted. What makes
-   the row earn its place is that svn-be DEALS the band's jobs out between the
-   chips: shuffle once, then round-robin, each chip taking a job no chip has taken
-   yet. So each chip opens a DIFFERENT set rather than the same list reordered,
-   and the row turns into a real filter by itself once a second Premium customer
-   signs — no code change. One chip is always selected (there is no "All"), and no
-   chip shows a count, because with one customer every count is the same number.
+   from), so a chip opens the employers that hold that tag — 🍱 below belongs to
+   NIPPA and Vinamilk alone, 💰 to four of the six. On top of that svn-be DEALS
+   the band's jobs out between the chips: shuffle once, then round-robin, each
+   chip taking a job no chip has taken yet. So no two chips open the same list and
+   no employer fills the row. One chip is always selected (there is no "All") and
+   no chip shows a count, as on the Korean reference.
    See Job management → Job list (Search result) → "THE BLUE ZONE'S TAG ROW". */
 const BAND_TAGS: { id: string; label: string }[] = [
-  { id: 'housing', label: '🏠 Phụ cấp nhà ở' },
-  { id: 'remote', label: '💻 Làm việc từ xa' },
-  { id: 'flex', label: '🕐 Giờ làm linh hoạt' },
-  { id: 'signing', label: '🎁 Thưởng ký hợp đồng' },
-  { id: 'health', label: '🏥 Bảo hiểm sức khỏe' },
   { id: 'bonus13', label: '💰 Lương tháng 13' },
+  { id: 'remote', label: '💻 Làm việc từ xa' },
+  { id: 'snacks', label: '☕ Đồ ăn nhẹ miễn phí' },
+  { id: 'flex', label: '🕐 Giờ làm linh hoạt' },
+  { id: 'housing', label: '🏠 Phụ cấp nhà ở' },
+  { id: 'lunch', label: '🍱 Phụ cấp ăn trưa' },
 ]
 
-/* What the deal looks like from the FE's side: a list of job ids per chip, already
-   decided by svn-be. The three cards under each chip are different jobs — that is
-   the dealing rule working, not three filters coincidentally disagreeing. */
-const BAND_DEAL: Record<string, { title: string; salary: string; loc: string; dl: string }[]> = {
-  housing: [
-    { title: 'Trợ lý Kế toán trưởng', salary: 'Thỏa thuận', loc: 'Đà Nẵng', dl: '15/12' },
-    { title: 'Chuyên viên Hạch toán kế toán', salary: '18 – 25 tr', loc: 'Hồ Chí Minh', dl: '12/12' },
-    { title: 'Chuyên viên Kế toán đầu tư', salary: 'Tới 40 tr', loc: 'Hà Nội', dl: '08/12' },
+/* What the deal looks like from the FE's side: a list of jobs per chip, already
+   decided by svn-be. Two things are visible at once — the chip FILTERS (its three
+   cards come from the employers holding that tag) and the deal DISTRIBUTES (no job
+   repeats between chips, and two neighbouring cards are never the same employer). */
+const BAND_DEAL: Record<string, { title: string; co: string; tag: string; salary: string; loc: string; dl: string }[]> = {
+  bonus13: [
+    { title: 'Chuyên viên Kế toán tổng hợp', co: 'MB Bank', tag: 'MB', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '30/11' },
+    { title: 'Kế toán thuế', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Bình Dương', dl: '12/12' },
+    { title: 'Kế toán chi phí sản xuất', co: 'Vinamilk', tag: 'VNM', salary: '18 – 25 tr', loc: 'Bình Dương', dl: '20/12' },
   ],
   remote: [
-    { title: 'Chuyên viên Kế toán thuế', salary: '20 – 30 tr', loc: 'Hồ Chí Minh', dl: '05/12' },
-    { title: 'Kế toán viên Ngân quỹ', salary: '12 – 18 tr', loc: 'Bình Dương', dl: '28/12' },
-    { title: 'Chuyên viên Báo cáo tài chính', salary: '25 – 35 tr', loc: 'Hà Nội', dl: '20/12' },
+    { title: 'Kế toán dự án phần mềm', co: 'FPT Software', tag: 'FPT', salary: '20 – 30 tr', loc: 'Hà Nội', dl: '05/12' },
+    { title: 'Chuyên viên Kế toán đầu tư', co: 'MB Bank', tag: 'MB', salary: 'Tới 40 tr', loc: 'Hà Nội', dl: '08/12' },
+    { title: 'Trợ lý Kế toán', co: 'Khan Academy', tag: 'KHAN', salary: '10 – 15 tr', loc: 'Hồ Chí Minh', dl: '28/12' },
+  ],
+  snacks: [
+    { title: 'Kế toán thương mại điện tử', co: 'Shopee', tag: 'SHP', salary: '22 – 30 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
+    { title: 'Chuyên viên Kế toán quản trị', co: 'MB Bank', tag: 'MB', salary: '20 – 28 tr', loc: 'Hà Nội', dl: '28/12' },
+    { title: 'Kế toán tổng hợp', co: 'Khan Academy', tag: 'KHAN', salary: 'Thỏa thuận', loc: 'Hồ Chí Minh', dl: '30/11' },
   ],
   flex: [
-    { title: 'Chuyên viên Kiểm toán nội bộ', salary: '25 – 35 tr', loc: 'Hà Nội', dl: '12/12' },
-    { title: 'Kế toán Chi nhánh Hà Nội', salary: '15 – 22 tr', loc: 'Hà Nội', dl: '30/11' },
-    { title: 'Chuyên viên Kế toán Thẻ', salary: '18 – 25 tr', loc: 'Hồ Chí Minh', dl: '08/12' },
+    { title: 'Chuyên viên Kiểm toán nội bộ', co: 'MB Bank', tag: 'MB', salary: '25 – 35 tr', loc: 'Hà Nội', dl: '12/12' },
+    { title: 'Chuyên viên Phân tích tài chính', co: 'Shopee', tag: 'SHP', salary: 'Tới 40 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
+    { title: 'Kế toán thuế quốc tế', co: 'FPT Software', tag: 'FPT', salary: '25 – 35 tr', loc: 'Đà Nẵng', dl: '08/12' },
   ],
-  signing: [
-    { title: 'Chuyên viên Kế toán tổng hợp', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '30/11' },
-    { title: 'Chuyên viên Phân tích tài chính', salary: 'Tới 40 tr', loc: 'Hà Nội', dl: '20/12' },
-    { title: 'Chuyên viên Kế toán công nợ', salary: '12 – 18 tr', loc: 'Bình Dương', dl: '05/12' },
+  housing: [
+    { title: 'Kế toán trưởng Nhà máy Bình Dương', co: 'Vinamilk', tag: 'VNM', salary: '30 – 45 tr', loc: 'Bình Dương', dl: '28/12' },
+    { title: 'Kế toán viên Ngân quỹ', co: 'MB Bank', tag: 'MB', salary: '12 – 18 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
+    { title: 'Kế toán kho vận', co: 'Vinamilk', tag: 'VNM', salary: '15 – 20 tr', loc: 'Đà Nẵng', dl: '12/12' },
   ],
-  health: [
-    { title: 'Kế toán trưởng Chi nhánh Bình Dương', salary: '30 – 45 tr', loc: 'Bình Dương', dl: '28/12' },
-    { title: 'Chuyên viên Kiểm soát nội bộ', salary: '22 – 30 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
-    { title: 'Chuyên viên Thuế và Tuân thủ', salary: 'Thỏa thuận', loc: 'Hà Nội', dl: '12/12' },
-  ],
-  bonus13: [
-    { title: 'Chuyên viên Kế toán thanh toán', salary: '15 – 20 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
-    { title: 'Trưởng nhóm Kế toán tổng hợp', salary: '30 – 40 tr', loc: 'Hồ Chí Minh', dl: '05/12' },
-    { title: 'Chuyên viên Kế toán quản trị', salary: '20 – 28 tr', loc: 'Hà Nội', dl: '28/12' },
+  lunch: [
+    { title: 'Nhân viên Kế toán kho', co: 'NIPPA', tag: 'NIP', salary: '10 – 15 tr', loc: 'Bình Dương', dl: '05/12' },
+    { title: 'Kế toán công nợ', co: 'Vinamilk', tag: 'VNM', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
+    { title: 'Kế toán thanh toán', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Hà Nội', dl: '30/11' },
   ],
 }
 
@@ -192,7 +192,7 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
     <section className="my-3 rounded-xl border border-brand/20 bg-brand/[0.045] p-3.5">
       <div className="mb-2.5 flex flex-wrap items-baseline gap-2.5">
         <p className="text-[14px] font-bold text-ink">Lựa chọn tạo nên sự khác biệt</p>
-        <span className="text-[11.5px] text-muted">Tin tuyển dụng của MB Bank</span>
+        <span className="text-[11.5px] text-muted">33 tin · 6 công ty</span>
       </div>
       {/* The tag row — scrolls horizontally with arrows, exactly as the KR band does. */}
       <div className="mb-3 flex items-center gap-1.5">
@@ -223,10 +223,10 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
               className="flex cursor-pointer flex-col gap-2 rounded-lg border border-brand/20 bg-surface p-3 hover:border-brand/50"
             >
               <div className="flex gap-2.5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[9px] font-bold text-faint">MB</span>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-canvas text-[8.5px] font-bold text-faint">{j.tag}</span>
                 <div className="min-w-0">
                   <p className="text-[12.5px] font-semibold leading-snug text-ink">{j.title}</p>
-                  <p className="text-[11.5px] text-muted">MB Bank</p>
+                  <p className="text-[11.5px] text-muted">{j.co}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">

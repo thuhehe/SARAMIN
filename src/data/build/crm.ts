@@ -855,9 +855,9 @@ export const crm: BuildModule = {
       },
       items: [
         'THE TWO SETS ARE INDEPENDENT. The same chip may sit in both; removing it from one leaves the other alone. They are stored separately, and nothing about the existing company-page strip changes.',
-        'TWELVE, NOT SIX, FOR THE SEARCH SET. While one customer holds the only Premium package, the number of Search tags that customer picked IS the ceiling on how many chips the search row can ever show. Six would be a thin row next to the Korean reference; twelve is still one sitting’s work for whoever fills it in.',
+        'TWELVE, NOT SIX, FOR THE SEARCH SET. The search row draws from the UNION of the tags held by every company in the band, and it shows at most eight — so twelve per company is not twelve chips on screen, it is twelve chances of being one of the eight. A company that picks six is simply in the draw half as often as one that picks twelve, which is the right incentive. Twelve is also still one sitting’s work for whoever fills it in.',
         'THE SAME PICKER DIALOG SERVES BOTH — the searchable table with the group, the priority and the criterion per row. Only its source list and its cap differ. Opened from 3b it says so on the header, or the shorter list reads as a bug.',
-        'A PREMIUM CUSTOMER WITH NO SEARCH TAGS GETS A WARNING, not a blocked save: the banner states what will happen (the row borrows the company-page Highlights; with neither, the row is withheld) and the page saves anyway. Blocking the save would lock the photos, the vision and the benefits over one optional field. “Search tags” also joins the Ready-to-publish checklist, unstarred — invisible means unfilled.',
+        'A COMPANY THAT BOUGHT THE BLUE ZONE BUT HAS NO SEARCH TAGS GETS A WARNING, not a blocked save: the banner states what will happen (the row borrows that company’s company-page Highlights; with neither, its postings would be dealt to no tag at all) and the page saves anyway. Blocking the save would lock the photos, the vision and the benefits over one optional field. The condition is “this company holds an active product covering the Blue zone placement”, not a package name — and “Search tags” also joins the Ready-to-publish checklist, unstarred, because invisible means unfilled.',
       ],
     },
     {
