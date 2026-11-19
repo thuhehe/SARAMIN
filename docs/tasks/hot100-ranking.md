@@ -118,7 +118,7 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 | Đã có | Ở đâu | Ghi chú |
 |---|---|---|
 | Bảng chụp thứ hạng hằng ngày | `hot100_rank_snapshot` (V818) | Dùng lại nguyên, chỉ đổi nội dung được ghi vào |
-| Tác vụ 0h | `Hot100RankSnapshotJob`, cron `0 1 0 * * *` giờ VN | Dùng lại |
+| Tác vụ 0h | `Hot100RankSnapshotJob`, chạy 00:01 giờ VN mỗi ngày | Dùng lại |
 | Endpoint thứ hạng hôm qua | `GET /api/{lang}/jobs/hot100/previous-ranks` | Dùng lại |
 | Logic mũi tên phía FE | `features/jobs/hot-100/lib/rank-with-change.ts` | Cần thêm nhãn "new" |
 | Lượt xem theo ngày | `job_daily_snapshot` (V541) — ghi tổng luỹ kế của **mọi tin đang mở** mỗi ngày | Lượt xem 1 ngày = hiệu hai ngày liên tiếp |
@@ -231,9 +231,9 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 
 **Chưa chốt:** có trạng thái "tất cả" không, hay luôn phải chọn một trong hai — xem phần 8.
 
-### 3.11 THÊM màn hình cấu hình trong admin — 5 ô, một màn hình
+### 3.11 THÊM màn hình cấu hình trong admin — 6 ô, một màn hình
 
-**Không số nào trong ticket này được viết cứng trong code.** Đây là các cần gạt mà vận hành sẽ chỉnh khi có lưu lượng thật, và cả năm số đều sẽ sai ở lần đoán đầu tiên.
+**Không số nào trong ticket này được viết cứng trong code.** Đây là các cần gạt mà vận hành sẽ chỉnh khi có lưu lượng thật, và cả sáu số đều sẽ sai ở lần đoán đầu tiên.
 
 | Ô | Mặc định | Chỉnh nó thì sao |
 |---|---|---|
@@ -244,9 +244,9 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 | Số ngày của cửa sổ tính điểm | 7 | Ngắn thì phản ứng nhanh và nhảy mạnh; dài thì êm và chậm |
 | Số dòng cho khách chưa đăng nhập | 10 | Khách vãng lai xem được bao nhiêu dòng trước khi bị mời đăng nhập. Tăng lên là đánh đổi lượt đăng ký lấy độ phủ |
 
-Thêm một ô nữa nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**, mặc định 1.
+Ô cuối bảng — số dòng cho khách chưa đăng nhập — xem phần 3.12.
 
-*(Ô thứ 6 — số dòng cho khách chưa đăng nhập — xem phần 3.12.)*
+Thêm một ô thứ 7 nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**, mặc định 1.
 
 > **Bộ 1 / 3 / 5 là con số đoán ban đầu, không phải đo đạc.** Nó xếp ba tín hiệu theo công sức ứng viên bỏ ra: xem có thể là bấm nhầm, lưu là có chủ đích, ứng tuyển tốn công thật và là thứ nhà tuyển dụng trả tiền để có. Chưa đo gì ở thị trường này, nên cả ba là **ô cấu hình chứ không phải hằng số**.
 >
@@ -269,7 +269,7 @@ Thêm một ô nữa nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**,
 
 > **TUYỆT ĐỐI KHÔNG cắt lúc tính.** Nếu tác vụ 0h lưu 10 dòng thay vì 100, thì mọi tin dưới vị trí 10 không có mốc để so hôm sau, và sáng mai cả bảng sẽ hiện "new". Bảng lưu luôn là 100 dòng.
 
-#### Cảnh báo SEO — đọc trước khi code
+### Cảnh báo SEO — đọc trước khi code
 
 Ý định đằng sau là đúng: nếu Google chỉ thấy 10 dòng thì 90 tin trả phí biến mất khỏi kết quả tìm kiếm, hỏng âm thầm, vài tháng sau mới phát hiện.
 
@@ -290,7 +290,7 @@ Nếu phải chọn nhanh thì **hướng 1 là hướng duy nhất vừa cho Go
 
 Đây là quyết định có hình phạt đi kèm, không phải chi tiết kỹ thuật — **đừng tự chọn, hỏi lại BA**.
 
-#### Hệ quả bán hàng
+### Hệ quả bán hàng
 
 **Vị trí số 10 giờ là một ranh giới có tiền.** Với `w = 0,1` một tin dịch tối đa khoảng 10 bậc, nên:
 
@@ -372,11 +372,11 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] Ngày thiếu dữ liệu trong `job_daily_snapshot` tính là 0 lượt xem, không nhảy cóc
 
 **Bước C — trộn**
-- [ ] Vị trí hiển thị khớp đúng công thức 0,9 / 0,1
+- [ ] Vị trí hiển thị khớp đúng công thức trộn theo `w`
 - [ ] Khi cả 100 tin cùng hạng tương tác, thứ tự hiển thị trùng khớp hoàn toàn với hạng theo gói
 - [ ] Hai tin cùng công ty được phép đứng liền kề
 - [ ] Tin đăng hôm nay nằm ở nửa trên của bảng, không rơi xuống đáy
-- [ ] Hai trọng số đổi được qua cấu hình, không cần phát hành lại
+- [ ] Trọng số `w` đổi được qua cấu hình, không cần phát hành lại
 
 **Bước D — mũi tên**
 - [ ] Tin lần đầu lên bảng hiển thị "new"
@@ -404,7 +404,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] Khi đang lọc kinh nghiệm, cột tăng/giảm hiển thị "–" mọi dòng
 
 **Cấu hình admin**
-- [ ] 5 ô cấu hình đổi được, không cần phát hành lại
+- [ ] 6 ô cấu hình đổi được, không cần phát hành lại
 - [ ] Đổi số có hiệu lực từ lần chạy 0h kế tiếp, và màn hình ghi rõ điều đó
 - [ ] Đặt `w = 0` thì bảng ra đúng thứ tự như production hiện nay
 
