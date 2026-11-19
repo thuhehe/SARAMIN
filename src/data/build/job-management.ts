@@ -1165,6 +1165,7 @@ export const jobManagement: BuildModule = {
               'NO FURTHER PASS. An earlier draft also spread employers apart so two neighbours never shared a company, and carried a minimum-score floor for the top 20. Both were dropped on 19/11/2026: position is the blend, full stop. A company may hold consecutive rows, at most 10 of them.',
               'A POSTING PUBLISHED TODAY NEEDS NO SPECIAL RULE. Its refresh timestamp is the newest there is, so it ranks high in Stage A; carrying the worst interest rank costs it about ten places. The cold-start problem solves itself, which is why no starting score is granted.',
             ],
+            warn: 'TIER RANK IS A POSITION — 1, 2, 3 … 100 — and NEVER `product.display_order`. The ladder an operator sees in HQ Admin (Product settings ▸ Posting ladder) carries values like 300, 295, 291, 287, 280: those order the rungs against each other, they are not ranks. Put one into this formula and the tier term comes out tens of times too large, the interest term stops being able to move anything, and the board silently reproduces the exact order production serves today — no error, no warning, just the feature quietly not working. The same applies to the interest rank: it is the POSITION from stage B, not the raw score.',
           },
           {
             label: 'THE RECOMMENDED SLOT — one pinned row above position 1',

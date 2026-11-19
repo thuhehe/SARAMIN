@@ -13,10 +13,11 @@
 
 **Không cần dựng hệ thống thu thập dữ liệu mới.** Bộ đếm lượt xem, lượt lưu, lượt ứng tuyển đều đã có; bảng chụp thứ hạng hằng ngày, tác vụ 0h và endpoint lấy thứ hạng hôm qua cũng đã có. Việc chính là **đổi khoá sắp xếp** và **thêm phần tính điểm**.
 
-**Hai chỗ dễ làm sai nhất**, đọc kỹ trước khi code:
+**Ba chỗ dễ làm sai nhất**, đọc kỹ trước khi code:
 
-1. **Tin bằng điểm tương tác phải nhận CÙNG một thứ hạng** (phần 1, bước B2). Giai đoạn đầu phần lớn tin sẽ cùng 0 điểm, nên chỗ này quyết định cả bảng.
-2. **Hai quy tắc chống gian lận lượt xem phải lên cùng đợt** (phần 3.7), không để lại sau.
+1. **Hạng theo gói là VỊ TRÍ — 1, 2, 3 … 100 — không phải `product.display_order`.** Bảng Posting ladder trong admin hiển thị các giá trị 300, 295, 291, 287, 280… Đó là số để xếp các bậc gói với nhau, **không phải thứ hạng**. Nhét một trong các số đó vào công thức thì phần theo gói lớn gấp mấy chục lần, phần tương tác mất hết tác dụng, và bảng im lặng cho ra đúng thứ tự như production hiện nay — **không báo lỗi, không có dấu hiệu gì**, chỉ là tính năng lặng lẽ không chạy. Hạng theo tương tác cũng vậy: là vị trí ở bước B, không phải điểm thô.
+2. **Tin bằng điểm tương tác phải nhận CÙNG một thứ hạng** (phần 1, bước B2). Giai đoạn đầu phần lớn tin sẽ cùng 0 điểm, nên chỗ này quyết định cả bảng.
+3. **Hai quy tắc chống gian lận lượt xem phải lên cùng đợt** (phần 3.7), không để lại sau.
 
 ---
 
@@ -376,6 +377,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 **Bước C — trộn**
 - [ ] Vị trí hiển thị khớp đúng công thức trộn theo `w`
+- [ ] Công thức dùng **vị trí 1…100**, không dùng `product.display_order`. Kiểm bằng cách: đặt `w = 1` (thuần tương tác) thì bảng phải xếp đúng theo thứ hạng tương tác — nếu vẫn gần giống thứ tự theo gói thì đã nhét nhầm số
 - [ ] Khi cả 100 tin cùng hạng tương tác, thứ tự hiển thị trùng khớp hoàn toàn với hạng theo gói
 - [ ] Hai tin cùng công ty được phép đứng liền kề
 - [ ] Tin đăng hôm nay nằm ở nửa trên của bảng, không rơi xuống đáy
