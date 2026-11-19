@@ -5434,9 +5434,98 @@ export interface Screen {
   Comp: () => JSX.Element
 }
 
+/* HOT100 — the daily ranking (/viec-lam/cong-ty-hang-dau).
+   The point of this wireframe is the LEFT COLUMN: the position, and under it the
+   movement marker the ranking rule produces. Everything to the right of it is the
+   ordinary job row, drawn plainly so the eye stays on the ranking. The tier chip
+   is kept because position is 90% tier — a reader has to be able to see that the
+   list is ordered by what was bought, nudged by what candidates did. */
+function Hot100Screen() {
+  const go = useNav()
+  const rows: {
+    pos: number
+    move: string
+    tone: 'up' | 'down' | 'same' | 'new'
+    title: string
+    company: string
+    tier: 'Top Job' | 'Distinction' | 'Basic Plus'
+    place: string
+  }[] = [
+    { pos: 1, move: '–', tone: 'same', title: 'Chuyên viên Tư vấn Khách hàng Cá nhân', company: 'MB Bank', tier: 'Top Job', place: 'Hưng Yên' },
+    { pos: 2, move: '▲ 3', tone: 'up', title: 'Cloud & DevOps Engineer (Azure, AWS)', company: 'Euroland Asia', tier: 'Top Job', place: 'Hà Nội' },
+    { pos: 3, move: '▼ 1', tone: 'down', title: 'Fresher / Junior PHP Developer', company: 'Datanext', tier: 'Top Job', place: 'Hồ Chí Minh' },
+    { pos: 4, move: 'new', tone: 'new', title: 'Nhân viên Kinh doanh B2B', company: 'BMD Solutions', tier: 'Distinction', place: 'Hồ Chí Minh' },
+    { pos: 5, move: '▲ 2', tone: 'up', title: 'Kỹ sư Quản lý Chất lượng Phần mềm', company: 'Vivas', tier: 'Distinction', place: 'Hà Nội' },
+    { pos: 6, move: '–', tone: 'same', title: 'Project Manager', company: 'Aimesoft', tier: 'Distinction', place: 'Hà Nội' },
+    { pos: 7, move: '▼ 4', tone: 'down', title: 'Mobile App Executive Officer', company: 'Aeon Finance', tier: 'Basic Plus', place: 'Hà Nội' },
+    { pos: 8, move: 'new', tone: 'new', title: 'Kế toán tổng hợp', company: 'The 50 Tea', tier: 'Basic Plus', place: 'Hồ Chí Minh' },
+  ]
+  const toneCls = {
+    up: 'text-rose-600',
+    down: 'text-sky-600',
+    same: 'text-faint',
+    new: 'text-brand italic',
+  } as const
+  return (
+    <div>
+      <JsHeader active="Jobs" />
+      {/* title + the four filter axes, single-select, all four default to "All" */}
+      <div className="border-b border-line px-5 pt-5 pb-0">
+        <div className="mb-3 flex items-end gap-2">
+          <p className="text-[18px] font-bold text-ink">Công ty hàng đầu</p>
+          <span className="pb-0.5 text-[11px] text-faint">ⓘ bảng chốt lúc 00:01 mỗi ngày</span>
+        </div>
+        <div className="flex gap-5 text-[12.5px]">
+          {['Theo ngành nghề', 'Theo khu vực', 'Theo học vấn', 'Theo quy mô'].map((t, i) => (
+            <span key={t} className={cn('pb-2', i === 0 ? 'border-b-2 border-brand font-semibold text-ink' : 'text-muted')}>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+      {/* the chosen axis opens as a grid of options; "Tất cả" is the absence of the filter */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-b border-line px-5 py-3 text-[12px] sm:grid-cols-4">
+        {['Tất cả', 'IT – Phần mềm', 'Kinh doanh', 'Kế toán', 'Marketing', 'Nhân sự', 'Sản xuất', 'Thiết kế'].map((o, i) => (
+          <span key={o} className={i === 0 ? 'font-semibold text-brand' : 'text-muted'}>{o}</span>
+        ))}
+      </div>
+      {/* the ranking */}
+      <div className="divide-y divide-line">
+        {rows.map((r) => (
+          <div
+            key={r.pos}
+            onClick={() => go('js-job-detail')}
+            className="flex cursor-pointer gap-3 px-5 py-3 hover:bg-canvas/60"
+          >
+            <div className="w-10 shrink-0 text-center">
+              <p className="text-[17px] font-bold leading-none text-ink">{r.pos}</p>
+              <p className={cn('mt-1 text-[10.5px] font-semibold leading-none', toneCls[r.tone])}>{r.move}</p>
+            </div>
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-canvas text-[9px] text-faint">LOGO</div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold text-ink">{r.title}</p>
+              <p className="truncate text-[11.5px] text-muted">{r.company}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <Chip tone={r.tier === 'Top Job' ? 'rose' : r.tier === 'Distinction' ? 'amber' : 'blue'}>Tin ưu tiên · {r.tier}</Chip>
+                <Chip>{r.place}</Chip>
+              </div>
+            </div>
+            <Btn className="hidden shrink-0 self-center sm:inline-flex">Ứng tuyển</Btn>
+          </div>
+        ))}
+      </div>
+      <div className="px-5 py-4 text-[11.5px] text-faint">
+        100 dòng, không phân trang. Vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác.
+        Khi áp bộ lọc, cột tăng/giảm hiển thị “–” ở mọi dòng.
+      </div>
+    </div>
+  )
+}
+
 export const SCREENS: Screen[] = [
   { id: 'js-home', site: 'Jobseeker', title: 'Homepage / job list', url: 'saramin.vn', Comp: HomeScreen },
   { id: 'js-search', site: 'Jobseeker', title: 'Search results', url: 'saramin.vn/jobs?q=frontend', Comp: SearchScreen },
+  { id: 'js-hot100', site: 'Jobseeker', title: 'HOT100 — Công ty hàng đầu (bảng xếp hạng)', url: 'saramin.vn/viec-lam/cong-ty-hang-dau', Comp: Hot100Screen },
   { id: 'js-job-detail', site: 'Jobseeker', title: 'Job detail', url: 'saramin.vn/job/senior-frontend', Comp: JobDetailScreen },
   { id: 'js-apply', site: 'Jobseeker', title: 'Apply flow', url: 'saramin.vn/job/…/apply', Comp: ApplyScreen },
   { id: 'js-mypage', site: 'Jobseeker', title: 'My page', url: 'saramin.vn/my-page', Comp: MyPageScreen },

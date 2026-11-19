@@ -321,7 +321,7 @@ export const jobManagement: BuildModule = {
           ['Search result', 'The job list from a keyword query \u2014 already specced as \u201cJob list (Search result)\u201d', '\u2014'],
           ['Recommended jobs', 'Matched to the signed-in jobseeker\u2019s profile \u2014 already specced', '\ucd94\ucc9c'],
           ['Relevant jobs', 'Matched to another job \u2014 already specced', '\u2014'],
-          ['HOT100', 'A RANKING, not a filter \u2014 the most-viewed / most-applied postings', 'HOT100'],
+          ['HOT100', 'A RANKING, not a filter \u2014 posting tier picks the 100, candidate interest orders them. Recomputed nightly; see the HOT100 requirement.', 'HOT100'],
           ['Zone', 'A branded campaign landing page, banner + copy + two job lists', '\ucc44\uc6a9\uad00'],
           ['Collection', 'A curated saved set of jobs published under a slug', '\ud050\ub808\uc774\uc158'],
           ['Jobs for foreign nationals', 'The job list, filtered to visa-friendly postings', '\uc678\uad6d\uc778 \ucc44\uc6a9'],
@@ -1057,6 +1057,210 @@ export const jobManagement: BuildModule = {
           'BAND SECTION HEADERS (labelled groups as in the KR reference) vs badges only — recommended, but a UI decision for the client.',
           'RESERVED PAGE-1 SLOT for the best unpaid declared-field match — recommended as insurance, but a commercial decision the client owns.',
           'SQL vs dedicated search engine — recommendation on the table (dedicated index, for VN ASCII folding + live facet counts + per-hit best-field). The SQL fallback costs the facet counts.',
+        ],
+      },
+    },
+    /* HOT100 — the one jobseeker page whose ORDER is the product. Every other
+       page lists postings; this one ranks them, and the rank plus the movement
+       marker beside it is what a candidate comes back for.
+
+       The rule below is the 19/11/2026 rewrite. What the build does today is the
+       first two sort keys of Stage A and nothing else, which never moves — which
+       is why the ▲▼ column svn-web already renders shows "–" on every row of
+       production. */
+    {
+      name: 'HOT100 — the daily ranking',
+      slug: 'hot100',
+      site: 'Jobseekers',
+      scope: ['BE', 'FE'],
+      ready: true,
+      notes: 'Ranking rule rewritten 19/11/2026. Build orders by tier then refresh only, and the movement column is empty on production. Ticket: docs/tasks/hot100-ranking.md',
+      mockup: 'js-hot100',
+      detail: {
+        description:
+          'HOT100 (VI: Công ty hàng đầu, `/viec-lam/cong-ty-hang-dau`) is a RANKING of 100 postings, recomputed once a night and frozen for the day. It is the only jobseeker surface where the order is itself the content: the reader takes the position and the ▲▼ marker as a signal, not merely as a list order.\n\nThe rule has two halves that must not collapse into one. Posting tier decides WHICH 100 postings are on the board; a blend of tier and candidate interest decides WHERE each one sits on it. Position is 90% tier and 10% interest, so a posting drifts about ten places around the slot its package bought — enough that the board visibly moves every morning, not enough that a paid slot can be taken by a posting that went viral overnight.',
+        userStory:
+          'As a candidate I want the HOT100 to move from day to day so that it tells me something real — which postings people are actually reading and applying to — and as an employer I want the position I paid for to hold, so that the board stays worth buying.',
+        keyPoints: [
+          {
+            vi: 'Gói dịch vụ chọn ra 100 tin. Ứng viên quyết định vị trí trong 100 tin đó.',
+            en: 'Posting tier picks the 100. Candidate interest orders them inside it.',
+          },
+          {
+            vi: 'Vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác. Hai trọng số nằm trong cấu hình, không viết cứng.',
+            en: 'Position = 0.9 × tier rank + 0.1 × interest rank. Both weights are configuration, never constants in code.',
+          },
+          {
+            vi: 'Tính một lần mỗi đêm lúc 00:01 giờ VN, cố định cả ngày. Bảng đổi trong ngày thì mũi tên "so với hôm qua" thành vô nghĩa.',
+            en: 'Computed once at 00:01 Asia/Ho_Chi_Minh and frozen for the day. A board that moves during the day makes its own ▲▼ column meaningless.',
+          },
+          {
+            vi: 'Tin bằng điểm tương tác nhận CÙNG một thứ hạng — trung bình của khoảng vị trí nhóm đó chiếm.',
+            en: 'Postings tied on interest share ONE rank, the average of the positions the tied group spans. This is the detail most likely to be got wrong, and it decides the whole board while traffic is low.',
+          },
+          {
+            vi: '"new" nghĩa là mới vào bảng, không phải tin mới đăng, và chỉ hiện một lần duy nhất.',
+            en: '"new" means new TO THE BOARD, not newly posted, and appears once in the life of a posting.',
+          },
+        ],
+        requirements: [
+          {
+            label: 'STAGE A — which 100 postings are on the board, and their TIER RANK',
+            text: 'Run over every posting in the system, not over a paid subset. Tier is a SORT key here, not a filter: a low-tier posting still reaches the board on a day when few high-tier postings are open.',
+            table: {
+              cols: ['Step', 'Rule'],
+              rows: [
+                ['A1 — filter', 'Posting is Open and exposed · application deadline not passed · posting display deadline not passed · company Active · company holds a legal identity (mst, or foreign_tax_id for a FOREIGN company).'],
+                ['A2 — sort', '1. posting tier on the ladder, high to low. 2. last auto-refresh, newest first. 3. created last first — a tie-break only, carrying no meaning.'],
+                ['A3 — company cap', 'Walk the sorted list top down; each company may take at most 10 postings. The 11th and beyond go to a waiting list and the slot passes to another employer.'],
+                ['A4 — fill back', 'If fewer than 100 were collected, take from the waiting list in A2 order until 100 is reached. If still short, the board renders the rows it has.'],
+              ],
+            },
+            items: [
+              'THE ORDER AFTER A4 IS THE TIER RANK — positions 1..100 — and it is one of the two inputs to Stage C. Nothing stores it; it is recomputed every night.',
+              'THE FILL-BACK IS NOT AN EDGE CASE. Six employers posting would yield 60 rows under the cap alone; without A4 the board is short every day until the market is wide.',
+              'THE 10-PER-COMPANY CAP IS APPLIED WHILE SELECTING, not while ordering. Applied afterwards it only pushes a company\'s surplus down the board it already filled, which is not the rule.',
+            ],
+            warn: 'There is NO paid-only gate in this stage. A posting with no package is eligible and simply sorts last. If the client wants HOT100 to be a paid-only board, that is a change to A1 and a change to how the page is sold — see Open questions.',
+          },
+          {
+            label: 'STAGE B — the INTEREST RANK, over those 100 only',
+            text: 'Score only the 100 postings chosen in Stage A. Scoring the whole corpus would be work with nowhere to land, because Stage A has already settled membership.',
+            table: {
+              cols: ['Signal', 'Points', 'Counted only when'],
+              rows: [
+                ['Posting view', '1', 'It is a valid view — see the anti-gaming block below.'],
+                ['Posting saved (scrap)', '3', 'The save is still in force, not undone.'],
+                ['Application', '5', 'The application is still in force, not withdrawn or deleted.'],
+              ],
+            },
+            items: [
+              'WINDOW: the 7 days up to the end of yesterday. The window is itself the smoothing — one day in, one day out, so a single day moves the score by about a seventh. No second smoothing formula is applied on top; an earlier draft carried one and it only made the board slower to react while adding a stored value to maintain.',
+              'RANK THEM 1..100 by raw score, high to low. That ordering is the INTEREST RANK, the second input to Stage C.',
+              'TIED POSTINGS SHARE ONE RANK, equal to the average of the positions the tied group spans. Twenty postings scoring above zero take ranks 1..20; the eighty on zero all span positions 21..100 and therefore all take rank 60.5.',
+              'NOTHING IS STORED. The raw score is recomputable from source data at any time, so a posting that drops off the board and returns is scored exactly as if it had never left.',
+            ],
+            warn: 'Do NOT order tied postings arbitrarily to produce distinct ranks. While traffic is low most of the board scores zero, and arbitrary tie order would hand two identical postings ranks 21 and 100 — an 80-place gap invented out of nothing, which then moves them 8 places apart on the real board.',
+          },
+          {
+            label: 'STAGE C — the blend, which is the displayed position',
+            text: 'Position = (0.9 × tier rank) + (0.1 × interest rank). Sort ascending — the smaller number sits higher. Where two postings tie, the smaller tier rank wins. Nothing reorders the board after this step.',
+            table: {
+              cols: ['Posting', 'Tier rank', 'Interest rank', 'Blend', 'Shown at'],
+              rows: [
+                ['P', '5', '60.5', '4.5 + 6.05 = 10.55', '1'],
+                ['Q', '12', '2', '10.8 + 0.2 = 11.00', '2'],
+                ['R', '12', '60.5', '10.8 + 6.05 = 16.85', '3'],
+                ['S', '20', '1', '18 + 0.1 = 18.10', '4'],
+              ],
+            },
+            items: [
+              'READ Q AGAINST R: same tier rank, and the one candidates engaged with sits higher. Interest works.',
+              'READ S AGAINST P: the most engaged posting on the board still does not pass a posting four tier ranks above it. Tier still decides.',
+              'THE INTEREST TERM CONTRIBUTES AT MOST 10 POINTS on a 1..100 scale, so a posting moves about ten places around the slot its package bought. That ceiling is the whole point of the weight: it is the knob that sets how lively the board is, and it is the number the sales promise is written against.',
+              'BOTH WEIGHTS ARE CONFIGURATION. The client may move to 0.7 / 0.3 and later 0.5 / 0.5 as traffic grows; the code must not need a release for that.',
+              'NO FURTHER PASS. An earlier draft also spread employers apart so two neighbours never shared a company, and carried a minimum-score floor for the top 20. Both were dropped on 19/11/2026: position is the blend, full stop. A company may hold consecutive rows, at most 10 of them.',
+              'A POSTING PUBLISHED TODAY NEEDS NO SPECIAL RULE. Its refresh timestamp is the newest there is, so it ranks high in Stage A; carrying the worst interest rank costs it about ten places. The cold-start problem solves itself, which is why no starting score is granted.',
+            ],
+          },
+          {
+            label: 'STAGE D — the movement marker, and what is stored',
+            text: 'Compare today\'s board with the board stored last night, then store today\'s.',
+            table: {
+              cols: ['Case', 'Shows'],
+              rows: [
+                ['On yesterday\'s board, higher today', '▲ and the number of places gained'],
+                ['On yesterday\'s board, lower today', '▼ and the number of places lost'],
+                ['On yesterday\'s board, same position', '–'],
+                ['Not on yesterday\'s board AND never on any board', 'new'],
+                ['Not on yesterday\'s board BUT has been on one before', '–'],
+                ['First night the job ever runs', '– on every row'],
+                ['Any filter applied on the page', '– on every row'],
+              ],
+            },
+            items: [
+              'STORE TWO THINGS ONLY: the 100 postings with their positions, and, for a posting reaching the board for the first time, the date it first did. Scores are not stored.',
+              'THE MOVEMENT IS BOUNDED AT 99 by the size of the board, so the marker can never read a three-digit number. In practice the weight holds it near ten.',
+              '"new" IS SHOWN ONCE IN A POSTING LIFETIME. A posting hovering around position 100 enters and leaves repeatedly, and marking every return as new would show one posting as new three times in a week.',
+              'ON THE FIRST NIGHT, every row reads "–". Marking all 100 as new would be true and useless.',
+              'IF THE NIGHTLY JOB FAILS at any stage, keep yesterday\'s board, log, and alert. The page must never render empty because a scheduled job did not finish.',
+            ],
+            warn: '"new" means NEW TO THE BOARD, not newly posted. A posting published eight days ago shows "new" the first night it reaches the top 100. Any user-facing copy must say "mới vào bảng" or keep the English word — never "tin mới".',
+          },
+          {
+            label: 'ANTI-GAMING — without this the ranking is an invitation',
+            text: 'Three of the four rules below already have a writer in the build; the two view rules do not, and they are the ones that matter. A view today is an unconditional increment on opening the detail page.',
+            table: {
+              cols: ['Rule', 'State in build'],
+              rows: [
+                ['One person viewing one posting on one day counts as ONE view, however many times they open it', 'NOT BUILT — every page open increments'],
+                ['A view from the employer account that owns the posting does not count', 'NOT BUILT'],
+                ['A save that is undone stops counting', 'Trigger exists; verify it'],
+                ['An application withdrawn or deleted stops counting', 'Trigger exists; verify it'],
+              ],
+            },
+            warn: 'Ship the two view rules WITH the ranking, not after it. Without them an employer raises their own position by reloading their own posting, and the first time that is noticed the board loses the credibility the whole feature is built on.',
+          },
+          {
+            label: 'DURING THE DAY — what the page does between two nightly runs',
+            table: {
+              cols: ['Situation', 'Behaviour'],
+              rows: [
+                ['Page opened normally', 'Serve the board computed at 00:01. Do not recompute.'],
+                ['A filter is applied (job category / province / education / company size)', 'Run an ordinary query over all eligible postings, ordered by tier then last refresh, capped at 100. Interest scores are NOT used.'],
+                ['While a filter is applied', 'The movement column reads "–" on every row.'],
+              ],
+            },
+            items: [
+              'A FILTERED LIST IS A DIFFERENT RANKING. Most of its rows were never scored, because scoring runs over the 100 of the main board only; and it has no yesterday of its own to compare against. Both facts point the same way, which is why the column empties.',
+              'THE NIGHTLY CADENCE IS NOT A COST SAVING, it is the cadence of the data. The interest score is a 7-day sum, so an hour moves it by well under one percent; recomputing every five minutes would return the same board and spend the work to find that out.',
+              'THE PRICE OF THE CADENCE, which sales must be told: a package bought at 09:00 reaches the board at 00:01 the next morning. Today it appears at once.',
+            ],
+          },
+        ],
+        states: [
+          'First night — no stored board exists: every row shows "–", never "new".',
+          'Nightly job failed or did not run: yesterday\'s board is served unchanged, with an alert raised. Never an empty page.',
+          'Fewer than 100 eligible postings: render the rows there are; do not pad.',
+          'Every posting on the board scoring zero: all 100 share one interest rank, so the board is exactly the tier order. This is the expected state for the first weeks.',
+          'All 100 postings on one tier: the tier rank is settled by last refresh and the blend behaves normally.',
+          'A posting closes or expires during the day: it stays on the board until the next run, shown in its closed state as the card already does.',
+        ],
+        backend: {
+          endpoints: [
+            'GET /api/{lang}/jobs/search?section=TRENDING_LATEST — the existing read path the page already uses.',
+            'GET /api/{lang}/jobs/hot100/previous-ranks — already exists (V818): job id to position on yesterday\'s board.',
+          ],
+          notes:
+            'Nothing new has to be collected. Daily views come from job_daily_snapshot (V541), which already records a running view total for every open posting at each day close, so one day of views is the difference between two consecutive rows; a day with no row counts as zero views rather than being bridged across. Saves and applications carry their own timestamps and are counted directly. The nightly job (Hot100RankSnapshotJob, cron 0 1 0 * * * Asia/Ho_Chi_Minh) and the snapshot table already exist and are reused — the board it stores simply becomes the output of Stage C instead of the current sort. One new stored value is needed: the date each posting first reached the board, which drives the "new" marker.',
+        },
+        acceptance: [
+          'The nightly job runs at 00:01 Asia/Ho_Chi_Minh and stores the board for the day.',
+          'No company holds more than 10 rows on the board.',
+          'With few employers posting, the board still reaches 100 rows through the fill-back step.',
+          'A low-tier posting reaches the board on a day when few high-tier postings are open.',
+          'Postings tied on interest score share one rank; with every posting on zero, the displayed order equals the tier order exactly.',
+          'A day missing from job_daily_snapshot counts as zero views and is not bridged across two days.',
+          'Displayed order matches the 0.9 / 0.1 blend, with no pass applied after it.',
+          'Two postings from one company may sit on consecutive rows.',
+          'A posting published today sits in the upper half of the board rather than at the bottom.',
+          'Both weights can be changed in configuration without a release.',
+          'A posting reaching the board for the first time shows "new"; a posting returning after an absence shows "–".',
+          'On the first run, every row shows "–".',
+          'Opening one posting ten times from one account on one day adds one view.',
+          'An employer opening their own posting adds no view.',
+          'With any filter applied, the movement column reads "–" on every row.',
+          'If the nightly job fails, the page still serves yesterday\'s board.',
+          'Page title and the "?" tooltip match this rule.',
+        ],
+        openQuestions: [
+          'Is HOT100 a PAID-ONLY board? This requirement says no — a free posting is eligible and sorts last. The build today says yes, filtering to postings whose product covers the job-list-trending placement. The answer changes the sales line from "buy a package to sit higher" to "buy a package to appear at all".',
+          'Is there a route for the weights — 0.9/0.1 at launch, 0.7/0.3 once traffic exists, 0.5/0.5 later? If so sales should be told now, because the movement promise widens from about ten places to about fifty.',
+          'Are the 1 / 3 / 5 weights and the 7-day window right for this market, or should they be tuned after a month of real data?',
+          'Does the "new shows once only" rule hold, or should every return to the board be marked new as well?',
+          'Does a filtered list keep the current tier ordering, or should the filter instead narrow the 100 rows of the main board?',
+          'Should a high-tier posting carry a visible label (Saramin KR shows 추천) so that commercial value is expressed by a badge rather than only by position? That would let the tier weight fall later without losing the reason to buy.',
+          'New copy for the "?" tooltip — it currently describes a daily views-and-saves chart aggregated for 30 minutes from midnight, which is neither what the build does today nor what this rule does.',
         ],
       },
     },
