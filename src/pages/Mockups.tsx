@@ -5489,6 +5489,33 @@ function Hot100Screen() {
           <span key={o} className={i === 0 ? 'font-semibold text-brand' : 'text-muted'}>{o}</span>
         ))}
       </div>
+      {/* FIFTH axis, and the only one that is not a tab: two states, no "all".
+          Maps to svn-be's existing `experience` facet (entry / experienced) rather
+          than to a new field. Like every other filter it empties the movement column. */}
+      <div className="flex justify-center border-b border-line py-3">
+        <span className="rounded-l-md border border-brand bg-brand px-5 py-1.5 text-[12px] font-semibold text-white">Chưa có kinh nghiệm</span>
+        <span className="rounded-r-md border border-l-0 border-line px-5 py-1.5 text-[12px] text-muted">Đã có kinh nghiệm</span>
+      </div>
+      {/* RECOMMENDED — one pinned row above position 1, OUTSIDE the numbering.
+          It holds the posting candidates engaged with most, which is precisely the
+          one a tier-led order is likely to have buried. Drawn without a rank and
+          without a movement marker, because it is not a position on the board.
+          Hidden entirely on a day when nothing scores above zero. */}
+      <div className="flex gap-3 border-b border-line bg-brand-soft/50 px-5 py-3">
+        <div className="w-10 shrink-0 text-center">
+          <div className="mx-auto grid h-7 w-10 place-items-center rounded-md bg-brand text-[9.5px] font-bold text-white">GỢI Ý</div>
+        </div>
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-canvas text-[9px] text-faint">LOGO</div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-ink">Content Creator — mảng video</p>
+          <p className="truncate text-[11.5px] text-muted">Hi-Up Entertainment</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <Chip tone="blue">Tin ưu tiên · Basic Plus</Chip>
+            <Chip>Hồ Chí Minh</Chip>
+          </div>
+        </div>
+        <Btn className="hidden shrink-0 self-center sm:inline-flex">Ứng tuyển</Btn>
+      </div>
       {/* the ranking */}
       <div className="divide-y divide-line">
         {rows.map((r) => (
@@ -5515,8 +5542,9 @@ function Hot100Screen() {
         ))}
       </div>
       <div className="px-5 py-4 text-[11.5px] text-faint">
-        100 dòng, không phân trang. Vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác.
-        Khi áp bộ lọc, cột tăng/giảm hiển thị “–” ở mọi dòng.
+        100 dòng, không phân trang. Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác,
+        w là trọng số tương tác do admin đặt (mặc định 0,1). Dòng Gợi ý nằm ngoài 100 dòng và không có số thứ tự.
+        Khi áp bộ lọc bất kỳ, kể cả nút kinh nghiệm, cột tăng/giảm hiển thị “–” ở mọi dòng.
       </div>
     </div>
   )

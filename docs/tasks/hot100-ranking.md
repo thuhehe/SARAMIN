@@ -5,7 +5,7 @@
 **Mockup:** [Mockups ▸ js-hot100](https://saramin-eta.vercel.app/mockups)
 **Tham khảo UI:** Saramin KR — [/zf_user/jobs/hot100](https://www.saramin.co.kr/zf_user/jobs/hot100)
 
-> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên cách **chọn ra 100 tin**, và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm.
+> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên cách **chọn ra 100 tin**, và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: mặc định 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm. Tỉ lệ đó là **một ô cấu hình trong admin**, không viết cứng. Kèm theo: một dòng "Gợi ý" phía trên vị trí số 1, một bộ lọc kinh nghiệm, và một màn hình cấu hình 5 ô.
 
 ---
 
@@ -70,8 +70,10 @@ Cửa sổ 7 ngày chính là cơ chế làm mượt rồi (mỗi ngày chỉ th
 ### C — Trộn, ra vị trí hiển thị
 
 ```
-vị trí = (0,9 × hạng theo gói) + (0,1 × hạng theo tương tác)
+vị trí = ((1 − w) × hạng theo gói) + (w × hạng theo tương tác)
 ```
+
+`w` là **trọng số tương tác**, một số từ 0 đến 1 do admin đặt, **mặc định 0,1**. Trọng số gói là phần còn lại, hệ thống tự suy ra.
 
 Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng theo gói nhỏ hơn đứng trước. **Không có bước xáo trộn nào sau đây.**
 
@@ -82,7 +84,9 @@ Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng
 | R | 12 | 60,5 | 10,8 + 6,05 = 16,85 | 3 |
 | S | 20 | 1 | 18 + 0,1 = 18,10 | 4 |
 
-Hai trọng số **phải nằm trong cấu hình** — khách hàng có thể đổi sang 0,7/0,3 rồi 0,5/0,5 mà không cần phát hành lại.
+**Admin nhập một số, không phải hai.** Hai ô riêng có thể bị đặt thành tổng khác 1 và không chỗ nào trên màn hình báo điều đó.
+
+**`w = 0` là công tắc tắt.** Đặt về 0 thì bảng quay lại đúng thứ tự như production hiện nay — không cần phát hành lại. Đây là đường lui nếu quy tắc mới có vấn đề sau khi lên.
 
 ### D — Mũi tên và lưu lại
 
@@ -125,7 +129,7 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 
 ---
 
-## 3. TÁM ĐIỂM CẦN THAY ĐỔI
+## 3. MƯỜI MỘT ĐIỂM CẦN THAY ĐỔI
 
 ### 3.1 Bỏ lọc theo placement
 
@@ -195,9 +199,86 @@ Build hiện chỉ có 2 trạng thái: có số liệu hôm qua thì ▲▼, kh
 
 Khoá trong `dictionaries/vi.json`, `en.json`, `ko.json`: `hotTitle`, `hotInfoDescription`.
 
+### 3.9 THÊM một vị trí "Gợi ý" phía trên dòng số 1
+
+Một dòng **nằm trên vị trí số 1**, mang nhãn "Gợi ý", **không có số thứ tự** và **không có mũi tên** — vì nó không phải một vị trí trên bảng.
+
+| Câu hỏi | Quy tắc |
+|---|---|
+| Tin nào được chọn | Tin có **điểm thô cao nhất** trong 100 tin. Bằng điểm thì tin có hạng theo gói tốt hơn được chọn |
+| Khi không tin nào có điểm | **Không vẽ dòng này**. Gắn nhãn "Gợi ý" cho một tin không ai mở thì nhãn mất nghĩa ngay tuần đầu — mà giai đoạn đầu phần lớn tin sẽ 0 điểm |
+| Tính lúc nào | Ngay sau bước B, trong cùng tác vụ 0h. Không giữ lại từ hôm qua |
+| Bao nhiêu dòng | Tham số cấu hình, mặc định 1 |
+
+> **Nhãn này nghĩa là "ứng viên thích tin này", KHÔNG phải "tin trả phí cao".** Đây là một ngã rẽ thiết kế đã được chốt: bản đề xuất ban đầu định dùng nhãn để thể hiện giá trị thương mại, khách hàng chọn hướng ngược lại. Đừng âm thầm đổi nó thành nhãn theo gói.
+>
+> Dòng này là **phần duy nhất của trang thuần theo tương tác**. Mọi dòng bên dưới nó là 90% theo gói.
+
+**Chưa chốt:** tin được chọn có giữ luôn dòng đánh số của nó ở dưới, hay được nhấc hẳn ra khỏi 100 tin — xem phần 8.
+
+### 3.10 THÊM bộ lọc kinh nghiệm
+
+Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dưới lưới chọn ngành nghề, **không phải một tab** như 4 nhóm kia.
+
+| | |
+|---|---|
+| **Dùng lại cái gì** | Facet `experience` svn-be đã phục vụ sẵn — `entry` cho tin không đòi kinh nghiệm, `experienced` cho tin có đòi. **Không cần thêm trường mới** |
+| **Hành vi** | Giống mọi bộ lọc khác: truy vấn lại trên toàn bộ tin hợp lệ, xếp theo bậc gói rồi thời điểm làm mới, và **cột tăng/giảm hiển thị "–" mọi dòng** |
+
+**Chưa chốt:** có trạng thái "tất cả" không, hay luôn phải chọn một trong hai — xem phần 8.
+
+### 3.11 THÊM màn hình cấu hình trong admin — 5 ô, một màn hình
+
+**Không số nào trong ticket này được viết cứng trong code.** Đây là các cần gạt mà vận hành sẽ chỉnh khi có lưu lượng thật, và cả năm số đều sẽ sai ở lần đoán đầu tiên.
+
+| Ô | Mặc định | Chỉnh nó thì sao |
+|---|---|---|
+| Trọng số tương tác `w` | 0,1 | Tin dịch xa khỏi vị trí theo gói bao nhiêu. 0,1 ≈ 10 bậc, 0,3 ≈ 30 bậc, **0 = tắt hẳn quy tắc mới** |
+| Điểm mỗi lượt xem | 1 | Nâng/hạ trọng lượng của sự tò mò |
+| Điểm mỗi lượt lưu | 3 | Nếu lượt lưu không nói lên gì ở thị trường này thì hạ xuống 2 |
+| Điểm mỗi lượt ứng tuyển | 5 | Nếu ứng tuyển là tín hiệu thật duy nhất thì nâng lên 10 |
+| Số ngày của cửa sổ tính điểm | 7 | Ngắn thì phản ứng nhanh và nhảy mạnh; dài thì êm và chậm |
+
+Thêm một ô nữa nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**, mặc định 1.
+
+> **Bộ 1 / 3 / 5 là con số đoán ban đầu, không phải đo đạc.** Nó xếp ba tín hiệu theo công sức ứng viên bỏ ra: xem có thể là bấm nhầm, lưu là có chủ đích, ứng tuyển tốn công thật và là thứ nhà tuyển dụng trả tiền để có. Chưa đo gì ở thị trường này, nên cả ba là **ô cấu hình chứ không phải hằng số**.
+>
+> **Màn hình phải ghi rõ: đổi số có hiệu lực từ lần chạy 0h kế tiếp, không phải ngay lập tức.** Không ghi thì người vận hành đầu tiên đổi số sẽ kết luận là nó không chạy.
+
 ---
 
-## 4. Việc cần kiểm tra riêng — làm được ngay, không cần chờ
+## 4. Kiểm thử bằng dữ liệu quá khứ trên production
+
+**Yêu cầu từ BA.** Production đã có lượt xem tích luỹ từ trước, nên **trước khi bật tính năng**, hãy dựng lại bảng xếp hạng cho các ngày đã qua và xem con số tăng giảm thực tế ra sao. Ví dụ dữ liệu mới nhất là 16/11 thì dựng bảng cho 11, 12, 13, 14, 15/11 rồi so liên tiếp từng ngày.
+
+Mục đích là trả lời **trước khi lên production** hai câu mà hiện không ai biết:
+
+- mỗi ngày bảng xáo trộn bao nhiêu bậc trên thực tế
+- có bao nhiêu tin thật sự đổi chỗ, hay gần như đứng yên vì phần lớn tin 0 điểm
+
+### Dựng lại được tới đâu
+
+| Thành phần | Dựng lại được? | Vì sao |
+|---|---|---|
+| **Điểm thô (tương tác)** | **Được, chính xác** | `job_daily_snapshot` ghi tổng lượt xem luỹ kế của mọi tin đang mở vào cuối mỗi ngày, nên lượt xem một ngày = hiệu hai ngày liên tiếp. `scrap.scrapped_at` và mốc thời gian của `job_application` cho phép đếm đúng theo ngày |
+| **Hạng theo gói — phần bậc gói** | **Được** | `job_daily_snapshot` lưu `tier_code` và `is_free` của từng tin từng ngày |
+| **Hạng theo gói — phần thời điểm làm mới** | **KHÔNG** | `refreshed_at` bị ghi đè tại chỗ, không có bản chụp theo ngày |
+| **Tin nào hợp lệ ngày đó** | Gần đúng | `job_daily_snapshot` có một dòng cho mọi tin OPEN tại thời điểm chốt ngày, kèm cờ `is_live` |
+
+**Kết luận:** dựng lại được toàn bộ phía tương tác và phần lớn phía gói, thiếu đúng một khoá phụ là thứ tự làm mới trong cùng bậc gói. Kết quả vì thế **không trùng khít** với bảng thật, nhưng **đủ để trả lời câu hỏi cần trả lời**: biên độ dịch chuyển mỗi ngày là bao nhiêu.
+
+### Cách làm đề xuất
+
+1. Viết một lệnh chạy tay (script hoặc CLI) nhận vào một ngày, dựng bảng 100 tin của ngày đó theo đúng bước A–C, nhưng **đọc dữ liệu lịch sử thay vì dữ liệu hiện tại**
+2. Chạy cho 5–7 ngày liên tiếp gần nhất
+3. Xuất bảng so sánh: mỗi ngày bao nhiêu tin đổi chỗ · bậc dịch chuyển trung bình · bậc dịch chuyển lớn nhất · bao nhiêu tin "new"
+4. **Gửi kết quả cho BA trước khi chốt giá trị mặc định của `w`**
+
+> **Báo lại sớm nếu không làm được.** `job_daily_snapshot` chỉ bắt đầu ghi từ ngày deploy V541 và một ngày tác vụ không chạy thì không có dòng nào. Nếu production chưa đủ ngày, kiểm thử này không thực hiện được và giá trị `w` mặc định phải chọn bằng phán đoán — BA cần biết điều đó sớm chứ không phải lúc bàn giao.
+
+---
+
+## 5. Việc cần kiểm tra riêng — làm được ngay, không cần chờ
 
 Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột tăng/giảm, dù logic và endpoint đều đã có. Kiểm tra:
 
@@ -207,7 +288,7 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 
 ---
 
-## 5. Tiêu chí nghiệm thu
+## 6. Tiêu chí nghiệm thu
 
 **Bước A — chọn tin**
 - [ ] Tác vụ chạy lúc 00:01 giờ VN và ghi lại bảng của ngày
@@ -245,12 +326,30 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 - [ ] Danh sách đã lọc vẫn xếp theo bậc gói rồi thời điểm làm mới
 - [ ] Tác vụ 0h lỗi → trang vẫn hiển thị bảng hôm trước, không trắng
 
+**Dòng Gợi ý**
+- [ ] Dòng Gợi ý nằm trên vị trí số 1, không có số thứ tự, không có mũi tên
+- [ ] Tin được chọn là tin có điểm thô cao nhất trong 100 tin
+- [ ] Khi cả 100 tin đều 0 điểm, **không vẽ dòng Gợi ý**
+
+**Bộ lọc kinh nghiệm**
+- [ ] Hai nút lọc đúng qua facet `experience` có sẵn, không thêm trường mới
+- [ ] Khi đang lọc kinh nghiệm, cột tăng/giảm hiển thị "–" mọi dòng
+
+**Cấu hình admin**
+- [ ] 5 ô cấu hình đổi được, không cần phát hành lại
+- [ ] Đổi số có hiệu lực từ lần chạy 0h kế tiếp, và màn hình ghi rõ điều đó
+- [ ] Đặt `w = 0` thì bảng ra đúng thứ tự như production hiện nay
+
+**Kiểm thử dữ liệu quá khứ**
+- [ ] Có lệnh dựng lại bảng cho một ngày trong quá khứ
+- [ ] Đã chạy cho 5–7 ngày liên tiếp và gửi BA bảng so sánh biên độ dịch chuyển
+
 **Khác**
 - [ ] Tiêu đề trang và chú thích dấu "?" đã cập nhật
 
 ---
 
-## 6. Ngoài phạm vi
+## 7. Ngoài phạm vi
 
 - Bộ lọc 4 nhóm trên trang — giữ nguyên hoàn toàn
 - Nội dung thẻ tin, màn hình rỗng — giữ nguyên
@@ -260,18 +359,21 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 
 ---
 
-## 7. Câu hỏi cần BA trả lời trước khi bắt tay
+## 8. Câu hỏi cần BA trả lời trước khi bắt tay
+
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói.
+
+**Còn lại:**
 
 1. HOT100 có phải trang **chỉ dành cho tin trả phí** không? Requirement nói không, build nói có (phần 3.1). Câu trả lời đổi luôn câu bán hàng
-2. Có lộ trình tăng trọng số tương tác (0,9/0,1 → 0,7/0,3 → 0,5/0,5) không?
-3. Trọng số 1 / 3 / 5 và cửa sổ 7 ngày đã chốt chưa?
-4. Luật "new chỉ hiện một lần" có áp không?
-5. Danh sách đã lọc giữ cách xếp hiện nay, hay lọc trong 100 tin của bảng chính?
-6. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
+2. Tin được gắn nhãn Gợi ý có **giữ luôn dòng đánh số của nó ở dưới** không, hay được nhấc hẳn ra khỏi 100 tin?
+3. Nút lọc kinh nghiệm có trạng thái **"tất cả"** không, hay luôn phải chọn một trong hai? Saramin Hàn Quốc chỉ có hai nút, nghĩa là không bao giờ xem được bảng đầy đủ — có thể đúng ở bên đó nhưng sai ở đây
+4. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
+5. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 
-## 8. Đầu mối trong mã nguồn
+## 9. Đầu mối trong mã nguồn
 
 **svn-be**
 

@@ -1074,7 +1074,7 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Ranking rule rewritten 19/11/2026. Build orders by tier then refresh only, and the movement column is empty on production. Ticket: docs/tasks/hot100-ranking.md',
+      notes: 'Ranking rule rewritten 19/11/2026. Weights, points and window are admin configuration, not constants; w = 0 restores the current board. Build orders by tier then refresh only, and the movement column is empty on production. Ticket: docs/tasks/hot100-ranking.md',
       mockup: 'js-hot100',
       detail: {
         description:
@@ -1087,8 +1087,8 @@ export const jobManagement: BuildModule = {
             en: 'Posting tier picks the 100. Candidate interest orders them inside it.',
           },
           {
-            vi: 'Vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác. Hai trọng số nằm trong cấu hình, không viết cứng.',
-            en: 'Position = 0.9 × tier rank + 0.1 × interest rank. Both weights are configuration, never constants in code.',
+            vi: 'Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác. Admin nhập MỘT số w, mặc định 0,1. Đặt w = 0 là trang quay về đúng cách xếp hiện nay.',
+            en: 'Position = (1 − w) × tier rank + w × interest rank. An operator enters ONE number w, default 0.1. Setting w = 0 returns the board to exactly what it does today — the kill switch, with no release needed.',
           },
           {
             vi: 'Tính một lần mỗi đêm lúc 00:01 giờ VN, cố định cả ngày. Bảng đổi trong ngày thì mũi tên "so với hôm qua" thành vô nghĩa.',
@@ -1158,9 +1158,47 @@ export const jobManagement: BuildModule = {
               'READ Q AGAINST R: same tier rank, and the one candidates engaged with sits higher. Interest works.',
               'READ S AGAINST P: the most engaged posting on the board still does not pass a posting four tier ranks above it. Tier still decides.',
               'THE INTEREST TERM CONTRIBUTES AT MOST 10 POINTS on a 1..100 scale, so a posting moves about ten places around the slot its package bought. That ceiling is the whole point of the weight: it is the knob that sets how lively the board is, and it is the number the sales promise is written against.',
-              'BOTH WEIGHTS ARE CONFIGURATION. The client may move to 0.7 / 0.3 and later 0.5 / 0.5 as traffic grows; the code must not need a release for that.',
+              'ONE NUMBER, NOT TWO. The operator sets w, the interest weight, between 0 and 1; the tier weight is whatever is left. Two separate fields can be set so they do not sum to 1, and nothing on screen would say so. See the admin configuration block below.',
+              'w = 0 IS THE KILL SWITCH. It collapses the blend back to the tier order, which is exactly what production does today. If the new rule misbehaves after launch the board is restored by editing one field, not by shipping a release.',
               'NO FURTHER PASS. An earlier draft also spread employers apart so two neighbours never shared a company, and carried a minimum-score floor for the top 20. Both were dropped on 19/11/2026: position is the blend, full stop. A company may hold consecutive rows, at most 10 of them.',
               'A POSTING PUBLISHED TODAY NEEDS NO SPECIAL RULE. Its refresh timestamp is the newest there is, so it ranks high in Stage A; carrying the worst interest rank costs it about ten places. The cold-start problem solves itself, which is why no starting score is granted.',
+            ],
+          },
+          {
+            label: 'THE RECOMMENDED SLOT — one pinned row above position 1',
+            text: 'A single row drawn ABOVE the board, carrying a “Gợi ý” badge and NO position number and NO movement marker, because it is not a position on the board. It exists for the posting the blend is most likely to have buried: the one candidates engaged with most, which on a tier-led board can easily sit at 60.',
+            table: {
+              cols: ['Question', 'Rule'],
+              rows: [
+                ['Which posting fills it', 'The highest RAW interest score among the 100. Ties are broken by the better tier rank.'],
+                ['When nothing scores', 'The slot is not rendered at all. Badging a posting nobody opened empties the word in its first week — and in the first months most of the board will be on zero.'],
+                ['How often it is chosen', 'Nightly, in the same job, right after stage B. It is not carried over from yesterday.'],
+                ['How many slots', 'Configurable, default 1. One badge across 100 rows is thin; the operator can raise it.'],
+              ],
+            },
+            items: [
+              'THE BADGE MEANS “candidates liked this”, NOT “this one paid more”. That was a real fork in the design and it was taken deliberately: an earlier draft proposed the badge as a place to show commercial value so the tier weight could fall later without losing the reason to buy. The client chose the candidate-facing meaning instead, so the badge is a reward for a good posting and carries no commercial promise. Do not quietly re-point it at tier.',
+              'IT IS THE ONLY PART OF THIS PAGE THAT IS PURE INTEREST. Everything below it is 90% tier; this row is 100% candidates. That contrast is the point of having it.',
+            ],
+            warn: 'Whether the chosen posting ALSO keeps its ordinary numbered row, or is lifted out of the 100, is not decided — see Open questions. Pick one and apply it consistently; a reader seeing the same posting twice with no explanation will read it as a bug.',
+          },
+          {
+            label: 'ADMIN CONFIGURATION — five fields, one screen',
+            text: 'None of the numbers in this requirement may be a constant in code. They are the levers an operator pulls once real traffic arrives, and every one of them will be wrong on the first guess.',
+            table: {
+              cols: ['Field', 'Default', 'What moving it does'],
+              rows: [
+                ['Interest weight w', '0.1', 'How far a posting may drift from the slot its package bought. 0.1 is about ten places; 0.3 is about thirty; 0 switches the new rule off entirely.'],
+                ['Points per view', '1', 'Raises or lowers the weight of mere curiosity.'],
+                ['Points per save', '3', 'If saves turn out to say nothing in this market, drop it to 2.'],
+                ['Points per application', '5', 'If applications turn out to be the only honest signal, raise it to 10.'],
+                ['Scoring window, in days', '7', 'Shorter reacts faster and jumps more; longer is steadier and slower.'],
+              ],
+            },
+            items: [
+              'THE 1 / 3 / 5 SPLIT IS AN OPENING GUESS, not a measured one. It ranks the three signals by how much effort each takes a candidate: a view can be a misclick, a save is deliberate, an application costs real work and is what the employer is paying for. Nothing in this market has been measured yet, which is the reason the three are fields rather than literals.',
+              'ONE SCREEN, FIVE FIELDS. Splitting them across pages is how the weight ends up tuned by one team and the points by another.',
+              'CHANGING A FIELD TAKES EFFECT AT THE NEXT NIGHTLY RUN, not immediately. Say so on the screen, or the first operator to change a number will decide it did not work.',
             ],
           },
           {
@@ -1208,6 +1246,7 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['Page opened normally', 'Serve the board computed at 00:01. Do not recompute.'],
                 ['A filter is applied (job category / province / education / company size)', 'Run an ordinary query over all eligible postings, ordered by tier then last refresh, capped at 100. Interest scores are NOT used.'],
+                ['The experience toggle is used (Chưa có kinh nghiệm / Đã có kinh nghiệm)', 'Same as any other filter. It maps onto the `experience` facet svn-be already serves — `entry` for a posting that asks for none, `experienced` for one that asks for some — so no new field is needed. The two states are a FIFTH axis, drawn as a toggle rather than a tab.'],
                 ['While a filter is applied', 'The movement column reads "–" on every row.'],
               ],
             },
@@ -1249,17 +1288,19 @@ export const jobManagement: BuildModule = {
           'On the first run, every row shows "–".',
           'Opening one posting ten times from one account on one day adds one view.',
           'An employer opening their own posting adds no view.',
-          'With any filter applied, the movement column reads "–" on every row.',
+          'With any filter applied, including the experience toggle, the movement column reads "–" on every row.',
+          'The experience toggle narrows the board through the existing `experience` facet, not through a new field.',
+          'The recommended row shows the posting with the highest raw interest score, carries no position number, and is not rendered at all on a day when every score is zero.',
+          'Changing the interest weight in admin changes the board at the next nightly run and not before, and the screen says so.',
+          'Setting the interest weight to 0 reproduces the tier order exactly — the same board production serves today.',
           'If the nightly job fails, the page still serves yesterday\'s board.',
           'Page title and the "?" tooltip match this rule.',
         ],
         openQuestions: [
           'Is HOT100 a PAID-ONLY board? This requirement says no — a free posting is eligible and sorts last. The build today says yes, filtering to postings whose product covers the job-list-trending placement. The answer changes the sales line from "buy a package to sit higher" to "buy a package to appear at all".',
-          'Is there a route for the weights — 0.9/0.1 at launch, 0.7/0.3 once traffic exists, 0.5/0.5 later? If so sales should be told now, because the movement promise widens from about ten places to about fifty.',
-          'Are the 1 / 3 / 5 weights and the 7-day window right for this market, or should they be tuned after a month of real data?',
-          'Does the "new shows once only" rule hold, or should every return to the board be marked new as well?',
-          'Does a filtered list keep the current tier ordering, or should the filter instead narrow the 100 rows of the main board?',
-          'Should a high-tier posting carry a visible label (Saramin KR shows 추천) so that commercial value is expressed by a badge rather than only by position? That would let the tier weight fall later without losing the reason to buy.',
+          'Does the recommended posting ALSO keep its ordinary numbered row, or is it lifted out of the 100? Either is defensible; what is not defensible is leaving it unsaid, because the two read very differently to someone scrolling.',
+          'Does the experience toggle have an "all" state, or is one of the two always on? Saramin KR draws two buttons with no third, which means a reader can never see the whole board — that may be deliberate there and wrong here.',
+          'How many recommended slots — one as drawn, or three? One badge across a hundred rows is thin, and the postings it would mark are exactly the ones the tier order buried.',
           'New copy for the "?" tooltip — it currently describes a daily views-and-saves chart aggregated for 30 minutes from midnight, which is neither what the build does today nor what this rule does.',
         ],
       },
