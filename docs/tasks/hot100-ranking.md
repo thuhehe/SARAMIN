@@ -277,6 +277,13 @@ Ba hướng, cần chủ SEO chọn:
 2. Trả đủ 100 dòng trong HTML cho tất cả, chặn ở phía giao diện
 3. Chấp nhận chỉ 10 dòng được lập chỉ mục
 
+**Đánh đổi giữa hướng 1 và hướng 2:**
+
+- **Hướng 1** là ngoại lệ chính thức của luật cloaking, không phải lách luật. Google có hướng dẫn riêng cho nội dung sau tường đăng nhập: `isAccessibleForFree: false` cộng `hasPart` trỏ vào phần bị chắn.
+- **Hướng 2** rẻ hơn và cũng hợp lệ, nhưng **tường đăng nhập thành mềm**: ai mở mã nguồn trang là đọc được cả 100 tin. Mà "cho người ta lý do đăng ký" chính là mục đích của quy tắc này, nên hướng 2 làm hỏng đúng thứ mà quy tắc muốn đạt.
+
+Nếu phải chọn nhanh thì **hướng 1 là hướng duy nhất vừa cho Google thấy đủ nội dung vừa giữ được tường đăng nhập**.
+
 Đây là quyết định có hình phạt đi kèm, không phải chi tiết kỹ thuật — **đừng tự chọn, hỏi lại BA**.
 
 #### Hệ quả bán hàng
@@ -421,7 +428,8 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 4. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
 5. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. Đây là câu cho chủ SEO, không phải cho dev tự quyết
 6. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
-7. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
+7. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 6: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
+8. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 
