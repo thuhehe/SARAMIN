@@ -340,6 +340,20 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 - Bảng `hot100_rank_snapshot` có dữ liệu không
 - Cờ cấu hình `svn.search.hot100-rank.enabled` có đang bật không
 
+### Và một câu nữa, quan trọng hơn
+
+**Trên production có gói nào thực sự khai nhịp làm mới (`refresh_policy`) chưa?**
+
+Auto-refresh là tự động, không có nút cho khách bấm: mỗi gói mang một chính sách làm mới (`product.refresh_policy`, danh sách phase với `everyDays`), tin chụp lại chính sách đó lúc đăng vào `job.refresh_policy` + `next_refresh_at`, rồi `JobLifecycleSweepService` tự bump `refreshed_at` khi tới hạn.
+
+Hệ quả nếu **không gói nào khai nhịp**:
+
+- `refreshed_at` đứng yên ở ngày đăng tin
+- **khoá sắp xếp số 2 ở bước A không bao giờ nhúc nhích**
+- thứ hạng theo gói gần như đóng băng, và **tương tác trở thành thứ duy nhất làm bảng chuyển động**
+
+Điều đó không làm hỏng quy tắc — ngược lại, nó làm `w` càng quan trọng. Nhưng nó đổi hoàn toàn kỳ vọng về mức biến động, và phải biết **trước** khi chọn giá trị `w` mặc định. Kiểm tra chung một lượt với mục 4.
+
 ---
 
 ## 6. Tiêu chí nghiệm thu
