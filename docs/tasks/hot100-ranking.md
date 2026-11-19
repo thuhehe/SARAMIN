@@ -5,7 +5,7 @@
 **Mockup:** [Mockups ▸ js-hot100](https://saramin-eta.vercel.app/mockups)
 **Tham khảo UI:** Saramin KR — [/zf_user/jobs/hot100](https://www.saramin.co.kr/zf_user/jobs/hot100)
 
-> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên cách **chọn ra 100 tin**, và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: mặc định 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm. Tỉ lệ đó là **một ô cấu hình trong admin**, không viết cứng. Kèm theo: một dòng "Gợi ý" phía trên vị trí số 1, một bộ lọc kinh nghiệm, và một màn hình cấu hình 5 ô.
+> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên cách **chọn ra 100 tin**, và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: mặc định 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm. Tỉ lệ đó là **một ô cấu hình trong admin**, không viết cứng. Kèm theo: một dòng "Gợi ý" phía trên vị trí số 1, một bộ lọc kinh nghiệm, giới hạn 10 dòng cho khách chưa đăng nhập, và một màn hình cấu hình 6 ô.
 
 ---
 
@@ -129,7 +129,7 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 
 ---
 
-## 3. MƯỜI MỘT ĐIỂM CẦN THAY ĐỔI
+## 3. MƯỜI HAI ĐIỂM CẦN THAY ĐỔI
 
 ### 3.1 Bỏ lọc theo placement
 
@@ -238,12 +238,55 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 | Điểm mỗi lượt lưu | 3 | Nếu lượt lưu không nói lên gì ở thị trường này thì hạ xuống 2 |
 | Điểm mỗi lượt ứng tuyển | 5 | Nếu ứng tuyển là tín hiệu thật duy nhất thì nâng lên 10 |
 | Số ngày của cửa sổ tính điểm | 7 | Ngắn thì phản ứng nhanh và nhảy mạnh; dài thì êm và chậm |
+| Số dòng cho khách chưa đăng nhập | 10 | Khách vãng lai xem được bao nhiêu dòng trước khi bị mời đăng nhập. Tăng lên là đánh đổi lượt đăng ký lấy độ phủ |
 
 Thêm một ô nữa nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**, mặc định 1.
+
+*(Ô thứ 6 — số dòng cho khách chưa đăng nhập — xem phần 3.12.)*
 
 > **Bộ 1 / 3 / 5 là con số đoán ban đầu, không phải đo đạc.** Nó xếp ba tín hiệu theo công sức ứng viên bỏ ra: xem có thể là bấm nhầm, lưu là có chủ đích, ứng tuyển tốn công thật và là thứ nhà tuyển dụng trả tiền để có. Chưa đo gì ở thị trường này, nên cả ba là **ô cấu hình chứ không phải hằng số**.
 >
 > **Màn hình phải ghi rõ: đổi số có hiệu lực từ lần chạy 0h kế tiếp, không phải ngay lập tức.** Không ghi thì người vận hành đầu tiên đổi số sẽ kết luận là nó không chạy.
+
+### 3.12 THÊM giới hạn 10 dòng cho khách chưa đăng nhập
+
+**Khách chưa đăng nhập chỉ thấy 10 dòng đầu** của bảng đang xem. Đăng nhập rồi thì thấy đủ 100.
+
+Áp cho **cả bảng chung lẫn mọi danh sách đã lọc** — lọc sang ngành nào cũng chỉ 10 dòng đầu của danh sách đó.
+
+| Câu hỏi | Quy tắc |
+|---|---|
+| Cắt cái gì | **Chỉ cắt phần HIỂN THỊ.** Tác vụ 0h vẫn tính và lưu đủ 100 vị trí |
+| Cắt ở đâu | Lúc render, trên danh sách mà trang đã có sẵn |
+| Dưới dòng 10 | Khối mời đăng nhập "Đăng nhập để xem đủ 100 tin". **Không** làm mờ dòng 11–20 kiểu nhá hàng |
+| Mũi tên | Khách chưa đăng nhập **vẫn thấy** ▲▼ trên 10 dòng đó |
+| Dòng Gợi ý | Vẫn vẽ. Nếu tin đó cũng nằm dưới dòng 10 thì khách vãng lai đơn giản là không gặp nó hai lần |
+| Số 10 | Ô cấu hình thứ 6 |
+
+> **TUYỆT ĐỐI KHÔNG cắt lúc tính.** Nếu tác vụ 0h lưu 10 dòng thay vì 100, thì mọi tin dưới vị trí 10 không có mốc để so hôm sau, và sáng mai cả bảng sẽ hiện "new". Bảng lưu luôn là 100 dòng.
+
+#### Cảnh báo SEO — đọc trước khi code
+
+Ý định đằng sau là đúng: nếu Google chỉ thấy 10 dòng thì 90 tin trả phí biến mất khỏi kết quả tìm kiếm, hỏng âm thầm, vài tháng sau mới phát hiện.
+
+**Nhưng cho bot thấy 100 dòng trong khi người dùng thấy 10 chính là cloaking, và Google có hình phạt cho việc đó.** Kiểm tra user-agent rồi trả nội dung khác nhau không phải cách làm.
+
+Ba hướng, cần chủ SEO chọn:
+
+1. Dùng **structured data cho nội dung có tường chắn** của Google (`isAccessibleForFree: false` + `hasPart`) — đây là cách Google cho phép chính thức
+2. Trả đủ 100 dòng trong HTML cho tất cả, chặn ở phía giao diện
+3. Chấp nhận chỉ 10 dòng được lập chỉ mục
+
+Đây là quyết định có hình phạt đi kèm, không phải chi tiết kỹ thuật — **đừng tự chọn, hỏi lại BA**.
+
+#### Hệ quả bán hàng
+
+**Vị trí số 10 giờ là một ranh giới có tiền.** Với `w = 0,1` một tin dịch tối đa khoảng 10 bậc, nên:
+
+- tin xếp thứ 15 theo gói **có thể lọt vào 10 dòng khách vãng lai nhìn thấy** nhờ tương tác tốt
+- tin xếp thứ 8 theo gói **có thể rớt ra khỏi** 10 dòng đó
+
+Phải nói rõ với khách hàng trước khi bán gói đầu tiên dựa trên ranh giới này.
 
 ---
 
@@ -344,6 +387,13 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 - [ ] Có lệnh dựng lại bảng cho một ngày trong quá khứ
 - [ ] Đã chạy cho 5–7 ngày liên tiếp và gửi BA bảng so sánh biên độ dịch chuyển
 
+**Giới hạn khách chưa đăng nhập**
+- [ ] Chưa đăng nhập: thấy 10 dòng, dưới đó là khối mời đăng nhập, không có dòng mờ nhá hàng
+- [ ] Chưa đăng nhập + đang lọc: thấy 10 dòng đầu **của danh sách đã lọc**, không phải 10 dòng của bảng chung
+- [ ] Chưa đăng nhập vẫn thấy ▲▼ trên 10 dòng đó
+- [ ] Ngày mà mọi khách đều chỉ thấy 10 dòng, bảng lưu vẫn đủ 100 vị trí, và sáng hôm sau chỉ tin thật sự mới mới hiện "new"
+- [ ] Số 10 đổi được qua cấu hình
+
 **Khác**
 - [ ] Tiêu đề trang và chú thích dấu "?" đã cập nhật
 
@@ -361,7 +411,7 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói.
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ).
 
 **Còn lại:**
 
@@ -369,7 +419,9 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 2. Tin được gắn nhãn Gợi ý có **giữ luôn dòng đánh số của nó ở dưới** không, hay được nhấc hẳn ra khỏi 100 tin?
 3. Nút lọc kinh nghiệm có trạng thái **"tất cả"** không, hay luôn phải chọn một trong hai? Saramin Hàn Quốc chỉ có hai nút, nghĩa là không bao giờ xem được bảng đầy đủ — có thể đúng ở bên đó nhưng sai ở đây
 4. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
-5. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
+5. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. Đây là câu cho chủ SEO, không phải cho dev tự quyết
+6. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
+7. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 

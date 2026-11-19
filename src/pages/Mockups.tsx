@@ -5459,6 +5459,8 @@ function Hot100Screen() {
     { pos: 6, move: '–', tone: 'same', title: 'Project Manager', company: 'Aimesoft', tier: 'Distinction', place: 'Hà Nội' },
     { pos: 7, move: '▼ 4', tone: 'down', title: 'Mobile App Executive Officer', company: 'Aeon Finance', tier: 'Basic Plus', place: 'Hà Nội' },
     { pos: 8, move: 'new', tone: 'new', title: 'Kế toán tổng hợp', company: 'The 50 Tea', tier: 'Basic Plus', place: 'Hồ Chí Minh' },
+    { pos: 9, move: '▲ 1', tone: 'up', title: 'Data Engineer', company: 'Antsomi', tier: 'Basic Plus', place: 'Hồ Chí Minh' },
+    { pos: 10, move: '▼ 2', tone: 'down', title: 'Business Analyst', company: 'FPT IS', tier: 'Basic Plus', place: 'Hà Nội' },
   ]
   const toneCls = {
     up: 'text-rose-600',
@@ -5541,8 +5543,21 @@ function Hot100Screen() {
           </div>
         ))}
       </div>
+      {/* THE GUEST WALL — signed out, the board stops at ten and asks.
+          Deliberately NOT a faded row 11–20 behind the panel: a teaser the reader
+          can almost make out reads worse than an honest stop, and it is also the
+          shape a crawler is most likely to see as cloaking. Rows 11–100 still
+          exist and are still stored; only this render is cut. */}
+      <div className="border-b border-line bg-brand-soft/60 px-5 py-6 text-center">
+        <p className="text-[13px] font-semibold text-ink">Đăng nhập để xem đủ 100 tin</p>
+        <p className="mx-auto mt-1 max-w-[380px] text-[11.5px] text-muted">
+          Khách chưa đăng nhập chỉ xem được 10 tin đầu của bảng đang xem, kể cả khi đã lọc
+        </p>
+        <Btn primary className="mt-3 px-6">Đăng nhập</Btn>
+      </div>
       <div className="px-5 py-4 text-[11.5px] text-faint">
-        100 dòng, không phân trang. Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác,
+        100 dòng khi đã đăng nhập, 10 dòng khi chưa — chỉ cắt lúc hiển thị, tác vụ 0h vẫn lưu đủ 100 vị trí.
+        Không phân trang. Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác,
         w là trọng số tương tác do admin đặt (mặc định 0,1). Dòng Gợi ý nằm ngoài 100 dòng và không có số thứ tự.
         Khi áp bộ lọc bất kỳ, kể cả nút kinh nghiệm, cột tăng/giảm hiển thị “–” ở mọi dòng.
       </div>
