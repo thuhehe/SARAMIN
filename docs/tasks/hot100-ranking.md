@@ -42,10 +42,13 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 |---|---|
 | **A1 — lọc** | Tin đang mở và bật hiển thị · chưa hết hạn nhận hồ sơ · chưa hết hạn hiển thị · công ty đang hoạt động · công ty có mã số thuế hợp lệ (công ty nước ngoài dùng `foreign_tax_id`) |
 | **A2 — sắp xếp** | 1. bậc gói trên posting ladder, cao→thấp · 2. thời điểm làm mới tin, mới→cũ · 3. tin tạo sau đứng trước (chỉ phá hoà) |
-| **A3 — giới hạn công ty** | Duyệt từ trên xuống, mỗi công ty tối đa **10 tin**. Tin thứ 11 trở đi sang danh sách chờ, nhường chỗ cho công ty khác |
-| **A4 — bù cho đủ** | Chưa đủ 100 thì lấy tiếp từ danh sách chờ theo đúng thứ tự A2. Vẫn chưa đủ thì bảng hiển thị đúng số tin có |
+| **A3 — giới hạn công ty** | Duyệt từ trên xuống, mỗi công ty tối đa **10 tin**. Tin thứ 11 trở đi sang danh sách chờ, nhường chỗ cho công ty khác. **Gom 101 tin, không phải 100** |
+| **A4 — bù cho đủ** | Chưa đủ 101 thì lấy tiếp từ danh sách chờ theo đúng thứ tự A2. Vẫn chưa đủ thì bảng hiển thị đúng số tin có |
+| **A5 — nhấc tin Gợi ý ra** | Trong 101 tin đó, tin có **điểm thô cao nhất** (bước B) rời khỏi danh sách đánh số và trở thành dòng Gợi ý. 100 tin còn lại được đánh số 1…100 |
 
-**Thứ tự sau A4 chính là hạng theo gói** (1…100), một trong hai đầu vào của bước C. Không lưu lại, đêm nào cũng tính lại.
+**Thứ tự sau A4 chính là hạng theo gói**, một trong hai đầu vào của bước C.
+
+> **Vì sao gom 101 chứ không phải 100:** để bảng đánh số luôn đủ một trăm dòng, bất kể có dòng Gợi ý hay không. Nhấc một tin ra khỏi 100 thì bảng chỉ còn 99 dòng, và người đọc gặp lại cùng một tin hai lần nếu giữ cả hai chỗ. Không lưu lại, đêm nào cũng tính lại.
 
 > **Không có cổng chặn tin miễn phí ở bước này.** Tin không mua gói vẫn hợp lệ, chỉ xếp cuối. Build hiện tại thì ngược lại — xem phần 3.1.
 
@@ -209,16 +212,16 @@ Một dòng **nằm trên vị trí số 1**, mang nhãn "Gợi ý", **không c�
 
 | Câu hỏi | Quy tắc |
 |---|---|
-| Tin nào được chọn | Tin có **điểm thô cao nhất** trong 100 tin. Bằng điểm thì tin có hạng theo gói tốt hơn được chọn |
+| Tin nào được chọn | Tin có **điểm thô cao nhất** trong 101 tin gom ở bước A. Bằng điểm thì tin có hạng theo gói tốt hơn được chọn |
 | Khi không tin nào có điểm | **Không vẽ dòng này**. Gắn nhãn "Gợi ý" cho một tin không ai mở thì nhãn mất nghĩa ngay tuần đầu — mà giai đoạn đầu phần lớn tin sẽ 0 điểm |
 | Tính lúc nào | Ngay sau bước B, trong cùng tác vụ 0h. Không giữ lại từ hôm qua |
-| Bao nhiêu dòng | Tham số cấu hình, mặc định 1 |
+| Bao nhiêu dòng | **Đúng 1 dòng**, như Saramin KR. Không phải tham số cấu hình |
 
 > **Nhãn này nghĩa là "ứng viên thích tin này", KHÔNG phải "tin trả phí cao".** Đây là một ngã rẽ thiết kế đã được chốt: bản đề xuất ban đầu định dùng nhãn để thể hiện giá trị thương mại, khách hàng chọn hướng ngược lại. Đừng âm thầm đổi nó thành nhãn theo gói.
 >
 > Dòng này là **phần duy nhất của trang thuần theo tương tác**. Mọi dòng bên dưới nó là 90% theo gói.
 
-**Chưa chốt:** tin được chọn có giữ luôn dòng đánh số của nó ở dưới, hay được nhấc hẳn ra khỏi 100 tin — xem phần 8.
+**ĐÃ CHỐT 19/11/2026:** tin được chọn **không** giữ dòng đánh số ở dưới. Bước A gom 101 tin và nhấc tin này ra, nên bảng đánh số vẫn đủ 100 dòng. Người đọc không bao giờ gặp cùng một tin hai lần.
 
 ### 3.10 THÊM bộ lọc kinh nghiệm
 
@@ -229,7 +232,7 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 | **Dùng lại cái gì** | Facet `experience` svn-be đã phục vụ sẵn — `entry` cho tin không đòi kinh nghiệm, `experienced` cho tin có đòi. **Không cần thêm trường mới** |
 | **Hành vi** | Giống mọi bộ lọc khác: truy vấn lại trên toàn bộ tin hợp lệ, xếp theo bậc gói rồi thời điểm làm mới, và **cột tăng/giảm hiển thị "–" mọi dòng** |
 
-**Chưa chốt:** có trạng thái "tất cả" không, hay luôn phải chọn một trong hai — xem phần 8.
+**ĐÃ CHỐT 19/11/2026: KHÔNG có trạng thái "tất cả"** — luôn phải chọn một trong hai, giống Saramin KR. Nghĩa là người xem không bao giờ thấy bảng đầy đủ không lọc kinh nghiệm.
 
 ### 3.11 THÊM màn hình cấu hình trong admin — 6 ô, một màn hình
 
@@ -244,9 +247,9 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 | Số ngày của cửa sổ tính điểm | 7 | Ngắn thì phản ứng nhanh và nhảy mạnh; dài thì êm và chậm |
 | Số dòng cho khách chưa đăng nhập | 10 | Khách vãng lai xem được bao nhiêu dòng trước khi bị mời đăng nhập. Tăng lên là đánh đổi lượt đăng ký lấy độ phủ |
 
-Ô cuối bảng — số dòng cho khách chưa đăng nhập — xem phần 3.12.
+Số dòng Gợi ý **không** phải ô cấu hình — cố định 1 dòng.
 
-Thêm một ô thứ 7 nếu làm nhiều dòng Gợi ý: **số dòng Gợi ý**, mặc định 1.
+Ô cuối bảng — số dòng cho khách chưa đăng nhập — xem phần 3.12.
 
 > **Bộ 1 / 3 / 5 là con số đoán ban đầu, không phải đo đạc.** Nó xếp ba tín hiệu theo công sức ứng viên bỏ ra: xem có thể là bấm nhầm, lưu là có chủ đích, ứng tuyển tốn công thật và là thứ nhà tuyển dụng trả tiền để có. Chưa đo gì ở thị trường này, nên cả ba là **ô cấu hình chứ không phải hằng số**.
 >
@@ -436,17 +439,14 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1).
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"**.
 
 **Còn lại:**
 
-1. Tin được gắn nhãn Gợi ý có **giữ luôn dòng đánh số của nó ở dưới** không, hay được nhấc hẳn ra khỏi 100 tin?
-2. Nút lọc kinh nghiệm có trạng thái **"tất cả"** không, hay luôn phải chọn một trong hai? Saramin Hàn Quốc chỉ có hai nút, nghĩa là không bao giờ xem được bảng đầy đủ — có thể đúng ở bên đó nhưng sai ở đây
-3. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
-4. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. Đây là câu cho chủ SEO, không phải cho dev tự quyết
-5. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
-6. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 5: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
-7. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
+1. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. **BA giao thẳng câu này cho Thương**, vì Thương cũng là người làm task SEO — chọn một trong ba hướng rồi báo lại BA biết đã chọn hướng nào
+2. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
+3. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 2: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
+4. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 

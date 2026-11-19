@@ -1112,8 +1112,9 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['A1 — filter', 'Posting is Open and exposed · application deadline not passed · posting display deadline not passed · company Active · company holds a legal identity (mst, or foreign_tax_id for a FOREIGN company).'],
                 ['A2 — sort', '1. posting tier on the ladder, high to low. 2. last auto-refresh, newest first. 3. created last first — a tie-break only, carrying no meaning.'],
-                ['A3 — company cap', 'Walk the sorted list top down; each company may take at most 10 postings. The 11th and beyond go to a waiting list and the slot passes to another employer.'],
-                ['A4 — fill back', 'If fewer than 100 were collected, take from the waiting list in A2 order until 100 is reached. If still short, the board renders the rows it has.'],
+                ['A3 — company cap', 'Walk the sorted list top down; each company may take at most 10 postings. The 11th and beyond go to a waiting list and the slot passes to another employer. Collect 101, not 100 — see A5.'],
+                ['A4 — fill back', 'If fewer than 101 were collected, take from the waiting list in A2 order until 101 is reached. If still short, the board renders the rows it has.'],
+                ['A5 — lift the recommended one out', 'Of those 101, the one with the highest raw interest score (stage B) leaves the numbered list and becomes the recommended row. The remaining 100 are ranked 1..100. Taking 101 rather than 100 is deliberate: the board keeps a full hundred numbered rows whether or not a recommended posting exists.'],
               ],
             },
             items: [
@@ -1171,17 +1172,17 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Question', 'Rule'],
               rows: [
-                ['Which posting fills it', 'The highest RAW interest score among the 100. Ties are broken by the better tier rank.'],
+                ['Which posting fills it', 'The highest RAW interest score among the 101 selected in stage A. Ties are broken by the better tier rank.'],
                 ['When nothing scores', 'The slot is not rendered at all. Badging a posting nobody opened empties the word in its first week — and in the first months most of the board will be on zero.'],
                 ['How often it is chosen', 'Nightly, in the same job, right after stage B. It is not carried over from yesterday.'],
-                ['How many slots', 'Configurable, default 1. One badge across 100 rows is thin; the operator can raise it.'],
+                ['How many slots', 'EXACTLY ONE, as Saramin KR draws it. Not a configurable count.'],
               ],
             },
             items: [
               'THE BADGE MEANS “candidates liked this”, NOT “this one paid more”. That was a real fork in the design and it was taken deliberately: an earlier draft proposed the badge as a place to show commercial value so the tier weight could fall later without losing the reason to buy. The client chose the candidate-facing meaning instead, so the badge is a reward for a good posting and carries no commercial promise. Do not quietly re-point it at tier.',
               'IT IS THE ONLY PART OF THIS PAGE THAT IS PURE INTEREST. Everything below it is 90% tier; this row is 100% candidates. That contrast is the point of having it.',
             ],
-            warn: 'Whether the chosen posting ALSO keeps its ordinary numbered row, or is lifted out of the 100, is not decided — see Open questions. Pick one and apply it consistently; a reader seeing the same posting twice with no explanation will read it as a bug.',
+            warn: 'DECIDED 19/11/2026 — the chosen posting does NOT also keep a numbered row. Stage A collects 101 and this one is lifted out, so the numbered board is a full hundred either way. A reader never meets the same posting twice.',
           },
           {
             label: 'ADMIN CONFIGURATION — five fields, one screen',
@@ -1268,7 +1269,7 @@ export const jobManagement: BuildModule = {
               rows: [
                 ['Page opened normally', 'Serve the board computed at 00:01. Do not recompute.'],
                 ['A filter is applied (job category / province / education / company size)', 'Run an ordinary query over all eligible postings, ordered by tier then last refresh, capped at 100. Interest scores are NOT used.'],
-                ['The experience toggle is used (Chưa có kinh nghiệm / Đã có kinh nghiệm)', 'Same as any other filter. It maps onto the `experience` facet svn-be already serves — `entry` for a posting that asks for none, `experienced` for one that asks for some — so no new field is needed. The two states are a FIFTH axis, drawn as a toggle rather than a tab.'],
+                ['The experience toggle is used (Chưa có kinh nghiệm / Đã có kinh nghiệm)', 'Same as any other filter. It maps onto the `experience` facet svn-be already serves — `entry` for a posting that asks for none, `experienced` for one that asks for some — so no new field is needed. The two states are a FIFTH axis, drawn as a toggle rather than a tab. DECIDED 19/11/2026: there is NO “all” state — one of the two is always on, as Saramin KR draws it, so a reader never sees the whole board at once.'],
                 ['While a filter is applied', 'The movement column reads "–" on every row.'],
               ],
             },
@@ -1324,13 +1325,10 @@ export const jobManagement: BuildModule = {
           'Page title and the "?" tooltip match this rule.',
         ],
         openQuestions: [
-          'How should a search engine see this board? Showing a crawler all hundred rows while a visitor sees ten is cloaking and carries a Google penalty; showing it ten means ninety paid postings are never indexed. The third way is Google’s paywalled-content structured data, which is the official exception to the cloaking rule rather than a way around it — and the only one of the three that both shows a crawler the full board and keeps the sign-in wall meaning anything, since shipping all hundred rows in the HTML leaves them readable in view-source. Whoever owns SEO should pick, because the failure mode of guessing is silent and surfaces months later.',
+          'FOR THE DEVELOPER ON THIS TASK, who also owns SEO — how should a search engine see this board? Showing a crawler all hundred rows while a visitor sees ten is cloaking and carries a Google penalty; showing it ten means ninety paid postings are never indexed. The third way is Google’s paywalled-content structured data, which is the official exception to the cloaking rule rather than a way around it — and the only one of the three that both shows a crawler the full board and keeps the sign-in wall meaning anything, since shipping all hundred rows in the HTML leaves them readable in view-source. Whoever owns SEO should pick, because the failure mode of guessing is silent and surfaces months later.',
           'A way to cut that loop if it proves real: do not count a view that ARRIVED FROM this board. The score would then carry interest from search, the homepage, job details and outside links, and the board would stop feeding itself. It needs the source recorded on the view event, which is work nobody has costed; at w = 0.1 the loop is weak, so this is a question rather than a decision.',
           'The guest limit biases the interest signal this board collects: its own traffic now reaches only its top ten, so postings at 11–100 gather fewer views FROM THIS PAGE and score lower tomorrow, which keeps them below ten. Views arriving from search and from other lists dilute it, but the loop is real and worth watching once there is data.',
           'Position ten is now a commercial boundary. With w = 0.1 a posting ranked fifteenth by tier can enter the visible ten on interest, and one ranked eighth can fall out of it. Sales needs to know this before the first package is sold against it.',
-          'Does the recommended posting ALSO keep its ordinary numbered row, or is it lifted out of the 100? Either is defensible; what is not defensible is leaving it unsaid, because the two read very differently to someone scrolling.',
-          'Does the experience toggle have an "all" state, or is one of the two always on? Saramin KR draws two buttons with no third, which means a reader can never see the whole board — that may be deliberate there and wrong here.',
-          'How many recommended slots — one as drawn, or three? One badge across a hundred rows is thin, and the postings it would mark are exactly the ones the tier order buried.',
           'New copy for the "?" tooltip — it currently describes a daily views-and-saves chart aggregated for 30 minutes from midnight, which is neither what the build does today nor what this rule does.',
         ],
       },
