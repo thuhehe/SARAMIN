@@ -1146,7 +1146,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: 'STAGE C — the blend, which is the displayed position',
-            text: 'Position = (0.9 × tier rank) + (0.1 × interest rank). Sort ascending — the smaller number sits higher. Where two postings tie, the smaller tier rank wins. Nothing reorders the board after this step.',
+            text: 'Position = ((1 − w) × tier rank) + (w × interest rank), with w defaulting to 0.1 — the arithmetic below is worked at that default. Sort ascending: the smaller number sits higher. Where two postings tie, the smaller tier rank wins. Nothing reorders the board after this step.\n\nBoth rank columns below are each posting’s POSITION in an ordering this job has already produced — the tier rank from stage A, the interest rank from stage B. Neither is a score anyone enters and neither is stored; both are recomputed every night. A fractional value like 60.5 is a TIED interest rank, the average of the span a tied group covers (stage B). The four postings are invented to show the arithmetic.',
             table: {
               cols: ['Posting', 'Tier rank', 'Interest rank', 'Blend', 'Shown at'],
               rows: [
