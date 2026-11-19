@@ -1121,7 +1121,7 @@ export const jobManagement: BuildModule = {
               'THE FILL-BACK IS NOT AN EDGE CASE. Six employers posting would yield 60 rows under the cap alone; without A4 the board is short every day until the market is wide.',
               'THE 10-PER-COMPANY CAP IS APPLIED WHILE SELECTING, not while ordering. Applied afterwards it only pushes a company\'s surplus down the board it already filled, which is not the rule.',
             ],
-            warn: 'There is NO paid-only gate in this stage. A posting with no package is eligible and simply sorts last. If the client wants HOT100 to be a paid-only board, that is a change to A1 and a change to how the page is sold — see Open questions.',
+            warn: 'DECIDED 19/11/2026 — there is NO paid-only gate in this stage. A posting with no package is eligible and simply sorts last. The build filters by placement today, and that is not an argument either way: this page is being rebuilt against this requirement, so what the current code happens to do settles nothing. The sales line is therefore “buy a package to sit HIGHER”, not “buy a package to APPEAR”. In practice the difference is small — with the guest limit at ten, the rows a visitor actually sees are the top of the tier order anyway, so a free posting reaching the board costs almost nothing.',
           },
           {
             label: 'STAGE B — the INTEREST RANK, over those 100 only',
@@ -1323,7 +1323,6 @@ export const jobManagement: BuildModule = {
           'Page title and the "?" tooltip match this rule.',
         ],
         openQuestions: [
-          'Is HOT100 a PAID-ONLY board? This requirement says no — a free posting is eligible and sorts last. The build today says yes, filtering to postings whose product covers the job-list-trending placement. The answer changes the sales line from "buy a package to sit higher" to "buy a package to appear at all".',
           'How should a search engine see this board? Showing a crawler all hundred rows while a visitor sees ten is cloaking and carries a Google penalty; showing it ten means ninety paid postings are never indexed. The third way is Google’s paywalled-content structured data, which is the official exception to the cloaking rule rather than a way around it — and the only one of the three that both shows a crawler the full board and keeps the sign-in wall meaning anything, since shipping all hundred rows in the HTML leaves them readable in view-source. Whoever owns SEO should pick, because the failure mode of guessing is silent and surfaces months later.',
           'A way to cut that loop if it proves real: do not count a view that ARRIVED FROM this board. The score would then carry interest from search, the homepage, job details and outside links, and the board would stop feeding itself. It needs the source recorded on the view event, which is work nobody has costed; at w = 0.1 the loop is weak, so this is a question rather than a decision.',
           'The guest limit biases the interest signal this board collects: its own traffic now reaches only its top ten, so postings at 11–100 gather fewer views FROM THIS PAGE and score lower tomorrow, which keeps them below ten. Views arriving from search and from other lists dilute it, but the loop is real and worth watching once there is data.',

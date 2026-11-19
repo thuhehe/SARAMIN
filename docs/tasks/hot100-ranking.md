@@ -139,7 +139,11 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 | **Requirement** | Không có khái niệm placement. Lấy tất cả tin hợp lệ, sắp theo bậc posting ladder, cắt lấy 100 tin đầu |
 | **Cần làm** | Bỏ điều kiện lọc placement cho section này. Chuyển posting ladder từ vai trò *lọc* sang vai trò *sắp xếp để chọn* |
 
-> Thay đổi này vào build ngày 22/09/2026, commit `6d9697723` — *"the two board strips are sold, not inferred from rank"*. Requirement chưa bao giờ cập nhật theo. **BA xác nhận giữ theo requirement.** Nếu khách hàng đổi ý thì đây là chỗ sửa lại.
+> Thay đổi này vào build ngày 22/09/2026, commit `6d9697723` — *"the two board strips are sold, not inferred from rank"*. Requirement chưa bao giờ cập nhật theo.
+>
+> **ĐÃ CHỐT 19/11/2026: làm theo requirement, bỏ lọc placement.** Việc build hiện đang làm khác không phải lý lẽ — trang này đang được xây lại theo requirement, nên code hiện tại không quyết định được gì.
+>
+> Hệ quả bán hàng: câu bán là **"mua gói để đứng CAO HƠN"**, không phải "mua gói để ĐƯỢC LÊN trang". Trên thực tế khác biệt nhỏ, vì với giới hạn 10 dòng cho khách vãng lai thì những dòng họ thật sự nhìn thấy đằng nào cũng là phần đầu của thứ tự theo gói.
 
 ### 3.2 Chuyển giới hạn 10 tin/công ty lên bước chọn
 
@@ -418,18 +422,17 @@ Trên production **toàn bộ các dòng đang hiển thị "–"** ở cột t�
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ).
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1).
 
 **Còn lại:**
 
-1. HOT100 có phải trang **chỉ dành cho tin trả phí** không? Requirement nói không, build nói có (phần 3.1). Câu trả lời đổi luôn câu bán hàng
-2. Tin được gắn nhãn Gợi ý có **giữ luôn dòng đánh số của nó ở dưới** không, hay được nhấc hẳn ra khỏi 100 tin?
-3. Nút lọc kinh nghiệm có trạng thái **"tất cả"** không, hay luôn phải chọn một trong hai? Saramin Hàn Quốc chỉ có hai nút, nghĩa là không bao giờ xem được bảng đầy đủ — có thể đúng ở bên đó nhưng sai ở đây
-4. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
-5. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. Đây là câu cho chủ SEO, không phải cho dev tự quyết
-6. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
-7. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 6: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
-8. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
+1. Tin được gắn nhãn Gợi ý có **giữ luôn dòng đánh số của nó ở dưới** không, hay được nhấc hẳn ra khỏi 100 tin?
+2. Nút lọc kinh nghiệm có trạng thái **"tất cả"** không, hay luôn phải chọn một trong hai? Saramin Hàn Quốc chỉ có hai nút, nghĩa là không bao giờ xem được bảng đầy đủ — có thể đúng ở bên đó nhưng sai ở đây
+3. Bao nhiêu dòng Gợi ý — 1 như hình vẽ, hay 3? Một nhãn trên một trăm dòng là rất thưa
+4. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. Đây là câu cho chủ SEO, không phải cho dev tự quyết
+5. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
+6. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 5: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
+7. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 
