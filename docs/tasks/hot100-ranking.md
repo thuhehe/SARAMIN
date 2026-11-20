@@ -50,6 +50,23 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 
 **Thứ tự sau A4 chính là hạng theo gói**, một trong hai đầu vào của bước C.
 
+> **Hạng theo gói là SỐ THỨ TỰ DÒNG, không phải phép tính.** Sắp toàn bộ tin hợp lệ theo A2, áp A3, rồi tin rơi vào dòng nào thì hạng theo gói đúng bằng số dòng đó — dòng đầu là 1, dòng hai là 2, cho tới 101. Không cộng, không nhân, không quy đổi gì cả.
+>
+> **Ví dụ cụ thể, để các con số ở bước C không còn khó hiểu.** Giả sử bậc gói trên posting ladder là 300, 295, 291, 287, 280, 262… và có 3 tin đang mở ở bậc 300, 2 tin ở bậc 295, 4 tin ở bậc 291:
+>
+> | Dòng | Bậc gói | Thứ tự trong bậc |
+> |---|---|---|
+> | 1, 2, 3 | 300 | theo thời điểm làm mới, mới trước |
+> | 4, 5 | 295 | theo thời điểm làm mới |
+> | 6, 7, 8, 9 | 291 | theo thời điểm làm mới |
+> | … | … | … |
+>
+> Tin rơi vào dòng 5 có **hạng theo gói = 5**. Không phải 295 — đó là bậc gói nó đang đứng, chỉ dùng để sắp các bậc với nhau.
+>
+> **Hai tin cùng một bậc gói vẫn có hạng khác nhau**, vì thời điểm làm mới tách chúng ra — đó chính là việc của khoá sắp xếp thứ hai. Tin ở bậc 280 làm mới sáng nay có thể là hạng 12, tin cùng bậc làm mới hôm qua là hạng 13.
+>
+> **Không có hai tin nào cùng hạng theo gói.** A2 kết thúc bằng khoá phá hoà theo thời điểm tạo chính là để thứ tự luôn duy nhất. Hạng bằng nhau chỉ xuất hiện ở phía tương tác (bước B) — nên số lẻ kiểu 60,5 chỉ có ở cột đó, không bao giờ có ở cột hạng theo gói.
+
 > **Vì sao gom 101 chứ không phải 100:** để bảng đánh số luôn đủ một trăm dòng, bất kể có dòng Gợi ý hay không. Nhấc một tin ra khỏi 100 thì bảng chỉ còn 99 dòng, và người đọc gặp lại cùng một tin hai lần nếu giữ cả hai chỗ. Không lưu lại, đêm nào cũng tính lại.
 
 > **Không có cổng chặn tin miễn phí ở bước này.** Tin không mua gói vẫn hợp lệ, chỉ xếp cuối. Build hiện tại thì ngược lại — xem phần 3.1.
@@ -87,9 +104,13 @@ Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng
 | Tin | Hạng theo gói | Hạng theo tương tác | Điểm vị trí | Hiển thị ở |
 |---|---|---|---|---|
 | P | 5 | 60,5 | 4,5 + 6,05 = 10,55 | 1 |
-| Q | 12 | 2 | 10,8 + 0,2 = 11,00 | 2 |
+| Q | 13 | 2 | 11,7 + 0,2 = 11,90 | 2 |
 | R | 12 | 60,5 | 10,8 + 6,05 = 16,85 | 3 |
 | S | 20 | 1 | 18 + 0,1 = 18,10 | 4 |
+
+**Đọc Q với R** — đây đúng là thứ tính năng này sinh ra để làm: R có **hạng gói tốt hơn** (12 so với 13, cùng bậc nhưng làm mới sớm hơn một tiếng) mà vẫn tụt xuống dưới Q, vì ứng viên quan tâm tới Q còn R thì không. Một bậc hạng gói đáng 0,9 điểm; khoảng cách giữa hạng tương tác tốt nhất và tệ nhất đáng khoảng 9,9 điểm.
+
+**Đọc S với P:** S được quan tâm nhất cả bảng mà vẫn không vượt nổi P — P đứng trên nó **15 bậc** hạng gói, trong khi tương tác chỉ mua được khoảng 10 bậc. Gói vẫn là yếu tố chính.
 
 **Admin nhập một số, không phải hai.** Hai ô riêng có thể bị đặt thành tổng khác 1 và không chỗ nào trên màn hình báo điều đó.
 
