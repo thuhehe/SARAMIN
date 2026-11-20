@@ -330,12 +330,24 @@ Hai nút: **Chưa có kinh nghiệm** / **Đã có kinh nghiệm**, đặt dư�
 
 | Ô | Mặc định | Chỉnh nó thì sao |
 |---|---|---|
-| Trọng số tương tác `w` | 0,1 | Tin dịch xa khỏi vị trí theo gói bao nhiêu. 0,1 ≈ 10 bậc, 0,3 ≈ 30 bậc, **0 = tắt hẳn quy tắc mới** |
+| Trọng số tương tác `w` | 0,1 | Tin dịch xa khỏi vị trí theo gói bao nhiêu — khoảng 11 bậc ở mức 0,1. **Không phải `w × 100`**, xem bảng dưới. **0 = tắt hẳn quy tắc mới** |
 | Điểm mỗi lượt xem | 1 | Nâng/hạ trọng lượng của sự tò mò |
 | Điểm mỗi lượt lưu | 3 | Nếu lượt lưu không nói lên gì ở thị trường này thì hạ xuống 2 |
 | Điểm mỗi lượt ứng tuyển | 5 | Nếu ứng tuyển là tín hiệu thật duy nhất thì nâng lên 10 |
 | Số ngày của cửa sổ tính điểm | 7 | Ngắn thì phản ứng nhanh và nhảy mạnh; dài thì êm và chậm |
 | Số dòng cho khách chưa đăng nhập | 10 | Khách vãng lai xem được bao nhiêu dòng trước khi bị mời đăng nhập. Tăng lên là đánh đổi lượt đăng ký lấy độ phủ |
+
+**Biên độ KHÔNG tỉ lệ thuận với `w`.** Một tin dịch tối đa `99w / (1 − w)` bậc — nâng `w` thì đồng thời làm một bậc hạng gói bớt giá trị, nên mẫu số chạy ngược lại:
+
+| `w` | Phép tính | Dịch tối đa |
+|---|---|---|
+| 0,1 | 9,9 / 0,9 | **~11 bậc** |
+| 0,2 | 19,8 / 0,8 | **~25 bậc** |
+| 0,3 | 29,7 / 0,7 | **~42 bậc** |
+| 0,4 | 39,6 / 0,6 | **~66 bậc** |
+| 0,5 | 49,5 / 0,5 | **~99 bậc** — mọi tin tới được mọi vị trí, thứ tự theo gói mất hiệu lực hoàn toàn |
+
+> **Đây là trần, không phải mức dịch chuyển mỗi ngày.** Nó là khoảng cách giữa hạng tương tác tốt nhất và tệ nhất, nên một tin chỉ đi hết chừng đó nếu nó rơi từ tin được quan tâm nhất bảng xuống tin ít nhất. Cửa sổ 7 ngày khiến tin thật chỉ xê dịch vài bậc mỗi ngày.
 
 Số dòng Gợi ý **không** phải ô cấu hình — cố định 1 dòng.
 

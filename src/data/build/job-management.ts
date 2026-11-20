@@ -1239,7 +1239,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Field', 'Default', 'What moving it does'],
               rows: [
-                ['Interest weight w', '0.1', 'How far a posting may drift from the slot its package bought. 0.1 is about ten places; 0.3 is about thirty; 0 switches the new rule off entirely.'],
+                ['Interest weight w', '0.1', 'How far a posting may drift from the slot its package bought — about 11 places at 0.1. The figure is NOT w times a hundred; see the item below. 0 switches the new rule off entirely.'],
                 ['Points per view', '1', 'Raises or lowers the weight of mere curiosity.'],
                 ['Points per save', '3', 'If saves turn out to say nothing in this market, drop it to 2.'],
                 ['Points per application', '5', 'If applications turn out to be the only honest signal, raise it to 10.'],
@@ -1250,6 +1250,8 @@ export const jobManagement: BuildModule = {
             items: [
               'THE 1 / 3 / 5 SPLIT IS AN OPENING GUESS, not a measured one. It ranks the three signals by how much effort each takes a candidate: a view can be a misclick, a save is deliberate, an application costs real work and is what the employer is paying for. Nothing in this market has been measured yet, which is the reason the three are fields rather than literals.',
               'ONE SCREEN, SIX FIELDS. Splitting them across pages is how the weight ends up tuned by one team and the points by another.',
+              'THE AMPLITUDE IS NOT LINEAR IN w. A posting can move at most 99w / (1 − w) places, because raising w also shrinks what a single tier place is worth — the denominator moves against you. So 0.1 gives about 11 places, 0.2 about 25, 0.3 about 42, 0.4 about 66, and at 0.5 the figure reaches 99: every posting can reach every row and the package ordering is fully overridable. An earlier version of this block said 0.3 was about thirty, which read w × 100 and forgot the denominator; it was wrong by a third, and the error grows with w.',
+              'THAT NUMBER IS A CEILING, NOT THE DAILY MOVEMENT. It is the distance between the best and the worst interest rank, so a posting only travels it by going from the most engaged on the board to the least. The 7-day window means a real posting shifts a few places a day.',
               'CHANGING A FIELD TAKES EFFECT AT THE NEXT NIGHTLY RUN, not immediately. Say so on the screen, or the first operator to change a number will decide it did not work.',
             ],
           },
