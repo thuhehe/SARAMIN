@@ -1,93 +1,97 @@
-# [BE] svn-be: luật chia bài + response `premiumBand`
+# [4/5][BE] svn-be: vòng quay + con trỏ + response `premiumBand`
 
-**Sub-task 3 / 4** · **Repo:** svn-be · **Phụ thuộc:** sub-task 1 và 2 (cần `company_search_tag` có dữ liệu)
-**Requirement:** [saramin-eta.vercel.app → “THE BLUE ZONE’S TAG ROW”](https://saramin-eta.vercel.app/m/job-management/job-list-search-result#the-blue-zone-s-tag-row-company-tags-dealt-out-so-every-tag-opens-a-different-set-of-jobs)
-**Mockup:** [jobseeker](https://claude.ai/artifact/SKfqu7LySEraceQ5oSsz9g)
+**Sub-task 4 / 5** · **Repo:** svn-be · **Phụ thuộc:** sub-task 1–3 (cần `company_search_tag` và cờ Required có dữ liệu)
+**Requirement:** [saramin-eta.vercel.app → "THE BLUE ZONE'S TAG ROW"](https://saramin-eta.vercel.app/m/job-management/job-list-search-result#the-blue-zone-s-tag-row-company-tags-and-a-rotation-that-gives-every-job-the-same-chance-at-the-three-visible-cards)
+**Giải thích cho khách (có ví dụ chạy được):** https://claude.ai/artifact/SV4xrNdEktZuvJLFXtCra2
 
-> **svn-be sở hữu toàn bộ logic của dải, đúng như hôm nay.** Nó chia bài một lần rồi trả ra cấu trúc hoàn chỉnh; FE chỉ vẽ, không sắp xếp, không lọc, không cắt.
+> **VIẾT LẠI 19/11/2026 — luật chia bài đã bị bỏ hoàn toàn.** Nếu bạn đã đọc bản trước của ticket này, bỏ hết: không còn xáo, không còn chia vòng tròn, không còn "mỗi tag mở ra một tập khác nhau". Đọc lại từ đầu.
 
 ---
 
+## 0. Vì sao đổi
+
+Khách chốt lại mục tiêu của dải: **chỗ duy nhất thật sự có người nhìn là 3 thẻ của tag đang mở**, và mọi tin trong dải đều phải có cơ hội như nhau để lọt vào 3 ô đó. Thứ nằm sau mũi tên hay sau cú bấm tag thứ hai là chuyện phụ.
+
+Luật chia bài cũ tối ưu cho **sự khác nhau giữa các tag** — không phải mục tiêu này. Nên thay bằng **vòng quay**: mỗi tag giữ tin của nó trong một vòng cố định, con trỏ nhích 3 ô mỗi lượt tải trang, sau `số tin ÷ 3` lượt là mọi tin đã vào 3 ô đầu **đúng một lần**.
+
+**Đánh đổi phải nói rõ:** mô hình cũ bảo đảm mỗi tag mở ra một tập tin khác nhau. Mô hình mới **không** bảo đảm điều đó. Cố ý.
+
 ## 1. Response
 
-`GET /api/{lang}/jobs/search?...&premiumOnly=true` đổi từ danh sách phẳng sang:
+`GET /api/{lang}/jobs/search?...&premiumOnly=true` → thêm `premiumBand` bên cạnh `items` hiện có (giữ `items` nguyên, để web chưa cập nhật vẫn chạy):
 
 ```
 "premiumBand": {
   "tags": [
-    { "id": "chl-13th", "name": "💰 Lương tháng 13" },
-    { "id": "chl-remote", "name": "💻 Làm việc từ xa" }
+    { "id": "chl-featured", "name": "✨ Việc làm nổi bật", "required": true },
+    { "id": "chl-13th",     "name": "💰 Lương tháng 13" }
   ],
   "jobs": [ { "id": "job-1", "title": "…", "companyName": "…", "…": "…" } ],
-  "deal": {
-    "chl-13th":   ["job-7", "job-1", "job-9", "…"],
-    "chl-remote": ["job-14", "job-16", "job-17", "…"]
+  "cards": {
+    "chl-featured": ["job-7", "job-1", "job-9", "…"],
+    "chl-13th":     ["job-14", "job-16", "job-17", "…"]
   }
 }
 ```
 
-- `jobs` chứa **mỗi tin đúng một lần**; `deal` trỏ tới chúng bằng id. Một tin có thể nằm ở nhiều tag, nhưng payload không nhân bản.
-- `tags` đã localize theo `{lang}`, **không có** `count` — xem luật 7.
-- `name` đã bao gồm emoji (emoji nằm trong `name_vi` / `name_en` của catalogue, không phải cột riêng).
+- Khoá đổi tên `deal` → **`cards`**. Tên cũ mô tả việc chia bài đã bỏ.
+- `cards[tag]` = **tối đa 10 id, đã đúng thứ tự hiển thị**, tính từ con trỏ của tag đó. FE chỉ cắt thành trang 3 thẻ, không sắp xếp lại.
+- `jobs` chứa **mỗi tin đúng một lần**; `cards` trỏ bằng id. Một tin **được phép** nằm ở nhiều tag — đây là thay đổi so với bản cũ.
+- `tags[0]` **luôn** là tag required, và chỉ nó có `"required": true`.
+- Không có `count` ở bất kỳ đâu.
 
-### Acceptance — response
-
-- [ ] `jobs` không chứa id trùng.
-- [ ] Mọi id trong `deal` đều tồn tại trong `jobs`.
-- [ ] Khoá của `deal` khớp đúng tập `tags`, không thừa không thiếu.
-- [ ] Không có field `count` ở bất kỳ đâu trong `premiumBand`.
-- [ ] `tags[].name` trả đúng ngôn ngữ theo `{lang}`.
-
----
-
-## 2. Tám luật chia bài
+## 2. Luật
 
 | # | Luật |
 |---|---|
-| **1** | **Tag ứng cử** = hợp của `company_search_tag` của mọi công ty đang có tin trong dải. **Loại bỏ tag lọc ra dưới 3 tin.** Không có luật trần — tag phủ 100% số tin vẫn được giữ. |
-| **2** | **Số tag hiện = số tin trong dải ÷ 3** (làm tròn xuống), **tối đa 8, tối thiểu 3**. Không đủ 3 tag → `tags: []` và FE ẩn cả hàng tag. Chia 3 vì dải hiện 3 card một lượt — đó là thứ bảo đảm luật 5 ở khung nhìn đầu. |
-| **3** | **Thứ tự tag ngẫu nhiên**, đổi mỗi lần gọi. Khi số tag ứng cử nhiều hơn số tag được hiện, **lấy mấy tag đầu sau khi xáo** — nên qua nhiều lần tải, mọi tag của công ty đều có lượt. **Ngoại lệ:** luật 3b. |
-| **3b** | **Tag đầu tiên phải là tag phủ nhiều công ty nhất** trong dải (bằng nhau thì ngẫu nhiên trong số đó). Nếu không, một tag chỉ một công ty nhỏ có thể rơi vào vị trí chọn sẵn, và dải mở ra chỉ thấy công ty đó — khách lớn nhất vô hình. |
-| **4** | **Luôn có đúng một tag đang chọn**, và vào trang thì **tag đầu tiên** được chọn sẵn. Không có nút “Tất cả”, không có trạng thái không chọn gì. |
-| **5** | **Chia bài.** Xáo ngẫu nhiên tập tin một lần cho cả request. Rồi chia vòng tròn: đi lần lượt qua từng tag, mỗi tag lấy **tin tiếp theo trong danh sách đã xáo mà tag đó lọc được và chưa tag nào lấy**. Lặp cho tới khi mọi tag đủ card. **Chỉ khi hết sạch tin chưa dùng mới cho phép lặp lại.** |
-| **5b** | **Tag ít tin nhất chia trước.** Nếu không, một tag chỉ có 4 tin đủ điều kiện sẽ bị các tag 20 tin lấy mất hết phần và còn lại rỗng. |
-| **6** | **Tối đa 10 card mỗi tag.** Một tag **không bao giờ** lặp tin của chính nó: tag chỉ lọc được 4 tin thì `deal` của nó có 4 phần tử, không độn cho đủ 10. Các tag dài ngắn khác nhau là bình thường. |
-| **7** | **Không trả và không hiện số đếm trên tag.** KR không hiện, và với một khách Premium mọi con số đều bằng nhau — đó mới là thứ lộ ra ngay, sớm hơn thứ tự tin nhiều. |
-| **8** | Trong một tag, **hai card liền nhau không cùng một công ty** (rải vòng theo công ty sau khi chia xong). Luật công bằng sẵn có của dải phải sống sót qua việc chia bài. |
+| **1** | **Tin vào dải**: như hiện tại (sản phẩm phủ placement + khớp từ khoá). Luật dưới đây không thêm/bớt tin nào, chỉ quyết định thứ tự. |
+| **2** | **Tag required**: đúng một dòng catalogue có cờ Required. Nó phủ **mọi tin trong dải** — định nghĩa theo TIN, không theo công ty (xem §4 câu 5). Luôn ở `tags[0]`, luôn được chọn sẵn. |
+| **3** | **Tag khác ứng cử** = hợp `company_search_tag` của mọi công ty có tin trong dải. **Loại tag lọc ra dưới 3 tin.** Không có luật trần. |
+| **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 8, tối thiểu 3**. Dưới 3 → `tags: []`, FE ẩn cả hàng tag. |
+| **5** | **Thứ tự tag**: slot 1 là tag required. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
+| **6** | **Luôn đúng một tag được chọn**, là tag required khi vào trang. Không có nút "Tất cả". |
+| **7** | **Mỗi tag một vòng riêng**: các tin tag đó phủ, xếp sao cho **mỗi công ty rải đều khắp vòng** — công ty có 12/33 tin thì cứ ~3 ô một tin, công ty 3 tin thì cứ ~11 ô một tin. **KHÔNG dùng round-robin** (luật cũ): nó vét hết công ty nhỏ trước rồi để công ty lớn chiếm cả đuôi vòng. |
+| **7b** | **Sửa vòng**: chỗ nào **3 ô liền nhau cùng công ty** thì nhấc tin ở giữa ra, cắm vào chỗ ít đụng nhất. Lặp tới khi hết hoặc không cải thiện được nữa. |
+| **8** | **Con trỏ**: nhích **3 mỗi lượt tải trang, cộng thêm 1 bước mỗi khi vòng lại từ đầu**. Bước cộng thêm là bắt buộc — vòng có độ dài chia hết cho 3 mà không có nó thì **mọi tin bị ghim chết vào một ô vĩnh viễn** (ví dụ 33 tin: 33/33 tin bị kẹt; có bước cộng thêm: 0/33). Nhích **3**, tuyệt đối không nhích 10. |
+| **9** | **Rút thẻ**: tối đa 10 thẻ từ con trỏ, chia thành trang 3 + 3 + 3 + 1. **Trong một trang 3 thẻ, một công ty tối đa 2 thẻ** — tới thẻ thứ 3 của công ty đó thì bỏ qua, lấy tin kế tiếp trên vòng. Không còn gì để thay (dải chỉ 1 công ty) thì cứ điền. |
+| **10** | **Không trả `count`.** |
 
-> **Về luật “không dùng ngẫu nhiên” trong spec:** luật đó bảo vệ **danh sách kết quả**, nơi có phân trang. Dải Premium chỉ nằm ở trang 1 và không phân trang, nên xáo lại mỗi request là ngoại lệ có chủ ý. Spec đã được sửa lại cho rõ: *cái gì có phân trang thì không được ngẫu nhiên.*
+> **Luật 9 là no-op khi không có công ty áp đảo.** Kiểm trên ví dụ 33 tin / 6 công ty: không đổi một lượt nào. Nó chỉ kích hoạt khi một công ty nắm > 2/3 số tin.
 
----
+## 3. Xác định "lượt tải trang"
 
-## 3. Chuỗi dự phòng khi công ty chưa chọn Search tag
+Con trỏ cần một bộ đếm. **Không dùng `Random`, không dùng timestamp thô.**
 
-Tin của một công ty **chỉ được chia cho tag mà công ty đó có**. Công ty không có tag nào thì tin của họ không thuộc tag nào, và vì luôn có một tag đang chọn, **tin đó sẽ không bao giờ xuất hiện** — một khách Premium trả tiền mà tin không lên dải, không có lỗi nào báo ở đâu.
+- Nhận thêm query param `bandSeq` (số nguyên, mặc định 0) do FE gửi, hoặc suy từ một counter theo session. Chốt cách nào tuỳ BE, miễn thoả: **cùng một request + cùng `bandSeq` → cùng một dải** (để bug report tái hiện được), và **người dùng F5 thì `bandSeq` tăng**.
+- Khoá con trỏ theo **hash của danh sách id đã sắp xếp của dải**, không phải một counter toàn cục — hai từ khoá khác nhau là hai dải khác nhau, không được dùng chung con trỏ.
 
-1. Công ty không có dòng nào trong `company_search_tag` → lấy tạm **`company_page_highlight` (tối đa 6)** của chính công ty đó làm search tag.
-2. Công ty cũng không có highlight nào → **`tags: []`**, FE ẩn hàng tag, dải vẽ như hôm nay với đủ mọi tin.
+## 4. Trả lời 7 câu hỏi của Long (comment 16/11)
 
-> Thà mất hàng tag còn hơn mất tin của khách.
+1. **Dải đọc tối đa bao nhiêu tin?** Bỏ giới hạn 50. Đọc **id của toàn bộ tập đủ điều kiện** (rẻ) vì đó mới là thứ vòng quay chạy trên; chỉ **hydrate đầy đủ ≤ 80 id** thật sự vào response. Cắt tập đủ điều kiện sẽ **đóng băng vĩnh viễn** những tin nằm ngoài — đúng thứ mô hình này sinh ra để chống.
+2. **Luật 4 khi không đủ tag:** "số tin trong dải" là **toàn bộ tin của dải** (tag required phủ hết nên không còn phân biệt). Dưới 3 tag ứng cử → `tags: []`, ẩn hẳn hàng tag, **không** hiện 2 tag.
+3. **Luật 3b (tag đầu phủ nhiều công ty nhất):** **BỎ.** Tag required thay thế hoàn toàn.
+4. **Luật 8 cũ (2 card liền nhau không cùng công ty):** **BỎ.** Thay bằng luật 7/7b (xếp vòng) + luật 9 (rút thẻ).
+5. **Tin đăng ẩn danh:** không có công ty nên không có company tag — nhưng **tag required định nghĩa theo TIN, không theo công ty**, nên tin ẩn danh vẫn nằm trong vòng của tag required. Không mất tin nào.
+6. **Chuỗi dự phòng bằng Highlights:** **BỎ HẲN.** Tag required làm nó không thể với tới: không công ty nào có tin không thuộc tag nào nữa.
+7. **Tiếng Hàn:** đúng, `/ko` dùng tên tiếng Anh. Catalogue không có cột tiếng Hàn và không bổ sung trong scope này.
 
----
+## 5. Acceptance
 
-## 4. Acceptance — luật chia bài
+- [ ] Dải 33 tin / 6 công ty → `tags` có 8 phần tử, `tags[0].required === true`.
+- [ ] Gọi 11 lượt liên tiếp với `bandSeq` 0→10, gom 3 id đầu của `cards[tag required]` mỗi lượt → **đúng 33 id, không trùng cái nào**.
+- [ ] Gọi tiếp lượt 11→21: mỗi tin xuất hiện ở **ô khác** so với vòng trước (không tin nào ở nguyên một vị trí).
+- [ ] Mọi trang 3 thẻ của mọi tag: **không có 3 thẻ cùng một công ty**, trừ khi dải chỉ có 1 công ty.
+- [ ] Dải MB 28 tin + 2 công ty nhỏ 5 tin → **0 trang nào có 3 thẻ MB**.
+- [ ] Cùng request + cùng `bandSeq` gọi 2 lần → response **giống hệt** nhau.
+- [ ] Dải 8 tin → `tags: []`.
+- [ ] Công ty không có `company_search_tag` → tin vẫn ra, nằm trong vòng của tag required.
+- [ ] Tin đăng ẩn danh → có mặt trong `cards[tag required]`.
+- [ ] Mọi id trong `cards` tồn tại trong `jobs`; `jobs` không có id trùng; không có field `count`.
+- [ ] `/ko` trả `tags[].name` tiếng Anh, không lỗi.
 
-- [ ] Dải 20 tin, 1 công ty, công ty chọn 9 search tag → **6 tag**, mỗi tag **10 card**.
-- [ ] Trong ví dụ trên, gom **3 phần tử đầu** của cả 6 tag lại → **18 id khác nhau**, không trùng cái nào.
-- [ ] Dải 33 tin, 3 công ty (20 / 9 / 4 tin) → **8 tag**; tag chỉ lọc được 9 tin có đúng **9 card**; tag chỉ lọc được 4 tin có đúng **4 card**.
-- [ ] Không `deal[tag]` nào chứa id trùng.
-- [ ] Dải 8 tin → `tags: []` (vì 8 ÷ 3 = 2 < 3).
-- [ ] Công ty trong dải chỉ có 2 search tag đủ điều kiện → `tags: []`.
-- [ ] `tags[0]` luôn là một tag phủ số công ty nhiều nhất trong dải.
-- [ ] Hai lần gọi liên tiếp cùng tham số → thứ tự tag khác nhau và nội dung `deal` khác nhau.
-- [ ] Công ty Premium không có search tag nhưng có 4 highlight → 4 highlight đó được dùng làm tag.
-- [ ] Công ty Premium không có cả hai → `tags: []`, và **mọi tin của công ty đó vẫn nằm trong `jobs`**.
+## 6. Không làm trong sub-task này
 
----
-
-## 5. Không làm trong sub-task này
-
-- ❌ Giao diện hàng tag — đó là sub-task 4.
-- ❌ Thêm param lọc theo tag: FE không gọi lại server khi đổi tag, toàn bộ deal đã nằm trong response đầu tiên.
-- ❌ Trả `count` cho tag.
-- ❌ Đụng vào Top section hay thứ tự của danh sách kết quả chính.
+- ❌ Giao diện hàng tag — sub-task 5.
+- ❌ Param lọc theo tag: FE không gọi lại server khi đổi tag.
+- ❌ Trả `count`.
+- ❌ Đụng Top section hoặc thứ tự danh sách kết quả chính.

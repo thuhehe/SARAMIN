@@ -1,79 +1,66 @@
-# [Premium] Hàng tag lọc trong dải Premium trên trang tìm kiếm (company tag)
+# [Premium] Hàng tag trong dải Premium trên trang tìm kiếm (company tag)
 
 **Module:** Job management · Admin · CRM · **Site:** svn-web + svn-be + saramin-vn-admin
-**Requirement (source of truth):** [saramin-eta.vercel.app → Job list (Search result)](https://saramin-eta.vercel.app/m/job-management/job-list-search-result#the-blue-zone-s-tag-row-company-tags-dealt-out-so-every-tag-opens-a-different-set-of-jobs) — mục “THE BLUE ZONE’S TAG ROW”
-**Mockup bấm được:** [jobseeker](https://claude.ai/artifact/SKfqu7LySEraceQ5oSsz9g) · [admin](https://claude.ai/artifact/Czeaekg1FjX1PKmnV6szc4)
-**Prototype:** [saramin-eta.vercel.app/mockups?screen=js-search](https://saramin-eta.vercel.app/mockups?screen=js-search)
-**Tham khảo:** Saramin KR — dải “쉿! 회원님에게만 알려주는 공고” trên `/zf_user/search`
+**Requirement (nguồn đúng):** [saramin-eta.vercel.app → "THE BLUE ZONE'S TAG ROW"](https://saramin-eta.vercel.app/m/job-management/job-list-search-result#the-blue-zone-s-tag-row-company-tags-and-a-rotation-that-gives-every-job-the-same-chance-at-the-three-visible-cards)
+**Giải thích cho khách (bấm được, có ví dụ chạy):** https://claude.ai/artifact/SV4xrNdEktZuvJLFXtCra2
+**Prototype:** https://saramin-eta.vercel.app/mockups?screen=js-search
+**Tham khảo:** Saramin KR — dải "쉿! 회원님에게만 알려주는 공고" trên `/zf_user/search`
 
-> Ticket này là **task cha**: bối cảnh, lý do và thứ tự làm. Luật chi tiết và acceptance nằm ở **4 sub-task** bên dưới.
+> Task cha: bối cảnh, lý do, thứ tự làm. Luật chi tiết và acceptance nằm ở **5 sub-task**.
 
 ---
 
 ## 0. Việc này là gì
 
-Thêm **một hàng tag ngay dưới tiêu đề dải Premium** trên `/search`. Bấm vào một tag thì các card trong dải đổi sang một nhóm tin khác. Danh sách kết quả bên dưới không đụng tới.
+Thêm **một hàng tag ngay dưới tiêu đề dải Premium** trên `/search`. Bấm một tag thì các card trong dải đổi sang nhóm tin khác. Danh sách kết quả bên dưới không đụng tới.
 
-Dải Premium **đã chạy** (svn-be V486, FE `features/jobs/search/ui/premium-jobs-band.tsx`): chèn sau 3 dòng kết quả đầu, chỉ ở trang 1, 10 card xem 3 card một lượt.
+Dải đã chạy (svn-be V486, FE `features/jobs/search/ui/premium-jobs-band.tsx`): chèn sau 3 dòng kết quả đầu, chỉ trang 1, 10 card xem 3 card một lượt.
 
-**Nguồn tag là company tag** — catalogue `company_highlight`, cùng vốn từ mà dải chip trên trang công ty đang dùng. Không dùng job card tag, không dùng trường của job (ngành nghề, địa điểm, cấp bậc): chỉ catalogue này mới có emoji, mà emoji trên mỗi tag là một phần của thiết kế.
+Nguồn tag là **company tag** — catalogue `company_highlight`. Không dùng job card tag, không dùng trường của job: chỉ catalogue này mới có emoji, mà emoji trên mỗi tag là một phần của thiết kế.
 
-## 1. Vấn đề cốt lõi — đọc trước khi code
+## 1. VIẾT LẠI 19/11/2026 — đọc kỹ nếu bạn đã xem bản cũ
 
-Tag là **thuộc tính của công ty**, không phải của tin.
+Bản đầu của task này xây quanh **luật chia bài**: xáo tin một lần rồi chia vòng tròn cho các tag, sao cho **mỗi tag mở ra một tập tin khác nhau**. Toàn bộ phần đó **đã bị bỏ**.
 
-Nên khi dải chỉ có **một** công ty Premium — đúng tình huống Saramin VN trong vài tháng tới — mọi tag đều phủ 100% số tin trong dải. Bấm tag nào cũng ra đúng tập tin đó. **Không tag nào lọc được gì cả.**
+Khách chốt lại mục tiêu: **chỗ duy nhất thật sự có người nhìn là 3 thẻ của tag đang mở**, và mọi tin trong dải phải có cơ hội như nhau để lọt vào 3 ô đó. Thứ nằm sau mũi tên hay sau cú bấm tag thứ hai là chuyện phụ.
 
-Điều này **đã được chấp nhận**, không phải thiếu sót. Cách xử lý:
+Thay bằng **vòng quay**: mỗi tag giữ tin trong một vòng cố định, con trỏ nhích 3 ô mỗi lượt tải trang. Sau `số tin ÷ 3` lượt, mọi tin đã vào 3 ô đầu **đúng một lần** — không phải trung bình, mà đúng một lần.
 
-> Thay vì xáo lại cùng một danh sách cho có vẻ khác, svn-be **chia tin của dải ra cho các tag**: xáo một lần, rồi chia vòng tròn, mỗi tag lấy một tin chưa tag nào lấy. Mỗi tag mở ra một **nhóm tin khác nhau**, chứ không phải cùng một danh sách đảo thứ tự.
->
-> Và khi có khách Premium thứ hai, hàng tag **tự trở thành bộ lọc thật** — không sửa một dòng code nào.
+**Đánh đổi, phải nói rõ khi trình bày:** mô hình cũ bảo đảm mỗi tag mở ra một tập khác nhau. Mô hình mới **không** bảo đảm điều đó. Đây là đổi có chủ ý: lấy *công bằng về lượt hiện* thay cho *sự đa dạng giữa các tag*.
 
-Ví dụ: 20 tin của một khách, 6 tag → mỗi tag 10 card, và **3 card đầu của cả 6 tag là 18 tin khác nhau**, không trùng cái nào.
+**Luật đã xoá hẳn** (đừng cài từ bản cũ): xáo-rồi-chia (luật 5), tag ít tin chia trước (5b), tag ưu tiên công ty đang giữ ít nhất (5c), tag đầu phải phủ nhiều công ty nhất (3b), và chuỗi dự phòng 2 bước bằng Highlights.
 
-## 2. Màn hình
+## 2. Hai thứ mới trong Master data
 
-**Một khách Premium — 20 tin, 6 tag.** Dải chèn sau dòng kết quả thứ 3.
+| | |
+|---|---|
+| **Cờ Search tag** | đánh dấu dòng catalogue nào được dùng làm tag tìm kiếm. Đã làm xong (sub-task 1). |
+| **Cờ Required** | **MỚI 19/11.** Đúng **một** dòng catalogue mang cờ này. **Mọi công ty đều có nó**, không bỏ được. Nó phủ **mọi tin trong dải**, luôn đứng slot 1, luôn được chọn sẵn khi vào trang. |
 
-![Dải Premium, một khách Premium](https://saramin-eta.vercel.app/tickets/srm-1497/search-1-company.jpg)
+Cờ Required là thứ đóng được lỗ hổng cũ: công ty chưa chọn Search tag thì tin không thuộc tag nào, mà luôn có một tag đang chọn → **tin của khách trả tiền không bao giờ xuất hiện**, không báo lỗi ở đâu. Có tag required thì chuyện đó không thể xảy ra, nên chuỗi dự phòng bằng Highlights bỏ được.
 
-**Hàng tag phóng to.** Tag đầu chọn sẵn, không tag nào có số đếm, 3 card một lượt, mũi tên lật 3.
+## 3. Khi một công ty áp đảo kết quả tìm kiếm
 
-![Hàng tag](https://saramin-eta.vercel.app/tickets/srm-1497/tag-row.jpg)
+Ứng viên tìm "ngân hàng", MB Bank chiếm 28/33 tin của dải. Lúc đó **không thể** vừa cho mỗi tin hiện đúng một lần mỗi vòng, vừa chặn 3 thẻ cùng công ty: một vòng 11 lượt, mỗi lượt cần ≥ 1 tin ngoài MB → cần 11 tin, chỉ có 5. **Số học, không phải lỗi.**
 
-**Ba khách Premium — 33 tin, 8 tag.** Cùng bộ luật: hàng tag lúc này lọc thật, mỗi tag ra một nhóm công ty khác nhau, số card mỗi tag không còn đều nhau.
+Chốt: bỏ vế thứ nhất. Trong một trang 3 thẻ, một công ty tối đa 2 thẻ; tới thẻ thứ 3 thì bỏ qua, lấy tin kế tiếp.
 
-![Dải Premium, ba khách Premium](https://saramin-eta.vercel.app/tickets/srm-1497/search-3-companies.jpg)
+**Cái giá, cần đưa vào điều khoản sản phẩm:** đo trên 3000 lượt tải, tin của công ty nhỏ được hiện ~600 lần trong khi tin của MB ~214 lần. Tức **công ty mua nhiều tin hơn lại có số lần hiện trên mỗi tin thấp hơn**. Họ sẽ nhận ra.
 
-## 3. Bốn sub-task — thứ tự là BẮT BUỘC
+## 4. Năm sub-task, theo đúng thứ tự làm
 
-| # | Sub-task | Repo | Vì sao phải đúng thứ tự |
+| # | Việc | Repo | Trạng thái |
 |---|---|---|---|
-| 1 | Master data: cờ **Search tag** | admin + svn-be | HQ phải gắn cờ ~18 tag trước, nếu không sub-task 2 không có gì để chọn |
-| 2 | Company page tab: mục **Search tags** | admin + svn-be | Người nhập phải chọn tag cho từng công ty Premium, nếu không sub-task 3 không có gì để chia |
-| 3 | svn-be: **luật chia bài** + response | svn-be | BE phải live trước FE |
-| 4 | svn-web: **vẽ hàng tag** + đếm lượt hiển thị | svn-web | — |
+| 1 | Master data: cờ Search tag + mục "Search tag đang dùng" | saramin-vn-admin | đã xong, đang QA |
+| 2 | Master data: **cờ Required** | saramin-vn-admin | mới |
+| 3 | Company page tab: mục Search tags cho từng công ty | saramin-vn-admin | sửa lại |
+| 4 | svn-be: vòng quay + con trỏ + response `premiumBand` | svn-be | viết lại hoàn toàn |
+| 5 | svn-web: vẽ hàng tag + đếm lượt hiển thị | svn-web | sửa lại |
 
-**Hai cái bẫy:**
+> **Spring bỏ qua `@RequestParam` lạ mà không báo lỗi.** Sub-task 5 lên trước sub-task 4 thì không có lỗi nào xuất hiện ở đâu cả — hàng tag chỉ đơn giản không hoạt động. Giữ đúng thứ tự.
 
-- **Spring bỏ qua `@RequestParam` lạ mà không báo lỗi.** Sub-task 4 lên trước sub-task 3 thì không có lỗi nào xuất hiện ở đâu cả — hàng tag chỉ đơn giản không hoạt động, và không ai biết vì sao.
-- **Sub-task 3 và 4 không có gì để hiện nếu sub-task 1 và 2 chưa có DỮ LIỆU THẬT**, không phải chỉ code xong. Một công ty Premium chưa ai chọn Search tag là một khách trả tiền mà tin không lên dải.
+## 5. Còn mở
 
-## 4. Trước khi bật — việc của người, không phải của code
+**Các tag mở ra những tập tin trùng nhau.** Đo trên ví dụ 33 tin: 3 thẻ đầu của cả 8 tag gộp lại chỉ có **16 tin khác nhau trên 24 ô**, vì mọi vòng dựng giống nhau và mọi con trỏ bắt đầu cùng chỗ. Lệch con trỏ mỗi tag theo vị trí của nó trong hàng đưa lên **18.9/24**, tốn một dòng code. Một bước khử trùng hẳn giữa các tag đạt ~**22.8/24** nhưng kéo lại đúng phần phức tạp vừa bỏ đi.
 
-- [ ] HQ đã gắn cờ Search tag cho các tag trong catalogue (sub-task 1 có sẵn danh sách 18 mã).
-- [ ] Mỗi công ty đang có gói Premium đã được chọn Search tag ở tab Company page.
-- [ ] BA xác nhận với sales: trong giai đoạn một khách Premium, hàng tag là **trình bày**, chưa phải bộ lọc. Bán nó như bộ lọc sẽ gặp đúng câu hỏi nó chưa trả lời được.
-
-## 5. Không làm trong phạm vi này
-
-- ❌ Dùng job card tag (`job_card_tag`) làm nguồn tag.
-- ❌ Dùng trường của job (ngành nghề, địa điểm, cấp bậc, hình thức làm việc) làm tag.
-- ❌ Luật trần “tag phủ quá nhiều tin thì ẩn”.
-- ❌ Hiện số đếm trên tag.
-- ❌ Nút “Tất cả” hoặc trạng thái không chọn tag nào.
-- ❌ Đưa tag vào URL hay vào bộ lọc bên trái.
-- ❌ Đụng vào Top section hay danh sách kết quả chính.
-- ❌ Đổi copy tiêu đề dải.
-- ❌ Hàng tag cho dải Premium ở trang chủ hay trang công ty — chỉ `/search`.
+Đề xuất: lấy phương án lệch con trỏ, chỉ xem lại nếu khách nêu. Theo mô hình vòng quay thì tag trùng nhau **không làm tin nào mất lượt hiện** — nên đây là vấn đề cảm giác, không phải công bằng.
