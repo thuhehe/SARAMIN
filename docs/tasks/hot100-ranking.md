@@ -15,7 +15,7 @@
 
 **Ba chỗ dễ làm sai nhất**, đọc kỹ trước khi code:
 
-1. **Hạng theo gói là VỊ TRÍ — 1, 2, 3 … 100 — không phải `product.display_order`.** Bảng Posting ladder trong admin hiển thị các giá trị 300, 295, 291, 287, 280… Đó là số để xếp các bậc gói với nhau, **không phải thứ hạng**. Nhét một trong các số đó vào công thức thì phần theo gói lớn gấp mấy chục lần, phần tương tác mất hết tác dụng, và bảng im lặng cho ra đúng thứ tự như production hiện nay — **không báo lỗi, không có dấu hiệu gì**, chỉ là tính năng lặng lẽ không chạy. Hạng theo tương tác cũng vậy: là vị trí ở bước B, không phải điểm thô.
+1. **Hạng theo gói là VỊ TRÍ — 1, 2, 3 … 100 — không phải `product.display_order`.** Bảng Posting ladder trong admin hiển thị các giá trị 300, 295, 291, 287, 280… Đó là số để xếp các bậc gói với nhau, **không phải thứ hạng**. Nhét một trong các số đó vào công thức thì phần theo gói lớn gấp mấy chục lần, phần tương tác mất hết tác dụng, và bảng im lặng cho ra đúng thứ tự như production hiện nay — **không báo lỗi, không có dấu hiệu gì**, chỉ là tính năng lặng lẽ không chạy. Hạng theo tương tác cũng vậy: là vị trí ở bước B, không phải điểm thô. Xem **ví dụ 1/3** và **2/3** ở phần 1.
 2. **Tin bằng điểm tương tác phải nhận CÙNG một thứ hạng** (phần 1, bước B2). Giai đoạn đầu phần lớn tin sẽ cùng 0 điểm, nên chỗ này quyết định cả bảng.
 3. **Hai quy tắc chống gian lận lượt xem phải lên cùng đợt** (phần 3.7), không để lại sau.
 
