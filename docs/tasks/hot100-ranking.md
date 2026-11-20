@@ -5,7 +5,7 @@
 **Mockup:** [Mockups ▸ js-hot100](https://saramin-eta.vercel.app/mockups)
 **Tham khảo UI:** Saramin KR — [/zf_user/jobs/hot100](https://www.saramin.co.kr/zf_user/jobs/hot100)
 
-> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên cách **chọn ra 100 tin**, và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: mặc định 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm. Tỉ lệ đó là **một ô cấu hình trong admin**, không viết cứng. Kèm theo: một dòng "Gợi ý" phía trên vị trí số 1, một bộ lọc kinh nghiệm, giới hạn 10 dòng cho khách chưa đăng nhập, và một màn hình cấu hình 6 ô.
+> **Tóm lại:** trang `/viec-lam/cong-ty-hang-dau` hiện xếp theo bậc gói rồi tới thời điểm làm mới tin. Hai thứ đó gần như không đổi theo ngày, nên cột tăng/giảm mà svn-web đã vẽ sẵn luôn hiển thị "–" trên production. Ticket này giữ nguyên **nguyên tắc chọn tin theo bậc gói** — bước A gom **101 tin**, một tin được nhấc ra làm dòng "Gợi ý" nên bảng đánh số vẫn đủ 100 — và đổi cách **xếp vị trí trong 100 tin đó** thành công thức trộn: mặc định 90% theo gói, 10% theo mức ứng viên quan tâm, tính lại mỗi đêm. Tỉ lệ đó là **một ô cấu hình trong admin**, không viết cứng. Kèm theo: một dòng "Gợi ý" phía trên vị trí số 1, một bộ lọc kinh nghiệm, giới hạn 10 dòng cho khách chưa đăng nhập, và một màn hình cấu hình 6 ô.
 
 ---
 
@@ -37,7 +37,7 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
    [D] MŨI TÊN & LƯU LẠI   so với hôm qua → lưu bảng → xử lý lỗi
 ```
 
-### A — Chọn 100 tin, lập hạng theo gói
+### A — Chọn 101 tin, lập hạng theo gói
 
 | Bước | Quy tắc |
 |---|---|
@@ -53,7 +53,7 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 
 > **Không có cổng chặn tin miễn phí ở bước này.** Tin không mua gói vẫn hợp lệ, chỉ xếp cuối. Build hiện tại thì ngược lại — xem phần 3.1.
 
-### B — Lập hạng theo tương tác, chỉ cho 100 tin đó
+### B — Lập hạng theo tương tác
 
 **B1 — điểm thô**, trong 7 ngày gần nhất tính tới hết ngày hôm qua:
 
@@ -61,7 +61,9 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 điểm thô = (lượt xem hợp lệ × 1) + (lượt lưu còn hiệu lực × 3) + (lượt ứng tuyển còn hiệu lực × 5)
 ```
 
-**B2 — xếp hạng.** Sắp 100 tin theo điểm thô giảm dần, đánh số 1…100.
+**B1 chạy cho cả 101 tin** gom ở bước A — A5 cần điểm thô của mọi tin mới biết nhấc tin nào ra làm dòng Gợi ý. **B2 chỉ xếp hạng 100 tin còn lại**, sau khi đã nhấc tin đó ra.
+
+**B2 — xếp hạng.** Sắp 100 tin còn lại theo điểm thô giảm dần, đánh số 1…100.
 
 **Tin bằng điểm nhận cùng một thứ hạng**, bằng trung bình của khoảng vị trí mà nhóm đó chiếm.
 
@@ -140,7 +142,7 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 | | |
 |---|---|
 | **Build** | Lọc theo placement `placement_mega_menu_page_job_list_trending`. Tin không có gói được tick vị trí này thì không bao giờ lên trang |
-| **Requirement** | Không có khái niệm placement. Lấy tất cả tin hợp lệ, sắp theo bậc posting ladder, cắt lấy 100 tin đầu |
+| **Requirement** | Không có khái niệm placement. Lấy tất cả tin hợp lệ, sắp theo bậc posting ladder, cắt lấy 101 tin đầu |
 | **Cần làm** | Bỏ điều kiện lọc placement cho section này. Chuyển posting ladder từ vai trò *lọc* sang vai trò *sắp xếp để chọn* |
 
 > Thay đổi này vào build ngày 22/09/2026, commit `6d9697723` — *"the two board strips are sold, not inferred from rank"*. Requirement chưa bao giờ cập nhật theo.
@@ -154,7 +156,7 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 | | |
 |---|---|
 | **Build** | Áp sau khi đã có danh sách, trong `TopCompaniesOrder.arrange` |
-| **Cần làm** | Áp ngay ở bước A3, trước khi cắt lấy 100 tin, kèm bước bù A4 |
+| **Cần làm** | Áp ngay ở bước A3, trước khi cắt lấy 101 tin, kèm bước bù A4 |
 
 ### 3.3 BỎ quy tắc không để 2 tin liền kề cùng công ty
 
@@ -401,11 +403,14 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 **Dòng Gợi ý**
 - [ ] Dòng Gợi ý nằm trên vị trí số 1, không có số thứ tự, không có mũi tên
-- [ ] Tin được chọn là tin có điểm thô cao nhất trong 100 tin
-- [ ] Khi cả 100 tin đều 0 điểm, **không vẽ dòng Gợi ý**
+- [ ] Tin được chọn là tin có điểm thô cao nhất trong **101 tin** gom ở bước A
+- [ ] Khi cả 101 tin đều 0 điểm, **không vẽ dòng Gợi ý**
+- [ ] **Đúng 1 dòng Gợi ý**, không phải 3, và không để thành ô cấu hình
+- [ ] Tin ở dòng Gợi ý **không xuất hiện lần thứ hai** trong bảng đánh số, và bảng vẫn đủ 100 dòng
 
 **Bộ lọc kinh nghiệm**
 - [ ] Hai nút lọc đúng qua facet `experience` có sẵn, không thêm trường mới
+- [ ] **Không có trạng thái "tất cả"** — luôn một trong hai đang bật, kể cả lúc vừa vào trang
 - [ ] Khi đang lọc kinh nghiệm, cột tăng/giảm hiển thị "–" mọi dòng
 
 **Cấu hình admin**
