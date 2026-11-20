@@ -432,6 +432,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 **Bước C — trộn**
 - [ ] Vị trí hiển thị khớp đúng công thức trộn theo `w`
 - [ ] Công thức dùng **vị trí 1…100**, không dùng `product.display_order`. Kiểm bằng cách: đặt `w = 1` (thuần tương tác) thì bảng phải xếp đúng theo thứ hạng tương tác — nếu vẫn gần giống thứ tự theo gói thì đã nhét nhầm số
+- [ ] Không hai tin nào có cùng hạng theo gói — thứ tự ở bước A luôn là duy nhất
 - [ ] Khi cả 100 tin cùng hạng tương tác, thứ tự hiển thị trùng khớp hoàn toàn với hạng theo gói
 - [ ] Hai tin cùng công ty được phép đứng liền kề
 - [ ] Tin đăng hôm nay nằm ở nửa trên của bảng, không rơi xuống đáy

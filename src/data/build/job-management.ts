@@ -1332,6 +1332,7 @@ export const jobManagement: BuildModule = {
           'No company holds more than 10 rows on the board.',
           'With few employers posting, the board still reaches 100 rows through the fill-back step.',
           'A low-tier posting reaches the board on a day when few high-tier postings are open.',
+          'No two postings share a TIER rank — stage A produces a total ordering, so a fractional or repeated value can only ever appear in the interest column.',
           'Postings tied on interest score share one rank; with every posting on zero, the displayed order equals the tier order exactly.',
           'A day missing from job_daily_snapshot counts as zero views and is not bridged across two days.',
           'Displayed order matches the blend at the configured weight — 0.9 / 0.1 by default — with no pass applied after it.',
