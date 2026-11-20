@@ -329,6 +329,83 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
   )
 }
 
+/* ── The Top section ─────────────────────────────────────────────────────────
+   The band above the result list, heading "Việc {từ khoá} dành cho bạn". It is a
+   PLACEMENT, like the Blue zone: membership comes from the product the posting was
+   published on, never from the posting itself.
+
+   Two rules decided 20/11/2026 (Thu) that this band did not have before:
+
+   1. IT OBEYS THE SEARCH BAR, not only the keyword. The pool is "matches the
+      keyword AND matches every filter the candidate has set" — the same facets the
+      result list applies. A band that keeps its cards while the list below changes
+      is advertising jobs the candidate has just ruled out. No top-up and no
+      fallback: fewer qualifying jobs means fewer cards, none means no band.
+   2. IT ROTATES, conveyor-style. The line is still `lastRefreshedAt` first, but a
+      window of 8 walks it 4 at a time: slide 2 becomes slide 1 each period and the
+      next four in the line enter slide 2, wrapping at the end. Period =
+      `rotation_seconds` on the placement (300 s on production today). Without it
+      only the 8 freshest postings are ever seen — on production 2.618 of 2.626
+      eligible postings had never once appeared.
+
+   Both are in SRM-1739 and are NOT on production yet. A static prototype can only
+   show the two slides and the arrows; the caption under the band names the step. */
+const TOP_SEARCH_JOBS = [
+  { title: 'Frontend Engineer (ReactJS)', co: 'MB Bank', salary: '25 – 40 tr', tag: 'Urgent Hiring' },
+  { title: 'Senior React Developer', co: 'Techcombank', salary: '35 – 55 tr', tag: 'Hot job' },
+  { title: 'Frontend Team Lead', co: 'VPBank', salary: 'Thỏa thuận', tag: '' },
+  { title: 'Web Developer (Vue/React)', co: 'ACB', salary: '20 – 30 tr', tag: '' },
+  { title: 'UI Engineer', co: 'Sacombank', salary: 'Up to 45 tr', tag: 'Urgent Hiring' },
+  { title: 'Frontend Developer (Fresher)', co: 'HDBank', salary: '12 – 18 tr', tag: '' },
+  { title: 'ReactJS Developer', co: 'TPBank', salary: '22 – 35 tr', tag: '' },
+  { title: 'Fullstack Engineer (FE-heavy)', co: 'VIB', salary: '30 – 50 tr', tag: 'Hot job' },
+]
+
+function TopSearchBand({ onOpen }: { onOpen: () => void }) {
+  /* 8 cards, two slides of four. On the live page the whole window also advances by
+     four every `rotation_seconds`, which a prototype cannot show — hence the caption. */
+  const [page, setPage] = useState(0)
+  const pages = 2
+  const cards = TOP_SEARCH_JOBS.slice(page * 4, page * 4 + 4)
+  const step = (d: number) => setPage((prev) => (prev + d + pages) % pages)
+  return (
+    <section className="mb-4 rounded-xl border border-brand/20 bg-brand/[0.045] p-3.5">
+      <div className="mb-2.5 flex flex-wrap items-baseline gap-2.5">
+        <p className="text-[14px] font-bold text-ink">Việc frontend dành cho bạn</p>
+        <span className="text-[11.5px] text-muted">8 tin · lọc theo từ khoá và bộ lọc đang chọn</span>
+      </div>
+      <div className="flex items-stretch gap-2">
+        <BandArrow onClick={() => step(-1)}>‹</BandArrow>
+        <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {cards.map((j) => (
+            <div
+              key={j.title}
+              onClick={onOpen}
+              className="flex cursor-pointer flex-col gap-2 rounded-lg border border-brand/20 bg-surface p-3 hover:border-brand/50"
+            >
+              {/* The 596×258 banner the placement sells — a posting on a product that
+                  covers this band cannot publish without one. */}
+              <div className="grid h-14 place-items-center rounded-md bg-canvas text-[9px] uppercase tracking-wider text-faint">
+                ảnh 596 × 258
+              </div>
+              {j.tag && <Chip tone="blue">{j.tag}</Chip>}
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold leading-snug text-ink">{j.title}</p>
+                <p className="text-[11.5px] text-muted">{j.co}</p>
+              </div>
+              <Chip tone="green">{j.salary}</Chip>
+            </div>
+          ))}
+        </div>
+        <BandArrow onClick={() => step(1)}>›</BandArrow>
+      </div>
+      <p className="mt-2 text-center text-[10.5px] text-muted">
+        {page + 1} / {pages} · mỗi 5 phút slide 2 lên slide 1, 4 tin tiếp theo vào slide 2
+      </p>
+    </section>
+  )
+}
+
 function SearchScreen() {
   const go = useNav()
   return (
@@ -367,6 +444,9 @@ function SearchScreen() {
         </div>
         {/* results */}
         <div className="p-4">
+          {/* The Top section sits ABOVE the result list; the Blue zone is inserted
+              INTO it further down. One match set, three orders. */}
+          <TopSearchBand onOpen={() => go('js-job-detail')} />
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[12.5px] text-muted"><span className="font-semibold text-ink">1,248</span> jobs found</p>
             <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Recommended</Chip><Chip>Date posted</Chip><Chip>Closing soonest</Chip></div>
